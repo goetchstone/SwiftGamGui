@@ -441,6 +441,39 @@ default, plus "Just do it"). Still open:
 - **The GitHub repo:** a separate OK from the operator.
 - **Re-check the on-device model** once its assets finish downloading (`SWIFTGAMGUI_SPIKE=model`).
 
+## Phase 1, slice 2 progress (2026-10-08, unattended)
+
+Merged, each after an adversarial review whose findings were fixed with tests:
+- **#3 Setup screen:**
+  - import from a GAM folder, copy from GamGUI, Check access, tenants, removal;
+  - credential sets are whole or absent;
+  - one action at a time;
+  - Release isn't debuggable;
+  - `embed_gam.sh` refuses links and an unpinned tree;
+  - `check_app.sh` checks every Mach-O.
+- **#4 Argv builders:** 58 of 59 GamGUI builders, byte-identical on 1,293 cases with 142 refusals. The
+  closed sets are types. A CI check refuses invisible and bidirectional characters.
+- **#6 GAM error classification:** 1,807 GamGUI cases.
+  - It matches GamGUI's Unicode 16 rules, so an echoed password is masked as GamGUI masks it.
+  - Masking is linear.
+  - Every pattern branch has a case of its own.
+
+Open:
+- **#7 Reading GAM's output:**
+  - JSON, NDJSON, `formatjson` CSV and plain CSV, 597 cases;
+  - users, groups and members, 502 records.
+- **Home (local branch, after #7):**
+  - the connection, GAM's version, and the directory's counts;
+  - GamGUI's nine reports over 206 users;
+  - the `Directory` module's tenant-scoped cache.
+
+Every port above is held to a fixture generated from frozen GamGUI (`scripts/gen_fixtures.py`).
+
+**Still the operator's (phase 1 "done when"):**
+- the first live import, the GamGUI copy (Allow prompts), Check access and a directory load on the
+  real tenant, with Touch ID and an explicit go for live reads;
+- re-checking the on-device model (`SWIFTGAMGUI_SPIKE=model`).
+
 ## Appendix: checked on this Mac (2026-10-08)
 
 Xcode 27.0 (27A266a), Swift 6.4, `MacOSX27.0.sdk`, macOS 27.0.1.
