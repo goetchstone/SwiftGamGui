@@ -1,27 +1,33 @@
 import AppKit
 import GamEngine
+import Setup
 import SwiftUI
 
 @main
 struct GamGUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var setup = AppServices.makeSetup()
 
     var body: some Scene {
         WindowGroup("GamGUI") {
-            PlaceholderView()
-                .task { await Spikes.runIfRequested() }
+            ContentView(setup: setup)
+                .task { await Spikes.runIfRequested(setup: setup) }
         }
+        // Every launch opens a fresh window: an admin tool has nothing worth restoring, and a restored
+        // "no windows" state once left a launch with no window at all.
+        .restorationBehavior(.disabled)
     }
 }
 
-struct PlaceholderView: View {
+struct ContentView: View {
+    let setup: SetupModel
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("GamGUI").font(.largeTitle.bold())
-            Text("Native GamGUI — phase 1 scaffold. Nothing here talks to Google yet.")
-                .foregroundStyle(.secondary)
+        NavigationStack {
+            SetupView(model: setup)
+                .navigationTitle("Setup")
+                .navigationSubtitle(setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
         }
-        .padding(32)
-        .frame(minWidth: 480, minHeight: 240, alignment: .topLeading)
+        .frame(minWidth: 640, minHeight: 520)
     }
 }

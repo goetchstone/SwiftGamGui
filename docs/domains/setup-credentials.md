@@ -63,7 +63,38 @@ One adversarial reviewer proved five issues, all fixed with tests:
   GAM's real output for a failing scope and a rejected key has **not** been captured live yet; the
   mock's shapes are read from the build.
 
-## Not built yet (slice 2b-ui)
-The Setup screen: the pick-a-folder or copy-from-GamGUI choice, the domain field (pre-filled from the
-admin email), Check access with the delegation link, the tenant list, switching (a generation bump
-that drops previews and caches, GamGUI failure-log 2026-09-25) and removal.
+## The screen (phase 1, slice 2b-ui)
+- `Packages/GamKit/Sources/Setup/SetupModel.swift`: an `@MainActor @Observable` model with all the
+  logic, tested in `Tests/SetupTests` (10 tests):
+  - import from a folder or copy from GamGUI
+  - Check access as `oauth2.txt`'s admin, or a typed one
+  - `active` and `generation`: a pass activates the domain, and a switch bumps the generation; a
+    failed check keeps the connected domain, shown as "Connected, but the last check failed"
+  - removal; errors worded as actions
+  - **one action at a time** (`isBusy`): every action refuses to start while another runs, whoever
+    calls it (a button, another screen, Siri), so a removal can't land during a check and a slower
+    check can't overwrite a newer one
+  - **a set is whole or absent** (`Vault.replaceSet`): an import or copy replaces the domain's whole
+    set, dropping a credential the new one lacks; a write refused part-way removes the domain's
+    credentials rather than leave old and new mixed. New credentials are unchecked, so a domain that
+    was active is disconnected, and the list is refreshed even on failure
+- PR #3's review proved, and tests now hold: re-importing the connected domain kept it "Connected"
+  on unchecked credentials; a refused write left a mixed set; a half-stored new domain wasn't listed;
+  overlapping actions; a slow folder read filling the domain field late.
+- `App/SetupView.swift`: renders the model.
+  - Domains, with Connected / Check Access / Remove…; removal confirms first.
+  - The last check: summary, then the Admin-console link, then what failed, then the passes counted.
+  - Add a domain: choose a GAM folder (domain suggested from the admin email, only into an empty
+    field or over an earlier suggestion, and only while that folder is still the one picked), or copy
+    from GamGUI.
+  - The delegation scopes, for reference.
+- `App/AppServices.swift`: the real model (Keychain + bundled GAM). In debug builds, `SWIFTGAMGUI_DEMO=1`
+  builds a demo in memory over the strict mock: no runner unless `SWIFTGAMGUI_GAM_BINARY` is the mock
+  (`AppServices.mockGam`: named `mock_gam.sh`, a regular file, not a link, a script, not a Mach-O), so
+  placeholder credentials never reach the real GAM. The vault spike uses the same check.
+- Window restoration is off (`.restorationBehavior(.disabled)`): every launch opens a fresh window.
+- Looking at it from the command line: `SWIFTGAMGUI_SNAPSHOT=<png>` (see CLAUDE.md, Commands).
+
+## Not live yet
+The first real import, GamGUI copy (Allow prompts) and Check access on the operator's tenant — with
+the operator present (Touch ID, Allow, and their go for a live read).
