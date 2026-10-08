@@ -458,13 +458,13 @@ Merged, each after an adversarial review whose findings were fixed with tests:
   - Masking is linear.
   - Every pattern branch has a case of its own.
 
-Open:
 - **#7 Reading GAM's output:**
   - JSON, NDJSON, `formatjson` CSV and plain CSV, 621 cases;
   - users, groups and members, 523 records.
   - Review fixed: CSV memory (13 GB to 43 MB), keys exact by text, Python's integer limit, `int()`
     whitespace, case and `str()`.
-- **Home (local branch, after #7):**
+Open:
+- **#8 Home and Users (read-only):**
   - the connection, GAM's version, and the directory's counts;
   - GamGUI's nine reports over 206 users;
   - the `Directory` module's tenant-scoped cache.
