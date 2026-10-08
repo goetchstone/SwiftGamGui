@@ -38,11 +38,12 @@ public struct AuthenticatedRunner: Sendable {
             outcome = .failure(error)
         }
 
-        // GAM rewrites oauth2.txt when it refreshes the access token; keep the new one.
+        // GAM rewrites oauth2.txt when it refreshes the access token; keep the new one — but only by
+        // replacing the stored item, so a domain removed mid-call stays removed.
         if let refreshed = config.readFile(Credential.oauth2.fileName), !refreshed.isEmpty,
            refreshed != secrets[.oauth2]?.bytes {
             do {
-                try await vault.store(Secret(refreshed), as: .oauth2, for: domain)
+                try await vault.refresh(Secret(refreshed), as: .oauth2, for: domain)
             } catch {
                 Self.log.error("could not store the refreshed oauth2.txt: \(String(describing: type(of: error)), privacy: .public)")
             }

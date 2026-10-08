@@ -62,19 +62,40 @@ public final class KeychainStore: SecretStore {
     }
 
     public func write(_ data: Data, as credential: Credential, for domain: Domain) throws {
+        if try replace(data, as: credential, for: domain) { return }
         var error: Unmanaged<CFError>?
         guard let access = SecAccessControlCreateWithFlags(
             nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .userPresence, &error
         ) else {
             throw VaultError.accessControlUnavailable
         }
-        try delete(credential, for: domain)
         var item = query(credential, domain)
         item[kSecValueData] = data
         item[kSecAttrAccessControl] = access
         item[kSecAttrLabel] = "GamGUI: \(domain.name) \(credential.fileName)"
         let status = SecItemAdd(item as CFDictionary, nil)
+        if status == errSecDuplicateItem, try replace(data, as: credential, for: domain) { return }
         guard status == errSecSuccess else { throw VaultError.keychain(status) }
+    }
+
+    public func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool {
+        let service = service
+        let account = "\(domain.name)/\(credential.rawValue)"
+        let status = context.withLock { context -> OSStatus in
+            let query: [CFString: Any] = [
+                kSecClass: kSecClassGenericPassword,
+                kSecAttrService: service,
+                kSecAttrAccount: account,
+                kSecUseDataProtectionKeychain: true,
+                kSecUseAuthenticationContext: context,
+            ]
+            return SecItemUpdate(query as CFDictionary, [kSecValueData: data] as CFDictionary)
+        }
+        switch status {
+        case errSecSuccess: return true
+        case errSecItemNotFound: return false
+        default: throw VaultError.keychain(status)
+        }
     }
 
     public func delete(_ credential: Credential, for domain: Domain) throws {

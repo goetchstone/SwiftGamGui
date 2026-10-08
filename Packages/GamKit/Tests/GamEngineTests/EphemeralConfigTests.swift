@@ -69,7 +69,7 @@ struct EphemeralConfigTests {
         try Data("x".utf8).write(to: cache.appending(path: "f"))
         #expect(config.wipe())
         #expect(!FileManager.default.fileExists(atPath: config.url.path))
-        #expect(EphemeralConfig.live.withLock { !$0.contains(config.url.path) })
+        #expect(EphemeralConfig.live.withLock { $0[config.url.path] == nil })
         #expect(config.wipe(), "wiping twice is harmless")
     }
 
@@ -117,6 +117,92 @@ struct EphemeralConfigTests {
         let config = try EphemeralConfig.materialize(files: ["oauth2.txt": Data("t".utf8)], in: base)
         #expect(EphemeralConfig.wipeAllLive(under: base).isEmpty)
         #expect(!FileManager.default.fileExists(atPath: config.url.path))
+    }
+
+    // MARK: PR #1 review findings
+
+    @Test func aHardLinkIsUnlinkedNeverZeroedOrRead() throws {
+        let outside = try sentinel()
+        defer { try? FileManager.default.removeItem(at: outside) }
+        let config = try EphemeralConfig.materialize(files: [:], in: base)
+        #expect(link(outside.path, config.url.appending(path: "oauth2.txt").path) == 0)
+        #expect(config.readFile("oauth2.txt") == nil)
+        #expect(config.wipe())
+        #expect(try Data(contentsOf: outside) == Data("keep me".utf8))
+    }
+
+    @Test func aMovedFolderIsStillReadAndWipedThroughItsDescriptor() throws {
+        let config = try EphemeralConfig.materialize(files: ["oauth2.txt": Data("real".utf8)], in: base)
+        let moved = FileManager.default.temporaryDirectory.appending(path: "moved-\(UUID().uuidString)")
+        let attacker = FileManager.default.temporaryDirectory.appending(path: "attacker-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: attacker, withIntermediateDirectories: false)
+        try Data("attacker-token".utf8).write(to: attacker.appending(path: "oauth2.txt"))
+        defer { try? FileManager.default.removeItem(at: moved); try? FileManager.default.removeItem(at: attacker) }
+        #expect(rename(config.url.path, moved.path) == 0)
+        try FileManager.default.createSymbolicLink(at: config.url, withDestinationURL: attacker)
+        defer { try? FileManager.default.removeItem(at: config.url) }
+
+        #expect(config.readFile("oauth2.txt") == Data("real".utf8))
+        #expect(config.wipe())
+        #expect(try FileManager.default.contentsOfDirectory(atPath: moved.path).isEmpty)
+        #expect(try Data(contentsOf: attacker.appending(path: "oauth2.txt")) == Data("attacker-token".utf8))
+    }
+
+    @Test func aRefusedRemovalIsNotReportedAsGone() throws {
+        let config = try EphemeralConfig.materialize(files: ["oauth2.txt": Data("t".utf8)], in: base)
+        chmod(base.path, 0o000)
+        let first = config.wipe()
+        chmod(base.path, 0o700)
+        #expect(!first, "the parent refused the removal")
+        #expect(EphemeralConfig.live.withLock { $0[config.url.path] != nil })
+        #expect(try FileManager.default.contentsOfDirectory(atPath: config.url.path).isEmpty,
+                "the plaintext went anyway, through the descriptor")
+        #expect(config.wipe())
+    }
+
+    @Test func aRunFolderThatGrantsAccessByACLIsRefused() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "acl-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let chmodACL = Process()
+        chmodACL.executableURL = URL(filePath: "/bin/chmod")
+        chmodACL.arguments = ["+a", "everyone allow read,list", dir.path]
+        try chmodACL.run()
+        chmodACL.waitUntilExit()
+        #expect(chmodACL.terminationStatus == 0)
+        #expect(throws: EphemeralConfig.Failure.unsafeRuntimeDirectory(dir.path)) {
+            try EphemeralConfig.materialize(files: [:], in: dir)
+        }
+    }
+
+    @Test func aComposedCharacterCannotHideASlash() {
+        let sneaky = "../\u{301}leak"
+        #expect(throws: EphemeralConfig.Failure.invalidFileName(sneaky)) {
+            try EphemeralConfig.materialize(files: [sneaky: Data("SECRET".utf8)], in: base)
+        }
+    }
+
+    @Test func prepareChangesNothingThroughASymlink() throws {
+        let target = FileManager.default.temporaryDirectory.appending(path: "target-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: false,
+                                                attributes: [.posixPermissions: 0o755])
+        let link = FileManager.default.temporaryDirectory.appending(path: "runlink-\(UUID().uuidString)")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        defer { try? FileManager.default.removeItem(at: link); try? FileManager.default.removeItem(at: target) }
+        #expect(throws: EphemeralConfig.Failure.unsafeRuntimeDirectory(link.path)) {
+            try RuntimeDirectory.prepare(link)
+        }
+        #expect(mode(target) == 0o755)
+    }
+
+    @Test func theSweepCountsOnlyWhatItRemoved() throws {
+        var deep = try orphan(named: "gamcfg-deep", pid: nil, ageSeconds: 3600)
+        let top = deep
+        for level in 0..<12 { deep = deep.appending(path: "d\(level)") }
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        #expect(EphemeralConfig.sweepStale(in: base) == 0)
+        #expect(FileManager.default.fileExists(atPath: top.path))
     }
 
     // MARK: sweep

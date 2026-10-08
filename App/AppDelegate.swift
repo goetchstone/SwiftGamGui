@@ -1,8 +1,8 @@
 import AppKit
 import GamEngine
 
-/// The two credential-directory backstops that belong to the app's lifetime (invariant 4): a sweep at
-/// launch for anything a crash or force-quit left behind, and a wipe at quit for anything still live.
+/// The backstops that belong to the app's lifetime (invariant 4): a sweep at launch for anything a
+/// crash or force-quit left behind; at quit, every running `gam` stopped, then every live folder wiped.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        GamRunner.stopAll()          // no gam keeps running against the tenant after we're gone
         EphemeralConfig.wipeAllLive()
     }
 }

@@ -42,6 +42,22 @@ struct AuthenticatedRunnerTests {
         #expect(try store.read(.oauth2Service, for: example) == Data("{\"placeholder\": \"oauth2service\"}".utf8))
     }
 
+    @Test func aDomainRemovedMidCallStaysRemoved() async throws {
+        // A gam that refreshes its token only after the operator has removed the domain.
+        let script = FileManager.default.temporaryDirectory.appending(path: "slow-gam-\(UUID().uuidString)")
+        try Data("#!/bin/sh\nsleep 0.6\nprintf 'refreshed\\n' > \"$GAMCFGDIR/oauth2.txt\"\n".utf8).write(to: script)
+        chmod(script.path, 0o755)
+        defer { try? FileManager.default.removeItem(at: script) }
+        let vault = Vault(store: store)
+        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
+        async let call = authenticated.run(["info"], as: example)
+        try await Task.sleep(for: .milliseconds(250))
+        try await vault.remove(example)
+        _ = try await call
+        #expect(try await vault.domains().isEmpty)
+        #expect(try store.read(.oauth2, for: example) == nil)
+    }
+
     @Test func missingCredentialsStopTheCallBeforeAnythingIsWritten() async throws {
         let other = Domain("other.example.org")!
         await #expect(throws: VaultError.missing(other, [.oauth2Service, .oauth2])) {

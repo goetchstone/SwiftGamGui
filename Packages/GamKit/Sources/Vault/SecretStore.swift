@@ -13,7 +13,12 @@ public enum VaultError: Error, Equatable, Sendable {
 /// Where credentials live. `read` returns nil only for "no such item"; every other failure throws.
 public protocol SecretStore: Sendable {
     func read(_ credential: Credential, for domain: Domain) throws -> Data?
+    /// Creates the item or replaces its value in place. Never deletes first: a failed write must
+    /// leave the old value stored.
     func write(_ data: Data, as credential: Credential, for domain: Domain) throws
+    /// Replaces the value of an item that exists; returns false, creating nothing, when it doesn't.
+    /// For write-backs: a domain removed while a call was in flight must stay removed.
+    func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool
     /// Removing an item that isn't there is not an error; any other failure throws.
     func delete(_ credential: Credential, for domain: Domain) throws
     /// Every domain with at least one stored credential. Reads attributes only, never secret data.
@@ -68,6 +73,15 @@ public final class MemoryStore: SecretStore {
         try state.withLock { state in
             try check(.write, in: &state)
             state.items[key(credential, domain)] = data
+        }
+    }
+
+    public func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool {
+        try state.withLock { state in
+            try check(.write, in: &state)
+            guard state.items[key(credential, domain)] != nil else { return false }
+            state.items[key(credential, domain)] = data
+            return true
         }
     }
 

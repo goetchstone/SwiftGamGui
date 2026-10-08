@@ -5,11 +5,12 @@ import Synchronization
 /// A private `GAMCFGDIR` holding GAM's credential files for exactly one `gam` call (invariant 4).
 ///
 /// The directory is `0700` and every file `0600`, created exclusively and never through a symlink.
-/// `wipe()` zeroes each regular file (bounded) and removes the tree; it never opens anything that
-/// isn't a regular file, so a planted symlink, FIFO or device can't aim it elsewhere or hang it. Three
-/// backstops cover a wipe that never ran: the caller's own `wipe()`, `wipeAllLive()` at app
-/// termination, and `sweepStale(in:)` at launch for a crash. Port of GamGUI's
-/// `core/secrets/ephemeral.py` and the failure history recorded there.
+/// It is held by **descriptor** from creation to wipe, so moving it or planting a symlink at its path
+/// can't redirect a read or the wipe. `wipe()` zeroes regular files that have no other hard link
+/// (bounded), unlinks everything else without opening it, and removes the tree; only "no such file"
+/// counts as gone. Three backstops cover a wipe that never ran: the caller's own `wipe()`,
+/// `wipeAllLive()` at app termination, and `sweepStale(in:)` at launch for a crash. Port of GamGUI's
+/// `core/secrets/ephemeral.py`, its failure history, and the PR #1 review.
 public final class EphemeralConfig: Sendable {
     public static let pidFileName = ".swiftgamgui.pid"
     static let prefix = "gamcfg-"
@@ -22,13 +23,25 @@ public final class EphemeralConfig: Sendable {
     static let livePIDTrust: TimeInterval = 24 * 60 * 60
     static let maxDepth = 8
 
-    /// Paths materialized by this process and not yet wiped.
-    static let live = Mutex<Set<String>>([])
+    /// Directories materialized by this process and not yet wiped, by path.
+    static let live = Mutex<[String: EphemeralConfig]>([:])
 
     public let url: URL
+    private let dirFD: Int32
+    private let device: dev_t
+    private let inode: ino_t
+    private let wiped = Mutex(false)
 
-    private init(url: URL) {
+    private init(url: URL, dirFD: Int32, device: dev_t, inode: ino_t) {
         self.url = url
+        self.dirFD = dirFD
+        self.device = device
+        self.inode = inode
+    }
+
+    deinit {
+        // Only reached after a successful wipe (the live registry holds every unwiped instance).
+        if !wiped.withLock({ $0 }) { close(dirFD) }
     }
 
     public enum Failure: Error, Equatable, Sendable {
@@ -48,16 +61,22 @@ public final class EphemeralConfig: Sendable {
         guard let made = mkdtemp(&template) else {
             throw Failure.io("mkdtemp", errno)
         }
-        let config = EphemeralConfig(url: URL(filePath: String(cString: made)))
+        let path = String(cString: made)
+        let fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        var info = stat()
+        guard fd >= 0, fstat(fd, &info) == 0 else {
+            let error = errno
+            if fd >= 0 { close(fd) }
+            rmdir(path)
+            throw Failure.io("open \(prefix)dir", error)
+        }
+        let config = EphemeralConfig(url: URL(filePath: path), dirFD: fd, device: info.st_dev, inode: info.st_ino)
         // Registered before anything is written, so the termination backstop can't miss it.
-        live.withLock { _ = $0.insert(config.url.path) }
+        live.withLock { $0[path] = config }
         do {
-            let dir = open(config.url.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-            guard dir >= 0 else { throw Failure.io("open dir", errno) }
-            defer { close(dir) }
-            try writeExclusive(Data("\(getpid())".utf8), named: pidFileName, in: dir)
+            try config.writeExclusive(Data("\(getpid())".utf8), named: pidFileName)
             for (name, contents) in files {
-                try writeExclusive(contents, named: name, in: dir)
+                try config.writeExclusive(contents, named: name)
             }
         } catch {
             config.wipe()
@@ -66,58 +85,73 @@ public final class EphemeralConfig: Sendable {
         return config
     }
 
-    /// Reads a file GAM may have rewritten (a refreshed `oauth2.txt`): regular files only, never
-    /// through a symlink, at most `cap` bytes.
+    /// Reads a file GAM may have rewritten (a refreshed `oauth2.txt`), through the directory's own
+    /// descriptor: a regular file with one link, never through a symlink, at most `cap` bytes.
     public func readFile(_ name: String, cap: Int = 1 << 20) -> Data? {
-        guard Self.isPlainName(name) else { return nil }
-        let fd = open(url.appending(path: name).path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard Self.isPlainName(name), !wiped.withLock({ $0 }) else { return nil }
+        let fd = openat(dirFD, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard fd >= 0 else { return nil }
         defer { close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, Int(info.st_size) <= cap else {
-            return nil
-        }
+        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_nlink == 1,
+              Int(info.st_size) <= cap
+        else { return nil }
         return FileHandle(fileDescriptor: fd, closeOnDealloc: false).readData(ofLength: cap)
     }
 
-    /// Zeroes and removes the directory. Idempotent. Returns true when it is gone; a directory that
-    /// survives stays registered so `wipeAllLive()` tries again.
+    /// Empties and removes the directory. Idempotent. Returns true when no file is left in it and its
+    /// path no longer names it; otherwise it stays registered so `wipeAllLive()` tries again.
     @discardableResult
     public func wipe() -> Bool {
-        let gone = Self.removeTree(at: url)
-        if gone {
-            Self.live.withLock { _ = $0.remove(url.path) }
+        if wiped.withLock({ $0 }) { return true }
+        // Contents first, through the descriptor: this empties the real directory even if its path
+        // was swapped or it was moved elsewhere.
+        for name in Self.names(in: dirFD) {
+            Self.removeEntry(named: name, in: dirFD, depth: 0)
         }
-        return gone
+        let emptied = Self.names(in: dirFD).isEmpty
+        let detached = removeOwnEntry()
+        guard emptied, detached else { return false }
+        wiped.withLock { $0 = true }
+        close(dirFD)
+        Self.live.withLock { _ = $0.removeValue(forKey: url.path) }
+        return true
+    }
+
+    /// Removes the directory's entry from its parent, but only if the entry is still this directory.
+    /// True when the path no longer names it (removed, or something else now sits there).
+    private func removeOwnEntry() -> Bool {
+        let parent = open(url.deletingLastPathComponent().path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        guard parent >= 0 else { return errno == ENOENT }
+        defer { close(parent) }
+        let name = url.lastPathComponent
+        var info = stat()
+        guard fstatat(parent, name, &info, AT_SYMLINK_NOFOLLOW) == 0 else { return errno == ENOENT }
+        guard info.st_dev == device, info.st_ino == inode else { return true }
+        unlinkat(parent, name, AT_REMOVEDIR)
+        return fstatat(parent, name, &info, AT_SYMLINK_NOFOLLOW) != 0 && errno == ENOENT
     }
 
     /// Wipes every directory this process materialized and didn't wipe (only those under `base`, when
-    /// given). Call at app termination. Returns the paths that could not be removed.
+    /// given). Call at app termination, after `GamRunner.stopAll()`. Returns the paths left behind.
     @discardableResult
     public static func wipeAllLive(under base: URL? = nil) -> [String] {
         let prefix = base.map { $0.path + "/" }
-        let paths = live.withLock { $0 }.filter { prefix == nil || $0.hasPrefix(prefix!) }
-        var left: [String] = []
-        for path in paths {
-            if removeTree(at: URL(filePath: path)) {
-                live.withLock { _ = $0.remove(path) }
-            } else {
-                left.append(path)
-            }
-        }
-        return left
+        let configs = live.withLock { $0 }.filter { prefix == nil || $0.key.hasPrefix(prefix!) }
+        return configs.compactMap { path, config in config.wipe() ? nil : path }
     }
 
     /// Removes orphaned `gamcfg-*` directories a crash or force-quit left under `base`. A directory
     /// whose recorded owner is dead goes at once; a live-looking owner protects it for up to a day;
     /// one with no usable marker goes once older than `maxAge`. Directories this process is using,
-    /// and anything that isn't a real directory (a symlink), are never touched. Returns the count.
+    /// and anything that isn't a real directory (a symlink), are never touched. Returns how many
+    /// were actually removed.
     @discardableResult
     public static func sweepStale(in base: URL, maxAge: TimeInterval = 600, now: Date = Date()) -> Int {
         let baseFD = open(base.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard baseFD >= 0 else { return 0 }
         defer { close(baseFD) }
-        let using = live.withLock { $0 }
+        let using = Set(live.withLock { $0 }.keys)
         var removed = 0
         for name in names(in: baseFD) where name.hasPrefix(prefix) {
             var info = stat()
@@ -134,7 +168,9 @@ public final class EphemeralConfig: Sendable {
             }
             if stale {
                 removeEntry(named: name, in: baseFD, depth: 0)
-                removed += 1
+                if fstatat(baseFD, name, &info, AT_SYMLINK_NOFOLLOW) != 0 && errno == ENOENT {
+                    removed += 1
+                }
             }
         }
         return removed
@@ -142,12 +178,15 @@ public final class EphemeralConfig: Sendable {
 
     // MARK: - File primitives (descriptor-relative, never following a link)
 
+    /// One path component: checked on the bytes, so no Unicode composition can hide a `/`.
     static func isPlainName(_ name: String) -> Bool {
-        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\0")
+        let bytes = Array(name.utf8)
+        return !bytes.isEmpty && bytes != [0x2E] && bytes != [0x2E, 0x2E]
+            && !bytes.contains(0x2F) && !bytes.contains(0x00)
     }
 
-    private static func writeExclusive(_ data: Data, named name: String, in dir: Int32) throws {
-        let fd = openat(dir, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+    private func writeExclusive(_ data: Data, named name: String) throws {
+        let fd = openat(dirFD, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw Failure.io("create \(name)", errno) }
         defer { close(fd) }
         guard fchmod(fd, 0o600) == 0 else { throw Failure.io("chmod \(name)", errno) }
@@ -159,18 +198,6 @@ public final class EphemeralConfig: Sendable {
                 offset += n
             }
         }
-    }
-
-    /// Removes `url` (a directory we created) and everything under it. True when nothing is left.
-    static func removeTree(at url: URL) -> Bool {
-        let parentFD = open(url.deletingLastPathComponent().path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
-        guard parentFD >= 0 else {
-            return access(url.path, F_OK) != 0
-        }
-        defer { close(parentFD) }
-        removeEntry(named: url.lastPathComponent, in: parentFD, depth: 0)
-        var info = stat()
-        return fstatat(parentFD, url.lastPathComponent, &info, AT_SYMLINK_NOFOLLOW) != 0
     }
 
     /// Directories are descended (bounded depth) and removed; regular files are zeroed, then
@@ -198,13 +225,15 @@ public final class EphemeralConfig: Sendable {
         }
     }
 
+    /// Zeroes a regular file in place, but only one with a single link: a hard link to a file outside
+    /// the directory must be unlinked, never written through.
     private static func zero(named name: String, in dirFD: Int32) {
         // O_NONBLOCK: if the entry was swapped for a FIFO since fstatat, the open fails at once.
         let fd = openat(dirFD, name, O_WRONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard fd >= 0 else { return }
         defer { close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else { return }
+        guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_nlink == 1 else { return }
         let size = min(Int(info.st_size), zeroMax)
         let chunk = [UInt8](repeating: 0, count: min(zeroChunk, max(size, 1)))
         var written = 0
@@ -265,21 +294,40 @@ public enum RuntimeDirectory {
         URL.applicationSupportDirectory.appending(path: "SwiftGamGui/run")
     }
 
-    /// Creates the directory (`0700`) if needed and checks it is safe to use.
+    /// Creates the directory (`0700`) if needed and checks it is safe to use. Nothing is changed
+    /// through a symlink: a link in its place is refused before any `chmod`.
     @discardableResult
     public static func prepare(_ url: URL = defaultURL) throws -> URL {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o700])
+        var info = stat()
+        guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR, info.st_uid == getuid() else {
+            throw EphemeralConfig.Failure.unsafeRuntimeDirectory(url.path)
+        }
         chmod(url.path, 0o700)
         try verify(url)
         return url
     }
 
-    /// A real directory (not a symlink), owned by this user, with no access for anyone else.
+    /// A real directory (not a symlink), owned by this user, no permission bits for anyone else, and
+    /// no ACL entry granting access (an inherited allow entry would reach the `0600` files).
     static func verify(_ url: URL) throws {
         var info = stat()
         guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR,
-              info.st_uid == getuid(), info.st_mode & 0o077 == 0
+              info.st_uid == getuid(), info.st_mode & 0o077 == 0, !grantsByACL(url.path)
         else { throw EphemeralConfig.Failure.unsafeRuntimeDirectory(url.path) }
+    }
+
+    static func grantsByACL(_ path: String) -> Bool {
+        guard let acl = acl_get_link_np(path, ACL_TYPE_EXTENDED) else { return false }
+        defer { acl_free(UnsafeMutableRawPointer(acl)) }
+        var entry: acl_entry_t?
+        var which = Int32(ACL_FIRST_ENTRY.rawValue)
+        while acl_get_entry(acl, which, &entry) == 0, let current = entry {
+            var tag = acl_tag_t(rawValue: 0)
+            if acl_get_tag_type(current, &tag) == 0, tag == ACL_EXTENDED_ALLOW { return true }
+            which = Int32(ACL_NEXT_ENTRY.rawValue)
+        }
+        return false
     }
 }

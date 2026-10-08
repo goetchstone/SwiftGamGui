@@ -30,8 +30,32 @@ public struct GamRunner: Sendable {
 
     public let binary: URL
 
+    /// Every `gam` this process started that hasn't exited, so quitting can stop them: a child left
+    /// running keeps acting on the tenant with nothing tracking it (GamGUI failure-log 2026-09-23).
+    /// pid → executable path.
+    static let children = Mutex<[pid_t: String]>([:])
+
     public init(binary: URL) {
         self.binary = binary
+    }
+
+    /// Stops every running child: SIGTERM, then SIGKILL for any still running after `grace`. Blocks;
+    /// call at app termination, before `EphemeralConfig.wipeAllLive()`.
+    public static func stopAll(grace: Duration = .seconds(2)) {
+        stop(Set(children.withLock { $0.keys }), grace: grace)
+    }
+
+    /// Stops the given children (only ones this process started): SIGTERM, then SIGKILL after `grace`.
+    static func stop(_ pids: Set<pid_t>, grace: Duration = .seconds(2)) {
+        let mine = pids.intersection(children.withLock { $0.keys })
+        guard !mine.isEmpty else { return }
+        for pid in mine { kill(pid, SIGTERM) }
+        let clock = ContinuousClock()
+        let deadline = clock.now + grace
+        while clock.now < deadline, !children.withLock({ Set($0.keys).isDisjoint(with: mine) }) {
+            usleep(50_000)
+        }
+        for pid in mine.intersection(children.withLock { $0.keys }) { kill(pid, SIGKILL) }
     }
 
     public func run(
@@ -57,15 +81,21 @@ public struct GamRunner: Sendable {
         process.standardOutput = outPipe
         process.standardError = errPipe
         let exit = ExitSignal()
-        process.terminationHandler = { finished in exit.finish(finished.terminationStatus) }
+        process.terminationHandler = { finished in
+            Self.children.withLock { _ = $0.removeValue(forKey: finished.processIdentifier) }
+            exit.finish(finished.terminationStatus)
+        }
         do {
             try process.run()
         } catch {
             throw GamRunnerError.launchFailed(String(describing: error))
         }
+        let pid = process.processIdentifier
+        if process.isRunning {
+            Self.children.withLock { $0[pid] = binary.path }
+        }
         try? outPipe.fileHandleForWriting.close()
         try? errPipe.fileHandleForWriting.close()
-        let pid = process.processIdentifier
 
         let outBuffer = CappedBuffer(cap: Self.outputCap)
         let errBuffer = CappedBuffer(cap: Self.outputCap)

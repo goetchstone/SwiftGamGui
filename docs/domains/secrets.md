@@ -29,21 +29,33 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
   queues a failure with a real status.
 - `KeychainStore.swift`: data-protection Keychain, service `swiftgamgui`, account `<domain>/<name>`,
   `WhenUnlockedThisDeviceOnly`, a user-presence ACL on every item. One shared `LAContext`, used under
-  a lock, until `endSession()`. `domains()` reads attributes only.
+  a lock (which also serializes prompts), until `endSession()`. `domains()` reads attributes only.
+  - `write` **updates in place** and adds only when the item is missing. It never deletes first, so a
+    failed write keeps the old value.
+  - `replace` updates only; it never creates an item.
 - `Vault.swift`: an actor over a store. **No in-memory copy of any secret**, unlike GamGUI's 300 s
-  cache: the store's authentication session gives one prompt per burst. Store calls run on a GCD
-  thread, because a Touch ID prompt blocks. `remove` stops at the first refusal.
+  cache: the store's authentication session gives one prompt per burst. The session **ends after 10
+  minutes**, measured on `ContinuousClock`, which counts sleep. Store calls run on a GCD thread,
+  because a Touch ID prompt blocks. `remove` stops at the first refusal. `refresh` (for GAM's rewritten
+  `oauth2.txt`) never re-creates a removed credential.
 - `Packages/GamKit/Sources/GamEngine/EphemeralConfig.swift`: the per-call `GAMCFGDIR`. Port of
   GamGUI's `ephemeral.py`:
   - `0700` directory, `0600` files created `O_EXCL | O_NOFOLLOW`, an owner-PID marker
   - registered as live before anything is written
-  - `wipe()` zeroes regular files (64 KiB chunks, capped at 1 MiB), removes subfolders GAM creates
-    (`gamcache/`, `Downloads/`) to a bounded depth, and unlinks anything else without opening it
+  - **held by descriptor** from creation to wipe, so moving it or planting a symlink at its path
+    can't redirect a read or the wipe
+  - `wipe()` zeroes regular files with **one link only** (64 KiB chunks, capped at 1 MiB), removes
+    subfolders GAM creates (`gamcache/`, `Downloads/`) to a bounded depth, and unlinks anything else
+    (a hard link, symlink or FIFO) without opening it. Only `ENOENT` counts as gone.
   - `wipeAllLive()` runs at quit (`App/AppDelegate.swift`)
   - `sweepStale(in:)` runs at launch: a dead owner goes at once, a live one is trusted for at most a
     day, and an unmarked folder goes after 10 minutes
 - `RuntimeDirectory`: `~/Library/Application Support/SwiftGamGui/run` (never GamGUI's folder). It
-  must be a real `0700` directory owned by this user, or nothing is materialized.
+  must be a real `0700` directory owned by this user, with **no ACL entry that grants access**, or
+  nothing is materialized. Nothing is changed through a symlink in its place.
+- `GamRunner.stopAll()`: at quit, every running `gam` is stopped (SIGTERM, then SIGKILL after 2 s)
+  **before** the folders are wiped. A `gam` left running keeps acting on the tenant unseen (GamGUI
+  failure-log 2026-09-23).
 - `AuthenticatedRunner.swift`: Vault, then `EphemeralConfig`, then `GamRunner`, then write back a
   refreshed `oauth2.txt`, then wipe — on every path, including failure, timeout and cancellation.
 
@@ -55,6 +67,19 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
 - `--spike vault` (debug builds) runs this whole path on throwaway items (service
   `swiftgamgui-spike`, domain `spike.example.com`) against the real Keychain. It needs an unlocked Mac
   and one Touch ID.
+
+## PR #1 review (2026-10-08)
+One adversarial reviewer broke nine things, proving eight by running code. All are fixed with a
+regression test each:
+- the write-back resurrected a removed domain
+- delete-then-add could lose a credential
+- quitting left `gam` running
+- a hard link let the wipe zero an outside file
+- a folder swapped by path fed in an attacker's token
+- a refused removal read as gone
+- an ACL on the run folder exposed `0600` files
+- a composed character hid a `/` in a name check
+- `prepare` changed a symlink target's permissions
 
 ## Tests
 - `Tests/VaultTests`: the canonical domain, a secret that never prints, a missing required credential

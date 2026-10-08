@@ -69,6 +69,34 @@ struct VaultTests {
         #expect(try store.read(.oauth2Service, for: example) == nil)
     }
 
+    @Test func aFailedWriteKeepsTheOldValue() async throws {
+        let store = MemoryStore()
+        try filled(store)
+        store.failNext(.write, with: errSecInteractionNotAllowed)
+        await #expect(throws: VaultError.keychain(errSecInteractionNotAllowed)) {
+            try await Vault(store: store).store(Secret(Data("new".utf8)), as: .oauth2, for: example)
+        }
+        #expect(try store.read(.oauth2, for: example) == Data("placeholder-oauth2".utf8))
+    }
+
+    @Test func refreshNeverCreatesARemovedCredential() async throws {
+        let vault = Vault(store: MemoryStore())
+        #expect(try await vault.refresh(Secret(Data("token".utf8)), as: .oauth2, for: example) == false)
+        #expect(try await vault.domains().isEmpty)
+    }
+
+    @Test func theAuthenticatedSessionExpires() async throws {
+        let store = MemoryStore()
+        try filled(store)
+        _ = try await Vault(store: store).credentials(for: example)
+        _ = try await Vault(store: store).credentials(for: example)
+        #expect(store.sessionsEnded == 0, "within the default lifetime nothing is ended")
+        let shortLived = Vault(store: store, sessionLifetime: .zero)
+        _ = try await shortLived.credentials(for: example)
+        _ = try await shortLived.credentials(for: example)
+        #expect(store.sessionsEnded == 1, "the second read starts a fresh session")
+    }
+
     @Test func lockingEndsTheAuthenticatedSession() async {
         let store = MemoryStore()
         await Vault(store: store).lock()
