@@ -7,7 +7,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | Area | Runbook | Status |
 |---|---|---|
 | Running `gam` (argv, environment, timeouts, output) | [gam-runner.md](gam-runner.md) | phase 1: Runner built |
-| Credentials in the Keychain, materialization and wipe | [secrets.md](secrets.md) | phase 1: spike results only |
+| Credentials in the Keychain, materialization and wipe | [secrets.md](secrets.md) | phase 1: Vault + EphemeralConfig built |
 | Importing credentials, verifying access, tenants | [setup-credentials.md](setup-credentials.md) | stub |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | stub (phase 2) |

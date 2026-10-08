@@ -1,7 +1,11 @@
+import AppKit
+import GamEngine
 import SwiftUI
 
 @main
 struct GamGUIApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup("GamGUI") {
             PlaceholderView()

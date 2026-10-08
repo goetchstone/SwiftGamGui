@@ -21,6 +21,10 @@ an allowlisted environment, a timeout, and capped output capture.
 - A binary override honoured by the shipped app would hand the credentials to any binary — same entry.
 - 120 s killed a domain-wide sweep: callers pass `domainWideTimeout` (1 h) for `all users` calls.
 
+## Authenticated runs
+`AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a
+per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets.md](secrets.md).
+
 ## Not built yet
-Credential materialization (`0700` dir, `0600` files, wipe, launch sweep), write serialization and
-exit-code classification against `Tests/Fixtures/exit_codes.json` — phase 1 slice 2.
+Write serialization (ChangeCore, phase 2) and exit-code classification against
+`Tests/Fixtures/exit_codes.json` (with Setup's verify, next slice).
