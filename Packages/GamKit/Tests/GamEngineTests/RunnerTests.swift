@@ -75,6 +75,28 @@ struct RunnerTests {
         #expect(result.stdout.utf8.count == GamRunner.outputCap)
     }
 
+    @Test func quittingStopsARunningChild() async throws {
+        // Its own uniquely named script, so it stops only its own child, not other tests' (the app's
+        // stopAll() stops every child at quit).
+        let script = FileManager.default.temporaryDirectory.appending(path: "long-gam-\(UUID().uuidString)")
+        try Data("#!/bin/sh\nexec /bin/sleep 30\n".utf8).write(to: script)
+        chmod(script.path, 0o755)
+        defer { try? FileManager.default.removeItem(at: script) }
+        let run = Task { try await GamRunner(binary: script).run([]) }
+        let mine = { Set(GamRunner.children.withLock { $0.filter { $0.value == script.path }.keys }) }
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(5)
+        while mine().isEmpty, clock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let pids = mine()
+        #expect(pids.count == 1)
+        GamRunner.stop(pids)
+        let result = try await run.value
+        #expect(result.exitCode == SIGTERM)
+        #expect(pids.allSatisfy { kill($0, 0) != 0 })
+    }
+
     @Test func aMissingBinaryIsReportedNotLaunched() async {
         let missing = GamRunner(binary: URL(filePath: "/nonexistent/gam"))
         await #expect(throws: GamRunnerError.binaryNotExecutable("/nonexistent/gam")) {

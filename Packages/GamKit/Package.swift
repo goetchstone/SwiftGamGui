@@ -18,15 +18,16 @@ let package = Package(
         .library(name: "Assist", targets: ["Assist"]),
     ],
     targets: [
-        .target(name: "GamEngine"),
+        .target(name: "GamEngine", dependencies: ["Vault"]),
         .target(name: "ChangeCore", dependencies: ["GamEngine"]),
         .target(name: "Vault"),
         .target(name: "Catalog"),
         .target(name: "Jobs"),
         .target(name: "Stores"),
         .target(name: "Assist"),
-        .target(name: "TestSupport", dependencies: ["GamEngine"]),
-        .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "TestSupport"]),
+        .target(name: "TestSupport", dependencies: ["GamEngine", "Vault"]),
+        .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "Vault", "TestSupport"]),
+        .testTarget(name: "VaultTests", dependencies: ["Vault"]),
         .testTarget(name: "SpikeTests"),
     ]
 )

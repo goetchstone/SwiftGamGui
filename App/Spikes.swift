@@ -1,11 +1,13 @@
 import AppKit
 import Foundation
 import FoundationModels
+import GamEngine
 import LocalAuthentication
 import Security
+import Vault
 
 /// Phase 1 spikes, debug builds only. Launch the built binary with `--spike keychain`,
-/// `--spike legacy-keychain` or `--spike model`; results print to stdout and the app quits. They only
+/// `--spike legacy-keychain`, `--spike vault` or `--spike model`; results print to stdout and the app quits. They only
 /// ever touch throwaway items named `swiftgamgui-spike*` — never GamGUI's `gamgui:<domain>` items.
 enum Spikes {
     @MainActor
@@ -13,11 +15,13 @@ enum Spikes {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.firstIndex(of: "--spike"), index + 1 < args.count else { return }
+        setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         print("signing: team=\(teamIdentifier() ?? "none (ad-hoc)")")
         switch args[index + 1] {
         case "keychain": keychain()
         case "legacy-keychain": legacyKeychain()
         case "model": model()
+        case "vault": await vault()
         default: print("unknown spike \(args[index + 1])")
         }
         fflush(stdout)
@@ -88,6 +92,54 @@ enum Spikes {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         let bytes = (result as? Data)?.count ?? 0
         print("read legacy item (expect an Allow prompt): \(describe(status)); \(bytes) bytes returned")
+    }
+
+    /// The slice 2 path end to end on throwaway items (service `swiftgamgui-spike`, domain
+    /// `spike.example.com`): Vault over the real Keychain, one Touch ID for a burst of reads, then an
+    /// authenticated run of the mock (`SWIFTGAMGUI_GAM_BINARY`, `GAM_MOCK_FIXTURES`) and the wipe.
+    static func vault() async {
+        let vault = Vault(store: KeychainStore(service: "swiftgamgui-spike"))
+        let domain = Domain("spike.example.com")!
+        do {
+            for credential in Credential.allCases {
+                try await vault.store(Secret(Data("{\"placeholder\": true}".utf8)), as: credential, for: domain)
+                print("stored \(credential.rawValue)")
+            }
+            print("domains: \(try await vault.domains())")
+            let clock = ContinuousClock()
+            var started = clock.now
+            _ = try await vault.credentials(for: domain)
+            print("read #1 ok in \(clock.now - started) (expect one Touch ID prompt)")
+            started = clock.now
+            _ = try await vault.credentials(for: domain)
+            print("read #2 ok in \(clock.now - started) (same session: expect no prompt)")
+            if let binary = GamBinary.locate() {
+                let base = try RuntimeDirectory.prepare()
+                let runner = AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: base)
+                let mockEnv = ProcessInfo.processInfo.environment.filter { GamEnvironment.mockOnly.contains($0.key) }
+                let result = try await runner.run(["info", "user", "alice@example.com"], as: domain,
+                                                  extraEnvironment: mockEnv)
+                let left = try FileManager.default.contentsOfDirectory(atPath: base.path).filter { $0.hasPrefix("gamcfg-") }
+                print("authenticated run: exit \(result.exitCode); gamcfg dirs left: \(left.count)")
+                if mockEnv["GAM_MOCK_REFRESH"] != nil {
+                    // The write-back updates the stored item in place (SecItemUpdate).
+                    started = clock.now
+                    let stored = try await vault.credentials(for: domain)[.oauth2]?.bytes
+                    let updated = stored == Data("refreshed-token-payload\n".utf8)
+                    print("refreshed oauth2.txt written back in place: \(updated) (read in \(clock.now - started))")
+                }
+            } else {
+                print("no gam binary: set SWIFTGAMGUI_GAM_BINARY (debug builds) to run the authenticated step")
+            }
+        } catch {
+            print("vault spike error: \(error)")
+        }
+        do {
+            try await vault.remove(domain)
+            print("removed; domains now: \(try await vault.domains())")
+        } catch {
+            print("cleanup error: \(error)")
+        }
     }
 
     static func model() {
