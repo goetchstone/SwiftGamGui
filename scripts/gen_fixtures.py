@@ -50,6 +50,21 @@ EDGES = (
 )
 
 
+# Values no validator accepts in any spelling: empties, an unknown word, a Cyrillic look-alike.
+BOUNDARY = ("", " ", "\xa0", "admin", "own\u0435r", "null")
+# Every character Python's str.isspace() is true for (what GamGUI's validators strip): derived, not typed.
+PY_WHITESPACE = "".join(c for c in map(chr, range(0x110000)) if c.isspace())
+
+
+def variants(value: str) -> list:
+    """Spellings of an accepted value an operator, a paste or a voice transcript could produce."""
+    out = [value.upper(), value.title(), f"  {value}\t\n", f"{PY_WHITESPACE}{value}{PY_WHITESPACE}",
+           f"{value}\u200b", f"{value}x", value.replace("e", "e\u0301")]
+    if "k" in value:
+        out.append(value.replace("k", "\u212a"))  # KELVIN SIGN: lowercases to "k" in Python and Swift
+    return out
+
+
 def jsonable(value):
     if isinstance(value, (list, tuple)):
         return [jsonable(v) for v in value]
@@ -150,6 +165,31 @@ def main() -> int:
                 kw.update(dict(other_combo))
                 cases.append(call(fn, spec.name, full_kwargs(fn, (), kw)))
 
+    # 4. The validators' boundaries. The enumeration above feeds only accepted values, so these add
+    #    case, whitespace (including the Unicode whitespace str.strip() removes), look-alikes, empties
+    #    and unknowns: the Swift port must accept, normalize and refuse exactly what GamGUI does.
+    for name, param, accepted in (("add_group_member", "role", commands_mod.GROUP_ROLES),
+                                  ("add_calendar_acl", "role", commands_mod.CALENDAR_ACL_ROLES),
+                                  ("add_calendar_acl_cal", "role", commands_mod.CALENDAR_ACL_ROLES),
+                                  ("set_forward", "action", GAMCommands.FORWARD_ACTIONS),
+                                  ("create_datatransfer", "privacy", GAMCommands.TRANSFER_PRIVACY),
+                                  ("search_messages", "detail", GAMCommands.MESSAGE_DETAIL)):
+        fn = originals[name]
+        required = {p.name: f"<{p.name}>" for p in inspect.signature(fn).parameters.values() if p.default is p.empty}
+        for value in [*BOUNDARY, *(v for a in accepted for v in variants(a))]:
+            cases.append(call(fn, name, full_kwargs(fn, (), required | {param: value})))
+    cases.append(call(originals["check_svcacct"], "check_svcacct", {"admin": "<admin>", "scopes": []}))
+
+    # 5. Defaults: each builder that has them, called with only its required arguments, so a Swift
+    #    default that differs from GamGUI's fails (the cases above always pass every argument).
+    defaults = {}
+    for name in builders:
+        params = inspect.signature(originals[name]).parameters.values()
+        if any(p.default is not p.empty for p in params):
+            required = {p.name: (["<" + p.name + ">"] if "Sequence" in str(p.annotation) else "<" + p.name + ">")
+                        for p in params if p.default is p.empty}
+            defaults[name] = {"kwargs": required, "argv": list(originals[name](**required))}
+
     # Stable order, no duplicates.
     seen, unique = set(), []
     for c in cases:
@@ -178,9 +218,12 @@ def main() -> int:
         "signatures": signatures,
         "constants": {k: jsonable(getattr(GAMCommands, k)) for k in ("TRANSFER_PRIVACY", "FORWARD_ACTIONS",
                                                                       "MESSAGE_DETAIL")}
-        | {"GROUP_ROLES": jsonable(commands_mod.GROUP_ROLES),
-           "CALENDAR_ACL_ROLES": jsonable(commands_mod.CALENDAR_ACL_ROLES)},
+        | {k: jsonable(getattr(commands_mod, k)) for k in ("GROUP_ROLES", "CALENDAR_ACL_ROLES", "USER_LIST_FIELDS",
+                                                           "USER_DETAIL_FIELDS", "GROUP_LIST_FIELDS",
+                                                           "CROS_LIST_FIELDS", "FILE_LIST_FIELDS", "CACHE_FIELDS")}
+        | {"PY_WHITESPACE": [ord(c) for c in PY_WHITESPACE]},
         "cases": unique,
+        "defaults": defaults,
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "argv.json").write_text(json.dumps(argv_doc, indent=1, ensure_ascii=False) + "\n")

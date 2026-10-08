@@ -30,8 +30,21 @@ an allowlisted environment, a timeout, and capped output capture.
 - 120 s killed a domain-wide sweep: callers pass `domainWideTimeout` (1 h) for `all users` calls.
 
 ## Builders
-`GamCommands.swift` ports GamGUI's builders one at a time, each held to every case of
-`Tests/Fixtures/argv.json` by `GoldenArgvTests` (2 of 59 so far: `version`, `check_svcacct`).
+`GamCommands.swift` ports GamGUI's builders, each held to every case of `Tests/Fixtures/argv.json` by
+`GoldenArgvTests`: 58 of 59. `todrive_args` is not ported, because Sheet export is dropped (CSV only).
+- **Closed sets are types** (`GamChoices.swift`: `GroupRole`, `CalendarRole`, `ForwardAction`,
+  `TransferPrivacy`, `MessageDetail`), so a builder can't be handed a value GAM doesn't know.
+  `init(validating:)` ports GamGUI's validator for free-form text: Python's `strip().lower()` scalar
+  by scalar (Python's whitespace set, not Foundation's), then a **byte** match. An empty transfer
+  privacy is `nil` (none), and `MessageDetail(label:)` falls back to headers, as GamGUI does: the
+  rules live in the types, so production callers get what the parity test proves.
+- **What the golden test also holds:** each builder's defaults (the fixture's `defaults`, called
+  with only the required arguments), that the adapter reads every argument of a case, and that a
+  refusal is the builder's own `Invalid`.
+- **The fixture's boundary cases** (section 4 of `gen_fixtures.py`) feed each validator case,
+  Unicode whitespace, a combining accent, a Kelvin sign, a Cyrillic look-alike and unknowns: 142 of
+  its 1,293 cases are refusals.
+- An empty optional value is left out, as GamGUI's `if value:` does; Swift takes `""`, not `nil`.
 
 ## Authenticated runs
 `AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a

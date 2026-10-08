@@ -22,6 +22,20 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-08 — An editing tool wrote invisible characters into a script
+- **What happened:** while adding the validators' boundary cases to `scripts/gen_fixtures.py`, the
+  file-editing tool decoded `\u00a0`, `\u200b`, `\u2028` and others in the new text into the
+  characters themselves. The script still ran, so nothing failed. A non-ASCII scan before committing
+  caught it. Writing this entry, the same tool did it again, and `check_text.py` caught it.
+- **Invariant in force:** none: a new shape. The same characters are how Trojan Source hides code
+  from a reviewer.
+- **Why it didn't hold:** not covered. Nothing checked tracked text for invisible characters.
+- **Would a rule have caught it?** only if enforced differently: `scripts/check_text.py` now refuses
+  format, separator, non-ASCII space, control and default-ignorable characters in tracked text (the
+  generated argv fixture exempt), run by CI's hygiene job and the local pre-commit hook. Write such characters as escapes, or derive them (`gen_fixtures.py`'s
+  `PY_WHITESPACE`).
+- **Enforcement home if changed:** tripwire (done, CI).
+
 ## 2026-10-08 — Release builds were debuggable, by an exception written for a step we don't take
 - **What happened:** PR #3's review found every locally signed Release build carried
   `get-task-allow`, and `check_app.sh` allowed it: "Xcode adds it to development builds; export strips

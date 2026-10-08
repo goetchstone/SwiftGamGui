@@ -390,9 +390,11 @@ default, plus "Just do it"). Still open:
   `build_command_catalog.py` are repointed at this repo and borrow GamGUI's frozen parser until the
   Swift one lands.
 - **Golden fixtures** (`scripts/gen_fixtures.py`, run with GamGUI's venv; GamGUI unmodified):
-  - `argv.json`: 1,050 cases over **59/59** builders. It covers the grammar contract's enumeration,
-    the mock tests' concrete calls, and edge cases from the property specs. No builder refuses any of
-    these inputs.
+  - `argv.json`: 1,293 cases over **59/59** builders. It covers the grammar contract's enumeration,
+    the mock tests' concrete calls, and edge cases from the property specs. 142 boundary cases make
+    the validators refuse: case, Unicode whitespace, look-alikes, unknowns.
+  - **58 of 59 builders ported**, byte-identical on every case. `todrive_args` is left out (Sheet
+    export dropped).
   - `exit_codes.json`: 67 `*_RC` constants read from the vendored build, plus GamGUI's own.
 - **GamEngine.GamRunner:** `Process` with argv only, the allowlisted environment, a timeout (SIGTERM,
   then SIGKILL), and 8 MiB capture per stream. **13 Swift Testing tests pass**:
