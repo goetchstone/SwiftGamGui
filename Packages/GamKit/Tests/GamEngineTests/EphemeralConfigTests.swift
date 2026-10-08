@@ -113,6 +113,12 @@ struct EphemeralConfigTests {
         #expect(config.readFile("big")?.count == 100)
     }
 
+    @Test func aReadErrorIsNilNotACrash() {
+        let dir = open(base.path, O_RDONLY | O_DIRECTORY)
+        defer { close(dir) }
+        #expect(EphemeralConfig.readAll(dir, cap: 1024) == nil)   // read(2) on a directory: EISDIR
+    }
+
     @Test func theTerminationBackstopWipesWhatWasLeft() throws {
         let config = try EphemeralConfig.materialize(files: ["oauth2.txt": Data("t".utf8)], in: base)
         #expect(EphemeralConfig.wipeAllLive(under: base).isEmpty)

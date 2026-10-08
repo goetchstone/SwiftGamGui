@@ -1,8 +1,8 @@
 # Plan: SwiftGamGui — GamGUI as a native Mac app, with GAM still the engine
 
 **Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) DONE 2026-10-08. Slice 2a (Vault,
-per-call credential folders, authenticated runs) is in review as a PR; slice 2b (Setup: import,
-Check access, tenants) is next. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
+per-call credential folders, authenticated runs) merged as PR #1. Slice 2b-core (import, GamGUI
+copy, Check access) is in review; 2b-ui (the Setup screen) is next. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
 for a reader with no session context. It consolidates two drafts and the operator's answers from the

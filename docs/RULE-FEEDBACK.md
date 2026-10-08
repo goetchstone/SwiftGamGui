@@ -22,6 +22,18 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-08 — The golden-argv tripwire couldn't see the bytes it guards
+- **What happened:** PR #2's review proved Foundation's `Process` sends arguments decomposed ("é" as
+  "e" + U+0301): 171 elements of `argv.json` would reach GAM as different bytes than GamGUI sends. A
+  NUL aborted the app.
+- **Invariant in force:** #11 (GamGUI parity is a test) and #1.
+- **Why it didn't hold:** the test compared `[String]`, and Swift `String ==` is canonical
+  equivalence, so the tripwire was blind to exactly the difference it exists to catch.
+- **Would a rule have caught it?** only if enforced differently: a test of bytes compares bytes
+  (`Array($0.utf8)`). Fixed in the golden test and the runner's argv test; GamRunner now uses
+  `posix_spawn`.
+- **Enforcement home if changed:** tripwire (done). Also added to the pre-commit skill.
+
 ## 2026-10-08 — The port of the credential code missed lessons GamGUI had already paid for
 - **What happened:** PR #1's adversarial review proved nine defects in the new Vault/EphemeralConfig
   code before merge. Two repeated GamGUI incidents the port should have carried:

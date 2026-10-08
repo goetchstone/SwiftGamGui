@@ -33,13 +33,20 @@ struct RunnerTests {
     @Test func eachValueArrivesAsExactlyOneArgument() async throws {
         let log = FileManager.default.temporaryDirectory.appending(path: "argv-\(UUID().uuidString).log")
         defer { try? FileManager.default.removeItem(at: log) }
-        let argv = ["version", "a b", "semi;colon", "$(touch /tmp/x)", "-dash", "", "Zoë"]
+        // Precomposed and decomposed "é" must arrive as the different bytes they are.
+        let argv = ["version", "a b", "semi;colon", "$(touch /tmp/x)", "-dash", "", "Zo\u{EB}", "e\u{301}"]
         _ = try await mock.run(argv, extraEnvironment: Fixtures.mockEnvironment
                                 .merging(["GAM_MOCK_ARGV_LOG": log.path]) { $1 })
         // The mock logs NUL-separated: the count, then each argument.
-        let fields = try String(contentsOf: log, encoding: .utf8).split(separator: "\0", omittingEmptySubsequences: false)
-        #expect(fields.first == "\(argv.count)")
-        #expect(Array(fields.dropFirst().prefix(argv.count)).map(String.init) == argv)
+        let fields = try Data(contentsOf: log).split(separator: 0, omittingEmptySubsequences: false).map(Array.init)
+        #expect(fields.first == Array("\(argv.count)".utf8))
+        #expect(Array(fields.dropFirst().prefix(argv.count)) == argv.map { Array($0.utf8) })
+    }
+
+    @Test func aNULIsAnErrorNotACrash() async {
+        await #expect(throws: GamRunnerError.invalidArgument("contains a NUL byte")) {
+            try await mock.run(["version", "admin@example.com\0"])
+        }
     }
 
     @Test func onlyAllowlistedVariablesReachGam() {
