@@ -90,8 +90,8 @@ Config/                   entitlements (empty: hardened runtime on, App Sandbox 
 Packages/GamKit/          GamEngine · ChangeCore · Vault · Catalog · Jobs · Stores · Assist · TestSupport
 Tests/Fixtures/           argv.json · exit_codes.json · mock_gam.sh + its data (shared by all tests)
 Vendor/gam7/              vendored GAM (gitignored except VERSION, LICENSE, command_catalog.json)
-scripts/                  fetch_gam.sh · bump_gam.py · build_command_catalog.py · gen_fixtures.py
-Signing/reference/        GamGUI's GAM entitlements, for signing the bundled gam (phase 6)
+scripts/                  fetch_gam.sh · embed_gam.sh · check_app.sh · bump_gam.py · build_command_catalog.py · gen_fixtures.py
+Signing/                  gam.entitlements (upstream GAM's own set, for the embedded gam); reference/
 docs/                     plans/ · failure-log/ · domains/ · FRAMEWORK.md · RULE-FEEDBACK.md
 ```
 
