@@ -113,6 +113,20 @@ over 600 inputs.
 - Swift dictionary keys compare by canonical equivalence, so two headers that differ only in
   normalization share a key here. GAM's headers are ASCII field names.
 
+## Users, groups, members
+`Directory.swift` ports GamGUI's `GAMUser`, `GAMGroup` and `GroupMember` (`core/gam/models.py`). They
+read GAM's varying keys (`primaryEmail` / `email` / `User`, `name.givenName` / `First Name`), flags given
+as booleans, words or numbers, counts given as numbers or text (Python's `int()`: any script's digits,
+underscores, a float truncated), and a Directory list's primary entry. `DirectoryTests` holds them to
+`Tests/Fixtures/gam_models.json`: GamGUI's models over the mock's records and 250 seeded variants. A
+field GAM sends as text is read only as text.
+
+The fixture generator keeps its Hypothesis draws stable in two ways:
+- **An explicit `@seed`.** `derandomize` seeds from the function's digest, which moves with any edit to
+  the generator.
+- **No local constants.** Hypothesis also draws string constants it finds in local source, the
+  generator's own included, so adding an unrelated string literal changed the cases.
+
 ## Not built yet
 Write serialization (ChangeCore, phase 2). `check serviceaccount`'s own exits are handled in
 `AccessCheck`.

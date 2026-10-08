@@ -22,6 +22,42 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-08 — Parity with Python held only for Python's Unicode version
+- **What happened:** PR #5's review found that a character added in Unicode 17 (`U+10940`) let an
+  echoed password past the Swift scrub where GamGUI's masks it. Swift 6.4 has Unicode 17, and GamGUI's
+  Python 3.14 has 16. To Python the character is unassigned (not a letter, so a word boundary
+  before "password"); to Swift it is a letter. The parity test of `\w` skipped exactly the code points
+  Python has no data for.
+- **Invariant in force:** #11 (GamGUI parity is a test), and #4 for the password.
+- **Why it didn't hold:** the test excluded the gap it should have covered: "Python doesn't assign
+  it" was read as "no opinion", when it is an answer (not a letter).
+- **Would a rule have caught it?** only if enforced differently: a parity test over Unicode covers
+  every code point, the ones only one side assigns included. `PythonText.unicodeVersion` now gates
+  Swift's tables to Python's version.
+- **Enforcement home if changed:** tripwire (done: the test checks every code point).
+
+## 2026-10-08 — Seeded test data still moved when the generator changed
+- **What happened:** `gen_fixtures.py` drew GamGUI's Hypothesis strategies with `derandomize=True`. An
+  unrelated edit to the generator changed 140 drawn cases, then, with `@seed`, adding string literals
+  still changed some: Hypothesis also draws constants it finds in local source.
+- **Invariant in force:** none: tooling.
+- **Why it didn't hold:** "seeded" assumed the seed was the only input.
+- **Would a rule have caught it?** yes but unworded: a generated fixture is proven stable by
+  regenerating it after an unrelated edit, not only twice in a row. The generator now seeds explicitly
+  and turns local constants off.
+- **Enforcement home if changed:** skill (pre-commit: "regenerate after an unrelated edit").
+
+## 2026-10-08 — Merging the base of a stacked PR closed the PR on top
+- **What happened:** PR #5 was opened against `phase1/builders` (PR #4's branch). Merging #4 with
+  `--delete-branch` deleted that base, and GitHub closed #5 instead of retargeting it; it was reopened
+  as #6.
+- **Invariant in force:** none: process.
+- **Why it didn't hold:** not covered.
+- **Would a rule have caught it?** yes but unworded: before merging a PR another PR stacks on,
+  retarget the upper one to `main` (`gh pr edit N --base main`), or don't stack: wait, then branch
+  from `main`.
+- **Enforcement home if changed:** skill (pre-commit or a merge checklist).
+
 ## 2026-10-08 — An editing tool wrote invisible characters into a script
 - **What happened:** while adding the validators' boundary cases to `scripts/gen_fixtures.py`, the
   file-editing tool decoded `\u00a0`, `\u200b`, `\u2028` and others in the new text into the

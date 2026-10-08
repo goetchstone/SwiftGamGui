@@ -13,6 +13,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
                                   property tests' JSON/CSV shapes and noise, and the inputs its
                                   failure log names.
+  Tests/Fixtures/gam_models.json  GamGUI's user, group and member models over the mock's records and
+                                  seeded variants.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -301,38 +303,36 @@ def output_fixture(mock: Path) -> dict:
     (drawn deterministically); and the inputs its failure log names (a long cell, a bare CR, deep
     nesting, raw line separators in NDJSON, an empty header) with JSON's and CSV's own edges. The
     records are stored as Python's json.dumps text, NaN and Infinity included."""
-    import os
-    import subprocess
-    import tempfile
-
-    from hypothesis import HealthCheck, Phase, given, settings
+    from hypothesis import HealthCheck, Phase, given, seed, settings
     from hypothesis import strategies as st
 
     from gamgui.core.gam.parser import parse_records
     from tests import test_props_parsing as props
-    from tests.test_mock_gam import READS
 
     cases = []
 
     def add(stdout: str) -> None:
         cases.append({"stdout": stdout, "records": json.dumps(parse_records(stdout), ensure_ascii=True)})
 
-    with tempfile.TemporaryDirectory() as config:
-        for name in ("oauth2service.json", "oauth2.txt"):
-            Path(config, name).write_text('{"placeholder": true}')
-        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config,
-                       "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
-        for argvs in READS.values():
-            for argv in argvs:
-                run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
-                if run.returncode != 0:
-                    raise SystemExit(f"the mock refused a read: {argv}")
-                add(run.stdout)
+    for stdouts in mock_outputs(mock).values():
+        for stdout in stdouts:
+            add(stdout)
+
+    # Hypothesis also draws string constants it finds in local source, this script's included, so an
+    # unrelated edit here changed the drawn cases. Only the seed decides them.
+    from hypothesis.internal.conjecture import providers
+
+    empty = providers.Constants(integers=providers.SortedSet(), floats=providers.SortedSet(key=providers.float_to_int),
+                                bytes=providers.SortedSet(), strings=providers.SortedSet())
+    providers._get_local_constants = lambda: empty
 
     def drawn(strategy, count: int) -> list:
         found = []
 
-        @settings(max_examples=count, derandomize=True, database=None, deadline=None,
+        # An explicit seed: `derandomize` seeds from the function's digest, which moves with any edit
+        # to this file and would churn the fixture.
+        @seed(20261008)
+        @settings(max_examples=count, database=None, deadline=None,
                   phases=[Phase.generate], suppress_health_check=list(HealthCheck))
         @given(strategy)
         def collect(value):
@@ -411,6 +411,114 @@ def output_fixture(mock: Path) -> dict:
             seen.add(key)
             unique.append(case)
     return {"cases": unique}
+
+
+def mock_outputs(mock: Path) -> dict:
+    """What the strict mock prints for every read the app makes, by builder."""
+    import subprocess
+    import tempfile
+
+    from tests.test_mock_gam import READS
+
+    outputs = {}
+    with tempfile.TemporaryDirectory() as config:
+        for name in ("oauth2service.json", "oauth2.txt"):
+            Path(config, name).write_text('{"placeholder": true}')
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config,
+                       "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        for builder, argvs in READS.items():
+            for argv in argvs:
+                run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
+                if run.returncode != 0:
+                    raise SystemExit(f"the mock refused a read: {argv}")
+                outputs.setdefault(builder, []).append(run.stdout)
+    return outputs
+
+
+def models_fixture(mock: Path) -> dict:
+    """GamGUI's GAMUser, GAMGroup and GroupMember.from_json over the mock's records and seeded variants
+    of them: the alternate keys GAM uses across commands, flags as booleans, words or numbers, counts
+    as numbers or text, primary entries in Directory lists. String fields hold strings (or nothing):
+    that is how GAM sends them."""
+    import dataclasses
+    import random
+
+    from gamgui.core.gam.models import GAMGroup, GAMUser, GroupMember
+    from gamgui.core.gam.parser import parse_records
+
+    outputs = mock_outputs(mock)
+    rng = random.Random(20261008)
+    flags = [True, False, "TRUE", "false", " yes ", "1", "0", "on", "off", "", None, 0, 1, 2]
+    texts = ["", None, "Zo" + chr(0xEB) + " " + chr(0xC5) + "ngstr" + chr(0xF6) + "m", "a@example.com", " padded "]
+
+    def maybe(record: dict, key: str, values: list) -> None:
+        if rng.random() < 0.7:
+            record[key] = rng.choice(values)
+
+    def entries(fields: list) -> list:
+        items = []
+        for _ in range(rng.randint(0, 3)):
+            if rng.random() < 0.15:
+                items.append(rng.choice(["not a dict", None, 7]))
+                continue
+            item = {key: rng.choice(texts[2:] + ["", "HQ", "Sales"]) for key in fields if rng.random() < 0.7}
+            if rng.random() < 0.4:
+                item["primary"] = rng.choice([True, False, 1, 0, "", "yes"])
+            items.append(item)
+        return items
+
+    users = [r for name in ("print_users", "info_user") for out in outputs[name] for r in parse_records(out)]
+    for _ in range(250):
+        record = {}
+        maybe(record, rng.choice(["primaryEmail", "email", "User"]), texts)
+        if rng.random() < 0.6:
+            record["name"] = rng.choice([{"givenName": rng.choice(texts), "familyName": rng.choice(texts)},
+                                         {}, "not a dict", None, {"givenName": "Ada"}])
+        maybe(record, rng.choice(["givenName", "First Name"]), texts)
+        maybe(record, rng.choice(["familyName", "Last Name"]), texts)
+        for key in ("suspended", "Suspended", "isAdmin", "Is Admin", "isDelegatedAdmin", "isEnrolledIn2Sv"):
+            maybe(record, key, flags)
+        maybe(record, rng.choice(["orgUnitPath", "OrgUnitPath"]), ["/", "/Staff/New Hires", "", None])
+        maybe(record, "organizations", [entries(["title", "department"]), [], None, "x"])
+        maybe(record, "locations", [entries(["buildingName", "buildingId"]), []])
+        maybe(record, "phones", [entries(["value"]), []])
+        maybe(record, rng.choice(["Organization Title", "Organization Department"]), texts)
+        maybe(record, "recoveryEmail", texts)
+        maybe(record, rng.choice(["lastLoginTime", "Last Login Time"]), ["2026-06-18T08:00:00Z", "", None, "Never"])
+        maybe(record, rng.choice(["aliases", "Aliases"]),
+              [["a@example.com", "b@example.com"], [], "a@example.com, b@example.com",
+               " a@example.com\tb@example.com ,," + chr(0x3000) + "c@example.com", "", None])
+        users.append(record)
+
+    groups = [r for out in outputs["print_groups"] for r in parse_records(out)]
+    members = [r for name in ("print_group_members",) for out in outputs[name] for r in parse_records(out)]
+    counts = [12, 0, "12", " 7 ", "1_000", "3.7", 3.7, True, "x", "", None, chr(0x661) + chr(0x662), "-4", "+5"]
+    for _ in range(120):
+        group = {}
+        maybe(group, rng.choice(["email", "Email", "Group"]), texts)
+        maybe(group, rng.choice(["name", "Name"]), texts)
+        maybe(group, rng.choice(["description", "Description"]), texts)
+        maybe(group, rng.choice(["directMembersCount", "Members"]), counts)
+        groups.append(group)
+        member = {}
+        maybe(member, rng.choice(["email", "Email"]), texts)
+        maybe(member, rng.choice(["role", "Role"]), ["owner", "MANAGER", "member", "", None, "stra" + chr(0xDF) + "e"])
+        maybe(member, rng.choice(["type", "Type"]), ["user", "GROUP", "customer", "", None])
+        maybe(member, rng.choice(["status", "Status"]), ["ACTIVE", "suspended", "", None])
+        members.append(member)
+
+    def fields(model) -> dict:
+        found = dataclasses.asdict(model)
+        found.pop("raw")
+        if isinstance(model, GAMUser):
+            found["full_name"] = model.full_name
+        return found
+
+    return {
+        "users": [{"record": r, "model": fields(GAMUser.from_json(r))} for r in users],
+        "groups": [{"record": r, "model": fields(GAMGroup.from_json(r))} for r in groups],
+        "members": [{"record": r, "model": fields(GroupMember.from_json(r))} for r in members],
+    }
 
 
 def main() -> int:
@@ -581,6 +689,12 @@ def main() -> int:
         | output_fixture(OUT / "mock_gam.sh")
     (OUT / "gam_output.json").write_text(json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_output.json: {len(output_doc['cases'])} cases")
+
+    # Records read into users, groups and members, as GamGUI's models read them.
+    models_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | models_fixture(OUT / "mock_gam.sh")
+    (OUT / "gam_models.json").write_text(json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members'))} records")
     return 0
 
 
