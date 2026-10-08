@@ -460,8 +460,10 @@ Merged, each after an adversarial review whose findings were fixed with tests:
 
 Open:
 - **#7 Reading GAM's output:**
-  - JSON, NDJSON, `formatjson` CSV and plain CSV, 597 cases;
-  - users, groups and members, 502 records.
+  - JSON, NDJSON, `formatjson` CSV and plain CSV, 621 cases;
+  - users, groups and members, 523 records.
+  - Review fixed: CSV memory (13 GB to 43 MB), keys exact by text, Python's integer limit, `int()`
+    whitespace, case and `str()`.
 - **Home (local branch, after #7):**
   - the connection, GAM's version, and the directory's counts;
   - GamGUI's nine reports over 206 users;

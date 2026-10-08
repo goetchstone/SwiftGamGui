@@ -4,7 +4,7 @@ import GamEngine
 /// GamGUI's directory reports (`core/reports.py`): what the Admin console buries, counted from the user
 /// list with no GAM call of its own. Suspended accounts form their own report; every other report
 /// describes active accounts only. Held to `Tests/Fixtures/reports.json` by `DirectoryReportTests`.
-public struct DirectoryReport: Equatable, Sendable, Identifiable {
+public struct DirectoryReport: Sendable, Identifiable {
     public let key: String
     public let title: String
     public let description: String

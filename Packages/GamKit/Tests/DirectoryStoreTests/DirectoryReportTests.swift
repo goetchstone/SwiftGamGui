@@ -42,7 +42,11 @@ struct DirectoryReportTests {
             else if let number = try? container.decode(Int.self) { value = .number(String(number)) }
             else if let text = try? container.decode(String.self) { value = .string(text) }
             else if let items = try? container.decode([Raw].self) { value = .array(items.map(\.value)) }
-            else { value = .object(try container.decode([String: Raw].self).mapValues(\.value)) }
+            else {
+                var object = JSONObject()
+                for (key, raw) in try container.decode([String: Raw].self) { object[key] = raw.value }
+                value = .object(object)
+            }
         }
     }
 
