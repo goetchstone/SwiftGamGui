@@ -3,8 +3,8 @@
 
 They make code read differently from how it runs (Trojan Source, CVE-2021-42574), and an editing tool
 can write one by decoding an escape a script meant to keep (RULE-FEEDBACK 2026-10-08). Write such
-characters as escapes. The fixtures are exempt: they are data generated from GamGUI to exercise
-exactly these characters.
+characters as escapes. Only the generated argv fixture is exempt: it is data from GamGUI built to
+exercise exactly these characters. The mock and its data are hand-written and run by the tests.
 
     python3 scripts/check_text.py
 """
@@ -15,14 +15,24 @@ import subprocess
 import sys
 import unicodedata
 
-EXEMPT = ("Tests/Fixtures/",)
+EXEMPT = {"Tests/Fixtures/argv.json"}
+# Unicode's Default_Ignorable_Code_Point property (DerivedCoreProperties.txt), which unicodedata doesn't
+# expose: characters rendered as nothing, such as the Hangul fillers (usable in identifiers), variation
+# selectors and the combining grapheme joiner. Most are also format characters (Cf); not all.
+IGNORABLE = ((0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C), (0x115F, 0x1160), (0x17B4, 0x17B5),
+             (0x180B, 0x180F), (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F), (0x3164, 0x3164),
+             (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF), (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8), (0x1BCA0, 0x1BCA3),
+             (0x1D173, 0x1D17A), (0xE0000, 0xE0FFF))
+BLANKS = {0x2800}  # BRAILLE PATTERN BLANK: a visible-width nothing that is a symbol, not a space
 
 
 def invisible(char: str) -> bool:
-    category = unicodedata.category(char)
+    category, point = unicodedata.category(char), ord(char)
     return (category in ("Cf", "Zl", "Zp")                     # format controls (bidi, zero-width), separators
             or (category == "Zs" and char != " ")              # no-break and other spaces
-            or (category == "Cc" and char not in "\t\n\r"))    # control characters
+            or (category == "Cc" and char not in "\t\n\r")     # control characters
+            or point in BLANKS
+            or any(low <= point <= high for low, high in IGNORABLE))
 
 
 def main() -> int:
@@ -30,7 +40,7 @@ def main() -> int:
     found = 0
     for raw in paths:
         path = raw.decode()
-        if not path or path.startswith(EXEMPT):
+        if not path or path in EXEMPT:
             continue
         try:
             with open(path, encoding="utf-8") as handle:

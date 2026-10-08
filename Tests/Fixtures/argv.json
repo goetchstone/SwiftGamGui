@@ -23038,5 +23038,391 @@
     "version"
    ]
   }
- ]
+ ],
+ "defaults": {
+  "add_calendar_acl": {
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "reader",
+    "<target>"
+   ]
+  },
+  "add_calendar_acl_cal": {
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>"
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "reader",
+    "<scope>"
+   ]
+  },
+  "add_calendar_event": {
+   "kwargs": {
+    "calendar": "<calendar>",
+    "summary": "<summary>",
+    "start": "<start>",
+    "end": "<end>"
+   },
+   "argv": [
+    "user",
+    "<calendar>",
+    "add",
+    "event",
+    "primary",
+    "summary",
+    "<summary>",
+    "start",
+    "allday",
+    "<start>",
+    "end",
+    "allday",
+    "<end>"
+   ]
+  },
+  "add_group_member": {
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  "create_datatransfer": {
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>"
+   },
+   "argv": [
+    "create",
+    "datatransfer",
+    "<old_owner>",
+    "<service>",
+    "<new_owner>"
+   ]
+  },
+  "create_group": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "create",
+    "group",
+    "<email>"
+   ]
+  },
+  "create_task": {
+   "kwargs": {
+    "assignee": "<assignee>",
+    "tasklist_id": "<tasklist_id>",
+    "title": "<title>"
+   },
+   "argv": [
+    "user",
+    "<assignee>",
+    "create",
+    "task",
+    "<tasklist_id>",
+    "title",
+    "<title>"
+   ]
+  },
+  "create_user": {
+   "kwargs": {
+    "email": "<email>",
+    "first_name": "<first_name>",
+    "last_name": "<last_name>",
+    "password": "<password>"
+   },
+   "argv": [
+    "create",
+    "user",
+    "<email>",
+    "firstname",
+    "<first_name>",
+    "lastname",
+    "<last_name>",
+    "password",
+    "<password>",
+    "changepassword",
+    "on"
+   ]
+  },
+  "delete_calendar_acl": {
+   "kwargs": {
+    "email": "<email>",
+    "scope": "<scope>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "delete",
+    "calendaracls",
+    "primary",
+    "<scope>"
+   ]
+  },
+  "delete_event": {
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "event_id": "<event_id>"
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "delete",
+    "events",
+    "eventid",
+    "<event_id>",
+    "doit",
+    "sendupdates",
+    "none"
+   ]
+  },
+  "info_user": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "info",
+    "user",
+    "<email>",
+    "fields",
+    "primaryEmail,name,suspended,orgUnitPath,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,aliases,organizations,locations,phones,recoveryEmail",
+    "formatjson"
+   ]
+  },
+  "print_calendar_acls": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "calendaracls",
+    "primary",
+    "formatjson"
+   ]
+  },
+  "print_cros": {
+   "kwargs": {},
+   "argv": [
+    "print",
+    "cros",
+    "fields",
+    "deviceId,serialNumber,status,orgUnitPath,annotatedAssetId,annotatedUser,lastSync,model",
+    "formatjson"
+   ]
+  },
+  "print_datatransfers": {
+   "kwargs": {},
+   "argv": [
+    "print",
+    "datatransfers"
+   ]
+  },
+  "print_events": {
+   "kwargs": {
+    "calendar_id": "<calendar_id>"
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "print",
+    "events",
+    "fields",
+    "id,summary,start,end,recurrence,recurringeventid,organizer,creator,status",
+    "formatjson"
+   ]
+  },
+  "print_filelist": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "filelist",
+    "fields",
+    "id,name,mimeType,owners,modifiedTime,webViewLink",
+    "formatjson"
+   ]
+  },
+  "print_groups": {
+   "kwargs": {},
+   "argv": [
+    "print",
+    "groups",
+    "fields",
+    "email,name,description,directMembersCount",
+    "formatjson"
+   ]
+  },
+  "print_resources": {
+   "kwargs": {},
+   "argv": [
+    "print",
+    "resources",
+    "fields",
+    "id,name,email,resourcetype,buildingid",
+    "formatjson"
+   ]
+  },
+  "print_users": {
+   "kwargs": {},
+   "argv": [
+    "print",
+    "users",
+    "fields",
+    "primaryEmail,name,suspended,orgUnitPath,organizations",
+    "formatjson"
+   ]
+  },
+  "search_messages": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  "send_email": {
+   "kwargs": {
+    "to": "<to>",
+    "subject": "<subject>",
+    "body": "<body>"
+   },
+   "argv": [
+    "sendemail",
+    "to",
+    "<to>",
+    "subject",
+    "<subject>",
+    "message",
+    "<body>",
+    "html"
+   ]
+  },
+  "set_forward": {
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "forward",
+    "on",
+    "keep",
+    "<address>"
+   ]
+  },
+  "set_signature": {
+   "kwargs": {
+    "email": "<email>",
+    "signature": "<signature>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "signature",
+    "<signature>",
+    "html"
+   ]
+  },
+  "set_vacation": {
+   "kwargs": {
+    "email": "<email>",
+    "subject": "<subject>",
+    "message": "<message>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "vacation",
+    "on",
+    "subject",
+    "<subject>",
+    "message",
+    "<message>",
+    "html",
+    "contactsonly",
+    "false",
+    "domainonly",
+    "false",
+    "start",
+    "Started",
+    "end",
+    "NotSpecified"
+   ]
+  },
+  "subscribe_calendar": {
+   "kwargs": {
+    "email": "<email>",
+    "calendar_id": "<calendar_id>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendars",
+    "<calendar_id>",
+    "selected",
+    "true"
+   ]
+  },
+  "todrive_args": {
+   "kwargs": {},
+   "argv": [
+    "todrive"
+   ]
+  },
+  "update_organization": {
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "organization",
+    "title",
+    "",
+    "department",
+    "",
+    "primary"
+   ]
+  }
+ }
 }

@@ -71,8 +71,10 @@ extension GamCommands {
     public enum TransferPrivacy: String, CaseIterable, Sendable {
         case `private`, shared, all
 
-        /// GamGUI's check in `create_datatransfer`: exact, no trimming or case folding.
-        public init(validating text: String) throws {
+        /// GamGUI's check in `create_datatransfer`: an empty level is none (`nil`, `if privacy:`);
+        /// any other is matched exactly, with no trimming or case folding.
+        public init?(validating text: String) throws {
+            if text.isEmpty { return nil }
             guard let privacy = GamCommands.match(text, in: Self.self) else {
                 throw Invalid.argument("invalid transfer privacy level; expected private, shared or all")
             }
@@ -83,6 +85,12 @@ extension GamCommands {
     /// How much of each message a search shows.
     public enum MessageDetail: String, CaseIterable, Sendable {
         case headers = "Headers", headersAndBody = "Headers + body", summary = "Summary"
+
+        /// GamGUI's reading of a label in `search_messages`: an exact match, and headers for anything
+        /// else (its `else`), never a refusal.
+        public init(label: String) {
+            self = GamCommands.match(label, in: Self.self) ?? .headers
+        }
     }
 
     /// The characters Python's `str.isspace()` is true for: what GamGUI's validators strip.

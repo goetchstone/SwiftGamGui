@@ -31,8 +31,8 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   from a reviewer.
 - **Why it didn't hold:** not covered. Nothing checked tracked text for invisible characters.
 - **Would a rule have caught it?** only if enforced differently: `scripts/check_text.py` now refuses
-  format, separator, non-ASCII space and control characters in tracked text (fixtures exempt), run by
-  CI's hygiene job. Write such characters as escapes, or derive them (`gen_fixtures.py`'s
+  format, separator, non-ASCII space, control and default-ignorable characters in tracked text (the
+  generated argv fixture exempt), run by CI's hygiene job and the local pre-commit hook. Write such characters as escapes, or derive them (`gen_fixtures.py`'s
   `PY_WHITESPACE`).
 - **Enforcement home if changed:** tripwire (done, CI).
 

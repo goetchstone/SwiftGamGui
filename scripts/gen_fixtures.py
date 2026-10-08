@@ -180,6 +180,16 @@ def main() -> int:
             cases.append(call(fn, name, full_kwargs(fn, (), required | {param: value})))
     cases.append(call(originals["check_svcacct"], "check_svcacct", {"admin": "<admin>", "scopes": []}))
 
+    # 5. Defaults: each builder that has them, called with only its required arguments, so a Swift
+    #    default that differs from GamGUI's fails (the cases above always pass every argument).
+    defaults = {}
+    for name in builders:
+        params = inspect.signature(originals[name]).parameters.values()
+        if any(p.default is not p.empty for p in params):
+            required = {p.name: (["<" + p.name + ">"] if "Sequence" in str(p.annotation) else "<" + p.name + ">")
+                        for p in params if p.default is p.empty}
+            defaults[name] = {"kwargs": required, "argv": list(originals[name](**required))}
+
     # Stable order, no duplicates.
     seen, unique = set(), []
     for c in cases:
@@ -213,6 +223,7 @@ def main() -> int:
                                                            "CROS_LIST_FIELDS", "FILE_LIST_FIELDS", "CACHE_FIELDS")}
         | {"PY_WHITESPACE": [ord(c) for c in PY_WHITESPACE]},
         "cases": unique,
+        "defaults": defaults,
     }
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "argv.json").write_text(json.dumps(argv_doc, indent=1, ensure_ascii=False) + "\n")
