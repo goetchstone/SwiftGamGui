@@ -121,6 +121,13 @@ enum Spikes {
                                                   extraEnvironment: mockEnv)
                 let left = try FileManager.default.contentsOfDirectory(atPath: base.path).filter { $0.hasPrefix("gamcfg-") }
                 print("authenticated run: exit \(result.exitCode); gamcfg dirs left: \(left.count)")
+                if mockEnv["GAM_MOCK_REFRESH"] != nil {
+                    // The write-back updates the stored item in place (SecItemUpdate).
+                    started = clock.now
+                    let stored = try await vault.credentials(for: domain)[.oauth2]?.bytes
+                    let updated = stored == Data("refreshed-token-payload\n".utf8)
+                    print("refreshed oauth2.txt written back in place: \(updated) (read in \(clock.now - started))")
+                }
             } else {
                 print("no gam binary: set SWIFTGAMGUI_GAM_BINARY (debug builds) to run the authenticated step")
             }

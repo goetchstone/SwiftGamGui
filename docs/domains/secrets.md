@@ -68,6 +68,15 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
   `swiftgamgui-spike`, domain `spike.example.com`) against the real Keychain. It needs an unlocked Mac
   and one Touch ID.
 
+## Live (2026-10-08, real Keychain, throwaway items, `--spike vault`)
+- Three items stored. `domains()` lists them **without a prompt**, because it reads attributes only.
+- **One Touch ID per session.** The first read took about 2 s (the prompt); the second took 1.6 ms,
+  with no prompt.
+- An authenticated run of the mock `gam` exited 0, with **no `gamcfg-*` folder left**.
+- With `GAM_MOCK_REFRESH`, the refreshed `oauth2.txt` was **written back in place** (`SecItemUpdate`)
+  with no extra prompt inside the session.
+- Removal left no domain listed.
+
 ## PR #1 review (2026-10-08)
 One adversarial reviewer broke nine things, proving eight by running code. All are fixed with a
 regression test each:
