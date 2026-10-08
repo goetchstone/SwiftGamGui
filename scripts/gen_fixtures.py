@@ -15,6 +15,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   failure log names.
   Tests/Fixtures/gam_models.json  GamGUI's user, group and member models over the mock's records and
                                   seeded variants.
+  Tests/Fixtures/guard.json       GamGUI's guard (evaluate, enforce, alias_deletes) over seeded change
+                                  sets and confirmations.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -583,6 +585,81 @@ def models_fixture(mock: Path) -> dict:
     }
 
 
+def guard_fixture() -> dict:
+    """GamGUI's guard.evaluate and enforce over seeded change sets and confirmations: counts either side
+    of the bulk threshold (10), the typed-count opt-in (25) and the hard cap (200); every risk; account
+    deletes in GAM's exact argv shape and near it; confirmations typed with case, spaces, look-alikes.
+    And alias_deletes over resolved addresses."""
+    import random
+
+    from gamgui.core import guard
+    from gamgui.core.connectors.base import ChangePreview, ConnectorID, RiskLevel
+    from gamgui.core.gam.commands import GAMCommands
+
+    rng = random.Random(20261008)
+    words = ["confirm", " Confirm ", "CONFIRM", chr(0x3000) + "confirm" + chr(0x3000), "confirmed", "", "conf",
+             "CONF" + chr(0x130) + "RM", "conf" + chr(0x131) + "rm", "confirm" + chr(0x1F)]
+    cases = []
+    for _ in range(700):
+        n = rng.choice([0, 1, 2, 9, 10, 11, 24, 25, 26, 199, 200, 201])
+        previews, spec = [], []
+        # A third of the sets share one risk: mixed risks of ten or more nearly always include a
+        # destructive one, which hid the rule for a bulk change that is all LOW.
+        uniform = rng.choice(list(RiskLevel)) if rng.random() < 0.35 else None
+        for i in range(n):
+            risk = uniform if uniform is not None else rng.choice(list(RiskLevel))
+            target = rng.choice([f"u{i}@example.com", f"U{i}@Example.com ", f" u{i}@example.com"])
+            shape = rng.random()
+            if shape < 0.15:
+                argv = GAMCommands.delete_user(target)
+            elif shape < 0.2:
+                argv = ["delete", "user", target, "extra"]
+            elif shape < 0.25:
+                argv = ["Delete", "user", target]
+            elif shape < 0.3:
+                argv = None
+            else:
+                argv = GAMCommands.set_suspended(target, True)
+            previews.append(ChangePreview(connector_id=ConnectorID.GOOGLE_WORKSPACE, target=target, summary="x",
+                                          risk=risk, argv=argv))
+            spec.append({"target": target, "risk": int(risk), "argv": argv})
+        deletes = [a for a in map(guard.deleted_account, previews) if a]
+        form = {}
+        if rng.random() < 0.7:
+            form["confirmed"] = rng.choice(["1", "0", "", "yes", " 1", "1"])
+        if rng.random() < 0.5:
+            form["confirm"] = rng.choice(words)
+        if rng.random() < 0.5:
+            form["confirm_count"] = rng.choice([str(n), f" {n} ", f"0{n}", str(n + 1), "", chr(0x3000) + str(n)])
+        if deletes and rng.random() < 0.8:
+            typed = [rng.choice([a, a.upper(), " " + a.strip() + " ", a + "x"]) for a in deletes if rng.random() < 0.9]
+            form["confirm_email"] = typed
+        confirm_step = rng.random() < 0.3
+        above = rng.choice([None, guard.COUNT_CONFIRM_ABOVE])
+        decision = guard.evaluate(previews, typed_count_above=above)
+        cases.append({
+            "changes": spec, "form": form, "confirm_step": confirm_step, "typed_count_above": above,
+            "decision": {"max_risk": int(decision.max_risk), "affected": decision.affected,
+                         "requires_confirmation": decision.requires_confirmation,
+                         "requires_typed_confirmation": decision.requires_typed_confirmation,
+                         "over_hard_cap": decision.over_hard_cap, "summary": decision.summary,
+                         "warnings": decision.warnings, "requires_typed_count": decision.requires_typed_count,
+                         "typed_emails": decision.typed_emails},
+            "refusal": guard.enforce(previews, form, confirm_step=confirm_step, typed_count_above=above),
+        })
+    aliases = []
+    for _ in range(80):
+        resolved = {}
+        for i in range(rng.randint(0, 3)):
+            address = rng.choice([f"a{i}@example.com", f" A{i}@Example.com", f"a{i}@example.com "])
+            resolved[address] = rng.choice([None, "", address, address.upper(), f"primary{i}@example.com",
+                                             " " + address.strip() + " "])
+        aliases.append({"resolved": [[k, v] for k, v in resolved.items()], "problems": guard.alias_deletes(resolved)})
+    return {"constants": {"DEFAULT_BULK_THRESHOLD": guard.DEFAULT_BULK_THRESHOLD, "DEFAULT_HARD_CAP": guard.DEFAULT_HARD_CAP,
+                          "COUNT_CONFIRM_ABOVE": guard.COUNT_CONFIRM_ABOVE, "TYPED_WORD": guard.TYPED_WORD},
+            "cases": cases, "aliases": aliases}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -757,6 +834,11 @@ def main() -> int:
         | models_fixture(OUT / "mock_gam.sh")
     (OUT / "gam_models.json").write_text(json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members'))} records")
+
+    # The destructive-operation guard: what a change set needs, and whether a confirmation is enough.
+    guard_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | guard_fixture()
+    (OUT / "guard.json").write_text(json.dumps(guard_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"guard.json: {len(guard_doc['cases'])} cases")
     return 0
 
 
