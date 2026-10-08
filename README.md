@@ -5,9 +5,11 @@
 GamGUI, with the same engine underneath: every operation is the same `gam` command GamGUI runs, held
 byte-for-byte to GamGUI's live-proven commands by the test suite.
 
-> **Status: early.** Phase 1 scaffold: the GAM runner, the parity fixtures and the platform spikes.
-> Nothing talks to a Google tenant yet. Use the Python GamGUI for real work until a screen here says
-> otherwise. Plan: [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
+> **Status: early, read-only.** Phase 1: Setup (import credentials, copy them from GamGUI, Check
+> access), Home (the directory's counts and GamGUI's reports) and a read-only Users list, over the GAM
+> runner and parity fixtures. None of it has run against a real tenant yet, and nothing writes. Use the
+> Python GamGUI for real work until a screen here says otherwise. Plan:
+> [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team. GAM is their project; this app drives it.
 
