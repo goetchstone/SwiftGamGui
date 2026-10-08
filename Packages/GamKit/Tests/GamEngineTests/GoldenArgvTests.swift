@@ -281,6 +281,6 @@ struct GoldenArgvTests {
         for (name, values) in swift {
             #expect(constants[name] as? [String] == values, "\(name)")
         }
-        #expect((constants["PY_WHITESPACE"] as? [Int]).map { Set($0.map(UInt32.init)) } == GamCommands.pythonWhitespace)
+        #expect((constants["PY_WHITESPACE"] as? [Int]).map { Set($0.map(UInt32.init)) } == PythonText.whitespace)
     }
 }

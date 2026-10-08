@@ -50,6 +50,30 @@ an allowlisted environment, a timeout, and capped output capture.
 `AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a
 per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets.md](secrets.md).
 
+## Failed runs
+`GamError.swift` ports GamGUI's `core/gam/errors.py`: a failed run's kind (which drives the remediation
+and whether a bulk loop stops), its kinds per line, the message, and GAM's output and argv with echoed
+secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: GamGUI's own
+`GAMError.from_run` over 1,773 stderrs.
+- **The fixture's sources:**
+  - GAM's known lines in case, indent and counter variants, and every pair of them
+  - progress chatter and GAM's instructions
+  - timeouts and missing-scope lines
+  - echoed passwords in GAM's usage-error shapes
+  - Unicode and boundary edges
+  - 400 seeded random stderrs
+- **No regex engine.** Python's `re.IGNORECASE` matches only four non-ASCII characters to ASCII
+  letters (dotted and dotless I, the long s, the Kelvin sign), so each line is folded scalar for scalar
+  and GamGUI's ASCII patterns are matched as plain predicates. `\w`, `\s`, `\d` and `splitlines` are
+  Python's (`PythonText`), held to Python's tables over every code point it assigns.
+- Each pattern's place in the order comes from a GamGUI failure-log entry, cited beside it: per-line
+  classification (2026-09-23), per-user `invalid_grant` before the expired sign-in (2026-09-23), the
+  credentials file before not-found (2026-09-23), 403 before not-found and the entity counter
+  (2026-09-24), the service-account instructions (2026-10-01).
+- `stdout` is kept for a caller that reads it (`check serviceaccount`'s table) and is never in the
+  message, the description or a dump.
+- **Not wired in yet:** nothing throws it until the first screen runs GAM for data.
+
 ## Not built yet
-Write serialization (ChangeCore, phase 2) and general stderr/exit-code classification (port of
-GamGUI's `core/gam/errors.py`); `check serviceaccount`'s own exits are handled in `AccessCheck`.
+Write serialization (ChangeCore, phase 2). `check serviceaccount`'s own exits are handled in
+`AccessCheck`.
