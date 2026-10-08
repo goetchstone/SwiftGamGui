@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""Refuse invisible and bidirectional-control characters in tracked text files.
+
+They make code read differently from how it runs (Trojan Source, CVE-2021-42574), and an editing tool
+can write one by decoding an escape a script meant to keep (RULE-FEEDBACK 2026-10-08). Write such
+characters as escapes. The fixtures are exempt: they are data generated from GamGUI to exercise
+exactly these characters.
+
+    python3 scripts/check_text.py
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+import unicodedata
+
+EXEMPT = ("Tests/Fixtures/",)
+
+
+def invisible(char: str) -> bool:
+    category = unicodedata.category(char)
+    return (category in ("Cf", "Zl", "Zp")                     # format controls (bidi, zero-width), separators
+            or (category == "Zs" and char != " ")              # no-break and other spaces
+            or (category == "Cc" and char not in "\t\n\r"))    # control characters
+
+
+def main() -> int:
+    paths = subprocess.run(["git", "ls-files", "-z"], capture_output=True, check=True).stdout.split(b"\0")
+    found = 0
+    for raw in paths:
+        path = raw.decode()
+        if not path or path.startswith(EXEMPT):
+            continue
+        try:
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+        except (UnicodeDecodeError, IsADirectoryError, FileNotFoundError):
+            continue  # binary, a submodule, or deleted in the working tree
+        for number, line in enumerate(text.split("\n"), 1):
+            hits = sorted({f"U+{ord(c):04X}" for c in line if invisible(c)})
+            if hits:
+                print(f"{path}:{number}: {', '.join(hits)}")
+                found += 1
+    if found:
+        print(f"{found} line(s) hold invisible or bidirectional characters; write them as escapes.", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

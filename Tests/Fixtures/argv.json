@@ -646,6 +646,98 @@
    "writer",
    "writerwithoutprivateaccess",
    "none"
+  ],
+  "USER_LIST_FIELDS": [
+   "primaryEmail",
+   "name",
+   "suspended",
+   "orgUnitPath",
+   "organizations"
+  ],
+  "USER_DETAIL_FIELDS": [
+   "primaryEmail",
+   "name",
+   "suspended",
+   "orgUnitPath",
+   "isAdmin",
+   "isDelegatedAdmin",
+   "isEnrolledIn2Sv",
+   "lastLoginTime",
+   "aliases",
+   "organizations",
+   "locations",
+   "phones",
+   "recoveryEmail"
+  ],
+  "GROUP_LIST_FIELDS": [
+   "email",
+   "name",
+   "description",
+   "directMembersCount"
+  ],
+  "CROS_LIST_FIELDS": [
+   "deviceId",
+   "serialNumber",
+   "status",
+   "orgUnitPath",
+   "annotatedAssetId",
+   "annotatedUser",
+   "lastSync",
+   "model"
+  ],
+  "FILE_LIST_FIELDS": [
+   "id",
+   "name",
+   "mimeType",
+   "owners",
+   "modifiedTime",
+   "webViewLink"
+  ],
+  "CACHE_FIELDS": [
+   "primaryEmail",
+   "name",
+   "suspended",
+   "orgUnitPath",
+   "organizations",
+   "isAdmin",
+   "isDelegatedAdmin",
+   "isEnrolledIn2Sv",
+   "lastLoginTime",
+   "recoveryEmail",
+   "aliases",
+   "locations",
+   "phones"
+  ],
+  "PY_WHITESPACE": [
+   9,
+   10,
+   11,
+   12,
+   13,
+   28,
+   29,
+   30,
+   31,
+   32,
+   133,
+   160,
+   5760,
+   8192,
+   8193,
+   8194,
+   8195,
+   8196,
+   8197,
+   8198,
+   8199,
+   8200,
+   8201,
+   8202,
+   8232,
+   8233,
+   8239,
+   8287,
+   12288
   ]
  },
  "cases": [
@@ -900,6 +992,882 @@
     "editor",
     "line\nbreak"
    ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  editor\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "editor",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  freebusy\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusy",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  freebusyreader\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusyreader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  none\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "none",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  owner\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "owner",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  reader\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "reader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  writer\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writer",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "  writerwithoutprivateaccess\t\n",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writerwithoutprivateaccess",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": " ",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "EDITOR",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "editor",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Editor",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "editor",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "FREEBUSY",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusy",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "FREEBUSYREADER",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusyreader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Freebusy",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusy",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Freebusyreader",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusyreader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "NONE",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "none",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "None",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "none",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "OWNER",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "owner",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Owner",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "owner",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "READER",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "reader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Reader",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "reader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "WRITER",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writer",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "WRITERWITHOUTPRIVATEACCESS",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writerwithoutprivateaccess",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Writer",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writer",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "Writerwithoutprivateaccess",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writerwithoutprivateaccess",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　editor\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "editor",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　freebusy\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusy",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　freebusyreader\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "freebusyreader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　none\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "none",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　owner\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "owner",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　reader\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "reader",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　writer\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writer",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　writerwithoutprivateaccess\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "calendar": "primary"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "calendaracls",
+    "primary",
+    "writerwithoutprivateaccess",
+    "<target>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "admin",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'admin'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "editorx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'editorx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "editor​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'editor\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "éditor",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'éditor'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "freebusyreaderx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'freebusyreaderx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "freebusyreader​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'freebusyreader\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "freebusyx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'freebusyx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "freebusy​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'freebusy\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "fréébusy",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'fréébusy'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "fréébusyréadér",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'fréébusyréadér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "nonex",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'nonex'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "noné",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'noné'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "none​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'none\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "null",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'null'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "ownerx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'ownerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "owner​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'owner\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "ownér",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'ownér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "ownеr",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'ownеr'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "readerx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'readerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "reader​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'reader\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "réadér",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'réadér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writerwithoutprivateaccessx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writerwithoutprivateaccessx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writerwithoutprivateaccess​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writerwithoutprivateaccess\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writerx",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writer​",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writer\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writér",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": "writérwithoutprivatéaccéss",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role 'writérwithoutprivatéaccéss'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl",
+   "kwargs": {
+    "email": "<email>",
+    "target": "<target>",
+    "role": " ",
+    "calendar": "primary"
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
   },
   {
    "builder": "add_calendar_acl",
@@ -1302,6 +2270,580 @@
    "kwargs": {
     "calendar_id": "<calendar_id>",
     "scope": "<scope>",
+    "role": "  editor\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "editor",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  freebusy\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusy",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  freebusyreader\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusyreader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  none\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "none",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  owner\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "owner",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  reader\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "reader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  writer\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writer",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "  writerwithoutprivateaccess\t\n",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writerwithoutprivateaccess",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": " ",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "EDITOR",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "editor",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Editor",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "editor",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "FREEBUSY",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusy",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "FREEBUSYREADER",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusyreader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Freebusy",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusy",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Freebusyreader",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusyreader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "NONE",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "none",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "None",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "none",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "OWNER",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "owner",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Owner",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "owner",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "READER",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "reader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Reader",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "reader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "WRITER",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writer",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "WRITERWITHOUTPRIVATEACCESS",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writerwithoutprivateaccess",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Writer",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writer",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "Writerwithoutprivateaccess",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writerwithoutprivateaccess",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　editor\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "editor",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　freebusy\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusy",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　freebusyreader\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "freebusyreader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　none\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "none",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　owner\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "owner",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　reader\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "reader",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　writer\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writer",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　writerwithoutprivateaccess\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "send_notifications": false
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "add",
+    "calendaracls",
+    "writerwithoutprivateaccess",
+    "<scope>"
+   ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "admin",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'admin'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
     "role": "editor",
     "send_notifications": false
    },
@@ -1332,6 +2874,36 @@
     "sendnotifications",
     "true"
    ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "editorx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'editorx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "editor​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'editor\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "éditor",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'éditor'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
   },
   {
    "builder": "add_calendar_acl_cal",
@@ -1410,6 +2982,66 @@
    "kwargs": {
     "calendar_id": "<calendar_id>",
     "scope": "<scope>",
+    "role": "freebusyreaderx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'freebusyreaderx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "freebusyreader​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'freebusyreader\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "freebusyx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'freebusyx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "freebusy​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'freebusy\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "fréébusy",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'fréébusy'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "fréébusyréadér",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'fréébusyréadér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
     "role": "none",
     "send_notifications": false
    },
@@ -1440,6 +3072,46 @@
     "sendnotifications",
     "true"
    ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "nonex",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'nonex'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "noné",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'noné'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "none​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'none\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "null",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'null'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
   },
   {
    "builder": "add_calendar_acl_cal",
@@ -1482,6 +3154,46 @@
    "kwargs": {
     "calendar_id": "<calendar_id>",
     "scope": "<scope>",
+    "role": "ownerx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'ownerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "owner​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'owner\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "ownér",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'ownér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "ownеr",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'ownеr'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
     "role": "reader",
     "send_notifications": false
    },
@@ -1512,6 +3224,36 @@
     "sendnotifications",
     "true"
    ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "readerx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'readerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "reader​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'reader\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "réadér",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'réadér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
   },
   {
    "builder": "add_calendar_acl_cal",
@@ -1584,6 +3326,76 @@
     "sendnotifications",
     "true"
    ]
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writerwithoutprivateaccessx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writerwithoutprivateaccessx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writerwithoutprivateaccess​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writerwithoutprivateaccess\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writerx",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writerx'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writer​",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writer\\u200b'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writér",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writér'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": "writérwithoutprivatéaccéss",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role 'writérwithoutprivatéaccéss'; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
+  },
+  {
+   "builder": "add_calendar_acl_cal",
+   "kwargs": {
+    "calendar_id": "<calendar_id>",
+    "scope": "<scope>",
+    "role": " ",
+    "send_notifications": false
+   },
+   "error": "ValueError: invalid calendar role ''; expected one of: editor, freebusy, freebusyreader, owner, reader, writer, writerwithoutprivateaccess, none"
   },
   {
    "builder": "add_calendar_acl_cal",
@@ -2945,6 +4757,232 @@
    "kwargs": {
     "group": "<group>",
     "member": "<member>",
+    "role": "  manager\t\n"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "manager",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "  member\t\n"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "  owner\t\n"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "owner",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": " "
+   },
+   "error": "ValueError: invalid group role ''; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": ""
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "MANAGER"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "manager",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "MEMBER"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "Manager"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "manager",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "Member"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "OWNER"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "owner",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "Owner"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "owner",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　manager\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "manager",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　member\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "member",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　owner\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "update",
+    "group",
+    "<group>",
+    "add",
+    "owner",
+    "<member>"
+   ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "admin"
+   },
+   "error": "ValueError: invalid group role 'admin'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
     "role": "manager"
    },
    "argv": [
@@ -2955,6 +4993,33 @@
     "manager",
     "<member>"
    ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "managerx"
+   },
+   "error": "ValueError: invalid group role 'managerx'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "manager​"
+   },
+   "error": "ValueError: invalid group role 'manager\\u200b'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "managér"
+   },
+   "error": "ValueError: invalid group role 'managér'; expected one of ('member', 'manager', 'owner')"
   },
   {
    "builder": "add_group_member",
@@ -2977,6 +5042,42 @@
    "kwargs": {
     "group": "<group>",
     "member": "<member>",
+    "role": "memberx"
+   },
+   "error": "ValueError: invalid group role 'memberx'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "member​"
+   },
+   "error": "ValueError: invalid group role 'member\\u200b'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "mémbér"
+   },
+   "error": "ValueError: invalid group role 'mémbér'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "null"
+   },
+   "error": "ValueError: invalid group role 'null'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
     "role": "owner"
    },
    "argv": [
@@ -2987,6 +5088,51 @@
     "owner",
     "<member>"
    ]
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "ownerx"
+   },
+   "error": "ValueError: invalid group role 'ownerx'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "owner​"
+   },
+   "error": "ValueError: invalid group role 'owner\\u200b'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "ownér"
+   },
+   "error": "ValueError: invalid group role 'ownér'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": "ownеr"
+   },
+   "error": "ValueError: invalid group role 'ownеr'; expected one of ('member', 'manager', 'owner')"
+  },
+  {
+   "builder": "add_group_member",
+   "kwargs": {
+    "group": "<group>",
+    "member": "<member>",
+    "role": " "
+   },
+   "error": "ValueError: invalid group role ''; expected one of ('member', 'manager', 'owner')"
   },
   {
    "builder": "add_group_member",
@@ -3236,6 +5382,14 @@
   {
    "builder": "check_svcacct",
    "kwargs": {
+    "admin": "<admin>",
+    "scopes": []
+   },
+   "error": "ValueError: check_svcacct needs the scopes to check"
+  },
+  {
+   "builder": "check_svcacct",
+   "kwargs": {
     "admin": "Zoë Ångström",
     "scopes": [
      "https://mail.google.com/"
@@ -3462,6 +5616,46 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
+    "privacy": "  all\t\n"
+   },
+   "error": "ValueError: invalid transfer privacy level '  all\\t\\n'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "  private\t\n"
+   },
+   "error": "ValueError: invalid transfer privacy level '  private\\t\\n'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "  shared\t\n"
+   },
+   "error": "ValueError: invalid transfer privacy level '  shared\\t\\n'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": " "
+   },
+   "error": "ValueError: invalid transfer privacy level ' '; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
     "privacy": ""
    },
    "argv": [
@@ -3471,6 +5665,106 @@
     "<service>",
     "<new_owner>"
    ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "ALL"
+   },
+   "error": "ValueError: invalid transfer privacy level 'ALL'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "All"
+   },
+   "error": "ValueError: invalid transfer privacy level 'All'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "PRIVATE"
+   },
+   "error": "ValueError: invalid transfer privacy level 'PRIVATE'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "Private"
+   },
+   "error": "ValueError: invalid transfer privacy level 'Private'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "SHARED"
+   },
+   "error": "ValueError: invalid transfer privacy level 'SHARED'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "Shared"
+   },
+   "error": "ValueError: invalid transfer privacy level 'Shared'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　all\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000all\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　private\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000private\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　shared\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000shared\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "admin"
+   },
+   "error": "ValueError: invalid transfer privacy level 'admin'; expected one of ('private', 'shared', 'all')"
   },
   {
    "builder": "create_datatransfer",
@@ -3495,6 +5789,46 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
+    "privacy": "allx"
+   },
+   "error": "ValueError: invalid transfer privacy level 'allx'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "all​"
+   },
+   "error": "ValueError: invalid transfer privacy level 'all\\u200b'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "null"
+   },
+   "error": "ValueError: invalid transfer privacy level 'null'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "ownеr"
+   },
+   "error": "ValueError: invalid transfer privacy level 'ownеr'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
     "privacy": "private"
    },
    "argv": [
@@ -3512,6 +5846,36 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
+    "privacy": "privatex"
+   },
+   "error": "ValueError: invalid transfer privacy level 'privatex'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "privaté"
+   },
+   "error": "ValueError: invalid transfer privacy level 'privaté'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "private​"
+   },
+   "error": "ValueError: invalid transfer privacy level 'private\\u200b'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
     "privacy": "shared"
    },
    "argv": [
@@ -3522,6 +5886,46 @@
     "<new_owner>",
     "shared"
    ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "sharedx"
+   },
+   "error": "ValueError: invalid transfer privacy level 'sharedx'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "shared​"
+   },
+   "error": "ValueError: invalid transfer privacy level 'shared\\u200b'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "sharéd"
+   },
+   "error": "ValueError: invalid transfer privacy level 'sharéd'; expected one of ('private', 'shared', 'all')"
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": " "
+   },
+   "error": "ValueError: invalid transfer privacy level '\\xa0'; expected one of ('private', 'shared', 'all')"
   },
   {
    "builder": "create_datatransfer",
@@ -12147,6 +14551,174 @@
    "kwargs": {
     "email": "<email>",
     "query": "",
+    "detail": "  Headers + body\t\n"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "  Headers\t\n"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "  Summary\t\n"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": " "
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": ""
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "HEADERS + BODY"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "HEADERS"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Headers + Body"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
     "detail": "Headers + body"
    },
    "argv": [
@@ -12184,6 +14756,48 @@
     "headers",
     "all",
     "showbody",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Headers + bodyx"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Headers + body​"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
     "showlabels",
     "showdate"
    ]
@@ -12511,6 +15125,111 @@
    "kwargs": {
     "email": "<email>",
     "query": "",
+    "detail": "Headersx"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Headers​"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Héadérs + body"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Héadérs"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "SUMMARY"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
     "detail": "Summary"
    },
    "argv": [
@@ -12548,6 +15267,195 @@
     "showdate",
     "showsize",
     "showsnippet"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Summaryx"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "Summary​"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　Headers + body\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　Headers\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　Summary\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "admin"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "null"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": "ownеr"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
+   ]
+  },
+  {
+   "builder": "search_messages",
+   "kwargs": {
+    "email": "<email>",
+    "query": "",
+    "detail": " "
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "messages",
+    "includespamtrash",
+    "max_to_print",
+    "50",
+    "headers",
+    "all",
+    "showlabels",
+    "showdate"
    ]
   },
   {
@@ -13036,6 +15944,213 @@
    "kwargs": {
     "email": "<email>",
     "address": "<address>",
+    "action": "  archive\t\n"
+   },
+   "error": "ValueError: invalid forward action: '  archive\\t\\n'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "  delete\t\n"
+   },
+   "error": "ValueError: invalid forward action: '  delete\\t\\n'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "  keep\t\n"
+   },
+   "error": "ValueError: invalid forward action: '  keep\\t\\n'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "  markread\t\n"
+   },
+   "error": "ValueError: invalid forward action: '  markread\\t\\n'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "  trash\t\n"
+   },
+   "error": "ValueError: invalid forward action: '  trash\\t\\n'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": " "
+   },
+   "error": "ValueError: invalid forward action: ' '"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": ""
+   },
+   "error": "ValueError: invalid forward action: ''"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "ARCHIVE"
+   },
+   "error": "ValueError: invalid forward action: 'ARCHIVE'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Archive"
+   },
+   "error": "ValueError: invalid forward action: 'Archive'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "DELETE"
+   },
+   "error": "ValueError: invalid forward action: 'DELETE'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Delete"
+   },
+   "error": "ValueError: invalid forward action: 'Delete'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "KEEP"
+   },
+   "error": "ValueError: invalid forward action: 'KEEP'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Keep"
+   },
+   "error": "ValueError: invalid forward action: 'Keep'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "MARKREAD"
+   },
+   "error": "ValueError: invalid forward action: 'MARKREAD'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Markread"
+   },
+   "error": "ValueError: invalid forward action: 'Markread'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "TRASH"
+   },
+   "error": "ValueError: invalid forward action: 'TRASH'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Trash"
+   },
+   "error": "ValueError: invalid forward action: 'Trash'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　archive\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid forward action: '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000archive\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　delete\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid forward action: '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000delete\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　keep\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid forward action: '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000keep\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　markread\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid forward action: '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000markread\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　trash\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+   },
+   "error": "ValueError: invalid forward action: '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000trash\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "admin"
+   },
+   "error": "ValueError: invalid forward action: 'admin'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
     "action": "archive"
    },
    "argv": [
@@ -13068,6 +16183,33 @@
    "kwargs": {
     "email": "<email>",
     "address": "<address>",
+    "action": "archivex"
+   },
+   "error": "ValueError: invalid forward action: 'archivex'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "archivé"
+   },
+   "error": "ValueError: invalid forward action: 'archivé'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "archive​"
+   },
+   "error": "ValueError: invalid forward action: 'archive\\u200b'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
     "action": "delete"
    },
    "argv": [
@@ -13094,6 +16236,33 @@
     "delete",
     "fwd@example.com"
    ]
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "deletex"
+   },
+   "error": "ValueError: invalid forward action: 'deletex'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "delete​"
+   },
+   "error": "ValueError: invalid forward action: 'delete\\u200b'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "délété"
+   },
+   "error": "ValueError: invalid forward action: 'délété'"
   },
   {
    "builder": "set_forward",
@@ -13308,6 +16477,33 @@
    "kwargs": {
     "email": "<email>",
     "address": "<address>",
+    "action": "keepx"
+   },
+   "error": "ValueError: invalid forward action: 'keepx'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "keep​"
+   },
+   "error": "ValueError: invalid forward action: 'keep\\u200b'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "kéép"
+   },
+   "error": "ValueError: invalid forward action: 'kéép'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
     "action": "markread"
    },
    "argv": [
@@ -13340,6 +16536,60 @@
    "kwargs": {
     "email": "<email>",
     "address": "<address>",
+    "action": "markreadx"
+   },
+   "error": "ValueError: invalid forward action: 'markreadx'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "markread​"
+   },
+   "error": "ValueError: invalid forward action: 'markread\\u200b'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "markréad"
+   },
+   "error": "ValueError: invalid forward action: 'markréad'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "marKread"
+   },
+   "error": "ValueError: invalid forward action: 'marKread'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "null"
+   },
+   "error": "ValueError: invalid forward action: 'null'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "ownеr"
+   },
+   "error": "ValueError: invalid forward action: 'ownеr'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
     "action": "trash"
    },
    "argv": [
@@ -13366,6 +16616,42 @@
     "trash",
     "fwd@example.com"
    ]
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "trashx"
+   },
+   "error": "ValueError: invalid forward action: 'trashx'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "trash​"
+   },
+   "error": "ValueError: invalid forward action: 'trash\\u200b'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": " "
+   },
+   "error": "ValueError: invalid forward action: '\\xa0'"
+  },
+  {
+   "builder": "set_forward",
+   "kwargs": {
+    "email": "<email>",
+    "address": "<address>",
+    "action": "Keep"
+   },
+   "error": "ValueError: invalid forward action: 'Keep'"
   },
   {
    "builder": "set_signature",
