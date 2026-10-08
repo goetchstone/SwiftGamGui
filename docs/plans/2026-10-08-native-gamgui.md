@@ -463,11 +463,22 @@ Merged, each after an adversarial review whose findings were fixed with tests:
   - users, groups and members, 523 records.
   - Review fixed: CSV memory (13 GB to 43 MB), keys exact by text, Python's integer limit, `int()`
     whitespace, case and `str()`.
+- **#9 ChangeCore, the guard:** GamGUI's `evaluate`/`enforce`/`alias_deletes`, 700 decisions.
+- **#10 ChangeCore, the audit log:** byte-for-byte GamGUI's lines; generations; redaction.
+
 Open:
 - **#8 Home and Users (read-only):**
   - the connection, GAM's version, and the directory's counts;
   - GamGUI's nine reports over 206 users;
   - the `Directory` module's tenant-scoped cache.
+  - Review fixed, two of them blockers for the first live use:
+    - a load's token write-back could undo a re-import (now a compare-and-swap);
+    - GAM's first-run banner on stdout would have broken every read (now stripped, and the mock
+      prints it).
+
+**Next, for the operator first:** the held preview, the executor and its write ticket. The plan's ticket
+design means every builder returns a typed read or write command, a change to the builders' shape
+worth a look before it's made.
 
 Every port above is held to a fixture generated from frozen GamGUI (`scripts/gen_fixtures.py`).
 
