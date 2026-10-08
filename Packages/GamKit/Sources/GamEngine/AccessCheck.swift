@@ -81,7 +81,7 @@ public struct AccessCheck: Sendable, Equatable {
             return AccessCheck(outcome: .failed(errorLine(in: result.stderr) ?? "GAM exited \(result.exitCode)"),
                                rows: [], authorizationURL: nil)
         }
-        let text = result.stdout.uppercased()
+        let text = PythonText.upper(result.stdout)
         let failed = result.exitCode != 0 || text.contains("FAILED") || text.contains("DISABLED!")
             || rows.contains { !$0.passed }
         if !rows.isEmpty, !failed {

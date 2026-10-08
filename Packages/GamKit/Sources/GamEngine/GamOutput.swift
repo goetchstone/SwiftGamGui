@@ -4,7 +4,7 @@
 /// `Tests/Fixtures/gam_output.json` (GamGUI's `parse_records` over the mock's output for every read and
 /// its property tests' shapes) by `GamOutputTests`.
 public enum GamOutput {
-    public typealias Record = [String: JSONValue]
+    public typealias Record = JSONObject
 
     /// Never fails on shape: text that is none of the above reads as CSV, and empty text as no records.
     public static func records(_ stdout: String) -> [Record] {
@@ -54,36 +54,40 @@ public enum GamOutput {
         var table = CSVReader.records(text)
         guard !table.isEmpty else { return [] }
         let header = table.removeFirst()
-        let rows: [[(key: String, value: String?)]] = table.filter { !$0.isEmpty }.map { row in
-            // dict(zip(fieldnames, row)), then restval for the fieldnames past the row. Fields past
-            // the header go under DictReader's None key, which GamGUI drops.
-            var pairs = zip(header, row).map { (key: $0, value: Optional($1)) }
-            pairs += header.dropFirst(row.count).map { (key: $0, value: nil) }
-            return pairs
-        }
+        let rows = table.filter { !$0.isEmpty }
         guard !rows.isEmpty else { return [] }
-        if header.contains(where: { $0.utf8.elementsEqual("JSON".utf8) }) {
+        // dict(zip(header, row)) and then restval for the header past the row leaves each distinct
+        // column (by exact text) holding the cell at its LAST position in the header, or null when the
+        // row stops before that position. Computed once per column, not once per header cell per row:
+        // a wide header of repeated names once took 13 GB (PR #7's review).
+        var columns: [(key: String, last: Int)] = [], seen: [[UInt8]: Int] = [:]
+        for (position, key) in header.enumerated() {
+            if let slot = seen[Array(key.utf8)] {
+                columns[slot].last = position
+            } else {
+                seen[Array(key.utf8)] = columns.count
+                columns.append((key, position))
+            }
+        }
+        func cell(_ column: (key: String, last: Int), in row: [String]) -> String? {
+            column.last < row.count ? row[column.last] : nil
+        }
+        if let json = columns.first(where: { $0.key.utf8.elementsEqual("JSON".utf8) }) {
+            let siblings = columns.filter { !$0.key.utf8.elementsEqual("JSON".utf8) }
             return rows.flatMap { row -> [Record] in
-                let cell = lastValue(of: "JSON", in: row) ?? nil
-                guard let value = json(cell ?? "") else { return [] }
-                var siblings: Record = [:]
-                for (key, value) in row where !key.utf8.elementsEqual("JSON".utf8) {
-                    siblings[key] = nil
-                    if let value, !value.isEmpty { siblings[key] = .string(value) }
+                guard let value = self.json(cell(json, in: row) ?? "") else { return [] }
+                var known = Record()
+                for column in siblings {
+                    if let text = cell(column, in: row), !text.isEmpty { known[column.key] = .string(text) }
                 }
-                return records(in: value).map { siblings.merging($0) { _, json in json } }
+                return records(in: value).map { known.merging($0) }
             }
         }
         return rows.map { row in
-            var record: Record = [:]
-            for (key, value) in row { record[key] = value.map(JSONValue.string) ?? .null }
+            var record = Record()
+            for column in columns { record[column.key] = cell(column, in: row).map(JSONValue.string) ?? .null }
             return record
         }
-    }
-
-    /// The value a dict built from `pairs` holds for `key`: the last pair's.
-    private static func lastValue(of key: String, in pairs: [(key: String, value: String?)]) -> String?? {
-        pairs.last { $0.key.utf8.elementsEqual(key.utf8) }.map(\.value)
     }
 }
 

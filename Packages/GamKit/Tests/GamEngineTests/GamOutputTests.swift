@@ -29,8 +29,8 @@ struct GamOutputTests {
         case (.string(let x), .string(let y)): return x.utf8.elementsEqual(y.utf8)
         case (.array(let x), .array(let y)): return x.count == y.count && zip(x, y).allSatisfy(same)
         case (.object(let x), .object(let y)):
-            let keys = { (o: [String: JSONValue]) in Set(o.keys.map { Array($0.utf8) }) }
-            return keys(x) == keys(y) && x.allSatisfy { key, value in y[key].map { same(value, $0) } ?? false }
+            let keys = { (o: JSONObject) in Set(o.keys.map { Array($0.utf8) }) }
+            return keys(x) == keys(y) && x.allSatisfy { member in y[member.key].map { same(member.value, $0) } ?? false }
         default: return false
         }
     }
@@ -54,6 +54,11 @@ struct GamOutputTests {
 
     @Test func jsonReadsAsPythonDoes() throws {
         #expect(JSONValue.parse(#"{"a": 1, "a": 2}"#) == .object(["a": .number("2")]), "the last duplicate wins")
+        let twoKeys = try #require(JSONValue.parse("{\"\u{E9}\": 1, \"e\u{301}\": 2}")?.object)
+        #expect(twoKeys.count == 2, "keys equal only by canonical equivalence stay two, as in Python")
+        #expect(JSONValue.parse("[" + String(repeating: "1", count: 4300) + "]") != nil)
+        #expect(JSONValue.parse("[" + String(repeating: "1", count: 4301) + "]") == nil, "Python's digit limit")
+        #expect(JSONValue.parse("[" + String(repeating: "1", count: 4301) + ".5]") != nil, "a float has none")
         #expect(JSONValue.parse("[NaN, -Infinity, 12345678901234567890123]")
                 == .array([.number("NaN"), .number("-Infinity"), .number("12345678901234567890123")]))
         #expect(JSONValue.parse(#""😀\ud800""#) == .string("\u{1F600}\u{FFFD}"))
@@ -63,6 +68,18 @@ struct GamOutputTests {
         let deep = String(repeating: "[", count: JSONValue.maximumDepth) + String(repeating: "]", count: JSONValue.maximumDepth)
         #expect(JSONValue.parse(deep) != nil)
         #expect(JSONValue.parse("[" + deep + "]") == nil, "past the depth limit")
+    }
+
+    /// At the depth limit, parsing, comparing and freeing fit a secondary thread's stack in a debug
+    /// build: at about 470, one overflowed (PR #7's review).
+    @Test func theDeepestAcceptedValueFitsAThreadStack() async {
+        let depth = JSONValue.maximumDepth
+        let text = String(repeating: #"{"a":"#, count: depth - 1) + "[]" + String(repeating: "}", count: depth - 1)
+        let survived = await Task.detached {
+            guard let value = JSONValue.parse(text), let copy = JSONValue.parse(text) else { return false }
+            return value == copy
+        }.value
+        #expect(survived)
     }
 
     @Test func csvReadsAsPythonsReaderDoes() {

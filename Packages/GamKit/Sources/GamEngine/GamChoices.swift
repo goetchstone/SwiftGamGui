@@ -95,7 +95,7 @@ extension GamCommands {
 
     /// Python's `text.strip().lower()`, as GamGUI's validators normalize.
     static func stripLower(_ text: String) -> String {
-        PythonText.strip(text).lowercased()
+        PythonText.lower(PythonText.strip(text))
     }
 
     /// The case whose raw value has exactly `text`'s bytes. Swift's `==` and `init(rawValue:)` use

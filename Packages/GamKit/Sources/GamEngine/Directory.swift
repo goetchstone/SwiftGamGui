@@ -1,9 +1,15 @@
+import Foundation
+
 /// Users, groups and members read from GAM's records, as GamGUI's `core/gam/models.py` reads them:
 /// tolerant, since GAM's keys vary by command and version (`primaryEmail` or `email`, `name.givenName`
 /// or `First Name`), and flags arrive as booleans, words or numbers. The record itself is kept for
-/// detail views. Held to `Tests/Fixtures/gam_models.json` by `DirectoryTests`. A field GAM sends as text
-/// is read only as text: a list or object where text belongs reads as empty.
-public struct GamUser: Equatable, Sendable, Identifiable {
+/// detail views. Held to `Tests/Fixtures/gam_models.json` by `DirectoryTests`. A list or object where
+/// text belongs reads as empty (GamGUI would print its Python repr); every scalar reads as Python's
+/// `str()` of it.
+///
+/// Not `Equatable`: comparing would walk the whole record on every SwiftUI update. Printed or dumped, a
+/// model shows its own fields, not the record, so a log doesn't carry the directory.
+public struct GamUser: Sendable, Identifiable, CustomReflectable {
     public let primaryEmail: String
     public let givenName: String
     public let familyName: String
@@ -21,8 +27,12 @@ public struct GamUser: Equatable, Sendable, Identifiable {
     public let lastLoginTime: String?
     public let aliases: [String]
     public let record: GamOutput.Record
+    /// The address, or a one-off identity for a record without one, so two such rows never share an id.
+    public let id: String
 
-    public var id: String { primaryEmail }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["primaryEmail": primaryEmail, "suspended": suspended, "orgUnitPath": orgUnitPath])
+    }
 
     /// The name, or the address when there is none.
     public var fullName: String {
@@ -52,17 +62,21 @@ public struct GamUser: Equatable, Sendable, Identifiable {
         recoveryEmail = Fields.text(Fields.truthy(Fields.first(record, "recoveryEmail")))
         lastLoginTime = Fields.first(record, "lastLoginTime", "Last Login Time").map(Fields.text)
         aliases = Fields.list(Fields.first(record, "aliases", "Aliases"))
+        id = Fields.identity(primaryEmail)
     }
 }
 
-public struct GamGroup: Equatable, Sendable, Identifiable {
+public struct GamGroup: Sendable, Identifiable, CustomReflectable {
     public let email: String
     public let name: String
     public let description: String
     public let membersCount: Int?
     public let record: GamOutput.Record
+    public let id: String
 
-    public var id: String { email }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["email": email, "membersCount": membersCount as Any])
+    }
 
     public init(record: GamOutput.Record) {
         self.record = record
@@ -70,10 +84,11 @@ public struct GamGroup: Equatable, Sendable, Identifiable {
         name = Fields.text(Fields.first(record, "name", "Name"))
         description = Fields.text(Fields.first(record, "description", "Description"))
         membersCount = Fields.first(record, "directMembersCount", "Members").flatMap(Fields.int)
+        id = Fields.identity(email)
     }
 }
 
-public struct GroupMember: Equatable, Sendable, Identifiable {
+public struct GroupMember: Sendable, Identifiable, CustomReflectable {
     public let email: String
     /// `OWNER`, `MANAGER` or `MEMBER`.
     public let role: String
@@ -81,20 +96,28 @@ public struct GroupMember: Equatable, Sendable, Identifiable {
     public let memberType: String
     public let status: String
     public let record: GamOutput.Record
+    public let id: String
 
-    public var id: String { email }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["email": email, "role": role, "memberType": memberType])
+    }
 
     public init(record: GamOutput.Record) {
         self.record = record
         email = Fields.text(Fields.first(record, "email", "Email"))
-        role = (Fields.first(record, "role", "Role").map(Fields.text) ?? "MEMBER").uppercased()
-        memberType = (Fields.first(record, "type", "Type").map(Fields.text) ?? "USER").uppercased()
+        role = PythonText.upper(Fields.first(record, "role", "Role").map(Fields.text) ?? "MEMBER")
+        memberType = PythonText.upper(Fields.first(record, "type", "Type").map(Fields.text) ?? "USER")
         status = Fields.text(Fields.first(record, "status", "Status"))
+        id = Fields.identity(email)
     }
 }
 
 /// GamGUI's field helpers, with Python's truthiness and conversions.
 enum Fields {
+    static func identity(_ address: String) -> String {
+        address.isEmpty ? "#" + UUID().uuidString : address
+    }
+
     /// `_get`: the first key whose value is neither `null` nor `""`.
     static func first(_ record: GamOutput.Record, _ keys: String...) -> JSONValue? {
         for key in keys {
@@ -114,21 +137,65 @@ enum Fields {
         return items.first { $0.object?["primary"]?.truthy == true }?.object ?? first.object ?? [:]
     }
 
-    /// Python's `str()` of a scalar; empty for nothing, and for a list or object where text belongs.
+    /// Python's `str()` of a scalar: `None`, `True`, `1.5` for `1.50`, `100.0` for `1E2`, `nan`. Empty
+    /// for nothing given, and for a list or object (Python would print its repr).
     static func text(_ value: JSONValue?) -> String {
         switch value {
         case .string(let text): text
         case .bool(let flag): flag ? "True" : "False"
-        case .number(let text): text
+        case .null: "None"
+        case .number(let text): number(text)
         default: ""
         }
+    }
+
+    /// Python's `str()` of what `json.loads` made of a number: an `int` printed as Python prints it,
+    /// a `float` as its `repr`.
+    static func number(_ text: String) -> String {
+        switch text {
+        case "NaN": return "nan"
+        case "Infinity": return "inf"
+        case "-Infinity": return "-inf"
+        default: break
+        }
+        if !text.unicodeScalars.contains(where: { $0 == "." || $0 == "e" || $0 == "E" }) {
+            return text == "-0" ? "0" : text
+        }
+        return Double(text).map(floatRepr) ?? text
+    }
+
+    /// Python's `repr(float)`: the shortest digits that read back (as Swift's description has them),
+    /// written positionally unless the decimal exponent is below -4 or above 15.
+    static func floatRepr(_ value: Double) -> String {
+        if value.isNaN { return "nan" }
+        if value.isInfinite { return value < 0 ? "-inf" : "inf" }
+        if value == 0 { return value.sign == .minus ? "-0.0" : "0.0" }
+        var text = Substring(value.description), sign = ""
+        if text.hasPrefix("-") { sign = "-"; text = text.dropFirst() }
+        let parts = text.split(separator: "e", maxSplits: 1)
+        let exponent = parts.count == 2 ? Int(parts[1]) ?? 0 : 0
+        let mantissa = parts[0].split(separator: ".", maxSplits: 1)
+        let whole = String(mantissa[0]), fraction = mantissa.count == 2 ? String(mantissa[1]) : ""
+        var digits = whole + fraction
+        var point = whole.count + exponent        // value = 0.digits x 10^point
+        while digits.hasPrefix("0"), digits.count > 1 { digits.removeFirst(); point -= 1 }
+        while digits.hasSuffix("0"), digits.count > 1 { digits.removeLast() }
+        if point <= -4 || point > 16 {
+            let tail = digits.dropFirst()
+            let power = point - 1
+            return sign + String(digits.first!) + (tail.isEmpty ? "" : "." + tail)
+                + "e" + (power < 0 ? "-" : "+") + (abs(power) < 10 ? "0" : "") + String(abs(power))
+        }
+        if point <= 0 { return sign + "0." + String(repeating: "0", count: -point) + digits }
+        if point >= digits.count { return sign + digits + String(repeating: "0", count: point - digits.count) + ".0" }
+        return sign + digits.prefix(point) + "." + digits.dropFirst(point)
     }
 
     /// `_as_bool`: a word means true when it is true, yes, on or 1; anything else by truthiness.
     static func flag(_ value: JSONValue?) -> Bool {
         guard let value else { return false }
         if case .string(let text) = value {
-            return ["true", "yes", "on", "1"].contains(PythonText.strip(text).lowercased())
+            return ["true", "yes", "on", "1"].contains(PythonText.lower(PythonText.strip(text)))
         }
         return value.truthy
     }
@@ -168,7 +235,7 @@ enum Fields {
                   let real = Double(text), real.isFinite, abs(real) < 9.2e18 else { return nil }
             return Int(real.rounded(.towardZero))
         case .string(let text):
-            var scalars = Substring(PythonText.strip(text)).unicodeScalars[...]
+            var scalars = Substring(PythonText.strip(text, of: PythonText.intWhitespace)).unicodeScalars[...]
             var negative = false
             if let sign = scalars.first, sign == "+" || sign == "-" {
                 negative = sign == "-"

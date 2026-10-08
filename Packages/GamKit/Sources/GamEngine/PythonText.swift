@@ -51,6 +51,30 @@ package enum PythonText {
         knownToPython(scalar) && scalar.properties.generalCategory == .decimalNumber
     }
 
+    /// What Python's `int()` strips around a number: `str.isspace()`'s characters but U+001C to U+001F.
+    package static let intWhitespace: Set<UInt32> = whitespace.subtracting([0x1C, 0x1D, 0x1E, 0x1F])
+
+    /// `str.upper()` in Python's Unicode version: full mappings (ß is SS), and a character Python doesn't
+    /// know, or whose mapping uses one, unchanged. Swift's newer tables gave U+A7D3 an uppercase.
+    package static func upper(_ text: String) -> String {
+        mapped(text) { $0.properties.uppercaseMapping }
+    }
+
+    /// `str.lower()` in Python's Unicode version, without its final-sigma rule: used only to compare with
+    /// ASCII words (roles, flags, keywords), where that rule can't matter.
+    package static func lower(_ text: String) -> String {
+        mapped(text) { $0.properties.lowercaseMapping }
+    }
+
+    private static func mapped(_ text: String, _ mapping: (Unicode.Scalar) -> String) -> String {
+        var out: [Unicode.Scalar] = []
+        for scalar in text.unicodeScalars {
+            let target = knownToPython(scalar) ? Array(mapping(scalar).unicodeScalars) : [scalar]
+            out += target.allSatisfy(knownToPython) ? target : [scalar]
+        }
+        return string(out)
+    }
+
     /// What `re.IGNORECASE` compares an ASCII pattern against: ASCII letters lowercased, and the four
     /// characters it matches to an ASCII letter mapped to it. One scalar for one, so positions carry over.
     package static func folded(_ scalar: Unicode.Scalar) -> Unicode.Scalar {
@@ -58,11 +82,11 @@ package enum PythonText {
         return foldsToASCII[scalar.value] ?? scalar
     }
 
-    /// `str.strip()`.
-    package static func strip(_ text: String) -> String {
+    /// `str.strip()`, or a strip over another set (`int()`'s).
+    package static func strip(_ text: String, of set: Set<UInt32> = whitespace) -> String {
         let scalars = Array(text.unicodeScalars)
-        guard let first = scalars.firstIndex(where: { !isSpace($0) }),
-              let last = scalars.lastIndex(where: { !isSpace($0) })
+        guard let first = scalars.firstIndex(where: { !set.contains($0.value) }),
+              let last = scalars.lastIndex(where: { !set.contains($0.value) })
         else { return "" }
         return string(scalars[first...last])
     }

@@ -8,34 +8,12 @@ import TestSupport
 @Suite("Directory models")
 struct DirectoryTests {
     struct Fixture<Model: Decodable>: Decodable {
-        let record: JSONText
+        /// The record as JSON text, read here through `JSONValue`: a number keeps the form it was
+        /// written in (`1.50`, `1E2`), which is what Python's `str()` of it depends on.
+        let record: String
         let model: Model
-    }
 
-    /// A record as the fixture holds it, read back through `JSONValue` (the fixture's JSON is plain).
-    struct JSONText: Decodable {
-        let value: GamOutput.Record
-
-        init(from decoder: Decoder) throws {
-            let object = try decoder.singleValueContainer().decode(AnyJSON.self)
-            guard case .object(let record) = object.value else { throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "not an object")) }
-            value = record
-        }
-    }
-
-    struct AnyJSON: Decodable {
-        let value: JSONValue
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-            if container.decodeNil() { value = .null }
-            else if let flag = try? container.decode(Bool.self) { value = .bool(flag) }
-            else if let number = try? container.decode(Int.self) { value = .number(String(number)) }
-            else if let number = try? container.decode(Double.self) { value = .number(String(number)) }
-            else if let text = try? container.decode(String.self) { value = .string(text) }
-            else if let items = try? container.decode([AnyJSON].self) { value = .array(items.map(\.value)) }
-            else { value = .object(try container.decode([String: AnyJSON].self).mapValues(\.value)) }
-        }
+        var value: GamOutput.Record { JSONValue.parse(record)?.object ?? [:] }
     }
 
     struct User: Decodable {
@@ -53,7 +31,22 @@ struct DirectoryTests {
         let email: String, role: String, member_type: String, status: String
     }
 
+    struct Constants: Decodable {
+        let PY_UPPER: [[JSONNumber]]
+    }
+
+    /// A code point, or a list of them.
+    enum JSONNumber: Decodable {
+        case one(UInt32), many([UInt32])
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let point = try? container.decode(UInt32.self) { self = .one(point) } else { self = .many(try container.decode([UInt32].self)) }
+        }
+    }
+
     struct Document: Decodable {
+        let constants: Constants
         let users: [Fixture<User>]
         let groups: [Fixture<Group>]
         let members: [Fixture<Member>]
@@ -65,8 +58,8 @@ struct DirectoryTests {
 
     @Test func usersReadAsGamGUIReadsThem() {
         for item in document.users {
-            let user = GamUser(record: item.record.value), want = item.model
-            let label = "\(item.record.value)"
+            let user = GamUser(record: item.value), want = item.model
+            let label = "\(item.value)"
             #expect(Self.same(user.primaryEmail, want.primary_email), "email \(label)")
             #expect(Self.same(user.givenName, want.given_name) && Self.same(user.familyName, want.family_name), "name \(label)")
             #expect(Self.same(user.fullName, want.full_name), "full name \(label)")
@@ -83,18 +76,35 @@ struct DirectoryTests {
         #expect(document.users.count > 200)
     }
 
+    /// `str.upper()` scalar by scalar over every code point, Swift-only assignments included (PR #7's
+    /// review: Unicode 17 gave U+A7D3 an uppercase that Python's 16 doesn't have).
+    @Test func uppercaseIsPythons() {
+        var table: [UInt32: [UInt32]] = [:]
+        for pair in document.constants.PY_UPPER {
+            if case .one(let point) = pair[0], case .many(let mapped) = pair[1] { table[point] = mapped }
+        }
+        #expect(table.count > 1400)
+        var mismatches: [UInt32] = []
+        for point in UInt32(0)...0x10FFFF {
+            guard let scalar = Unicode.Scalar(point) else { continue }
+            let mine = PythonText.upper(String(scalar)).unicodeScalars.map(\.value)
+            if mine != (table[point] ?? [point]) { mismatches.append(point) }
+        }
+        #expect(mismatches.isEmpty, "differs at \(mismatches.prefix(10).map { String($0, radix: 16) })")
+    }
+
     @Test func groupsAndMembersReadAsGamGUIReadsThem() {
         for item in document.groups {
-            let group = GamGroup(record: item.record.value), want = item.model
+            let group = GamGroup(record: item.value), want = item.model
             #expect(Self.same(group.email, want.email) && Self.same(group.name, want.name)
-                    && Self.same(group.description, want.description), "\(item.record.value)")
-            #expect(group.membersCount == want.members_count, "count \(item.record.value)")
+                    && Self.same(group.description, want.description), "\(item.value)")
+            #expect(group.membersCount == want.members_count, "count \(item.value)")
         }
         for item in document.members {
-            let member = GroupMember(record: item.record.value), want = item.model
+            let member = GroupMember(record: item.value), want = item.model
             #expect(Self.same(member.email, want.email) && Self.same(member.role, want.role)
                     && Self.same(member.memberType, want.member_type) && Self.same(member.status, want.status),
-                    "\(item.record.value)")
+                    "\(item.value)")
         }
         #expect(document.groups.count > 100 && document.members.count > 100)
     }

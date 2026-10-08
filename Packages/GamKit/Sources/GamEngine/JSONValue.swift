@@ -1,14 +1,15 @@
 /// A JSON value as Python's `json.loads` reads one, so GAM's output parses into what GamGUI parsed.
 /// Numbers keep their text (Python reads integers exactly, however long). `NaN`, `Infinity` and
-/// `-Infinity` are accepted, as Python accepts them, and a duplicated key keeps its last value.
+/// `-Infinity` are accepted, as Python accepts them. Strings compare by their exact text, as Python's
+/// do, not by Swift's canonical equivalence.
 public enum JSONValue: Equatable, Sendable {
     case null
     case bool(Bool)
-    /// The number as written: an integer exactly, `NaN`, `Infinity` or `-Infinity` as named.
+    /// The number as written. The parser only makes JSON numbers, `NaN`, `Infinity` or `-Infinity`.
     case number(String)
     case string(String)
     case array([JSONValue])
-    case object([String: JSONValue])
+    case object(JSONObject)
 
     public var string: String? {
         if case .string(let value) = self { value } else { nil }
@@ -28,6 +29,7 @@ public enum JSONValue: Equatable, Sendable {
         }
     }
 
+    /// The number when it is written as an integer that fits an `Int`: not `1.0` or `1e5`.
     public var int: Int? {
         if case .number(let text) = self { Int(text) } else { nil }
     }
@@ -36,7 +38,7 @@ public enum JSONValue: Equatable, Sendable {
         if case .array(let value) = self { value } else { nil }
     }
 
-    public var object: [String: JSONValue]? {
+    public var object: JSONObject? {
         if case .object(let value) = self { value } else { nil }
     }
 
@@ -44,10 +46,26 @@ public enum JSONValue: Equatable, Sendable {
         object?[key]
     }
 
+    public static func == (a: JSONValue, b: JSONValue) -> Bool {
+        switch (a, b) {
+        case (.null, .null): true
+        case (.bool(let x), .bool(let y)): x == y
+        case (.number(let x), .number(let y)): x.utf8.elementsEqual(y.utf8)
+        case (.string(let x), .string(let y)): x.utf8.elementsEqual(y.utf8)
+        case (.array(let x), .array(let y)): x == y
+        case (.object(let x), .object(let y)): x == y
+        default: false
+        }
+    }
+
     /// Nesting deeper than this is refused. Python's own limit is the C stack (about 87,000 on this
-    /// Mac); a Swift value that deep would overflow the stack when compared or freed, and Google's
-    /// data is a few levels deep.
-    public static let maximumDepth = 512
+    /// Mac). Here each level is a stack frame when parsing, comparing and freeing, and a debug build
+    /// overflowed a 512 KiB thread at about 470 (PR #7's review). Google's data is a few levels deep.
+    public static let maximumDepth = 128
+
+    /// Python's limit on an integer's digits (`sys.int_info.default_max_str_digits`): past it,
+    /// `json.loads` raises.
+    public static let maximumIntegerDigits = 4300
 
     /// `json.loads(text)`, or nil where it raises (including nesting past `maximumDepth`). A lone
     /// surrogate escape (`"\ud800"`), which Python keeps, becomes U+FFFD: a Swift string can't hold one.
@@ -75,11 +93,20 @@ public enum JSONValue: Equatable, Sendable {
             }
         }
 
-        mutating func take(_ literal: String) -> Bool {
-            let target = Array(literal.unicodeScalars)
-            guard scalars.count - index >= target.count,
-                  scalars[index..<(index + target.count)].elementsEqual(target) else { return false }
-            index += target.count
+        mutating func take(_ scalar: Unicode.Scalar) -> Bool {
+            guard current == scalar else { return false }
+            index += 1
+            return true
+        }
+
+        /// No allocation: this runs for every value of a megabyte of output.
+        mutating func take(_ literal: StaticString) -> Bool {
+            var position = index
+            for byte in UnsafeBufferPointer(start: literal.utf8Start, count: literal.utf8CodeUnitCount) {
+                guard position < scalars.count, scalars[position].value == UInt32(byte) else { return false }
+                position += 1
+            }
+            index = position
             return true
         }
 
@@ -102,20 +129,20 @@ public enum JSONValue: Equatable, Sendable {
 
         mutating func object(depth: Int) -> JSONValue? {
             index += 1
-            var members: [String: JSONValue] = [:]
+            var members = JSONObject()
             skipWhitespace()
-            if take("}") { return .object(members) }
+            if take("}" as Unicode.Scalar) { return .object(members) }
             while true {
                 skipWhitespace()
                 guard current == "\"", let key = string() else { return nil }
                 skipWhitespace()
-                guard take(":") else { return nil }
+                guard take(":" as Unicode.Scalar) else { return nil }
                 skipWhitespace()
                 guard let member = value(depth: depth) else { return nil }
                 members[key] = member
                 skipWhitespace()
-                if take("}") { return .object(members) }
-                guard take(",") else { return nil }
+                if take("}" as Unicode.Scalar) { return .object(members) }
+                guard take("," as Unicode.Scalar) else { return nil }
             }
         }
 
@@ -123,18 +150,19 @@ public enum JSONValue: Equatable, Sendable {
             index += 1
             var elements: [JSONValue] = []
             skipWhitespace()
-            if take("]") { return .array(elements) }
+            if take("]" as Unicode.Scalar) { return .array(elements) }
             while true {
                 skipWhitespace()
                 guard let element = value(depth: depth) else { return nil }
                 elements.append(element)
                 skipWhitespace()
-                if take("]") { return .array(elements) }
-                guard take(",") else { return nil }
+                if take("]" as Unicode.Scalar) { return .array(elements) }
+                guard take("," as Unicode.Scalar) else { return nil }
             }
         }
 
-        /// `-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?`, ASCII digits only.
+        /// `-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?`, ASCII digits only. A fraction or an
+        /// exponent that doesn't complete is left for the next token, as Python's scanner leaves it.
         mutating func number() -> JSONValue? {
             let start = index
             func digits() -> Int {
@@ -142,8 +170,9 @@ public enum JSONValue: Equatable, Sendable {
                 while let scalar = current, ("0"..."9").contains(scalar) { index += 1 }
                 return index - first
             }
-            _ = take("-")
-            if take("0") {
+            _ = take("-" as Unicode.Scalar)
+            let integerStart = index
+            if take("0" as Unicode.Scalar) {
             } else if let scalar = current, ("1"..."9").contains(scalar) {
                 _ = digits()
             } else {
@@ -151,25 +180,27 @@ public enum JSONValue: Equatable, Sendable {
                 return nil
             }
             let integerEnd = index
-            if take("."), digits() == 0 { index = integerEnd }
+            var isInteger = true
+            if take("." as Unicode.Scalar), digits() > 0 { isInteger = false } else { index = integerEnd }
             let fractionEnd = index
             if let scalar = current, scalar == "e" || scalar == "E" {
                 index += 1
                 if let sign = current, sign == "+" || sign == "-" { index += 1 }
-                if digits() == 0 { index = fractionEnd }
+                if digits() > 0 { isInteger = false } else { index = fractionEnd }
             }
+            if isInteger, integerEnd - integerStart > JSONValue.maximumIntegerDigits { return nil }
             return .number(PythonText.string(scalars[start..<index]))
         }
 
         /// A string at `"`: escapes decoded, a raw control character refused (Python's strict mode).
         mutating func string() -> String? {
             index += 1
-            var out = String.UnicodeScalarView()
+            var out: [Unicode.Scalar] = []
             while let scalar = current {
                 index += 1
                 switch scalar {
                 case "\"":
-                    return String(out)
+                    return PythonText.string(out)
                 case "\\":
                     guard let escaped = current else { return nil }
                     index += 1
@@ -225,5 +256,58 @@ public enum JSONValue: Equatable, Sendable {
             }
             return Unicode.Scalar(unit) ?? "\u{FFFD}"
         }
+    }
+}
+
+/// A JSON object as Python's `dict` holds one: keys distinct by their exact text, in the order first
+/// set, a repeated key keeping its last value. A Swift `Dictionary` would merge keys that differ only
+/// in Unicode normalization ("é" and "e" + U+0301) and silently drop one (PR #7's review).
+public struct JSONObject: Equatable, Sendable, Sequence, ExpressibleByDictionaryLiteral {
+    public private(set) var members: [(key: String, value: JSONValue)] = []
+    private var positions: [[UInt8]: Int] = [:]
+
+    public init() {}
+
+    public init(dictionaryLiteral elements: (String, JSONValue)...) {
+        for (key, value) in elements { self[key] = value }
+    }
+
+    public var count: Int { members.count }
+    public var isEmpty: Bool { members.isEmpty }
+    public var keys: [String] { members.map(\.key) }
+
+    /// Setting nil removes the key.
+    public subscript(key: String) -> JSONValue? {
+        get { positions[Array(key.utf8)].map { members[$0].value } }
+        set {
+            let bytes = Array(key.utf8)
+            if let newValue {
+                if let position = positions[bytes] {
+                    members[position].value = newValue
+                } else {
+                    positions[bytes] = members.count
+                    members.append((key, newValue))
+                }
+            } else if let position = positions.removeValue(forKey: bytes) {
+                members.remove(at: position)
+                for (index, member) in members.enumerated().dropFirst(position) { positions[Array(member.key.utf8)] = index }
+            }
+        }
+    }
+
+    /// This object with `other`'s members set over it: `{**self, **other}`.
+    public func merging(_ other: JSONObject) -> JSONObject {
+        var merged = self
+        for (key, value) in other.members { merged[key] = value }
+        return merged
+    }
+
+    public func makeIterator() -> IndexingIterator<[(key: String, value: JSONValue)]> {
+        members.makeIterator()
+    }
+
+    /// The same keys, by exact text, with equal values; order aside, as Python's dicts compare.
+    public static func == (a: JSONObject, b: JSONObject) -> Bool {
+        a.count == b.count && a.members.allSatisfy { b[$0.key] == $0.value }
     }
 }

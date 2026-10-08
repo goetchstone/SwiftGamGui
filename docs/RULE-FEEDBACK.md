@@ -35,6 +35,9 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   every code point, the ones only one side assigns included. `PythonText.unicodeVersion` now gates
   Swift's tables to Python's version.
 - **Enforcement home if changed:** tripwire (done: the test checks every code point).
+- **Recurred in PR #7:** `uppercased()` used Swift's Unicode 17 case mappings, so U+A7D3 got an
+  uppercase Python 16 doesn't give it. The fix was per table, not per feature: every Unicode-derived
+  table (`\w`, `\d`, case) goes through `PythonText` and its version gate, each tested over every code point.
 
 ## 2026-10-08 — Seeded test data still moved when the generator changed
 - **What happened:** `gen_fixtures.py` drew GamGUI's Hypothesis strategies with `derandomize=True`. An

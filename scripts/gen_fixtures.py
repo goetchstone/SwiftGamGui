@@ -401,6 +401,26 @@ def output_fixture(mock: Path) -> dict:
         "{\"a\": 1} {\"b\": 2}",
         "{\"a\": 1}\n[{\"b\": 2}, 3]\n\"s\"\n",
     ]
+    # PR #7's review: one input for each defect it proved, and for each change that slipped past.
+    backslash, nfc, nfd = chr(92), chr(0xE9), "e" + chr(0x301)
+    edges += [
+        '{"a": 1E2, "b": 1e+2, "c": 1E-2, "d": -0.5e-1}',
+        '{"a": 1e}', '{"a": 1.}', '{"a": 1e+}', '{"a": +1}', '{"a": 01}', '{"a": -}',
+        '{"a": "' + backslash + "/" + backslash + "f" + backslash + "b" + '"}',
+        '{"a": "' + backslash + "u00E9" + backslash + "u00e9" + '"}',
+        '{"a": "x\ny"}',
+        '{"a": "' + backslash + "ud800" + backslash + "ud800" + '"}',
+        '{"a":' + chr(12) + '1}',
+        "primaryEmail,JSON,JSON\na@example.com," + '"{""x"": 1}","{""y"": 2}"' + "\n",
+        "a,a,JSON\n1,," + '"{""z"": 1}"' + "\n",
+        '{"' + nfc + '": 1, "' + nfd + '": 2}',
+        '{"K": 1, "' + chr(0x212A) + '": 2}',
+        nfc + "," + nfd + "\nx,y\n",
+        '{"a": ' + "1" * 4300 + '}', '{"a": ' + "1" * 4301 + '}', '{"a": -' + "1" * 4301 + '}',
+        '{"a": ' + "1" * 4301 + '.5}', '[{"a": 1}, ' + "9" * 5000 + ']',
+        ",".join(["h"] * 2000) + "\n" + "\n".join(["x"] * 200) + "\n",
+        "h,h,JSON\n" + "x,y," + '"{}"' + "\n",
+    ]
     for text in edges:
         add(text)
 
@@ -507,17 +527,59 @@ def models_fixture(mock: Path) -> dict:
         maybe(member, rng.choice(["status", "Status"]), ["ACTIVE", "suspended", "", None])
         members.append(member)
 
+    # PR #7's review: numbers where GamGUI prints Python's str() of them, NaN's truthiness, falsy values
+    # that fall through to the next key, int()'s edges, and roles Unicode 17 uppercases differently.
+    raw_users = [
+        '{"primaryEmail": "n1@example.com", "organizations": [{"title": 1.50, "department": 1E2, "primary": true}],'
+        ' "phones": [{"value": -0}], "locations": [{"buildingName": NaN}]}',
+        '{"primaryEmail": "n2@example.com", "suspended": NaN, "isAdmin": 0.0, "isEnrolledIn2Sv": -0.0,'
+        ' "aliases": [null, true, 1.0, 12345678901234567890]}',
+        '{"primaryEmail": "n3@example.com", "organizations": [{"title": 1e16, "department": 1e15, "primary": 1}],'
+        ' "phones": [{"value": 0.0001}], "locations": [{"buildingId": 1e-05}]}',
+        '{"primaryEmail": "n4@example.com", "organizations": [{"title": 123456789012345678, "department": -1.5e-7}],'
+        ' "recoveryEmail": 0}',
+        '{"primaryEmail": "n5@example.com", "name": {"givenName": 0, "familyName": false},'
+        ' "givenName": "Flat", "Last Name": "Name", "orgUnitPath": 5, "lastLoginTime": 1.5}',
+    ]
+    raw_groups = ['{"email": "g@example.com", "directMembersCount": ' + count + '}' for count in
+                  ['"' + chr(92) + 'u001c5"', '"5' + chr(92) + 'u001f"', "-3.7", "1e2", '"1__0"', '"_1"', '"1_"',
+                   '"  ' + chr(92) + 'u0663 "', "NaN", "-0.0", "true", '"' + chr(92) + 'u30005' + chr(92) + 'u3000"']]
+    raw_members = ['{"email": "m@example.com", "role": ' + json.dumps(role) + ', "type": "user"}' for role in
+                   ["owner" + chr(0xA7D3), "member" + chr(0x16EBB), "stra" + chr(0xDF) + "e", chr(0x1F1) + "x"]]
+    users += [json.loads(text) for text in raw_users]
+    groups += [json.loads(text) for text in raw_groups]
+    members += [json.loads(text) for text in raw_members]
+
+    text_fields = {"primary_email", "given_name", "family_name", "org_unit_path", "title", "department", "location",
+                   "phone", "recovery_email", "last_login_time", "email", "name", "description", "role",
+                   "member_type", "status"}
+
     def fields(model) -> dict:
         found = dataclasses.asdict(model)
         found.pop("raw")
+        # GamGUI keeps a value that isn't text as it came (an OU of 5) and its pages print str() of it.
+        for key in text_fields & found.keys():
+            if found[key] is not None and not isinstance(found[key], str):
+                found[key] = str(found[key])
         if isinstance(model, GAMUser):
             found["full_name"] = model.full_name
         return found
 
+    # Records go in as JSON text, read back through the Swift JSON reader: a number keeps the form it
+    # was written in (1.50, 1E2), which is what str() of it depends on.
+    texts = {id(r): t for r, t in zip(users[-len(raw_users):], raw_users)} | \
+        {id(r): t for r, t in zip(groups[-len(raw_groups):], raw_groups)} | \
+        {id(r): t for r, t in zip(members[-len(raw_members):], raw_members)}
+
+    def entry(record, model) -> dict:
+        return {"record": texts.get(id(record)) or json.dumps(record), "model": fields(model)}
+
     return {
-        "users": [{"record": r, "model": fields(GAMUser.from_json(r))} for r in users],
-        "groups": [{"record": r, "model": fields(GAMGroup.from_json(r))} for r in groups],
-        "members": [{"record": r, "model": fields(GroupMember.from_json(r))} for r in members],
+        "constants": {"PY_UPPER": [[p, [ord(c) for c in chr(p).upper()]] for p in range(0x110000)
+                                   if chr(p).upper() != chr(p)]},
+        "users": [entry(r, GAMUser.from_json(r)) for r in users],
+        "groups": [entry(r, GAMGroup.from_json(r)) for r in groups],
+        "members": [entry(r, GroupMember.from_json(r)) for r in members],
     }
 
 
