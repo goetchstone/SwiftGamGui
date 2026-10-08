@@ -17,6 +17,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   seeded variants.
   Tests/Fixtures/guard.json       GamGUI's guard (evaluate, enforce, alias_deletes) over seeded change
                                   sets and confirmations.
+  Tests/Fixtures/audit.json       GamGUI's audit log: the line each record writes, and what its reader
+                                  finds across generations.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -658,6 +660,62 @@ def guard_fixture() -> dict:
     return {"constants": {"DEFAULT_BULK_THRESHOLD": guard.DEFAULT_BULK_THRESHOLD, "DEFAULT_HARD_CAP": guard.DEFAULT_HARD_CAP,
                           "COUNT_CONFIRM_ABOVE": guard.COUNT_CONFIRM_ABOVE, "TYPED_WORD": guard.TYPED_WORD},
             "cases": cases, "aliases": aliases}
+def audit_fixture() -> dict:
+    """GamGUI's AuditLog.record, at fixed times, writing real files: the exact line each call writes
+    (redaction by keyword and by value included). And its iter_records over generations holding
+    blank and malformed lines: the records, newest first."""
+    import tempfile
+    from datetime import datetime, timezone
+    from unittest import mock
+
+    from gamgui.core import audit
+
+    calls = [
+        dict(action="create_user", target="new@example.com",
+             argv=["create", "user", "new@example.com", "lastname", "Password", "password", "S3cret-pw",
+                   "notify", "boss@example.com", "notifypassword", "S3cret-pw"],
+             ok=True, exit_code=0, secrets=["S3cret-pw"]),
+        dict(action="set_signature", target="a@example.com", argv=["user", "a@example.com", "signature", "<b>Hi</b>", "html"],
+             ok=False, exit_code=50, actor="admin@example.com",
+             extra={"error": "line\nbreak \"quoted\" back\\slash", "n": 3, "f": 1.5, "big": 1e16, "none": None,
+                    "flags": [True, False], "nested": {"k": ["v", 2]}}),
+        dict(action="suspend", target="Zo" + chr(0xEB) + "@example.com", argv=None, ok=None,
+             extra={"controls": "".join(chr(c) for c in range(0, 32)) + chr(0x7F) + chr(0x2028) + chr(0x85)}),
+        dict(action="delete_user", target="abcd@example.com", argv=["delete", "user", "abcd@example.com"],
+             ok=True, exit_code=0, secrets=["abc", "abcd", "bc", "", "cd@"]),
+        dict(action="x", connector="mdm", target=None, argv=[], extra={}, secrets=["x"]),
+        dict(action="recovery", argv=["update", "user", "a@example.com", "RecoveryEmail", "me@home.example",
+                                      "recoveryphone", "+1 555", "PASSWORD"], exit_code=-9, ok=False),
+    ]
+    times = [datetime(2026, 10, 8, 12, 0, 0, 0, tzinfo=timezone.utc),
+             datetime(2026, 10, 8, 12, 0, 0, 123456, tzinfo=timezone.utc),
+             datetime(1999, 12, 31, 23, 59, 59, 1, tzinfo=timezone.utc),
+             datetime(2028, 2, 29, 0, 0, 0, 500000, tzinfo=timezone.utc),
+             datetime(2026, 10, 8, 12, 0, 0, 999999, tzinfo=timezone.utc),
+             datetime(2000, 1, 1, tzinfo=timezone.utc)]
+    written = []
+    with tempfile.TemporaryDirectory() as folder:
+        log = audit.AuditLog(Path(folder) / "audit.jsonl")
+        for call, at in zip(calls, times, strict=True):
+            with mock.patch.object(audit, "datetime", mock.Mock(now=lambda tz=None, at=at: at)):
+                log.record(**call)
+            written.append({"call": {**call, "ts": at.isoformat()},
+                            # "\n" only: a record keeps U+2028 raw, and splitlines() would break it there.
+                            "line": (Path(folder) / "audit.jsonl").read_text().split("\n")[-2]})
+        files = {
+            "audit.jsonl": '{"action": "newest", "ts": "3"}\n\n   \nnot json\n["a list"]\n{"action": "second", "ts": "2"}\n',
+            "audit.jsonl.1": '{"action": "third"}\n{"action": "fourth"}',
+            "audit.jsonl.2": '{"action": "fifth", "note": "' + "x" * 70000 + '"}\n{"broken": \n{"action": "sixth"}\n',
+            "audit.jsonl.4": '{"action": "after a gap"}\n',
+        }
+        reader = Path(folder) / "reader"
+        reader.mkdir()
+        for name, text in files.items():
+            (reader / name).write_text(text)
+        read = list(audit.iter_records(reader / "audit.jsonl"))
+        limited = list(audit.iter_records(reader / "audit.jsonl", limit=3))
+    return {"written": written, "files": files, "records": read, "limited": limited,
+            "constants": {"MAX_LOG_BYTES": audit.MAX_LOG_BYTES, "RETENTION_GENERATIONS": audit.RETENTION_GENERATIONS}}
 
 
 def main() -> int:
@@ -839,6 +897,11 @@ def main() -> int:
     guard_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | guard_fixture()
     (OUT / "guard.json").write_text(json.dumps(guard_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"guard.json: {len(guard_doc['cases'])} cases")
+
+    # The audit log: the line each record writes, and the records a reader finds across generations.
+    audit_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_fixture()
+    (OUT / "audit.json").write_text(json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"audit.json: {len(audit_doc['written'])} records, {len(audit_doc['records'])} read back")
     return 0
 
 

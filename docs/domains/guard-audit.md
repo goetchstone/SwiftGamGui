@@ -29,6 +29,25 @@ a write.
   - A third of the sets share one risk: with mixed risks, ten changes almost always included a
     destructive one, and a mutant that dropped the rule for an all-LOW bulk change survived.
 
+## Built: the audit log (phase 2, slice 2)
+`Packages/GamKit/Sources/ChangeCore/AuditLog.swift` ports GamGUI's `core/audit.py`, in its format.
+- **Format:** one JSON object per line with `ts`, `connector`, `action`, `target`, the redacted `argv`,
+  `exit_code`, `ok`, `actor` and an optional `extra`. It is written as Python's `json.dumps` writes it,
+  so the Audit screen reads both apps' logs alike.
+- **Redaction**, two layers:
+  - the value after a sensitive keyword (`ArgvRedaction`);
+  - then every occurrence of each secret the caller passes, anywhere in the record, longest first.
+
+  The second exists because the first can be shifted: a hire surnamed "Password" (GamGUI failure-log
+  2026-09-23).
+- **The file:** 0600, never written through a link (`O_NOFOLLOW`). It rolls past 16 MiB, shifting
+  generations oldest first and keeping ten.
+- **Reading:** newest-first across generations, every one opened before any is read (a roll
+  mid-read can't make a reader repeat or skip one). Blank and malformed lines are skipped.
+- **Parity:** `AuditLogTests` holds the written lines byte for byte to `Tests/Fixtures/audit.json`,
+  GamGUI's own `record` at fixed times (control characters, raw U+2028, overlapping secrets,
+  microseconds left out when zero), and the reader to its `iter_records`. Eight mutants fail.
+
 ## Failure history (GamGUI) the guard carries
 - Five routes ran a write on a bare POST because only their pages asked (2026-09-23): the executor,
   not a screen, calls `refusal`.
@@ -38,4 +57,4 @@ a write.
 
 ## Not built yet
 The held preview (exact argv, digest, tenant, generation, origin, expiry, single use), the executor
-and its ticket, the begin/end audit log, multi-step plans, and the source-scan test.
+and its ticket (which writes the begin and end records), multi-step plans, and the source-scan test.
