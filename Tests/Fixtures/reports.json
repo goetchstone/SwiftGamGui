@@ -1,0 +1,4624 @@
+{
+ "source": {
+  "gamgui_commit": "834493c",
+  "generator": "scripts/gen_fixtures.py"
+ },
+ "now": "2026-10-08T12:00:00+00:00",
+ "inactive_days": 90,
+ "records": [
+  {
+   "primaryEmail": "alice@example.com",
+   "name": {
+    "givenName": "Alice",
+    "familyName": "Anders"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-06-18T08:00:00Z",
+   "recoveryEmail": "alice.personal@example.org",
+   "aliases": [
+    "a.anders@example.com"
+   ],
+   "locations": [
+    {
+     "buildingName": "HQ",
+     "type": "desk",
+     "primary": true
+    }
+   ],
+   "organizations": [
+    {
+     "title": "IT Director",
+     "department": "IT",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "bob@example.com",
+   "name": {
+    "givenName": "Bob",
+    "familyName": "Brown"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2025-12-01T08:00:00Z",
+   "organizations": [
+    {
+     "title": "Sales Lead",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "carol@example.com",
+   "name": {
+    "givenName": "Carol",
+    "familyName": "Clark"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Students",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z"
+  },
+  {
+   "primaryEmail": "alice@example.com",
+   "name": {
+    "givenName": "Alice",
+    "familyName": "Anders"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-06-18T08:00:00Z",
+   "recoveryEmail": "alice.personal@example.org",
+   "aliases": [
+    "a.anders@example.com"
+   ],
+   "locations": [
+    {
+     "buildingName": "HQ",
+     "type": "desk",
+     "primary": true
+    }
+   ],
+   "organizations": [
+    {
+     "title": "IT Director",
+     "department": "IT",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "bob@example.com",
+   "name": {
+    "givenName": "Bob",
+    "familyName": "Brown"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2025-12-01T08:00:00Z",
+   "organizations": [
+    {
+     "title": "Sales Lead",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "carol@example.com",
+   "name": {
+    "givenName": "Carol",
+    "familyName": "Clark"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Students",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z"
+  },
+  {
+   "primaryEmail": "user0@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user1@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user2@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user3@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user4@example.com",
+   "suspended": false,
+   "isAdmin": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user5@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "not a date",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user6@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user7@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "false",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user8@example.com",
+   "suspended": "",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user9@example.com",
+   "suspended": "true",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user10@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "Never",
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user11@example.com",
+   "isAdmin": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "false",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user12@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user13@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "not a date",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user14@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user15@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user16@example.com",
+   "suspended": "",
+   "isAdmin": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user17@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user18@example.com",
+   "suspended": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user19@example.com",
+   "suspended": true,
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user20@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user21@example.com",
+   "suspended": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user22@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user23@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user24@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "Never",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user25@example.com",
+   "suspended": false,
+   "isAdmin": false,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user26@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": null,
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user27@example.com",
+   "suspended": "",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user28@example.com",
+   "suspended": "true",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "Never",
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user29@example.com",
+   "suspended": "true",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "recoveryEmail": "me@home.example",
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user30@example.com",
+   "suspended": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user31@example.com",
+   "suspended": "",
+   "isAdmin": "false",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "Never",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user32@example.com",
+   "suspended": "false",
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user33@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user34@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user35@example.com",
+   "suspended": "true",
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "not a date",
+   "recoveryEmail": null,
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user36@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "Never",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user37@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": null,
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user38@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "",
+   "recoveryEmail": "",
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user39@example.com",
+   "suspended": "",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user40@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "me@home.example",
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user41@example.com",
+   "suspended": "true",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user42@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "Never"
+  },
+  {
+   "primaryEmail": "user43@example.com",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user44@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "false",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user45@example.com",
+   "suspended": "false",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user46@example.com",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user47@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user48@example.com",
+   "suspended": "",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user49@example.com",
+   "suspended": "",
+   "isAdmin": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user50@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user51@example.com",
+   "suspended": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user52@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user53@example.com",
+   "suspended": "",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user54@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user55@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user56@example.com",
+   "suspended": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "Never",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user57@example.com",
+   "isAdmin": "",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user58@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "true"
+  },
+  {
+   "primaryEmail": "user59@example.com",
+   "suspended": "true",
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user60@example.com",
+   "suspended": "true",
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user61@example.com",
+   "suspended": "true",
+   "isAdmin": "false",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user62@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "lastLoginTime": null,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user63@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user64@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": "Never",
+   "recoveryEmail": ""
+  },
+  {
+   "primaryEmail": "user65@example.com",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user66@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user67@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user68@example.com",
+   "suspended": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user69@example.com",
+   "suspended": "true",
+   "isAdmin": true,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user70@example.com",
+   "suspended": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user71@example.com",
+   "suspended": "",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user72@example.com",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user73@example.com",
+   "suspended": false,
+   "isAdmin": false,
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user74@example.com",
+   "isAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user75@example.com",
+   "suspended": false,
+   "isAdmin": "true",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "Never",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user76@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user77@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30 08:00:00"
+  },
+  {
+   "primaryEmail": "user78@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user79@example.com",
+   "suspended": "true",
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user80@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user81@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user82@example.com",
+   "suspended": true,
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "not a date",
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user83@example.com",
+   "suspended": true,
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user84@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user85@example.com",
+   "suspended": false,
+   "isAdmin": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user86@example.com",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user87@example.com",
+   "suspended": "true",
+   "isAdmin": "",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user88@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user89@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "not a date",
+   "recoveryEmail": null,
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user90@example.com",
+   "suspended": "false",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user91@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z"
+  },
+  {
+   "primaryEmail": "user92@example.com",
+   "suspended": "false",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user93@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user94@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user95@example.com",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user96@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user97@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user98@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30",
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user99@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user100@example.com",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user101@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user102@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user103@example.com",
+   "suspended": "",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user104@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "recoveryEmail": null,
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user105@example.com",
+   "suspended": "",
+   "isAdmin": "",
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": "Never",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user106@example.com",
+   "isAdmin": "false",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user107@example.com",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": null,
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user108@example.com",
+   "isDelegatedAdmin": "true",
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user109@example.com",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user110@example.com",
+   "suspended": false,
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user111@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "not a date",
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user112@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user113@example.com",
+   "suspended": false,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user114@example.com",
+   "suspended": true,
+   "isAdmin": "false",
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user115@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user116@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user117@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user118@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "not a date",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user119@example.com",
+   "suspended": false,
+   "isAdmin": "",
+   "lastLoginTime": "",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user120@example.com",
+   "suspended": false,
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user121@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user122@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user123@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user124@example.com",
+   "suspended": "",
+   "isAdmin": "true",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user125@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user126@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user127@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "",
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user128@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user129@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user130@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": true,
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user131@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user132@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user133@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user134@example.com",
+   "suspended": false,
+   "isAdmin": "",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user135@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "",
+   "recoveryEmail": "me@home.example",
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user136@example.com",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user137@example.com",
+   "suspended": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user138@example.com",
+   "suspended": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user139@example.com",
+   "suspended": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user140@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "lastLoginTime": "not a date",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user141@example.com",
+   "suspended": "",
+   "isEnrolledIn2Sv": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user142@example.com",
+   "suspended": false,
+   "isAdmin": true,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user143@example.com",
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "false",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user144@example.com",
+   "suspended": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user145@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user146@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": false,
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user147@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user148@example.com",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user149@example.com",
+   "suspended": "true",
+   "isAdmin": "false",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user150@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "Never",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user151@example.com",
+   "suspended": true,
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user152@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user153@example.com",
+   "suspended": false,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user154@example.com",
+   "suspended": true,
+   "isAdmin": true,
+   "isDelegatedAdmin": true,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user155@example.com",
+   "suspended": "",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "Never",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user156@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user157@example.com",
+   "suspended": "true",
+   "isAdmin": false,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user158@example.com",
+   "suspended": "true",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user159@example.com",
+   "suspended": false,
+   "isAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user160@example.com",
+   "suspended": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "Never",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": null,
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user161@example.com",
+   "suspended": false,
+   "isAdmin": true,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": true,
+   "recoveryEmail": null,
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user162@example.com",
+   "suspended": "true",
+   "isDelegatedAdmin": "false",
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user163@example.com",
+   "suspended": false,
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": null,
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user164@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user165@example.com",
+   "suspended": "",
+   "isAdmin": "",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user166@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "lastLoginTime": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user167@example.com",
+   "suspended": "",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user168@example.com",
+   "isAdmin": false,
+   "isDelegatedAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user169@example.com",
+   "suspended": "false",
+   "isAdmin": "true",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user170@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user171@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user172@example.com",
+   "suspended": "",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "not a date",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user173@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": null,
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user174@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "Never",
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user175@example.com",
+   "suspended": "true",
+   "isAdmin": "true",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "Never"
+  },
+  {
+   "primaryEmail": "user176@example.com",
+   "suspended": "false",
+   "isAdmin": false,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": true,
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user177@example.com",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user178@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "not a date",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user179@example.com",
+   "suspended": "false",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "2026-09-30 08:00:00",
+   "organizations": [
+    {
+     "title": null,
+     "department": "Sales",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user180@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": false,
+   "phones": [
+    {
+     "value": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user181@example.com",
+   "suspended": "false",
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user182@example.com",
+   "suspended": "true",
+   "isAdmin": "",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": "",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user183@example.com",
+   "isAdmin": true,
+   "isDelegatedAdmin": "false",
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user184@example.com",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00.000Z",
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user185@example.com",
+   "suspended": "true",
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "lastLoginTime": null,
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user186@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": "  "
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user187@example.com",
+   "isDelegatedAdmin": true,
+   "isEnrolledIn2Sv": "true",
+   "lastLoginTime": "",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user188@example.com",
+   "isAdmin": "false",
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": null,
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user189@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": " 2026-10-01T09:30:00Z ",
+   "recoveryEmail": "",
+   "phones": [
+    {
+     "value": "Sales"
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user190@example.com",
+   "suspended": true,
+   "isEnrolledIn2Sv": false,
+   "organizations": [
+    {
+     "title": null,
+     "department": null,
+     "primary": true
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user191@example.com",
+   "suspended": false,
+   "isAdmin": "false",
+   "lastLoginTime": "2026-10-01T09:30:00.000Z",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user192@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": "",
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z"
+  },
+  {
+   "primaryEmail": "user193@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "Never",
+   "recoveryEmail": "me@home.example",
+   "organizations": [
+    {
+     "title": "Sales",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user194@example.com",
+   "suspended": "",
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-07-10T11:59:59Z",
+   "recoveryEmail": "",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "Sales",
+     "primary": true
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": "  "
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user195@example.com",
+   "suspended": "false",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T23:00:00+02:00",
+   "recoveryEmail": "me@home.example"
+  },
+  {
+   "primaryEmail": "user196@example.com",
+   "suspended": true,
+   "isAdmin": "",
+   "isDelegatedAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-09-30",
+   "recoveryEmail": null,
+   "organizations": [
+    {
+     "title": "  ",
+     "department": "",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user197@example.com",
+   "isAdmin": "",
+   "isEnrolledIn2Sv": "false",
+   "lastLoginTime": "2026-07-10T12:00:00Z",
+   "organizations": [
+    {
+     "title": "",
+     "department": "  ",
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": ""
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user198@example.com",
+   "suspended": "true",
+   "isAdmin": true,
+   "isDelegatedAdmin": "true",
+   "isEnrolledIn2Sv": false,
+   "locations": [
+    {
+     "buildingName": ""
+    }
+   ]
+  },
+  {
+   "primaryEmail": "user199@example.com",
+   "isAdmin": false,
+   "isDelegatedAdmin": "",
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-09-30T08:00:00.123456Z",
+   "organizations": [
+    {
+     "title": "  ",
+     "department": null,
+     "primary": true
+    }
+   ],
+   "phones": [
+    {
+     "value": null
+    }
+   ],
+   "locations": [
+    {
+     "buildingName": null
+    }
+   ]
+  }
+ ],
+ "reports": [
+  {
+   "key": "no_2sv",
+   "title": "No 2-step verification",
+   "description": "Active users not enrolled in 2SV \u2014 a real security gap.",
+   "members": [
+    "carol@example.com",
+    "carol@example.com",
+    "user0@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user6@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user11@example.com",
+    "user16@example.com",
+    "user18@example.com",
+    "user20@example.com",
+    "user23@example.com",
+    "user25@example.com",
+    "user26@example.com",
+    "user27@example.com",
+    "user30@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user45@example.com",
+    "user53@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user63@example.com",
+    "user64@example.com",
+    "user65@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user77@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user90@example.com",
+    "user93@example.com",
+    "user95@example.com",
+    "user96@example.com",
+    "user100@example.com",
+    "user102@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user106@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user113@example.com",
+    "user115@example.com",
+    "user119@example.com",
+    "user120@example.com",
+    "user123@example.com",
+    "user126@example.com",
+    "user129@example.com",
+    "user132@example.com",
+    "user133@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user142@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user163@example.com",
+    "user165@example.com",
+    "user166@example.com",
+    "user167@example.com",
+    "user170@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user177@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user188@example.com",
+    "user191@example.com",
+    "user194@example.com",
+    "user197@example.com"
+   ]
+  },
+  {
+   "key": "inactive",
+   "title": "Inactive (90+ days)",
+   "description": "Active users with no recent (or any) login.",
+   "members": [
+    "alice@example.com",
+    "carol@example.com",
+    "alice@example.com",
+    "carol@example.com",
+    "user0@example.com",
+    "user7@example.com",
+    "user11@example.com",
+    "user16@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user24@example.com",
+    "user26@example.com",
+    "user27@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user42@example.com",
+    "user43@example.com",
+    "user46@example.com",
+    "user47@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user62@example.com",
+    "user64@example.com",
+    "user65@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user75@example.com",
+    "user78@example.com",
+    "user90@example.com",
+    "user92@example.com",
+    "user93@example.com",
+    "user96@example.com",
+    "user103@example.com",
+    "user105@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user115@example.com",
+    "user117@example.com",
+    "user119@example.com",
+    "user123@example.com",
+    "user126@example.com",
+    "user130@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user143@example.com",
+    "user147@example.com",
+    "user155@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user163@example.com",
+    "user166@example.com",
+    "user167@example.com",
+    "user168@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user176@example.com",
+    "user177@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user188@example.com",
+    "user193@example.com",
+    "user194@example.com"
+   ]
+  },
+  {
+   "key": "admins",
+   "title": "Administrators",
+   "description": "Accounts with super or delegated admin privileges.",
+   "members": [
+    "alice@example.com",
+    "alice@example.com",
+    "user0@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user15@example.com",
+    "user16@example.com",
+    "user18@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user25@example.com",
+    "user26@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user45@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user64@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user78@example.com",
+    "user84@example.com",
+    "user85@example.com",
+    "user90@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user93@example.com",
+    "user95@example.com",
+    "user96@example.com",
+    "user102@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user115@example.com",
+    "user120@example.com",
+    "user124@example.com",
+    "user126@example.com",
+    "user129@example.com",
+    "user133@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user142@example.com",
+    "user143@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user153@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user163@example.com",
+    "user165@example.com",
+    "user167@example.com",
+    "user169@example.com",
+    "user170@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user180@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user188@example.com",
+    "user193@example.com",
+    "user194@example.com"
+   ]
+  },
+  {
+   "key": "no_recovery",
+   "title": "No recovery info",
+   "description": "Active users without a recovery email set.",
+   "members": [
+    "carol@example.com",
+    "carol@example.com",
+    "user0@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user6@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user11@example.com",
+    "user16@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user25@example.com",
+    "user27@example.com",
+    "user30@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user42@example.com",
+    "user43@example.com",
+    "user45@example.com",
+    "user46@example.com",
+    "user47@example.com",
+    "user48@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user55@example.com",
+    "user57@example.com",
+    "user63@example.com",
+    "user64@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user77@example.com",
+    "user84@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user90@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user96@example.com",
+    "user100@example.com",
+    "user102@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user106@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user115@example.com",
+    "user117@example.com",
+    "user120@example.com",
+    "user123@example.com",
+    "user124@example.com",
+    "user126@example.com",
+    "user129@example.com",
+    "user130@example.com",
+    "user132@example.com",
+    "user133@example.com",
+    "user134@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user142@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user153@example.com",
+    "user155@example.com",
+    "user161@example.com",
+    "user163@example.com",
+    "user166@example.com",
+    "user167@example.com",
+    "user168@example.com",
+    "user169@example.com",
+    "user170@example.com",
+    "user172@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user177@example.com",
+    "user179@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user187@example.com",
+    "user189@example.com",
+    "user194@example.com",
+    "user197@example.com",
+    "user199@example.com"
+   ]
+  },
+  {
+   "key": "suspended",
+   "title": "Suspended",
+   "description": "Accounts currently suspended (sign-in blocked).",
+   "members": [
+    "bob@example.com",
+    "bob@example.com",
+    "user2@example.com",
+    "user3@example.com",
+    "user5@example.com",
+    "user9@example.com",
+    "user10@example.com",
+    "user12@example.com",
+    "user13@example.com",
+    "user14@example.com",
+    "user19@example.com",
+    "user22@example.com",
+    "user28@example.com",
+    "user29@example.com",
+    "user33@example.com",
+    "user34@example.com",
+    "user35@example.com",
+    "user36@example.com",
+    "user38@example.com",
+    "user41@example.com",
+    "user44@example.com",
+    "user50@example.com",
+    "user51@example.com",
+    "user52@example.com",
+    "user54@example.com",
+    "user56@example.com",
+    "user58@example.com",
+    "user59@example.com",
+    "user60@example.com",
+    "user61@example.com",
+    "user66@example.com",
+    "user67@example.com",
+    "user69@example.com",
+    "user79@example.com",
+    "user80@example.com",
+    "user81@example.com",
+    "user82@example.com",
+    "user83@example.com",
+    "user87@example.com",
+    "user88@example.com",
+    "user89@example.com",
+    "user94@example.com",
+    "user97@example.com",
+    "user98@example.com",
+    "user99@example.com",
+    "user101@example.com",
+    "user112@example.com",
+    "user114@example.com",
+    "user116@example.com",
+    "user118@example.com",
+    "user121@example.com",
+    "user122@example.com",
+    "user125@example.com",
+    "user127@example.com",
+    "user128@example.com",
+    "user131@example.com",
+    "user139@example.com",
+    "user144@example.com",
+    "user146@example.com",
+    "user149@example.com",
+    "user150@example.com",
+    "user151@example.com",
+    "user152@example.com",
+    "user154@example.com",
+    "user156@example.com",
+    "user157@example.com",
+    "user158@example.com",
+    "user160@example.com",
+    "user162@example.com",
+    "user164@example.com",
+    "user175@example.com",
+    "user178@example.com",
+    "user182@example.com",
+    "user185@example.com",
+    "user190@example.com",
+    "user192@example.com",
+    "user196@example.com",
+    "user198@example.com"
+   ]
+  },
+  {
+   "key": "no_title",
+   "title": "No job title",
+   "description": "Active users with no title set \u2014 needed for role-based signatures.",
+   "members": [
+    "carol@example.com",
+    "carol@example.com",
+    "user0@example.com",
+    "user6@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user15@example.com",
+    "user16@example.com",
+    "user17@example.com",
+    "user18@example.com",
+    "user20@example.com",
+    "user23@example.com",
+    "user24@example.com",
+    "user25@example.com",
+    "user26@example.com",
+    "user27@example.com",
+    "user30@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user42@example.com",
+    "user43@example.com",
+    "user46@example.com",
+    "user47@example.com",
+    "user48@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user55@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user64@example.com",
+    "user65@example.com",
+    "user68@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user77@example.com",
+    "user78@example.com",
+    "user84@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user90@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user93@example.com",
+    "user95@example.com",
+    "user100@example.com",
+    "user103@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user106@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user115@example.com",
+    "user117@example.com",
+    "user119@example.com",
+    "user120@example.com",
+    "user123@example.com",
+    "user124@example.com",
+    "user126@example.com",
+    "user130@example.com",
+    "user132@example.com",
+    "user133@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user148@example.com",
+    "user153@example.com",
+    "user155@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user163@example.com",
+    "user165@example.com",
+    "user167@example.com",
+    "user169@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user176@example.com",
+    "user177@example.com",
+    "user179@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user189@example.com",
+    "user191@example.com",
+    "user194@example.com",
+    "user195@example.com",
+    "user197@example.com",
+    "user199@example.com"
+   ]
+  },
+  {
+   "key": "no_department",
+   "title": "No department",
+   "description": "Active users with no department set.",
+   "members": [
+    "carol@example.com",
+    "carol@example.com",
+    "user0@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user8@example.com",
+    "user15@example.com",
+    "user16@example.com",
+    "user17@example.com",
+    "user18@example.com",
+    "user20@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user24@example.com",
+    "user25@example.com",
+    "user26@example.com",
+    "user27@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user42@example.com",
+    "user43@example.com",
+    "user45@example.com",
+    "user47@example.com",
+    "user48@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user55@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user63@example.com",
+    "user64@example.com",
+    "user65@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user77@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user90@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user95@example.com",
+    "user96@example.com",
+    "user100@example.com",
+    "user102@example.com",
+    "user103@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user113@example.com",
+    "user117@example.com",
+    "user123@example.com",
+    "user129@example.com",
+    "user130@example.com",
+    "user132@example.com",
+    "user133@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user142@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user153@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user165@example.com",
+    "user168@example.com",
+    "user169@example.com",
+    "user170@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user176@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user188@example.com",
+    "user189@example.com",
+    "user191@example.com",
+    "user193@example.com",
+    "user195@example.com",
+    "user197@example.com",
+    "user199@example.com"
+   ]
+  },
+  {
+   "key": "no_phone",
+   "title": "No phone",
+   "description": "Active users with no work phone set.",
+   "members": [
+    "alice@example.com",
+    "carol@example.com",
+    "alice@example.com",
+    "carol@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user6@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user15@example.com",
+    "user16@example.com",
+    "user17@example.com",
+    "user18@example.com",
+    "user20@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user24@example.com",
+    "user27@example.com",
+    "user30@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user42@example.com",
+    "user43@example.com",
+    "user45@example.com",
+    "user46@example.com",
+    "user47@example.com",
+    "user48@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user55@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user63@example.com",
+    "user64@example.com",
+    "user68@example.com",
+    "user70@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user77@example.com",
+    "user78@example.com",
+    "user84@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user95@example.com",
+    "user100@example.com",
+    "user102@example.com",
+    "user103@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user106@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user113@example.com",
+    "user115@example.com",
+    "user117@example.com",
+    "user119@example.com",
+    "user120@example.com",
+    "user123@example.com",
+    "user124@example.com",
+    "user126@example.com",
+    "user129@example.com",
+    "user130@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user153@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user165@example.com",
+    "user166@example.com",
+    "user167@example.com",
+    "user169@example.com",
+    "user170@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user174@example.com",
+    "user176@example.com",
+    "user177@example.com",
+    "user179@example.com",
+    "user180@example.com",
+    "user183@example.com",
+    "user184@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user188@example.com",
+    "user191@example.com",
+    "user193@example.com",
+    "user194@example.com",
+    "user195@example.com",
+    "user197@example.com",
+    "user199@example.com"
+   ]
+  },
+  {
+   "key": "no_location",
+   "title": "No location",
+   "description": "Active users with no location set.",
+   "members": [
+    "carol@example.com",
+    "carol@example.com",
+    "user1@example.com",
+    "user4@example.com",
+    "user7@example.com",
+    "user8@example.com",
+    "user11@example.com",
+    "user15@example.com",
+    "user16@example.com",
+    "user17@example.com",
+    "user20@example.com",
+    "user21@example.com",
+    "user23@example.com",
+    "user25@example.com",
+    "user26@example.com",
+    "user27@example.com",
+    "user30@example.com",
+    "user31@example.com",
+    "user32@example.com",
+    "user37@example.com",
+    "user39@example.com",
+    "user40@example.com",
+    "user42@example.com",
+    "user45@example.com",
+    "user47@example.com",
+    "user48@example.com",
+    "user49@example.com",
+    "user53@example.com",
+    "user55@example.com",
+    "user57@example.com",
+    "user62@example.com",
+    "user63@example.com",
+    "user64@example.com",
+    "user65@example.com",
+    "user70@example.com",
+    "user71@example.com",
+    "user72@example.com",
+    "user73@example.com",
+    "user74@example.com",
+    "user75@example.com",
+    "user76@example.com",
+    "user77@example.com",
+    "user78@example.com",
+    "user84@example.com",
+    "user85@example.com",
+    "user86@example.com",
+    "user90@example.com",
+    "user91@example.com",
+    "user92@example.com",
+    "user93@example.com",
+    "user95@example.com",
+    "user96@example.com",
+    "user100@example.com",
+    "user103@example.com",
+    "user104@example.com",
+    "user105@example.com",
+    "user106@example.com",
+    "user107@example.com",
+    "user108@example.com",
+    "user109@example.com",
+    "user110@example.com",
+    "user111@example.com",
+    "user113@example.com",
+    "user115@example.com",
+    "user117@example.com",
+    "user123@example.com",
+    "user124@example.com",
+    "user129@example.com",
+    "user130@example.com",
+    "user132@example.com",
+    "user133@example.com",
+    "user134@example.com",
+    "user135@example.com",
+    "user136@example.com",
+    "user137@example.com",
+    "user138@example.com",
+    "user140@example.com",
+    "user141@example.com",
+    "user143@example.com",
+    "user145@example.com",
+    "user147@example.com",
+    "user148@example.com",
+    "user159@example.com",
+    "user161@example.com",
+    "user163@example.com",
+    "user165@example.com",
+    "user166@example.com",
+    "user167@example.com",
+    "user169@example.com",
+    "user170@example.com",
+    "user171@example.com",
+    "user172@example.com",
+    "user173@example.com",
+    "user174@example.com",
+    "user176@example.com",
+    "user177@example.com",
+    "user179@example.com",
+    "user180@example.com",
+    "user181@example.com",
+    "user183@example.com",
+    "user186@example.com",
+    "user187@example.com",
+    "user188@example.com",
+    "user189@example.com",
+    "user191@example.com",
+    "user193@example.com",
+    "user194@example.com",
+    "user195@example.com",
+    "user197@example.com",
+    "user199@example.com"
+   ]
+  }
+ ]
+}

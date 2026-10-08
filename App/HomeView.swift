@@ -53,8 +53,10 @@ struct HomeView: View {
     @ViewBuilder private var directorySection: some View {
         if let users = directory.users {
             LabeledContent("Accounts", value: users.count.formatted())
-            LabeledContent("Suspended", value: users.suspendedCount.formatted())
-            LabeledContent("Admins", value: users.adminCount.formatted())
+            ForEach(directory.reports ?? []) { report in
+                LabeledContent(report.title, value: report.count.formatted())
+                    .help(report.description)
+            }
             LabeledContent("As of") {
                 HStack {
                     Text(directory.loadedAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "")

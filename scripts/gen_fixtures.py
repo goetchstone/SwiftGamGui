@@ -19,6 +19,7 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   sets and confirmations.
   Tests/Fixtures/audit.json       GamGUI's audit log: the line each record writes, and what its reader
                                   finds across generations.
+  Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -716,6 +717,44 @@ def audit_fixture() -> dict:
         limited = list(audit.iter_records(reader / "audit.jsonl", limit=3))
     return {"written": written, "files": files, "records": read, "limited": limited,
             "constants": {"MAX_LOG_BYTES": audit.MAX_LOG_BYTES, "RETENTION_GENERATIONS": audit.RETENTION_GENERATIONS}}
+def reports_fixture(mock: Path) -> dict:
+    """GamGUI's build_reports over the mock's users and seeded variants, at a fixed time: each report's
+    key, title and members in order. Logins are written the ways GAM writes them (and a few it doesn't)."""
+    import random
+    from datetime import datetime, timezone
+
+    from gamgui.core.gam.models import GAMUser
+    from gamgui.core.gam.parser import parse_records
+    from gamgui.core.reports import build_reports
+
+    now = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
+    records = [r for out in mock_outputs(mock)["print_users"] for r in parse_records(out)][:]
+    rng = random.Random(20261008)
+    logins = ["2026-10-01T09:30:00.000Z", "2026-07-10T12:00:00.000Z", "2026-07-10T11:59:59Z", "2026-07-10T12:00:00Z",
+              "1970-01-01T00:00:00.000Z", "2026-09-30T23:00:00+02:00", "2026-09-30", "2026-09-30 08:00:00",
+              "2026-09-30T08:00:00.123456Z", "Never", "", None, "not a date", " 2026-10-01T09:30:00Z "]
+    flags = [True, False, "true", "false", ""]
+    words = ["", "  ", "Sales", None]
+    for n in range(200):
+        record = {"primaryEmail": f"user{n}@example.com"}
+        for key in ("suspended", "isAdmin", "isDelegatedAdmin", "isEnrolledIn2Sv"):
+            if rng.random() < 0.8:
+                record[key] = rng.choice(flags)
+        if rng.random() < 0.8:
+            record["lastLoginTime"] = rng.choice(logins)
+        if rng.random() < 0.6:
+            record["recoveryEmail"] = rng.choice(["", "me@home.example", None])
+        if rng.random() < 0.7:
+            record["organizations"] = [{"title": rng.choice(words), "department": rng.choice(words), "primary": True}]
+        if rng.random() < 0.5:
+            record["phones"] = [{"value": rng.choice(words)}]
+        if rng.random() < 0.5:
+            record["locations"] = [{"buildingName": rng.choice(words)}]
+        records.append(record)
+    reports = build_reports([GAMUser.from_json(r) for r in records], now=now)
+    return {"now": now.isoformat(), "inactive_days": 90, "records": records,
+            "reports": [{"key": r.key, "title": r.title, "description": r.description,
+                         "members": [u.primary_email for u in r.users]} for r in reports]}
 
 
 def main() -> int:
@@ -902,6 +941,11 @@ def main() -> int:
     audit_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_fixture()
     (OUT / "audit.json").write_text(json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit.json: {len(audit_doc['written'])} records, {len(audit_doc['records'])} read back")
+    # The directory's reports over those users, as GamGUI's Home and Reports count them.
+    reports_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | reports_fixture(OUT / "mock_gam.sh")
+    (OUT / "reports.json").write_text(json.dumps(reports_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"reports.json: {len(reports_doc['records'])} users")
     return 0
 
 

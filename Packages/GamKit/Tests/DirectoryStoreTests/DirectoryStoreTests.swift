@@ -56,6 +56,7 @@ struct DirectoryStoreTests {
         #expect(users.map(\.primaryEmail) == mockUsers.map(\.primaryEmail))
         #expect(users.count > 2 && users.suspendedCount > 0 && users.adminCount > 0)
         #expect(store.loadedAt == Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(store.reports?.first { $0.key == "suspended" }?.count == users.suspendedCount)
     }
 
     @Test func anotherTenantNeverSeesTheList() async throws {

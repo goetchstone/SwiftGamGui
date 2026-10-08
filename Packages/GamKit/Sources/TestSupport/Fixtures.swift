@@ -20,6 +20,7 @@ public enum Fixtures {
     public static var gamModelsJSON: URL { directory.appending(path: "gam_models.json") }
     public static var guardJSON: URL { directory.appending(path: "guard.json") }
     public static var auditJSON: URL { directory.appending(path: "audit.json") }
+    public static var reportsJSON: URL { directory.appending(path: "reports.json") }
     public static var catalogJSON: URL { repoRoot.appending(path: "Vendor/gam7/command_catalog.json") }
     public static var fetchScript: URL { repoRoot.appending(path: "scripts/fetch_gam.sh") }
 

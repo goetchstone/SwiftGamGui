@@ -27,6 +27,7 @@ public final class DirectoryStore {
 
     private struct Snapshot {
         let users: [GamUser]
+        let reports: [DirectoryReport]
         let loadedAt: Date
         let domain: Domain
         let generation: Int
@@ -44,6 +45,8 @@ public final class DirectoryStore {
 
     /// The users, while they belong to the connected tenant.
     public var users: [GamUser]? { current?.users }
+    /// GamGUI's reports over those users, as of the load.
+    public var reports: [DirectoryReport]? { current?.reports }
 
     /// Why there are no users, while it still applies to the connected tenant.
     public var problem: Problem? {
@@ -75,18 +78,22 @@ public final class DirectoryStore {
         isLoading = true
         failure = nil
         defer { isLoading = false }
-        let outcome: Result<[GamUser], any Error>
+        let outcome: Result<([GamUser], [DirectoryReport], Date), any Error>
         do {
             let result = try await runner.run(argv, as: domain, timeout: GamRunner.domainWideTimeout)
-            // Parsing a large directory takes a while: not on the main actor.
-            outcome = .success(try await Task.detached { try Self.users(from: result, argv: argv) }.value)
+            // Parsing and counting a large directory takes a while: not on the main actor.
+            let now = now
+            outcome = .success(try await Task.detached {
+                let users = try Self.users(from: result, argv: argv), at = now()
+                return (users, DirectoryReport.build(users, now: at), at)
+            }.value)
         } catch {
             outcome = .failure(error)
         }
         guard setup.active == domain, setup.generation == generation else { return }
         switch outcome {
-        case .success(let users):
-            snapshot = Snapshot(users: users, loadedAt: now(), domain: domain, generation: generation)
+        case .success(let (users, reports, loadedAt)):
+            snapshot = Snapshot(users: users, reports: reports, loadedAt: loadedAt, domain: domain, generation: generation)
         case .failure(let error):
             failure = (Self.problem(for: error, argv: argv), domain, generation)
         }

@@ -36,6 +36,16 @@ they were loaded for; Home shows the connection, the bundled GAM and the directo
     directory (the wipe removes both; checked: nothing left), and creates `~/Downloads` if it's missing.
   - The real `gam version` takes about 6 s (PyInstaller start-up). Home shows "Checking…" meanwhile.
 
+## Reports
+`DirectoryReport.swift` ports GamGUI's `core/reports.py`: the nine report counts Home lists (no 2SV,
+inactive 90+ days, admins, no recovery, suspended, no title/department/phone/location). Suspended
+accounts form their own report; the others describe active accounts. They are counted once per load,
+off the main actor.
+- A login time is read as Python's `datetime.fromisoformat` reads the forms GAM prints (`ISOTime`).
+  Anything else is no date, so the account reads as inactive, as in GamGUI.
+- `DirectoryReportTests` holds the reports to `Tests/Fixtures/reports.json`: GamGUI's `build_reports`
+  over the mock's users and 200 seeded variants at a fixed time, with the 90-day boundary to the second.
+
 ## Testing / live status
 - Mock-tested through the strict mock's `print users`.
 - **Not live yet:** the first real load is the operator's, with Touch ID and an explicit go for a live
