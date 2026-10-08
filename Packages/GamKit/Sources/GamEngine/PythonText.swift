@@ -60,8 +60,9 @@ package enum PythonText {
         mapped(text) { $0.properties.uppercaseMapping }
     }
 
-    /// `str.lower()` in Python's Unicode version, without its final-sigma rule: used only to compare with
-    /// ASCII words (roles, flags, keywords), where that rule can't matter.
+    /// `str.lower()` in Python's Unicode version, without its final-sigma rule. It is used to compare
+    /// typed text: with ASCII words (roles, flags, keywords), where that rule can't matter, and in the
+    /// guard, where a Greek address ending in Σ then refuses where GamGUI would accept: the safe way.
     package static func lower(_ text: String) -> String {
         mapped(text) { $0.properties.lowercaseMapping }
     }
