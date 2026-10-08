@@ -33,15 +33,26 @@ enum AppServices {
             try? store.write(Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8), as: .oauth2, for: domain)
         }
         let vault = Vault(store: store)
-        let environment = ProcessInfo.processInfo.environment
-        let mock = environment[GamBinary.overrideVariable].map { URL(filePath: $0) }
-        let runner = mock.flatMap { binary -> AuthenticatedRunner? in
-            guard binary.lastPathComponent == "mock_gam.sh" else { return nil }
-            return (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
+        let runner = mockGam().flatMap { binary -> AuthenticatedRunner? in
+            (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
                 .map { AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: $0) }
         }
         return SetupModel(vault: vault, runner: runner,
                           gamgui: GamGUIKeychain { _, _ in nil })
+    }
+
+    /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a
+    /// link, and a script rather than a Mach-O. A name alone would let a link to the real gam take
+    /// placeholder or spike credentials to Google.
+    nonisolated static func mockGam(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL? {
+        guard let path = environment[GamBinary.overrideVariable], !path.isEmpty else { return nil }
+        let url = URL(filePath: path)
+        var info = stat()
+        guard url.lastPathComponent == "mock_gam.sh", lstat(path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
+              let handle = FileHandle(forReadingAtPath: path)
+        else { return nil }
+        defer { try? handle.close() }
+        return (try? handle.read(upToCount: 2)) == Data("#!".utf8) ? url : nil
     }
     #endif
 }

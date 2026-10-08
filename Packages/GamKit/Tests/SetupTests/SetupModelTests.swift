@@ -146,6 +146,87 @@ struct SetupModelTests {
         #expect(model.active == Domain("example.com")!)
     }
 
+    // MARK: review of PR #3
+
+    @Test func reImportingTheConnectedDomainDisconnectsItUntilChecked() async throws {
+        let model = model()
+        let example = Domain("example.com")!
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(example)
+        #expect(model.active == example)
+        await model.importFolder(try gamFolder(admin: "admin@other.org"), as: "example.com")
+        #expect(model.active == nil, "new credentials haven't passed a check")
+        #expect(model.lastCheck == nil, "the old check was of other credentials")
+        #expect(model.generation == 2)
+    }
+
+    @Test func anImportRefusedPartWayLeavesNoMixOfOldAndNew() async throws {
+        let model = model()
+        let example = Domain("example.com")!
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(example)
+        // The second write (the service key, after oauth2.txt) is refused.
+        store.failNext(.write, with: errSecUserCanceled, skipping: 1)
+        await model.importFolder(try gamFolder(admin: "admin@other.org"), as: "example.com")
+        #expect(model.domains.isEmpty, "a set is whole or absent")
+        #expect(try store.read(.oauth2, for: example) == nil)
+        #expect(try store.read(.oauth2Service, for: example) == nil)
+        #expect(model.active == nil)
+        #expect(model.activity == .problem(VaultError.keychain(errSecUserCanceled).guidance))
+    }
+
+    @Test func aDomainTheFailureLeftBehindIsStillListedSoItCanBeRemoved() async throws {
+        let model = model()
+        // The service key's write is refused, then so is the cleanup's first delete (the first delete
+        // overall is the absent client_secrets.json's), leaving oauth2.txt stored.
+        store.failNext(.write, with: errSecUserCanceled, skipping: 1)
+        store.failNext(.delete, with: errSecInteractionNotAllowed, skipping: 1)
+        await model.importFolder(try gamFolder(), as: "example.com")
+        #expect(model.activity == .problem(VaultError.keychain(errSecInteractionNotAllowed).guidance))
+        #expect(model.domains == [Domain("example.com")!])
+        await model.remove(Domain("example.com")!)
+        #expect(model.domains.isEmpty)
+    }
+
+    @Test func anImportWithoutClientSecretsDropsTheOldOne() async throws {
+        let model = model()
+        let example = Domain("example.com")!
+        let folder = try gamFolder()
+        try Data(#"{"installed": {}}"#.utf8).write(to: folder.appending(path: "client_secrets.json"))
+        await model.importFolder(folder, as: "example.com")
+        #expect(try store.read(.clientSecrets, for: example) != nil)
+        await model.importFolder(try gamFolder(), as: "example.com")
+        #expect(try store.read(.clientSecrets, for: example) == nil)
+    }
+
+    @Test func nothingStartsWhileAnActionRuns() async throws {
+        let model = model()
+        let example = Domain("example.com")!
+        await model.importFolder(try gamFolder(), as: "example.com")
+        let check = Task { await model.checkAccess(example) }
+        while !model.isBusy { await Task.yield() }
+        await model.remove(example)
+        await model.importFolder(try gamFolder(admin: "admin@other.org"), as: "example.com")
+        await check.value
+        #expect(model.domains == [example], "the removal didn't start")
+        #expect(model.active == example)
+        #expect(model.lastCheck?.admin == "admin@example.com", "nor did the import")
+    }
+
+    @Test func aFailedReCheckOfTheConnectedDomainIsShown() async throws {
+        let model = model()
+        let example = Domain("example.com")!
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(example)
+        #expect(model.status(of: example) == .connected)
+        #expect(model.status(of: Domain("example.org")!) == .notConnected)
+        // Delegation is withdrawn for this admin (the mock fails some scopes for partialdwd@).
+        try store.write(Data(#"{"decoded_id_token": {"email": "partialdwd@example.com"}}"#.utf8), as: .oauth2, for: example)
+        await model.checkAccess(example)
+        #expect(model.active == example, "a failed re-check doesn't switch tenants")
+        #expect(model.status(of: example) == .connectedButLastCheckFailed)
+    }
+
     @Test func aBuildWithoutGamSaysSo() async {
         let model = model(withRunner: false)
         await model.checkAccess(Domain("example.com")!)

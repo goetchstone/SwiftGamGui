@@ -34,7 +34,7 @@ public final class MemoryStore: SecretStore {
 
     private struct State {
         var items: [String: Data] = [:]
-        var failures: [Operation: OSStatus] = [:]
+        var failures: [Operation: (status: OSStatus, skipping: Int)] = [:]
         var reads = 0
         var sessionsEnded = 0
     }
@@ -43,9 +43,9 @@ public final class MemoryStore: SecretStore {
 
     public init() {}
 
-    /// The next call of `operation` throws `VaultError.keychain(status)`.
-    public func failNext(_ operation: Operation, with status: OSStatus) {
-        state.withLock { $0.failures[operation] = status }
+    /// The next call of `operation`, after `skipping` that succeed, throws `VaultError.keychain(status)`.
+    public func failNext(_ operation: Operation, with status: OSStatus, skipping: Int = 0) {
+        state.withLock { $0.failures[operation] = (status, skipping) }
     }
 
     public var readCount: Int { state.withLock { $0.reads } }
@@ -56,9 +56,13 @@ public final class MemoryStore: SecretStore {
     }
 
     private func check(_ operation: Operation, in state: inout State) throws {
-        if let status = state.failures.removeValue(forKey: operation) {
-            throw VaultError.keychain(status)
+        guard let failure = state.failures[operation] else { return }
+        if failure.skipping > 0 {
+            state.failures[operation] = (failure.status, failure.skipping - 1)
+            return
         }
+        state.failures[operation] = nil
+        throw VaultError.keychain(failure.status)
     }
 
     public func read(_ credential: Credential, for domain: Domain) throws -> Data? {

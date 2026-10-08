@@ -9,15 +9,16 @@ import Vault
 struct SetupView: View {
     let model: SetupModel
     @State private var pickedFolder: URL?
+    /// The picked folder when macOS granted it a security scope, to release on the next pick.
+    @State private var scopedFolder: URL?
     @State private var domainText = ""
+    /// What the field was last filled with from a folder, so the next pick may replace it.
+    @State private var suggestedDomain: String?
     @State private var adminText = ""
     @State private var choosingFolder = false
     @State private var pendingRemoval: Domain?
 
-    private var busy: Bool {
-        if case .working = model.activity { return true }
-        return false
-    }
+    private var busy: Bool { model.isBusy }
 
     var body: some View {
         Form {
@@ -89,10 +90,7 @@ struct SetupView: View {
         .formStyle(.grouped)
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
-            pickedFolder?.stopAccessingSecurityScopedResource()
-            _ = url.startAccessingSecurityScopedResource()
-            pickedFolder = url
-            Task { domainText = await model.suggestedDomain(for: url) ?? "" }
+            pick(url)
         }
         .confirmationDialog(
             "Remove \(pendingRemoval?.name ?? "")'s credentials from this Mac?",
@@ -100,10 +98,31 @@ struct SetupView: View {
             presenting: pendingRemoval
         ) { domain in
             Button("Remove \(domain.name)", role: .destructive) { Task { await model.remove(domain) } }
+                .disabled(busy)
         } message: { _ in
             Text("GamGUI and your Google tenant aren't changed. You can import the credentials again later.")
         }
         .task { await model.refresh() }
+    }
+
+    /// A domain the field shows only because an earlier folder suggested it goes with that folder; one
+    /// the operator typed stays. The new folder's suggestion fills the field only if it's still the
+    /// picked folder when its read finishes (a slow read of an earlier pick must not land late).
+    private func pick(_ url: URL) {
+        scopedFolder?.stopAccessingSecurityScopedResource()
+        scopedFolder = url.startAccessingSecurityScopedResource() ? url : nil
+        pickedFolder = url
+        if domainText == suggestedDomain {
+            domainText = ""
+            suggestedDomain = nil
+        }
+        Task {
+            guard let suggestion = await model.suggestedDomain(for: url),
+                  pickedFolder == url, domainText.isEmpty
+            else { return }
+            domainText = suggestion
+            suggestedDomain = suggestion
+        }
     }
 
     private func domainRow(_ domain: Domain) -> some View {
@@ -119,10 +138,18 @@ struct SetupView: View {
         } label: {
             HStack(spacing: 6) {
                 Text(domain.name)
-                if model.active == domain {
+                switch model.status(of: domain) {
+                case .notConnected:
+                    EmptyView()
+                case .connected:
                     Label("Connected", systemImage: "checkmark.circle.fill")
                         .labelStyle(.titleAndIcon)
                         .foregroundStyle(.green)
+                        .font(.callout)
+                case .connectedButLastCheckFailed:
+                    Label("Connected, but the last check failed", systemImage: "exclamationmark.triangle.fill")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(.orange)
                         .font(.callout)
                 }
             }

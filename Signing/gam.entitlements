@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- The bundled gam under the hardened runtime: upstream GAM's own entitlements, unchanged. Re-signing
      gam replaces upstream's signature, so it must carry what gam was built to need.
-     tests/test_build_signing.py fails when the vendored binary's set differs (review it on a bump). -->
+     scripts/check_app.sh lists the same three and fails when either list or the built gam differs;
+     review upstream's set on every GAM bump by displaying the vendored gam's entitlements with codesign. -->
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.cs.allow-jit</key>

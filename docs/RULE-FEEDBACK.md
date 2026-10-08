@@ -22,6 +22,33 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-08 — Release builds were debuggable, by an exception written for a step we don't take
+- **What happened:** PR #3's review found every locally signed Release build carried
+  `get-task-allow`, and `check_app.sh` allowed it: "Xcode adds it to development builds; export strips
+  it". This app is built from source and never exported, so the credential-holding app shipped open to
+  any same-user process that can read memory. A symlink in `Vendor/gam7` also let `embed_gam.sh`
+  sign a file outside the app with GAM's entitlements, and `check_app.sh` passed unsigned and
+  planted Mach-O files.
+- **Invariant in force:** #4 (secrets live only in the Keychain and memory); the signing rules in
+  the design doc's section 7.
+- **Why it didn't hold:** the allowlist exception was justified by a distribution step (export) the
+  project doesn't take, and the check verified the assembly the scripts meant to produce, not every
+  file the bundle holds.
+- **Would a rule have caught it?** only if enforced differently: a check's exception names the step
+  that removes the risk, and that step must be one this project runs. `check_app.sh` now refuses any
+  app entitlement and checks every Mach-O; Release turns injection off.
+- **Enforcement home if changed:** tripwire (done, CI's `check_app.sh`).
+
+## 2026-10-08 — A reviewer's checkout changed under it
+- **What happened:** while the PR #3 review agent read the main checkout, this session
+  checked out another branch there to start PR #4. The reviewer noticed and worked from a `git archive`
+  instead; a less careful one would have reviewed the wrong code.
+- **Invariant in force:** none: process.
+- **Why it didn't hold:** not covered.
+- **Would a rule have caught it?** yes but unworded: work on a second branch while anything reads
+  the first happens in a `git worktree` (as the PR #3 fixes then did, under `.claude/worktrees/`).
+- **Enforcement home if changed:** skill (start-session or pre-commit: "parallel branch, new worktree").
+
 ## 2026-10-08 — The golden-argv tripwire couldn't see the bytes it guards
 - **What happened:** PR #2's review proved Foundation's `Process` sends arguments decomposed ("é" as
   "e" + U+0301): 171 elements of `argv.json` would reach GAM as different bytes than GamGUI sends. A

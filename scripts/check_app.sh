@@ -1,43 +1,62 @@
 #!/usr/bin/env bash
-# Check a built GamGUI.app: hardened runtime on, entitlements within the allowlist, identity as
-# configured. An entitlement added without updating this list fails CI (design doc §7: adding one is a
-# reviewed change). It checks the ad-hoc build CI makes; a team build also carries the provisioning
-# entitlements Config/GamGUI-Team.entitlements claims. Usage: scripts/check_app.sh path/to/GamGUI.app
+# Check a built GamGUI.app before anyone runs it with credentials:
+# - the app: hardened runtime on, no entitlement outside the allowlist (none today; adding one is a
+#   reviewed change, design doc §7), not debuggable (get-task-allow would let a same-user process read
+#   the credentials out of its memory);
+# - every Mach-O in the bundle: signed, verifying strictly, hardened runtime, and only where code
+#   belongs (Contents/MacOS, Contents/Resources/gam7);
+# - the embedded gam: exactly upstream GAM's three entitlements (listed here and in
+#   Signing/gam.entitlements, so a change to either fails), and it runs as the pinned version.
+# It checks how the app is assembled and signed, not where gam came from: provenance is
+# scripts/fetch_gam.sh's pin and scripts/embed_gam.sh's checks. It checks the ad-hoc build CI makes; a
+# team build also carries the entitlements Config/GamGUI-Team.entitlements claims.
+# Usage: scripts/check_app.sh path/to/GamGUI.app
 set -euo pipefail
 APP="${1:?usage: check_app.sh path/to/GamGUI.app}"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLIST="$APP/Contents/Info.plist"
-fail() { echo "check_app: $*" >&2; exit 1; }
-
-codesign --verify --strict "$APP" || fail "signature does not verify"
-# Captured first: `grep -q` exits at the first match, and under pipefail the writer's SIGPIPE would
-# read as a failure.
-info="$(codesign -dv "$APP" 2>&1)"
-grep -qE 'flags=0x[0-9a-f]+\(([^)]*,)?runtime' <<<"$info" || fail "hardened runtime is off"
-
-ALLOWED="com.apple.security.get-task-allow"   # Xcode adds it to development builds; export strips it
-got="$(codesign -d --entitlements - --xml "$APP" 2>/dev/null \
-  | plutil -convert json -o - - 2>/dev/null \
-  | python3 -c 'import json,sys; d=sys.stdin.read().strip(); print("\n".join(sorted(json.loads(d) if d else {})))')"
-for key in $got; do
-  case " $ALLOWED " in *" $key "*) ;; *) fail "unexpected entitlement: $key" ;; esac
-done
-
-# The embedded GAM: present, hardened runtime, exactly upstream's entitlements, and it runs.
 GAM="$APP/Contents/Resources/gam7/gam"
-[ -x "$GAM" ] || fail "no embedded gam"
-codesign --verify --deep --strict "$APP" || fail "the bundle and its nested code don't verify"
-gaminfo="$(codesign -dv "$GAM" 2>&1)"
-grep -qE 'flags=0x[0-9a-f]+\(([^)]*,)?runtime' <<<"$gaminfo" || fail "embedded gam: hardened runtime is off"
-keys() { plutil -convert json -o - - 2>/dev/null | python3 -c 'import json,sys; d=sys.stdin.read().strip(); print(" ".join(sorted(json.loads(d) if d else {})))'; }
-want="$(keys < "$(dirname "$0")/../Signing/gam.entitlements")"
-have="$(codesign -d --entitlements - --xml "$GAM" 2>/dev/null | keys)"
-[ "$have" = "$want" ] || fail "embedded gam entitlements: got [$have], want [$want]"
+GAM_ENTITLEMENTS="com.apple.security.cs.allow-jit com.apple.security.cs.allow-unsigned-executable-memory com.apple.security.cs.disable-library-validation"
+fail() { echo "check_app: $*" >&2; exit 1; }
+# Captured, never piped into `grep -q`: it exits at the first match, and under pipefail the writer's
+# SIGPIPE would read as a failure.
+runtime() { local info; info="$(codesign -dv "$1" 2>&1)" || return 1; grep -qE 'flags=0x[0-9a-f]+\(([^)]*,)?runtime' <<<"$info"; }
+keys() {
+  local xml
+  xml="$(codesign -d --entitlements - --xml "$1" 2>/dev/null)" || return 1
+  plutil -convert json -o - - <<<"$xml" 2>/dev/null \
+    | python3 -I -c 'import json,sys; d=sys.stdin.read().strip(); print(" ".join(sorted(json.loads(d) if d else {})))'
+}
+
+codesign --verify --deep --strict "$APP" || fail "the app or its nested code doesn't verify"
+runtime "$APP" || fail "the app: hardened runtime is off"
+got="$(keys "$APP")" || fail "the app's entitlements can't be read"
+[ -z "$got" ] || fail "the app carries entitlements [$got]; it should carry none"
+
+# Every Mach-O, wherever it is: Resources are sealed as data, so an unsigned library there would verify
+# with the app and then fail to load (or load, under disable-library-validation, unsigned).
+count=0
+while IFS= read -r -d '' f; do
+  case "$(file -b "$f")" in Mach-O*) ;; *) continue ;; esac
+  case "$f" in "$APP/Contents/MacOS/"* | "$APP/Contents/Resources/gam7/"*) ;; *) fail "code outside its places: ${f#"$APP"/}" ;; esac
+  codesign --verify --strict "$f" 2>/dev/null || fail "unsigned or broken code: ${f#"$APP"/}"
+  runtime "$f" || fail "hardened runtime is off: ${f#"$APP"/}"
+  count=$((count + 1))
+done < <(find "$APP" -type f -print0)
+
+[ -f "$GAM" ] && [ ! -L "$GAM" ] || fail "no embedded gam"
+want="$(plutil -convert json -o - "$ROOT/Signing/gam.entitlements" \
+  | python3 -I -c 'import json,sys; print(" ".join(sorted(json.load(sys.stdin))))')" || fail "Signing/gam.entitlements can't be read"
+[ "$want" = "$GAM_ENTITLEMENTS" ] || fail "Signing/gam.entitlements is [$want]; this check expects [$GAM_ENTITLEMENTS]"
+have="$(keys "$GAM")" || fail "embedded gam: its entitlements can't be read"
+[ "$have" = "$GAM_ENTITLEMENTS" ] || fail "embedded gam entitlements: got [$have], want [$GAM_ENTITLEMENTS]"
 cfg="$(mktemp -d)"
-version="$(GAMCFGDIR="$cfg" GAM_NO_UPDATE_CHECK=1 "$GAM" version 2>&1 | head -1)"
+version="$(GAMCFGDIR="$cfg" GAM_NO_UPDATE_CHECK=1 "$GAM" version 2>&1 | head -1)" || true
 rm -rf "$cfg"
-pin="$(sed -nE 's/.*expected = "([0-9.]+)".*/\1/p' "$(dirname "$0")/../Packages/GamKit/Sources/GamEngine/GamVersion.swift")"
+pin="$(sed -nE 's/.*expected = "([0-9.]+)".*/\1/p' "$ROOT/Packages/GamKit/Sources/GamEngine/GamVersion.swift")"
+[ -n "$pin" ] || fail "can't read the pinned GAM version"
 grep -qF "GAM $pin " <<<"$version" || fail "embedded gam reports [$version], pin is $pin"
 
 [ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GamGUI" ] || fail "display name"
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$PLIST")" = "27.0" ] || fail "minimum macOS"
-echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); entitlements: ${got:-none}; $version)"
+echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); no app entitlements; $count signed Mach-O files; $version)"

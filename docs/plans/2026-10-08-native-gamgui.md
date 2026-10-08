@@ -414,8 +414,14 @@ default, plus "Just do it"). Still open:
     `Config/Local.xcconfig` sets a developer's own `DEVELOPMENT_TEAM`, so nobody edits the project file.
   - **Release** is signed `adhoc,runtime` (hardened runtime on). **Debug** ad-hoc builds carry no
     runtime flag (Xcode's behaviour).
-  - **Entitlements:** none beyond Xcode's `get-task-allow` in development builds, which a Developer ID
-    export strips.
+  - **Entitlements:** none. Xcode adds `get-task-allow` to every locally signed build, so Release
+    turns that off (`CODE_SIGN_INJECT_BASE_ENTITLEMENTS`): a debuggable app holding credentials lets a
+    same-user process read its memory. Debug keeps it. `scripts/check_app.sh` refuses any app
+    entitlement, any Mach-O that is unsigned, lacks the hardened runtime or sits outside
+    `Contents/MacOS` and `Resources/gam7`, and a gam whose entitlements aren't upstream's three.
+  - **`scripts/embed_gam.sh`** refuses a vendored tree holding a link or special file (codesign would
+    follow a link and sign a file outside the app), a version other than the pin, or a download not
+    in `gam_checksums.txt`.
 
 **Spike results:**
 

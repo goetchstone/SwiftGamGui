@@ -150,7 +150,7 @@ enum Spikes {
             started = clock.now
             _ = try await vault.credentials(for: domain)
             print("read #2 ok in \(clock.now - started) (same session: expect no prompt)")
-            if let binary = GamBinary.locate() {
+            if let binary = AppServices.mockGam() {
                 let base = try RuntimeDirectory.prepare()
                 let runner = AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: base)
                 let mockEnv = ProcessInfo.processInfo.environment.filter { GamEnvironment.mockOnly.contains($0.key) }
@@ -166,7 +166,8 @@ enum Spikes {
                     print("refreshed oauth2.txt written back in place: \(updated) (read in \(clock.now - started))")
                 }
             } else {
-                print("no gam binary: set SWIFTGAMGUI_GAM_BINARY (debug builds) to run the authenticated step")
+                // Never the bundled gam: these are placeholder credentials.
+                print("no mock: set SWIFTGAMGUI_GAM_BINARY to Tests/Fixtures/mock_gam.sh to run the authenticated step")
             }
         } catch {
             print("vault spike error: \(error)")

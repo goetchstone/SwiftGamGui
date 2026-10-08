@@ -11,5 +11,8 @@
 CODE_SIGN_STYLE = Automatic
 CODE_SIGN_IDENTITY = -
 CODE_SIGN_ENTITLEMENTS = Config/GamGUI.entitlements
+// Xcode otherwise adds get-task-allow to every locally signed build, Release included, and a debuggable
+// app holding credentials lets a same-user process read them from its memory. Debug keeps it.
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
 
 #include? "Local.xcconfig"

@@ -22,6 +22,13 @@ public final class SetupModel {
         public let result: AccessCheck
     }
 
+    public enum Status: Equatable, Sendable {
+        case notConnected
+        case connected
+        /// Still the active domain (a failed re-check doesn't switch tenants), but its last check failed.
+        case connectedButLastCheckFailed
+    }
+
     public private(set) var domains: [Domain] = []
     /// The domain whose last Check access passed: the one every other screen acts on.
     public private(set) var active: Domain?
@@ -52,6 +59,22 @@ public final class SetupModel {
         self.readFolder = readFolder
     }
 
+    /// An action is running. Every action refuses to start meanwhile, so two can't interleave (a
+    /// removal during a check, a slower check overwriting a newer one), whoever calls them: a button,
+    /// another screen, Siri.
+    public var isBusy: Bool {
+        if case .working = activity { return true }
+        return false
+    }
+
+    public func status(of domain: Domain) -> Status {
+        guard active == domain else { return .notConnected }
+        if let check = lastCheck, check.domain == domain, !check.result.isAuthorized {
+            return .connectedButLastCheckFailed
+        }
+        return .connected
+    }
+
     public func refresh() async {
         do {
             domains = try await vault.domains()
@@ -71,6 +94,7 @@ public final class SetupModel {
     }
 
     public func importFolder(_ folder: URL, as domainText: String) async {
+        guard !isBusy else { return }
         guard let domain = Domain(domainText) else {
             activity = .problem("“\(domainText)” isn't a domain name.")
             return
@@ -78,8 +102,8 @@ public final class SetupModel {
         activity = .working("Importing credentials for \(domain)…")
         do {
             let read = readFolder
-            try await store(try await Self.offMain({ try read(folder) }), for: domain)
-            await refresh()
+            let found = try await Self.offMain({ try read(folder) })
+            try await replace(domain, with: found)
             activity = .done("Imported \(domain). Check access next.")
         } catch {
             activity = .problem(Self.message(for: error))
@@ -87,6 +111,7 @@ public final class SetupModel {
     }
 
     public func lookForGamGUI() async {
+        guard !isBusy else { return }
         activity = .working("Reading GamGUI's list of domains. macOS may ask you to allow access.")
         do {
             let gamgui = gamgui
@@ -99,6 +124,7 @@ public final class SetupModel {
     }
 
     public func copy(_ entry: GamGUIKeychain.Entry) async {
+        guard !isBusy else { return }
         activity = .working("Copying \(entry.spelling) from GamGUI. macOS asks you to allow each item.")
         do {
             let gamgui = gamgui
@@ -108,8 +134,7 @@ public final class SetupModel {
                 activity = .problem("GamGUI has no \(missing.map(\.fileName).joined(separator: " or ")) for \(entry.spelling).")
                 return
             }
-            try await store(found, for: entry.domain)
-            await refresh()
+            try await replace(entry.domain, with: found)
             activity = .done("Copied \(entry.domain) from GamGUI. Check access next.")
         } catch {
             activity = .problem(Self.message(for: error))
@@ -119,6 +144,7 @@ public final class SetupModel {
     /// Runs Check access as the admin in the domain's `oauth2.txt` (or `typedAdmin` when it names
     /// none). Only a pass makes the domain active; a failed check leaves the active one as it was.
     public func checkAccess(_ domain: Domain, typedAdmin: String = "") async {
+        guard !isBusy else { return }
         guard let runner else {
             activity = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
@@ -147,14 +173,11 @@ public final class SetupModel {
     }
 
     public func remove(_ domain: Domain) async {
+        guard !isBusy else { return }
         activity = .working("Removing \(domain)…")
         do {
             try await vault.remove(domain)
-            if active == domain {
-                active = nil
-                generation += 1
-            }
-            if lastCheck?.domain == domain { lastCheck = nil }
+            forget(domain)
             await refresh()
             activity = .done("Removed \(domain)'s credentials from this Mac.")
         } catch {
@@ -169,12 +192,27 @@ public final class SetupModel {
         generation += 1
     }
 
-    private func store(_ found: [Credential: Secret], for domain: Domain) async throws {
-        for credential in Credential.removalOrder.reversed() {
-            if let secret = found[credential] {
-                try await vault.store(secret, as: credential, for: domain)
-            }
+    /// Makes `found` the domain's whole set. New credentials haven't been checked, so a domain that
+    /// was active or checked is forgotten even when the write fails: it may hold nothing now. The list
+    /// is refreshed either way, so a domain the failure left behind can still be removed.
+    private func replace(_ domain: Domain, with found: [Credential: Secret]) async throws {
+        defer { forget(domain) }
+        do {
+            try await vault.replaceSet(found, for: domain)
+        } catch {
+            await refresh()
+            throw error
         }
+        await refresh()
+    }
+
+    /// Drops what was known about `domain`: its credentials changed or are gone.
+    private func forget(_ domain: Domain) {
+        if active == domain {
+            active = nil
+            generation += 1
+        }
+        if lastCheck?.domain == domain { lastCheck = nil }
     }
 
     /// File and Keychain reads can block (a prompt, a slow volume): never on the main actor.
