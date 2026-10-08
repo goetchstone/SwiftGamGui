@@ -13,7 +13,8 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
   `$(AppIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)`) makes Xcode provision it — after **one build
   inside Xcode** (`xcodebuild -allowProvisioningUpdates` reported "No Accounts").
 - **With the Personal Team, provisioned: everything works.** Add (no ACL and user presence), read
-  after authenticating, a second read in the same `LAContext` reuse window, delete: all `errSecSuccess`.
+  after authenticating (macOS asked for **Touch ID**), a second read in the same `LAContext` reuse
+  window, delete: all `errSecSuccess`.
 - **Reading a legacy login-Keychain item another program created works**: a throwaway
   `swiftgamgui-spike-legacy` item made by `security add-generic-password` was read by a separately
   signed binary, status 0, after macOS showed an Allow dialog the operator accepted.
