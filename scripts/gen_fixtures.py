@@ -7,6 +7,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   (the grammar contract's enumeration, the mock tests' concrete calls)
                                   plus deterministic edge cases from its property-test specs. Each case
                                   records the full keyword arguments and either the argv or the error.
+  Tests/Fixtures/gam_errors.json  GamGUI's classification, message and scrubbing of failed GAM runs
+                                  (core/gam/errors.py) over its own and generated stderr, with the
+                                  Unicode tables its regexes use.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -96,6 +99,197 @@ def strategy_values(strategy) -> list:
     if hasattr(inner, "elements"):
         return [list(inner.elements)[0]]
     raise SystemExit(f"unhandled hypothesis strategy in a Spec: {kind}")
+
+
+def ranges(predicate) -> list:
+    """The code points `predicate` holds for, as [first, last] ranges."""
+    out, start = [], None
+    for point in range(0x110001):
+        inside = point < 0x110000 and predicate(chr(point))
+        if inside and start is None:
+            start = point
+        elif not inside and start is not None:
+            out.append([start, point - 1])
+            start = None
+    return out
+
+
+def errors_fixture() -> dict:
+    """GamGUI's GAMError.from_run over GAM's known stderr lines and their case, indent and counter
+    variants, mixed stderrs, progress chatter and instructions, timeouts, missing-scope lines, echoed
+    passwords, Unicode and boundary edges, and seeded random text: what the Swift GamError must say."""
+    import random
+    import re
+    import unicodedata
+
+    from gamgui.core.audit import _SENSITIVE_KEYS
+    from gamgui.core.gam.errors import _REMEDIATION, _SEVERITY, ACCOUNT_WIDE_KINDS, GAMError
+    from tests.test_props_errors import _KNOWN, _gam_usage_error
+
+    def run(exit_code, stderr, argv=None, stdout=""):
+        err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
+        return {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
+                "kind": err.kind.value, "kinds": sorted(k.value for k in err.kinds), "message": err.message,
+                "scrubbed_stderr": err.stderr, "scrubbed_stdout": err.stdout, "redacted_argv": err.argv,
+                "remediation_suffix": err.remediation[len(_REMEDIATION[err.kind]):]}
+
+    cases = []
+    known = [line for line, _ in _KNOWN]
+    for line in known:
+        for shape in (str, str.upper, str.lower, str.swapcase):
+            for indent in ("", "    ", "\t"):
+                for count in ("", " (403/1200)", " (0/5)"):
+                    cases.append(run(1, indent + shape(line) + count))
+    for first in known:
+        for second in known:
+            cases.append(run(1, first + "\n" + second))
+    chatter = ["Getting all Users, may take some time on a large Google Workspace Account...",
+               "Got 150 Users: a@example.com - z@example.com", "", "   "]
+    instructions = ["Please run", "gam create|use project", "gam user <user> update serviceaccount",
+                    "to create and authorize a Service account."]
+    for extra in chatter + instructions:
+        for line in known[:6] + known[-4:]:
+            cases.append(run(50, extra + "\n" + line + "\n" + extra))
+        cases.append(run(1, extra))
+    cases.append(run(1, ""))
+    cases.append(run(1, "\n".join(chatter)))
+    for stderr in ("", known[0], "\n".join(known)):
+        cases.append(run(None, stderr, stdout="the table"))
+    for code in (0, 2, 10, 16, 50, 73, -9, 255):
+        cases.append(run(code, known[3]))
+
+    scopes = ["https://mail.google.com/", "https://www.googleapis.com/auth/gmail.settings.sharing",
+              "https://www.googleapis.com/auth/admin.directory.user.security",
+              "https://www.googleapis.com/auth/a/b-c_d", "https://www.googleapis.com/auth/",
+              "https://www.googleapis.com/auth/x.", "https://www.googleapis.com/auth/caf" + chr(0xE9),
+              "https://www.googleapis.com/auth/e" + chr(0x301)]
+    base = "ERROR: 403: Request had insufficient authentication scopes"
+    for separator in (" ", ", ", ": "):
+        for punctuation in ("", ".", ",", ";", ")", "]"):
+            for url in scopes:
+                cases.append(run(1, base + separator + url + punctuation))
+    cases.append(run(1, base + " " + " ".join(scopes)))
+    cases.append(run(1, base + " " + scopes[1] + " " + scopes[1] + " " + scopes[0]))
+    cases.append(run(1, base + " " + scopes[1] + "\nERROR: invalid_grant: Token has been expired or revoked"))
+
+    argvs = [
+        ["gam", "create", "user", "new.hire@example.com", "firstname", "Ada", "lastname", "Lovelace", "password",
+         "S3cr3t!x", "changepassword", "on", "notify", "boss@example.com", "notifypassword", "S3cr3t!x"],
+        ["gam", "create", "user", "o@example.com", "firstname", "O'Brien", "lastname", "Smith, Jr", "PassWord",
+         "a,b'c", "org", "/Staff/New Hires"],
+        ["gam", "update", "user", "x@example.com", "NOTIFYPASSWORD", "x" + chr(0x3000) + "y", "password", "z"],
+        ["gam", "user", "x@example.com", "signature", "<b>Hi</b>", "html"],
+        ["gam", "update", "user", "x@example.com", "recoveryemail", "me@home.example", "recoveryphone", "+1 555",
+         "alternateemail", "alt@example.com", "password"],
+        ["gam", "password", "password", "secret"],
+    ]
+    for argv in argvs:
+        for form in ("bad", "extraneous", "missing"):
+            for at in sorted({1, len(argv) // 2, len(argv) - 1}):
+                stderr = _gam_usage_error(argv, at, form)
+                cases.append(run(2, stderr, argv, stdout=stderr))
+
+    kelvin, long_s, dotless_i, dotted_i = chr(0x212A), chr(0x17F), chr(0x131), chr(0x130)
+    arabic_403 = chr(0x664) + chr(0x660) + chr(0x663)
+    edges = [
+        "ERROR: invalid_grant: To" + kelvin + "en has been expired or revoked",
+        "pa" + long_s + long_s + "word hunter2",
+        "not" + dotless_i + "fypassword hunter2",
+        "not" + dotted_i + "fypassword hunter2",
+        dotted_i + "nvalid_grant",
+        "e" + chr(0x301) + "password hunter2",
+        "_password hunter2",
+        "changepassword on",
+        "x-password hunter2",
+        "password" + chr(0x1F) + "hunter2",
+        "password" + chr(0x2028) + "hunter2",
+        "password\n\nhunter2 more",
+        "password   ",
+        "password",
+        "Calendar: a@example.com, Delete Failed: 403" + chr(0x301),
+        "Delete Failed: x403x",
+        "Delete Failed: " + arabic_403,
+        "Delete Failed: Forbidden (" + arabic_403 + "/" + chr(0x661) + "2)",
+        "User: a@example.com, Got 5 things",
+        "Got 5 Users: a - b",
+        "got 5 users: a - b",
+        "Got Users",
+        "  Getting all Users",
+        "ERROR: Rate" + chr(0xE9) + "Limit hit",
+        "oauth2service.jsonx does not exist",
+        "oauth2.txt" + chr(0xE9) + " not found",
+        "oauth2.txt: not found",
+        "Client OAUTH2 File: /x, Does Not Exist",
+        "no credentials",
+        "No API credentials",
+        "a\x0bb\x0cc\x1cd\x1de\x1ef\x85g" + chr(0x2028) + "h" + chr(0x2029) + "i\r\nj\rk",
+        "ERROR: 404: notFound" + chr(0x1F),
+        chr(0x3000) + "ERROR: quota exceeded" + chr(0x3000),
+    ]
+    # One line per branch of a rule that only that branch matches, so dropping any branch fails a test
+    # (PR #5's review found 14 branches every fixture line reached some other way).
+    unicode17 = (chr(0x10940), chr(0x11DE0))   # unassigned in Python's Unicode 16, letters/digits in 17
+    edges += [
+        "Too many requests", "ERROR: access_denied for scope x", "ERROR: Not Authorized to access this resource/api",
+        "ERROR: Token has been expired or revoked.", "ERROR: Permission denied", "ERROR: insufficientPermissions",
+        "Delete Failed: cannotChangeOwnAcl", "ERROR: notFound", "ERROR: userRateLimitExceeded",
+        "ERROR: rateLimitExceeded", "ERROR: rate-limit hit", "ERROR: rate  limit", "ERROR: insufficientscope",
+        "oauth2.json does not exist", "oauth2service.txt not found", "oauth2.txt does not exist",
+        "oauth2service.json: not found", "oauth2.txt not found oauth2.txt", "Client OAuth2 File: x, does not exist",
+        "Delete Failed: 4 (" + chr(0x663) + "/" + chr(0x661) + ")04", "please run", "PLEASE RUN",
+        "Gam create|use project", "to create and authorize a service account.", "ERROR: quota exceeded",
+        "ERROR: no valid credentials", "please run gam oauth create", "ERROR: uses a service account",
+        "User: a@example.com, Calendar Service/App not enabled", "Create Failed: Domain user limit reached",
+        "ERROR: name " + unicode17[0] + "password hunter2", "Delete Failed: " + unicode17[0] + "403",
+        "x" + unicode17[1] + "429", unicode17[0] + "notifypassword hunter2",
+    ]
+    for line in edges:
+        cases.append(run(1, line, stdout=line))
+    for argv in (None, [], ["password"], ["PASSWORD", "x"], ["pa" + long_s + long_s + "word", "x"],
+                 ["signature", "signature", "x"], ["x", "notifypassword", "y", "z"]):
+        cases.append(run(1, "ERROR: x", argv))
+
+    rng = random.Random(20261008)
+    fragments = known + chatter + instructions + [
+        "password", "notifypassword", " (403/1200)", "(1/2)", "403", "404", "429", "not found", "invalid_grant",
+        "https://www.googleapis.com/auth/", "https://mail.google.com/", "quota", "Service/App not enabled",
+        "insufficient", "scope", "Domain user limit reached", "rate limit", "OAuth2 File:", "does not exist",
+        "oauth2.txt", "Got 7 ", "Getting all "]
+    pool = [chr(c) for c in [*range(0x20, 0x7F), 0x09, 0x0B, 0x0C, 0x1C, 0x1F, 0x85, 0xA0, 0x2028, 0x3000,
+                             0x212A, 0x17F, 0x130, 0x131, 0x301, 0xE9, 0x664, 0x660, 0x4E00, 0x1F600]]
+    for _ in range(400):
+        lines = []
+        for _ in range(rng.randint(1, 4)):
+            parts = [rng.choice(fragments) if rng.random() < 0.5
+                     else "".join(rng.choice(pool) for _ in range(rng.randint(0, 6)))
+                     for _ in range(rng.randint(1, 5))]
+            lines.append(rng.choice(["", " "]).join(parts))
+        stderr = rng.choice(["\n", "\r\n", "\r", "\n\n"]).join(lines)
+        cases.append(run(rng.choice([1, 2, 50, None]), stderr, stdout=stderr if rng.random() < 0.3 else ""))
+
+    seen, unique = set(), []
+    for case in cases:
+        key = json.dumps(case, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            unique.append(case)
+
+    folds = [[point, ord(letter)] for letter in "abcdefghijklmnopqrstuvwxyz"
+             for point in range(0x80, 0x110000) if re.fullmatch("(?i)" + letter, chr(point))]
+    return {
+        "constants": {
+            "unicode_version": unicodedata.unidata_version,
+            "IGNORECASE_FOLDS": folds,
+            "WORD": ranges(lambda c: re.match(r"\w", c) is not None),
+            "DECIMAL": ranges(lambda c: re.match(r"\d", c) is not None),
+            "UNASSIGNED": ranges(lambda c: unicodedata.category(c) in ("Cn", "Cs")),
+            "LINE_BREAKS": [p for p in range(0x110000) if len(("a" + chr(p) + "b").splitlines()) == 2],
+            "SENSITIVE_KEYS": sorted(_SENSITIVE_KEYS),
+            "SEVERITY": [kind.value for kind in _SEVERITY],
+            "ACCOUNT_WIDE": sorted(kind.value for kind in ACCOUNT_WIDE_KINDS),
+        },
+        "cases": unique,
+    }
 
 
 def main() -> int:
@@ -254,6 +448,12 @@ def main() -> int:
     }
     (OUT / "exit_codes.json").write_text(json.dumps(rc_doc, indent=1) + "\n")
     print(f"exit_codes.json: {len(table)} *_RC constants")
+
+    # GAM's failures, classified and scrubbed as GamGUI does. ASCII-escaped: it holds the invisible
+    # characters scripts/check_text.py refuses in a tracked file.
+    errors_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | errors_fixture()
+    (OUT / "gam_errors.json").write_text(json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"gam_errors.json: {len(errors_doc['cases'])} cases")
     return 0
 
 

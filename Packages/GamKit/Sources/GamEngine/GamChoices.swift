@@ -93,22 +93,9 @@ extension GamCommands {
         }
     }
 
-    /// The characters Python's `str.isspace()` is true for: what GamGUI's validators strip.
-    package static let pythonWhitespace: Set<UInt32> = [
-        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x85, 0xA0, 0x1680,
-        0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A,
-        0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
-    ]
-
-    /// Python's `text.strip().lower()`, scalar by scalar. Foundation's whitespace set isn't Python's:
-    /// it lacks U+001C to U+001F.
+    /// Python's `text.strip().lower()`, as GamGUI's validators normalize.
     static func stripLower(_ text: String) -> String {
-        let scalars = Array(text.unicodeScalars)
-        let kept = { (scalar: Unicode.Scalar) in !pythonWhitespace.contains(scalar.value) }
-        guard let first = scalars.firstIndex(where: kept), let last = scalars.lastIndex(where: kept) else { return "" }
-        var view = String.UnicodeScalarView()
-        view.append(contentsOf: scalars[first...last])
-        return String(view).lowercased()
+        PythonText.strip(text).lowercased()
     }
 
     /// The case whose raw value has exactly `text`'s bytes. Swift's `==` and `init(rawValue:)` use
