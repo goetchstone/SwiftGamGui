@@ -2,7 +2,8 @@
 
 **Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) DONE 2026-10-08. Slice 2a (Vault,
 per-call credential folders, authenticated runs) merged as PR #1. Slice 2b-core (import, GamGUI
-copy, Check access) is in review; 2b-ui (the Setup screen) is next. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
+copy, Check access) merged as PR #2. 2b-ui (the Setup screen, GAM embedded and signed in the app) is in
+review; then the first live, read-only Check access with the operator. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
 for a reader with no session context. It consolidates two drafts and the operator's answers from the
@@ -430,7 +431,7 @@ default, plus "Just do it"). Still open:
 
 **Remaining:**
 - **The GitHub repo:** a separate OK from the operator.
-- **Re-check the on-device model** once its assets finish downloading (`--spike model`).
+- **Re-check the on-device model** once its assets finish downloading (`SWIFTGAMGUI_SPIKE=model`).
 
 ## Appendix: checked on this Mac (2026-10-08)
 

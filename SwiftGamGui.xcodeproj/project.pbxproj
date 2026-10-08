@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		5A6D00000000000000000101 /* GamEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000201 /* GamEngine */; };
 		5A6D00000000000000000102 /* Vault in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000202 /* Vault */; };
+		5A6D00000000000000000103 /* Setup in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000203 /* Setup */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 			files = (
 				5A6D00000000000000000101 /* GamEngine in Frameworks */,
 				5A6D00000000000000000102 /* Vault in Frameworks */,
+				5A6D00000000000000000103 /* Setup in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -89,6 +91,7 @@
 			packageProductDependencies = (
 				5A6D00000000000000000201 /* GamEngine */,
 				5A6D00000000000000000202 /* Vault */,
+				5A6D00000000000000000203 /* Setup */,
 			);
 			productName = GamGUI;
 			productReference = 5A6D00000000000000000001 /* GamGUI.app */;
@@ -309,6 +312,10 @@
 		5A6D00000000000000000202 /* Vault */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Vault;
+		};
+		5A6D00000000000000000203 /* Setup */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Setup;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
