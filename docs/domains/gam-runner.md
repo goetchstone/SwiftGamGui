@@ -21,10 +21,14 @@ an allowlisted environment, a timeout, and capped output capture.
 - A binary override honoured by the shipped app would hand the credentials to any binary — same entry.
 - 120 s killed a domain-wide sweep: callers pass `domainWideTimeout` (1 h) for `all users` calls.
 
+## Builders
+`GamCommands.swift` ports GamGUI's builders one at a time, each held to every case of
+`Tests/Fixtures/argv.json` by `GoldenArgvTests` (2 of 59 so far: `version`, `check_svcacct`).
+
 ## Authenticated runs
 `AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a
 per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets.md](secrets.md).
 
 ## Not built yet
-Write serialization (ChangeCore, phase 2) and exit-code classification against
-`Tests/Fixtures/exit_codes.json` (with Setup's verify, next slice).
+Write serialization (ChangeCore, phase 2) and general stderr/exit-code classification (port of
+GamGUI's `core/gam/errors.py`); `check serviceaccount`'s own exits are handled in `AccessCheck`.
