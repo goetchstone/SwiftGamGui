@@ -9,9 +9,12 @@ Python GamGUI's Keychain items, and checking that delegation actually works ("Ch
 
 ## Files (phase 1, slice 2b-core)
 - `Vault/CredentialFolder.swift`: reads `oauth2service.json`, `oauth2.txt` (required) and
-  `client_secrets.json` (optional) from a picked folder.
+  `client_secrets.json` (optional) from a picked folder, returned as `Secret`s.
   - The folder is opened once; each file is opened relative to it with `O_NOFOLLOW | O_NONBLOCK`.
-  - Each must be a regular file of at most 64 KiB that parses as a JSON object.
+  - Each must be a regular file of at most 64 KiB, read with `read(2)` (a failed read is an error, not
+    a crash), containing a UTF-8 JSON object.
+  - `oauth2service.json` must name its `client_email`.
+  - A problem with the optional file only leaves it out, as in GamGUI.
   - The operator's files are never modified or removed.
 - `Vault/GamGUIKeychain.swift`: reads GamGUI's legacy-keychain items for the one-time copy.
   - Index: service `gamgui`, account `_domains` (a JSON list of spellings).
@@ -42,6 +45,17 @@ Python GamGUI's Keychain items, and checking that delegation actually works ("Ch
 - 2026-10-01, the exit codes were guessed: `theExitCodesAreTheBuilds`.
 - 2026-10-02, a capitalized domain became a second tenant: `Domain` canonicalization, and
   `gamguisDomainsAreReadWithTheirSpellingsAndCaseTwinsShareOneDomain`.
+
+## PR #2 review (2026-10-08)
+One adversarial reviewer proved five issues, all fixed with tests:
+- **argv bytes** differed from GamGUI's under Foundation's `Process`; the golden test compared Strings,
+  which Swift compares canonically, so it couldn't see it — now `posix_spawn`, and the test compares
+  bytes
+- Check access showed GAM's instructions instead of its `ERROR:` line
+- a failed read crashed the import
+- imported credentials were plain `Data`
+- smaller drifts from GamGUI: Unicode word boundaries, control characters in the email, an index with
+  one odd entry, the optional file failing the import, UTF-16 accepted
 
 ## Mock-lies traps
 - The mock answers `check serviceaccount` the way the vendored build prints it (PASS/FAIL table,

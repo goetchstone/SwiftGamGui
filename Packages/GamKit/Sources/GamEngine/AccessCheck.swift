@@ -78,8 +78,7 @@ public struct AccessCheck: Sendable, Equatable {
     public static func interpret(_ result: GamResult) -> AccessCheck {
         let rows = rows(in: result.stdout)
         guard result.exitCode == 0 || (GamExitCode.checkAnswers.contains(result.exitCode) && !rows.isEmpty) else {
-            let line = result.stderr.split(whereSeparator: \.isNewline).last { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            return AccessCheck(outcome: .failed(line.map(String.init) ?? "GAM exited \(result.exitCode)"),
+            return AccessCheck(outcome: .failed(errorLine(in: result.stderr) ?? "GAM exited \(result.exitCode)"),
                                rows: [], authorizationURL: nil)
         }
         let text = result.stdout.uppercased()
@@ -97,11 +96,25 @@ public struct AccessCheck: Sendable, Equatable {
                            rows: rows, authorizationURL: authorizationURL(in: result.stdout))
     }
 
+    /// GAM's own error line: the first that starts `ERROR:`, not the instructions GAM prints after it
+    /// ("Please run: gam oauth create"), which once replaced the real error (GamGUI failure-log
+    /// 2026-10-01). Otherwise the last non-empty line.
+    static func errorLine(in stderr: String) -> String? {
+        let lines = stderr.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return lines.first { $0.hasPrefix("ERROR:") } ?? lines.last
+    }
+
+    /// GAM's check prints about fifteen lines; anything past this is not a check table.
+    static let rowLineLimit = 1000
+
     /// `(label, PASS/FAIL)` from both `Label: PASS` and GAM's scope-table `<scope>   FAIL (n/m)` forms.
+    /// Word boundaries are the simple, ASCII ones Python's `\b` uses, so `Key:FAIL` is still a row.
     static func rows(in stdout: String) -> [Row] {
-        stdout.split(whereSeparator: \.isNewline).compactMap { raw in
+        let status = /\b(PASS|FAIL)\b/.wordBoundaryKind(.simple)
+        return stdout.split(whereSeparator: \.isNewline).prefix(rowLineLimit).compactMap { raw in
             let line = raw.trimmingCharacters(in: .whitespaces)
-            guard let match = line.firstMatch(of: /\b(PASS|FAIL)\b/) else { return nil }
+            guard let match = line.firstMatch(of: status) else { return nil }
             let label = line[..<match.range.lowerBound].trimmingCharacters(in: .whitespaces)
                 .trimmingCharacters(in: CharacterSet(charactersIn: ":")).trimmingCharacters(in: .whitespaces)
             return label.isEmpty ? nil : Row(label: label, passed: match.output.1 == "PASS")

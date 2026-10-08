@@ -96,7 +96,25 @@ public final class EphemeralConfig: Sendable {
         guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_nlink == 1,
               Int(info.st_size) <= cap
         else { return nil }
-        return FileHandle(fileDescriptor: fd, closeOnDealloc: false).readData(ofLength: cap)
+        return Self.readAll(fd, cap: cap)
+    }
+
+    /// Up to `cap` bytes, or nil on a read error or a longer file. `read(2)` reports errors as values;
+    /// `FileHandle`'s reads raise an Objective-C exception that would kill the app.
+    static func readAll(_ fd: Int32, cap: Int) -> Data? {
+        var data = Data()
+        var chunk = [UInt8](repeating: 0, count: 16 * 1024)
+        while true {
+            let n = chunk.withUnsafeMutableBytes { read(fd, $0.baseAddress!, $0.count) }
+            if n > 0 {
+                data.append(contentsOf: chunk[0..<n])
+                if data.count > cap { return nil }
+            } else if n < 0, errno == EINTR {
+                continue
+            } else {
+                return n == 0 ? data : nil
+            }
+        }
     }
 
     /// Empties and removes the directory. Idempotent. Returns true when no file is left in it and its

@@ -26,17 +26,18 @@ public struct GamGUIKeychain: Sendable {
     /// 2026-10-02) both appear, each with its own spelling, and map to one canonical domain.
     public func entries() throws -> [Entry] {
         guard let data = try read("gamgui", "_domains"),
-              let spellings = try? JSONDecoder().decode([String].self, from: data)
+              let list = try? JSONSerialization.jsonObject(with: data) as? [Any]
         else { return [] }
-        return spellings.compactMap { spelling in Domain(spelling).map { Entry(spelling: spelling, domain: $0) } }
+        // One odd entry must not hide the rest.
+        return list.compactMap { $0 as? String }.compactMap { spelling in Domain(spelling).map { Entry(spelling: spelling, domain: $0) } }
     }
 
     /// The credentials GamGUI stored under `entry`'s exact spelling.
-    public func credentials(for entry: Entry) throws -> [Credential: Data] {
-        var found: [Credential: Data] = [:]
+    public func credentials(for entry: Entry) throws -> [Credential: Secret] {
+        var found: [Credential: Secret] = [:]
         for credential in Credential.allCases {
             if let data = try read("gamgui:\(entry.spelling)", credential.rawValue), !data.isEmpty {
-                found[credential] = data
+                found[credential] = Secret(data)
             }
         }
         return found

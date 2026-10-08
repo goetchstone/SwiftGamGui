@@ -14,8 +14,8 @@ public enum CredentialFacts {
             if let text = claims as? String {
                 claims = text.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) }
             }
-            if let email = (claims as? [String: Any])?["email"] as? String,
-               email.contains("@"), !email.contains(where: \.isWhitespace) {
+            if let email = (claims as? [String: Any])?["email"] as? String, email.contains("@"),
+               !email.unicodeScalars.contains(where: { $0.properties.isWhitespace || $0.properties.generalCategory == .control }) {
                 return email.lowercased()
             }
         }

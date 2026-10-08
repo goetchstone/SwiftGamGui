@@ -17,7 +17,8 @@ Act on the items your diff touches.
 
 ## If your diff touches GAM
 4. **argv-only (#1)** and **byte-identical to GamGUI (#11)**: every builder is checked against
-   `Tests/Fixtures/argv.json`; never regenerate the fixture to make a Swift builder pass.
+   `Tests/Fixtures/argv.json`; never regenerate the fixture to make a Swift builder pass. Compare
+   bytes (`Array($0.utf8)`), never `String ==`, which treats "é" and "e" + U+0301 as equal.
 5. **One write path (#2)**: a write runs only from a held preview through ChangeCore's executor.
 6. **The mock lies**: `Tests/Fixtures/mock_gam.sh` must fail the way real GAM fails — check
    `Vendor/gam7/GamCommands.txt`. A green mock is not a live proof.

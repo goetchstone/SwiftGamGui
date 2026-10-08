@@ -48,12 +48,31 @@ struct AccessCheckTests {
         #expect(result.authorizationURL == nil)
     }
 
-    @Test func aFailureWithoutACheckAnswerIsAPlainError() {
+    @Test func aFailureWithoutACheckAnswerShowsGamsErrorNotItsInstructions() {
+        // GAM's stderr as the mock prints it: the error, then what to run.
         let result = AccessCheck.interpret(GamResult(
             exitCode: 16, stdout: "",
-            stderr: "\nERROR: Service Account OAuth2 File: /x/oauth2service.json, Does not exist\n",
+            stderr: """
+
+            ERROR: Service Account OAuth2 File: /x/oauth2service.json, Does not exist or has invalid format, Authentication
+            Please run
+
+            gam create|use project
+            gam user <user> update serviceaccount
+
+            to create and authorize a Service account.
+
+            """,
             stdoutTruncated: false, stderrTruncated: false))
-        #expect(result.outcome == .failed("ERROR: Service Account OAuth2 File: /x/oauth2service.json, Does not exist"))
+        #expect(result.outcome == .failed(
+            "ERROR: Service Account OAuth2 File: /x/oauth2service.json, Does not exist or has invalid format, Authentication"))
+    }
+
+    @Test func wordBoundariesAreAsciiLikePythons() {
+        #expect(AccessCheck.rows(in: "Service Account Private Key Authentication:FAIL")
+            == [AccessCheck.Row(label: "Service Account Private Key Authentication", passed: false)])
+        let huge = String(repeating: "x PASS\n", count: AccessCheck.rowLineLimit * 3)
+        #expect(AccessCheck.rows(in: huge).count == AccessCheck.rowLineLimit)
     }
 
     @Test func rowsAreReadInBothOfGamsForms() {

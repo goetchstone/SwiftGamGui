@@ -16,27 +16,45 @@ public enum CredentialFolder {
         case notARegularFile(String)
         case tooLarge(String)
         case notJSON(String)
+        case notAServiceAccount
         case unreadable(String, Int32)
     }
 
-    /// The credentials present in `folder`. Throws `missing` unless the ones GAM needs are there;
-    /// `client_secrets.json` is optional.
-    public static func read(_ folder: URL) throws -> [Credential: Data] {
+    /// The credentials present in `folder`, as `Secret`s. Throws unless the ones GAM needs are there
+    /// and well-formed; a problem with the optional `client_secrets.json` only leaves it out, as in
+    /// GamGUI.
+    public static func read(_ folder: URL) throws -> [Credential: Secret] {
         let dir = open(folder.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
         guard dir >= 0 else { throw Failure.notAFolder }
         defer { close(dir) }
-        var found: [Credential: Data] = [:]
+        var found: [Credential: Secret] = [:]
         for credential in Credential.allCases {
-            if let data = try readFile(credential.fileName, in: dir) {
-                guard (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else {
-                    throw Failure.notJSON(credential.fileName)
+            do {
+                if let data = try readFile(credential.fileName, in: dir) {
+                    try check(data, as: credential)
+                    found[credential] = Secret(data)
                 }
-                found[credential] = data
+            } catch where !Credential.required.contains(credential) {
+                continue
             }
         }
         let missing = Credential.required.filter { found[$0] == nil }
         guard missing.isEmpty else { throw Failure.missing(missing) }
         return found
+    }
+
+    /// UTF-8 JSON objects (GAM reads nothing else; a UTF-16 file parses in Foundation but not in GAM),
+    /// and a service-account file that names its account.
+    private static func check(_ data: Data, as credential: Credential) throws {
+        guard !data.starts(with: [0xFE, 0xFF]), !data.starts(with: [0xFF, 0xFE]), !data.contains(0),
+              String(data: data, encoding: .utf8) != nil,
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { throw Failure.notJSON(credential.fileName) }
+        if credential == .oauth2Service {
+            guard let email = object["client_email"] as? String, email.contains("@") else {
+                throw Failure.notAServiceAccount
+            }
+        }
     }
 
     private static func readFile(_ name: String, in dir: Int32) throws -> Data? {
@@ -55,8 +73,22 @@ public enum CredentialFolder {
         }
         guard Int(info.st_size) <= sizeCap else { throw Failure.tooLarge(name) }
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK)
-        let data = FileHandle(fileDescriptor: fd, closeOnDealloc: false).readData(ofLength: sizeCap + 1)
-        guard data.count <= sizeCap else { throw Failure.tooLarge(name) }
-        return data
+        // read(2), not FileHandle: a failed read (a USB or network volume, an offloaded iCloud file)
+        // must be an error, not an Objective-C exception that kills the app.
+        var data = Data()
+        var chunk = [UInt8](repeating: 0, count: 16 * 1024)
+        while true {
+            let n = chunk.withUnsafeMutableBytes { Darwin.read(fd, $0.baseAddress!, $0.count) }
+            if n > 0 {
+                data.append(contentsOf: chunk[0..<n])
+                guard data.count <= sizeCap else { throw Failure.tooLarge(name) }
+            } else if n < 0, errno == EINTR {
+                continue
+            } else if n < 0 {
+                throw Failure.unreadable(name, errno)
+            } else {
+                return data
+            }
+        }
     }
 }

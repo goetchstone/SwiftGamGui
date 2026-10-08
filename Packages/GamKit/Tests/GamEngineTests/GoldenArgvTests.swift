@@ -58,7 +58,9 @@ struct GoldenArgvTests {
         for item in document.cases {
             guard let build = Self.implemented[item.builder] else { continue }
             if let expected = item.argv {
-                #expect(try build(item.kwargs) == expected, "\(item.builder) \(item.kwargs)")
+                // Bytes, not Strings: Swift's == treats "é" and "e" + U+0301 as equal; GAM doesn't.
+                #expect(try build(item.kwargs).map { Array($0.utf8) } == expected.map { Array($0.utf8) },
+                        "\(item.builder) \(item.kwargs)")
             } else {
                 #expect(throws: (any Error).self, "\(item.builder) should refuse \(item.kwargs)") { try build(item.kwargs) }
             }

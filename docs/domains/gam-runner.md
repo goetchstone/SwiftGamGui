@@ -7,9 +7,17 @@ an allowlisted environment, a timeout, and capped output capture.
 `Packages/GamKit/Tests/GamEngineTests/RunnerTests.swift`.
 
 ## Files
-- `Packages/GamKit/Sources/GamEngine/GamRunner.swift` — `Process` + `Pipe`s; a dedicated thread drains
-  each pipe into a `CappedBuffer` (8 MiB per stream); `ExitSignal` hands the exit status to one waiter;
-  a timeout sends SIGTERM, then SIGKILL after 5 s, and throws `timedOut`.
+- `Packages/GamKit/Sources/GamEngine/GamRunner.swift`:
+  - **`posix_spawn`, not Foundation's `Process`** (PR #2 review). `Process` passes arguments through
+    the file-system representation, which decomposes "é" into "e" + U+0301 (171 golden-argv elements
+    changed under it) and aborts the app on a NUL. Here arguments and environment go out as their
+    exact UTF-8 bytes; a NUL throws `invalidArgument`.
+  - The child inherits only stdin (`/dev/null`), stdout and stderr (`POSIX_SPAWN_CLOEXEC_DEFAULT`), with
+    signal dispositions and mask reset.
+  - A thread drains each pipe with `read(2)` into a `CappedBuffer` (8 MiB per stream). A thread
+    `waitpid`s: an exit gives its code, a signal its number.
+  - A timeout sends SIGTERM, then SIGKILL after 5 s, and throws `timedOut`.
+  - `children` tracks every live `gam` for `stopAll()` at quit.
 - `GamEnvironment.swift` — `allowlist` (GamGUI's `ENV_ALLOWLIST`, exact names) and `mockOnly` (debug
   builds only); `GAMCFGDIR` and `GAM_NO_UPDATE_CHECK=1` are set by the runner, never inherited.
 - `GamBinary.swift` — the bundled `gam7/gam`; `SWIFTGAMGUI_GAM_BINARY` honoured in debug builds only.

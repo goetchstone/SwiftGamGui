@@ -12,11 +12,14 @@ public struct GamResult: Sendable, Equatable {
 public enum GamRunnerError: Error, Equatable, Sendable {
     case binaryNotExecutable(String)
     case launchFailed(String)
+    /// An argument or environment value GAM can't receive (a NUL byte).
+    case invalidArgument(String)
     /// The run outlived its timeout and was stopped; it may have done part of its work.
     case timedOut(seconds: Int64)
 }
 
-/// Runs `gam` as a child process: an explicit argv (invariant 1, never a shell), the allowlisted
+/// Runs `gam` as a child process: an explicit argv (invariant 1, never a shell), sent as exact bytes
+/// (invariant 11), the allowlisted
 /// environment, a timeout, and output capture bounded per stream.
 ///
 /// Credentials, write serialization and auditing sit above this type (Vault, ChangeCore); it only
@@ -67,40 +70,24 @@ public struct GamRunner: Sendable {
         guard FileManager.default.isExecutableFile(atPath: binary.path) else {
             throw GamRunnerError.binaryNotExecutable(binary.path)
         }
-        let process = Process()
-        process.executableURL = binary
-        process.arguments = argv
-        process.environment = GamEnvironment.build(
-            from: ProcessInfo.processInfo.environment,
-            configDirectory: configDirectory,
-            extra: extraEnvironment
-        )
-        process.standardInput = FileHandle.nullDevice
-        let outPipe = Pipe()
-        let errPipe = Pipe()
-        process.standardOutput = outPipe
-        process.standardError = errPipe
+        let environment = GamEnvironment.build(from: ProcessInfo.processInfo.environment,
+                                               configDirectory: configDirectory, extra: extraEnvironment)
+        let (pid, outRead, errRead) = try Self.spawn(binary.path, argv, environment)
+        Self.children.withLock { $0[pid] = binary.path }
+
         let exit = ExitSignal()
-        process.terminationHandler = { finished in
-            Self.children.withLock { _ = $0.removeValue(forKey: finished.processIdentifier) }
-            exit.finish(finished.terminationStatus)
-        }
-        do {
-            try process.run()
-        } catch {
-            throw GamRunnerError.launchFailed(String(describing: error))
-        }
-        let pid = process.processIdentifier
-        if process.isRunning {
-            Self.children.withLock { $0[pid] = binary.path }
-        }
-        try? outPipe.fileHandleForWriting.close()
-        try? errPipe.fileHandleForWriting.close()
+        Thread {
+            var status: Int32 = 0
+            while waitpid(pid, &status, 0) == -1, errno == EINTR {}
+            Self.children.withLock { _ = $0.removeValue(forKey: pid) }
+            // Exited: its code. Killed by a signal: the signal's number (Foundation's convention).
+            exit.finish(status & 0x7f == 0 ? (status >> 8) & 0xff : status & 0x7f)
+        }.start()
 
         let outBuffer = CappedBuffer(cap: Self.outputCap)
         let errBuffer = CappedBuffer(cap: Self.outputCap)
-        async let outDrained: Void = Self.drain(outPipe.fileHandleForReading, into: outBuffer)
-        async let errDrained: Void = Self.drain(errPipe.fileHandleForReading, into: errBuffer)
+        async let outDrained: Void = Self.drain(outRead, into: outBuffer)
+        async let errDrained: Void = Self.drain(errRead, into: errBuffer)
         let status = await withTaskCancellationHandler {
             await Self.wait(for: exit, pid: pid, timeout: timeout)
         } onCancel: {
@@ -108,8 +95,6 @@ public struct GamRunner: Sendable {
         }
         _ = await outDrained
         _ = await errDrained
-        // Keeps the Process alive until its handler has run; the object must outlive the child.
-        _ = process.terminationReason
 
         try Task.checkCancellation()
         guard let status else {
@@ -124,6 +109,59 @@ public struct GamRunner: Sendable {
             stdoutTruncated: outCut,
             stderrTruncated: errCut
         )
+    }
+
+    /// Starts the child with `posix_spawn`, not Foundation's `Process`: `Process` passes arguments
+    /// through the file-system representation, which decomposes "é" into "e" + U+0301 and aborts the
+    /// app on a NUL. Here every argument and environment value goes to `gam` as its exact UTF-8 bytes
+    /// (invariant 11), and a NUL is a thrown error. Only stdin (`/dev/null`), stdout and stderr are
+    /// inherited; signal dispositions and the mask are reset.
+    private static func spawn(_ path: String, _ argv: [String], _ environment: [String: String]) throws
+        -> (pid: pid_t, out: Int32, err: Int32) {
+        let entries = environment.map { "\($0.key)=\($0.value)" }
+        for value in [path] + argv + entries where value.utf8.contains(0) {
+            throw GamRunnerError.invalidArgument("contains a NUL byte")
+        }
+        var out: [Int32] = [-1, -1]
+        var err: [Int32] = [-1, -1]
+        guard pipe(&out) == 0 else { throw GamRunnerError.launchFailed("pipe: errno \(errno)") }
+        guard pipe(&err) == 0 else {
+            close(out[0]); close(out[1])
+            throw GamRunnerError.launchFailed("pipe: errno \(errno)")
+        }
+        var actions: posix_spawn_file_actions_t?
+        var attributes: posix_spawnattr_t?
+        posix_spawn_file_actions_init(&actions)
+        posix_spawnattr_init(&attributes)
+        defer {
+            posix_spawn_file_actions_destroy(&actions)
+            posix_spawnattr_destroy(&attributes)
+        }
+        posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+        posix_spawn_file_actions_adddup2(&actions, out[1], STDOUT_FILENO)
+        posix_spawn_file_actions_adddup2(&actions, err[1], STDERR_FILENO)
+        var defaults = sigset_t.max   // every signal back to its default disposition
+        var mask = sigset_t(0)
+        posix_spawnattr_setsigdefault(&attributes, &defaults)
+        posix_spawnattr_setsigmask(&attributes, &mask)
+        posix_spawnattr_setflags(&attributes,
+                                 Int16(POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK))
+
+        let cArgv = ([path] + argv).map { strdup($0) } + [nil]
+        let cEnv = entries.map { strdup($0) } + [nil]
+        defer {
+            cArgv.forEach { free($0) }
+            cEnv.forEach { free($0) }
+        }
+        var pid: pid_t = 0
+        let status = posix_spawn(&pid, path, &actions, &attributes, cArgv, cEnv)
+        close(out[1])
+        close(err[1])
+        guard status == 0 else {
+            close(out[0]); close(err[0])
+            throw GamRunnerError.launchFailed("posix_spawn: errno \(status)")
+        }
+        return (pid, out[0], err[0])
     }
 
     private enum Outcome: Sendable {
@@ -162,16 +200,25 @@ public struct GamRunner: Sendable {
     }
 
     /// Reads a pipe to EOF on a dedicated thread (a blocking read must not hold a cooperative-pool
-    /// thread), keeping at most the buffer's cap.
-    private static func drain(_ handle: FileHandle, into buffer: CappedBuffer) async {
+    /// thread), keeping at most the buffer's cap, then closes it. `read(2)` reports errors as values;
+    /// `FileHandle`'s reads raise an Objective-C exception that would kill the app.
+    private static func drain(_ fd: Int32, into buffer: CappedBuffer) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            let reader = Thread {
-                while let chunk = try? handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
-                    buffer.append(chunk)
+            Thread {
+                var chunk = [UInt8](repeating: 0, count: 64 * 1024)
+                while true {
+                    let n = chunk.withUnsafeMutableBytes { read(fd, $0.baseAddress!, $0.count) }
+                    if n > 0 {
+                        buffer.append(Data(chunk[0..<n]))
+                    } else if n < 0, errno == EINTR {
+                        continue
+                    } else {
+                        break
+                    }
                 }
+                close(fd)
                 done.resume()
-            }
-            reader.start()
+            }.start()
         }
     }
 }
