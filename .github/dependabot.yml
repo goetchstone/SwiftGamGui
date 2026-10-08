@@ -1,0 +1,12 @@
+# Keeps the SHA-pinned GitHub Actions current (security fixes arrive as PRs). There are no Swift or
+# Python package dependencies. The vendored GAM is deliberately not here: it is pinned by SHA-256 in
+# scripts/gam_checksums.txt and bumped with scripts/bump_gam.py (GitHub build attestation, fails closed).
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]

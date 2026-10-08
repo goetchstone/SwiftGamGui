@@ -42,7 +42,22 @@ Requires macOS 27 and Xcode 27.
    Xcode creates the provisioning profile with your account (`xcodebuild` alone reports "No
    Accounts"). After that, `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build` works.
 
-Tests: `swift test --package-path Packages/GamKit`.
+Tests: `swift test --package-path Packages/GamKit`. CI runs the same on GitHub's macOS 27 / Xcode 27
+image, builds the app, checks its signature and entitlements (`scripts/check_app.sh`), and vendors the
+pinned GAM; `ci-ok` is the one required check.
+
+### Gatekeeper, and why there are no downloadable builds yet
+
+An app you build yourself runs: Gatekeeper only checks files that arrive *quarantined* (downloaded by
+a browser, Mail, AirDrop). A build downloaded from a release page would be quarantined, and anything
+not signed with a **Developer ID certificate and notarized by Apple** is blocked — that includes
+ad-hoc and free Personal Team signatures. So until the project has a paid Apple Developer Program
+membership, the supported way to run GamGUI is to build it from source. Release downloads come with
+Developer ID signing and notarization (design doc, phase 6).
+
+A free Personal Team's provisioning profile **expires after 7 days**. Rebuild in Xcode at least
+weekly (a build renews it); the credentials you stored stay, because they belong to the team and the
+bundle ID, not to the profile.
 
 If you later switch to a different signing team, the app can no longer see the credentials the old
 build stored; re-import them once.

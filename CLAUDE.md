@@ -62,10 +62,18 @@ GAM converts a live break into a green test. **Passing tests do not mean a GAM w
   items (`security find-*`), never print or paste a credential file. Spikes use throwaway items named
   `swiftgamgui-spike*` only.
 - **macOS-only is deliberate.** Platform specifics live in the app and Vault, not in GamEngine.
-- **Commits** happen when the operator asks; once the GitHub repo exists, every change reaches `main`
-  through a pull request.
+- **Commits** happen when the operator asks; every change reaches `main` through a pull request whose
+  `ci-ok` is green. **Publish as the repo owner**: this Mac's `gh` has more than one account, and the
+  active one may not own this repo — check `gh auth status` before any push or `gh` write.
 - **Tenant data never enters the repo**: placeholders stay generic (`example.com`, "Sales"); the local
   private-terms tripwire blocks the operator's terms.
+
+## How we build: KISS, and learn every round
+
+The simplest design that keeps the invariants wins; no speculative abstraction, no tooling before a
+need. Each slice ends by writing down what it taught — a failure-log entry, a RULE-FEEDBACK note or a
+runbook line — so the next round starts smarter. Security and code quality are part of done, not a
+later pass.
 
 ## Working here economically
 

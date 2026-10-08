@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only: nothing here writes back. GITHUB_TOKEN only authenticates fetch_gam.sh's api.github.com
+# calls (the anonymous limit is 60/hr).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: No credential or local-only file is tracked
+        run: |
+          if git ls-files | grep -E '(^|/)(oauth2service\.json|oauth2\.txt|client_secrets\.json|Local\.xcconfig|private-terms)$'; then
+            echo "::error::a credential or local-only file is tracked"
+            exit 1
+          fi
+      - name: Scripts parse
+        run: |
+          python3 -m py_compile scripts/*.py
+          bash -n scripts/fetch_gam.sh scripts/check_app.sh Tests/Fixtures/mock_gam.sh
+
+  macos:
+    # GitHub's xcode-27 image (preview): macOS 27 + Xcode 27, what the app targets. No signing team
+    # here, so the app builds ad-hoc with the empty entitlements — the contributor-without-a-team path.
+    name: build + test (macOS 27)
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: sw_vers && xcodebuild -version && swift --version
+      - name: Package tests (strict mock gam, GamGUI parity fixtures, snapshot spike)
+        run: |
+          mkdir -p "$RUNNER_TEMP/attachments"
+          swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments"
+      - name: Build the app (Release)
+        run: xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Release -derivedDataPath "$RUNNER_TEMP/dd" build
+      - name: Hardened runtime on, no entitlement beyond the allowlist
+        run: scripts/check_app.sh "$RUNNER_TEMP/dd/Build/Products/Release/GamGUI.app"
+      - name: Vendor the pinned GAM (fails closed on a checksum mismatch)
+        run: ./scripts/fetch_gam.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: The vendored GAM is the pinned version and runs here
+        run: |
+          git diff --exit-code -- Vendor/gam7
+          pin="$(sed -nE 's/.*expected = "([0-9.]+)".*/\1/p' Packages/GamKit/Sources/GamEngine/GamVersion.swift)"
+          cfg="$(mktemp -d)"
+          GAMCFGDIR="$cfg" GAM_NO_UPDATE_CHECK=1 Vendor/gam7/gam version | head -1 | tee /dev/stderr | grep -qF "GAM $pin "
+      - name: Keep the snapshot attachments
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: snapshots
+          path: ${{ runner.temp }}/attachments
+          if-no-files-found: ignore
+
+  # The one required check for branch protection.
+  ci-ok:
+    name: ci-ok
+    runs-on: ubuntu-latest
+    needs: [hygiene, macos]
+    if: always()
+    steps:
+      - name: Every job passed
+        env:
+          HYGIENE: ${{ needs.hygiene.result }}
+          MACOS: ${{ needs.macos.result }}
+        run: |
+          echo "hygiene=$HYGIENE macos=$MACOS"
+          test "$HYGIENE" = success && test "$MACOS" = success

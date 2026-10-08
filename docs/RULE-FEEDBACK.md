@@ -22,4 +22,13 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
-<!-- No entries yet. -->
+## 2026-10-08 — The first publish would have gone out under the wrong GitHub account
+- **What happened:** before creating this repo, `gh auth status` showed the active account was not the
+  repo owner. `gh repo create` would have made the repo there. Caught by reading the status by hand;
+  pushed with the owner's token for that one command instead of switching the global account.
+- **Invariant in force:** none here; GamGUI's failure-log 2026-09-23 ("two handoff plans published
+  the operator's second GitHub account") taught the related rule, and it lived only in prose.
+- **Why it didn't hold:** not covered — no hook looks at which account a `gh` write or `git push` uses.
+- **Would a rule have caught it?** only if enforced differently: a PreToolUse check that refuses
+  `gh repo create` / `git push` unless the account in use owns the target.
+- **Enforcement home if changed:** hook (hard). CLAUDE.md's rules of engagement now say it in words.

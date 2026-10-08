@@ -1,0 +1,11 @@
+name: "SwiftGamGui CodeQL config"
+
+# Broader than the default suite: this app reaches credentials that can impersonate any user in a
+# Google Workspace domain, so a few more false positives are worth it.
+queries:
+  - uses: security-extended
+
+# Only code we ship and control: not the vendored GAM release or test fixtures.
+paths-ignore:
+  - Vendor
+  - Tests
