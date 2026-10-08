@@ -86,6 +86,58 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
     each now has a line of its own. Twenty-seven mutants all fail the suite.
 - **Not wired in yet:** nothing throws it until the first screen runs GAM for data.
 
+## Reading output
+`GamOutput.swift` ports GamGUI's `core/gam/parser.py`: GAM's stdout as records, whether it printed one
+JSON value, newline-delimited JSON, a `formatjson` CSV (a `JSON` column with key columns beside it)
+or plain CSV. `GamOutputTests` holds it to `Tests/Fixtures/gam_output.json`: GamGUI's `parse_records`
+over 600 inputs.
+- **The fixture's sources:**
+  - the strict mock's output for every read the app makes
+  - GamGUI's property-test strategies (JSON shapes, plain and `formatjson` CSV, noise), drawn
+    deterministically
+  - the inputs its failure log names (a cell past the csv module's limit, a bare CR, deep nesting,
+    raw U+2028 in NDJSON, an empty header)
+  - JSON's and CSV's own edges
+- **`JSONValue`** reads as `json.loads`:
+  - `NaN` and `Infinity` are accepted;
+  - integers keep their digits;
+  - the last duplicate key wins;
+  - raw control characters are refused.
+
+  JSON `null` is "not JSON" to GamGUI's `_try_json`, and so here. Integers past 4,300 digits are
+  refused (Python's `int` limit), floats aren't.
+  - **Objects are `JSONObject`:** keys distinct by exact text, as a Python dict's are. A Swift
+    `Dictionary` merged "é" with "e" + U+0301 and dropped one (PR #7's review).
+  - **Two deliberate differences:**
+    - nesting past 128 is refused (Python's limit is its C stack; a debug build overflowed a 512 KiB
+      thread at about 470);
+    - a lone surrogate escape becomes U+FFFD.
+- **`CSVReader`** is `_csv.c`'s state machine in the default dialect over `newline=""` lines, with
+  `DictReader`'s `restval` and its handling of duplicated headers.
+  - Each distinct column holds its last position's cell. That is computed once per column, not per
+    header cell per row: an 80 KB CSV with a wide header of repeated names took 13 GB (now 43 MB).
+
+## Users, groups, members
+`Directory.swift` ports GamGUI's `GAMUser`, `GAMGroup` and `GroupMember` (`core/gam/models.py`). They
+read GAM's varying keys (`primaryEmail` / `email` / `User`, `name.givenName` / `First Name`), flags given
+as booleans, words or numbers, counts given as numbers or text (Python's `int()`: any script's digits,
+underscores, a float truncated), and a Directory list's primary entry. `DirectoryTests` holds them to
+`Tests/Fixtures/gam_models.json`: GamGUI's models over the mock's records and 250 seeded variants,
+as JSON text read through `JSONValue`.
+- **Text fields:** a scalar reads as Python's `str()` of it (`1.50` is "1.5", `1E2` "100.0", `null`
+  "None"); a list or object where text belongs reads as empty.
+- **`int()`:** strips `isspace()` characters except U+001C to U+001F.
+- **Case:** `PythonText.upper` and `lower` keep Python's Unicode 16 mappings (Swift's 17 gives U+A7D3 an
+  uppercase), checked over every code point.
+- **Not `Equatable`, no record in a dump:** the models skip comparing or printing the whole record.
+- **`id`:** a record without an address gets a one-off one.
+
+The fixture generator keeps its Hypothesis draws stable in two ways:
+- **An explicit `@seed`.** `derandomize` seeds from the function's digest, which moves with any edit to
+  the generator.
+- **No local constants.** Hypothesis also draws string constants it finds in local source, the
+  generator's own included, so adding an unrelated string literal changed the cases.
+
 ## Not built yet
 Write serialization (ChangeCore, phase 2). `check serviceaccount`'s own exits are handled in
 `AccessCheck`.

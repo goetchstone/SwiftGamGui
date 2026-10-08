@@ -139,7 +139,7 @@ public struct GamError: Error, Equatable, Sendable {
     /// classifying the whole text by its first match let one "not found" mask the rest (GamGUI
     /// failure-log 2026-09-23).
     static func errorLines(_ stderr: String) -> [(kind: Kind, line: String)] {
-        PythonText.lines(stderr).map(PythonText.strip)
+        PythonText.lines(stderr).map { PythonText.strip($0) }
             .filter { !$0.isEmpty && !isProgress($0) && !isInstruction($0) }
             .map { (classify($0), $0) }
     }
@@ -399,7 +399,7 @@ public enum ArgvRedaction {
                 continue
             }
             out.append(token)
-            let lowered = token.lowercased()
+            let lowered = PythonText.lower(token)
             maskNext = sensitiveKeys.contains { $0.utf8.elementsEqual(lowered.utf8) }
         }
         return out

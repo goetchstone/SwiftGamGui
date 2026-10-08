@@ -10,6 +10,11 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/gam_errors.json  GamGUI's classification, message and scrubbing of failed GAM runs
                                   (core/gam/errors.py) over its own and generated stderr, with the
                                   Unicode tables its regexes use.
+  Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
+                                  property tests' JSON/CSV shapes and noise, and the inputs its
+                                  failure log names.
+  Tests/Fixtures/gam_models.json  GamGUI's user, group and member models over the mock's records and
+                                  seeded variants.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -292,6 +297,292 @@ def errors_fixture() -> dict:
     }
 
 
+def output_fixture(mock: Path) -> dict:
+    """GamGUI's parse_records over GAM's output shapes: what the strict mock prints for every read the
+    app makes; the JSON, CSV and formatjson shapes and the noise GamGUI's property tests generate
+    (drawn deterministically); and the inputs its failure log names (a long cell, a bare CR, deep
+    nesting, raw line separators in NDJSON, an empty header) with JSON's and CSV's own edges. The
+    records are stored as Python's json.dumps text, NaN and Infinity included."""
+    from hypothesis import HealthCheck, Phase, given, seed, settings
+    from hypothesis import strategies as st
+
+    from gamgui.core.gam.parser import parse_records
+    from tests import test_props_parsing as props
+
+    cases = []
+
+    def add(stdout: str) -> None:
+        cases.append({"stdout": stdout, "records": json.dumps(parse_records(stdout), ensure_ascii=True)})
+
+    for stdouts in mock_outputs(mock).values():
+        for stdout in stdouts:
+            add(stdout)
+
+    # Hypothesis also draws string constants it finds in local source, this script's included, so an
+    # unrelated edit here changed the drawn cases. Only the seed decides them.
+    from hypothesis.internal.conjecture import providers
+
+    empty = providers.Constants(integers=providers.SortedSet(), floats=providers.SortedSet(key=providers.float_to_int),
+                                bytes=providers.SortedSet(), strings=providers.SortedSet())
+    providers._get_local_constants = lambda: empty
+
+    def drawn(strategy, count: int) -> list:
+        found = []
+
+        # An explicit seed: `derandomize` seeds from the function's digest, which moves with any edit
+        # to this file and would churn the fixture.
+        @seed(20261008)
+        @settings(max_examples=count, database=None, deadline=None,
+                  phases=[Phase.generate], suppress_health_check=list(HealthCheck))
+        @given(strategy)
+        def collect(value):
+            found.append(value)
+
+        collect()
+        return found
+
+    for text, _ in drawn(props._json_output(), 120):
+        add(text)
+    for text, _ in drawn(props._plain_csv(), 120):
+        add(text)
+    for text, _ in drawn(props._formatjson_csv(), 120):
+        add(text)
+    noise = st.one_of(st.text(props._ANY), props._noise()).map(lambda s: s.replace("\r", "\r\n"))
+    for text in drawn(noise, 200):
+        add(text)
+
+    record = json.dumps({"primaryEmail": "a@example.com", "name": {"fullName": "Zo" + chr(0xEB)}})
+    big = "x" * 131_073
+    for separator in (chr(0x2028), chr(0x2029), chr(0x85)):
+        add(json.dumps({"note": "a" + separator + "b"}, ensure_ascii=False) + "\n" + record)
+    edges = [
+        props._csv([["primaryEmail", "notes"], ["a@example.com", big]]),
+        props._csv([["primaryEmail", "JSON"], ["a@example.com", json.dumps({"notes": big})]]),
+        "primaryEmail,notes\na@example.com,x\ry\n",
+        "primaryEmail,notes\na@example.com,\"x\ry\"\n",
+        "[" * 200_000,
+        "[" * 300 + "]" * 300,
+        '{"a": ' + "[" * 600 + "]" * 600 + "}",
+        "primaryEmail,,orgUnitPath\na@example.com,blank,/\n",
+        "primaryEmail,name\na@example.com\nb@example.com,B,extra,more\n",
+        "id,id,name\n1,2,x\n",
+        chr(0xFEFF) + record,
+        chr(0xFEFF) + "primaryEmail\na@example.com\n",
+        "NaN",
+        "[NaN, Infinity, -Infinity, 1E400, -0, 12345678901234567890123456789]",
+        '{"n": NaN, "i": -Infinity, "big": 1e400, "neg0": -0.0}\n{"x": 1}',
+        '"' + chr(92) + "ud800" + '"',
+        '{"a": "' + chr(92) + "ud83d" + chr(92) + "ude00" + chr(92) + "ud800x" + '"}',
+        '{"a": 1, "a": 2, "b": [1, 2,]}',
+        '{"a": 1,}',
+        '{"a": "tab' + chr(9) + 'raw"}',
+        chr(0x0B) + record,
+        record + "\n" + chr(0x0B) + record,
+        record + "\r\n" + record + "\r\n",
+        record + "\n\n   \n" + record,
+        record + "\nnot json",
+        "primaryEmail,JSON\na@example.com," + '"' + json.dumps({"x": 1}).replace('"', '""') + '"' + "\n",
+        "primaryEmail,JSON\na@example.com,\nb@example.com,[1, {\"y\": 2}]\n",
+        "primaryEmail,JSON\n,\"{\"\"primaryEmail\"\": \"\"wins@example.com\"\"}\"\n",
+        'a,b\n"unterminated,1\n',
+        'a,b\n"x"y,2\n',
+        'a,b\nx"y,"z""w"\n',
+        "a,b\n" + chr(0) + ",1\n",
+        "a,b\n\n\n1,2\n",
+        "a\n" + '""' + "\n",
+        "  " + chr(0x3000) + "primaryEmail\na@example.com" + chr(0x3000) + " ",
+        "true",
+        "null",
+        "null\n" + record,
+        record + "\nnull\n" + record,
+        "[]",
+        "{}",
+        "[1, \"x\", null, {\"k\": \"v\"}]",
+        "{\"a\": 1} {\"b\": 2}",
+        "{\"a\": 1}\n[{\"b\": 2}, 3]\n\"s\"\n",
+    ]
+    # PR #7's review: one input for each defect it proved, and for each change that slipped past.
+    backslash, nfc, nfd = chr(92), chr(0xE9), "e" + chr(0x301)
+    edges += [
+        '{"a": 1E2, "b": 1e+2, "c": 1E-2, "d": -0.5e-1}',
+        '{"a": 1e}', '{"a": 1.}', '{"a": 1e+}', '{"a": +1}', '{"a": 01}', '{"a": -}',
+        '{"a": "' + backslash + "/" + backslash + "f" + backslash + "b" + '"}',
+        '{"a": "' + backslash + "u00E9" + backslash + "u00e9" + '"}',
+        '{"a": "x\ny"}',
+        '{"a": "' + backslash + "ud800" + backslash + "ud800" + '"}',
+        '{"a":' + chr(12) + '1}',
+        "primaryEmail,JSON,JSON\na@example.com," + '"{""x"": 1}","{""y"": 2}"' + "\n",
+        "a,a,JSON\n1,," + '"{""z"": 1}"' + "\n",
+        '{"' + nfc + '": 1, "' + nfd + '": 2}',
+        '{"K": 1, "' + chr(0x212A) + '": 2}',
+        nfc + "," + nfd + "\nx,y\n",
+        '{"a": ' + "1" * 4300 + '}', '{"a": ' + "1" * 4301 + '}', '{"a": -' + "1" * 4301 + '}',
+        '{"a": ' + "1" * 4301 + '.5}', '[{"a": 1}, ' + "9" * 5000 + ']',
+        ",".join(["h"] * 2000) + "\n" + "\n".join(["x"] * 200) + "\n",
+        "h,h,JSON\n" + "x,y," + '"{}"' + "\n",
+    ]
+    for text in edges:
+        add(text)
+
+    seen, unique = set(), []
+    for case in cases:
+        key = json.dumps(case, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            unique.append(case)
+    return {"cases": unique}
+
+
+def mock_outputs(mock: Path) -> dict:
+    """What the strict mock prints for every read the app makes, by builder."""
+    import subprocess
+    import tempfile
+
+    from tests.test_mock_gam import READS
+
+    outputs = {}
+    with tempfile.TemporaryDirectory() as config:
+        for name in ("oauth2service.json", "oauth2.txt"):
+            Path(config, name).write_text('{"placeholder": true}')
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config,
+                       "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        for builder, argvs in READS.items():
+            for argv in argvs:
+                run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
+                if run.returncode != 0:
+                    raise SystemExit(f"the mock refused a read: {argv}")
+                outputs.setdefault(builder, []).append(run.stdout)
+    return outputs
+
+
+def models_fixture(mock: Path) -> dict:
+    """GamGUI's GAMUser, GAMGroup and GroupMember.from_json over the mock's records and seeded variants
+    of them: the alternate keys GAM uses across commands, flags as booleans, words or numbers, counts
+    as numbers or text, primary entries in Directory lists. String fields hold strings (or nothing):
+    that is how GAM sends them."""
+    import dataclasses
+    import random
+
+    from gamgui.core.gam.models import GAMGroup, GAMUser, GroupMember
+    from gamgui.core.gam.parser import parse_records
+
+    outputs = mock_outputs(mock)
+    rng = random.Random(20261008)
+    flags = [True, False, "TRUE", "false", " yes ", "1", "0", "on", "off", "", None, 0, 1, 2]
+    texts = ["", None, "Zo" + chr(0xEB) + " " + chr(0xC5) + "ngstr" + chr(0xF6) + "m", "a@example.com", " padded "]
+
+    def maybe(record: dict, key: str, values: list) -> None:
+        if rng.random() < 0.7:
+            record[key] = rng.choice(values)
+
+    def entries(fields: list) -> list:
+        items = []
+        for _ in range(rng.randint(0, 3)):
+            if rng.random() < 0.15:
+                items.append(rng.choice(["not a dict", None, 7]))
+                continue
+            item = {key: rng.choice(texts[2:] + ["", "HQ", "Sales"]) for key in fields if rng.random() < 0.7}
+            if rng.random() < 0.4:
+                item["primary"] = rng.choice([True, False, 1, 0, "", "yes"])
+            items.append(item)
+        return items
+
+    users = [r for name in ("print_users", "info_user") for out in outputs[name] for r in parse_records(out)]
+    for _ in range(250):
+        record = {}
+        maybe(record, rng.choice(["primaryEmail", "email", "User"]), texts)
+        if rng.random() < 0.6:
+            record["name"] = rng.choice([{"givenName": rng.choice(texts), "familyName": rng.choice(texts)},
+                                         {}, "not a dict", None, {"givenName": "Ada"}])
+        maybe(record, rng.choice(["givenName", "First Name"]), texts)
+        maybe(record, rng.choice(["familyName", "Last Name"]), texts)
+        for key in ("suspended", "Suspended", "isAdmin", "Is Admin", "isDelegatedAdmin", "isEnrolledIn2Sv"):
+            maybe(record, key, flags)
+        maybe(record, rng.choice(["orgUnitPath", "OrgUnitPath"]), ["/", "/Staff/New Hires", "", None])
+        maybe(record, "organizations", [entries(["title", "department"]), [], None, "x"])
+        maybe(record, "locations", [entries(["buildingName", "buildingId"]), []])
+        maybe(record, "phones", [entries(["value"]), []])
+        maybe(record, rng.choice(["Organization Title", "Organization Department"]), texts)
+        maybe(record, "recoveryEmail", texts)
+        maybe(record, rng.choice(["lastLoginTime", "Last Login Time"]), ["2026-06-18T08:00:00Z", "", None, "Never"])
+        maybe(record, rng.choice(["aliases", "Aliases"]),
+              [["a@example.com", "b@example.com"], [], "a@example.com, b@example.com",
+               " a@example.com\tb@example.com ,," + chr(0x3000) + "c@example.com", "", None])
+        users.append(record)
+
+    groups = [r for out in outputs["print_groups"] for r in parse_records(out)]
+    members = [r for name in ("print_group_members",) for out in outputs[name] for r in parse_records(out)]
+    counts = [12, 0, "12", " 7 ", "1_000", "3.7", 3.7, True, "x", "", None, chr(0x661) + chr(0x662), "-4", "+5"]
+    for _ in range(120):
+        group = {}
+        maybe(group, rng.choice(["email", "Email", "Group"]), texts)
+        maybe(group, rng.choice(["name", "Name"]), texts)
+        maybe(group, rng.choice(["description", "Description"]), texts)
+        maybe(group, rng.choice(["directMembersCount", "Members"]), counts)
+        groups.append(group)
+        member = {}
+        maybe(member, rng.choice(["email", "Email"]), texts)
+        maybe(member, rng.choice(["role", "Role"]), ["owner", "MANAGER", "member", "", None, "stra" + chr(0xDF) + "e"])
+        maybe(member, rng.choice(["type", "Type"]), ["user", "GROUP", "customer", "", None])
+        maybe(member, rng.choice(["status", "Status"]), ["ACTIVE", "suspended", "", None])
+        members.append(member)
+
+    # PR #7's review: numbers where GamGUI prints Python's str() of them, NaN's truthiness, falsy values
+    # that fall through to the next key, int()'s edges, and roles Unicode 17 uppercases differently.
+    raw_users = [
+        '{"primaryEmail": "n1@example.com", "organizations": [{"title": 1.50, "department": 1E2, "primary": true}],'
+        ' "phones": [{"value": -0}], "locations": [{"buildingName": NaN}]}',
+        '{"primaryEmail": "n2@example.com", "suspended": NaN, "isAdmin": 0.0, "isEnrolledIn2Sv": -0.0,'
+        ' "aliases": [null, true, 1.0, 12345678901234567890]}',
+        '{"primaryEmail": "n3@example.com", "organizations": [{"title": 1e16, "department": 1e15, "primary": 1}],'
+        ' "phones": [{"value": 0.0001}], "locations": [{"buildingId": 1e-05}]}',
+        '{"primaryEmail": "n4@example.com", "organizations": [{"title": 123456789012345678, "department": -1.5e-7}],'
+        ' "recoveryEmail": 0}',
+        '{"primaryEmail": "n5@example.com", "name": {"givenName": 0, "familyName": false},'
+        ' "givenName": "Flat", "Last Name": "Name", "orgUnitPath": 5, "lastLoginTime": 1.5}',
+    ]
+    raw_groups = ['{"email": "g@example.com", "directMembersCount": ' + count + '}' for count in
+                  ['"' + chr(92) + 'u001c5"', '"5' + chr(92) + 'u001f"', "-3.7", "1e2", '"1__0"', '"_1"', '"1_"',
+                   '"  ' + chr(92) + 'u0663 "', "NaN", "-0.0", "true", '"' + chr(92) + 'u30005' + chr(92) + 'u3000"']]
+    raw_members = ['{"email": "m@example.com", "role": ' + json.dumps(role) + ', "type": "user"}' for role in
+                   ["owner" + chr(0xA7D3), "member" + chr(0x16EBB), "stra" + chr(0xDF) + "e", chr(0x1F1) + "x"]]
+    users += [json.loads(text) for text in raw_users]
+    groups += [json.loads(text) for text in raw_groups]
+    members += [json.loads(text) for text in raw_members]
+
+    text_fields = {"primary_email", "given_name", "family_name", "org_unit_path", "title", "department", "location",
+                   "phone", "recovery_email", "last_login_time", "email", "name", "description", "role",
+                   "member_type", "status"}
+
+    def fields(model) -> dict:
+        found = dataclasses.asdict(model)
+        found.pop("raw")
+        # GamGUI keeps a value that isn't text as it came (an OU of 5) and its pages print str() of it.
+        for key in text_fields & found.keys():
+            if found[key] is not None and not isinstance(found[key], str):
+                found[key] = str(found[key])
+        if isinstance(model, GAMUser):
+            found["full_name"] = model.full_name
+        return found
+
+    # Records go in as JSON text, read back through the Swift JSON reader: a number keeps the form it
+    # was written in (1.50, 1E2), which is what str() of it depends on.
+    texts = {id(r): t for r, t in zip(users[-len(raw_users):], raw_users)} | \
+        {id(r): t for r, t in zip(groups[-len(raw_groups):], raw_groups)} | \
+        {id(r): t for r, t in zip(members[-len(raw_members):], raw_members)}
+
+    def entry(record, model) -> dict:
+        return {"record": texts.get(id(record)) or json.dumps(record), "model": fields(model)}
+
+    return {
+        "constants": {"PY_UPPER": [[p, [ord(c) for c in chr(p).upper()]] for p in range(0x110000)
+                                   if chr(p).upper() != chr(p)]},
+        "users": [entry(r, GAMUser.from_json(r)) for r in users],
+        "groups": [entry(r, GAMGroup.from_json(r)) for r in groups],
+        "members": [entry(r, GroupMember.from_json(r)) for r in members],
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -454,6 +745,18 @@ def main() -> int:
     errors_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | errors_fixture()
     (OUT / "gam_errors.json").write_text(json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_errors.json: {len(errors_doc['cases'])} cases")
+
+    # GAM's output, read into records as GamGUI reads it. ASCII-escaped, like gam_errors.json.
+    output_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | output_fixture(OUT / "mock_gam.sh")
+    (OUT / "gam_output.json").write_text(json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"gam_output.json: {len(output_doc['cases'])} cases")
+
+    # Records read into users, groups and members, as GamGUI's models read them.
+    models_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | models_fixture(OUT / "mock_gam.sh")
+    (OUT / "gam_models.json").write_text(json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members'))} records")
     return 0
 
 
