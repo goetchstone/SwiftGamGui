@@ -18,12 +18,25 @@ package enum PythonText {
     /// long s and the Kelvin sign.
     package static let foldsToASCII: [UInt32: Unicode.Scalar] = [0x130: "i", 0x131: "i", 0x17F: "s", 0x212A: "k"]
 
+    /// The Unicode version of the Python GamGUI runs on (`unicodedata.unidata_version`, held to the
+    /// fixtures). Swift's is newer, and a character added since is unassigned to Python: neither a
+    /// letter nor a digit, so a word boundary before it there. Read as a letter, one let an echoed
+    /// password past the scrub (PR #5's review: U+10940, new in Unicode 17).
+    package static let unicodeVersion: Unicode.Version = (major: 16, minor: 0)
+
+    /// Assigned in `unicodeVersion`.
+    package static func knownToPython(_ scalar: Unicode.Scalar) -> Bool {
+        guard let age = scalar.properties.age else { return false }
+        return age.major < unicodeVersion.major || (age.major == unicodeVersion.major && age.minor <= unicodeVersion.minor)
+    }
+
     package static func isSpace(_ scalar: Unicode.Scalar) -> Bool {
         whitespace.contains(scalar.value)
     }
 
     /// `re`'s `\w` for a `str` pattern: a letter or a number by general category, or `_`.
     package static func isWord(_ scalar: Unicode.Scalar) -> Bool {
+        guard knownToPython(scalar) else { return false }
         switch scalar.properties.generalCategory {
         case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter,
              .decimalNumber, .letterNumber, .otherNumber:
@@ -35,7 +48,7 @@ package enum PythonText {
 
     /// `re`'s `\d` for a `str` pattern: a decimal digit of any script.
     package static func isDecimal(_ scalar: Unicode.Scalar) -> Bool {
-        scalar.properties.generalCategory == .decimalNumber
+        knownToPython(scalar) && scalar.properties.generalCategory == .decimalNumber
     }
 
     /// What `re.IGNORECASE` compares an ASCII pattern against: ASCII letters lowercased, and the four

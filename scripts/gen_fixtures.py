@@ -226,6 +226,23 @@ def errors_fixture() -> dict:
         "ERROR: 404: notFound" + chr(0x1F),
         chr(0x3000) + "ERROR: quota exceeded" + chr(0x3000),
     ]
+    # One line per branch of a rule that only that branch matches, so dropping any branch fails a test
+    # (PR #5's review found 14 branches every fixture line reached some other way).
+    unicode17 = (chr(0x10940), chr(0x11DE0))   # unassigned in Python's Unicode 16, letters/digits in 17
+    edges += [
+        "Too many requests", "ERROR: access_denied for scope x", "ERROR: Not Authorized to access this resource/api",
+        "ERROR: Token has been expired or revoked.", "ERROR: Permission denied", "ERROR: insufficientPermissions",
+        "Delete Failed: cannotChangeOwnAcl", "ERROR: notFound", "ERROR: userRateLimitExceeded",
+        "ERROR: rateLimitExceeded", "ERROR: rate-limit hit", "ERROR: rate  limit", "ERROR: insufficientscope",
+        "oauth2.json does not exist", "oauth2service.txt not found", "oauth2.txt does not exist",
+        "oauth2service.json: not found", "oauth2.txt not found oauth2.txt", "Client OAuth2 File: x, does not exist",
+        "Delete Failed: 4 (" + chr(0x663) + "/" + chr(0x661) + ")04", "please run", "PLEASE RUN",
+        "Gam create|use project", "to create and authorize a service account.", "ERROR: quota exceeded",
+        "ERROR: no valid credentials", "please run gam oauth create", "ERROR: uses a service account",
+        "User: a@example.com, Calendar Service/App not enabled", "Create Failed: Domain user limit reached",
+        "ERROR: name " + unicode17[0] + "password hunter2", "Delete Failed: " + unicode17[0] + "403",
+        "x" + unicode17[1] + "429", unicode17[0] + "notifypassword hunter2",
+    ]
     for line in edges:
         cases.append(run(1, line, stdout=line))
     for argv in (None, [], ["password"], ["PASSWORD", "x"], ["pa" + long_s + long_s + "word", "x"],

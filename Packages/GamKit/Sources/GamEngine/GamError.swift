@@ -91,11 +91,15 @@ public struct GamError: Error, Equatable, Sendable {
     /// (`check serviceaccount`'s table). Never in `message`, `description` or a dump: a logged error
     /// carries no directory data.
     public let stdout: String
+    /// The last line of the reported kind: in a mixed stderr the tail can be a benign notice. Built
+    /// once: a domain-wide sweep's stderr runs to megabytes.
+    public let message: String
 
     /// GamGUI's `GAMError.from_run`. A nil exit code is a timeout, whatever was printed.
     public init(exitCode: Int32?, stderr: String, argv: [String]? = nil, stdout: String = "") {
+        let rawLines = Self.errorLines(stderr)
         if let exitCode {
-            let kinds = Set(Self.errorLines(stderr).map(\.kind))
+            let kinds = Set(rawLines.map(\.kind))
             kind = Self.worst(kinds)
             self.kinds = kinds.isEmpty ? [kind] : kinds
             self.exitCode = exitCode
@@ -107,6 +111,11 @@ public struct GamError: Error, Equatable, Sendable {
         self.stderr = SecretScrub.scrub(stderr)
         self.stdout = SecretScrub.scrub(stdout)
         self.argv = argv.map(ArgvRedaction.redact)
+        // The kinds come from GAM's stderr and the message from the masked one, as in GamGUI. When
+        // masking changed nothing, the lines are the same: classifying them again would double the
+        // cost of a megabyte sweep.
+        let lines = self.stderr.utf8.elementsEqual(stderr.utf8) ? rawLines : Self.errorLines(self.stderr)
+        message = Self.message(kind: kind, exitCode: exitCode, lines: lines)
     }
 
     /// The kind's remediation; for a missing scope, followed by the scopes GAM named.
@@ -116,9 +125,7 @@ public struct GamError: Error, Equatable, Sendable {
         return named.isEmpty ? kind.remediation : kind.remediation + " GAM named: " + named.joined(separator: ", ") + "."
     }
 
-    /// The last line of the reported kind: in a mixed stderr the tail can be a benign notice.
-    public var message: String {
-        let lines = Self.errorLines(stderr)
+    private static func message(kind: Kind, exitCode: Int32?, lines: [(kind: Kind, line: String)]) -> String {
         let shown = lines.filter { $0.kind == kind }.map(\.line)
         let detail = (shown.isEmpty ? lines.map(\.line) : shown).last ?? ""
         let base = "GAM failed (\(kind.rawValue), exit=\(exitCode.map(String.init) ?? "None"))"
@@ -204,49 +211,80 @@ public struct GamError: Error, Equatable, Sendable {
             scalars = line.unicodeScalars.map(PythonText.folded)
         }
 
-        /// The starts of every occurrence of `needle`.
-        func starts(of needle: String) -> [Int] {
+        func matches(_ needle: [Unicode.Scalar], at start: Int) -> Bool {
+            start >= 0 && scalars.count - start >= needle.count
+                && scalars[start..<(start + needle.count)].elementsEqual(needle)
+        }
+
+        /// The first occurrence of `needle` at or after `start`.
+        func firstStart(of needle: String, from start: Int = 0) -> Int? {
             let target = Array(needle.unicodeScalars)
-            guard !target.isEmpty, scalars.count >= target.count else { return [] }
-            return (0...(scalars.count - target.count)).filter { scalars[$0..<($0 + target.count)].elementsEqual(target) }
+            guard let head = target.first, scalars.count - target.count >= start else { return nil }
+            var index = start
+            while index <= scalars.count - target.count {
+                if scalars[index] == head, matches(target, at: index) { return index }
+                index += 1
+            }
+            return nil
+        }
+
+        /// The last occurrence of `needle`.
+        func lastStart(of needle: String) -> Int? {
+            let target = Array(needle.unicodeScalars)
+            var index = scalars.count - target.count
+            while index >= 0 {
+                if matches(target, at: index) { return index }
+                index -= 1
+            }
+            return nil
         }
 
         func has(_ needle: String) -> Bool {
-            !starts(of: needle).isEmpty
+            firstStart(of: needle) != nil
         }
 
         /// `first.*then`.
         func has(_ first: String, thenLater then: String) -> Bool {
-            guard let start = starts(of: first).first else { return false }
-            let after = start + first.unicodeScalars.count
-            return starts(of: then).contains { $0 >= after }
+            guard let start = firstStart(of: first) else { return false }
+            return firstStart(of: then, from: start + first.unicodeScalars.count) != nil
         }
 
         /// `first.?then`.
         func has(_ first: String, thenAtMostOneThen then: String) -> Bool {
-            let length = first.unicodeScalars.count
-            let thens = Set(starts(of: then))
-            return starts(of: first).contains { thens.contains($0 + length) || thens.contains($0 + length + 1) }
+            let length = first.unicodeScalars.count, target = Array(then.unicodeScalars)
+            var from = 0
+            while let start = firstStart(of: first, from: from) {
+                if matches(target, at: start + length) || matches(target, at: start + length + 1) { return true }
+                from = start + 1
+            }
+            return false
         }
 
         /// `\bneedle\b`, for a needle that starts and ends with word characters.
         func hasWord(_ needle: String) -> Bool {
             let length = needle.unicodeScalars.count
-            return starts(of: needle).contains { start in
-                (start == 0 || !PythonText.isWord(scalars[start - 1]))
-                    && (start + length == scalars.count || !PythonText.isWord(scalars[start + length]))
+            var from = 0
+            while let start = firstStart(of: needle, from: from) {
+                if (start == 0 || !PythonText.isWord(scalars[start - 1]))
+                    && (start + length == scalars.count || !PythonText.isWord(scalars[start + length])) { return true }
+                from = start + 1
             }
+            return false
         }
 
         /// `oauth2(?:service)?\.(?:txt|json)\b.*(?:not found|does not exist)`.
+        /// One pass per name: a file name qualifies when either phrase starts at or after its end, so
+        /// only the last phrase matters.
         var hasCredentialFileMissing: Bool {
+            guard let lastPhrase = [lastStart(of: "not found"), lastStart(of: "does not exist")].compactMap({ $0 }).max()
+            else { return false }
             for name in ["oauth2.txt", "oauth2.json", "oauth2service.txt", "oauth2service.json"] {
                 let length = name.unicodeScalars.count
-                for start in starts(of: name) {
+                var from = 0
+                while let start = firstStart(of: name, from: from) {
                     let end = start + length
-                    guard end == scalars.count || !PythonText.isWord(scalars[end]) else { continue }
-                    if starts(of: "not found").contains(where: { $0 >= end })
-                        || starts(of: "does not exist").contains(where: { $0 >= end }) { return true }
+                    if end <= lastPhrase, !PythonText.isWord(scalars[end]) { return true }
+                    from = start + 1
                 }
             }
             return false
@@ -270,21 +308,26 @@ extension GamError: CustomStringConvertible, CustomDebugStringConvertible, Custo
 enum EntityCount {
     static func removed(from line: String) -> String {
         let scalars = Array(line.unicodeScalars)
-        var kept = String.UnicodeScalarView(), index = 0
+        var kept: [Unicode.Scalar] = [], index = 0
+        kept.reserveCapacity(scalars.count)
         while index < scalars.count {
-            if let end = match(scalars, at: index) {
+            var open = index
+            while open < scalars.count, PythonText.isSpace(scalars[open]) { open += 1 }
+            if let end = counter(scalars, at: open) {
                 index = end
             } else {
-                kept.append(scalars[index])
-                index += 1
+                // Every start inside this run of spaces reaches the same failed match: skip them all.
+                let next = max(open, index + 1)
+                kept.append(contentsOf: scalars[index..<next])
+                index = next
             }
         }
-        return String(kept)
+        return PythonText.string(kept)
     }
 
-    private static func match(_ scalars: [Unicode.Scalar], at start: Int) -> Int? {
+    /// `\(\d+/\d+\)` at `start`: where it ends.
+    private static func counter(_ scalars: [Unicode.Scalar], at start: Int) -> Int? {
         var index = start
-        while index < scalars.count, PythonText.isSpace(scalars[index]) { index += 1 }
         func digits() -> Bool {
             let first = index
             while index < scalars.count, PythonText.isDecimal(scalars[index]) { index += 1 }
@@ -309,18 +352,22 @@ enum SecretScrub {
     static func scrub(_ text: String) -> String {
         let original = Array(text.unicodeScalars)
         let folded = original.map(PythonText.folded)
-        var out = String.UnicodeScalarView(), index = 0
+        let mask = Array(" ***redacted***".unicodeScalars)
+        // An array, appended to in place: appending to a String.UnicodeScalarView copied it each time,
+        // which made masking a megabyte of echoed commands take seconds (PR #5's review).
+        var out: [Unicode.Scalar] = [], index = 0
+        out.reserveCapacity(original.count)
         while index < original.count {
             if index == 0 || !PythonText.isWord(original[index - 1]), let (keywordEnd, end) = match(folded, at: index) {
                 out.append(contentsOf: original[index..<keywordEnd])
-                out.append(contentsOf: " ***redacted***".unicodeScalars)
+                out.append(contentsOf: mask)
                 index = end
             } else {
                 out.append(original[index])
                 index += 1
             }
         }
-        return String(out)
+        return PythonText.string(out)
     }
 
     private static func match(_ folded: [Unicode.Scalar], at start: Int) -> (keywordEnd: Int, end: Int)? {
@@ -365,17 +412,16 @@ public enum ArgvRedaction {
 enum ScopeURLs {
     static func find(in text: String) -> [String] {
         let scalars = Array(text.unicodeScalars)
-        var found: [[Unicode.Scalar]] = [], index = 0
+        var found: Set<[UInt32]> = [], index = 0
         while index < scalars.count {
             if let end = match(scalars, at: index) {
-                let url = Array(scalars[index..<end])
-                if !found.contains(url) { found.append(url) }
+                found.insert(scalars[index..<end].map(\.value))
                 index = end
             } else {
                 index += 1
             }
         }
-        return found.sorted { $0.lexicographicallyPrecedes($1) { $0.value < $1.value } }.map(PythonText.string)
+        return found.sorted { $0.lexicographicallyPrecedes($1) }.map { PythonText.string($0.compactMap(Unicode.Scalar.init)) }
     }
 
     private static func match(_ scalars: [Unicode.Scalar], at start: Int) -> Int? {

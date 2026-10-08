@@ -28061,6 +28061,516 @@
   },
   {
    "exit_code": 1,
+   "stderr": "Too many requests",
+   "argv": null,
+   "stdout": "Too many requests",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): Too many requests",
+   "scrubbed_stderr": "Too many requests",
+   "scrubbed_stdout": "Too many requests",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: access_denied for scope x",
+   "argv": null,
+   "stdout": "ERROR: access_denied for scope x",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: access_denied for scope x",
+   "scrubbed_stderr": "ERROR: access_denied for scope x",
+   "scrubbed_stdout": "ERROR: access_denied for scope x",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: Not Authorized to access this resource/api",
+   "argv": null,
+   "stdout": "ERROR: Not Authorized to access this resource/api",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: Not Authorized to access this resource/api",
+   "scrubbed_stderr": "ERROR: Not Authorized to access this resource/api",
+   "scrubbed_stdout": "ERROR: Not Authorized to access this resource/api",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: Token has been expired or revoked.",
+   "argv": null,
+   "stdout": "ERROR: Token has been expired or revoked.",
+   "kind": "auth_expired",
+   "kinds": [
+    "auth_expired"
+   ],
+   "message": "GAM failed (auth_expired, exit=1): ERROR: Token has been expired or revoked.",
+   "scrubbed_stderr": "ERROR: Token has been expired or revoked.",
+   "scrubbed_stdout": "ERROR: Token has been expired or revoked.",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: Permission denied",
+   "argv": null,
+   "stdout": "ERROR: Permission denied",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: Permission denied",
+   "scrubbed_stderr": "ERROR: Permission denied",
+   "scrubbed_stdout": "ERROR: Permission denied",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: insufficientPermissions",
+   "argv": null,
+   "stdout": "ERROR: insufficientPermissions",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: insufficientPermissions",
+   "scrubbed_stderr": "ERROR: insufficientPermissions",
+   "scrubbed_stdout": "ERROR: insufficientPermissions",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Delete Failed: cannotChangeOwnAcl",
+   "argv": null,
+   "stdout": "Delete Failed: cannotChangeOwnAcl",
+   "kind": "own_acl",
+   "kinds": [
+    "own_acl"
+   ],
+   "message": "GAM failed (own_acl, exit=1): Delete Failed: cannotChangeOwnAcl",
+   "scrubbed_stderr": "Delete Failed: cannotChangeOwnAcl",
+   "scrubbed_stdout": "Delete Failed: cannotChangeOwnAcl",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: notFound",
+   "argv": null,
+   "stdout": "ERROR: notFound",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: notFound",
+   "scrubbed_stderr": "ERROR: notFound",
+   "scrubbed_stdout": "ERROR: notFound",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: userRateLimitExceeded",
+   "argv": null,
+   "stdout": "ERROR: userRateLimitExceeded",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): ERROR: userRateLimitExceeded",
+   "scrubbed_stderr": "ERROR: userRateLimitExceeded",
+   "scrubbed_stdout": "ERROR: userRateLimitExceeded",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: rateLimitExceeded",
+   "argv": null,
+   "stdout": "ERROR: rateLimitExceeded",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): ERROR: rateLimitExceeded",
+   "scrubbed_stderr": "ERROR: rateLimitExceeded",
+   "scrubbed_stdout": "ERROR: rateLimitExceeded",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: rate-limit hit",
+   "argv": null,
+   "stdout": "ERROR: rate-limit hit",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): ERROR: rate-limit hit",
+   "scrubbed_stderr": "ERROR: rate-limit hit",
+   "scrubbed_stdout": "ERROR: rate-limit hit",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: rate  limit",
+   "argv": null,
+   "stdout": "ERROR: rate  limit",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): ERROR: rate  limit",
+   "scrubbed_stderr": "ERROR: rate  limit",
+   "scrubbed_stdout": "ERROR: rate  limit",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: insufficientscope",
+   "argv": null,
+   "stdout": "ERROR: insufficientscope",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: insufficientscope",
+   "scrubbed_stderr": "ERROR: insufficientscope",
+   "scrubbed_stdout": "ERROR: insufficientscope",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "oauth2.json does not exist",
+   "argv": null,
+   "stdout": "oauth2.json does not exist",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): oauth2.json does not exist",
+   "scrubbed_stderr": "oauth2.json does not exist",
+   "scrubbed_stdout": "oauth2.json does not exist",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "oauth2service.txt not found",
+   "argv": null,
+   "stdout": "oauth2service.txt not found",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): oauth2service.txt not found",
+   "scrubbed_stderr": "oauth2service.txt not found",
+   "scrubbed_stdout": "oauth2service.txt not found",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "oauth2.txt does not exist",
+   "argv": null,
+   "stdout": "oauth2.txt does not exist",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): oauth2.txt does not exist",
+   "scrubbed_stderr": "oauth2.txt does not exist",
+   "scrubbed_stdout": "oauth2.txt does not exist",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "oauth2service.json: not found",
+   "argv": null,
+   "stdout": "oauth2service.json: not found",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): oauth2service.json: not found",
+   "scrubbed_stderr": "oauth2service.json: not found",
+   "scrubbed_stdout": "oauth2service.json: not found",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "oauth2.txt not found oauth2.txt",
+   "argv": null,
+   "stdout": "oauth2.txt not found oauth2.txt",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): oauth2.txt not found oauth2.txt",
+   "scrubbed_stderr": "oauth2.txt not found oauth2.txt",
+   "scrubbed_stdout": "oauth2.txt not found oauth2.txt",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Client OAuth2 File: x, does not exist",
+   "argv": null,
+   "stdout": "Client OAuth2 File: x, does not exist",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): Client OAuth2 File: x, does not exist",
+   "scrubbed_stderr": "Client OAuth2 File: x, does not exist",
+   "scrubbed_stdout": "Client OAuth2 File: x, does not exist",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Delete Failed: 4 (\u0663/\u0661)04",
+   "argv": null,
+   "stdout": "Delete Failed: 4 (\u0663/\u0661)04",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): Delete Failed: 4 (\u0663/\u0661)04",
+   "scrubbed_stderr": "Delete Failed: 4 (\u0663/\u0661)04",
+   "scrubbed_stdout": "Delete Failed: 4 (\u0663/\u0661)04",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "please run",
+   "argv": null,
+   "stdout": "please run",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): please run",
+   "scrubbed_stderr": "please run",
+   "scrubbed_stdout": "please run",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "PLEASE RUN",
+   "argv": null,
+   "stdout": "PLEASE RUN",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): PLEASE RUN",
+   "scrubbed_stderr": "PLEASE RUN",
+   "scrubbed_stdout": "PLEASE RUN",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Gam create|use project",
+   "argv": null,
+   "stdout": "Gam create|use project",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): Gam create|use project",
+   "scrubbed_stderr": "Gam create|use project",
+   "scrubbed_stdout": "Gam create|use project",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "to create and authorize a service account.",
+   "argv": null,
+   "stdout": "to create and authorize a service account.",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): to create and authorize a service account.",
+   "scrubbed_stderr": "to create and authorize a service account.",
+   "scrubbed_stdout": "to create and authorize a service account.",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: quota exceeded",
+   "argv": null,
+   "stdout": "ERROR: quota exceeded",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): ERROR: quota exceeded",
+   "scrubbed_stderr": "ERROR: quota exceeded",
+   "scrubbed_stdout": "ERROR: quota exceeded",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: no valid credentials",
+   "argv": null,
+   "stdout": "ERROR: no valid credentials",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): ERROR: no valid credentials",
+   "scrubbed_stderr": "ERROR: no valid credentials",
+   "scrubbed_stdout": "ERROR: no valid credentials",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "please run gam oauth create",
+   "argv": null,
+   "stdout": "please run gam oauth create",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): please run gam oauth create",
+   "scrubbed_stderr": "please run gam oauth create",
+   "scrubbed_stdout": "please run gam oauth create",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: uses a service account",
+   "argv": null,
+   "stdout": "ERROR: uses a service account",
+   "kind": "not_authenticated",
+   "kinds": [
+    "not_authenticated"
+   ],
+   "message": "GAM failed (not_authenticated, exit=1): ERROR: uses a service account",
+   "scrubbed_stderr": "ERROR: uses a service account",
+   "scrubbed_stdout": "ERROR: uses a service account",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: a@example.com, Calendar Service/App not enabled",
+   "argv": null,
+   "stdout": "User: a@example.com, Calendar Service/App not enabled",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=1): User: a@example.com, Calendar Service/App not enabled",
+   "scrubbed_stderr": "User: a@example.com, Calendar Service/App not enabled",
+   "scrubbed_stdout": "User: a@example.com, Calendar Service/App not enabled",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Create Failed: Domain user limit reached",
+   "argv": null,
+   "stdout": "Create Failed: Domain user limit reached",
+   "kind": "license_limit",
+   "kinds": [
+    "license_limit"
+   ],
+   "message": "GAM failed (license_limit, exit=1): Create Failed: Domain user limit reached",
+   "scrubbed_stderr": "Create Failed: Domain user limit reached",
+   "scrubbed_stdout": "Create Failed: Domain user limit reached",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "ERROR: name \ud802\udd40password hunter2",
+   "argv": null,
+   "stdout": "ERROR: name \ud802\udd40password hunter2",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): ERROR: name \ud802\udd40password ***redacted***",
+   "scrubbed_stderr": "ERROR: name \ud802\udd40password ***redacted***",
+   "scrubbed_stdout": "ERROR: name \ud802\udd40password ***redacted***",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Delete Failed: \ud802\udd40403",
+   "argv": null,
+   "stdout": "Delete Failed: \ud802\udd40403",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): Delete Failed: \ud802\udd40403",
+   "scrubbed_stderr": "Delete Failed: \ud802\udd40403",
+   "scrubbed_stdout": "Delete Failed: \ud802\udd40403",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "x\ud807\udde0429",
+   "argv": null,
+   "stdout": "x\ud807\udde0429",
+   "kind": "rate_limited",
+   "kinds": [
+    "rate_limited"
+   ],
+   "message": "GAM failed (rate_limited, exit=1): x\ud807\udde0429",
+   "scrubbed_stderr": "x\ud807\udde0429",
+   "scrubbed_stdout": "x\ud807\udde0429",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "\ud802\udd40notifypassword hunter2",
+   "argv": null,
+   "stdout": "\ud802\udd40notifypassword hunter2",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): \ud802\udd40notifypassword ***redacted***",
+   "scrubbed_stderr": "\ud802\udd40notifypassword ***redacted***",
+   "scrubbed_stdout": "\ud802\udd40notifypassword ***redacted***",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
    "stderr": "ERROR: x",
    "argv": null,
    "stdout": "",

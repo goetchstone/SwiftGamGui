@@ -23,6 +23,7 @@ struct GamErrorTests {
     }
 
     struct Constants: Decodable {
+        let unicode_version: String
         let IGNORECASE_FOLDS: [[Int]]
         let WORD: [[UInt32]]
         let DECIMAL: [[UInt32]]
@@ -72,9 +73,11 @@ struct GamErrorTests {
         }
     }
 
-    /// `\w` and `\d` scalar by scalar, over every code point Python's Unicode data assigns (Swift's may
-    /// be newer, which only adds characters).
+    /// `\w` and `\d` scalar by scalar, over every code point, including those Swift's newer Unicode
+    /// assigns and Python's doesn't (PR #5's review: one let a password past the scrub).
     @Test func wordAndDigitAreRes() {
+        let version = document.constants.unicode_version.split(separator: ".").compactMap { Int($0) }
+        #expect(version.prefix(2).elementsEqual([PythonText.unicodeVersion.major, PythonText.unicodeVersion.minor]))
         func contains(_ ranges: [[UInt32]], _ point: UInt32) -> Bool {
             var low = 0, high = ranges.count - 1
             while low <= high {
@@ -88,7 +91,7 @@ struct GamErrorTests {
         let constants = document.constants
         var wordMismatches: [UInt32] = [], digitMismatches: [UInt32] = []
         for point in UInt32(0)...0x10FFFF {
-            guard let scalar = Unicode.Scalar(point), !contains(constants.UNASSIGNED, point) else { continue }
+            guard let scalar = Unicode.Scalar(point) else { continue }
             if PythonText.isWord(scalar) != contains(constants.WORD, point) { wordMismatches.append(point) }
             if PythonText.isDecimal(scalar) != contains(constants.DECIMAL, point) { digitMismatches.append(point) }
         }

@@ -72,6 +72,18 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
   (2026-09-24), the service-account instructions (2026-10-01).
 - `stdout` is kept for a caller that reads it (`check serviceaccount`'s table) and is never in the
   message, the description or a dump.
+- **Fixed in PR #5's review:**
+  - **Unicode version.** Swift has Unicode 17 and GamGUI's Python has 16, so a character added in 17
+    is unassigned to Python. Read as a letter, it let an echoed password past the scrub.
+    `PythonText.unicodeVersion` gates `\w` and `\d`, and the test now covers every code point.
+  - **Speed.**
+    - Masking was quadratic: 26 s for 4.5 MB, now 1.4 s.
+    - The message is built once.
+    - The credential-file rule is linear.
+    - A 15 MB sweep classifies in 3.2 s (release); GAM's output is capped at 8 MiB.
+    - Callers classify off the main actor.
+  - **Coverage.** Fourteen pattern branches were reached only through lines an earlier rule caught;
+    each now has a line of its own. Twenty-seven mutants all fail the suite.
 - **Not wired in yet:** nothing throws it until the first screen runs GAM for data.
 
 ## Not built yet
