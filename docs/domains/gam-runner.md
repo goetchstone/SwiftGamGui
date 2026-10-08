@@ -86,6 +86,33 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
     each now has a line of its own. Twenty-seven mutants all fail the suite.
 - **Not wired in yet:** nothing throws it until the first screen runs GAM for data.
 
+## Reading output
+`GamOutput.swift` ports GamGUI's `core/gam/parser.py`: GAM's stdout as records, whether it printed one
+JSON value, newline-delimited JSON, a `formatjson` CSV (a `JSON` column with key columns beside it)
+or plain CSV. `GamOutputTests` holds it to `Tests/Fixtures/gam_output.json`: GamGUI's `parse_records`
+over 600 inputs.
+- **The fixture's sources:**
+  - the strict mock's output for every read the app makes
+  - GamGUI's property-test strategies (JSON shapes, plain and `formatjson` CSV, noise), drawn
+    deterministically
+  - the inputs its failure log names (a cell past the csv module's limit, a bare CR, deep nesting,
+    raw U+2028 in NDJSON, an empty header)
+  - JSON's and CSV's own edges
+- **`JSONValue`** reads as `json.loads`:
+  - `NaN` and `Infinity` are accepted;
+  - integers keep their digits;
+  - the last duplicate key wins;
+  - raw control characters are refused.
+
+  JSON `null` is "not JSON" to GamGUI's `_try_json`, and so here. Two deliberate differences:
+  - nesting past 512 is refused (Python's limit is its C stack; a Swift value that deep overflows the
+    stack when freed);
+  - a lone surrogate escape becomes U+FFFD.
+- **`CSVReader`** is `_csv.c`'s state machine in the default dialect over `newline=""` lines, with
+  `DictReader`'s `restval` and its handling of duplicated headers.
+- Swift dictionary keys compare by canonical equivalence, so two headers that differ only in
+  normalization share a key here. GAM's headers are ASCII field names.
+
 ## Not built yet
 Write serialization (ChangeCore, phase 2). `check serviceaccount`'s own exits are handled in
 `AccessCheck`.

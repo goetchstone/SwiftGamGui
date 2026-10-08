@@ -10,6 +10,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/gam_errors.json  GamGUI's classification, message and scrubbing of failed GAM runs
                                   (core/gam/errors.py) over its own and generated stderr, with the
                                   Unicode tables its regexes use.
+  Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
+                                  property tests' JSON/CSV shapes and noise, and the inputs its
+                                  failure log names.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -292,6 +295,124 @@ def errors_fixture() -> dict:
     }
 
 
+def output_fixture(mock: Path) -> dict:
+    """GamGUI's parse_records over GAM's output shapes: what the strict mock prints for every read the
+    app makes; the JSON, CSV and formatjson shapes and the noise GamGUI's property tests generate
+    (drawn deterministically); and the inputs its failure log names (a long cell, a bare CR, deep
+    nesting, raw line separators in NDJSON, an empty header) with JSON's and CSV's own edges. The
+    records are stored as Python's json.dumps text, NaN and Infinity included."""
+    import os
+    import subprocess
+    import tempfile
+
+    from hypothesis import HealthCheck, Phase, given, settings
+    from hypothesis import strategies as st
+
+    from gamgui.core.gam.parser import parse_records
+    from tests import test_props_parsing as props
+    from tests.test_mock_gam import READS
+
+    cases = []
+
+    def add(stdout: str) -> None:
+        cases.append({"stdout": stdout, "records": json.dumps(parse_records(stdout), ensure_ascii=True)})
+
+    with tempfile.TemporaryDirectory() as config:
+        for name in ("oauth2service.json", "oauth2.txt"):
+            Path(config, name).write_text('{"placeholder": true}')
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config,
+                       "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        for argvs in READS.values():
+            for argv in argvs:
+                run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
+                if run.returncode != 0:
+                    raise SystemExit(f"the mock refused a read: {argv}")
+                add(run.stdout)
+
+    def drawn(strategy, count: int) -> list:
+        found = []
+
+        @settings(max_examples=count, derandomize=True, database=None, deadline=None,
+                  phases=[Phase.generate], suppress_health_check=list(HealthCheck))
+        @given(strategy)
+        def collect(value):
+            found.append(value)
+
+        collect()
+        return found
+
+    for text, _ in drawn(props._json_output(), 120):
+        add(text)
+    for text, _ in drawn(props._plain_csv(), 120):
+        add(text)
+    for text, _ in drawn(props._formatjson_csv(), 120):
+        add(text)
+    noise = st.one_of(st.text(props._ANY), props._noise()).map(lambda s: s.replace("\r", "\r\n"))
+    for text in drawn(noise, 200):
+        add(text)
+
+    record = json.dumps({"primaryEmail": "a@example.com", "name": {"fullName": "Zo" + chr(0xEB)}})
+    big = "x" * 131_073
+    for separator in (chr(0x2028), chr(0x2029), chr(0x85)):
+        add(json.dumps({"note": "a" + separator + "b"}, ensure_ascii=False) + "\n" + record)
+    edges = [
+        props._csv([["primaryEmail", "notes"], ["a@example.com", big]]),
+        props._csv([["primaryEmail", "JSON"], ["a@example.com", json.dumps({"notes": big})]]),
+        "primaryEmail,notes\na@example.com,x\ry\n",
+        "primaryEmail,notes\na@example.com,\"x\ry\"\n",
+        "[" * 200_000,
+        "[" * 300 + "]" * 300,
+        '{"a": ' + "[" * 600 + "]" * 600 + "}",
+        "primaryEmail,,orgUnitPath\na@example.com,blank,/\n",
+        "primaryEmail,name\na@example.com\nb@example.com,B,extra,more\n",
+        "id,id,name\n1,2,x\n",
+        chr(0xFEFF) + record,
+        chr(0xFEFF) + "primaryEmail\na@example.com\n",
+        "NaN",
+        "[NaN, Infinity, -Infinity, 1E400, -0, 12345678901234567890123456789]",
+        '{"n": NaN, "i": -Infinity, "big": 1e400, "neg0": -0.0}\n{"x": 1}',
+        '"' + chr(92) + "ud800" + '"',
+        '{"a": "' + chr(92) + "ud83d" + chr(92) + "ude00" + chr(92) + "ud800x" + '"}',
+        '{"a": 1, "a": 2, "b": [1, 2,]}',
+        '{"a": 1,}',
+        '{"a": "tab' + chr(9) + 'raw"}',
+        chr(0x0B) + record,
+        record + "\n" + chr(0x0B) + record,
+        record + "\r\n" + record + "\r\n",
+        record + "\n\n   \n" + record,
+        record + "\nnot json",
+        "primaryEmail,JSON\na@example.com," + '"' + json.dumps({"x": 1}).replace('"', '""') + '"' + "\n",
+        "primaryEmail,JSON\na@example.com,\nb@example.com,[1, {\"y\": 2}]\n",
+        "primaryEmail,JSON\n,\"{\"\"primaryEmail\"\": \"\"wins@example.com\"\"}\"\n",
+        'a,b\n"unterminated,1\n',
+        'a,b\n"x"y,2\n',
+        'a,b\nx"y,"z""w"\n',
+        "a,b\n" + chr(0) + ",1\n",
+        "a,b\n\n\n1,2\n",
+        "a\n" + '""' + "\n",
+        "  " + chr(0x3000) + "primaryEmail\na@example.com" + chr(0x3000) + " ",
+        "true",
+        "null",
+        "null\n" + record,
+        record + "\nnull\n" + record,
+        "[]",
+        "{}",
+        "[1, \"x\", null, {\"k\": \"v\"}]",
+        "{\"a\": 1} {\"b\": 2}",
+        "{\"a\": 1}\n[{\"b\": 2}, 3]\n\"s\"\n",
+    ]
+    for text in edges:
+        add(text)
+
+    seen, unique = set(), []
+    for case in cases:
+        key = json.dumps(case, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            unique.append(case)
+    return {"cases": unique}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -454,6 +575,12 @@ def main() -> int:
     errors_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | errors_fixture()
     (OUT / "gam_errors.json").write_text(json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_errors.json: {len(errors_doc['cases'])} cases")
+
+    # GAM's output, read into records as GamGUI reads it. ASCII-escaped, like gam_errors.json.
+    output_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | output_fixture(OUT / "mock_gam.sh")
+    (OUT / "gam_output.json").write_text(json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"gam_output.json: {len(output_doc['cases'])} cases")
     return 0
 
 
