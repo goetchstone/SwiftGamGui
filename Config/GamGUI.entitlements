@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- No entitlements yet: hardened runtime is on (a build setting) and App Sandbox is off until the
+     phase 6 decision. Adding a key here is a reviewed change (design doc §7). -->
+<plist version="1.0">
+<dict/>
+</plist>

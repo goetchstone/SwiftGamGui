@@ -1,0 +1,12 @@
+// Shared signing defaults for the GamGUI target. Builds sign ad-hoc ("Sign to Run Locally") unless a
+// gitignored Config/Local.xcconfig sets a team, e.g.:
+//
+//     DEVELOPMENT_TEAM = ABCDE12345
+//     CODE_SIGN_IDENTITY = Apple Development
+//
+// Ad-hoc builds can't use the data-protection Keychain (errSecMissingEntitlement, -34018), so the app
+// needs a team — a free Personal Team works — before it can store credentials.
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = -
+
+#include? "Local.xcconfig"
