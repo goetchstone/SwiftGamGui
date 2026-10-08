@@ -22,6 +22,7 @@ struct GamGUIApp: App {
 
 enum Screen: String, CaseIterable, Identifiable {
     case home = "Home"
+    case users = "Users"
     case setup = "Setup"
 
     var id: Self { self }
@@ -29,6 +30,7 @@ enum Screen: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .home: "house"
+        case .users: "person.2"
         case .setup: "key"
         }
     }
@@ -60,6 +62,9 @@ struct ContentView: View {
                 HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
                          hasGam: services.gam != nil) { screen = .setup }
                     .navigationTitle("Home")
+            case .users:
+                UsersView(setup: services.setup, directory: services.directory)
+                    .navigationTitle("Users")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")

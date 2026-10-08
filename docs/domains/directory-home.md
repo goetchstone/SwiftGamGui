@@ -46,6 +46,16 @@ off the main actor.
 - `DirectoryReportTests` holds the reports to `Tests/Fixtures/reports.json`: GamGUI's `build_reports`
   over the mock's users and 200 seeded variants at a fixed time, with the 90-day boundary to the second.
 
+## Users (read-only)
+`App/UsersView.swift` is a table of the loaded directory:
+- sorted by any column, the macOS way (`localizedStandard`);
+- scoped (All, Active, Suspended) and searched as GamGUI's `_filter_users` does (`UserFilter`: a
+  case-insensitive substring of the address, name, title, department or unit);
+- with the selected person's fields in an inspector.
+
+It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes come with ChangeCore
+(phase 2).
+
 ## Testing / live status
 - Mock-tested through the strict mock's `print users`.
 - **Not live yet:** the first real load is the operator's, with Touch ID and an explicit go for a live
