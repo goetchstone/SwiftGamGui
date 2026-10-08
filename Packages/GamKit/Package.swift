@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "Jobs", targets: ["Jobs"]),
         .library(name: "Stores", targets: ["Stores"]),
         .library(name: "Assist", targets: ["Assist"]),
+        .library(name: "Setup", targets: ["Setup"]),
     ],
     targets: [
         .target(name: "GamEngine", dependencies: ["Vault"]),
@@ -25,9 +26,11 @@ let package = Package(
         .target(name: "Jobs"),
         .target(name: "Stores"),
         .target(name: "Assist"),
+        .target(name: "Setup", dependencies: ["GamEngine", "Vault"]),
         .target(name: "TestSupport", dependencies: ["GamEngine", "Vault"]),
         .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "VaultTests", dependencies: ["Vault"]),
+        .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "SpikeTests"),
     ]
 )
