@@ -32,7 +32,7 @@ jobs:
       - name: Scripts parse
         run: |
           python3 -m py_compile scripts/*.py
-          bash -n scripts/fetch_gam.sh scripts/check_app.sh Tests/Fixtures/mock_gam.sh
+          bash -n scripts/fetch_gam.sh scripts/check_app.sh scripts/embed_gam.sh Tests/Fixtures/mock_gam.sh
       - name: No invisible or bidirectional characters in source
         run: python3 -I scripts/check_text.py
 
@@ -52,20 +52,16 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/attachments"
           swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments"
-      - name: Build the app (Release)
-        run: xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Release -derivedDataPath "$RUNNER_TEMP/dd" build
-      - name: Hardened runtime on, no entitlement beyond the allowlist
-        run: scripts/check_app.sh "$RUNNER_TEMP/dd/Build/Products/Release/GamGUI.app"
       - name: Vendor the pinned GAM (fails closed on a checksum mismatch)
-        run: ./scripts/fetch_gam.sh
+        run: |
+          ./scripts/fetch_gam.sh
+          git diff --exit-code -- Vendor/gam7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: The vendored GAM is the pinned version and runs here
-        run: |
-          git diff --exit-code -- Vendor/gam7
-          pin="$(sed -nE 's/.*expected = "([0-9.]+)".*/\1/p' Packages/GamKit/Sources/GamEngine/GamVersion.swift)"
-          cfg="$(mktemp -d)"
-          GAMCFGDIR="$cfg" GAM_NO_UPDATE_CHECK=1 Vendor/gam7/gam version | head -1 | tee /dev/stderr | grep -qF "GAM $pin "
+      - name: Build the app (Release; embeds and signs GAM)
+        run: xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Release -derivedDataPath "$RUNNER_TEMP/dd" build
+      - name: Hardened runtime, entitlement allowlist, embedded GAM signed and runnable at the pinned version
+        run: scripts/check_app.sh "$RUNNER_TEMP/dd/Build/Products/Release/GamGUI.app"
       - name: Keep the snapshot attachments
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

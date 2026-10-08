@@ -90,8 +90,8 @@ Config/                   entitlements (empty: hardened runtime on, App Sandbox 
 Packages/GamKit/          GamEngine · ChangeCore · Vault · Catalog · Jobs · Stores · Assist · TestSupport
 Tests/Fixtures/           argv.json · exit_codes.json · mock_gam.sh + its data (shared by all tests)
 Vendor/gam7/              vendored GAM (gitignored except VERSION, LICENSE, command_catalog.json)
-scripts/                  fetch_gam.sh · bump_gam.py · build_command_catalog.py · gen_fixtures.py
-Signing/reference/        GamGUI's GAM entitlements, for signing the bundled gam (phase 6)
+scripts/                  fetch_gam.sh · embed_gam.sh · check_app.sh · bump_gam.py · build_command_catalog.py · gen_fixtures.py
+Signing/                  gam.entitlements (upstream GAM's own set, for the embedded gam); reference/
 docs/                     plans/ · failure-log/ · domains/ · FRAMEWORK.md · RULE-FEEDBACK.md
 ```
 
@@ -103,7 +103,15 @@ xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build  # the app
 scripts/fetch_gam.sh                                            # vendor GAM against the pin
 ../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py        # regenerate parity fixtures from GamGUI
 ../gamgui/.venv/bin/python -I -B scripts/bump_gam.py vX.Y.Z     # bump GAM (attested), then test
+# Look at a screen (debug builds): renders the real window to a PNG and quits. The demo fills Setup from
+# memory and the strict mock — never the real GAM.
+SWIFTGAMGUI_SNAPSHOT=/tmp/setup.png SWIFTGAMGUI_DEMO=1 SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" \
+  build/DerivedData/Build/Products/Debug/GamGUI.app/Contents/MacOS/GamGUI
 ```
+
+Debug switches are **environment variables**, never launch arguments: AppKit reads `-key value`
+arguments as defaults and opens a leftover bare path as a document, which once stopped SwiftUI from
+opening any window.
 
 GAM is pinned at `GamVersion.expected` (currently 7.48.22); `FixtureTests` fails if the fetch TAG, the
 mock's version, the catalog stamp or the fixtures disagree.

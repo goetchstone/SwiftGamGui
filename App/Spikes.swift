@@ -2,27 +2,41 @@ import AppKit
 import Foundation
 import FoundationModels
 import GamEngine
+import Setup
 import LocalAuthentication
 import Security
 import Vault
 
-/// Phase 1 spikes, debug builds only. Launch the built binary with `--spike keychain`,
-/// `--spike legacy-keychain`, `--spike vault` or `--spike model`; results print to stdout and the app quits. They only
+/// Phase 1 spikes, debug builds only. Launch the built binary with `SWIFTGAMGUI_SPIKE` set to
+/// `keychain`, `legacy-keychain`, `vault` or `model`; results print to stdout and the app quits. They only
 /// ever touch throwaway items named `swiftgamgui-spike*` — never GamGUI's `gamgui:<domain>` items.
 enum Spikes {
     @MainActor
-    static func runIfRequested() async {
+    static func runIfRequested(setup: SetupModel) async {
         #if DEBUG
-        let args = ProcessInfo.processInfo.arguments
-        guard let index = args.firstIndex(of: "--spike"), index + 1 < args.count else { return }
+        // Environment variables, not launch arguments: AppKit reads `-key value` arguments as
+        // defaults, and a bare path left over is taken as a document to open — which made SwiftUI skip
+        // the window entirely.
+        let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
+        if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
+            if environment["SWIFTGAMGUI_DEMO"] == "1" {
+                // Fill the demo screen: one passing check (connected), then one failing (the result panel).
+                await setup.refresh()
+                await setup.checkAccess(Domain("example.com")!)
+                await setup.checkAccess(Domain("example.org")!)
+            }
+            await snapshot(to: URL(filePath: path))
+            return
+        }
+        guard let spike = environment["SWIFTGAMGUI_SPIKE"] else { return }
         print("signing: team=\(teamIdentifier() ?? "none (ad-hoc)")")
-        switch args[index + 1] {
+        switch spike {
         case "keychain": keychain()
         case "legacy-keychain": legacyKeychain()
         case "model": model()
         case "vault": await vault()
-        default: print("unknown spike \(args[index + 1])")
+        default: print("unknown spike \(spike)")
         }
         fflush(stdout)
         NSApp.terminate(nil)
@@ -30,6 +44,29 @@ enum Spikes {
     }
 
     #if DEBUG
+    /// Renders the app's real window (AppKit-backed controls included) to a PNG and quits: how a
+    /// screen is looked at from the command line. No screen-recording permission involved.
+    @MainActor
+    static func snapshot(to file: URL) async {
+        try? await Task.sleep(for: .seconds(1.5))
+        guard let view = NSApp.windows.first(where: \.isVisible)?.contentView,
+              let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds)
+        else {
+            print("snapshot: no window")
+            NSApp.terminate(nil)
+            return
+        }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        do {
+            try bitmap.representation(using: .png, properties: [:])?.write(to: file)
+            print("snapshot: \(file.path)")
+        } catch {
+            print("snapshot: \(error)")
+        }
+        fflush(stdout)
+        NSApp.terminate(nil)
+    }
+
     static let service = "swiftgamgui-spike"
     static let legacyService = "swiftgamgui-spike-legacy"
 
@@ -113,7 +150,7 @@ enum Spikes {
             started = clock.now
             _ = try await vault.credentials(for: domain)
             print("read #2 ok in \(clock.now - started) (same session: expect no prompt)")
-            if let binary = GamBinary.locate() {
+            if let binary = AppServices.mockGam() {
                 let base = try RuntimeDirectory.prepare()
                 let runner = AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: base)
                 let mockEnv = ProcessInfo.processInfo.environment.filter { GamEnvironment.mockOnly.contains($0.key) }
@@ -129,7 +166,8 @@ enum Spikes {
                     print("refreshed oauth2.txt written back in place: \(updated) (read in \(clock.now - started))")
                 }
             } else {
-                print("no gam binary: set SWIFTGAMGUI_GAM_BINARY (debug builds) to run the authenticated step")
+                // Never the bundled gam: these are placeholder credentials.
+                print("no mock: set SWIFTGAMGUI_GAM_BINARY to Tests/Fixtures/mock_gam.sh to run the authenticated step")
             }
         } catch {
             print("vault spike error: \(error)")

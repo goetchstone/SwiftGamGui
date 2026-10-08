@@ -37,9 +37,31 @@ public actor Vault {
         return found
     }
 
-    /// Creates or replaces a credential (import, setup).
+    /// Creates or replaces a credential.
     public func store(_ secret: Secret, as credential: Credential, for domain: Domain) async throws {
         try await offMainThread { [store] in try store.write(secret.bytes, as: credential, for: domain) }
+    }
+
+    /// Makes `set` the domain's whole set (import, copy): a credential not in it is removed, so an
+    /// old `client_secrets.json` can't outlive the import that dropped it. A set is whole or absent: when
+    /// a write fails part-way (a refused prompt, a locked Mac), the domain's credentials are removed
+    /// rather than left a mix of old and new, which could pass Check access as neither tenant's set.
+    /// If that removal is refused too, its error is the one thrown, since something is still stored.
+    public func replaceSet(_ set: [Credential: Secret], for domain: Domain) async throws {
+        let missing = Credential.required.filter { set[$0] == nil }
+        guard missing.isEmpty else { throw VaultError.missing(domain, missing) }
+        do {
+            for credential in Credential.removalOrder.reversed() {
+                if let secret = set[credential] {
+                    try await store(secret, as: credential, for: domain)
+                } else {
+                    try await offMainThread { [store] in try store.delete(credential, for: domain) }
+                }
+            }
+        } catch {
+            try await remove(domain)
+            throw error
+        }
     }
 
     /// Replaces a credential that is still stored; a removed one stays removed. Returns whether it
