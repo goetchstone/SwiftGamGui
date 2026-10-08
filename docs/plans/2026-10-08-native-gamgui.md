@@ -2,7 +2,8 @@
 
 **Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) DONE 2026-10-08. Slice 2a (Vault,
 per-call credential folders, authenticated runs) merged as PR #1. Slice 2b-core (import, GamGUI
-copy, Check access) is in review; 2b-ui (the Setup screen) is next. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
+copy, Check access) merged as PR #2. 2b-ui (the Setup screen, GAM embedded and signed in the app) is in
+review; then the first live, read-only Check access with the operator. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
 for a reader with no session context. It consolidates two drafts and the operator's answers from the
@@ -413,8 +414,14 @@ default, plus "Just do it"). Still open:
     `Config/Local.xcconfig` sets a developer's own `DEVELOPMENT_TEAM`, so nobody edits the project file.
   - **Release** is signed `adhoc,runtime` (hardened runtime on). **Debug** ad-hoc builds carry no
     runtime flag (Xcode's behaviour).
-  - **Entitlements:** none beyond Xcode's `get-task-allow` in development builds, which a Developer ID
-    export strips.
+  - **Entitlements:** none. Xcode adds `get-task-allow` to every locally signed build, so Release
+    turns that off (`CODE_SIGN_INJECT_BASE_ENTITLEMENTS`): a debuggable app holding credentials lets a
+    same-user process read its memory. Debug keeps it. `scripts/check_app.sh` refuses any app
+    entitlement, any Mach-O that is unsigned, lacks the hardened runtime or sits outside
+    `Contents/MacOS` and `Resources/gam7`, and a gam whose entitlements aren't upstream's three.
+  - **`scripts/embed_gam.sh`** refuses a vendored tree holding a link or special file (codesign would
+    follow a link and sign a file outside the app), a version other than the pin, or a download not
+    in `gam_checksums.txt`.
 
 **Spike results:**
 
@@ -430,7 +437,7 @@ default, plus "Just do it"). Still open:
 
 **Remaining:**
 - **The GitHub repo:** a separate OK from the operator.
-- **Re-check the on-device model** once its assets finish downloading (`--spike model`).
+- **Re-check the on-device model** once its assets finish downloading (`SWIFTGAMGUI_SPIKE=model`).
 
 ## Appendix: checked on this Mac (2026-10-08)
 

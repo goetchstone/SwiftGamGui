@@ -6,7 +6,8 @@ public enum GamBinary {
     /// credentials to another binary (GamGUI's `locate_gam_binary()`, failure-log 2026-09-23).
     public static let overrideVariable = "SWIFTGAMGUI_GAM_BINARY"
 
-    /// The `gam` bundled in the app's resources (`gam7/gam`).
+    /// The `gam` bundled in the app's resources (`gam7/gam`), copied and signed at build time by
+    /// `scripts/embed_gam.sh` (Xcode's "Embed GAM" phase).
     public static func bundled(in bundle: Bundle = .main) -> URL? {
         bundle.resourceURL?.appending(path: "gam7/gam")
     }

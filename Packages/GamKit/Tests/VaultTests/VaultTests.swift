@@ -110,4 +110,26 @@ struct VaultTests {
         try await vault.store(Secret(Data("new".utf8)), as: .oauth2, for: example)
         #expect(try await vault.credentials(for: example)[.oauth2] == Secret(Data("new".utf8)))
     }
+
+    @Test func aReplacedSetIsWholeOrAbsent() async throws {
+        let store = MemoryStore()
+        try filled(store)
+        let vault = Vault(store: store)
+        let new: [Credential: Secret] = [.oauth2Service: Secret(Data("new-key".utf8)), .oauth2: Secret(Data("new-token".utf8))]
+        // Incomplete: refused before anything is written.
+        await #expect(throws: VaultError.missing(example, [.oauth2Service])) {
+            try await vault.replaceSet([.oauth2: Secret(Data("x".utf8))], for: example)
+        }
+        #expect(try store.read(.oauth2, for: example) == Data("placeholder-oauth2".utf8))
+        // Whole: the old client_secrets.json goes with the set that dropped it.
+        try await vault.replaceSet(new, for: example)
+        #expect(try store.read(.oauth2Service, for: example) == Data("new-key".utf8))
+        #expect(try store.read(.clientSecrets, for: example) == nil)
+        // Refused part-way: nothing of either set is left.
+        store.failNext(.write, with: errSecUserCanceled, skipping: 1)
+        await #expect(throws: VaultError.keychain(errSecUserCanceled)) {
+            try await vault.replaceSet([.oauth2Service: Secret(Data("k3".utf8)), .oauth2: Secret(Data("t3".utf8))], for: example)
+        }
+        #expect(try store.domains().isEmpty)
+    }
 }

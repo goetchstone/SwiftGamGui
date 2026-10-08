@@ -64,11 +64,11 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
   `errSecInteractionNotAllowed` (-25308). Even an item with no access control can't be added. Seen
   live 2026-10-08 when the screen locked mid-spike. Setup must say "Unlock your Mac", not show the
   status. `errSecAuthFailed` (-25293) is a failed or abandoned authentication.
-- `--spike vault` (debug builds) runs this whole path on throwaway items (service
+- `SWIFTGAMGUI_SPIKE=vault` (debug builds) runs this whole path on throwaway items (service
   `swiftgamgui-spike`, domain `spike.example.com`) against the real Keychain. It needs an unlocked Mac
   and one Touch ID.
 
-## Live (2026-10-08, real Keychain, throwaway items, `--spike vault`)
+## Live (2026-10-08, real Keychain, throwaway items, `SWIFTGAMGUI_SPIKE=vault`)
 - Three items stored. `domains()` lists them **without a prompt**, because it reads attributes only.
 - **One Touch ID per session.** The first read took about 2 s (the prompt); the second took 1.6 ms,
   with no prompt.
