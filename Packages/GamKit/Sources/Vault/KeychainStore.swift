@@ -73,7 +73,9 @@ public final class KeychainStore: SecretStore {
         item[kSecValueData] = data
         item[kSecAttrAccessControl] = access
         item[kSecAttrLabel] = "GamGUI: \(domain.name) \(credential.fileName)"
-        let status = SecItemAdd(item as CFDictionary, nil)
+        // Under the context lock, as every call that changes an item: `replace(…, ifCurrent:)` reads,
+        // compares and updates under it, so nothing may delete or add between those steps.
+        let status = context.withLock { _ in SecItemAdd(item as CFDictionary, nil) }
         if status == errSecDuplicateItem, try update(data, as: credential, for: domain) { return }
         guard status == errSecSuccess else { throw VaultError.keychain(status) }
     }
@@ -81,8 +83,8 @@ public final class KeychainStore: SecretStore {
     public func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool {
         let service = service
         let account = "\(domain.name)/\(credential.rawValue)"
-        // One lock around the read, the comparison and the update: every other call on this store takes
-        // the same lock, so nothing can change the item in between.
+        // One lock around the read, the comparison and the update: every call that changes an item
+        // (update, add, delete) takes the same lock, so nothing can change it in between.
         let status = context.withLock { context -> OSStatus in
             let item: [CFString: Any] = [
                 kSecClass: kSecClassGenericPassword,
@@ -129,7 +131,8 @@ public final class KeychainStore: SecretStore {
     }
 
     public func delete(_ credential: Credential, for domain: Domain) throws {
-        let status = SecItemDelete(query(credential, domain) as CFDictionary)
+        let query = query(credential, domain)
+        let status = context.withLock { _ in SecItemDelete(query as CFDictionary) }
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError.keychain(status)
         }
