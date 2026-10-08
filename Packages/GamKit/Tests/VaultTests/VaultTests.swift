@@ -81,7 +81,8 @@ struct VaultTests {
 
     @Test func refreshNeverCreatesARemovedCredential() async throws {
         let vault = Vault(store: MemoryStore())
-        #expect(try await vault.refresh(Secret(Data("token".utf8)), as: .oauth2, for: example) == false)
+        #expect(try await vault.refresh(Secret(Data("token".utf8)), as: .oauth2, for: example,
+                                        replacing: Secret(Data("placeholder-oauth2".utf8))) == false)
         #expect(try await vault.domains().isEmpty)
     }
 

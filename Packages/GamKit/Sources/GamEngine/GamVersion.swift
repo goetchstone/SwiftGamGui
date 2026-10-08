@@ -15,14 +15,16 @@ public enum GamVersion {
         guard let result = try? await runner.run(["version"], configDirectory: config.url), result.exitCode == 0 else {
             return nil
         }
-        return parse(result.stdout)
+        return parse(AuthenticatedRunner.withoutConfigNoise(result.stdout, configDirectory: config.url))
     }
 
-    /// "7.48.22" from GAM's first line, "GAM 7.48.22 - https://github.com/GAM-team/GAM - pyinstaller".
+    /// "7.48.22" from GAM's line "GAM 7.48.22 - https://github.com/GAM-team/GAM - pyinstaller", wherever
+    /// it is: GAM may print its first-run banner first.
     static func parse(_ stdout: String) -> String? {
-        guard let first = stdout.split(separator: "\n", maxSplits: 1).first else { return nil }
-        let words = first.split(separator: " ")
-        guard words.count >= 2, words[0] == "GAM" else { return nil }
-        return String(words[1])
+        for line in stdout.unicodeScalars.split(separator: "\n").map(PythonText.string) {
+            let words = line.split(separator: " ")
+            if words.count >= 2, words[0] == "GAM", words[1].first?.isNumber == true { return String(words[1]) }
+        }
+        return nil
     }
 }

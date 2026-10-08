@@ -48,9 +48,21 @@ struct UsersView: View {
             }
             .searchable(text: $filter.query, prompt: "Name, address, title, department or unit")
             .safeAreaInset(edge: .bottom) {
-                Text("\(rows.count) of \(users.count) accounts")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                // A refresh shows here: running, or why it failed (the list above is the last good one).
+                HStack(spacing: 12) {
+                    Text("\(rows.count) of \(users.count) accounts").foregroundStyle(.secondary)
+                    if directory.isLoading {
+                        ProgressView().controlSize(.small)
+                        Text("Refreshing…").foregroundStyle(.secondary)
+                    }
+                    if let problem = directory.problem {
+                        Label(problem.summary, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange).lineLimit(2)
+                            .help(problem.detail ?? problem.summary)
+                    }
+                }
+                .font(.callout)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { selection = nil } })) {
                 if let user = users.first(where: { $0.id == selection }) {

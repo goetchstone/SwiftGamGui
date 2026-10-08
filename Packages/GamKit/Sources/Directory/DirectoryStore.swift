@@ -19,8 +19,9 @@ public final class DirectoryStore {
         public let detail: String?
     }
 
-    public private(set) var isLoading = false
     private var snapshot: Snapshot?
+    /// The load running, and the tenant it runs for.
+    private var inFlight: (task: Task<Void, Never>, domain: Domain, generation: Int)?
     /// Like the users, a problem belongs to the tenant it was met under: a load that failed while its
     /// domain was being removed must not speak for the next one.
     private var failure: (problem: Problem, domain: Domain?, generation: Int)?
@@ -41,6 +42,22 @@ public final class DirectoryStore {
         self.setup = setup
         self.runner = runner
         self.now = now
+        setup.tenantDidChange = { [weak self] in self?.tenantChanged() }
+    }
+
+    /// A load runs for the connected tenant. One still running for an earlier tenant isn't this
+    /// tenant's, and doesn't stop it loading (PR #8's review: it once held "Loading…" under the next
+    /// tenant, for up to the hour-long timeout).
+    public var isLoading: Bool {
+        guard let inFlight else { return false }
+        return inFlight.domain == setup.active && inFlight.generation == setup.generation
+    }
+
+    /// The old tenant's load stops: `gam` is sent SIGTERM, and its credentials are wiped as the call
+    /// unwinds, rather than reading on for the domain that was just removed or switched away from.
+    private func tenantChanged() {
+        inFlight?.task.cancel()
+        inFlight = nil
     }
 
     /// The users, while they belong to the connected tenant.
@@ -75,9 +92,16 @@ public final class DirectoryStore {
             return
         }
         let argv = GamCommands.printUsers(fields: GamCommands.cacheFields)
-        isLoading = true
         failure = nil
-        defer { isLoading = false }
+        let task = Task { await perform(argv, as: domain, generation: generation, runner: runner) }
+        inFlight = (task, domain, generation)
+        await task.value
+    }
+
+    private func perform(_ argv: [String], as domain: Domain, generation: Int, runner: AuthenticatedRunner) async {
+        defer {
+            if inFlight?.domain == domain, inFlight?.generation == generation { inFlight = nil }
+        }
         let outcome: Result<([GamUser], [DirectoryReport], Date), any Error>
         do {
             let result = try await runner.run(argv, as: domain, timeout: GamRunner.domainWideTimeout)

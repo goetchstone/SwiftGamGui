@@ -443,6 +443,7 @@ def mock_outputs(mock: Path) -> dict:
     import subprocess
     import tempfile
 
+    from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests.test_mock_gam import READS
 
     outputs = {}
@@ -456,7 +457,8 @@ def mock_outputs(mock: Path) -> dict:
                 run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
                 if run.returncode != 0:
                     raise SystemExit(f"the mock refused a read: {argv}")
-                outputs.setdefault(builder, []).append(run.stdout)
+                # As GamGUI's runner hands it on: without the first-run banner naming the config dir.
+                outputs.setdefault(builder, []).append(strip_cfgdir_noise(run.stdout, Path(config)))
     return outputs
 
 
@@ -743,7 +745,7 @@ def reports_fixture(mock: Path) -> dict:
         if rng.random() < 0.8:
             record["lastLoginTime"] = rng.choice(logins)
         if rng.random() < 0.6:
-            record["recoveryEmail"] = rng.choice(["", "me@home.example", None])
+            record["recoveryEmail"] = rng.choice(["", "me@home.example", None, "  "])
         if rng.random() < 0.7:
             record["organizations"] = [{"title": rng.choice(words), "department": rng.choice(words), "primary": True}]
         if rng.random() < 0.5:
@@ -752,7 +754,54 @@ def reports_fixture(mock: Path) -> dict:
             record["locations"] = [{"buildingName": rng.choice(words)}]
         records.append(record)
     reports = build_reports([GAMUser.from_json(r) for r in records], now=now)
-    return {"now": now.isoformat(), "inactive_days": 90, "records": records,
+    # The Users list's search over those users, as GamGUI's _filter_users finds them, and Python's
+    # str.lower() (with its final-sigma rule) on its own.
+    from gamgui.web.routes.users import _filter_users
+
+    people = [
+        {"primaryEmail": "nikos@example.com", "name": {"givenName": "ΝΙΚΟΣ", "familyName": "ΠΑΠΑΣ"}},
+        {"primaryEmail": "ramu@example.com", "name": {"givenName": "रामू", "familyName": "सिंह"}},
+        {"primaryEmail": "kitti@example.com", "name": {"givenName": "กิตติ", "familyName": "x"}},
+        {"primaryEmail": "ipek@example.com", "name": {"givenName": chr(0x130) + "pek", "familyName": "Y"}},
+        {"primaryEmail": "flag@example.com", "name": {"givenName": chr(0x1F1FA) + chr(0x1F1F8), "familyName": "Z"}},
+        {"primaryEmail": "zoe@example.com", "name": {"givenName": "Zo" + chr(0xEB), "familyName": "e" + chr(0x301)},
+         "organizations": [{"title": "IT Director", "department": "Sales", "primary": True}], "orgUnitPath": "/Staff",
+         "suspended": True},
+    ]
+    users = [GAMUser.from_json(p) for p in people]
+    queries = ["νικος", "ΝΙΚΟΣ", "νικοσ", "παπας", "राम", "स", "ก", "i", "İ", "pek", chr(0x1F1FA), "flag@", "e",
+               chr(0xE9), "e" + chr(0x301), "director", " /STAFF ", chr(0x3000) + "sales", "", "   ", "nobody"]
+    filters = [{"query": q, "scope": scope, "matches": [u.primary_email for u in _filter_users(users, q, scope)]}
+               for q in queries for scope in ("all", "active", "suspended")]
+    sigma = ["ΑΣ", "ΑΣ Β", "Σ", "ΑΣΑ", "Α'Σ", "Α.Σ", "ΝΙΚΟΣ", "ΟΔΥΣΣΕΥΣ", "ΑΣ'", "ΑΣ" + chr(0x301), "ΑΣ1", "1Σ"]
+    from datetime import timedelta
+    from gamgui.core.reports import _parse_dt
+
+    epoch = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    login_forms = [
+        "2026-10-01T09:30:00.000Z", "1970-01-01T00:00:00.000Z", "2026-10-08T12:00:00Z", "2026-10-08T14:00:00+02:00",
+        "2026-10-08", "2026-10-08 12:00:00", " 2026-10-08T12:00:00.5Z ", "Never", "", "not a date",
+        "2026-10-08T24:00", "2026-10-08T24:00:00", "2026-10-08T24:00:00Z", "2026-10-08T24:00:01",
+        "2026-10-08T24:00:00.000001", "2026-07-10T11:59:59.9999999Z", "2026-10-08T12:00:00+05",
+        "2026-10-08T12:00:00+05:30:15", "2026-10-08T12:00:00+05:30:15.123456", "2026-10-08T12:00:00 +05:30",
+        "2026-10-08T12:00:00.Z", "2026-10-08T12:00:00+0530:00", "2026-10-08T12:00:00+0530",
+        "2026-10-08T12:00:00+053015", "2026-10-08T12:00:00,5Z", "1969-12-31T23:59:59Z", "0001-01-01T00:00:00Z",
+        "2026-02-29T00:00:00Z", "2028-02-29T00:00:00Z", "2026-10-08T12", "2026-10-08T12:30", "2026-10-08T1230",
+        "2026-10-08T123000", "20261008T120000Z", "20261008", "2026-W41-4", "2026-281", "2026-10-08T12:00:00.123",
+        "2026-10-08T12:00:00.1234567890Z", chr(0x662) + chr(0x660) + chr(0x662) + chr(0x666) + "-10-08",
+        "2026-10-08t12:00:00z", "2026-10-08T12:00:00-00:00", "2026-10-08T12:00:00+24:00",
+        "2026-10-08T12:00:00+23:59", "2026-10-08T12:00:00.", "2026-10-08X12:00", "2026-10-08T12:00:00Z ",
+        "2026-13-01", "2026-10-08T12:60", "2026-10-08T12:00:60",
+    ]
+
+    def micros(text):
+        found = _parse_dt(text)
+        return None if found is None else (found - epoch) // timedelta(microseconds=1)
+
+    return {"people": people, "filters": filters, "logins": [[text, micros(text)] for text in login_forms],
+            "lower": [[text, text.lower()] for text in sigma]
+            + [[chr(p), chr(p).lower()] for p in range(0x110000) if 0xD800 > p or p > 0xDFFF if chr(p).lower() != chr(p)],
+            "now": now.isoformat(), "inactive_days": 90, "records": records,
             "reports": [{"key": r.key, "title": r.title, "description": r.description,
                          "members": [u.primary_email for u in r.users]} for r in reports]}
 
@@ -941,6 +990,7 @@ def main() -> int:
     audit_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_fixture()
     (OUT / "audit.json").write_text(json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit.json: {len(audit_doc['written'])} records, {len(audit_doc['records'])} read back")
+
     # The directory's reports over those users, as GamGUI's Home and Reports count them.
     reports_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | reports_fixture(OUT / "mock_gam.sh")

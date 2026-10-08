@@ -37,6 +37,9 @@ public final class SetupModel {
     /// 2026-09-25: a tenant switch left the old tenant's previews live). A re-check of the same domain
     /// keeps it.
     public private(set) var generation = 0
+    /// Called when the connected tenant changes (another domain, or none), so work started for the old
+    /// one can stop: the directory cancels a load in flight. One observer.
+    @ObservationIgnored public var tenantDidChange: (@MainActor () -> Void)?
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
@@ -190,6 +193,7 @@ public final class SetupModel {
         guard active != domain else { return }
         active = domain
         generation += 1
+        tenantDidChange?()
     }
 
     /// Makes `found` the domain's whole set. New credentials haven't been checked, so a domain that
@@ -211,6 +215,7 @@ public final class SetupModel {
         if active == domain {
             active = nil
             generation += 1
+            tenantDidChange?()
         }
         if lastCheck?.domain == domain { lastCheck = nil }
     }

@@ -64,11 +64,14 @@ public actor Vault {
         }
     }
 
-    /// Replaces a credential that is still stored; a removed one stays removed. Returns whether it
-    /// replaced anything. For GAM's refreshed `oauth2.txt`.
+    /// Replaces a credential only while it still holds `original`, the value the call started with: a
+    /// removed one stays removed, and one replaced meanwhile (a re-import) keeps its new value. Returns
+    /// whether it replaced anything. For GAM's refreshed `oauth2.txt`.
     @discardableResult
-    public func refresh(_ secret: Secret, as credential: Credential, for domain: Domain) async throws -> Bool {
-        try await offMainThread { [store] in try store.replace(secret.bytes, as: credential, for: domain) }
+    public func refresh(_ secret: Secret, as credential: Credential, for domain: Domain, replacing original: Secret) async throws -> Bool {
+        try await offMainThread { [store] in
+            try store.replace(secret.bytes, as: credential, for: domain, ifCurrent: original.bytes)
+        }
     }
 
     public func domains() async throws -> [Domain] {

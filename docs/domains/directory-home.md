@@ -36,6 +36,25 @@ they were loaded for; Home shows the connection, the bundled GAM and the directo
     directory (the wipe removes both; checked: nothing left), and creates `~/Downloads` if it's missing.
   - The real `gam version` takes about 6 s (PyInstaller start-up). Home shows "Checking…" meanwhile.
 
+## Fixed in PR #8's review
+- **A load's token write-back undid a re-import.** The refreshed `oauth2.txt` replaced whatever was
+  stored, so a re-import during a load ended with the old admin's token beside the new key. Write-backs
+  are now a compare-and-swap in the store (`replace(…, ifCurrent:)`, read and replaced under one lock):
+  a token changed or removed mid-call stays as it was.
+- **GAM's first-run banner.** Each call gets a fresh config directory, so real GAM prints
+  `Created: <dir>/gamcache` and `Config File: <dir>/gam.cfg, Initialized` on stdout before its data
+  (checked on the 7.48.22 build). `AuthenticatedRunner` drops lines naming the call's directory, as
+  GamGUI's runner does. It splits at "\n" scalars, not `Character`s: "\r\n" is one `Character`, and a
+  CRLF banner line took the data after it along. The mock now prints the banner too.
+- **A dropped load held "Loading…" under the next tenant**, up to the hour-long timeout. Loading belongs
+  to the tenant it runs for, and a tenant change cancels the old load, so its `gam` is stopped and its
+  credentials wiped.
+- **A failed Refresh was silent on Users.** The bottom line shows the refresh running, or why it failed.
+- **Search parity:** Python's `str.lower()` (with its final sigma) and a scalar substring. Swift's
+  `contains` missed "राम" in "रामू" and "i" in "İpek".
+- **Login times:** `ISOTime` reads the forms Python does, held to a table of Python's own answers; three
+  forms GAM never prints are named as known differences.
+
 ## Reports
 `DirectoryReport.swift` ports GamGUI's `core/reports.py`: the nine report counts Home lists (no 2SV,
 inactive 90+ days, admins, no recovery, suspended, no title/department/phone/location). Suspended
