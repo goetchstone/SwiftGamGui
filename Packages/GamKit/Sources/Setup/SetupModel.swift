@@ -222,7 +222,7 @@ public final class SetupModel {
 
     // MARK: - Words for the operator
 
-    public static func summary(of check: AccessCheck) -> String {
+    nonisolated public static func summary(of check: AccessCheck) -> String {
         switch check.outcome {
         case .authorized:
             return "All scopes authorized."
@@ -237,7 +237,7 @@ public final class SetupModel {
         }
     }
 
-    public static func message(for error: any Error) -> String {
+    nonisolated public static func message(for error: any Error) -> String {
         switch error {
         case let error as VaultError:
             return error.guidance

@@ -7,6 +7,14 @@ public struct GamResult: Sendable, Equatable {
     public let stderr: String
     public let stdoutTruncated: Bool
     public let stderrTruncated: Bool
+
+    public init(exitCode: Int32, stdout: String, stderr: String, stdoutTruncated: Bool, stderrTruncated: Bool) {
+        self.exitCode = exitCode
+        self.stdout = stdout
+        self.stderr = stderr
+        self.stdoutTruncated = stdoutTruncated
+        self.stderrTruncated = stderrTruncated
+    }
 }
 
 public enum GamRunnerError: Error, Equatable, Sendable {

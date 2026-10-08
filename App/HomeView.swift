@@ -1,0 +1,85 @@
+import Directory
+import GamEngine
+import Setup
+import SwiftUI
+
+/// Home: the connection, the bundled GAM, and the directory's counts. It makes no Google call of its
+/// own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's Home, plan U4).
+struct HomeView: View {
+    let setup: SetupModel
+    let directory: DirectoryStore
+    let gamVersion: String?
+    let hasGam: Bool
+    let openSetup: () -> Void
+
+    var body: some View {
+        Form {
+            Section("Connection") {
+                connection
+                LabeledContent("GAM") {
+                    if let gamVersion {
+                        Text(gamVersion == GamVersion.expected ? gamVersion : "\(gamVersion), expected \(GamVersion.expected)")
+                    } else {
+                        Text(hasGam ? "Checking…" : "Not found: build the app again after running scripts/fetch_gam.sh")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Section("Directory") {
+                directorySection
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    @ViewBuilder private var connection: some View {
+        if let domain = setup.active {
+            LabeledContent("Domain") {
+                switch setup.status(of: domain) {
+                case .connectedButLastCheckFailed:
+                    Label("\(domain.name): the last check failed", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                default:
+                    Label(domain.name, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                }
+            }
+        } else {
+            LabeledContent("Domain") {
+                Button("Connect on Setup…", action: openSetup)
+            }
+        }
+    }
+
+    @ViewBuilder private var directorySection: some View {
+        if let users = directory.users {
+            LabeledContent("Accounts", value: users.count.formatted())
+            LabeledContent("Suspended", value: users.suspendedCount.formatted())
+            LabeledContent("Admins", value: users.adminCount.formatted())
+            LabeledContent("As of") {
+                HStack {
+                    Text(directory.loadedAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "")
+                    Button("Refresh") { Task { await directory.load() } }
+                        .disabled(directory.isLoading)
+                        .accessibilityIdentifier("home.refresh")
+                }
+            }
+        } else if setup.active != nil {
+            LabeledContent("Not loaded yet. Home doesn't call Google on its own.") {
+                Button("Load the Directory") { Task { await directory.load() } }
+                    .disabled(directory.isLoading)
+                    .accessibilityIdentifier("home.load")
+            }
+        } else {
+            Text("Connect a domain on Setup to see its counts.").foregroundStyle(.secondary)
+        }
+        if directory.isLoading {
+            HStack { ProgressView().controlSize(.small); Text("Loading the directory…") }
+        }
+        if let problem = directory.problem {
+            Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            if let detail = problem.detail {
+                Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+        }
+    }
+}

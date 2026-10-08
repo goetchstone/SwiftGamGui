@@ -1,0 +1,127 @@
+import Foundation
+import GamEngine
+import Observation
+import Setup
+import Vault
+
+/// The directory as one `gam print users` left it, for every screen that counts or lists people
+/// (GamGUI's user cache). It loads only when asked, never on its own, and what it holds belongs to the
+/// tenant it was loaded for: a switch of the connected domain hides it, and a load that was running
+/// when the tenant changed is dropped (GamGUI failure-log 2026-09-25: a tenant switch left the old
+/// tenant's data live).
+@MainActor
+@Observable
+public final class DirectoryStore {
+    public struct Problem: Equatable, Sendable {
+        /// What to do about it.
+        public let summary: String
+        /// What GAM said, when it said something.
+        public let detail: String?
+    }
+
+    public private(set) var isLoading = false
+    private var snapshot: Snapshot?
+    /// Like the users, a problem belongs to the tenant it was met under: a load that failed while its
+    /// domain was being removed must not speak for the next one.
+    private var failure: (problem: Problem, domain: Domain?, generation: Int)?
+
+    private struct Snapshot {
+        let users: [GamUser]
+        let loadedAt: Date
+        let domain: Domain
+        let generation: Int
+    }
+
+    private let setup: SetupModel
+    private let runner: AuthenticatedRunner?
+    private let now: @Sendable () -> Date
+
+    public init(setup: SetupModel, runner: AuthenticatedRunner?, now: @escaping @Sendable () -> Date = Date.init) {
+        self.setup = setup
+        self.runner = runner
+        self.now = now
+    }
+
+    /// The users, while they belong to the connected tenant.
+    public var users: [GamUser]? { current?.users }
+
+    /// Why there are no users, while it still applies to the connected tenant.
+    public var problem: Problem? {
+        guard let failure, failure.domain == setup.active, failure.generation == setup.generation else { return nil }
+        return failure.problem
+    }
+    public var loadedAt: Date? { current?.loadedAt }
+
+    private var current: Snapshot? {
+        guard let snapshot, snapshot.domain == setup.active, snapshot.generation == setup.generation else { return nil }
+        return snapshot
+    }
+
+    /// One `gam print users` with the fields every screen uses, as the connected domain. A domain-wide
+    /// read: it gets the long timeout.
+    public func load() async {
+        guard !isLoading else { return }
+        let generation = setup.generation
+        guard let domain = setup.active else {
+            failure = (Problem(summary: "Connect a domain on Setup first.", detail: nil), nil, generation)
+            return
+        }
+        guard let runner else {
+            failure = (Problem(summary: "This build has no GAM. Build the app again after running scripts/fetch_gam.sh.",
+                               detail: nil), domain, generation)
+            return
+        }
+        let argv = GamCommands.printUsers(fields: GamCommands.cacheFields)
+        isLoading = true
+        failure = nil
+        defer { isLoading = false }
+        let outcome: Result<[GamUser], any Error>
+        do {
+            let result = try await runner.run(argv, as: domain, timeout: GamRunner.domainWideTimeout)
+            // Parsing a large directory takes a while: not on the main actor.
+            outcome = .success(try await Task.detached { try Self.users(from: result, argv: argv) }.value)
+        } catch {
+            outcome = .failure(error)
+        }
+        guard setup.active == domain, setup.generation == generation else { return }
+        switch outcome {
+        case .success(let users):
+            snapshot = Snapshot(users: users, loadedAt: now(), domain: domain, generation: generation)
+        case .failure(let error):
+            failure = (Self.problem(for: error, argv: argv), domain, generation)
+        }
+    }
+
+    /// GAM output too large for the runner's cap.
+    struct Truncated: Error {}
+
+    /// The users in a finished run, or why there are none. Output the runner cut at its cap is refused:
+    /// counting a partial list would report a smaller directory as if it were the whole one.
+    nonisolated static func users(from result: GamResult, argv: [String]) throws -> [GamUser] {
+        guard result.exitCode == 0 else {
+            throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv, stdout: result.stdout)
+        }
+        guard !result.stdoutTruncated else { throw Truncated() }
+        return GamOutput.records(result.stdout).map(GamUser.init(record:))
+    }
+
+    nonisolated static func problem(for error: any Error, argv: [String]) -> Problem {
+        switch error {
+        case let failure as GamError:
+            return Problem(summary: failure.remediation, detail: failure.message)
+        case GamRunnerError.timedOut:
+            let failure = GamError(exitCode: nil, stderr: "", argv: argv)
+            return Problem(summary: failure.remediation, detail: failure.message)
+        case is Truncated:
+            return Problem(summary: "The directory is larger than one call can return yet (GAM printed more than "
+                + "\(GamRunner.outputCap / 1_048_576) MiB), so nothing is shown rather than part of it.", detail: nil)
+        default:
+            return Problem(summary: SetupModel.message(for: error), detail: nil)
+        }
+    }
+}
+
+extension Array where Element == GamUser {
+    public var suspendedCount: Int { filter(\.suspended).count }
+    public var adminCount: Int { filter(\.isAdmin).count }
+}
