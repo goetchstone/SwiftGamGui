@@ -14,6 +14,7 @@
 		5A6D00000000000000000001 /* GamGUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GamGUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A6D00000000000000000002 /* GamGUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GamGUI.entitlements; sourceTree = "<group>"; };
 		5A6D00000000000000000003 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		5A6D00000000000000000004 /* GamGUI-Team.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "GamGUI-Team.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -58,6 +59,7 @@
 			children = (
 				5A6D00000000000000000003 /* Base.xcconfig */,
 				5A6D00000000000000000002 /* GamGUI.entitlements */,
+				5A6D00000000000000000004 /* GamGUI-Team.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -195,7 +197,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5A6D00000000000000000003 /* Base.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/GamGUI.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;
@@ -221,7 +222,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5A6D00000000000000000003 /* Base.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/GamGUI.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = NO;

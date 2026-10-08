@@ -3,10 +3,13 @@
 //
 //     DEVELOPMENT_TEAM = ABCDE12345
 //     CODE_SIGN_IDENTITY = Apple Development
+//     CODE_SIGN_ENTITLEMENTS = Config/GamGUI-Team.entitlements
 //
 // Ad-hoc builds can't use the data-protection Keychain (errSecMissingEntitlement, -34018), so the app
-// needs a team — a free Personal Team works — before it can store credentials.
+// needs a team — a free Personal Team works — plus the team entitlements (a keychain access group,
+// which makes Xcode provision the app) before it can store credentials.
 CODE_SIGN_STYLE = Automatic
 CODE_SIGN_IDENTITY = -
+CODE_SIGN_ENTITLEMENTS = Config/GamGUI.entitlements
 
 #include? "Local.xcconfig"

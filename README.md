@@ -33,11 +33,14 @@ Requires macOS 27 and Xcode 27.
    ```
    DEVELOPMENT_TEAM = ABCDE12345
    CODE_SIGN_IDENTITY = Apple Development
+   CODE_SIGN_ENTITLEMENTS = Config/GamGUI-Team.entitlements
    ```
-   Without it the app signs ad-hoc ("Sign to Run Locally"), which builds and runs but can't use the
+   The team entitlements claim a keychain access group, which makes Xcode provision the app. Without
+   this file the app signs ad-hoc ("Sign to Run Locally"): it builds and runs, but it can't use the
    data-protection Keychain, so it can't store credentials.
-5. Open `SwiftGamGui.xcodeproj` and run the **GamGUI** scheme, or
-   `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build`.
+5. Open `SwiftGamGui.xcodeproj` and build the **GamGUI** scheme **once in Xcode** (⌘B): that's when
+   Xcode creates the provisioning profile with your account (`xcodebuild` alone reports "No
+   Accounts"). After that, `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build` works.
 
 Tests: `swift test --package-path Packages/GamKit`.
 

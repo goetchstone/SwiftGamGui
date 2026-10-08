@@ -1,8 +1,7 @@
 # Plan: SwiftGamGui — GamGUI as a native Mac app, with GAM still the engine
 
-**Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) done except the Personal Team Keychain
-spike, which waits on the operator adding an Apple ID in Xcode (see "Phase 1, slice 1 results"
-before the Appendix).** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
+**Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) DONE 2026-10-08; slice 2 (Vault,
+credential materialization, Setup) is next. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
 for a reader with no session context. It consolidates two drafts and the operator's answers from the
@@ -422,16 +421,15 @@ default, plus "Just do it"). Still open:
 |---|---|
 | GAM on macOS 27 | GAM 7.48.22 (built for macOS 26.6) runs on 27.0.1 (`gam version`, empty throwaway config dir) |
 | Keychain, ad-hoc signing | **Every data-protection call fails with `errSecMissingEntitlement` (-34018)**, with or without a user-presence ACL. Nothing written, no prompt. Source builds need a signing team |
-| Keychain, Personal Team | **Pending.** This Mac has **no code-signing identities**, so the operator first adds an Apple ID in Xcode → Settings → Accounts. Then `Config/Local.xcconfig` gets the Personal Team's ID and the app's `--spike keychain` runs |
+| Keychain, Personal Team | **Works, once provisioned.** A team signature alone still gave -34018: with no capability claimed, Xcode embeds no profile, so there's no `application-identifier`. Claiming a keychain access group (`Config/GamGUI-Team.entitlements`, selected by the gitignored `Config/Local.xcconfig`) plus **one build inside Xcode** (the CLI said "No Accounts") provisioned the app. Then add (plain and user presence), read after authenticating, a second read in the reuse window, and delete all returned `errSecSuccess`. **§7's Keychain design is viable for source builds with a free Personal Team** |
 | Copying a legacy item | A throwaway `swiftgamgui-spike-legacy` item made by `security` was read by a separately signed binary: status 0, all bytes. **macOS showed an Allow dialog, and the operator allowed it.** Copying GamGUI's `gamgui:<domain>` items at setup will prompt once per item. The throwaway was deleted |
 | On-device model | `SystemLanguageModel.default.availability` = **`.unavailable(.modelNotReady)`**: eligible and enabled, assets not ready yet (likely still downloading after the OS update). 24 supported languages. The same result from inside the built app. Re-check later; the no-model path matters |
 | The GAM pin | `fetch_gam.sh` in a scratch copy, with a **tampered pin: refused** ("checksum mismatch … Refusing to install"), nothing installed. With the real pin it installs, and the GAM copied from GamGUI is **byte-identical** to the pinned upstream asset (`gam` and `lib/`) |
 | Snapshots | `ImageRenderer` → `NSImage` → `Attachment.record` → `swift test --attachments-path <dir>` → a PNG read back correctly (native buttons included). Simpler than `xcresulttool` |
 
 **Remaining:**
-- **The Personal Team Keychain spike** (above).
-- **The GitHub repo:** a separate OK from the operator. The first local commit was approved
-  2026-10-08.
+- **The GitHub repo:** a separate OK from the operator.
+- **Re-check the on-device model** once its assets finish downloading (`--spike model`).
 
 ## Appendix: checked on this Mac (2026-10-08)
 
