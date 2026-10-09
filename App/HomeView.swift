@@ -54,13 +54,19 @@ struct HomeView: View {
         if let users = directory.users {
             LabeledContent("Accounts", value: users.count.formatted())
             ForEach(directory.reports ?? []) { report in
-                LabeledContent(report.title, value: report.count.formatted())
-                    .help(report.description)
+                // The description is shown, not only a tooltip: a count means little without it.
+                LabeledContent {
+                    Text(report.count.formatted())
+                } label: {
+                    Text(report.title)
+                    Text(report.description)
+                }
             }
             LabeledContent("As of") {
                 HStack {
                     Text(directory.loadedAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "")
                     Button("Refresh") { Task { await directory.load() } }
+                        .keyboardShortcut("r")
                         .disabled(directory.isLoading)
                         .accessibilityIdentifier("home.refresh")
                 }
@@ -68,6 +74,7 @@ struct HomeView: View {
         } else if setup.active != nil {
             LabeledContent("Not loaded yet. Home doesn't call Google on its own.") {
                 Button("Load the Directory") { Task { await directory.load() } }
+                    .keyboardShortcut("r")
                     .disabled(directory.isLoading)
                     .accessibilityIdentifier("home.load")
             }
@@ -76,6 +83,7 @@ struct HomeView: View {
         }
         if directory.isLoading {
             HStack { ProgressView().controlSize(.small); Text("Loading the directory…") }
+                .accessibilityElement(children: .combine)
         }
         if let problem = directory.problem {
             Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)

@@ -26,6 +26,7 @@ struct UsersView: View {
                     Button(directory.users == nil ? "Load" : "Refresh", systemImage: "arrow.clockwise") {
                         Task { await directory.load() }
                     }
+                    .keyboardShortcut("r")
                     .disabled(directory.isLoading || setup.active == nil)
                     .accessibilityIdentifier("users.load")
                 }
@@ -52,8 +53,8 @@ struct UsersView: View {
                 HStack(spacing: 12) {
                     Text("\(rows.count) of \(users.count) accounts").foregroundStyle(.secondary)
                     if directory.isLoading {
-                        ProgressView().controlSize(.small)
-                        Text("Refreshing…").foregroundStyle(.secondary)
+                        HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
+                            .accessibilityElement(children: .combine)
                     }
                     if let problem = directory.problem {
                         Label(problem.summary, systemImage: "exclamationmark.triangle.fill")
