@@ -25,7 +25,7 @@ struct DirectoryStoreTests {
         base = try RuntimeDirectory.prepare(
             FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-run-\(UUID().uuidString)"))
         runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
-        setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil })
+        setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         store = DirectoryStore(setup: setup, runner: runner, now: { Date(timeIntervalSince1970: 1_800_000_000) })
     }
 
@@ -101,7 +101,7 @@ struct DirectoryStoreTests {
 
     @Test func aTenantChangeStopsTheOldLoadAndLetsTheNextOneLoad() async throws {
         let slow = try slowRunner()
-        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil })
+        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let store = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
         let clock = ContinuousClock(), started = clock.now
@@ -118,7 +118,7 @@ struct DirectoryStoreTests {
     @Test func aLoadForAnotherTenantNeverShowsAsLoading() async throws {
         // Even for a store Setup doesn't notify (its one observer is the store made last).
         let slow = try slowRunner()
-        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil })
+        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let unwatched = DirectoryStore(setup: setup, runner: slow)
         _ = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
@@ -133,7 +133,7 @@ struct DirectoryStoreTests {
     @Test func askingAgainWhileALoadRunsStartsNoSecond() async throws {
         let log = FileManager.default.temporaryDirectory.appending(path: "argv-\(UUID().uuidString).log")
         let slow = try slowRunner(log: log)
-        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil })
+        let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let store = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
         async let first: Void = store.load()

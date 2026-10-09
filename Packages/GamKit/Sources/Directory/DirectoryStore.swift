@@ -1,3 +1,4 @@
+import ChangeCore
 import Foundation
 import GamEngine
 import Observation
@@ -61,6 +62,19 @@ public final class DirectoryStore {
         // A domain just connected: load it, as the operator asked (2026-10-09), rather than waiting for a
         // click. A disconnect loads nothing.
         if setup.active != nil { start() }
+    }
+
+    /// Applies a confirmed write to the cached user, if the cache still belongs to the tenant and
+    /// generation the write ran on (a write for an old tenant never touches a new tenant's list). The
+    /// reports are counted again from the patched list.
+    public func patch(_ email: String, on domain: Domain, generation: Int, _ change: (GamUser) -> GamUser) {
+        guard let snapshot, snapshot.domain == domain, snapshot.generation == generation,
+              let index = snapshot.users.firstIndex(where: { Guard.normalized($0.primaryEmail) == Guard.normalized(email) })
+        else { return }
+        var users = snapshot.users
+        users[index] = change(users[index])
+        self.snapshot = Snapshot(users: users, reports: DirectoryReport.build(users, now: snapshot.loadedAt),
+                                 loadedAt: snapshot.loadedAt, domain: domain, generation: generation)
     }
 
     /// The users, while they belong to the connected tenant.

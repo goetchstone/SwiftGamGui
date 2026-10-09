@@ -104,7 +104,7 @@ final class GuidedSetupTests {
         let base = try RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-run-\(UUID().uuidString)"))
         let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
         return SetupModel(vault: vault, runner: withRunner ? runner : nil, gamgui: GamGUIKeychain { _, _ in nil },
-                          setupFolderURL: folder?.url)
+                          setupFolderURL: folder?.url, lastDomain: .memory())
     }
 
     private func names(in folder: URL) throws -> Set<String> {

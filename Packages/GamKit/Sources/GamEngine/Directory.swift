@@ -66,6 +66,31 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
     }
 }
 
+extension GamUser {
+    /// This user as a confirmed write left them, so the cached directory shows the change without a
+    /// reload (GamGUI's `patch_user`). The record itself is patched and read again, so every field comes
+    /// from one place: GAM's `organization … primary` sets the primary organization's title and
+    /// department together.
+    public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil) -> GamUser {
+        var record = record
+        if let suspended { record["suspended"] = .bool(suspended) }
+        if title != nil || department != nil {
+            var items = record["organizations"]?.array ?? []
+            let index = items.firstIndex { $0.object?["primary"]?.truthy == true } ?? (items.isEmpty ? nil : 0)
+            var organization = index.flatMap { items[$0].object } ?? ["primary": .bool(true)]
+            if let title { organization["title"] = .string(title) }
+            if let department { organization["department"] = .string(department) }
+            if let index { items[index] = .object(organization) } else { items.append(.object(organization)) }
+            record["organizations"] = .array(items)
+            // A CSV-shaped record names them flat too, and the reader falls back to those: keep them equal,
+            // or a cleared title would come back from the flat key.
+            if let title, record["Organization Title"] != nil { record["Organization Title"] = .string(title) }
+            if let department, record["Organization Department"] != nil { record["Organization Department"] = .string(department) }
+        }
+        return GamUser(record: record)
+    }
+}
+
 public struct GamGroup: Sendable, Identifiable, CustomReflectable {
     public let email: String
     public let name: String

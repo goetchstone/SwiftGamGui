@@ -64,7 +64,8 @@ already proven live sent; **confirmed** means this app has itself run it against
 
 | Write | Status |
 |---|---|
-| *(none yet; writes come in phase 2)* | |
+| Title and department (Users) | argv-identical |
+| Suspend and unsuspend (Users) | argv-identical |
 
 ## License
 
