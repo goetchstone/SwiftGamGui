@@ -94,6 +94,7 @@ public actor Vault {
         for credential in Credential.removalOrder {
             try await offMainThread { [store] in try store.delete(credential, for: domain) }
         }
+        try await offMainThread { [store] in try store.forget(domain) }
     }
 
     /// Ends the authenticated session: the next read prompts again.
