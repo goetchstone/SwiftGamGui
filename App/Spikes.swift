@@ -51,18 +51,28 @@ enum Spikes {
 
     #if DEBUG
     /// Renders the app's real window (AppKit-backed controls included) to a PNG and quits: how a
-    /// screen is looked at from the command line. No screen-recording permission involved.
+    /// screen is looked at from the command line. No screen-recording permission involved. Only the
+    /// screen's own pane, below the toolbar: the sidebar's and toolbar's system materials don't draw
+    /// this way (the selected row came out as a black bar).
     @MainActor
     static func snapshot(to file: URL) async {
         try? await Task.sleep(for: .seconds(1.5))
-        guard let view = NSApp.windows.first(where: \.isVisible)?.contentView,
-              let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds)
-        else {
+        guard let content = NSApp.windows.first(where: \.isVisible)?.contentView else {
             print("snapshot: no window")
             NSApp.terminate(nil)
             return
         }
-        view.cacheDisplay(in: view.bounds, to: bitmap)
+        let view = splitView(in: content)?.arrangedSubviews.last ?? content
+        var rect = view.bounds
+        let toolbar = min(view.safeAreaInsets.top, rect.height)
+        rect.size.height -= toolbar
+        if view.isFlipped { rect.origin.y += toolbar }
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: rect) else {
+            print("snapshot: nothing to draw")
+            NSApp.terminate(nil)
+            return
+        }
+        view.cacheDisplay(in: rect, to: bitmap)
         do {
             try bitmap.representation(using: .png, properties: [:])?.write(to: file)
             print("snapshot: \(file.path)")
@@ -71,6 +81,13 @@ enum Spikes {
         }
         fflush(stdout)
         NSApp.terminate(nil)
+    }
+
+    /// The window's split view (sidebar | screen), searched depth first.
+    @MainActor
+    static func splitView(in view: NSView) -> NSSplitView? {
+        if let split = view as? NSSplitView { return split }
+        return view.subviews.lazy.compactMap(splitView(in:)).first
     }
 
     static let service = "swiftgamgui-spike"

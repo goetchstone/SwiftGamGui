@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Renders every screen of a debug GamGUI.app to PNGs, from the demo tenant and the strict mock GAM only:
 # credentials in memory, never the Keychain, and never the real gam (AppServices refuses anything but a
-# regular file named mock_gam.sh). CI's macOS job runs it; the operator can too. The capture leaves the
-# sidebar and toolbar blank: their system materials don't draw this way.
+# regular file named mock_gam.sh). CI's macOS job runs it; the operator can too. Each image is the
+# screen's own pane: the sidebar's and toolbar's system materials don't draw this way.
 #
 #   scripts/screenshots.sh path/to/Debug/GamGUI.app out-dir
 set -euo pipefail

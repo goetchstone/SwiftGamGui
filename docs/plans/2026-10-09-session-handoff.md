@@ -101,7 +101,7 @@ area you touch (`docs/domains/`) and `docs/RULE-FEEDBACK.md`. The design is
   prints it. When porting a path, check what the real binary prints locally against the mock.
 - **Debug switches** are environment variables, never launch arguments: `SWIFTGAMGUI_DEMO`,
   `SWIFTGAMGUI_SNAPSHOT`, `SWIFTGAMGUI_SCREEN`, `SWIFTGAMGUI_SPIKE`, `SWIFTGAMGUI_GAM_BINARY`. The
-  snapshot leaves the sidebar and toolbar blank: that's the capture, not the app.
+  snapshot is the screen's own pane, without the sidebar and toolbar: that's the capture, not the app.
 - **Shell safety:** an `rm` on a variable path must use `"${VAR:?}"`, or the safety check refuses it.
 
 ## Waiting on the operator

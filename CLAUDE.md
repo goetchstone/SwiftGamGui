@@ -105,7 +105,7 @@ scripts/fetch_gam.sh                                            # vendor GAM aga
 ../gamgui/.venv/bin/python -I -B scripts/bump_gam.py vX.Y.Z     # bump GAM (attested), then test
 # Look at a screen (debug builds): renders the real window to a PNG and quits. The demo fills the screen
 # from memory and the strict mock, never the real GAM. SWIFTGAMGUI_SCREEN picks it (home, the default,
-# users or setup). The capture leaves the sidebar and toolbar blank (their system materials don't draw this way).
+# users or setup). The capture is the screen's own pane (the sidebar's and toolbar's system materials don't draw this way).
 SWIFTGAMGUI_SCREEN=home SWIFTGAMGUI_SNAPSHOT=/tmp/home.png SWIFTGAMGUI_DEMO=1 \
   SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" \
   build/DerivedData/Build/Products/Debug/GamGUI.app/Contents/MacOS/GamGUI
