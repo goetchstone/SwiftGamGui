@@ -135,6 +135,35 @@ public final class UserChanges {
         await hold(step, title: "Remove a delegate", confirmLabel: "Remove", email: user.primaryEmail)
     }
 
+    // MARK: auto-reply and sign-out
+
+    /// GamGUI's `/users/vacation/set`: the typed text goes out as HTML (`autoreply_html`), so senders read its
+    /// line breaks; every setting is named (GAM keeps any it isn't given). An empty date is GAM's
+    /// `Started` / `NotSpecified`. LOW.
+    public func previewAutoReply(_ user: GamUser, subject: String, text: String, contactsOnly: Bool, domainOnly: Bool,
+                                 start: String, end: String) async {
+        let step = WriteStep(
+            GamCommands.setVacation(email: user.primaryEmail, subject: subject, message: HTMLText.autoreplyHTML(text),
+                                    html: true, start: PythonText.strip(start), end: PythonText.strip(end),
+                                    contactsOnly: contactsOnly, domainOnly: domainOnly),
+            target: user.primaryEmail, summary: "Turn on \(user.primaryEmail)'s auto-reply: “\(subject)”.")
+        await hold(step, title: "Turn on the auto-reply", confirmLabel: "Turn On", email: user.primaryEmail)
+    }
+
+    /// GamGUI's `/users/vacation/off`. LOW.
+    public func previewAutoReplyOff(_ user: GamUser) async {
+        let step = WriteStep(GamCommands.vacationOff(email: user.primaryEmail), target: user.primaryEmail,
+                             summary: "Turn off \(user.primaryEmail)'s auto-reply.")
+        await hold(step, title: "Turn off the auto-reply", confirmLabel: "Turn Off", email: user.primaryEmail)
+    }
+
+    /// GamGUI's `/users/signout`: ends every session; the person signs in again. LOW, as GamGUI rates it.
+    public func previewSignOut(_ user: GamUser) async {
+        let step = WriteStep(GamCommands.signOutUser(email: user.primaryEmail), target: user.primaryEmail,
+                             summary: "Sign \(user.primaryEmail) out of every session: they sign in again on each device.")
+        await hold(step, title: "Sign \(user.fullName) out", confirmLabel: "Sign Out", email: user.primaryEmail)
+    }
+
     /// GamGUI's `_check_delegate`, against the cached directory: (error, warning).
     static func checkDelegate(_ delegate: String, for email: String, directory: [GamUser]?) -> (error: String?, warning: String?) {
         if delegate.isEmpty { return ("Enter a delegate email.", nil) }

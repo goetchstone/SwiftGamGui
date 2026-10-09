@@ -106,6 +106,7 @@ private struct UserDetail: View {
     @State private var editingRole = false
     @State private var newGroup = ""
     @State private var newDelegate = ""
+    @State private var editingAutoReply = false
 
     var body: some View {
         Form {
@@ -120,6 +121,9 @@ private struct UserDetail: View {
                 .disabled(changes.isBusy)
                 .accessibilityHint(user.suspended ? "Shows what unsuspending changes, before anything runs."
                                                   : "Shows what suspending changes, before anything runs.")
+                Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
+                    .disabled(changes.isBusy)
+                    .accessibilityHint("Shows what signing out does, before anything runs.")
             }
             if changes.concerns(user.primaryEmail) { ChangeStatus(changes: changes) }
             Section("Role") {
@@ -137,6 +141,9 @@ private struct UserDetail: View {
             }
             AccessLists(user: user, directory: directory, changes: changes, access: access,
                         newGroup: $newGroup, newDelegate: $newDelegate)
+            if let vacation = access.lists(for: user.primaryEmail)?.vacation {
+                AutoReplySection(user: user, vacation: vacation, changes: changes) { editingAutoReply = true }
+            }
             if !user.aliases.isEmpty {
                 Section("Aliases") {
                     ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
@@ -147,6 +154,10 @@ private struct UserDetail: View {
         .inspectorColumnWidth(min: 260, ideal: 300)
         // Read when the person is selected, and again after a change of theirs lands.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
+        .sheet(isPresented: $editingAutoReply) {
+            AutoReplyEditor(user: user, vacation: access.lists(for: user.primaryEmail)?.vacation ?? Vacation(),
+                            changes: changes) { editingAutoReply = false }
+        }
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
@@ -235,6 +246,114 @@ private struct AccessLists: View {
         Task {
             await changes.previewAddDelegate(user, delegate: delegate, directory: directory.users)
             if changes.previewing != nil { newDelegate = "" }
+        }
+    }
+}
+
+/// The person's auto-reply: on or off, in words, with Turn On / Change / Turn Off.
+private struct AutoReplySection: View {
+    let user: GamUser
+    let vacation: Vacation
+    let changes: UserChanges
+    let edit: () -> Void
+
+    var body: some View {
+        Section("Auto-reply") {
+            LabeledContent("Status", value: vacation.enabled ? "On" : "Off")
+            if vacation.enabled {
+                LabeledContent("Subject", value: vacation.subject.isEmpty ? "—" : vacation.subject)
+                LabeledContent("From", value: vacation.start.isEmpty ? "Already started" : vacation.start)
+                LabeledContent("Until", value: vacation.end.isEmpty ? "No end date" : vacation.end)
+            }
+            HStack {
+                Button(vacation.enabled ? "Change…" : "Turn On…", action: edit)
+                    .accessibilityLabel(vacation.enabled ? "Change \(user.fullName)'s auto-reply" : "Turn on \(user.fullName)'s auto-reply")
+                if vacation.enabled {
+                    Button("Turn Off…") { Task { await changes.previewAutoReplyOff(user) } }
+                        .accessibilityLabel("Turn off \(user.fullName)'s auto-reply")
+                }
+            }
+        }
+        .disabled(changes.isBusy)
+    }
+}
+
+/// GamGUI's vacation form: the stored reply's text pre-filled (its markup decoded), every setting shown,
+/// then a preview of exactly what runs.
+private struct AutoReplyEditor: View {
+    let user: GamUser
+    let changes: UserChanges
+    let close: () -> Void
+    @State private var subject: String
+    @State private var text: String
+    @State private var contactsOnly: Bool
+    @State private var domainOnly: Bool
+    @State private var hasStart: Bool
+    @State private var start: Date
+    @State private var hasEnd: Bool
+    @State private var end: Date
+
+    private static let day: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    init(user: GamUser, vacation: Vacation, changes: UserChanges, close: @escaping () -> Void) {
+        self.user = user
+        self.changes = changes
+        self.close = close
+        _subject = State(initialValue: vacation.enabled ? vacation.subject : "")
+        _text = State(initialValue: vacation.enabled ? HTMLText.autoreplyText(vacation.message) : "")
+        _contactsOnly = State(initialValue: vacation.contactsOnly)
+        _domainOnly = State(initialValue: vacation.domainOnly)
+        let startDate = Self.day.date(from: vacation.start), endDate = Self.day.date(from: vacation.end)
+        _hasStart = State(initialValue: startDate != nil)
+        _start = State(initialValue: startDate ?? .now)
+        _hasEnd = State(initialValue: endDate != nil)
+        _end = State(initialValue: endDate ?? .now)
+    }
+
+    var body: some View {
+        Form {
+            Section("\(user.fullName)'s auto-reply") {
+                TextField("Subject", text: $subject)
+                LabeledContent("Message") {
+                    TextEditor(text: $text)
+                        .frame(minHeight: 120)
+                        .accessibilityLabel("Message")
+                }
+            }
+            Section("Who gets it") {
+                Toggle("Only people in their contacts", isOn: $contactsOnly)
+                Toggle("Only people in the organization", isOn: $domainOnly)
+            }
+            Section("When") {
+                Toggle("Start on a date", isOn: $hasStart)
+                if hasStart { DatePicker("Start", selection: $start, displayedComponents: .date) }
+                Toggle("End on a date", isOn: $hasEnd)
+                if hasEnd { DatePicker("End", selection: $end, displayedComponents: .date) }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 460, minHeight: 480)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: close) }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Preview") {
+                    let start = hasStart ? Self.day.string(from: start) : "", end = hasEnd ? Self.day.string(from: end) : ""
+                    let user = user, subject = subject, text = text, contactsOnly = contactsOnly, domainOnly = domainOnly
+                    let changes = changes
+                    close()
+                    Task {
+                        await changes.previewAutoReply(user, subject: subject, text: text, contactsOnly: contactsOnly,
+                                                       domainOnly: domainOnly, start: start, end: end)
+                    }
+                }
+                .disabled(subject.isEmpty)
+            }
         }
     }
 }

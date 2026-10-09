@@ -74,7 +74,8 @@ final class UserChangesTests {
             calls.append(Array(fields[1...count]))
             fields.removeFirst(count + 1)
         }
-        return calls.filter { $0.first == "update" || ($0.count > 3 && ["delegate", "delegates"].contains($0[3])) }
+        return calls.filter { $0.first == "update" || ($0.count > 3 && ["delegate", "delegates"].contains($0[3]))
+            || ($0.count > 2 && ["vacation", "signout"].contains($0[2])) }
     }
 
     @Test func aTitleAndDepartmentChangeRunsGamGUIsArgvAndPatchesTheList() async throws {
@@ -163,8 +164,9 @@ final class UserChangesTests {
     @Test func aPersonsGroupsAndDelegatesAreReadForTheirTenant() async throws {
         try await connect()
         await access.load("alice@example.com")
-        #expect(access.lists(for: "alice@example.com") == .init(groups: ["sales@example.com", "staff@example.com"],
-                                                                delegates: ["assistant@example.com", "backup@example.com"]))
+        let lists = try #require(access.lists(for: "alice@example.com"))
+        #expect(lists.groups == ["sales@example.com", "staff@example.com"])
+        #expect(lists.delegates == ["assistant@example.com", "backup@example.com"])
         #expect(access.lists(for: "bob@example.com") == nil, "only the person read")
     }
 
@@ -251,5 +253,45 @@ final class UserChangesTests {
         let pending = try pending()
         #expect(pending.warning?.hasPrefix("bob@example.com is suspended") == true)
         #expect(pending.confirmLabel == "Add Anyway")
+    }
+
+    // MARK: auto-reply and sign-out
+
+    @Test func anAutoReplyGoesOutAsGamGUIsHTMLAndIsReadBack() async throws {
+        try await connect()
+        let bob = try user("bob@example.com")
+        await changes.previewAutoReply(bob, subject: "Out of office", text: "Back Monday.\nUrgent? Call <the desk> & ask.",
+                                       contactsOnly: false, domainOnly: true, start: " 2026-10-12 ", end: "")
+        let pending = try pending()
+        #expect(!pending.preview.needsConfirmClick)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        #expect(writes() == [["user", "bob@example.com", "vacation", "on", "subject", "Out of office", "message",
+                              "Back Monday.<br/>Urgent? Call &lt;the desk&gt; &amp; ask.", "html", "contactsonly", "false",
+                              "domainonly", "true", "start", "2026-10-12", "end", "NotSpecified"]])
+        await access.load("bob@example.com")
+        let vacation = try #require(access.lists(for: "bob@example.com")?.vacation)
+        #expect(vacation.enabled)
+        #expect(vacation.subject == "Out of office")
+        #expect(HTMLText.autoreplyText(vacation.message) == "Back Monday.\nUrgent? Call <the desk> & ask.",
+                "the form pre-fills the text, not its markup")
+    }
+
+    @Test func anAutoReplyIsTurnedOff() async throws {
+        try await connect()
+        await changes.previewAutoReplyOff(try user("alice@example.com"))
+        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+        #expect(writes() == [["user", "alice@example.com", "vacation", "off"]])
+    }
+
+    @Test func signingOutRunsGamGUIsArgvAndARefusalSaysWhy() async throws {
+        try await connect()
+        await changes.previewSignOut(try user("alice@example.com"))
+        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+        #expect(writes() == [["user", "alice@example.com", "signout"]])
+        let refused = GamUser(record: ["primaryEmail": .string("SIGNOUTFAIL@example.com")])
+        await changes.previewSignOut(refused)
+        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+        guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(message.contains("Sign Out Failed"))
     }
 }

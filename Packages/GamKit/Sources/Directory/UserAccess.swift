@@ -15,6 +15,8 @@ public final class UserAccess {
         public let groups: [String]
         /// Addresses delegated access to the person's mailbox.
         public let delegates: [String]
+        /// Their auto-reply (`show vacation`).
+        public let vacation: Vacation
     }
 
     private struct Loaded {
@@ -58,7 +60,7 @@ public final class UserAccess {
         return loaded
     }
 
-    /// Two reads as the connected domain: `print groups member` and `print delegates`.
+    /// Three reads as the connected domain: `print groups member`, `print delegates`, `show vacation`.
     public func load(_ email: String) async {
         guard let domain = setup.active, let runner else { return }
         let generation = setup.generation
@@ -71,7 +73,9 @@ public final class UserAccess {
         do {
             let groups = try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment)
             let delegates = try await Self.read(GamCommands.printDelegates(email: email), with: runner, as: domain, environment)
-            result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates)))
+            let vacation = try await Self.read(GamCommands.showVacation(email: email), with: runner, as: domain, environment)
+            result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates),
+                                    vacation: Vacation(showText: vacation)))
         } catch let problem as Problem {
             result = .failure(problem)
         } catch is CancellationError {

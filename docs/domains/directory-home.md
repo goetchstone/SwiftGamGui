@@ -105,6 +105,17 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   address must pass `Address.looksLikeEmail` (GamGUI's `looks_like_email`, held to `setup.json`): GAM
   reads a bare name or a comma-joined list as something else. The group is typed for now; a picker
   comes with the Groups screen.
+- **Auto-reply and sign-out:** the person's auto-reply is read with their lists (`show vacation`,
+  `Vacation(showText:)`, GamGUI's `from_show_text`). Turning it on sends the typed text as GamGUI's HTML
+  body (`HTMLText.autoreplyHTML`), with every setting named; the editor pre-fills the stored reply's
+  text, not its markup (`HTMLText.autoreplyText`). Both rest on Python's `html.unescape` and
+  `HTMLParser` (CPython 3.14), ported as far as these helpers use them, with the HTML5 entity tables
+  generated from GamGUI's Python (`scripts/gen_html_entities.py`). `HTMLTextTests` holds all of it to
+  `Tests/Fixtures/vacation.json`: 1,816 bodies (curated and seeded random over tags, comments, raw-text
+  elements, references and the letters `re.IGNORECASE` folds) and 7,525 references (every HTML5 name).
+  Turning it off and signing out are LOW, as GamGUI rates them.
+- **Signature** moves to the Signatures screen (templates, the rendered preview, the Siri intent);
+  **account delete** comes with offboarding (destructive, proven on the next real leaver).
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
   app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
   destructive, so (no spare license) it is first proven on the operator's next real leaver.

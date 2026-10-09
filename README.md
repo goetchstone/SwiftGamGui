@@ -68,6 +68,8 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Suspend and unsuspend (Users) | argv-identical |
 | Add to and remove from a group (Users) | argv-identical |
 | Add and remove a mail delegate (Users) | argv-identical |
+| Turn an auto-reply on and off (Users) | argv-identical |
+| Sign out of all sessions (Users) | argv-identical |
 
 ## License
 
