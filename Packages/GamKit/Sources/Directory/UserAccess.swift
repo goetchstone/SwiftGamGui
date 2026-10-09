@@ -15,6 +15,9 @@ public final class UserAccess {
         public let groups: [String]
         /// Addresses delegated access to the person's mailbox.
         public let delegates: [String]
+        /// Their auto-reply (`show vacation`), read on its own: a person without Gmail still shows their
+        /// groups and delegates (GamGUI loads each panel separately).
+        public let vacation: Result<Vacation, Problem>
     }
 
     private struct Loaded {
@@ -58,7 +61,7 @@ public final class UserAccess {
         return loaded
     }
 
-    /// Two reads as the connected domain: `print groups member` and `print delegates`.
+    /// Three reads as the connected domain: `print groups member`, `print delegates`, `show vacation`.
     public func load(_ email: String) async {
         guard let domain = setup.active, let runner else { return }
         let generation = setup.generation
@@ -67,21 +70,35 @@ public final class UserAccess {
         latest = request
         loading = email
         defer { if latest == request { loading = nil } }
+        // The three reads at once: each is its own gam call.
+        let environment = environment
+        async let groupsRead = Self.result { try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment) }
+        async let delegatesRead = Self.result { try await Self.read(GamCommands.printDelegates(email: email), with: runner, as: domain, environment) }
+        async let vacationRead = Self.result { try await Self.read(GamCommands.showVacation(email: email), with: runner, as: domain, environment) }
+        let (groups, delegates, vacation) = await (groupsRead, delegatesRead, vacationRead)
+        guard !Task.isCancelled else { return }
         let result: Result<Lists, Problem>
-        do {
-            let groups = try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment)
-            let delegates = try await Self.read(GamCommands.printDelegates(email: email), with: runner, as: domain, environment)
-            result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates)))
-        } catch let problem as Problem {
+        switch (groups, delegates) {
+        case (.success(let groups), .success(let delegates)):
+            result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates),
+                                    vacation: vacation.map(Vacation.init(showText:))))
+        case (.failure(let problem), _), (_, .failure(let problem)):
             result = .failure(problem)
-        } catch is CancellationError {
-            return
-        } catch {
-            result = .failure(Problem(summary: "Couldn't read \(email)'s groups and delegates (\(type(of: error)))."))
         }
         // A switch while reading: these belong to the old tenant, so they're dropped.
         guard latest == request, !Task.isCancelled, setup.active == domain, setup.generation == generation else { return }
         loaded = Loaded(email: email, domain: domain, generation: generation, result: result)
+    }
+
+    /// A read's outcome as a value, with any error worded for the screen.
+    private static func result(_ body: () async throws -> String) async -> Result<String, Problem> {
+        do {
+            return .success(try await body())
+        } catch let problem as Problem {
+            return .failure(problem)
+        } catch {
+            return .failure(Problem(summary: "A read failed (\(type(of: error)))."))
+        }
     }
 
     private static func read(_ read: GamRead, with runner: AuthenticatedRunner, as domain: Domain,

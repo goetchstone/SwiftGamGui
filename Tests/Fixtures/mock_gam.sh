@@ -268,6 +268,11 @@ fi
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "vacation" ]; then
   [ $# -eq 4 ] || invalid_arg "$5"
   need_user "$2" Show
+  # Gmail off for this user (a GAM_MOCK_STATE/nogmail/<user> marker): GAM's per-user service refusal, in
+  # the wording GamGUI's error fixture records ("<Service> Service/App not enabled"), exit 1.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$2" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$2" 1>&2; exit 1
+  fi
   vdir="${GAM_MOCK_STATE:-}/vacation/$2"
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -d "$vdir" ]; then
     stored() { if [ -f "$vdir/$1" ]; then cat "$vdir/$1"; else printf '%s' "$2"; fi; }

@@ -22,6 +22,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
   Tests/Fixtures/setup.json       GamGUI's guided setup: the delegation step's client ID, Admin-console
                                   link and sign-out-scope note, and the fresh-setup Terminal commands.
+  Tests/Fixtures/vacation.json    GamGUI's auto-reply helpers: show vacation parsed, the body to and from
+                                  the operator's text (Python's HTMLParser and html.unescape beneath).
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -855,6 +857,82 @@ def setup_fixture() -> dict:
             "facts": facts, "user_security": security, "setup_commands": commands}
 
 
+def vacation_fixture(mock: Path) -> dict:
+    """GamGUI's auto-reply helpers: Vacation.from_show_text over the mock's show vacation and crafted
+    texts; autoreply_html; autoreply_text and _looks_like_html (Python's HTMLParser and html.unescape
+    beneath them) over curated and seeded random bodies; html.unescape over every HTML5 name."""
+    import html
+    import random
+    import subprocess
+    import tempfile
+    from html.entities import html5
+
+    from gamgui.core import lifecycle
+    from gamgui.core.gam.models import Vacation
+    from gamgui.core.gam.runner import strip_cfgdir_noise
+
+    def vac(v):
+        return {"enabled": v.enabled, "subject": v.subject, "message": v.message, "contacts_only": v.contacts_only,
+                "domain_only": v.domain_only, "start": v.start, "end": v.end}
+
+    texts = []
+    with tempfile.TemporaryDirectory() as config:
+        for name in ("oauth2service.json", "oauth2.txt"):
+            Path(config, name).write_text('{"placeholder": true}')
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config, "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        for user in ("alice@example.com", "bob@example.com", "carol@example.com"):
+            run = subprocess.run([str(mock), "user", user, "show", "vacation"], capture_output=True, text=True, env=environment)
+            if run.returncode != 0:
+                raise SystemExit(f"the mock refused show vacation for {user}")
+            texts.append(strip_cfgdir_noise(run.stdout, Path(config)))
+    texts += [
+        "",
+        "User: a@example.com, Vacation:\n  Enabled: True\n  Contacts Only: False\n  Domain Only: True\n"
+        "  Subject: Out of office\n  Start Date: 2026-10-01\n  End Date: NotSpecified\n  Message:\n"
+        "    Back Monday.\n\n    <b>Urgent?</b> Call the desk.\n",
+        "  Enabled: true\r\n  Subject:   Away  \r\n  Message:\r\n   line one\r\n   line two\r\n  Enabled: False\r\n",
+        "Enabled: TRUE\nMessage:\nhello\nCreated: /tmp/gamcache\nConfig File: /tmp/gam.cfg, Initialized\n",
+        "Start Date: 2026-1-01\nEnd Date: \u0661\u0662\u0663\u0664-10-10\nStart Date: 2026-12-31 \n",
+        "Subject: \u00e9t\u00e9\u2028Message:\nx\u2029y\x85z\x1cw\n",
+        "Message:\n  only a message, no fields\n",
+        "Enabled: falsetrue\nContacts Only: True\nDomain Only: no\n",
+    ]
+    show = [{"text": t} | vac(Vacation.from_show_text(t)) for t in texts]
+
+    rng = random.Random(20261009)
+    plain = ["Back Monday.\nCall the desk.", "a & b < c > d", "C:\\Users\\n", "line\r\nCRLF\rCR", "", "\n\n",
+             "\u00e9\u2028x", "&amp; already", "tab\there"]
+    tokens = ["<br>", "<BR/>", "<br />", "<div>", "</div>", "<DIV class='x'>", "<p>", "</p >", "<li>", "</li>", "<ul>",
+              "<b>", "</b>", "<a href=\"x\">", "<a href=x>", "<img src='y'/>", "<span style=\"a:b\">", "<x>", "</x>",
+              "<script>", "</script>", "<SCRIPT>", "</scripT >", "<style>", "</style>", "<title>", "</title>",
+              "<textarea>", "</textarea>", "<plaintext>", "<xmp>", "</xmp>", "<iframe>", "<noembed>", "<noframes>",
+              "<!--", "-->", "--!>", "->", "<!-- c -->", "<!doctype html>", "<!DOCTYPE", "<![CDATA[", "]]>", "<?xml ?>",
+              "<?", "<!", "</", "</>", "< b>", "<a b c>", "<a / >", "<li/>", "<P>", "<Div>", "<blockquote>",
+              "&amp;", "&amp", "&lt;", "&gt", "&#92;", "&#x5c;", "&#X5C", "&#0;", "&#1;", "&#128;", "&#xD800;",
+              "&#1114112;", "&#99999999999999999999;", "&notit;", "&notin;", "&ampx", "&nbsp", "&nbsp;", "&#", "&#x",
+              "&", "<", ">", "=", "\"", "'", "/", "a", "b", "word", " ", "  ", "\n", "\r\n", "\r", "\t", "\x0c",
+              "\u00a0", "\u2028", "\u00e9", "\u212a", "\u017f", "\u0131", "\u0130", "<\u0130>", "<l\u0130>",
+              "<a\u00a0b=c>", "<b x='1' y=\"2\" z=3>", "<b x=>", "<b x='>", "<em>", "</em>", "<h1>", "<h7>"]
+    bodies = list(plain) + ["<div>Back Monday.</div><div><br></div><div>Call the desk.</div>",
+                            "Line one<br/>Line two &amp; three &#92;n", "<p>a</p><p>b</p>", "x<!-- hidden -->y",
+                            "<script>alert(1)</script>after", "<title>&amp;</title>", "a <b and c> d"]
+    for _ in range(1500):
+        bodies.append("".join(rng.choice(tokens) for _ in range(rng.randint(1, 14))))
+    names = sorted(html5)
+    for _ in range(300):
+        bodies.append("<br>" + "".join(rng.choice(["&" + rng.choice(names), "x", ";", " ", "<b>"]) for _ in range(rng.randint(1, 6))))
+    texts_html = [{"body": b, "text": lifecycle.autoreply_text(b), "html": lifecycle._looks_like_html(b)} for b in bodies]
+    replies = [{"text": t, "html": lifecycle.autoreply_html(t)} for t in plain + bodies[:400]]
+    unescapes = []
+    for name in names:
+        for ref in ("&" + name, "&" + name + "x", "&" + name.rstrip(";") + "Z;"):
+            unescapes.append({"in": ref, "out": html.unescape(ref)})
+    for number in list(range(0, 200)) + [0xD7FF, 0xD800, 0xDFFF, 0xE000, 0xFFFE, 0x10FFFF, 0x110000, 10 ** 30]:
+        for ref in (f"&#{number};", f"&#x{number:x};", f"&#{number}", f"&#X{number:X}z"):
+            unescapes.append({"in": ref, "out": html.unescape(ref)})
+    return {"show_vacation": show, "autoreply_text": texts_html, "autoreply_html": replies, "unescape": unescapes}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -1055,6 +1133,12 @@ def main() -> int:
     setup_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | setup_fixture()
     (OUT / "setup.json").write_text(json.dumps(setup_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"setup.json: {len(setup_doc['facts'])} facts, {len(setup_doc['setup_commands'])} command sets")
+
+    # The auto-reply: show vacation's text, and the HTML body to and from the operator's text.
+    vacation_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | vacation_fixture(OUT / "mock_gam.sh")
+    (OUT / "vacation.json").write_text(json.dumps(vacation_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"vacation.json: {len(vacation_doc['autoreply_text'])} bodies, {len(vacation_doc['unescape'])} references")
     return 0
 
 
