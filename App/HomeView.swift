@@ -24,10 +24,9 @@ struct HomeView: View {
                 Section("Outcome unknown — check") {
                     Text("GamGUI stopped while \(unfinished.count == 1 ? "this change was" : "these changes were") running. Check each in Google before running it again.")
                     ForEach(Array(unfinished.enumerated()), id: \.offset) { _, write in
-                        Label("\(write.action) for \(write.target), started \(write.at)", systemImage: "questionmark.circle")
+                        Label("\(write.actionName) for \(write.target), started \(write.at)", systemImage: "questionmark.circle")
                     }
                     Button("Mark as Checked") { Task { await acknowledge() } }
-                        .disabled(executor == nil)
                         .accessibilityHint("Records that you checked these changes in Google, so they stop showing here.")
                     if let acknowledgeProblem {
                         Label(acknowledgeProblem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
@@ -61,7 +60,8 @@ struct HomeView: View {
 
     private func acknowledge() async {
         do {
-            try await executor?.acknowledge(unfinished)
+            let url = auditURL, checked = unfinished
+            try await Task.detached { try Executor.acknowledge(checked, in: url) }.value
             acknowledgeProblem = nil
         } catch {
             acknowledgeProblem = "The audit log couldn't be written: \(error.localizedDescription)"

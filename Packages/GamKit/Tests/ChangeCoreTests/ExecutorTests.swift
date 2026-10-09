@@ -348,6 +348,17 @@ final class ExecutorTests {
         #expect(ran().count == 2)
     }
 
+    /// A lookup Google refused says nothing about whether the address is an alias: the delete waits.
+    @Test func aDeleteWhoseAddressCantBeResolvedDoesntRun() async throws {
+        let executor = executor()
+        let address = "INFOREFUSED@example.com"
+        let step = WriteStep(GamCommands.deleteUser(email: address), target: address, summary: "Delete")
+        let outcome = await executor.run(try await held(executor, [step]),
+                                         confirmation: OperatorConfirmation(confirmed: true, typedAddresses: [address]))
+        #expect(outcome.refusal?.hasPrefix("Couldn't check INFOREFUSED@example.com before deleting it") == true, "\(outcome)")
+        #expect(!ran().contains { $0.first == "delete" })
+    }
+
     @Test func aTargetIsFreeAgainAfterItsRunAndCaseDoesntHideIt() async throws {
         let executor = executor()
         #expect(await executor.run(try await held(executor, [suspend()]), confirmation: confirmed).succeeded)
@@ -419,7 +430,8 @@ final class ExecutorTests {
                          extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])
         let unfinished = Executor.unfinished(in: auditURL)
         #expect(unfinished.count == 1)
-        try await executor().acknowledge(unfinished)
+        try Executor.acknowledge(unfinished, in: auditURL)
+        #expect(unfinished.first?.actionName == "Suspend user")
         #expect(Executor.unfinished(in: auditURL).isEmpty)
     }
 

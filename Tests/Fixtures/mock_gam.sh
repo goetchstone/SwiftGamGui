@@ -21,7 +21,7 @@
 # Failure triggers, by argument substring: *missing*/*nonexistent* -> "Does not exist" for the user,
 # group, calendar, event or delegate; *exists* -> 409 on create, and "already exists" on a delegate add;
 # plus USERLIMIT (no license left for a new account), SENDFAIL, SUBFAIL, CONFLICT409,
-# FAILME, OWNACL, SWEEPFAIL, SWEEPBENIGN, SWEEPMIXED, SWEEPSLOW, SIGNOUTFAIL, FWDFAIL (see each handler). The stderr wording
+# FAILME, OWNACL, SWEEPFAIL, SWEEPBENIGN, SWEEPMIXED, SWEEPSLOW, SIGNOUTFAIL, FWDFAIL, INFOREFUSED (see each handler). The stderr wording
 # and exit codes are GAM7's shape (2 usage error, 50 action failed, 51 action not performed, 56 does
 # not exist) written from its source conventions, not captured from a tenant — only a live capture
 # (plan Phase 8) proves them.
@@ -235,6 +235,9 @@ fi
 if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   [ -n "${3:-}" ] || missing_arg "UserItem"
   addr=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')
+  # INFOREFUSED: Google refuses the read (a missing scope or a rate limit), not "does not exist":
+  # GAM's entityActionFailedWarning, ACTION_FAILED_RC, as signout_refused below.
+  case "$3" in *INFOREFUSED*) printf 'User: %s, Show Failed: Not Authorized to access this resource/api\n' "$3" 1>&2; exit 50 ;; esac
   case "$addr" in
     alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
     bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;

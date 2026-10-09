@@ -60,6 +60,14 @@ public struct WriteStep: Sendable {
 }
 
 extension WriteAction {
+    /// The action in words, for the screen and VoiceOver ("Suspend user", not `suspendUser`).
+    public var displayName: String {
+        let words = rawValue.reduce(into: "") { text, character in
+            text += character.isUppercase ? " " + character.lowercased() : String(character)
+        }
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
     /// The least risk a write of this kind carries, whatever its caller says: GamGUI's
     /// `RiskLevel.DESTRUCTIVE` writes (`gam_connector.py`, the curated catalog, offboarding's steps).
     public var minimumRisk: Risk {
@@ -262,8 +270,17 @@ public actor Executor {
             do {
                 let result = try await runner.run(GamCommands.infoUser(email: address, fields: ["primaryEmail"]),
                                                   as: preview.domain, extraEnvironment: extraEnvironment)
-                let primary = result.exitCode == 0 ? GamUser(record: GamOutput.one(result.stdout)).primaryEmail : nil
-                resolved.append((address, primary))
+                if result.exitCode == 0 {
+                    resolved.append((address, GamUser(record: GamOutput.one(result.stdout)).primaryEmail))
+                    continue
+                }
+                // Only GAM's "does not exist" means no such user. A refusal or a rate limit says nothing
+                // about whether the address is an alias, so the delete can't go ahead unresolved.
+                let error = GamError(exitCode: result.exitCode, stderr: result.stderr)
+                guard error.kind == .notFound else {
+                    return "Couldn't check \(address) before deleting it (\(error.message)) — preview again."
+                }
+                resolved.append((address, nil))
             } catch {
                 return "Couldn't check \(address) before deleting it (\(GamEngineMessage.of(error))) — preview again."
             }
@@ -432,6 +449,8 @@ extension Executor {
         public let action: String
         public let target: String
         public let at: String
+        /// The action in words when it's one of this app's, else as recorded.
+        public var actionName: String { WriteAction(rawValue: action)?.displayName ?? action }
         let preview: String
         let step: Int
     }
@@ -459,9 +478,11 @@ extension Executor {
     }
 
     /// The operator checked these in Google: an end record each, marked acknowledged, so they stop showing.
-    public func acknowledge(_ unfinished: [Unfinished]) throws {
+    /// Only the audit log is written, so it needs no gam.
+    public static func acknowledge(_ unfinished: [Unfinished], in log: URL) throws {
+        let audit = AuditLog(url: log)
         for write in unfinished {
-            try audit.record(write.action, target: write.target, actor: actor,
+            try audit.record(write.action, target: write.target,
                              extra: ["preview": .string(write.preview), "step": .number(String(write.step)),
                                      "phase": .string("end"), "acknowledged": .bool(true)])
         }
