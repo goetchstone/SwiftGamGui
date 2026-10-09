@@ -256,10 +256,171 @@ final class ExecutorTests {
             GamCommands.createUser(email: "dana@example.com", firstName: "Dana", lastName: password, password: password),
             target: "dana@example.com", summary: "Create", secrets: [Secret(Data(password.utf8))])
         #expect(!create.shownArgv.contains { $0.contains(password) })
+        #expect(!create.summary.contains(password))
         _ = await executor.run(try await held(executor, [create]), confirmation: confirmed)
         let log = try String(contentsOf: auditURL, encoding: .utf8)
         #expect(!log.contains(password))
         #expect(log.contains("dana@example.com"))
+        // On the screen too: the output masks a secret wherever GAM printed it.
+        let named = WriteStep(GamCommands.createUser(email: "dana2@example.com", firstName: "D", lastName: "X", password: "dana2"),
+                              target: "dana2@example.com", summary: "Create dana2", secrets: [Secret(Data("dana2".utf8))])
+        #expect(named.summary == "Create ***redacted***")
+        let shown = await executor.run(try await held(executor, [named]), confirmation: confirmed)
+        guard case .succeeded(let output) = shown.steps.first else { Issue.record("\(shown.steps)"); return }
+        #expect(!output.contains("dana2") && output.contains("***redacted***"), "\(output)")
+    }
+
+    // MARK: ChangeCore's review (each fails without its fix)
+
+    /// Invariant 10: a model's or Siri's draft needs the operator's Confirm click, even for one LOW write.
+    @Test func aDraftFromAModelOrSiriNeedsTheConfirmClick() async throws {
+        let executor = executor()
+        let off = WriteStep(GamCommands.vacationOff(email: "alice@example.com"), target: "alice@example.com", summary: "Off")
+        for origin in [Origin.model, .siri] {
+            let preview = try await held(executor, [off], origin: origin)
+            #expect(await executor.run(preview, confirmation: OperatorConfirmation()).refusal
+                    == "This change needs confirmation — preview it, then confirm.")
+        }
+        #expect(ran().isEmpty)
+        let form = try await held(executor, [off])
+        #expect(await executor.run(form, confirmation: OperatorConfirmation()).succeeded, "a form's LOW write needs no click")
+    }
+
+    @Test func aFlowsConfirmStepAndTypedCountReachTheGuard() async throws {
+        let executor = executor()
+        let off = WriteStep(GamCommands.vacationOff(email: "alice@example.com"), target: "alice@example.com", summary: "Off")
+        let step = try await executor.preview([off], confirmStep: true).get()
+        #expect(await executor.run(step, confirmation: OperatorConfirmation()).refusal
+                == "This change needs confirmation — preview it, then confirm.")
+        let many = (0..<26).map { WriteStep(GamCommands.vacationOff(email: "u\($0)@example.com"), target: "u\($0)@example.com", summary: "") }
+        let counted = try await executor.preview(many, typedCountAbove: Guard.countConfirmAbove).get()
+        #expect(await executor.run(counted, confirmation: confirmed).refusal
+                == "This changes 26 accounts: preview again, and type 26 to confirm.")
+        #expect(ran().isEmpty)
+    }
+
+    /// Failure-log 2026-09-24: deleting a user by an alias deletes the account the alias belongs to. The
+    /// mock resolves alice@alias.example.net to alice@example.com, as GAM does.
+    @Test func deletingAnAliasIsRefusedBeforeItRuns() async throws {
+        let executor = executor()
+        let alias = "alice@alias.example.net"
+        let step = WriteStep(GamCommands.deleteUser(email: alias), target: alias, summary: "Delete")
+        let outcome = await executor.run(try await held(executor, [step]),
+                                         confirmation: OperatorConfirmation(confirmed: true, typedAddresses: [alias]))
+        #expect(outcome.refusal?.hasPrefix("alice@alias.example.net is an alias of alice@example.com") == true, "\(outcome)")
+        #expect(!ran().contains { $0.first == "delete" })
+    }
+
+    /// No begin record, no write: here the log is a link, which the audit refuses to write through.
+    @Test func aWriteThatCantBeAuditedDoesntRun() async throws {
+        let executor = executor()
+        try FileManager.default.createDirectory(at: auditURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: auditURL, withDestinationURL: base.appending(path: "elsewhere"))
+        let outcome = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
+        guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+        #expect(message.hasPrefix("The audit log couldn't be written"))
+        #expect(ran().isEmpty)
+    }
+
+    /// GamGUI's write lock: a second write waits for the first, whatever its target.
+    @Test func writesAreSerialized() async throws {
+        let executor = executor()
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        let first = try await held(executor, [suspend("alice@example.com")])
+        let second = try await held(executor, [suspend("bob@example.com")])
+        let calls = Shared(0)
+        await executor.setBeforeEachStep {
+            // Only the first write is held open: without the lock, the second would run meanwhile.
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 1 else { return }
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let confirm = confirmed
+        let one = Task { [executor, first] in await executor.run(first, confirmation: confirm) }
+        for await _ in started { break }
+        let two = Task { [executor, second] in await executor.run(second, confirmation: confirm) }
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(ran().isEmpty, "the second write didn't start while the first held the lock")
+        releaseGate.yield()
+        #expect(await one.value.succeeded)
+        #expect(await two.value.succeeded)
+        #expect(ran().count == 2)
+    }
+
+    @Test func aTargetIsFreeAgainAfterItsRunAndCaseDoesntHideIt() async throws {
+        let executor = executor()
+        #expect(await executor.run(try await held(executor, [suspend()]), confirmation: confirmed).succeeded)
+        #expect(await executor.run(try await held(executor, [suspend()]), confirmation: confirmed).succeeded, "in-flight cleared")
+        #expect(Executor.key(" ALICE@example.com ") == Executor.key("alice@example.com"))
+    }
+
+    @Test func aPlanCantRequireALaterStep() async throws {
+        let step = WriteStep(GamCommands.vacationOff(email: "a@example.com"), target: "a@example.com", summary: "", requires: [1])
+        let next = WriteStep(GamCommands.vacationOff(email: "b@example.com"), target: "b@example.com", summary: "")
+        let result = await executor().preview([step, next])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 0)) { try result.get() }
+    }
+
+    /// Removing or re-importing the domain mid-plan stops the rest.
+    @Test func aTenantChangeMidPlanStopsTheRest() async throws {
+        let executor = executor()
+        let tenant = tenantState
+        let steps = ["alice", "bob", "carol"].map { suspend("\($0)@example.com") }
+        let preview = try await held(executor, steps)
+        let count = Shared(0)
+        await executor.setBeforeEachStep {
+            if count.value.withLock({ $0 += 1; return $0 }) == 1 { tenant.value.withLock { $0 = nil } }
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(outcome.steps.count == 3)
+        #expect(ran().count == 1)
+        #expect(outcome.steps[1] == .skipped(reason: "Stopped: the active domain changed during the run."))
+    }
+
+    @Test func aRunCancelledBeforeGamStartsIsNotRecordedAsInterrupted() async throws {
+        let executor = executor()
+        let preview = try await held(executor, [suspend()])
+        let confirm = confirmed
+        let task = Task { [executor, preview] in
+            try? await Task.sleep(for: .milliseconds(100))
+            return await executor.run(preview, confirmation: confirm)
+        }
+        task.cancel()
+        let outcome = await task.value
+        #expect(outcome.steps == [.skipped(reason: "Cancelled before it ran.")])
+        #expect(ran().isEmpty)
+        #expect(records.isEmpty)
+    }
+
+    /// GamGUI's timeout is one target's failure, not the connection's: the plan goes on.
+    @Test func aTimeoutFailsItsStepAndThePlanGoesOn() async throws {
+        let executor = executor()
+        let slow = WriteStep(GamCommands.setSuspended(email: "alice@example.com", suspended: true), target: "alice@example.com",
+                             summary: "", timeout: .nanoseconds(1))
+        let outcome = await executor.run(try await held(executor, [slow, suspend("bob@example.com")]), confirmation: confirmed)
+        guard case .failed(_, let kind) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+        #expect(kind == .timeout)
+        guard case .succeeded = outcome.steps.last else { Issue.record("\(outcome.steps)"); return }
+    }
+
+    @Test func theDigestIsTheArgvBytes() async throws {
+        let executor = executor()
+        let a = try await held(executor, [suspend("alice@example.com")])
+        let b = try await held(executor, [suspend("alice@example.com")])
+        let c = try await held(executor, [suspend("alicf@example.com")])
+        #expect(a.digest == b.digest)
+        #expect(a.digest != c.digest)
+        #expect(a.digest.count == 64)
+    }
+
+    @Test func anUnfinishedWriteCanBeAcknowledged() async throws {
+        try audit.record("suspendUser", target: "bob@example.com", argv: [],
+                         extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])
+        let unfinished = Executor.unfinished(in: auditURL)
+        #expect(unfinished.count == 1)
+        try await executor().acknowledge(unfinished)
+        #expect(Executor.unfinished(in: auditURL).isEmpty)
     }
 
     // MARK: outcome unknown

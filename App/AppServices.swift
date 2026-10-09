@@ -15,8 +15,8 @@ struct AppServices {
     let gam: (runner: GamRunner, runtimeDirectory: URL)?
     /// The only path to a write (ChangeCore); none without gam.
     let executor: Executor?
-    /// Writes that began and never ended, from the audit log at launch: "outcome unknown — check".
-    let unfinished: [Executor.Unfinished]
+    /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
+    let auditURL: URL
 
     static func make() -> AppServices {
         #if DEBUG
@@ -42,7 +42,7 @@ struct AppServices {
             }, extraEnvironment: extraEnvironment)
         }
         return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam,
-                           executor: executor, unfinished: Executor.unfinished(in: auditURL))
+                           executor: executor, auditURL: auditURL)
     }
 
     #if DEBUG

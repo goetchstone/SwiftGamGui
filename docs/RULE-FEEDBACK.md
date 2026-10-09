@@ -183,3 +183,16 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   adversarial review is asked to attack the reference's rules too, not just our port's fidelity.
 - **Enforcement home if changed:** skill (`pre-commit` step 11's review prompt for the secrets area).
   GamGUI is frozen except GAM updates, so its copy is reported to the operator rather than fixed here.
+
+## 2026-10-09 — Invariant 10 was written down but enforced nowhere
+- **What happened:** ChangeCore slice 3 recorded a preview's origin (form, Siri, model) only for the
+  audit. The review ran a model-origin preview with an empty confirmation: one LOW write succeeded.
+  `OperatorConfirmation` has a public init, so an intent could also confirm a destructive change.
+- **Invariant in force:** #10 (a model or Siri only drafts a preview).
+- **Why it didn't hold:** no intent exists yet, so nothing exercised the rule; it lived in the design
+  doc and CLAUDE.md, and the executor's checks were written from §6's list, which doesn't repeat it.
+- **Would a rule have caught it?** yes, as a test: each numbered invariant that names the executor
+  should have a case in `ExecutorTests` before the executor merges. Now: a non-form origin forces the
+  Confirm click, and `WriteRouteTests` keeps the confirmation out of intent and model code.
+- **Enforcement home if changed:** the `pre-commit` skill's ChangeCore item ("one test per invariant
+  the executor enforces").

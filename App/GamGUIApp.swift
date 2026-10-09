@@ -60,7 +60,7 @@ struct ContentView: View {
             switch screen ?? .home {
             case .home:
                 HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
-                         hasGam: services.gam != nil, unfinished: services.unfinished) { screen = .setup }
+                         hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL) { screen = .setup }
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory)

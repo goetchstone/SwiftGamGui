@@ -274,7 +274,9 @@ public final class SetupModel {
     /// was active or checked is forgotten even when the write fails: it may hold nothing now. The list
     /// is refreshed either way, so a domain the failure left behind can still be removed.
     private func replace(_ domain: Domain, with found: [Credential: Secret]) async throws {
-        defer { forget(domain) }
+        // Before the new credentials are stored, not after: a write held for this domain must not run on
+        // credentials nobody has checked (ChangeCore's review: the generation bumped only once they were).
+        forget(domain)
         do {
             try await vault.replaceSet(found, for: domain)
         } catch {

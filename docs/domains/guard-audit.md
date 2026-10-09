@@ -83,6 +83,23 @@ cases against the strict mock; each check proven to bite by removing it).
 - **The ticket**: `WriteTicket`'s init is `package`; `WriteRouteTests` holds that only ChangeCore
   mints one. The app holds an `Executor` (AppServices) whose tenant is Setup's active domain.
 
+## ChangeCore's review (the plan's one adversarial review, with #9 and #10)
+Twelve findings, each now a test that fails without its fix (14 mutants, all caught):
+- **A ticket minted unseen** (`ticket: .init()` from Directory): the scan now forbids the word
+  `WriteTicket` and any `ticket:` outside ChangeCore and the runner's declaration.
+- **Invariant 10 unenforced:** the executor ignored the origin. A model's or Siri's preview now always
+  needs the Confirm click, and a scan keeps `OperatorConfirmation(` out of GamKit and out of any app
+  file that touches App Intents or a model.
+- **Alias deletes:** §6's "resolved to the primary" had no caller. The executor resolves each address a
+  step deletes (`info user`) just before the run and refuses an alias (failure-log 2026-09-24).
+- **A write that can't be audited ran:** now no begin record, no write; a lost end record is reported.
+- **The tenant** is checked before every step, and Setup forgets a re-imported domain before storing
+  its new credentials, so a plan never runs on unchecked credentials.
+- **Expiry and the precondition** are checked after the write lock, not before the wait.
+- In-flight targets compare as addresses (trimmed, lowercased); a run cancelled before gam starts
+  writes nothing; a timeout fails only its step; the argv stays inside ChangeCore and the summary is
+  masked; "outcome unknown" is read off the main actor, bounded, and can be marked as checked.
+
 ## Not built yet
 The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
 operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.
