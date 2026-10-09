@@ -213,6 +213,9 @@ private struct CheckResultView: View {
             } icon: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
+            // The red cross is the only sign it failed: say it.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Failed: \(row.label)")
         }
         LabeledContent("Checked as", value: record.admin)
         if passed > 0 {
@@ -289,6 +292,7 @@ private struct ActivityLine: View {
             Text("Ready.").foregroundStyle(.secondary)
         case .working(let text):
             HStack { ProgressView().controlSize(.small); Text(text) }
+                .accessibilityElement(children: .combine)
         case .done(let text):
             Label(text, systemImage: "checkmark").foregroundStyle(.secondary)
         case .problem(let text):

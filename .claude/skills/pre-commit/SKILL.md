@@ -30,6 +30,15 @@ Act on the items your diff touches.
 9. **Drafts only (#10)**: a model or intent fills a preview; "Just do it" stays inside its allowlist.
 10. **Bounded (#9)**: feeds and captures keep their caps.
 
+## If your diff touches a screen (`App/`)
+- **Accessible as built** (operator, 2026-10-09), not left to phase 6: VoiceOver reads every control
+  and every status in words (an icon-only button gets an `accessibilityLabel`; a pass or fail is said,
+  not only drawn red or green); text uses system styles, never fixed sizes; everything works from the
+  keyboard (⌘R refreshes a screen that loads); a tooltip (`.help`) never holds the only explanation.
+  Say in the PR what was checked.
+- **Screenshots as we go**: CI renders each screen (`scripts/screenshots.sh`); a PR that changes one
+  refreshes its image in `docs/screenshots` from that run's artifact.
+
 ## Before the PR
 11. `/code-review medium` on every diff; `high` plus `/security-review` when it touches Vault,
     GamEngine's runner, ChangeCore, credential import or anything parsing GAM or operator input; the
