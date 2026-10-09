@@ -63,9 +63,13 @@ enum Spikes {
             return
         }
         let view = splitView(in: content)?.arrangedSubviews.last ?? content
+        // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
         var rect = view.bounds
         let toolbar = min(view.safeAreaInsets.top, rect.height)
+        let sidebar = min(view.safeAreaInsets.left, rect.width)
         rect.size.height -= toolbar
+        rect.size.width -= sidebar
+        rect.origin.x += sidebar
         if view.isFlipped { rect.origin.y += toolbar }
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: rect) else {
             print("snapshot: nothing to draw")
