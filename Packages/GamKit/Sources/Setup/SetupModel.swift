@@ -131,6 +131,11 @@ public final class SetupModel {
 
     public func importFolder(_ folder: URL, as domainText: String) async {
         guard !isBusy else { return }
+        if let setupFolderURL, (try? await Self.offMain({ SetupFolder.isSetupFolder(folder, at: setupFolderURL) })) == true {
+            // GAM's copies there must not outlive the import, whichever button brought them in.
+            await importFromSetupFolder(as: domainText)
+            return
+        }
         guard let domain = Domain(domainText) else {
             activity = .problem("“\(domainText)” isn't a domain name.")
             return

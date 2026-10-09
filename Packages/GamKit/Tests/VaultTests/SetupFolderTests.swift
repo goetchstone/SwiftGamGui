@@ -6,8 +6,13 @@ import Testing
 /// The guided setup's folder: made private, recognised by identity, and wiped of exactly the files whose
 /// bytes were read (GamGUI's `_is_managed` and `_wipe_file`, with the incidents behind them).
 @Suite("Setup folder")
-struct SetupFolderTests {
+final class SetupFolderTests {
     let url = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-setup-\(UUID().uuidString)")
+
+    deinit {
+        chmod(url.path, 0o700)
+        try? FileManager.default.removeItem(at: url)
+    }
 
     private func put(_ name: String, in folder: URL, _ text: String? = nil) throws {
         let fallback = name == "oauth2service.json"

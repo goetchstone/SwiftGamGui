@@ -49,6 +49,21 @@ public struct SetupFolder: Sendable, Equatable {
         return SetupFolder(url: url, identity: CredentialFolder.FileIdentity(info))
     }
 
+    /// Whether `folder` is the setup folder at `url`: the same directory, by identity, not by name (a
+    /// case-variant or linked spelling of it is still it). GamGUI's `_is_managed`: a folder picked with
+    /// Choose Folder… that is ours gets the wiping import too.
+    public static func isSetupFolder(_ folder: URL, at url: URL) -> Bool {
+        let picked = open(folder.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        guard picked >= 0 else { return false }
+        defer { close(picked) }
+        let ours = open(url.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard ours >= 0 else { return false }
+        defer { close(ours) }
+        var a = stat(), b = stat()
+        return fstat(picked, &a) == 0 && fstat(ours, &b) == 0
+            && CredentialFolder.FileIdentity(a) == CredentialFolder.FileIdentity(b)
+    }
+
     /// The credentials GAM wrote here, read by descriptor (invariant 5) from the folder `prepare` made.
     /// Call `wipe()` on the result once the Vault holds them; dropping it without wiping leaves the files.
     package func stage() throws -> Staged {

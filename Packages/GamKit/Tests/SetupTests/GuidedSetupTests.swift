@@ -11,7 +11,7 @@ import Vault
 /// the import from the setup folder, which wipes GAM's plain-text copies only once the Vault has them.
 @MainActor
 @Suite("Guided setup", .serialized)
-struct GuidedSetupTests {
+final class GuidedSetupTests {
     struct Document: Decodable {
         struct Fact: Decodable { let oauth2service: String; let domain: String; let client_id: String; let auth_url: String }
         struct Security: Decodable { let oauth2: String; let user_security: Bool? }
@@ -77,8 +77,16 @@ struct GuidedSetupTests {
 
     // MARK: the setup folder, through the model
 
+    private var made: [URL] = []
+
+    deinit {
+        for url in made { try? FileManager.default.removeItem(at: url) }
+    }
+
     private func setupFolder() throws -> SetupFolder {
-        try SetupFolder.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-setup-\(UUID().uuidString)"))
+        let url = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-setup-\(UUID().uuidString)")
+        made.append(url)
+        return try SetupFolder.prepare(url)
     }
 
     /// What GAM's three commands leave: the credentials, and files that aren't ours to touch.
@@ -118,6 +126,20 @@ struct GuidedSetupTests {
         #expect(model.delegation?.authorizationURL?.absoluteString.contains("clientIdToAdd=1234567890") == true)
         await model.remove(example)
         #expect(model.delegation == nil, "a removed domain's delegation step goes with it")
+    }
+
+    /// GamGUI's `_is_managed`: the setup folder picked with Choose Folder… (here through a link, another
+    /// spelling of it) is still ours, and gets the wiping import.
+    @Test func theSetupFolderPickedByHandIsWipedToo() async throws {
+        let folder = try setupFolder()
+        try writeGamOutput(into: folder.url)
+        let link = FileManager.default.temporaryDirectory.appending(path: "setup-link-\(UUID().uuidString)")
+        made.append(link)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: folder.url)
+        let model = try model(folder)
+        await model.importFolder(link, as: "example.com")
+        #expect(model.activity == .done("Imported example.com and wiped GAM's copies from the setup folder. Authorize delegation next."))
+        #expect(try names(in: folder.url) == ["gam.cfg"])
     }
 
     @Test func aRefusedVaultWriteWipesNothing() async throws {
