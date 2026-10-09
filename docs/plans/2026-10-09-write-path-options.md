@@ -1,8 +1,9 @@
 # Write path: options for closing every route to a credentialed `gam` call (2026-10-09)
 
-**Status: AWAITING THE OPERATOR'S DECISION.** Nothing here is built. ChangeCore slice 3 (design doc
-§6) starts once one option is chosen. Short by design: the operator picks, and the slice's PR carries
-the detail.
+**Status: DECIDED 2026-10-09 — option A, with C's narrowing (the recommendation).** The operator's
+rule: "there is almost always a correct way to do something … we always do it the correct way."
+Nothing is built yet. It lands as its own refactor PR, then ChangeCore slice 3 builds on it (see
+"Decision" at the end).
 
 ## The problem
 
@@ -96,10 +97,11 @@ holding a raw runner. The action class lives on `GamWrite`, so the voice ticket'
 checked against code, not text. The cost is one mechanical PR before slice 3, held to the existing
 golden fixture.
 
-## What the operator decides
+## Decision (operator, 2026-10-09)
 
-1. A, B or C (or the recommendation).
-2. Whether the vault spike's timed Keychain reads get a debug-only entry point in Vault, or the
-   spike drops them (the unit tests cover the read path with a fake Keychain; only Touch ID is lost).
-3. Whether this lands as its own PR before ChangeCore slice 3 (recommended: a pure refactor, reviewed
-   by `gam-command-reviewer`, with the slice building on it).
+1. **Option A with C's narrowing.**
+2. The vault spike keeps its timed Keychain reads through a debug-only entry point in Vault (`#if
+   DEBUG`), so the Touch ID check still runs on a real Mac. Its authenticated run is a read and
+   stays.
+3. **Its own PR first:** a refactor with no behaviour change. The golden fixture must not move, the
+   `gam-command-reviewer` agent reviews it, and ChangeCore slice 3 builds on it.

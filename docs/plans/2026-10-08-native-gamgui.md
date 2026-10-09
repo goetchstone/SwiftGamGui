@@ -1,9 +1,11 @@
 # Plan: SwiftGamGui — GamGUI as a native Mac app, with GAM still the engine
 
-**Status (2026-10-09): IN PROGRESS. Phase 1 is built (#1 to #8) except what needs the operator: the
-first live read-only round, the model and Siri spikes. Phase 2 has begun with ChangeCore's guard and
-audit log (#9, #10), which wait for the ChangeCore review. The executor and write ticket wait for the
-operator's design call. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
+**Status (2026-10-09): IN PROGRESS. Phase 1 is built (#1 to #8). The first live read-only round passed
+on 2026-10-09: the operator's build copied GamGUI's credentials, Touch ID worked, it connected to the
+domain and listed the directory. The model and Siri spikes still wait on the operator. Phase 2 has
+begun with ChangeCore's guard and audit log (#9, #10), which wait for the ChangeCore review. The write
+path's design is decided (`docs/plans/2026-10-09-write-path-options.md`: typed `GamRead`/`GamWrite`);
+its refactor PR comes before the executor and write ticket. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
 progress" before the Appendix has the detail.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
