@@ -8,7 +8,7 @@ struct RunnerTests {
     let mock = GamRunner(binary: Fixtures.mockGam)
 
     @Test func versionRunsThroughTheMock() async throws {
-        let result = try await mock.run(["version"], extraEnvironment: Fixtures.mockEnvironment)
+        let result = try await mock.runRaw(["version"], extraEnvironment: Fixtures.mockEnvironment)
         #expect(result.exitCode == 0)
         #expect(result.stdout.contains("GAM \(GamVersion.expected) - mock"))
     }
@@ -16,7 +16,7 @@ struct RunnerTests {
     @Test func anUnhandledArgvFailsTheWayTheMockFailsIt() async throws {
         let config = try Fixtures.placeholderConfigDirectory()
         defer { try? FileManager.default.removeItem(at: config) }
-        let result = try await mock.run(["no-such-command", "x"], configDirectory: config,
+        let result = try await mock.runRaw(["no-such-command", "x"], configDirectory: config,
                                         extraEnvironment: Fixtures.mockEnvironment)
         #expect(result.exitCode == 2)
         #expect(result.stderr.contains("unhandled argv"))
@@ -24,7 +24,7 @@ struct RunnerTests {
 
     @Test func anAuthenticatedCallWithoutAConfigDirIsRefused() async throws {
         // The app's own GAMCFGDIR (if any) never leaks through: the environment is allowlisted.
-        let result = try await mock.run(["info", "user", "alice@example.com"],
+        let result = try await mock.runRaw(["info", "user", "alice@example.com"],
                                         extraEnvironment: Fixtures.mockEnvironment)
         #expect(result.exitCode != 0)
         #expect(result.stderr.contains("GAMCFGDIR is not set"))
@@ -35,7 +35,7 @@ struct RunnerTests {
         defer { try? FileManager.default.removeItem(at: log) }
         // Precomposed and decomposed "é" must arrive as the different bytes they are.
         let argv = ["version", "a b", "semi;colon", "$(touch /tmp/x)", "-dash", "", "Zo\u{EB}", "e\u{301}"]
-        _ = try await mock.run(argv, extraEnvironment: Fixtures.mockEnvironment
+        _ = try await mock.runRaw(argv, extraEnvironment: Fixtures.mockEnvironment
                                 .merging(["GAM_MOCK_ARGV_LOG": log.path]) { $1 })
         // The mock logs NUL-separated: the count, then each argument.
         let fields = try Data(contentsOf: log).split(separator: 0, omittingEmptySubsequences: false).map(Array.init)
@@ -45,7 +45,7 @@ struct RunnerTests {
 
     @Test func aNULIsAnErrorNotACrash() async {
         await #expect(throws: GamRunnerError.invalidArgument("contains a NUL byte")) {
-            try await mock.run(["version", "admin@example.com\0"])
+            try await mock.runRaw(["version", "admin@example.com\0"])
         }
     }
 
@@ -69,14 +69,14 @@ struct RunnerTests {
         let clock = ContinuousClock()
         let started = clock.now
         await #expect(throws: GamRunnerError.timedOut(seconds: 0)) {
-            try await sleeper.run(["30"], timeout: .milliseconds(300))
+            try await sleeper.runRaw(["30"], timeout: .milliseconds(300))
         }
         #expect(clock.now - started < .seconds(10))
     }
 
     @Test func outputIsCappedNotUnbounded() async throws {
         let head = GamRunner(binary: URL(filePath: "/usr/bin/head"))
-        let result = try await head.run(["-c", "\(GamRunner.outputCap + 1_000_000)", "/dev/zero"])
+        let result = try await head.runRaw(["-c", "\(GamRunner.outputCap + 1_000_000)", "/dev/zero"])
         #expect(result.exitCode == 0)
         #expect(result.stdoutTruncated)
         #expect(result.stdout.utf8.count == GamRunner.outputCap)
@@ -89,7 +89,7 @@ struct RunnerTests {
         try Data("#!/bin/sh\nexec /bin/sleep 30\n".utf8).write(to: script)
         chmod(script.path, 0o755)
         defer { try? FileManager.default.removeItem(at: script) }
-        let run = Task { try await GamRunner(binary: script).run([]) }
+        let run = Task { try await GamRunner(binary: script).runRaw([]) }
         let mine = { Set(GamRunner.children.withLock { $0.filter { $0.value == script.path }.keys }) }
         let clock = ContinuousClock()
         let deadline = clock.now + .seconds(5)
@@ -107,7 +107,7 @@ struct RunnerTests {
     @Test func aMissingBinaryIsReportedNotLaunched() async {
         let missing = GamRunner(binary: URL(filePath: "/nonexistent/gam"))
         await #expect(throws: GamRunnerError.binaryNotExecutable("/nonexistent/gam")) {
-            try await missing.run(["version"])
+            try await missing.runRaw(["version"])
         }
     }
 }

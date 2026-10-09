@@ -146,7 +146,7 @@ public enum Guard {
     /// The address a change deletes when its argv is exactly an account delete.
     public static func deletedAccount(_ change: Change) -> String? {
         guard let argv = change.argv, let address = argv.last,
-              argv.map({ Array($0.utf8) }) == GamCommands.deleteUser(email: address).map({ Array($0.utf8) })
+              argv.map({ Array($0.utf8) }) == GamCommands.deleteUser(email: address).argv.map({ Array($0.utf8) })
         else { return nil }
         return address
     }

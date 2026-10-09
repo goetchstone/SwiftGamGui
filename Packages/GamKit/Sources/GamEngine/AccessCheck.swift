@@ -134,7 +134,7 @@ extension AuthenticatedRunner {
     /// Vault's errors (no credentials, a locked Mac) and the runner's; GAM's own answer, pass or fail,
     /// comes back as an `AccessCheck`.
     public func checkAccess(admin: String, as domain: Domain) async throws -> AccessCheck {
-        let argv = try GamCommands.checkServiceAccount(admin: admin, scopes: DelegationScopes.scopes)
-        return AccessCheck.interpret(try await run(argv, as: domain))
+        let read = try GamCommands.checkServiceAccount(admin: admin, scopes: DelegationScopes.scopes)
+        return AccessCheck.interpret(try await run(read, as: domain))
     }
 }

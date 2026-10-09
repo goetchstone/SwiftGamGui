@@ -155,3 +155,17 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 - **Would a rule have caught it?** only if enforced differently: a PreToolUse check that refuses
   `gh repo create` / `git push` unless the account in use owns the target.
 - **Enforcement home if changed:** hook (hard). CLAUDE.md's rules of engagement now say it in words.
+
+## 2026-10-09 — Closing the write path left raw secret bytes public
+- **What happened:** the typed-commands refactor (PR #13) made `Vault.credentials(for:)` `package` and
+  called the secret route closed. Two reviews found the app could still read credential bytes through
+  `KeychainStore.read`, GamGUI's `legacyRead` and `Secret.bytes`, and could pass the first source scan
+  with `Process.init()`, `.init([...])` or a different variable name.
+- **Invariant in force:** #4 (secrets never leave the Keychain path) and #2 (one write path).
+- **Why it didn't hold:** the options doc listed routes by the functions that ran `gam`, not by every
+  public symbol that yields secret bytes or starts a process. The scan matched spellings, not types.
+- **Would a rule have caught it?** yes, as a test: the boundary is GamKit's public surface, so a test
+  could list every public symbol of Vault and GamEngine that returns `Data` or `Secret` contents.
+  Short of that: put each guarantee in the compiler first (`package`/internal, unique names) and keep
+  a scan only for what the compiler can't see.
+- **Enforcement home if changed:** test (an API-surface check) or the `pre-commit` skill's secrets item.

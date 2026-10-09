@@ -35,7 +35,7 @@ public final class KeychainStore: SecretStore {
         ]
     }
 
-    public func read(_ credential: Credential, for domain: Domain) throws -> Data? {
+    package func read(_ credential: Credential, for domain: Domain) throws -> Data? {
         let service = service
         let account = "\(domain.name)/\(credential.rawValue)"
         // Inside the lock: the shared context is used by one Keychain call at a time (two reads can't
@@ -61,7 +61,7 @@ public final class KeychainStore: SecretStore {
         }
     }
 
-    public func write(_ data: Data, as credential: Credential, for domain: Domain) throws {
+    package func write(_ data: Data, as credential: Credential, for domain: Domain) throws {
         if try update(data, as: credential, for: domain) { return }
         var error: Unmanaged<CFError>?
         guard let access = SecAccessControlCreateWithFlags(
@@ -80,7 +80,7 @@ public final class KeychainStore: SecretStore {
         guard status == errSecSuccess else { throw VaultError.keychain(status) }
     }
 
-    public func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool {
+    package func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool {
         let service = service
         let account = "\(domain.name)/\(credential.rawValue)"
         // One lock around the read, the comparison and the update: every call that changes an item
@@ -130,7 +130,7 @@ public final class KeychainStore: SecretStore {
         }
     }
 
-    public func delete(_ credential: Credential, for domain: Domain) throws {
+    package func delete(_ credential: Credential, for domain: Domain) throws {
         let query = query(credential, domain)
         let status = context.withLock { _ in SecItemDelete(query as CFDictionary) }
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -138,7 +138,7 @@ public final class KeychainStore: SecretStore {
         }
     }
 
-    public func domains() throws -> [Domain] {
+    package func domains() throws -> [Domain] {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
@@ -160,7 +160,7 @@ public final class KeychainStore: SecretStore {
         }
     }
 
-    public func endSession() {
+    package func endSession() {
         context.withLock { context in
             context.invalidate()
             context = Self.newContext()

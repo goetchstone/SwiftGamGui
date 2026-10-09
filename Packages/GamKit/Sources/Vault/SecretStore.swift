@@ -11,7 +11,9 @@ public enum VaultError: Error, Equatable, Sendable {
 }
 
 /// Where credentials live. `read` returns nil only for "no such item"; every other failure throws.
-public protocol SecretStore: Sendable {
+/// `package`, as are `KeychainStore`'s methods: only the Vault (and GamKit's tests) touch secret bytes;
+/// the app picks a store and hands it to `Vault`.
+package protocol SecretStore: Sendable {
     func read(_ credential: Credential, for domain: Domain) throws -> Data?
     /// Creates the item or replaces its value in place. Never deletes first: a failed write must
     /// leave the old value stored.

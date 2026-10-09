@@ -814,6 +814,7 @@ def main() -> int:
     gamgui = Path(args.gamgui).resolve()
     sys.path.insert(0, str(gamgui))
 
+    from gamgui.core.catalog import parser as catalog_parser
     from gamgui.core.gam import commands as commands_mod
     from gamgui.core.gam.commands import EXPECTED_GAM_VERSION, GAMCommands
 
@@ -929,7 +930,11 @@ def main() -> int:
         | {k: jsonable(getattr(commands_mod, k)) for k in ("GROUP_ROLES", "CALENDAR_ACL_ROLES", "USER_LIST_FIELDS",
                                                            "USER_DETAIL_FIELDS", "GROUP_LIST_FIELDS",
                                                            "CROS_LIST_FIELDS", "FILE_LIST_FIELDS", "CACHE_FIELDS")}
-        | {"PY_WHITESPACE": [ord(c) for c in PY_WHITESPACE]},
+        | {"PY_WHITESPACE": [ord(c) for c in PY_WHITESPACE]}
+        # The catalog's verb rule (invariant 3), which CommandKindTests holds every GamRead to.
+        | {"CATALOG_READ_VERBS": sorted(catalog_parser._READ),
+           "CATALOG_DESTRUCTIVE_VERBS": sorted(catalog_parser._DESTRUCTIVE),
+           "CATALOG_LOW_VERBS": sorted(catalog_parser._LOW)},
         "cases": unique,
         "defaults": defaults,
     }

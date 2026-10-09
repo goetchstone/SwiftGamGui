@@ -2,8 +2,8 @@
 
 **Status: DECIDED 2026-10-09 — option A, with C's narrowing (the recommendation).** The operator's
 rule: "there is almost always a correct way to do something … we always do it the correct way."
-Nothing is built yet. It lands as its own refactor PR, then ChangeCore slice 3 builds on it (see
-"Decision" at the end).
+The refactor is built (typed builders, `package` routes, `WriteRouteTests`); ChangeCore slice 3 builds
+on it (see "Decision" at the end).
 
 ## The problem
 
@@ -105,3 +105,15 @@ golden fixture.
    stays.
 3. **Its own PR first:** a refactor with no behaviour change. The golden fixture must not move, the
    `gam-command-reviewer` agent reviews it, and ChangeCore slice 3 builds on it.
+
+## Review notes (PR #13)
+
+- **Wider than the five routes above.** The review found raw secret bytes still public in `KeychainStore`,
+  GamGUI's `legacyRead` and `Secret.bytes`. All are `package` now; a `Secret` outside GamKit is opaque.
+- **A source scan is a backstop, not the boundary.** Its first needles missed `Process.init()`,
+  `.init([...])` minting and any variable name but one. The fix was to move each guarantee into the
+  compiler where it could go (GamEngine-internal command inits, a package-only `GamCommand`, a uniquely
+  named `runRaw`), and scan only for what the compiler can't see.
+- **Action granularity:** suspend and unsuspend are separate actions. Still one action each, for slice 3
+  to weigh: `addCalendarACL` (a user's own calendar or the admin form) and `deleteEvent` (with or
+  without `doit`).

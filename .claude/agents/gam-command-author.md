@@ -10,7 +10,9 @@ code; no speculative abstraction.
 Read `docs/domains/gam-runner.md` and, for a write, `docs/domains/guard-audit.md` first.
 
 1. **Verify** the exact command in `Vendor/gam7/GamCommands.txt` before writing a builder.
-2. Write the builder returning `[String]`, each operator value one element; throw on invalid enums.
+2. Write the builder returning a `GamRead` (only if GamGUI's verb rule calls it read-only; `CommandKindTests`
+   checks) or a `GamWrite` with a new `WriteAction` case; each operator value one element; throw on
+   invalid enums.
 3. Hold it to `Tests/Fixtures/argv.json` (every case for that builder: same argv, or the same refusal).
    Never edit the fixture to pass.
 4. A new write gets a strict `Tests/Fixtures/mock_gam.sh` handler that fails the way GAM fails, and runs

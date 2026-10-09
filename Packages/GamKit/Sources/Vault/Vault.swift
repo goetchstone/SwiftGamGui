@@ -14,14 +14,24 @@ public actor Vault {
     private let clock = ContinuousClock()
     private var sessionStarted: ContinuousClock.Instant?
 
-    public init(store: any SecretStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+    /// The Keychain, for the app.
+    public init(store: KeychainStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+        self.init(secretStore: store, sessionLifetime: sessionLifetime)
+    }
+
+    /// Memory, for the demo tenant and tests.
+    public init(store: MemoryStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+        self.init(secretStore: store, sessionLifetime: sessionLifetime)
+    }
+
+    package init(secretStore store: any SecretStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
         self.store = store
         self.sessionLifetime = sessionLifetime
     }
 
     /// Every stored credential for `domain`. Throws `missing` when a credential GAM needs is absent,
     /// and `keychain` for any other store failure.
-    public func credentials(for domain: Domain) async throws -> [Credential: Secret] {
+    package func credentials(for domain: Domain) async throws -> [Credential: Secret] {
         if let started = sessionStarted, clock.now - started >= sessionLifetime {
             lock()
         }
@@ -68,7 +78,7 @@ public actor Vault {
     /// removed one stays removed, and one replaced meanwhile (a re-import) keeps its new value. Returns
     /// whether it replaced anything. For GAM's refreshed `oauth2.txt`.
     @discardableResult
-    public func refresh(_ secret: Secret, as credential: Credential, for domain: Domain, replacing original: Secret) async throws -> Bool {
+    package func refresh(_ secret: Secret, as credential: Credential, for domain: Domain, replacing original: Secret) async throws -> Bool {
         try await offMainThread { [store] in
             try store.replace(secret.bytes, as: credential, for: domain, ifCurrent: original.bytes)
         }
@@ -102,3 +112,19 @@ public actor Vault {
         }
     }
 }
+
+#if DEBUG
+extension Vault {
+    /// Debug builds only, for the app's vault spike: reads every credential as a run does (so the Touch
+    /// ID prompt and the session reuse can be timed on a real Mac) and says which were found, never
+    /// their values. `credentials(for:)` itself is `package`, so the app can't hold a secret.
+    public func spikeRead(for domain: Domain) async throws -> Set<Credential> {
+        Set(try await credentials(for: domain).keys)
+    }
+
+    /// Debug builds only: whether the stored `oauth2.txt` is exactly `expected` (the spike's write-back check).
+    public func spikeOAuth2(for domain: Domain, equals expected: Data) async throws -> Bool {
+        try await credentials(for: domain)[.oauth2]?.bytes == expected
+    }
+}
+#endif

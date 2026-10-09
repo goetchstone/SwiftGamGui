@@ -5,8 +5,8 @@ import Vault
 /// Runs `gam` as a domain: credentials from the Vault into a fresh `EphemeralConfig` for this one
 /// call, a refreshed `oauth2.txt` written back, and the directory wiped on every path out.
 ///
-/// Reads and writes alike come through here; ChangeCore (phase 2) adds the write lock, the guard and
-/// the audit around it.
+/// Its public `run` takes only a `GamRead`. Writes will reach `gam` through ChangeCore's executor alone
+/// (slice 3), which adds the ticket, the write lock, the guard and the audit.
 public struct AuthenticatedRunner: Sendable {
     public let runner: GamRunner
     public let vault: Vault
@@ -21,10 +21,24 @@ public struct AuthenticatedRunner: Sendable {
     }
 
     public func run(
-        _ argv: [String],
+        _ read: GamRead,
         as domain: Domain,
         timeout: Duration = GamRunner.defaultTimeout,
         extraEnvironment: [String: String] = [:]
+    ) async throws -> GamResult {
+        // Only the mock's own variables (passed in debug builds only): a caller outside GamKit can't
+        // change HOME, PATH or a proxy for a credentialed call.
+        try await run(argv: read.argv, as: domain, timeout: timeout,
+                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
+    }
+
+    /// Any argv, with the domain's credentials. `private`: a write must not reach it except through the
+    /// `package` entry point ChangeCore's ticket will gate (slice 3).
+    private func run(
+        argv: [String],
+        as domain: Domain,
+        timeout: Duration,
+        extraEnvironment: [String: String]
     ) async throws -> GamResult {
         let secrets = try await vault.credentials(for: domain)
         let files = Dictionary(uniqueKeysWithValues: secrets.map { ($0.key.fileName, $0.value.bytes) })
@@ -32,7 +46,7 @@ public struct AuthenticatedRunner: Sendable {
 
         let outcome: Result<GamResult, any Error>
         do {
-            outcome = .success(try await runner.run(argv, configDirectory: config.url, timeout: timeout,
+            outcome = .success(try await runner.runRaw(argv, configDirectory: config.url, timeout: timeout,
                                                     extraEnvironment: extraEnvironment))
         } catch {
             outcome = .failure(error)
