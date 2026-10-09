@@ -369,7 +369,7 @@ extension HTMLText {
                   !Self.space.contains(r[q]), r[q] != "/", r[q] != ">" {
                 q += 1
                 while q < n, !Self.space.contains(r[q]), r[q] != "/", r[q] != "=", r[q] != ">" { q += 1 }
-                q = value(after: q, bareStopsAtSlash: false) ?? q
+                q = value(after: q) ?? q
                 while q < n, Self.space.contains(r[q]) || r[q] == "/" { q += 1 }
             }
             if q < n, r[q] == ">" { q += 1 }
@@ -377,7 +377,7 @@ extension HTMLText {
         }
 
         /// The optional `[\t\n\r\f ]*=[\t\n\r\f ]*(value)` group from `start`: its end, or nil if it fails.
-        private func value(after start: Int, bareStopsAtSlash: Bool) -> Int? {
+        private func value(after start: Int) -> Int? {
             var q = start
             while q < n, Self.space.contains(r[q]) { q += 1 }
             guard q < n, r[q] == "=" else { return nil }
@@ -413,7 +413,7 @@ extension HTMLText {
                   !Self.space.contains(r[k]), r[k] != "/", r[k] != ">" else { return nil }
             var q = k + 1
             while q < n, !Self.space.contains(r[q]), r[q] != "/", r[q] != "=", r[q] != ">" { q += 1 }
-            q = value(after: q, bareStopsAtSlash: false) ?? q
+            q = value(after: q) ?? q
             return skipSpaceOrLoneSlash(q)
         }
 

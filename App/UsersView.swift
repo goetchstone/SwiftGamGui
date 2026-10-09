@@ -141,8 +141,15 @@ private struct UserDetail: View {
             }
             AccessLists(user: user, directory: directory, changes: changes, access: access,
                         newGroup: $newGroup, newDelegate: $newDelegate)
-            if let vacation = access.lists(for: user.primaryEmail)?.vacation {
+            switch access.lists(for: user.primaryEmail)?.vacation {
+            case .success(let vacation)?:
                 AutoReplySection(user: user, vacation: vacation, changes: changes) { editingAutoReply = true }
+            case .failure(let problem)?:
+                Section("Auto-reply") {
+                    Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+            case nil:
+                EmptyView()
             }
             if !user.aliases.isEmpty {
                 Section("Aliases") {
@@ -155,7 +162,7 @@ private struct UserDetail: View {
         // Read when the person is selected, and again after a change of theirs lands.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
         .sheet(isPresented: $editingAutoReply) {
-            AutoReplyEditor(user: user, vacation: access.lists(for: user.primaryEmail)?.vacation ?? Vacation(),
+            AutoReplyEditor(user: user, vacation: (try? access.lists(for: user.primaryEmail)?.vacation.get()) ?? Vacation(),
                             changes: changes) { editingAutoReply = false }
         }
         .sheet(isPresented: $editingRole) {

@@ -269,11 +269,24 @@ final class UserChangesTests {
                               "Back Monday.<br/>Urgent? Call &lt;the desk&gt; &amp; ask.", "html", "contactsonly", "false",
                               "domainonly", "true", "start", "2026-10-12", "end", "NotSpecified"]])
         await access.load("bob@example.com")
-        let vacation = try #require(access.lists(for: "bob@example.com")?.vacation)
+        let vacation = try #require(try access.lists(for: "bob@example.com")?.vacation.get())
         #expect(vacation.enabled)
         #expect(vacation.subject == "Out of office")
         #expect(HTMLText.autoreplyText(vacation.message) == "Back Monday.\nUrgent? Call <the desk> & ask.",
                 "the form pre-fills the text, not its markup")
+    }
+
+    /// GamGUI loads each panel on its own: a failed auto-reply read doesn't hide the groups and delegates.
+    @Test func aFailedAutoReplyReadLeavesTheOtherLists() async throws {
+        try await connect()
+        let state = scratch.appending(path: "mock-state")
+        try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+        try Data().write(to: state.appending(path: "nogmail/alice@example.com"))
+        await access.load("alice@example.com")
+        let lists = try #require(access.lists(for: "alice@example.com"))
+        #expect(lists.groups == ["sales@example.com", "staff@example.com"])
+        guard case .failure(let problem) = lists.vacation else { Issue.record("\(lists.vacation)"); return }
+        #expect(problem.summary.contains("Gmail Service/App not enabled"))
     }
 
     @Test func anAutoReplyIsTurnedOff() async throws {
