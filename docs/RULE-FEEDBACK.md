@@ -169,3 +169,17 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   Short of that: put each guarantee in the compiler first (`package`/internal, unique names) and keep
   a scan only for what the compiler can't see.
 - **Enforcement home if changed:** test (an API-surface check) or the `pre-commit` skill's secrets item.
+
+## 2026-10-09 — A faithful port carried GamGUI's own latent wipe bugs
+- **What happened:** the guided-setup port (PR #16) copied GamGUI's `_wipe_file` rules exactly. The
+  adversarial review proved two holes in those rules themselves: a hard-linked credential got the
+  operator's own file zeroed, and a credential rewritten in place after the read was destroyed while
+  the Vault kept an older copy. Both exist in frozen GamGUI today.
+- **Invariant in force:** #4 (secrets) and #11 (parity), pulling in opposite directions here.
+- **Why it didn't hold:** parity is held to GamGUI's *outputs*; for code that destroys data, matching
+  the reference only proves we share its blind spots. The port read the failure log's incidents but
+  not the cases no incident had hit yet.
+- **Would a rule have caught it?** only if enforced differently: for credential and deletion code, the
+  adversarial review is asked to attack the reference's rules too, not just our port's fidelity.
+- **Enforcement home if changed:** skill (`pre-commit` step 11's review prompt for the secrets area).
+  GamGUI is frozen except GAM updates, so its copy is reported to the operator rather than fixed here.

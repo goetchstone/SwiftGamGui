@@ -18,12 +18,23 @@ public struct FreshSetup: Equatable, Sendable {
     /// both unchecked; refusing them means what the operator pastes can only be these commands, which
     /// are GamGUI's byte for byte for every value accepted.
     public static func commands(admin: String, folder: URL, gam: URL) -> FreshSetup? {
-        let admin = admin.trimmingCharacters(in: .whitespaces)
-        let folderPath = folder.path(percentEncoded: false), gamPath = gam.path(percentEncoded: false)
+        let admin = trimmed(admin)
+        let folderPath = withoutTrailingSlash(folder.path(percentEncoded: false))
+        let gamPath = withoutTrailingSlash(gam.path(percentEncoded: false))
         guard isPlainAddress(admin), isQuotable(folderPath), isQuotable(gamPath) else { return nil }
         let gam = "\"\(gamPath)\""
         return FreshSetup(environment: "export GAMCFGDIR=\"\(folderPath)\"",
                           commands: ["\(gam) create project \(admin)", "\(gam) oauth create", "\(gam) create svcacct"])
+    }
+
+    /// The admin as GamGUI's route takes it: Python's `str.strip()` (its whitespace set, not Foundation's).
+    public static func trimmed(_ admin: String) -> String {
+        PythonText.strip(admin)
+    }
+
+    /// A folder URL's path can end in `/`; Python's `Path` never does.
+    static func withoutTrailingSlash(_ path: String) -> String {
+        path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 
     /// `local@domain` of ASCII letters, digits and `._%+-`: nothing a shell would split or expand.

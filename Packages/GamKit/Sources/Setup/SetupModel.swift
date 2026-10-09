@@ -51,30 +51,48 @@ public final class SetupModel {
     private let runner: AuthenticatedRunner?
     private let gamgui: GamGUIKeychain
     private let readFolder: @Sendable (URL) throws -> [Credential: Secret]
-    private let setupFolder: SetupFolder?
+    /// Where the guided setup's commands write the credentials. The folder is made (and made private
+    /// again) on each use, not once at launch: one deleted or loosened since then is repaired.
+    public let setupFolderURL: URL?
+    /// Why the setup folder can't be used, when it can't.
+    public private(set) var setupFolderProblem: String?
 
     public init(
         vault: Vault,
         runner: AuthenticatedRunner?,
         gamgui: GamGUIKeychain = GamGUIKeychain(),
-        setupFolder: SetupFolder? = nil,
+        setupFolderURL: URL? = nil,
         readFolder: @escaping @Sendable (URL) throws -> [Credential: Secret] = CredentialFolder.read
     ) {
         self.vault = vault
         self.runner = runner
         self.gamgui = gamgui
-        self.setupFolder = setupFolder
+        self.setupFolderURL = setupFolderURL
         self.readFolder = readFolder
     }
 
-    /// The guided setup's folder, where its Terminal commands write the credentials.
-    public var setupFolderURL: URL? { setupFolder?.url }
-
     /// The Terminal commands for a fresh GAM authorization as `admin`, or nil when they can't be given:
-    /// no GAM or setup folder in this build, or an admin that isn't a plain address.
+    /// no GAM or setup folder in this build, the folder unusable, or an admin that isn't a plain address.
     public func freshSetup(admin: String) -> FreshSetup? {
-        guard let folder = setupFolder, let gam = runner?.runner.binary else { return nil }
-        return FreshSetup.commands(admin: admin, folder: folder.url, gam: gam)
+        guard let url = setupFolderURL, setupFolderProblem == nil, let gam = runner?.runner.binary else { return nil }
+        return FreshSetup.commands(admin: admin, folder: url, gam: gam)
+    }
+
+    /// The domain a fresh setup's admin suggests: the part after `@`, as typed but trimmed.
+    nonisolated public static func suggestedDomain(forAdmin admin: String) -> String {
+        FreshSetup.trimmed(admin).split(separator: "@").last.map(String.init) ?? ""
+    }
+
+    /// Makes the setup folder (or repairs it) before the operator runs the commands; Setup calls it
+    /// when it opens. A problem is kept for the screen, and the commands are withheld meanwhile.
+    public func prepareSetupFolder() async {
+        guard let url = setupFolderURL else { return }
+        do {
+            _ = try await Self.offMain({ try SetupFolder.prepare(url) })
+            setupFolderProblem = nil
+        } catch {
+            setupFolderProblem = Self.message(for: error)
+        }
     }
 
     /// An action is running. Every action refuses to start meanwhile, so two can't interleave (a
@@ -133,7 +151,7 @@ public final class SetupModel {
     /// Vault is their only home from then on. Nothing is wiped unless the Vault took the whole set.
     public func importFromSetupFolder(as domainText: String) async {
         guard !isBusy else { return }
-        guard let setupFolder else {
+        guard let url = setupFolderURL else {
             activity = .problem("This build has no setup folder.")
             return
         }
@@ -143,14 +161,21 @@ public final class SetupModel {
         }
         activity = .working("Importing credentials for \(domain) from the setup folder…")
         do {
-            let staged = try await Self.offMain({ try setupFolder.stage() })
+            // Made private again just before the read: the folder the commands wrote into may have been
+            // deleted, recreated by GAM with looser permissions, or tampered with since Setup opened.
+            let staged = try await Self.offMain({ try SetupFolder.prepare(url).stage() })
+            setupFolderProblem = nil
             try await replace(domain, with: staged.found)
             delegation = Delegation(domain: domain, credentials: staged.found)
-            let wiped = try await Self.offMain({ staged.wipe() })
-            let left = Set(staged.found.keys).subtracting(wiped)
+            let left = try await Self.offMain({ () -> [Credential] in
+                staged.wipe()
+                return staged.remaining()
+            })
             activity = left.isEmpty
                 ? .done("Imported \(domain) and wiped GAM's copies from the setup folder. Authorize delegation next.")
-                : .problem("Imported \(domain), but \(left.sorted().map(\.fileName).joined(separator: " and ")) couldn't be wiped from the setup folder. Delete it there.")
+                : .problem("Imported \(domain), but \(left.map(\.fileName).joined(separator: " and ")) is still in the setup folder (\(url.path(percentEncoded: false))). If GAM is still running, import again when it's done; otherwise delete it there.")
+        } catch CredentialFolder.Failure.missing(let credentials) {
+            activity = .problem("The setup folder has no \(credentials.map(\.fileName).joined(separator: " or ")) yet. Run the commands above first, in order.")
         } catch {
             activity = .problem(Self.message(for: error))
         }

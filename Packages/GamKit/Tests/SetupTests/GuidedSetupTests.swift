@@ -95,7 +95,8 @@ struct GuidedSetupTests {
         let vault = Vault(store: store)
         let base = try RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-run-\(UUID().uuidString)"))
         let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
-        return SetupModel(vault: vault, runner: withRunner ? runner : nil, gamgui: GamGUIKeychain { _, _ in nil }, setupFolder: folder)
+        return SetupModel(vault: vault, runner: withRunner ? runner : nil, gamgui: GamGUIKeychain { _, _ in nil },
+                          setupFolderURL: folder?.url)
     }
 
     private func names(in folder: URL) throws -> Set<String> {
@@ -128,6 +129,41 @@ struct GuidedSetupTests {
         #expect(model.activity == .problem(VaultError.keychain(errSecUserCanceled).guidance))
         #expect(try names(in: folder.url) == ["oauth2service.json", "oauth2.txt", "client_secrets.json", "gam.cfg"])
         #expect(model.delegation == nil)
+    }
+
+    /// PR #16's review: an optional file the read refused stayed on disk while the screen said "wiped".
+    @Test func aCredentialLeftInTheFolderIsNamed() async throws {
+        let folder = try setupFolder()
+        try writeGamOutput(into: folder.url)
+        try Data("not json".utf8).write(to: folder.url.appending(path: "client_secrets.json"))
+        let model = try model(folder)
+        await model.importFromSetupFolder(as: "example.com")
+        guard case .problem(let text) = model.activity else { Issue.record("\(model.activity)"); return }
+        #expect(text.hasPrefix("Imported example.com, but client_secrets.json is still in the setup folder"))
+    }
+
+    @Test func anEmptySetupFolderSaysToRunTheCommandsFirst() async throws {
+        let model = try model(try setupFolder())
+        await model.importFromSetupFolder(as: "example.com")
+        #expect(model.activity == .problem("The setup folder has no oauth2service.json or oauth2.txt yet. Run the commands above first, in order."))
+    }
+
+    /// PR #16's review: the folder was made once, at launch. One deleted and recreated loosely since
+    /// (GAM makes a missing GAMCFGDIR with the umask) is made private again before the read.
+    @Test func aFolderRecreatedSinceLaunchIsMadePrivateAgain() async throws {
+        let folder = try setupFolder()
+        let model = try model(folder)
+        try FileManager.default.removeItem(at: folder.url)
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o755])
+        try writeGamOutput(into: folder.url)
+        await model.importFromSetupFolder(as: "example.com")
+        #expect(model.activity == .done("Imported example.com and wiped GAM's copies from the setup folder. Authorize delegation next."))
+        var info = stat()
+        #expect(lstat(folder.url.path, &info) == 0 && info.st_mode & 0o777 == 0o700)
+    }
+
+    @Test func aPaddedAdminSuggestsItsDomain() {
+        #expect(SetupModel.suggestedDomain(forAdmin: "  admin@example.com\u{A0}") == "example.com")
     }
 
     @Test func freshSetupNeedsGamAndTheFolder() throws {

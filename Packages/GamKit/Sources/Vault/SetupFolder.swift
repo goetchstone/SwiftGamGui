@@ -6,12 +6,16 @@ import Foundation
 /// copies here are wiped, since a same-user process could read them without a Keychain prompt; a
 /// folder the operator picked (their own `~/.gam`) is never touched.
 ///
-/// Ported with GamGUI's failure history (`core/setup.py`, `import_dir`, `_is_managed`, `_wipe_file`):
-/// - **ours by identity, not by name**: the folder is opened without following a link and must be the
-///   inode `prepare` made (a case-variant spelling once skipped the wipe; a folder swapped for a link
-///   once had GamGUI wipe files it never imported);
-/// - **only what was read**: each file is wiped only if it is still the inode whose bytes reached the
-///   Vault, looked up inside the same open folder; anything else is left alone;
+/// Ported with GamGUI's failure history (`core/setup.py`, `import_dir`, `_is_managed`, `_wipe_file`),
+/// and two holes its wipe also had (PR #16's review):
+/// - **ours by identity, not by name**: the folder is opened without following a link, must be private
+///   and this user's, and must be the inode `prepare` made just before (a case-variant spelling once
+///   skipped the wipe; a folder swapped for a link once had GamGUI wipe files it never imported);
+/// - **only what reached the Vault**: a file is wiped only while it is still the inode read, inside the
+///   folder held open since the read, and still holds exactly the bytes the Vault took. A credential
+///   GAM rewrote in place meanwhile (a command still running) is left for the next import;
+/// - **never another path's bytes**: a file with another hard link (say, to `~/.gam/oauth2.txt`) only
+///   loses its name here; overwriting it would zero the other path's file too;
 /// - **only after the Vault has them**: a failed store wipes nothing.
 public struct SetupFolder: Sendable, Equatable {
     public enum Failure: Error, Equatable, Sendable {
@@ -24,13 +28,14 @@ public struct SetupFolder: Sendable, Equatable {
     public let url: URL
     let identity: CredentialFolder.FileIdentity
 
-    /// `~/Library/Application Support/SwiftGamGui/setup`, beside the per-call run folder.
+    /// `setup` beside the per-call run folder, in the app's own Application Support folder.
     public static var defaultURL: URL {
         URL.applicationSupportDirectory.appending(path: "SwiftGamGui/setup")
     }
 
-    /// Creates the folder (`0700`) if needed and checks it: a real directory, this user's, private, with
-    /// no ACL entry granting access. Nothing is changed through a link: one in its place is refused.
+    /// Creates the folder (`0700`) if needed and checks it, through one descriptor: a real directory
+    /// (a link in its place is refused, never followed), this user's, private, with no ACL allow entry.
+    /// Called before each use, so a folder deleted or loosened since is made private again.
     public static func prepare(_ url: URL = defaultURL) throws -> SetupFolder {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
                                                 attributes: [.posixPermissions: 0o700])
@@ -40,9 +45,7 @@ public struct SetupFolder: Sendable, Equatable {
         var info = stat()
         guard fstat(dir, &info) == 0, info.st_uid == getuid() else { throw Failure.unsafe(url.path) }
         _ = fchmod(dir, 0o700)
-        guard fstat(dir, &info) == 0, info.st_mode & 0o077 == 0, !FolderSafety.grantsByACL(url.path) else {
-            throw Failure.unsafe(url.path)
-        }
+        guard FolderSafety.isPrivate(fd: dir), fstat(dir, &info) == 0 else { throw Failure.unsafe(url.path) }
         return SetupFolder(url: url, identity: CredentialFolder.FileIdentity(info))
     }
 
@@ -55,6 +58,10 @@ public struct SetupFolder: Sendable, Equatable {
         guard fstat(dir, &info) == 0, CredentialFolder.FileIdentity(info) == identity else {
             close(dir)
             throw Failure.replaced
+        }
+        guard FolderSafety.isPrivate(fd: dir) else {
+            close(dir)
+            throw Failure.unsafe(url.path)
         }
         do {
             let (found, read) = try CredentialFolder.read(in: dir)
@@ -80,33 +87,40 @@ public struct SetupFolder: Sendable, Equatable {
 
         deinit { close(dir) }
 
-        /// Overwrites and removes each file read, if it is still the same inode. APFS makes a true
-        /// secure erase unreliable, so the overwrite is defence in depth; the guarantee is that nothing
-        /// else is ever destroyed. Returns the credentials wiped.
+        /// Removes each file read, if it is still the inode read and still holds the bytes the Vault took;
+        /// one with no other link is overwritten first. APFS makes a true secure erase unreliable, so the
+        /// overwrite is defence in depth; the guarantee is that nothing else is ever destroyed. Returns
+        /// the credentials removed.
         @discardableResult
         package func wipe() -> [Credential] {
-            read.keys.sorted().filter { wipe($0.fileName, expecting: read[$0]!) }
+            read.keys.sorted().filter { credential in
+                guard let identity = read[credential], let bytes = found[credential]?.bytes else { return false }
+                return wipe(credential.fileName, expecting: identity, holding: bytes)
+            }
         }
 
-        private func wipe(_ name: String, expecting identity: CredentialFolder.FileIdentity) -> Bool {
-            let fd = openat(dir, name, O_WRONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        /// The credential files still in the folder after a wipe: one rewritten since the read, or an
+        /// optional one the read refused (not JSON, too large). The operator is told to remove them.
+        package func remaining() -> [Credential] {
+            Credential.allCases.filter { credential in
+                var info = stat()
+                return fstatat(dir, credential.fileName, &info, AT_SYMLINK_NOFOLLOW) == 0
+            }
+        }
+
+        private func wipe(_ name: String, expecting identity: CredentialFolder.FileIdentity, holding bytes: Data) -> Bool {
+            let fd = openat(dir, name, O_RDWR | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
             guard fd >= 0 else { return false }
             var info = stat()
             guard fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG,
-                  CredentialFolder.FileIdentity(info) == identity
+                  CredentialFolder.FileIdentity(info) == identity, Self.contents(of: fd, size: Int(info.st_size)) == bytes
             else {
                 close(fd)
                 return false
             }
-            let zeros = [UInt8](repeating: 0, count: 16 * 1024)
-            var left = Int(info.st_size)
-            while left > 0 {
-                let n = zeros.withUnsafeBytes { Darwin.write(fd, $0.baseAddress!, min(left, $0.count)) }
-                if n < 0, errno == EINTR { continue }
-                guard n > 0 else { break }
-                left -= n
+            if info.st_nlink == 1 {
+                Self.overwrite(fd, size: Int(info.st_size))
             }
-            _ = fsync(fd)
             close(fd)
             // unlink has to name the file: re-check the name still points at that inode first. Losing
             // the last sliver of a race can only leave a file, never remove the wrong one.
@@ -114,6 +128,27 @@ public struct SetupFolder: Sendable, Equatable {
                   CredentialFolder.FileIdentity(info) == identity
             else { return false }
             return unlinkat(dir, name, 0) == 0
+        }
+
+        /// The file's bytes, read from the start through `fd`, or nil past the import's size cap.
+        private static func contents(of fd: Int32, size: Int) -> Data? {
+            guard size <= CredentialFolder.sizeCap else { return nil }
+            guard size > 0 else { return Data() }
+            var data = Data(count: size)
+            let n = data.withUnsafeMutableBytes { pread(fd, $0.baseAddress!, size, 0) }
+            return n == size ? data : nil
+        }
+
+        private static func overwrite(_ fd: Int32, size: Int) {
+            let zeros = [UInt8](repeating: 0, count: 16 * 1024)
+            var offset = 0
+            while offset < size {
+                let n = zeros.withUnsafeBytes { pwrite(fd, $0.baseAddress!, min(size - offset, $0.count), off_t(offset)) }
+                if n < 0, errno == EINTR { continue }
+                guard n > 0 else { return }
+                offset += n
+            }
+            _ = fsync(fd)
         }
     }
 }

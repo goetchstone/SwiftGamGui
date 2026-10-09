@@ -111,6 +111,13 @@ GamGUI's two steps for an admin with no GAM yet, and the delegation step after a
   - only the files read, and only while each is still the inode whose bytes were read, looked up inside
     the folder held open since the read; `gam.cfg` and anything swapped in are left alone;
   - nothing is wiped if the Vault refused the set.
+  - **PR #16's review** proved two holes GamGUI's `_wipe_file` has too, now closed with tests: a
+    credential hard-linked to the operator's own file shared its inode, so the overwrite zeroed that
+    file (now a file with another link only loses its name here); and a credential GAM rewrote in place
+    after the read (same inode) was destroyed while the Vault kept the older copy (now it must still
+    hold the bytes the Vault took, or it stays and is named). Also: the folder is prepared (made private
+    again) on each use, not once at launch; its privacy is checked through the descriptor, ACL included;
+    a credential left behind is named instead of "wiped"; an empty folder says to run the commands.
 - **The delegation step** (`Delegation`): the client ID (GamGUI's `str(… or "")`: a string, an integer's
   digits, else empty), the scopes, the Admin-console link (Python's `urlencode(safe=':/,')`, so a value's
   `&`, `=` and spaces are escaped) and whether `oauth2.txt` carries offboarding's sign-out scope. Read

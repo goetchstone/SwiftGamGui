@@ -29,8 +29,10 @@ public enum CredentialFacts {
 
     /// The service account's client ID (`oauth2service.json`), for the delegation step, as GamGUI's
     /// `str(_json_field(raw, "client_id") or "")` reads it: a string as is, an integer in digits, and
-    /// empty when absent, empty or zero. Held to `Tests/Fixtures/setup.json`. A deliberate difference:
-    /// a boolean, float, list or object (Python would print its repr) is empty too, so it makes no link.
+    /// empty when absent, empty or zero. Held to `Tests/Fixtures/setup.json`. Deliberate differences, none
+    /// in a file Google issues (its client ID is a string): a boolean, float, list or object (Python would
+    /// print its repr) or an integer past 64 bits is empty, so it makes no link; and with a duplicate key
+    /// `JSONSerialization` keeps the first value where Python keeps the last.
     public static func clientID(inServiceAccount data: Data) -> String {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return "" }
         switch object["client_id"] {

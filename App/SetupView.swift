@@ -85,14 +85,16 @@ struct SetupView: View {
                     ForEach(fresh.lines, id: \.self) { line in
                         CopyableLine(text: line)
                     }
-                    TextField("Domain", text: $freshDomain, prompt: Text(freshAdmin.split(separator: "@").last.map(String.init) ?? "example.com"))
+                    TextField("Domain", text: $freshDomain, prompt: Text(SetupModel.suggestedDomain(forAdmin: freshAdmin)))
                         .accessibilityIdentifier("setup.freshDomain")
                     Button("I've Run These: Import Credentials") {
-                        let domain = freshDomain.isEmpty ? (freshAdmin.split(separator: "@").last.map(String.init) ?? "") : freshDomain
+                        let domain = freshDomain.isEmpty ? SetupModel.suggestedDomain(forAdmin: freshAdmin) : freshDomain
                         Task { await model.importFromSetupFolder(as: domain) }
                     }
                     .disabled(busy)
                     .accessibilityIdentifier("setup.importFresh")
+                } else if let problem = model.setupFolderProblem {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 } else if model.setupFolderURL == nil {
                     Text("This build has no setup folder or no GAM.").foregroundStyle(.secondary)
                 } else if !freshAdmin.isEmpty {
@@ -135,7 +137,10 @@ struct SetupView: View {
         } message: { _ in
             Text("GamGUI and your Google tenant aren't changed. You can import the credentials again later.")
         }
-        .task { await model.refresh() }
+        .task {
+            await model.refresh()
+            await model.prepareSetupFolder()
+        }
     }
 
     /// A domain the field shows only because an earlier folder suggested it goes with that folder; one
