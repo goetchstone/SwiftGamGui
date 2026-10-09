@@ -17,6 +17,8 @@ struct SetupView: View {
     @State private var adminText = ""
     @State private var choosingFolder = false
     @State private var pendingRemoval: Domain?
+    @State private var freshAdmin = ""
+    @State private var freshDomain = ""
 
     private var busy: Bool { model.isBusy }
 
@@ -73,8 +75,41 @@ struct SetupView: View {
                 }
             }
 
+            Section("No GAM yet? Set it up from scratch") {
+                Text("Run these in Terminal, one at a time and in order. Each opens a browser or asks a few questions. GAM writes its credentials into GamGUI's private setup folder; import them from there afterwards, and GamGUI wipes GAM's copies.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                TextField("Super admin address", text: $freshAdmin, prompt: Text("admin@example.com"))
+                    .accessibilityIdentifier("setup.freshAdmin")
+                if let fresh = model.freshSetup(admin: freshAdmin) {
+                    ForEach(fresh.lines, id: \.self) { line in
+                        CopyableLine(text: line)
+                    }
+                    TextField("Domain", text: $freshDomain, prompt: Text(SetupModel.suggestedDomain(forAdmin: freshAdmin)))
+                        .accessibilityIdentifier("setup.freshDomain")
+                    Button("I've Run These: Import Credentials") {
+                        let domain = freshDomain.isEmpty ? SetupModel.suggestedDomain(forAdmin: freshAdmin) : freshDomain
+                        Task { await model.importFromSetupFolder(as: domain) }
+                    }
+                    .disabled(busy)
+                    .accessibilityIdentifier("setup.importFresh")
+                } else if let problem = model.setupFolderProblem {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                } else if model.setupFolderURL == nil {
+                    Text("This build has no setup folder or no GAM.").foregroundStyle(.secondary)
+                } else if !freshAdmin.isEmpty {
+                    Text("Enter a plain address: letters, digits and . _ % + - only.").foregroundStyle(.secondary)
+                }
+            }
+
             Section {
                 ActivityLine(activity: model.activity)
+            }
+
+            if let delegation = model.delegation {
+                Section("Authorize domain-wide delegation: \(delegation.domain.name)") {
+                    DelegationView(delegation: delegation)
+                }
             }
 
             Section("Domain-wide delegation") {
@@ -102,7 +137,10 @@ struct SetupView: View {
         } message: { _ in
             Text("GamGUI and your Google tenant aren't changed. You can import the credentials again later.")
         }
-        .task { await model.refresh() }
+        .task {
+            await model.refresh()
+            await model.prepareSetupFolder()
+        }
     }
 
     /// A domain the field shows only because an earlier folder suggested it goes with that folder; one
@@ -180,6 +218,64 @@ private struct CheckResultView: View {
         if passed > 0 {
             Label("\(passed) of \(record.result.rows.count) checks passed", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// GamGUI's delegation step (`_dwd.html`): the one manual step Google requires, with what to paste and
+/// the pre-filled link.
+private struct DelegationView: View {
+    let delegation: Delegation
+
+    var body: some View {
+        Text("Authorize this service account's client ID in the Google Admin console. It's the one step Google makes you do by hand.")
+            .font(.callout)
+        if delegation.clientID.isEmpty {
+            Text("oauth2service.json names no client ID.").foregroundStyle(.orange)
+        } else {
+            LabeledContent("Client ID") { CopyableLine(text: delegation.clientID) }
+        }
+        LabeledContent("Scopes (\(DelegationScopes.all.count))") { CopyableLine(text: Delegation.scopesText) }
+        if let url = delegation.authorizationURL {
+            Link("Authorize in the Google Admin console", destination: url)
+                .accessibilityIdentifier("setup.delegation.authorize")
+            Text("The link fills in the client ID and scopes. Sign in as a super admin, click Authorize, wait about 30 seconds, then use Check Access above.")
+                .font(.caption).foregroundStyle(.secondary)
+        } else if let url = URL(string: DelegationScopes.adminConsoleURL) {
+            Link("Open the Admin console's domain-wide delegation page", destination: url)
+            Text("Paste the client ID and the scopes, and authorize. Then use Check Access above.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        switch delegation.grantsUserSecurity {
+        case false?:
+            Label("The admin token lacks the \"Directory API - User Security\" scope, so offboarding can't sign a leaver out. Create GAM's OAuth client again with that scope ticked, then import again.",
+                  systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+        case true?:
+            Text("The admin token has the \"Directory API - User Security\" scope (offboarding's sign-out).")
+                .font(.caption).foregroundStyle(.secondary)
+        case nil:
+            Text("Offboarding's sign-out uses the admin token's \"Directory API - User Security\" scope, chosen when GAM's OAuth client is created, not delegation.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// A line of monospaced text the operator copies: a Terminal command, a client ID, the scopes.
+private struct CopyableLine: View {
+    let text: String
+
+    var body: some View {
+        HStack {
+            Text(text)
+                .font(.caption.monospaced())
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(text, forType: .string)
+            }
+            .accessibilityLabel("Copy \(text)")
         }
     }
 }

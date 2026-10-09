@@ -21,13 +21,14 @@ struct AppServices {
         let gam = GamBinary.locate().flatMap { binary in
             (try? RuntimeDirectory.prepare()).map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
-        return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain())
+        return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
+                        setupFolderURL: SetupFolder.defaultURL)
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
-                                 gamgui: GamGUIKeychain) -> AppServices {
+                                 gamgui: GamGUIKeychain, setupFolderURL: URL?) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
-        let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui)
+        let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL)
         return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam)
     }
 
@@ -51,7 +52,8 @@ struct AppServices {
             (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
                 .map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
-        return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil })
+        return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
+                        setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"))
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a

@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Synchronization
+import Vault
 
 /// A private `GAMCFGDIR` holding GAM's credential files for exactly one `gam` call (invariant 4).
 ///
@@ -332,20 +333,7 @@ public enum RuntimeDirectory {
     static func verify(_ url: URL) throws {
         var info = stat()
         guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR,
-              info.st_uid == getuid(), info.st_mode & 0o077 == 0, !grantsByACL(url.path)
+              info.st_uid == getuid(), info.st_mode & 0o077 == 0, !FolderSafety.grantsByACL(url.path)
         else { throw EphemeralConfig.Failure.unsafeRuntimeDirectory(url.path) }
-    }
-
-    static func grantsByACL(_ path: String) -> Bool {
-        guard let acl = acl_get_link_np(path, ACL_TYPE_EXTENDED) else { return false }
-        defer { acl_free(UnsafeMutableRawPointer(acl)) }
-        var entry: acl_entry_t?
-        var which = Int32(ACL_FIRST_ENTRY.rawValue)
-        while acl_get_entry(acl, which, &entry) == 0, let current = entry {
-            var tag = acl_tag_t(rawValue: 0)
-            if acl_get_tag_type(current, &tag) == 0, tag == ACL_EXTENDED_ALLOW { return true }
-            which = Int32(ACL_NEXT_ENTRY.rawValue)
-        }
-        return false
     }
 }

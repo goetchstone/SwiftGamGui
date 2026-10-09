@@ -17,6 +17,7 @@ public enum Fixtures {
     public static var exitCodesJSON: URL { directory.appending(path: "exit_codes.json") }
     public static var gamErrorsJSON: URL { directory.appending(path: "gam_errors.json") }
     public static var gamOutputJSON: URL { directory.appending(path: "gam_output.json") }
+    public static var setupJSON: URL { directory.appending(path: "setup.json") }
     public static var gamModelsJSON: URL { directory.appending(path: "gam_models.json") }
     public static var guardJSON: URL { directory.appending(path: "guard.json") }
     public static var auditJSON: URL { directory.appending(path: "audit.json") }

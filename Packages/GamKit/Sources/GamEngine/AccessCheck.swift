@@ -19,19 +19,30 @@ public enum DelegationScopes {
 
     public static var scopes: [String] { all.map(\.scope) }
 
+    public static let adminConsoleURL = "https://admin.google.com/ac/owl/domainwidedelegation"
+
     /// The Admin-console page that adds the client and its scopes, pre-filled: the same shape
-    /// `gam check serviceaccount` prints on a failure. Nil without a client ID.
+    /// `gam check serviceaccount` prints on a failure. Nil without a client ID. GamGUI's `dwd_auth_url`
+    /// byte for byte (`Tests/Fixtures/setup.json`): Python's `urlencode(…, safe=':/,')`, so a space is
+    /// `+` and `&` or `=` inside a value is escaped (`URLComponents` would leave those two as they are).
     public static func authorizationURL(clientID: String, scopes: [String] = scopes, domain: Domain? = nil) -> URL? {
         guard !clientID.isEmpty else { return nil }
-        var components = URLComponents(string: "https://admin.google.com/ac/owl/domainwidedelegation")!
-        var items = [
-            URLQueryItem(name: "clientScopeToAdd", value: scopes.joined(separator: ",")),
-            URLQueryItem(name: "clientIdToAdd", value: clientID),
-            URLQueryItem(name: "overwriteClientId", value: "true"),
-        ]
-        if let domain { items.append(URLQueryItem(name: "dn", value: domain.name)) }
-        components.queryItems = items
-        return components.url
+        var query = [("clientScopeToAdd", scopes.joined(separator: ",")), ("clientIdToAdd", clientID),
+                     ("overwriteClientId", "true")]
+        if let domain { query.append(("dn", domain.name)) }
+        let encoded = query.map { "\(quotePlus($0.0))=\(quotePlus($0.1))" }.joined(separator: "&")
+        return URL(string: "\(adminConsoleURL)?\(encoded)")
+    }
+
+    /// Python's `quote_plus(text, safe=':/,')`: letters, digits, `_.-~` and the safe characters kept, a
+    /// space as `+`, every other UTF-8 byte as `%XX`.
+    static func quotePlus(_ text: String) -> String {
+        let kept = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-~:/,".utf8)
+        return text.utf8.map { byte in
+            if kept.contains(byte) { return String(UnicodeScalar(byte)) }
+            if byte == 0x20 { return "+" }
+            return String(format: "%%%02X", byte)
+        }.joined()
     }
 }
 

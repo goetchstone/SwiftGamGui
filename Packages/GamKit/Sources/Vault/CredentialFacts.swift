@@ -27,9 +27,35 @@ public enum CredentialFacts {
         (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["scopes"] as? [String]
     }
 
-    /// The service account's client ID (`oauth2service.json`), for the delegation link.
-    public static func clientID(inServiceAccount data: Data) -> String? {
-        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["client_id"] as? String
+    /// The service account's client ID (`oauth2service.json`), for the delegation step, as GamGUI's
+    /// `str(_json_field(raw, "client_id") or "")` reads it: a string as is, an integer in digits, and
+    /// empty when absent, empty or zero. Held to `Tests/Fixtures/setup.json`. Deliberate differences, none
+    /// in a file Google issues (its client ID is a string): a boolean, float, list or object (Python would
+    /// print its repr) or an integer past 64 bits is empty, so it makes no link; and with a duplicate key
+    /// `JSONSerialization` keeps the first value where Python keeps the last.
+    public static func clientID(inServiceAccount data: Data) -> String {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return "" }
+        switch object["client_id"] {
+        case let text as String:
+            return text
+        case let number as NSNumber where CFGetTypeID(number) != CFBooleanGetTypeID() && !CFNumberIsFloatType(number):
+            return number.stringValue == "0" ? "" : number.stringValue
+        default:
+            return ""
+        }
+    }
+
+    /// The admin-token scope offboarding's sign-out needs ("Directory API - User Security", ticked when
+    /// GAM's OAuth client is created): a client-access scope, so delegation can't grant it.
+    public static let userSecurityScope = "https://www.googleapis.com/auth/admin.directory.user.security"
+
+    /// Whether the admin token was granted `userSecurityScope`; nil when its scopes aren't recorded as a
+    /// list. GamGUI's `dwd_details` `user_security`, held to `Tests/Fixtures/setup.json`.
+    public static func grantsUserSecurity(inOAuth2 data: Data) -> Bool? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let granted = object["scopes"] as? [Any]
+        else { return nil }
+        return granted.contains { ($0 as? String)?.utf8.elementsEqual(userSecurityScope.utf8) == true }
     }
 }
 
