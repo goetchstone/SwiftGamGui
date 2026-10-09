@@ -35,6 +35,8 @@ public final class UserChanges {
     }
 
     public private(set) var state: State = .idle
+    /// The address the current state is about, so a panel shows a result only under its own person.
+    public private(set) var subject: String?
     private let executor: Executor?
     private let directory: DirectoryStore
 
@@ -54,6 +56,7 @@ public final class UserChanges {
     /// so both are always sent (an unchanged one as it is now), trimmed.
     public func previewOrganization(of user: GamUser, title: String, department: String) async {
         let title = PythonText.strip(title), department = PythonText.strip(department)
+        subject = user.primaryEmail
         guard title != user.title || department != user.department else {
             state = .problem("Nothing to change: that's already \(user.fullName)'s title and department.")
             return
@@ -80,6 +83,7 @@ public final class UserChanges {
     private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String,
                       patch: @escaping @Sendable (GamUser) -> GamUser) async {
         guard !isBusy else { return }
+        subject = email
         guard let executor else {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
@@ -116,6 +120,11 @@ public final class UserChanges {
         case nil:
             state = .problem("Nothing ran.")
         }
+    }
+
+    /// Whether the current state is about `email`.
+    public func concerns(_ email: String) -> Bool {
+        subject.map { Guard.normalized($0) == Guard.normalized(email) } ?? false
     }
 
     /// Back to the user page; a held preview simply expires unused.

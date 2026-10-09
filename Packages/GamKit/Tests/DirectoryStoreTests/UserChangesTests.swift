@@ -131,6 +131,19 @@ final class UserChangesTests {
         #expect(directory.users?.contains { $0.primaryEmail == "missing@example.com" } == false)
     }
 
+    @Test func aResultShowsOnlyUnderItsOwnPerson() async throws {
+        try await connect()
+        await changes.previewSuspend(try user("alice@example.com"), suspend: true)
+        #expect(changes.concerns("ALICE@example.com"))
+        #expect(!changes.concerns("bob@example.com"))
+    }
+
+    @Test func clearingATitleSticksForACSVShapedRecordToo() {
+        let csv = GamUser(record: ["primaryEmail": .string("a@example.com"), "Organization Title": .string("Sales Lead")])
+        #expect(csv.title == "Sales Lead")
+        #expect(csv.with(title: "", department: "").title == "")
+    }
+
     @Test func aWriteForAnOldTenantNeverPatchesTheNewOne() async throws {
         try await connect()
         let alice = try user("alice@example.com")

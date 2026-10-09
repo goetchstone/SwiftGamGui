@@ -82,6 +82,10 @@ extension GamUser {
             if let department { organization["department"] = .string(department) }
             if let index { items[index] = .object(organization) } else { items.append(.object(organization)) }
             record["organizations"] = .array(items)
+            // A CSV-shaped record names them flat too, and the reader falls back to those: keep them equal,
+            // or a cleared title would come back from the flat key.
+            if let title, record["Organization Title"] != nil { record["Organization Title"] = .string(title) }
+            if let department, record["Organization Department"] != nil { record["Organization Department"] = .string(department) }
         }
         return GamUser(record: record)
     }

@@ -116,7 +116,7 @@ private struct UserDetail: View {
                 .accessibilityHint(user.suspended ? "Shows what unsuspending changes, before anything runs."
                                                   : "Shows what suspending changes, before anything runs.")
             }
-            ChangeStatus(changes: changes)
+            if changes.concerns(user.primaryEmail) { ChangeStatus(changes: changes) }
             Section("Role") {
                 LabeledContent("Title", value: user.title.isEmpty ? "—" : user.title)
                 LabeledContent("Department", value: user.department.isEmpty ? "—" : user.department)
