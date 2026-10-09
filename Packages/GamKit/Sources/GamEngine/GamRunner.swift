@@ -69,7 +69,9 @@ public struct GamRunner: Sendable {
         for pid in mine.intersection(children.withLock { $0.keys }) { kill(pid, SIGKILL) }
     }
 
-    public func run(
+    /// `package`: an argv with a config directory runs only from GamKit (AuthenticatedRunner,
+    /// GamVersion); the app reads through `AuthenticatedRunner.run(_: GamRead, …)`.
+    package func run(
         _ argv: [String],
         configDirectory: URL? = nil,
         timeout: Duration = GamRunner.defaultTimeout,

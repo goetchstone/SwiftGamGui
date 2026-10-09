@@ -2,8 +2,8 @@
 
 **Status: DECIDED 2026-10-09 — option A, with C's narrowing (the recommendation).** The operator's
 rule: "there is almost always a correct way to do something … we always do it the correct way."
-Nothing is built yet. It lands as its own refactor PR, then ChangeCore slice 3 builds on it (see
-"Decision" at the end).
+The refactor is built (typed builders, `package` routes, `WriteRouteTests`); ChangeCore slice 3 builds
+on it (see "Decision" at the end).
 
 ## The problem
 

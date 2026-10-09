@@ -155,7 +155,7 @@ struct DirectoryStoreTests {
     }
 
     @Test func aFailedOrCutRunShowsNothingButWhy() throws {
-        let argv = GamCommands.printUsers()
+        let argv = GamCommands.printUsers().argv
         let failed = GamResult(exitCode: 50, stdout: "", stderr: "ERROR: 403: Request had insufficient authentication scopes",
                                stdoutTruncated: false, stderrTruncated: false)
         #expect(throws: GamError.self) { try DirectoryStore.users(from: failed, argv: argv) }

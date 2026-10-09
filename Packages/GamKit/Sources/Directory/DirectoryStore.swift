@@ -91,24 +91,24 @@ public final class DirectoryStore {
                                detail: nil), domain, generation)
             return
         }
-        let argv = GamCommands.printUsers(fields: GamCommands.cacheFields)
+        let read = GamCommands.printUsers(fields: GamCommands.cacheFields)
         failure = nil
-        let task = Task { await perform(argv, as: domain, generation: generation, runner: runner) }
+        let task = Task { await perform(read, as: domain, generation: generation, runner: runner) }
         inFlight = (task, domain, generation)
         await task.value
     }
 
-    private func perform(_ argv: [String], as domain: Domain, generation: Int, runner: AuthenticatedRunner) async {
+    private func perform(_ read: GamRead, as domain: Domain, generation: Int, runner: AuthenticatedRunner) async {
         defer {
             if inFlight?.domain == domain, inFlight?.generation == generation { inFlight = nil }
         }
         let outcome: Result<([GamUser], [DirectoryReport], Date), any Error>
         do {
-            let result = try await runner.run(argv, as: domain, timeout: GamRunner.domainWideTimeout)
+            let result = try await runner.run(read, as: domain, timeout: GamRunner.domainWideTimeout)
             // Parsing and counting a large directory takes a while: not on the main actor.
             let now = now
             outcome = .success(try await Task.detached {
-                let users = try Self.users(from: result, argv: argv), at = now()
+                let users = try Self.users(from: result, argv: read.argv), at = now()
                 return (users, DirectoryReport.build(users, now: at), at)
             }.value)
         } catch {
@@ -119,7 +119,7 @@ public final class DirectoryStore {
         case .success(let (users, reports, loadedAt)):
             snapshot = Snapshot(users: users, reports: reports, loadedAt: loadedAt, domain: domain, generation: generation)
         case .failure(let error):
-            failure = (Self.problem(for: error, argv: argv), domain, generation)
+            failure = (Self.problem(for: error, argv: read.argv), domain, generation)
         }
     }
 

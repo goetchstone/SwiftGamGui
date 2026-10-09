@@ -94,7 +94,7 @@ struct GoldenArgvTests {
     ]
 
     /// Ported builders, by GamGUI's name.
-    static let implemented: [String: @Sendable (Args) throws -> [String]] = [
+    static let implemented: [String: @Sendable (Args) throws -> any GamCommand] = [
         "version": { _ in GamCommands.version() },
         "check_svcacct": { try GamCommands.checkServiceAccount(admin: $0.string("admin"), scopes: $0.strings("scopes")) },
         "print_users": { try GamCommands.printUsers(query: $0.text("query"), fields: $0.list("fields")) },
@@ -195,7 +195,7 @@ struct GoldenArgvTests {
     ]
 
     /// Each builder that has defaults, called with only its required arguments.
-    static let defaultCalls: [String: @Sendable () -> [String]] = [
+    static let defaultCalls: [String: @Sendable () -> any GamCommand] = [
         "add_calendar_acl": { GamCommands.addCalendarACL(email: "<email>", target: "<target>") },
         "add_calendar_acl_cal": { GamCommands.addCalendarACL(calendarID: "<calendar_id>", scope: "<scope>") },
         "add_calendar_event": { GamCommands.addCalendarEvent(calendar: "<calendar>", summary: "<summary>", start: "<start>", end: "<end>") },
@@ -240,7 +240,7 @@ struct GoldenArgvTests {
             let args = Args(item.kwargs)
             if let expected = item.argv {
                 // Bytes, not Strings: Swift's == treats "é" and "e" + U+0301 as equal; GAM doesn't.
-                #expect(try build(args).map { Array($0.utf8) } == expected.map { Array($0.utf8) },
+                #expect(try build(args).argv.map { Array($0.utf8) } == expected.map { Array($0.utf8) },
                         "\(item.builder) \(item.kwargs)")
                 #expect(args.read == Set(item.kwargs.keys), "\(item.builder) ignores an argument")
             } else {
@@ -258,7 +258,7 @@ struct GoldenArgvTests {
         #expect(Set(Self.defaultCalls.keys) == Set(document.defaults.keys).subtracting(Self.notPorted.keys))
         for (name, call) in Self.defaultCalls {
             let expected = document.defaults[name]?.argv
-            #expect(call().map { Array($0.utf8) } == expected?.map { Array($0.utf8) }, "\(name)")
+            #expect(call().argv.map { Array($0.utf8) } == expected?.map { Array($0.utf8) }, "\(name)")
         }
     }
 

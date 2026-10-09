@@ -21,7 +21,7 @@ public actor Vault {
 
     /// Every stored credential for `domain`. Throws `missing` when a credential GAM needs is absent,
     /// and `keychain` for any other store failure.
-    public func credentials(for domain: Domain) async throws -> [Credential: Secret] {
+    package func credentials(for domain: Domain) async throws -> [Credential: Secret] {
         if let started = sessionStarted, clock.now - started >= sessionLifetime {
             lock()
         }
@@ -102,3 +102,19 @@ public actor Vault {
         }
     }
 }
+
+#if DEBUG
+extension Vault {
+    /// Debug builds only, for the app's vault spike: reads every credential as a run does (so the Touch
+    /// ID prompt and the session reuse can be timed on a real Mac) and says which were found, never
+    /// their values. `credentials(for:)` itself is `package`, so the app can't hold a secret.
+    public func spikeRead(for domain: Domain) async throws -> Set<Credential> {
+        Set(try await credentials(for: domain).keys)
+    }
+
+    /// Debug builds only: whether the stored `oauth2.txt` is exactly `expected` (the spike's write-back check).
+    public func spikeOAuth2(for domain: Domain, equals expected: Data) async throws -> Bool {
+        try await credentials(for: domain)[.oauth2]?.bytes == expected
+    }
+}
+#endif

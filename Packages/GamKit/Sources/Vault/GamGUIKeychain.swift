@@ -33,7 +33,7 @@ public struct GamGUIKeychain: Sendable {
     }
 
     /// The credentials GamGUI stored under `entry`'s exact spelling.
-    public func credentials(for entry: Entry) throws -> [Credential: Secret] {
+    package func credentials(for entry: Entry) throws -> [Credential: Secret] {
         var found: [Credential: Secret] = [:]
         for credential in Credential.allCases {
             if let data = try read("gamgui:\(entry.spelling)", credential.rawValue), !data.isEmpty {

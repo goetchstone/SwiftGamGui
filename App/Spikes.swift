@@ -151,24 +151,23 @@ enum Spikes {
             print("domains: \(try await vault.domains())")
             let clock = ContinuousClock()
             var started = clock.now
-            _ = try await vault.credentials(for: domain)
+            _ = try await vault.spikeRead(for: domain)
             print("read #1 ok in \(clock.now - started) (expect one Touch ID prompt)")
             started = clock.now
-            _ = try await vault.credentials(for: domain)
+            _ = try await vault.spikeRead(for: domain)
             print("read #2 ok in \(clock.now - started) (same session: expect no prompt)")
             if let binary = AppServices.mockGam() {
                 let base = try RuntimeDirectory.prepare()
                 let runner = AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: base)
                 let mockEnv = ProcessInfo.processInfo.environment.filter { GamEnvironment.mockOnly.contains($0.key) }
-                let result = try await runner.run(["info", "user", "alice@example.com"], as: domain,
+                let result = try await runner.run(GamCommands.infoUser(email: "alice@example.com"), as: domain,
                                                   extraEnvironment: mockEnv)
                 let left = try FileManager.default.contentsOfDirectory(atPath: base.path).filter { $0.hasPrefix("gamcfg-") }
                 print("authenticated run: exit \(result.exitCode); gamcfg dirs left: \(left.count)")
                 if mockEnv["GAM_MOCK_REFRESH"] != nil {
                     // The write-back updates the stored item in place (SecItemUpdate).
                     started = clock.now
-                    let stored = try await vault.credentials(for: domain)[.oauth2]?.bytes
-                    let updated = stored == Data("refreshed-token-payload\n".utf8)
+                    let updated = try await vault.spikeOAuth2(for: domain, equals: Data("refreshed-token-payload\n".utf8))
                     print("refreshed oauth2.txt written back in place: \(updated) (read in \(clock.now - started))")
                 }
             } else {

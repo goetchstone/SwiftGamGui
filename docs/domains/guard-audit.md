@@ -55,6 +55,12 @@ a write.
   every change set whose argv deletes an account.
 - An alias delete removed the account it belonged to (2026-09-24): `aliasDeletes`.
 
+## Built: typed commands and closed routes (before slice 3)
+Builders return `GamRead` or `GamWrite`; the app can run only reads; the source scan
+(`WriteRouteTests`) holds the routes the compiler can't. See [gam-runner.md](gam-runner.md).
+
 ## Not built yet
 The held preview (exact argv, digest, tenant, generation, origin, expiry, single use), the executor
-and its ticket (which writes the begin and end records), multi-step plans, and the source-scan test.
+and its ticket (which writes the begin and end records, and is the only caller of a `package` write
+entry point that takes a `GamWrite`), multi-step plans, and the executor's behavioural cases from
+`test_write_routes_guarded.py` (a bare confirm, an edited form, a replay).

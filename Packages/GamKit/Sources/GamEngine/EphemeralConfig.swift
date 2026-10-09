@@ -52,7 +52,7 @@ public final class EphemeralConfig: Sendable {
 
     /// Creates a fresh directory under `base` and writes `files` (name → contents) into it. All or
     /// nothing: if any step fails, the directory is wiped before the error is thrown.
-    public static func materialize(files: [String: Data], in base: URL) throws -> EphemeralConfig {
+    package static func materialize(files: [String: Data], in base: URL) throws -> EphemeralConfig {
         try RuntimeDirectory.verify(base)
         for name in files.keys where !isPlainName(name) {
             throw Failure.invalidFileName(name)

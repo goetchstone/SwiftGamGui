@@ -14,7 +14,9 @@ description: Add a curated GAM operation to SwiftGamGui (a typed builder that ru
    `GamChoices.swift`, so the builder can't be handed a value GAM doesn't know; free-form text reaches
    it through `init(validating:)`, which throws as GamGUI's `ValueError` builders do and matches
    bytes, not `String ==`.
-4. **A write** runs only through ChangeCore (#2) with its authoritative risk level; a read runs from the
-   Builder. Never make a write runnable by promotion (#3).
+4. **Pick the builder's type.** A read returns `GamRead`, and `CommandKindTests` must agree it is
+   read-only by GamGUI's verb rule. A write returns `GamWrite` with its own `WriteAction` case, and runs
+   only through ChangeCore (#2) with its authoritative risk level. Never make a write runnable by
+   promotion (#3).
 5. **Catalog entry** with typed slots; `swift test` green; record the new command as **not yet** in the
    README live table until `live-verify` proves it.
