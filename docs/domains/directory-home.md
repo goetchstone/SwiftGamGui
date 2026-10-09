@@ -95,8 +95,9 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   how much it can hurt. A destructive confirm is never the Return-key default.
 - Held to `Tests/DirectoryStoreTests/UserChangesTests` against the strict mock: GamGUI's argv byte for
   byte, the audit record, the patch, a bare confirm refused, a failure patching nothing.
-- **Not live yet:** both writes are argv-identical to GamGUI's live-proven ones; proving them here
-  needs the operator's per-action yes, on a throwaway account (`live-verify`).
+- **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
+  app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
+  destructive, so (no spare license) it is first proven on the operator's next real leaver.
 
 ## Testing / live status
 - Mock-tested through the strict mock's `print users`.
