@@ -56,6 +56,15 @@ an allowlisted environment, a timeout, and capped output capture.
   its 1,293 cases are refusals.
 - An empty optional value is left out, as GamGUI's `if value:` does; Swift takes `""`, not `nil`.
 
+## Fuzzing
+`Fuzz/GamFuzz.swift` is a libFuzzer target over GamEngine's platform-free files (the output parsers,
+`GamError` and its masking, the builders' argv-only rule, the closed-set validators), built by
+`scripts/fuzz.sh` on Linux and run by CI's `fuzz` job in the digest-pinned Swift image. On a Mac, run it
+through Docker (the command is in the script). `Fuzz/gam.dict` gives it GAM's keywords: without it,
+300,000 runs never produced the word `signature`, and a redaction bug that skipped it went unfound.
+- A new platform-free file the parsers need goes on the script's source list; one that imports Vault
+  or Darwin can't.
+
 ## Authenticated runs
 `AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a
 per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets.md](secrets.md).
