@@ -106,7 +106,10 @@ area you touch (`docs/domains/`) and `docs/RULE-FEEDBACK.md`. The design is
 
 ## Waiting on the operator
 
-1. **The first live round**, following `.claude/skills/live-verify` (and GamGUI's, which it defers to).
+1. **The first live round — DONE 2026-10-09.** The operator's build copied GamGUI's credentials,
+   Touch ID worked, it connected to the domain and the directory listed. Not separately confirmed:
+   the token write-back's Keychain compare-and-swap (it only runs when GAM refreshes the token).
+   The original plan for the round, following `.claude/skills/live-verify` (and GamGUI's, which it defers to).
    - The operator launches the app (a team-signed build: `Config/Local.xcconfig` with their team,
      built once in Xcode) and answers every Touch ID and Allow prompt. You never start it against the
      real tenant.
@@ -120,7 +123,7 @@ area you touch (`docs/domains/`) and `docs/RULE-FEEDBACK.md`. The design is
 3. **The Siri spike:** Siri recognising "GamGUI" (§12, §13 risk 3) has never been run, and there is no
    App Intents code yet. The operator has to speak, and it comes before phase 2's
    signature-template intent.
-4. **A design call before any write path:** ChangeCore's held preview, executor and write ticket (§6).
+4. **DECIDED 2026-10-09: option A** (`docs/plans/2026-10-09-write-path-options.md`). **A design call before any write path:** ChangeCore's held preview, executor and write ticket (§6).
    - Today `AuthenticatedRunner.run` is public, and beneath it so are `GamRunner.run`,
      `Vault.credentials(for:)` and `EphemeralConfig.materialize`. So the app target could start a
      credentialed `gam` call by more than one route.
