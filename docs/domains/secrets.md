@@ -70,6 +70,13 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
 
 ## Live (2026-10-08, real Keychain, throwaway items, `SWIFTGAMGUI_SPIKE=vault`)
 - Three items stored. `domains()` lists them **without a prompt**, because it reads attributes only.
+  - **But (2026-10-09):** the operator saw Touch ID on entering Setup, whose only Keychain call is
+    `domains()`. The spike listed items it had just created in the same session; a fresh launch may
+    differ. So `KeychainStore` now keeps a name-only index (`<service>.domains`: one item per domain,
+    empty data, no user presence) and lists from it. A domain is indexed before its first credential is
+    written and dropped by `forget` after `Vault.remove` deletes them all. Items stored before the index
+    are listed the old way once and indexed. CI can't run the data-protection Keychain: confirm on the
+    operator's Mac (Setup opened twice, no prompt) and with `SWIFTGAMGUI_SPIKE=vault`.
 - **One Touch ID per session.** The first read took about 2 s (the prompt); the second took 1.6 ms,
   with no prompt.
 - An authenticated run of the mock `gam` exited 0, with **no `gamcfg-*` folder left**.

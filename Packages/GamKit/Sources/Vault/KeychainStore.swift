@@ -62,6 +62,7 @@ public final class KeychainStore: SecretStore {
     }
 
     package func write(_ data: Data, as credential: Credential, for domain: Domain) throws {
+        try index(domain)
         if try update(data, as: credential, for: domain) { return }
         var error: Unmanaged<CFError>?
         guard let access = SecAccessControlCreateWithFlags(
@@ -138,7 +139,50 @@ public final class KeychainStore: SecretStore {
         }
     }
 
+    /// The domains, from the index: one item per domain under `<service>.domains`, holding nothing but
+    /// its name, with no user-presence control. Listing the credential items themselves asked for Touch
+    /// ID every time Setup opened, even for their attributes. Items stored before the index existed are
+    /// listed the old way once (one prompt at most) and indexed.
     package func domains() throws -> [Domain] {
+        let indexed = try accounts(in: indexService)
+        if !indexed.isEmpty { return Set(indexed.compactMap(Domain.init)).sorted() }
+        let legacy = Set(try accounts(in: service).compactMap { $0.split(separator: "/").first.flatMap { Domain(String($0)) } })
+        for domain in legacy { try index(domain) }
+        return legacy.sorted()
+    }
+
+    package func forget(_ domain: Domain) throws {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: indexService,
+            kSecAttrAccount: domain.name,
+            kSecUseDataProtectionKeychain: true,
+        ]
+        let status = context.withLock { _ in SecItemDelete(query as CFDictionary) }
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw VaultError.keychain(status) }
+    }
+
+    /// The domain index's service: names only, so no access control is needed to read it.
+    private var indexService: String { "\(service).domains" }
+
+    /// Adds `domain` to the index, before any of its credentials, so a stored credential is always listed
+    /// (and can be removed). An entry already there is fine.
+    private func index(_ domain: Domain) throws {
+        let item: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: indexService,
+            kSecAttrAccount: domain.name,
+            kSecUseDataProtectionKeychain: true,
+            kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrLabel: "GamGUI: \(domain.name) (the domain's name only)",
+            kSecValueData: Data(),
+        ]
+        let status = context.withLock { _ in SecItemAdd(item as CFDictionary, nil) }
+        guard status == errSecSuccess || status == errSecDuplicateItem else { throw VaultError.keychain(status) }
+    }
+
+    /// The account names of every item under `service`: attributes only.
+    private func accounts(in service: String) throws -> [String] {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
@@ -149,14 +193,9 @@ public final class KeychainStore: SecretStore {
         var items: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &items)
         switch status {
-        case errSecSuccess:
-            let accounts = (items as? [[CFString: Any]] ?? []).compactMap { $0[kSecAttrAccount] as? String }
-            return Set(accounts.compactMap { $0.split(separator: "/").first.flatMap { Domain(String($0)) } })
-                .sorted()
-        case errSecItemNotFound:
-            return []
-        default:
-            throw VaultError.keychain(status)
+        case errSecSuccess: return (items as? [[CFString: Any]] ?? []).compactMap { $0[kSecAttrAccount] as? String }
+        case errSecItemNotFound: return []
+        default: throw VaultError.keychain(status)
         }
     }
 

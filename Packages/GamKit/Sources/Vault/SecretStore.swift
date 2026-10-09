@@ -25,8 +25,10 @@ package protocol SecretStore: Sendable {
     func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool
     /// Removing an item that isn't there is not an error; any other failure throws.
     func delete(_ credential: Credential, for domain: Domain) throws
-    /// Every domain with at least one stored credential. Reads attributes only, never secret data.
+    /// Every domain with credentials stored. Never secret data, and never a Touch ID prompt.
     func domains() throws -> [Domain]
+    /// Drops what lists `domain` once its credentials are all removed (`Vault.remove`).
+    func forget(_ domain: Domain) throws
     /// Ends the authenticated session, so the next read asks for Touch ID or the password again.
     func endSession()
 }
@@ -107,6 +109,9 @@ public final class MemoryStore: SecretStore {
                 .sorted()
         }
     }
+
+    /// Nothing to drop: the domains are read from the items themselves.
+    public func forget(_ domain: Domain) throws {}
 
     public func endSession() {
         state.withLock { $0.sessionsEnded += 1 }
