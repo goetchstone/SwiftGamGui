@@ -28,13 +28,13 @@ let package = Package(
         .target(name: "Stores"),
         .target(name: "Assist"),
         .target(name: "Setup", dependencies: ["GamEngine", "Vault"]),
-        .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault"]),
+        .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault", "ChangeCore"]),
         .target(name: "TestSupport", dependencies: ["GamEngine", "Vault"]),
         .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "VaultTests", dependencies: ["Vault"]),
         .testTarget(name: "ChangeCoreTests", dependencies: ["ChangeCore", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
-        .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "TestSupport"]),
+        .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "ChangeCore", "TestSupport"]),
         .testTarget(name: "SpikeTests"),
     ]
 )

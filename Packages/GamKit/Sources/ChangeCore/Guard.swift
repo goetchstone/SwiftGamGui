@@ -165,7 +165,7 @@ public enum Guard {
     }
 
     /// GamGUI's `.strip().lower()`.
-    static func normalized(_ text: String) -> String {
+    package static func normalized(_ text: String) -> String {
         PythonText.lower(PythonText.strip(text))
     }
 }

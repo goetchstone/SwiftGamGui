@@ -80,6 +80,24 @@ off the main actor.
 It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes come with ChangeCore
 (phase 2).
 
+## Users writes (phase 2, slice 4)
+`Directory/UserChanges.swift`: the user page's first writes, GamGUI's `/users/organization` and
+`/users/suspend/*`, each through ChangeCore (`Executor.preview`, then `run` on the operator's confirm).
+- **Title and department:** GAM's `organization … primary` sets both together, so both are sent (an
+  unchanged one as it is now), trimmed; an unchanged pair is no write. LOW.
+- **Suspend / unsuspend:** GamGUI's `plan_suspend`: suspend is destructive (a Confirm click),
+  unsuspend LOW.
+- **On success** the cached user is patched (`GamUser.with`, `DirectoryStore.patch`: GamGUI's
+  `patch_user`), only while the cache still belongs to the tenant and generation the write ran on;
+  the reports are counted again. A failure patches nothing and says why, with GAM's remediation.
+- **The screen** (`UsersView`): the detail panel's **Edit Title and Department…** and **Suspend… /
+  Unsuspend…** open a preview sheet: the change in words, the command as GAM gets it (masked), and
+  how much it can hurt. A destructive confirm is never the Return-key default.
+- Held to `Tests/DirectoryStoreTests/UserChangesTests` against the strict mock: GamGUI's argv byte for
+  byte, the audit record, the patch, a bare confirm refused, a failure patching nothing.
+- **Not live yet:** both writes are argv-identical to GamGUI's live-proven ones; proving them here
+  needs the operator's per-action yes, on a throwaway account (`live-verify`).
+
 ## Testing / live status
 - Mock-tested through the strict mock's `print users`.
 - **Not live yet:** the first real load is the operator's, with Touch ID and an explicit go for a live

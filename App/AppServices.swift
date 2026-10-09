@@ -15,6 +15,8 @@ struct AppServices {
     let gam: (runner: GamRunner, runtimeDirectory: URL)?
     /// The only path to a write (ChangeCore); none without gam.
     let executor: Executor?
+    /// The user page's writes, through the executor.
+    let userChanges: UserChanges
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
 
@@ -41,8 +43,9 @@ struct AppServices {
                 setup?.active.map { ($0, setup!.generation) }
             }, extraEnvironment: extraEnvironment)
         }
-        return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam,
-                           executor: executor, auditURL: auditURL)
+        let directory = DirectoryStore(setup: setup, runner: runner)
+        return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
+                           userChanges: UserChanges(executor: executor, directory: directory), auditURL: auditURL)
     }
 
     #if DEBUG
