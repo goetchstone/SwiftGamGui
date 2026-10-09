@@ -1,5 +1,10 @@
 # SwiftGamGui
 
+[![CI](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/goetchstone/SwiftGamGui/badge)](https://scorecard.dev/viewer/?uri=github.com/goetchstone/SwiftGamGui)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **GamGUI, rebuilt as a native macOS app.** A SwiftUI front end for
 [GAM7](https://github.com/GAM-team/GAM), the Google Workspace admin CLI — the successor to the Python
 GamGUI, with the same engine underneath: every operation is the same `gam` command GamGUI runs, held
