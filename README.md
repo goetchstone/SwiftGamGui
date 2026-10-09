@@ -13,15 +13,6 @@ byte-for-byte to GamGUI's live-proven commands by the test suite.
 
 Not affiliated with Google or the GAM team. GAM is their project; this app drives it.
 
-## Why native
-
-- **No local web server.** GamGUI served its UI from `127.0.0.1` behind a token and an Origin check;
-  a native window has nothing to defend.
-- **Keychain with user presence.** Credentials stay in the data-protection Keychain, this device only,
-  behind Touch ID or your password.
-- **Siri and on-device models**, with a hard rule: they draft previews; you confirm. An optional
-  "Just do it" switch covers a short list of simple actions.
-
 ## Build from source
 
 Requires macOS 27 and Xcode 27.
@@ -48,14 +39,11 @@ Tests: `swift test --package-path Packages/GamKit`. CI runs the same on GitHub's
 image, builds the app, checks its signature and entitlements (`scripts/check_app.sh`), and vendors the
 pinned GAM; `ci-ok` is the one required check.
 
-### Gatekeeper, and why there are no downloadable builds yet
+### No downloadable builds yet
 
-An app you build yourself runs: Gatekeeper only checks files that arrive *quarantined* (downloaded by
-a browser, Mail, AirDrop). A build downloaded from a release page would be quarantined, and anything
-not signed with a **Developer ID certificate and notarized by Apple** is blocked — that includes
-ad-hoc and free Personal Team signatures. So until the project has a paid Apple Developer Program
-membership, the supported way to run GamGUI is to build it from source. Release downloads come with
-Developer ID signing and notarization (design doc, phase 6).
+A build you make yourself runs. A downloaded one would be blocked by Gatekeeper unless it's signed
+with a Developer ID and notarized, which needs a paid Apple Developer membership. Until then, build
+from source.
 
 A free Personal Team's provisioning profile **expires after 7 days**. Rebuild in Xcode at least
 weekly (a build renews it); the credentials you stored stay, because they belong to the team and the
