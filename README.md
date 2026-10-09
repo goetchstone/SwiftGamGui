@@ -1,78 +1,61 @@
 # SwiftGamGui
 
-**GamGUI, rebuilt as a native macOS app.** A SwiftUI front end for
-[GAM7](https://github.com/GAM-team/GAM), the Google Workspace admin CLI — the successor to the Python
-GamGUI, with the same engine underneath: every operation is the same `gam` command GamGUI runs, held
-byte-for-byte to GamGUI's live-proven commands by the test suite.
+[![CI](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/goetchstone/SwiftGamGui/badge)](https://scorecard.dev/viewer/?uri=github.com/goetchstone/SwiftGamGui)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> **Status: early, read-only.** Phase 1: Setup (import credentials, copy them from GamGUI, Check
-> access), Home (the directory's counts and GamGUI's reports) and a read-only Users list, over the GAM
-> runner and parity fixtures. None of it has run against a real tenant yet, and nothing writes. Use the
-> Python GamGUI for real work until a screen here says otherwise. Plan:
-> [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
+A native macOS version of [GamGUI](https://github.com/goetchstone/gamgui), the Google Workspace admin
+app built on [GAM7](https://github.com/GAM-team/GAM). It runs the same `gam` commands GamGUI runs, and
+the tests check that they match GamGUI's exactly.
 
-Not affiliated with Google or the GAM team. GAM is their project; this app drives it.
+**Status: early.** You can import credentials (or copy them from GamGUI), check access, see the
+directory's counts and reports, and browse users. Nothing has run against a real tenant yet, and
+nothing writes. Use GamGUI for real work for now. The plan is in
+[docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
-## Why native
-
-- **No local web server.** GamGUI served its UI from `127.0.0.1` behind a token and an Origin check;
-  a native window has nothing to defend.
-- **Keychain with user presence.** Credentials stay in the data-protection Keychain, this device only,
-  behind Touch ID or your password.
-- **Siri and on-device models**, with a hard rule: they draft previews; you confirm. An optional
-  "Just do it" switch covers a short list of simple actions.
+Not affiliated with Google or the GAM team.
 
 ## Build from source
 
-Requires macOS 27 and Xcode 27.
+You need macOS 27 and Xcode 27.
 
-1. Open Xcode once (or run `sudo xcodebuild -runFirstLaunch`) so its components are installed.
-2. Clone this repo next to a checkout of [GamGUI](https://github.com/goetchstone/gamgui) (the parity
-   reference and fixture generator).
-3. Vendor GAM against the pin: `scripts/fetch_gam.sh`.
-4. Add your Apple ID in Xcode → Settings → Accounts (a free Personal Team works), then create
-   `Config/Local.xcconfig` (gitignored) with your team:
+1. Open Xcode once, or run `sudo xcodebuild -runFirstLaunch`, so its components are installed.
+2. Download the pinned GAM: `scripts/fetch_gam.sh`.
+3. In Xcode → Settings → Accounts, add your Apple ID (a free Personal Team is enough). Then create
+   `Config/Local.xcconfig` (it's gitignored) with your team ID:
    ```
    DEVELOPMENT_TEAM = ABCDE12345
    CODE_SIGN_IDENTITY = Apple Development
    CODE_SIGN_ENTITLEMENTS = Config/GamGUI-Team.entitlements
    ```
-   The team entitlements claim a keychain access group, which makes Xcode provision the app. Without
-   this file the app signs ad-hoc ("Sign to Run Locally"): it builds and runs, but it can't use the
-   data-protection Keychain, so it can't store credentials.
-5. Open `SwiftGamGui.xcodeproj` and build the **GamGUI** scheme **once in Xcode** (⌘B): that's when
-   Xcode creates the provisioning profile with your account (`xcodebuild` alone reports "No
-   Accounts"). After that, `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build` works.
+   Without this file the app still builds, but it can't save credentials to the Keychain.
+4. Open `SwiftGamGui.xcodeproj` and build the **GamGUI** scheme in Xcode once (⌘B). Xcode sets up
+   signing with your account on that first build. After that you can also build from the command
+   line: `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build`.
 
-Tests: `swift test --package-path Packages/GamKit`. CI runs the same on GitHub's macOS 27 / Xcode 27
-image, builds the app, checks its signature and entitlements (`scripts/check_app.sh`), and vendors the
-pinned GAM; `ci-ok` is the one required check.
+A free Personal Team's signing expires after 7 days, so rebuild in Xcode at least once a week. Your
+stored credentials survive a rebuild. If you switch to a different team, import them again.
 
-### Gatekeeper, and why there are no downloadable builds yet
+There are no downloadable builds yet: macOS blocks a downloaded app unless it's signed with a paid
+Developer ID and notarized by Apple.
 
-An app you build yourself runs: Gatekeeper only checks files that arrive *quarantined* (downloaded by
-a browser, Mail, AirDrop). A build downloaded from a release page would be quarantined, and anything
-not signed with a **Developer ID certificate and notarized by Apple** is blocked — that includes
-ad-hoc and free Personal Team signatures. So until the project has a paid Apple Developer Program
-membership, the supported way to run GamGUI is to build it from source. Release downloads come with
-Developer ID signing and notarization (design doc, phase 6).
+## Tests
 
-A free Personal Team's provisioning profile **expires after 7 days**. Rebuild in Xcode at least
-weekly (a build renews it); the credentials you stored stay, because they belong to the team and the
-bundle ID, not to the profile.
+`swift test --package-path Packages/GamKit`. CI runs the same tests, then builds the app and checks
+how it's signed.
 
-If you later switch to a different signing team, the app can no longer see the credentials the old
-build stored; re-import them once.
+The fixtures the tests compare against are generated from GamGUI. To regenerate them you need a GamGUI
+checkout next to this one: `../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py`.
 
-## Live verification status
+## Live verification
 
-Every write will be audited, and this table will come from the audit log. **argv-identical** means
-the native app emits exactly the command a GamGUI-confirmed write ran; **confirmed** means the native
-app itself has run it against a production tenant.
+Each write will be listed here. **argv-identical** means it sends exactly the command a GamGUI write
+already proven live sent; **confirmed** means this app has itself run it against a real tenant.
 
-| Write | Native status |
+| Write | Status |
 |---|---|
-| *(none yet — phase 2)* | |
+| *(none yet; writes come in phase 2)* | |
 
 ## License
 

@@ -1,9 +1,10 @@
 # Plan: SwiftGamGui — GamGUI as a native Mac app, with GAM still the engine
 
-**Status: IN PROGRESS — phase 1, slice 1 (scaffold and spikes) DONE 2026-10-08. Slice 2a (Vault,
-per-call credential folders, authenticated runs) merged as PR #1. Slice 2b-core (import, GamGUI
-copy, Check access) merged as PR #2. 2b-ui (the Setup screen, GAM embedded and signed in the app) is in
-review; then the first live, read-only Check access with the operator. See "Phase 1, slice 1 results" before the Appendix.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
+**Status (2026-10-09): IN PROGRESS. Phase 1 is built (#1 to #8) except what needs the operator: the
+first live read-only round, the model and Siri spikes. Phase 2 has begun with ChangeCore's guard and
+audit log (#9, #10), which wait for the ChangeCore review. The executor and write ticket wait for the
+operator's design call. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
+progress" before the Appendix has the detail.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
 for a reader with no session context. It consolidates two drafts and the operator's answers from the
@@ -377,6 +378,9 @@ default, plus "Just do it"). Still open:
 
 ## Phase 1, slice 1 results (2026-10-08)
 
+History, as written at the end of slice 1: since then the runner uses `posix_spawn`, not `Process`
+(PR #2), and the repo is on GitHub. The runbooks in `docs/domains/` describe the current code.
+
 **Done:**
 - **Repo:** `SwiftGamGui` created locally (`main`, no remote, nothing committed yet).
 - **Framework carried over:** `CLAUDE.md` (invariants 1–11; 6 and 8 retired by the platform);
@@ -441,9 +445,10 @@ default, plus "Just do it"). Still open:
 - **The GitHub repo:** a separate OK from the operator.
 - **Re-check the on-device model** once its assets finish downloading (`SWIFTGAMGUI_SPIKE=model`).
 
-## Phase 1, slice 2 progress (2026-10-08, unattended)
+## Phase 1, slice 2 progress (2026-10-08 and 09, unattended)
 
-Merged, each after an adversarial review whose findings were fixed with tests:
+Merged. #3 to #8 each after an adversarial review whose findings were fixed with tests; #9 and #10
+without one yet, as the plan budgets one review for ChangeCore as a whole:
 - **#3 Setup screen:**
   - import from a GAM folder, copy from GamGUI, Check access, tenants, removal;
   - credential sets are whole or absent;
@@ -466,7 +471,6 @@ Merged, each after an adversarial review whose findings were fixed with tests:
 - **#9 ChangeCore, the guard:** GamGUI's `evaluate`/`enforce`/`alias_deletes`, 700 decisions.
 - **#10 ChangeCore, the audit log:** byte-for-byte GamGUI's lines; generations; redaction.
 
-Open:
 - **#8 Home and Users (read-only):**
   - the connection, GAM's version, and the directory's counts;
   - GamGUI's nine reports over 206 users;
@@ -476,11 +480,14 @@ Open:
     - GAM's first-run banner on stdout would have broken every read (now stripped, and the mock
       prints it).
 
+- **#11:** README trim, badges, the OpenSSF Scorecard workflow, the 2026-10-09 session handoff.
+
 **Next, for the operator first:** the held preview, the executor and its write ticket. The plan's ticket
 design means every builder returns a typed read or write command, a change to the builders' shape
 worth a look before it's made.
 
-Every port above is held to a fixture generated from frozen GamGUI (`scripts/gen_fixtures.py`).
+Every port since #4 is held to a fixture generated from frozen GamGUI (`scripts/gen_fixtures.py`). The
+setup-era ports (`CredentialFacts.adminEmail`, AccessCheck's `verify`) are held to hand-written cases.
 
 **Still the operator's (phase 1 "done when"):**
 - the first live import, the GamGUI copy (Allow prompts), Check access and a directory load on the
