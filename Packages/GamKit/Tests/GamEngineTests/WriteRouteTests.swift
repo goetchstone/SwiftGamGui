@@ -70,6 +70,28 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: Self.memoryCasts).isEmpty)
     }
 
+    /// Invariant 2: the runner's write entry takes a `WriteTicket`, and only ChangeCore's executor makes
+    /// one, after a held preview passed every check. A ticket anywhere else is a second write path.
+    /// By word, not by `WriteTicket(`: `.init()` with a `ticket:` label minted one unseen (ChangeCore's
+    /// review). Only the definition, the runner's parameter and the executor may name it.
+    @Test func onlyTheExecutorMintsAWriteTicket() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["WriteTicket", "ticket:"])
+                == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift",
+                    "Packages/GamKit/Sources/GamEngine/AuthenticatedRunner.swift",
+                    "Packages/GamKit/Sources/GamEngine/GamCommand.swift"])
+        #expect(try Self.files(in: "App", matching: ["WriteTicket", "ticket:"]).isEmpty)
+    }
+
+    /// Invariant 10: a model or Siri only drafts. The operator's confirmation is made in a confirm screen,
+    /// never in GamKit and never in code that also speaks to Siri or a model (an intent confirming its own
+    /// draft). The executor also demands a Confirm click for every non-form preview.
+    @Test func onlyAScreenMakesTheOperatorsConfirmation() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["OperatorConfirmation("]).isEmpty)
+        let confirming = try Self.files(in: "App", matching: ["OperatorConfirmation("])
+        let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
+        #expect(confirming.isDisjoint(with: voiceOrModel))
+    }
+
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.
     @Test func theAppNeverImportsGamKitTestably() throws {
         #expect(try Self.files(in: "App", matching: ["@testable"]).isEmpty)

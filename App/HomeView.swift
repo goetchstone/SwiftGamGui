@@ -1,3 +1,4 @@
+import ChangeCore
 import Directory
 import GamEngine
 import Setup
@@ -10,10 +11,28 @@ struct HomeView: View {
     let directory: DirectoryStore
     let gamVersion: String?
     let hasGam: Bool
+    let executor: Executor?
+    let auditURL: URL
     let openSetup: () -> Void
+    /// Writes that began and never ended (the app quit or crashed mid-call), read from the audit log.
+    @State private var unfinished: [Executor.Unfinished] = []
+    @State private var acknowledgeProblem: String?
 
     var body: some View {
         Form {
+            if !unfinished.isEmpty {
+                Section("Outcome unknown — check") {
+                    Text("GamGUI stopped while \(unfinished.count == 1 ? "this change was" : "these changes were") running. Check each in Google before running it again.")
+                    ForEach(Array(unfinished.enumerated()), id: \.offset) { _, write in
+                        Label("\(write.actionName) for \(write.target), started \(write.at)", systemImage: "questionmark.circle")
+                    }
+                    Button("Mark as Checked") { Task { await acknowledge() } }
+                        .accessibilityHint("Records that you checked these changes in Google, so they stop showing here.")
+                    if let acknowledgeProblem {
+                        Label(acknowledgeProblem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    }
+                }
+            }
             Section("Connection") {
                 connection
                 LabeledContent("GAM") {
@@ -30,6 +49,24 @@ struct HomeView: View {
             }
         }
         .formStyle(.grouped)
+        .task { await loadUnfinished() }
+    }
+
+    /// The audit log can hold a million records: read it off the main actor.
+    private func loadUnfinished() async {
+        let url = auditURL
+        unfinished = await Task.detached(priority: .utility) { Executor.unfinished(in: url) }.value
+    }
+
+    private func acknowledge() async {
+        do {
+            let url = auditURL, checked = unfinished
+            try await Task.detached { try Executor.acknowledge(checked, in: url) }.value
+            acknowledgeProblem = nil
+        } catch {
+            acknowledgeProblem = "The audit log couldn't be written: \(error.localizedDescription)"
+        }
+        await loadUnfinished()
     }
 
     @ViewBuilder private var connection: some View {

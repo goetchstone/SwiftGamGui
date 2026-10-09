@@ -59,8 +59,47 @@ a write.
 Builders return `GamRead` or `GamWrite`; the app can run only reads; the source scan
 (`WriteRouteTests`) holds the routes the compiler can't. See [gam-runner.md](gam-runner.md).
 
+## Built: the executor (phase 2, slice 3)
+`Packages/GamKit/Sources/ChangeCore/ChangeCore.swift`, held to `Tests/ChangeCoreTests/ExecutorTests` (15
+cases against the strict mock; each check proven to bite by removing it).
+- **`WriteStep`**: one `GamWrite`, its target and summary, `requires` (earlier steps it needs), `about`
+  (audit extra), typed `secrets`. Its risk never falls below `WriteAction.minimumRisk`, GamGUI's
+  destructive writes (delete user, suspend, delete calendar or event, data transfer, offboarding's
+  steps), so a caller can't understate a delete.
+- **`HeldPreview`**: made only by `Executor.preview`: the steps, a SHA-256 digest of their argv, the
+  domain and generation, the origin (form, Siri, model), the guard's decision, a `ContinuousClock`
+  time. Eight kept; fifteen minutes runnable, time asleep counted.
+- **`Executor.run`**, in order: take the preview (single use, refused or not); expiry; tenant and
+  generation; `Guard.refusal`; no target already in flight; the precondition re-read (false: "preview
+  again", never a silent re-plan); the write lock (writes serialized, as GamGUI's `_write_lock`); the
+  tenant again (a switch during the re-read or the wait). Then each step: a begin record, the run
+  through the runner's `package` write entry with a `WriteTicket`, an end record (exit code, ok, the
+  masked error and its kind). A failed or skipped prerequisite skips its dependents; an account-wide
+  failure stops the rest; a cancellation is recorded as interrupted.
+- **Records** carry `preview`, `digest`, `origin`, `step`, `phase` in `extra`, GamGUI's line format.
+  `Executor.unfinished(in:)` finds a begin with no end: Home shows it as "Outcome unknown — check".
+- **Secrets** are masked by value in the audit, errors, output and `shownArgv`, beside the positional
+  masks (the "surname Password" case is a test).
+- **The ticket**: `WriteTicket`'s init is `package`; `WriteRouteTests` holds that only ChangeCore
+  mints one. The app holds an `Executor` (AppServices) whose tenant is Setup's active domain.
+
+## ChangeCore's review (the plan's one adversarial review, with #9 and #10)
+Twelve findings, each now a test that fails without its fix (14 mutants, all caught):
+- **A ticket minted unseen** (`ticket: .init()` from Directory): the scan now forbids the word
+  `WriteTicket` and any `ticket:` outside ChangeCore and the runner's declaration.
+- **Invariant 10 unenforced:** the executor ignored the origin. A model's or Siri's preview now always
+  needs the Confirm click, and a scan keeps `OperatorConfirmation(` out of GamKit and out of any app
+  file that touches App Intents or a model.
+- **Alias deletes:** §6's "resolved to the primary" had no caller. The executor resolves each address a
+  step deletes (`info user`) just before the run and refuses an alias (failure-log 2026-09-24).
+- **A write that can't be audited ran:** now no begin record, no write; a lost end record is reported.
+- **The tenant** is checked before every step, and Setup forgets a re-imported domain before storing
+  its new credentials, so a plan never runs on unchecked credentials.
+- **Expiry and the precondition** are checked after the write lock, not before the wait.
+- In-flight targets compare as addresses (trimmed, lowercased); a run cancelled before gam starts
+  writes nothing; a timeout fails only its step; the argv stays inside ChangeCore and the summary is
+  masked; "outcome unknown" is read off the main actor, bounded, and can be marked as checked.
+
 ## Not built yet
-The held preview (exact argv, digest, tenant, generation, origin, expiry, single use), the executor
-and its ticket (which writes the begin and end records, and is the only caller of a `package` write
-entry point that takes a `GamWrite`), multi-step plans, and the executor's behavioural cases from
-`test_write_routes_guarded.py` (a bare confirm, an edited form, a replay).
+The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
+operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.
