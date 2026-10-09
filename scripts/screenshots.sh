@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Renders every screen of a debug GamGUI.app to PNGs, from the demo tenant and the strict mock GAM only:
+# credentials in memory, never the Keychain, and never the real gam (AppServices refuses anything but a
+# regular file named mock_gam.sh). CI's macOS job runs it; the operator can too. The capture leaves the
+# sidebar and toolbar blank: their system materials don't draw this way.
+#
+#   scripts/screenshots.sh path/to/Debug/GamGUI.app out-dir
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+app="${1:?usage: scripts/screenshots.sh path/to/GamGUI.app out-dir}"
+out="${2:?usage: scripts/screenshots.sh path/to/GamGUI.app out-dir}"
+binary="$app/Contents/MacOS/GamGUI"
+[ -x "$binary" ] || { echo "no executable at $binary" >&2; exit 1; }
+mkdir -p "$out"
+
+status=0
+for screen in home users setup; do
+  file="$out/$screen.png"
+  rm -f "$file"
+  # Each launch quits itself after the capture; give up on one that hangs.
+  env -i HOME="$HOME" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
+    SWIFTGAMGUI_DEMO=1 SWIFTGAMGUI_SCREEN="$screen" SWIFTGAMGUI_SNAPSHOT="$file" \
+    SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" "$binary" &
+  pid=$!
+  for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+  if kill -0 "$pid" 2>/dev/null; then kill "$pid"; echo "::error::$screen: no snapshot within 60 s" >&2; status=1; fi
+  wait "$pid" || true
+  if [ -s "$file" ]; then echo "$screen: $file"; else echo "::error::$screen: no image written" >&2; status=1; fi
+done
+exit "$status"

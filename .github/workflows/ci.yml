@@ -32,7 +32,7 @@ jobs:
       - name: Scripts parse
         run: |
           python3 -m py_compile scripts/*.py
-          bash -n scripts/fetch_gam.sh scripts/check_app.sh scripts/embed_gam.sh scripts/fuzz.sh Tests/Fixtures/mock_gam.sh
+          bash -n scripts/fetch_gam.sh scripts/check_app.sh scripts/embed_gam.sh scripts/fuzz.sh scripts/screenshots.sh Tests/Fixtures/mock_gam.sh
       - name: No invisible or bidirectional characters in source
         run: python3 -I scripts/check_text.py
 
@@ -62,6 +62,10 @@ jobs:
         run: xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Release -derivedDataPath "$RUNNER_TEMP/dd" build
       - name: Hardened runtime, entitlement allowlist, embedded GAM signed and runnable at the pinned version
         run: scripts/check_app.sh "$RUNNER_TEMP/dd/Build/Products/Release/GamGUI.app"
+      - name: Screenshots (debug build, demo tenant and the strict mock GAM only)
+        run: |
+          xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Debug -derivedDataPath "$RUNNER_TEMP/dd" build
+          scripts/screenshots.sh "$RUNNER_TEMP/dd/Build/Products/Debug/GamGUI.app" "$RUNNER_TEMP/attachments/screens"
       - name: Keep the snapshot attachments
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
