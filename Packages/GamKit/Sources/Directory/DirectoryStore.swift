@@ -58,6 +58,9 @@ public final class DirectoryStore {
     private func tenantChanged() {
         inFlight?.task.cancel()
         inFlight = nil
+        // A domain just connected: load it, as the operator asked (2026-10-09), rather than waiting for a
+        // click. A disconnect loads nothing.
+        if setup.active != nil { start() }
     }
 
     /// The users, while they belong to the connected tenant.
@@ -79,23 +82,36 @@ public final class DirectoryStore {
 
     /// One `gam print users` with the fields every screen uses, as the connected domain. A domain-wide
     /// read: it gets the long timeout.
+    /// Loads the connected tenant's users; while a load for it is already running (the one connecting
+    /// started), waits for that one instead of starting a second.
     public func load() async {
-        guard !isLoading else { return }
+        if isLoading, let running = inFlight?.task {
+            await running.value
+            return
+        }
+        await start()?.value
+    }
+
+    /// Starts a load and marks it running before returning, so a click meanwhile can't start a second.
+    /// Nil when one is already running or nothing can load.
+    @discardableResult
+    private func start() -> Task<Void, Never>? {
+        guard !isLoading else { return nil }
         let generation = setup.generation
         guard let domain = setup.active else {
             failure = (Problem(summary: "Connect a domain on Setup first.", detail: nil), nil, generation)
-            return
+            return nil
         }
         guard let runner else {
             failure = (Problem(summary: "This build has no GAM. Build the app again after running scripts/fetch_gam.sh.",
                                detail: nil), domain, generation)
-            return
+            return nil
         }
         let read = GamCommands.printUsers(fields: GamCommands.cacheFields)
         failure = nil
         let task = Task { await perform(read, as: domain, generation: generation, runner: runner) }
         inFlight = (task, domain, generation)
-        await task.value
+        return task
     }
 
     private func perform(_ read: GamRead, as domain: Domain, generation: Int, runner: AuthenticatedRunner) async {

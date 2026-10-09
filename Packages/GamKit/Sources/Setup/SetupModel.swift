@@ -1,6 +1,7 @@
 import Foundation
 import GamEngine
 import Observation
+import Synchronization
 import Vault
 
 /// The Setup screen's state and actions: which domains have credentials, which one GamGUI is connected
@@ -51,6 +52,7 @@ public final class SetupModel {
     private let runner: AuthenticatedRunner?
     private let gamgui: GamGUIKeychain
     private let readFolder: @Sendable (URL) throws -> [Credential: Secret]
+    private let lastDomain: LastDomain
     /// Where the guided setup's commands write the credentials. The folder is made (and made private
     /// again) on each use, not once at launch: one deleted or loosened since then is repaired.
     public let setupFolderURL: URL?
@@ -62,8 +64,10 @@ public final class SetupModel {
         runner: AuthenticatedRunner?,
         gamgui: GamGUIKeychain = GamGUIKeychain(),
         setupFolderURL: URL? = nil,
+        lastDomain: LastDomain = .userDefaults,
         readFolder: @escaping @Sendable (URL) throws -> [Credential: Secret] = CredentialFolder.read
     ) {
+        self.lastDomain = lastDomain
         self.vault = vault
         self.runner = runner
         self.gamgui = gamgui
@@ -249,11 +253,22 @@ public final class SetupModel {
         }
     }
 
+    /// At launch: checks the domain that was connected last time, so the app reconnects (and the
+    /// directory loads) without a trip to Setup. Still a real Check access: only a pass connects, as
+    /// always. Nothing happens when a domain is already connected or none was remembered.
+    public func reconnect() async {
+        guard active == nil, let name = lastDomain.load(), let domain = Domain(name) else { return }
+        if domains.isEmpty { await refresh() }
+        guard domains.contains(domain) else { return }
+        await checkAccess(domain)
+    }
+
     public func remove(_ domain: Domain) async {
         guard !isBusy else { return }
         activity = .working("Removing \(domain)…")
         do {
             try await vault.remove(domain)
+            if lastDomain.load() == domain.name { lastDomain.save(nil) }
             forget(domain)
             await refresh()
             activity = .done("Removed \(domain)'s credentials from this Mac.")
@@ -264,6 +279,7 @@ public final class SetupModel {
     }
 
     private func activate(_ domain: Domain) {
+        lastDomain.save(domain.name)
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -350,5 +366,34 @@ public final class SetupModel {
         default:
             return "\(error)"
         }
+    }
+}
+
+/// The domain connected last, by name only (nothing secret), so the next launch can check it again.
+public struct LastDomain: Sendable {
+    let load: @Sendable () -> String?
+    let save: @Sendable (String?) -> Void
+
+    public init(load: @escaping @Sendable () -> String?, save: @escaping @Sendable (String?) -> Void) {
+        self.load = load
+        self.save = save
+    }
+
+    static let key = "lastConnectedDomain"
+
+    /// The app's own preferences.
+    public static let userDefaults = LastDomain(
+        load: { UserDefaults.standard.string(forKey: key) },
+        save: { UserDefaults.standard.set($0, forKey: key) })
+
+    /// Kept in memory: the demo tenant and tests.
+    public static func memory(_ initial: String? = nil) -> LastDomain {
+        let box = MemoryBox(initial)
+        return LastDomain(load: { box.value.withLock { $0 } }, save: { name in box.value.withLock { $0 = name } })
+    }
+
+    private final class MemoryBox: Sendable {
+        let value: Mutex<String?>
+        init(_ initial: String?) { value = Mutex(initial) }
     }
 }

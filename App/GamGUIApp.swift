@@ -73,10 +73,16 @@ struct ContentView: View {
         .navigationSubtitle(services.setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
         .frame(minWidth: 760, minHeight: 520)
         .task {
-            // Local and credential-free: the only gam Home runs on its own.
+            // Local and credential-free.
             if let gam = services.gam {
                 gamVersion = await GamVersion.running(gam.runner, runtimeDirectory: gam.runtimeDirectory)
             }
+        }
+        .task {
+            // The domain connected last time is checked again (one Touch ID), and connecting loads the
+            // directory: no trip to Setup on every launch. Never during a spike or a snapshot.
+            guard !Spikes.isRequested else { return }
+            await services.setup.reconnect()
         }
     }
 }

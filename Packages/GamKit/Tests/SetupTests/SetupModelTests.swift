@@ -11,6 +11,7 @@ import Vault
 struct SetupModelTests {
     let store = MemoryStore()
     let base: URL
+    let lastDomain = LastDomain.memory()
 
     init() throws {
         base = try RuntimeDirectory.prepare(
@@ -21,7 +22,7 @@ struct SetupModelTests {
         let vault = Vault(store: store)
         let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
         let keychain = GamGUIKeychain { service, account in gamgui["\(service)|\(account)"].map { Data($0.utf8) } }
-        return SetupModel(vault: vault, runner: withRunner ? runner : nil, gamgui: keychain)
+        return SetupModel(vault: vault, runner: withRunner ? runner : nil, gamgui: keychain, lastDomain: lastDomain)
     }
 
     /// A GAM config folder whose oauth2.txt signs in as `admin`.
@@ -231,5 +232,36 @@ struct SetupModelTests {
         let model = model(withRunner: false)
         await model.checkAccess(Domain("example.com")!)
         #expect(model.activity == .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh."))
+    }
+
+    // MARK: reconnecting at launch (operator, 2026-10-09)
+
+    @Test func theLastConnectedDomainIsCheckedAgainAtLaunch() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        #expect(lastDomain.load() == "example.com", "a pass remembers the domain, by name only")
+        let relaunched = model()
+        #expect(relaunched.active == nil)
+        await relaunched.reconnect()
+        #expect(relaunched.active == Domain("example.com")!, "connected by a real check, not assumed")
+    }
+
+    @Test func aDomainThatFailsItsCheckDoesntConnectAtLaunch() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(admin: "partialdwd@example.org"), as: "example.org")
+        lastDomain.save("example.org")
+        await first.reconnect()
+        #expect(first.active == nil)
+    }
+
+    @Test func aRemovedDomainIsForgottenForTheNextLaunch() async throws {
+        let model = model()
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(Domain("example.com")!)
+        await model.remove(Domain("example.com")!)
+        #expect(lastDomain.load() == nil)
+        await model.reconnect()
+        #expect(model.active == nil)
     }
 }

@@ -77,6 +77,8 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
     written and dropped by `forget` after `Vault.remove` deletes them all. Items stored before the index
     are listed the old way once and indexed. CI can't run the data-protection Keychain: confirm on the
     operator's Mac (Setup opened twice, no prompt) and with `SWIFTGAMGUI_SPIKE=vault`.
+    **Confirmed by the operator, 2026-10-09:** one prompt (the one-time indexing), then none on entering
+    Setup again.
 - **One Touch ID per session.** The first read took about 2 s (the prompt); the second took 1.6 ms,
   with no prompt.
 - An authenticated run of the mock `gam` exited 0, with **no `gamcfg-*` folder left**.

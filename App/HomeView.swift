@@ -109,7 +109,7 @@ struct HomeView: View {
                 }
             }
         } else if setup.active != nil {
-            LabeledContent("Not loaded yet. Home doesn't call Google on its own.") {
+            LabeledContent("Not loaded yet. It loads when a domain connects, or now:") {
                 Button("Load the Directory") { Task { await directory.load() } }
                     .keyboardShortcut("r")
                     .disabled(directory.isLoading)

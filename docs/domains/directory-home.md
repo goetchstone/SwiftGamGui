@@ -3,8 +3,13 @@
 **One line:** the tenant's users, loaded by one `gam print users` on request and held for the tenant
 they were loaded for; Home shows the connection, the bundled GAM and the directory's counts.
 
-**Owns invariants:** the tenant generation (a screen never shows one tenant's data as another's), and
-"no Google call on its own" for Home.
+**Owns invariants:** the tenant generation (a screen never shows one tenant's data as another's).
+
+**Changed 2026-10-09 (operator):** GamGUI's "no Google call on its own" for Home was a web page's rule
+(no `gam` per page view). Here the directory loads once when a domain connects, and the app reconnects
+at launch by checking the last connected domain again (`SetupModel.reconnect`, one Touch ID: a real
+Check access, never an assumed connection). A load is marked running before the connect returns, so a
+click meanwhile waits for it instead of starting a second.
 
 **Enforcement home:** `Tests/DirectoryStoreTests`.
 
