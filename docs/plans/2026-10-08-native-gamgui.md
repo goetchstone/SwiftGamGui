@@ -5,7 +5,7 @@ on 2026-10-09: the operator's build copied GamGUI's credentials, Touch ID worked
 domain and listed the directory. The model and Siri spikes still wait on the operator. Phase 2 has
 begun with ChangeCore's guard and audit log (#9, #10), which wait for the ChangeCore review. The write
 path's design is decided (`docs/plans/2026-10-09-write-path-options.md`: typed `GamRead`/`GamWrite`),
-and its refactor is built: the app can run only reads. Next: the executor and write ticket (slice 3). Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
+and its refactor is built: the app can run only reads. GamGUI's guided setup (fresh-setup commands, the setup folder and its wipe, the delegation step) is ported. Next: the executor and write ticket (slice 3). Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
 progress" before the Appendix has the detail.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`

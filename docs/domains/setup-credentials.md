@@ -95,6 +95,28 @@ One adversarial reviewer proved five issues, all fixed with tests:
 - Window restoration is off (`.restorationBehavior(.disabled)`): every launch opens a fresh window.
 - Looking at it from the command line: `SWIFTGAMGUI_SNAPSHOT=<png>` (see CLAUDE.md, Commands).
 
+## The guided setup (phase 2, ported from GamGUI's Setup wizard)
+GamGUI's two steps for an admin with no GAM yet, and the delegation step after any import. All held to
+`Tests/Fixtures/setup.json`, generated from GamGUI's `setup_commands`, `dwd_auth_url` and `dwd_details`.
+- **Fresh setup** (`Setup/GuidedSetup.swift`, `FreshSetup`): `export GAMCFGDIR="<setup folder>"` and the
+  bundled gam's `create project <admin>`, `oauth create`, `create svcacct`, for the operator to run in
+  Terminal (they open a browser and ask questions). GamGUI's lines byte for byte, but only for values a
+  shell can't split or expand: an admin that isn't a plain address, or a path holding `$`, a backtick,
+  `\`, `"`, `!` or a control character, gets no commands (GamGUI pastes them unchecked).
+- **The setup folder** (`Vault/SetupFolder.swift`): `setup` beside the per-call run folder in the app's
+  Application Support folder, `0700`, this user's, no ACL allow entry, refused if a link. The import from
+  it wipes GAM's plain-text copies once the Vault holds the whole set, with GamGUI's failure history:
+  - recognised by identity (the inode `prepare` made), opened without following a link: a folder moved
+    away and replaced, or a case-variant spelling, is not ours (`SetupFolder.Failure.replaced`);
+  - only the files read, and only while each is still the inode whose bytes were read, looked up inside
+    the folder held open since the read; `gam.cfg` and anything swapped in are left alone;
+  - nothing is wiped if the Vault refused the set.
+- **The delegation step** (`Delegation`): the client ID (GamGUI's `str(… or "")`: a string, an integer's
+  digits, else empty), the scopes, the Admin-console link (Python's `urlencode(safe=':/,')`, so a value's
+  `&`, `=` and spaces are escaped) and whether `oauth2.txt` carries offboarding's sign-out scope. Read
+  from the credentials just imported or copied, so no extra Keychain read; it goes when the domain does.
+- `FolderSafety.grantsByACL` is shared by this folder and the per-call run folder.
+
 ## Not live yet
 The first real import, GamGUI copy (Allow prompts) and Check access on the operator's tenant — with
 the operator present (Touch ID, Allow, and their go for a live read).

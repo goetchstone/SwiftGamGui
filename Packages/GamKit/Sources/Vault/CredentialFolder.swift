@@ -27,12 +27,29 @@ public enum CredentialFolder {
         let dir = open(folder.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
         guard dir >= 0 else { throw Failure.notAFolder }
         defer { close(dir) }
-        var found: [Credential: Secret] = [:]
+        return try read(in: dir).found
+    }
+
+    /// A file's identity: the inode its bytes were read from.
+    package struct FileIdentity: Equatable, Sendable {
+        let device: dev_t
+        let inode: ino_t
+
+        init(_ info: stat) {
+            device = info.st_dev
+            inode = info.st_ino
+        }
+    }
+
+    /// The credentials in the open folder `dir`, and the identity of each file read.
+    package static func read(in dir: Int32) throws -> (found: [Credential: Secret], read: [Credential: FileIdentity]) {
+        var found: [Credential: Secret] = [:], identities: [Credential: FileIdentity] = [:]
         for credential in Credential.allCases {
             do {
-                if let data = try readFile(credential.fileName, in: dir) {
+                if let (data, identity) = try readFile(credential.fileName, in: dir) {
                     try check(data, as: credential)
                     found[credential] = Secret(data)
+                    identities[credential] = identity
                 }
             } catch where !Credential.required.contains(credential) {
                 continue
@@ -40,7 +57,7 @@ public enum CredentialFolder {
         }
         let missing = Credential.required.filter { found[$0] == nil }
         guard missing.isEmpty else { throw Failure.missing(missing) }
-        return found
+        return (found, identities)
     }
 
     /// UTF-8 JSON objects (GAM reads nothing else; a UTF-16 file parses in Foundation but not in GAM),
@@ -57,7 +74,7 @@ public enum CredentialFolder {
         }
     }
 
-    private static func readFile(_ name: String, in dir: Int32) throws -> Data? {
+    private static func readFile(_ name: String, in dir: Int32) throws -> (Data, FileIdentity)? {
         let fd = openat(dir, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard fd >= 0 else {
             switch errno {
@@ -87,7 +104,7 @@ public enum CredentialFolder {
             } else if n < 0 {
                 throw Failure.unreadable(name, errno)
             } else {
-                return data
+                return (data, FileIdentity(info))
             }
         }
     }

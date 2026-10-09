@@ -20,6 +20,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/audit.json       GamGUI's audit log: the line each record writes, and what its reader
                                   finds across generations.
   Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
+  Tests/Fixtures/setup.json       GamGUI's guided setup: the delegation step's client ID, Admin-console
+                                  link and sign-out-scope note, and the fresh-setup Terminal commands.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -806,6 +808,43 @@ def reports_fixture(mock: Path) -> dict:
                          "members": [u.primary_email for u in r.users]} for r in reports]}
 
 
+def setup_fixture() -> dict:
+    """GamGUI's guided setup (core/setup.py): the delegation step's facts and link (dwd_details,
+    dwd_auth_url) and the fresh-setup Terminal commands (setup_commands), over chosen inputs."""
+    import json as _json
+    from types import SimpleNamespace
+
+    from gamgui.core import setup
+
+    service_jsons = ['{"client_id": "123456789012345678901"}', '{"client_id": 1234567890}', '{"client_id": ""}',
+                     '{"client_id": null}', '{}', '[]', 'not json', '', '{"client_id": "a&b=c d"}']
+    oauth_jsons = [_json.dumps({"scopes": [setup.USER_SECURITY_SCOPE, "https://mail.google.com/"]}),
+                   _json.dumps({"scopes": ["https://mail.google.com/"]}), _json.dumps({"scopes": []}),
+                   _json.dumps({"scopes": setup.USER_SECURITY_SCOPE}), '{}', 'not json', '']
+    facts = []
+    for service in service_jsons:
+        client_id = str(setup._json_field(service, "client_id") or "")
+        for domain in ("", "example.com"):
+            facts.append({"oauth2service": service, "domain": domain, "client_id": client_id,
+                          "auth_url": setup.dwd_auth_url(client_id, [s for s, _ in setup.DWD_SCOPES], domain)})
+    security = []
+    for oauth in oauth_jsons:
+        granted = setup._json_field(oauth, "scopes")
+        security.append({"oauth2": oauth,
+                         "user_security": (setup.USER_SECURITY_SCOPE in granted) if isinstance(granted, list) else None})
+    commands = []
+    for admin in ("admin@example.com", "it.admin+gam@sub.example.org"):
+        for cfgdir, gam in (("/Users/operator/GAM Setup/setup", "/Applications/GAM Tools/gam7/gam"),
+                            ("/tmp/setup", "/opt/gam7/gam")):
+            fake = SimpleNamespace(runner=SimpleNamespace(gam_binary=gam))
+            commands.append({"admin": admin, "cfgdir": cfgdir, "gam": gam}
+                            | setup.SetupService.setup_commands(fake, admin, cfgdir))
+    return {"dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
+            "user_security_scope": setup.USER_SECURITY_SCOPE,
+            "admin_console_dwd_url": setup.ADMIN_CONSOLE_DWD_URL,
+            "facts": facts, "user_security": security, "setup_commands": commands}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -1001,6 +1040,11 @@ def main() -> int:
         | reports_fixture(OUT / "mock_gam.sh")
     (OUT / "reports.json").write_text(json.dumps(reports_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"reports.json: {len(reports_doc['records'])} users")
+
+    # The guided setup: the delegation step's facts and link, and the fresh-setup Terminal commands.
+    setup_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | setup_fixture()
+    (OUT / "setup.json").write_text(json.dumps(setup_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"setup.json: {len(setup_doc['facts'])} facts, {len(setup_doc['setup_commands'])} command sets")
     return 0
 
 

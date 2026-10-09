@@ -156,7 +156,7 @@ struct ImportTests {
     @Test func scopesAndClientIDAreRead() {
         #expect(CredentialFacts.grantedScopes(inOAuth2: Data(#"{"scopes": ["s1", "s2"]}"#.utf8)) == ["s1", "s2"])
         #expect(CredentialFacts.clientID(inServiceAccount: Data(#"{"client_id": "123"}"#.utf8)) == "123")
-        #expect(CredentialFacts.clientID(inServiceAccount: Data("garbage".utf8)) == nil)
+        #expect(CredentialFacts.clientID(inServiceAccount: Data("garbage".utf8)) == "")
     }
 
     @Test func aLockedMacIsSaidPlainly() {

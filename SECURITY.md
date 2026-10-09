@@ -45,6 +45,9 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   user-presence check (Touch ID or the password). For one `gam` call they are written into a `0700`
   directory (`0600` files) and wiped after it; a launch-time sweep removes any a crash left behind,
   and quitting stops a `gam` still running.
+- **The guided setup's folder doesn't keep credentials.** GAM's own setup commands write them into a
+  private `0700` folder; once the Vault holds the whole set, exactly the files read are overwritten and
+  removed, recognised by inode, not by name, so a swapped folder or file is left alone.
 - **Code outside the app's core library can't read a secret or run a write.** Its public API runs
   only typed read commands; raw secret bytes, the raw runner and the per-call config directory are
   internal to the package (`WriteRouteTests` scans for anything the compiler can't check).

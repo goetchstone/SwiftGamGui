@@ -44,22 +44,37 @@ public final class SetupModel {
     public private(set) var lastCheck: CheckRecord?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
+    /// The delegation step for the domain just imported or copied: its client ID and the link.
+    public private(set) var delegation: Delegation?
 
     private let vault: Vault
     private let runner: AuthenticatedRunner?
     private let gamgui: GamGUIKeychain
     private let readFolder: @Sendable (URL) throws -> [Credential: Secret]
+    private let setupFolder: SetupFolder?
 
     public init(
         vault: Vault,
         runner: AuthenticatedRunner?,
         gamgui: GamGUIKeychain = GamGUIKeychain(),
+        setupFolder: SetupFolder? = nil,
         readFolder: @escaping @Sendable (URL) throws -> [Credential: Secret] = CredentialFolder.read
     ) {
         self.vault = vault
         self.runner = runner
         self.gamgui = gamgui
+        self.setupFolder = setupFolder
         self.readFolder = readFolder
+    }
+
+    /// The guided setup's folder, where its Terminal commands write the credentials.
+    public var setupFolderURL: URL? { setupFolder?.url }
+
+    /// The Terminal commands for a fresh GAM authorization as `admin`, or nil when they can't be given:
+    /// no GAM or setup folder in this build, or an admin that isn't a plain address.
+    public func freshSetup(admin: String) -> FreshSetup? {
+        guard let folder = setupFolder, let gam = runner?.runner.binary else { return nil }
+        return FreshSetup.commands(admin: admin, folder: folder.url, gam: gam)
     }
 
     /// An action is running. Every action refuses to start meanwhile, so two can't interleave (a
@@ -107,7 +122,35 @@ public final class SetupModel {
             let read = readFolder
             let found = try await Self.offMain({ try read(folder) })
             try await replace(domain, with: found)
+            delegation = Delegation(domain: domain, credentials: found)
             activity = .done("Imported \(domain). Check access next.")
+        } catch {
+            activity = .problem(Self.message(for: error))
+        }
+    }
+
+    /// Imports what the fresh-setup commands wrote into the setup folder, then wipes those files: the
+    /// Vault is their only home from then on. Nothing is wiped unless the Vault took the whole set.
+    public func importFromSetupFolder(as domainText: String) async {
+        guard !isBusy else { return }
+        guard let setupFolder else {
+            activity = .problem("This build has no setup folder.")
+            return
+        }
+        guard let domain = Domain(domainText) else {
+            activity = .problem("“\(domainText)” isn't a domain name.")
+            return
+        }
+        activity = .working("Importing credentials for \(domain) from the setup folder…")
+        do {
+            let staged = try await Self.offMain({ try setupFolder.stage() })
+            try await replace(domain, with: staged.found)
+            delegation = Delegation(domain: domain, credentials: staged.found)
+            let wiped = try await Self.offMain({ staged.wipe() })
+            let left = Set(staged.found.keys).subtracting(wiped)
+            activity = left.isEmpty
+                ? .done("Imported \(domain) and wiped GAM's copies from the setup folder. Authorize delegation next.")
+                : .problem("Imported \(domain), but \(left.sorted().map(\.fileName).joined(separator: " and ")) couldn't be wiped from the setup folder. Delete it there.")
         } catch {
             activity = .problem(Self.message(for: error))
         }
@@ -138,6 +181,7 @@ public final class SetupModel {
                 return
             }
             try await replace(entry.domain, with: found)
+            delegation = Delegation(domain: entry.domain, credentials: found)
             activity = .done("Copied \(entry.domain) from GamGUI. Check access next.")
         } catch {
             activity = .problem(Self.message(for: error))
@@ -218,6 +262,7 @@ public final class SetupModel {
             tenantDidChange?()
         }
         if lastCheck?.domain == domain { lastCheck = nil }
+        if delegation?.domain == domain { delegation = nil }
     }
 
     /// File and Keychain reads can block (a prompt, a slow volume): never on the main actor.
@@ -262,6 +307,11 @@ public final class SetupModel {
             case .timedOut(let seconds): return "GAM didn't answer within \(seconds) seconds."
             case .binaryNotExecutable, .launchFailed: return "GAM couldn't start (\(failure))."
             case .invalidArgument: return "That value can't be passed to GAM."
+            }
+        case let failure as SetupFolder.Failure:
+            switch failure {
+            case .unsafe(let path): return "The setup folder (\(path)) isn't private to you. Remove it and open Setup again."
+            case .replaced: return "The setup folder was moved or replaced since GamGUI made it. Open Setup again."
             }
         case let failure as EphemeralConfig.Failure:
             return "The private folder for GAM's credentials couldn't be set up (\(failure))."
