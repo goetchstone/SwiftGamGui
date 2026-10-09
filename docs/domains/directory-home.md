@@ -119,6 +119,9 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
   app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
   destructive, so (no spare license) it is first proven on the operator's next real leaver.
+  Later that day the operator also ran, through the app, and saw the effect: removing someone from a
+  group, adding a mail delegate, turning on an auto-reply, and a sign-out (**confirmed**). Adding to a
+  group, removing a delegate and turning an auto-reply off stay argv-identical until run once.
 
 ## Testing / live status
 - Mock-tested through the strict mock's `print users`.
