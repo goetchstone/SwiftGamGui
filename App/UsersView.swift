@@ -77,7 +77,7 @@ struct UsersView: View {
                 } else if setup.active == nil {
                     Text("Connect a domain on Setup to list its users.").foregroundStyle(.secondary)
                 } else {
-                    Text("Not loaded yet. Nothing is read from Google until you ask.").foregroundStyle(.secondary)
+                    Text("Not loaded yet. It loads when a domain connects.").foregroundStyle(.secondary)
                     Button("Load the Directory") { Task { await directory.load() } }
                 }
                 if let problem = directory.problem {

@@ -31,10 +31,10 @@ struct AppServices {
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
-                                 gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL,
+                                 gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
-        let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL)
+        let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
         // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
         let executor = runner.map { runner in
             Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor [weak setup] in
@@ -67,7 +67,8 @@ struct AppServices {
         }
         return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
                         setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"),
-                        auditURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl"))
+                        auditURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl"),
+                        lastDomain: .memory())
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a

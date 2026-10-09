@@ -108,7 +108,7 @@ struct DirectoryStoreTests {
         let old = Task { await store.load() }
         while !store.isLoading { await Task.yield() }
         try await connect("example.org", admin: "admin@example.org", in: setup)
-        #expect(!store.isLoading, "example.com's load isn't example.org's")
+        #expect(store.isLoading, "connecting example.org starts its own load (example.com's was stopped)")
         await old.value
         #expect(clock.now - started < .seconds(1.5), "the old load's gam was stopped, not waited for")
         await store.load()
@@ -142,6 +142,22 @@ struct DirectoryStoreTests {
         await first
         let runs = try String(contentsOf: log, encoding: .utf8).split(separator: "\n").filter { $0.hasPrefix("print users") }
         #expect(runs.count == 1)
+    }
+
+    /// The operator's request (2026-10-09): connecting loads the directory, no click needed.
+    @Test func connectingLoadsTheDirectoryByItself() async throws {
+        try await connect("example.com", admin: "admin@example.com")
+        #expect(store.isLoading, "a load starts as the domain connects")
+        await store.load()
+        #expect(store.users?.isEmpty == false)
+    }
+
+    @Test func aDisconnectLoadsNothing() async throws {
+        try await connect("example.com", admin: "admin@example.com")
+        await store.load()
+        await setup.remove(Domain("example.com")!)
+        #expect(!store.isLoading)
+        #expect(store.users == nil)
     }
 
     @Test func aSuccessfulLoadClearsTheLastProblem() async throws {

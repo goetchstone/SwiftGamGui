@@ -11,6 +11,16 @@ import Vault
 /// `keychain`, `legacy-keychain`, `vault` or `model`; results print to stdout and the app quits. They only
 /// ever touch throwaway items named `swiftgamgui-spike*` — never GamGUI's `gamgui:<domain>` items.
 enum Spikes {
+    /// A spike or a snapshot was asked for: the launch must not reconnect to the operator's real domain.
+    static var isRequested: Bool {
+        #if DEBUG
+        let environment = ProcessInfo.processInfo.environment
+        return environment["SWIFTGAMGUI_SPIKE"] != nil || environment["SWIFTGAMGUI_SNAPSHOT"] != nil
+        #else
+        return false
+        #endif
+    }
+
     @MainActor
     static func runIfRequested(services: AppServices) async {
         #if DEBUG
