@@ -32,6 +32,7 @@ public final class UserAccess {
     private let runner: AuthenticatedRunner?
     private var loaded: Loaded?
     public private(set) var loading: String?
+    private var latest: UUID?
     /// Tests only: the mock's state folder, so a read sees what a write just changed.
     var environment: [String: String] = [:]
 
@@ -61,8 +62,11 @@ public final class UserAccess {
     public func load(_ email: String) async {
         guard let domain = setup.active, let runner else { return }
         let generation = setup.generation
+        // The latest request wins: a slower read for someone selected earlier never replaces it.
+        let request = UUID()
+        latest = request
         loading = email
-        defer { if loading == email { loading = nil } }
+        defer { if latest == request { loading = nil } }
         let result: Result<Lists, Problem>
         do {
             let groups = try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment)
@@ -70,11 +74,13 @@ public final class UserAccess {
             result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates)))
         } catch let problem as Problem {
             result = .failure(problem)
+        } catch is CancellationError {
+            return
         } catch {
             result = .failure(Problem(summary: "Couldn't read \(email)'s groups and delegates (\(type(of: error)))."))
         }
         // A switch while reading: these belong to the old tenant, so they're dropped.
-        guard setup.active == domain, setup.generation == generation else { return }
+        guard latest == request, !Task.isCancelled, setup.active == domain, setup.generation == generation else { return }
         loaded = Loaded(email: email, domain: domain, generation: generation, result: result)
     }
 

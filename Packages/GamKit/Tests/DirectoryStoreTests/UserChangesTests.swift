@@ -168,6 +168,18 @@ final class UserChangesTests {
         #expect(access.lists(for: "bob@example.com") == nil, "only the person read")
     }
 
+    /// Select one person, then another: the later request's lists win, whichever read finishes last.
+    @Test func theLatestPersonsListsWin() async throws {
+        try await connect()
+        let access = access
+        let first = Task { await access.load("alice@example.com") }
+        while access.loading != "alice@example.com" { await Task.yield() }
+        await access.load("bob@example.com")
+        await first.value
+        #expect(access.lists(for: "bob@example.com")?.groups == ["staff@example.com"])
+        #expect(access.loading == nil)
+    }
+
     @Test func joiningAGroupRunsGamGUIsArgv() async throws {
         try await connect()
         let alice = try user("alice@example.com")
