@@ -36,3 +36,6 @@ __pycache__/
 # Per-developer signing team (see Config/Base.xcconfig)
 Config/Local.xcconfig
 build/
+
+# libFuzzer crash inputs (scripts/fuzz.sh in CI)
+fuzz-crash/

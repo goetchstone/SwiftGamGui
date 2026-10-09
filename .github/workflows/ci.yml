@@ -32,7 +32,7 @@ jobs:
       - name: Scripts parse
         run: |
           python3 -m py_compile scripts/*.py
-          bash -n scripts/fetch_gam.sh scripts/check_app.sh scripts/embed_gam.sh Tests/Fixtures/mock_gam.sh
+          bash -n scripts/fetch_gam.sh scripts/check_app.sh scripts/embed_gam.sh scripts/fuzz.sh Tests/Fixtures/mock_gam.sh
       - name: No invisible or bidirectional characters in source
         run: python3 -I scripts/check_text.py
 
@@ -70,17 +70,44 @@ jobs:
           path: ${{ runner.temp }}/attachments
           if-no-files-found: ignore
 
+  fuzz:
+    # Coverage-guided fuzzing (libFuzzer, Fuzz/GamFuzz.swift) of GamEngine's platform-free code: GAM output
+    # parsers, the error classifier and its masking, argv-only builders, closed-set validators. Linux only
+    # (Apple's toolchain ships no libFuzzer runtime), in the official Swift image pinned by digest.
+    name: fuzz (libFuzzer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: swift:6.4@sha256:4601bf61dab9485a3e93087770b72d268737e945a5b000e2286b6cc48bb048b6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fuzz
+        run: |
+          # In the workspace: inside a container, runner.temp names the host's path, not this one.
+          mkdir -p fuzz-crash
+          scripts/fuzz.sh -seed=1 -runs=300000 -max_len=4096 -print_final_stats=1 -artifact_prefix=fuzz-crash/
+      - name: Keep a crashing input
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-crash
+          path: fuzz-crash
+          if-no-files-found: ignore
+
   # The one required check for branch protection.
   ci-ok:
     name: ci-ok
     runs-on: ubuntu-latest
-    needs: [hygiene, macos]
+    needs: [hygiene, macos, fuzz]
     if: always()
     steps:
       - name: Every job passed
         env:
           HYGIENE: ${{ needs.hygiene.result }}
           MACOS: ${{ needs.macos.result }}
+          FUZZ: ${{ needs.fuzz.result }}
         run: |
-          echo "hygiene=$HYGIENE macos=$MACOS"
-          test "$HYGIENE" = success && test "$MACOS" = success
+          echo "hygiene=$HYGIENE macos=$MACOS fuzz=$FUZZ"
+          test "$HYGIENE" = success && test "$MACOS" = success && test "$FUZZ" = success
