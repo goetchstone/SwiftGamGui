@@ -48,9 +48,14 @@ how it's signed.
 The fixtures the tests compare against are generated from GamGUI. To regenerate them you need a GamGUI
 checkout next to this one: `../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py`.
 
-## Writes verified live
+## Live verification
 
-None yet; writes come in phase 2. Each will be listed here once it has run against a real tenant.
+Each write will be listed here. **argv-identical** means it sends exactly the command a GamGUI write
+already proven live sent; **confirmed** means this app has itself run it against a real tenant.
+
+| Write | Status |
+|---|---|
+| *(none yet; writes come in phase 2)* | |
 
 ## License
 
