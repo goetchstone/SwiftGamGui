@@ -5,8 +5,8 @@ import Vault
 /// Runs `gam` as a domain: credentials from the Vault into a fresh `EphemeralConfig` for this one
 /// call, a refreshed `oauth2.txt` written back, and the directory wiped on every path out.
 ///
-/// Its public `run` takes only a `GamRead`. Writes will reach `gam` through ChangeCore's executor alone
-/// (slice 3), which adds the ticket, the write lock, the guard and the audit.
+/// Its public `run` takes only a `GamRead`. A write reaches `gam` only through ChangeCore's executor,
+/// with a `WriteTicket`; the executor adds the write lock, the guard and the audit.
 public struct AuthenticatedRunner: Sendable {
     public let runner: GamRunner
     public let vault: Vault
@@ -29,6 +29,18 @@ public struct AuthenticatedRunner: Sendable {
         // Only the mock's own variables (passed in debug builds only): a caller outside GamKit can't
         // change HOME, PATH or a proxy for a credentialed call.
         try await run(argv: read.argv, as: domain, timeout: timeout,
+                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
+    }
+
+    /// A write, for ChangeCore's executor only: it takes a `WriteTicket`, which nothing else can make.
+    package func run(
+        _ write: GamWrite,
+        as domain: Domain,
+        ticket: WriteTicket,
+        timeout: Duration = GamRunner.defaultTimeout,
+        extraEnvironment: [String: String] = [:]
+    ) async throws -> GamResult {
+        try await run(argv: write.argv, as: domain, timeout: timeout,
                       extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
     }
 

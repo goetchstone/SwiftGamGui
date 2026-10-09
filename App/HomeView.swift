@@ -1,3 +1,4 @@
+import ChangeCore
 import Directory
 import GamEngine
 import Setup
@@ -10,10 +11,20 @@ struct HomeView: View {
     let directory: DirectoryStore
     let gamVersion: String?
     let hasGam: Bool
+    /// Writes that began and never ended (the app quit or crashed mid-call), from the audit log.
+    let unfinished: [Executor.Unfinished]
     let openSetup: () -> Void
 
     var body: some View {
         Form {
+            if !unfinished.isEmpty {
+                Section("Outcome unknown — check") {
+                    Text("GamGUI stopped while \(unfinished.count == 1 ? "this change was" : "these changes were") running. Check each in Google before running it again.")
+                    ForEach(Array(unfinished.enumerated()), id: \.offset) { _, write in
+                        Label("\(write.action) for \(write.target), started \(write.at)", systemImage: "questionmark.circle")
+                    }
+                }
+            }
             Section("Connection") {
                 connection
                 LabeledContent("GAM") {

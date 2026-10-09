@@ -1,3 +1,4 @@
+import ChangeCore
 import Directory
 import Foundation
 import GamEngine
@@ -12,6 +13,10 @@ struct AppServices {
     let directory: DirectoryStore
     /// The bundled gam and the private run folder, when both are usable: `gam version` runs there.
     let gam: (runner: GamRunner, runtimeDirectory: URL)?
+    /// The only path to a write (ChangeCore); none without gam.
+    let executor: Executor?
+    /// Writes that began and never ended, from the audit log at launch: "outcome unknown — check".
+    let unfinished: [Executor.Unfinished]
 
     static func make() -> AppServices {
         #if DEBUG
@@ -22,14 +27,22 @@ struct AppServices {
             (try? RuntimeDirectory.prepare()).map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
-                        setupFolderURL: SetupFolder.defaultURL)
+                        setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL)
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
-                                 gamgui: GamGUIKeychain, setupFolderURL: URL?) -> AppServices {
+                                 gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL,
+                                 extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL)
-        return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam)
+        // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
+        let executor = runner.map { runner in
+            Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor [weak setup] in
+                setup?.active.map { ($0, setup!.generation) }
+            }, extraEnvironment: extraEnvironment)
+        }
+        return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam,
+                           executor: executor, unfinished: Executor.unfinished(in: auditURL))
     }
 
     #if DEBUG
@@ -53,7 +66,8 @@ struct AppServices {
                 .map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
         return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
-                        setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"))
+                        setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"),
+                        auditURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl"))
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a

@@ -19,6 +19,11 @@ public final class AuditLog: Sendable {
     /// Generations kept behind the live file (`audit.jsonl.1` … `.10`): the trail's retention bound.
     public static let retainedGenerations = 10
 
+    /// This app's own log (design doc §11: each app writes only its own; GamGUI's is read, never written).
+    public static var defaultURL: URL {
+        URL.applicationSupportDirectory.appending(path: "SwiftGamGui/audit/audit.jsonl")
+    }
+
     public let url: URL
     private let maxBytes: Int
     private let lock = Mutex(())

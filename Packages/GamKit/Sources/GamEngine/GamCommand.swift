@@ -43,3 +43,10 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case createUserAlias, deleteAlias
     case createGroup, addGroupMember, removeGroupMember
 }
+
+/// Permission to run one `GamWrite`, minted only by ChangeCore's executor once a held preview has passed
+/// every check (design doc §6). `package`, so the app can't make one; `WriteRouteTests` holds that no
+/// other GamKit target does either.
+package struct WriteTicket: Sendable {
+    package init() {}
+}

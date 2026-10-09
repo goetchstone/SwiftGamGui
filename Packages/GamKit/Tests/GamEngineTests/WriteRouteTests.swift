@@ -70,6 +70,14 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: Self.memoryCasts).isEmpty)
     }
 
+    /// Invariant 2: the runner's write entry takes a `WriteTicket`, and only ChangeCore's executor makes
+    /// one, after a held preview passed every check. A ticket anywhere else is a second write path.
+    @Test func onlyTheExecutorMintsAWriteTicket() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["WriteTicket("])
+                == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift"])
+        #expect(try Self.files(in: "App", matching: ["WriteTicket"]).isEmpty)
+    }
+
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.
     @Test func theAppNeverImportsGamKitTestably() throws {
         #expect(try Self.files(in: "App", matching: ["@testable"]).isEmpty)
