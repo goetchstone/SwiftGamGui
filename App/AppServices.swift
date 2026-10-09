@@ -17,6 +17,8 @@ struct AppServices {
     let executor: Executor?
     /// The user page's writes, through the executor.
     let userChanges: UserChanges
+    /// A selected person's groups and delegates, read live.
+    let userAccess: UserAccess
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
 
@@ -45,7 +47,8 @@ struct AppServices {
         }
         let directory = DirectoryStore(setup: setup, runner: runner)
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
-                           userChanges: UserChanges(executor: executor, directory: directory), auditURL: auditURL)
+                           userChanges: UserChanges(executor: executor, directory: directory),
+                           userAccess: UserAccess(setup: setup, runner: runner), auditURL: auditURL)
     }
 
     #if DEBUG

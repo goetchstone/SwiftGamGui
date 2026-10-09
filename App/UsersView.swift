@@ -11,6 +11,7 @@ struct UsersView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: UserChanges
+    let access: UserAccess
     @State private var filter = UserFilter()
     @State private var sortOrder = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
     @State private var selection: GamUser.ID?
@@ -70,7 +71,7 @@ struct UsersView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { selection = nil } })) {
                 if let user = users.first(where: { $0.id == selection }) {
-                    UserDetail(user: user, changes: changes)
+                    UserDetail(user: user, directory: directory, changes: changes, access: access)
                 }
             }
         } else {
@@ -99,8 +100,12 @@ struct UsersView: View {
 /// One person's fields, read-only.
 private struct UserDetail: View {
     let user: GamUser
+    let directory: DirectoryStore
     let changes: UserChanges
+    let access: UserAccess
     @State private var editingRole = false
+    @State private var newGroup = ""
+    @State private var newDelegate = ""
 
     var body: some View {
         Form {
@@ -130,6 +135,8 @@ private struct UserDetail: View {
                 LabeledContent("2-step verification", value: user.isEnrolledIn2SV ? "Enrolled" : "Not enrolled")
                 LabeledContent("Recovery email", value: user.recoveryEmail.isEmpty ? "—" : user.recoveryEmail)
             }
+            AccessLists(user: user, directory: directory, changes: changes, access: access,
+                        newGroup: $newGroup, newDelegate: $newDelegate)
             if !user.aliases.isEmpty {
                 Section("Aliases") {
                     ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
@@ -138,6 +145,8 @@ private struct UserDetail: View {
         }
         .formStyle(.grouped)
         .inspectorColumnWidth(min: 260, ideal: 300)
+        // Read when the person is selected, and again after a change of theirs lands.
+        .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
@@ -152,6 +161,81 @@ extension UserChanges {
     var previewing: Pending? {
         if case .previewing(let pending) = state { return pending }
         return nil
+    }
+}
+
+/// The person's groups and mail delegates, each with Remove, and a field to add one. Every change is a
+/// preview first (`UserChanges`).
+private struct AccessLists: View {
+    let user: GamUser
+    let directory: DirectoryStore
+    let changes: UserChanges
+    let access: UserAccess
+    @Binding var newGroup: String
+    @Binding var newDelegate: String
+
+    var body: some View {
+        if let lists = access.lists(for: user.primaryEmail) {
+            Section("Groups") {
+                if lists.groups.isEmpty { Text("Not in any group.").foregroundStyle(.secondary) }
+                ForEach(lists.groups, id: \.self) { group in
+                    LabeledContent(group) {
+                        Button("Remove…") { Task { await changes.previewRemoveFromGroup(user, group: group) } }
+                            .accessibilityLabel("Remove \(user.fullName) from \(group)")
+                    }
+                }
+                HStack {
+                    TextField("Group address", text: $newGroup, prompt: Text("sales@example.com"))
+                        .onSubmit(addGroup)
+                    Button("Add…", action: addGroup)
+                        .disabled(newGroup.isEmpty)
+                        .accessibilityLabel("Add \(user.fullName) to the group")
+                }
+            }
+            .disabled(changes.isBusy)
+            Section("Mail delegates") {
+                if lists.delegates.isEmpty { Text("No one can read this mailbox.").foregroundStyle(.secondary) }
+                ForEach(lists.delegates, id: \.self) { delegate in
+                    LabeledContent(delegate) {
+                        Button("Remove…") { Task { await changes.previewRemoveDelegate(user, delegate: delegate) } }
+                            .accessibilityLabel("Stop \(delegate) reading \(user.fullName)'s mail")
+                    }
+                }
+                HStack {
+                    TextField("Delegate address", text: $newDelegate, prompt: Text("assistant@example.com"))
+                        .onSubmit(addDelegate)
+                    Button("Add…", action: addDelegate)
+                        .disabled(newDelegate.isEmpty)
+                        .accessibilityLabel("Add a delegate to \(user.fullName)'s mailbox")
+                }
+            }
+            .disabled(changes.isBusy)
+        } else if let problem = access.problem(for: user.primaryEmail) {
+            Section("Groups and delegates") {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            }
+        } else if access.loading == user.primaryEmail {
+            Section("Groups and delegates") {
+                HStack { ProgressView().controlSize(.small); Text("Reading groups and delegates…") }
+                    .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private func addGroup() {
+        let group = newGroup
+        Task {
+            await changes.previewAddToGroup(user, group: group)
+            if changes.previewing != nil { newGroup = "" }
+        }
+    }
+
+    private func addDelegate() {
+        let delegate = newDelegate
+        Task {
+            await changes.previewAddDelegate(user, delegate: delegate, directory: directory.users)
+            if changes.previewing != nil { newDelegate = "" }
+        }
     }
 }
 
@@ -238,6 +322,11 @@ private struct ChangePreviewSheet: View {
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
                     }
+                }
+            }
+            if let warning = pending.warning {
+                Section {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 }
             }
             Section {

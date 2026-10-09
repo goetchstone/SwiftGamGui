@@ -3,6 +3,204 @@
   "gamgui_commit": "834493c",
   "generator": "scripts/gen_fixtures.py"
  },
+ "looks_like_email": [
+  {
+   "value": "a@example.com",
+   "ok": true
+  },
+  {
+   "value": "first.last+tag@sub.example.co.uk",
+   "ok": true
+  },
+  {
+   "value": "a@b",
+   "ok": false
+  },
+  {
+   "value": "@example.com",
+   "ok": false
+  },
+  {
+   "value": "a@",
+   "ok": false
+  },
+  {
+   "value": "a@@example.com",
+   "ok": false
+  },
+  {
+   "value": "a@example..com",
+   "ok": false
+  },
+  {
+   "value": "a@.example.com",
+   "ok": false
+  },
+  {
+   "value": "a@example.com.",
+   "ok": false
+  },
+  {
+   "value": "a,b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a@example.com,b@example.com",
+   "ok": false
+  },
+  {
+   "value": "oauthuser",
+   "ok": false
+  },
+  {
+   "value": "admin",
+   "ok": false
+  },
+  {
+   "value": "a b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a@exa mple.com",
+   "ok": false
+  },
+  {
+   "value": "",
+   "ok": false
+  },
+  {
+   "value": "   ",
+   "ok": false
+  },
+  {
+   "value": "\u00e9l\u00e8ve@\u00e9cole.fr",
+   "ok": true
+  },
+  {
+   "value": "a@example.com\n",
+   "ok": true
+  },
+  {
+   "value": "a@b.c",
+   "ok": true
+  },
+  {
+   "value": "a\u200b@example.com",
+   "ok": true
+  },
+  {
+   "value": "\ta@example.com\t",
+   "ok": true
+  },
+  {
+   "value": "\na@example.com\n",
+   "ok": true
+  },
+  {
+   "value": "\u000ba@example.com\u000b",
+   "ok": true
+  },
+  {
+   "value": "\fa@example.com\f",
+   "ok": true
+  },
+  {
+   "value": "\ra@example.com\r",
+   "ok": true
+  },
+  {
+   "value": "\u001ca@example.com\u001c",
+   "ok": true
+  },
+  {
+   "value": "\u001fa@example.com\u001f",
+   "ok": true
+  },
+  {
+   "value": " a@example.com ",
+   "ok": true
+  },
+  {
+   "value": "\u0085a@example.com\u0085",
+   "ok": true
+  },
+  {
+   "value": "\u00a0a@example.com\u00a0",
+   "ok": true
+  },
+  {
+   "value": "\u1680a@example.com\u1680",
+   "ok": true
+  },
+  {
+   "value": "\u2000a@example.com\u2000",
+   "ok": true
+  },
+  {
+   "value": "\u2028a@example.com\u2028",
+   "ok": true
+  },
+  {
+   "value": "\u3000a@example.com\u3000",
+   "ok": true
+  },
+  {
+   "value": "a\tb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\nb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u000bb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\fb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\rb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u001cb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u001fb@example.com",
+   "ok": false
+  },
+  {
+   "value": "a b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u0085b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u00a0b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u1680b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u2000b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u2028b@example.com",
+   "ok": false
+  },
+  {
+   "value": "a\u3000b@example.com",
+   "ok": false
+  }
+ ],
  "dwd_scopes": [
   [
    "https://www.googleapis.com/auth/calendar",

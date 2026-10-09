@@ -95,6 +95,16 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   how much it can hurt. A destructive confirm is never the Return-key default.
 - Held to `Tests/DirectoryStoreTests/UserChangesTests` against the strict mock: GamGUI's argv byte for
   byte, the audit record, the patch, a bare confirm refused, a failure patching nothing.
+- **Groups and mail delegates** (`UserAccess`, `UserChanges`): the person's groups (`print groups
+  member`, the `email` column) and delegates (`print delegates`, `delegateAddress`) are read live when
+  their page opens, kept only for that tenant, generation and person, and read again after a change of
+  theirs lands (`UserChanges.finished`). Joining a group is LOW; leaving needs the confirm step
+  (GamGUI's `confirm_step`). Adding a delegate runs GamGUI's `_check_delegate` against the cached
+  directory: an error blocks it (not an address, the owner, an alias of someone else), a warning is
+  shown on the preview and confirming it is "Add Anyway" (not in the directory, suspended). A group
+  address must pass `Address.looksLikeEmail` (GamGUI's `looks_like_email`, held to `setup.json`): GAM
+  reads a bare name or a comma-joined list as something else. The group is typed for now; a picker
+  comes with the Groups screen.
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
   app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
   destructive, so (no spare license) it is first proven on the operator's next real leaver.
