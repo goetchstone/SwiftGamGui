@@ -10,11 +10,20 @@ app built on [GAM7](https://github.com/GAM-team/GAM). It runs the same `gam` com
 the tests check that they match GamGUI's exactly.
 
 **Status: early.** You can import credentials (or copy them from GamGUI), check access, see the
-directory's counts and reports, and browse users. Nothing has run against a real tenant yet, and
-nothing writes. Use GamGUI for real work for now. The plan is in
+directory's counts and reports, and browse users. Those reads have run against a real tenant;
+nothing writes yet. Use GamGUI for real work for now. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
+
+## Screenshots
+
+Rendered by CI from a demo tenant and the test mock of GAM (`scripts/screenshots.sh`), so the names are
+placeholders. Each screen's pull request refreshes its own.
+
+| Home | Users | Setup |
+|---|---|---|
+| ![Home: the connected domain, GAM's version and the directory's counts](docs/screenshots/home.png) | ![Users: the directory as a table](docs/screenshots/users.png) | ![Setup: the domains on this Mac and a failed check of delegation](docs/screenshots/setup.png) |
 
 ## Build from source
 
