@@ -66,10 +66,13 @@ already proven live sent; **confirmed** means this app has itself run it against
 |---|---|
 | Title and department (Users) | **confirmed** (2026-10-09) |
 | Suspend and unsuspend (Users) | argv-identical |
-| Add to and remove from a group (Users) | argv-identical |
-| Add and remove a mail delegate (Users) | argv-identical |
-| Turn an auto-reply on and off (Users) | argv-identical |
-| Sign out of all sessions (Users) | argv-identical |
+| Remove from a group (Users) | **confirmed** (2026-10-09) |
+| Add to a group (Users) | argv-identical |
+| Add a mail delegate (Users) | **confirmed** (2026-10-09) |
+| Remove a mail delegate (Users) | argv-identical |
+| Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
+| Turn off an auto-reply (Users) | argv-identical |
+| Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
 
 ## License
 
