@@ -62,7 +62,7 @@ public final class KeychainStore: SecretStore {
     }
 
     public func write(_ data: Data, as credential: Credential, for domain: Domain) throws {
-        if try replace(data, as: credential, for: domain) { return }
+        if try update(data, as: credential, for: domain) { return }
         var error: Unmanaged<CFError>?
         guard let access = SecAccessControlCreateWithFlags(
             nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .userPresence, &error
@@ -73,12 +73,44 @@ public final class KeychainStore: SecretStore {
         item[kSecValueData] = data
         item[kSecAttrAccessControl] = access
         item[kSecAttrLabel] = "GamGUI: \(domain.name) \(credential.fileName)"
-        let status = SecItemAdd(item as CFDictionary, nil)
-        if status == errSecDuplicateItem, try replace(data, as: credential, for: domain) { return }
+        // Under the context lock, as every call that changes an item: `replace(…, ifCurrent:)` reads,
+        // compares and updates under it, so nothing may delete or add between those steps.
+        let status = context.withLock { _ in SecItemAdd(item as CFDictionary, nil) }
+        if status == errSecDuplicateItem, try update(data, as: credential, for: domain) { return }
         guard status == errSecSuccess else { throw VaultError.keychain(status) }
     }
 
-    public func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool {
+    public func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool {
+        let service = service
+        let account = "\(domain.name)/\(credential.rawValue)"
+        // One lock around the read, the comparison and the update: every call that changes an item
+        // (update, add, delete) takes the same lock, so nothing can change it in between.
+        let status = context.withLock { context -> OSStatus in
+            let item: [CFString: Any] = [
+                kSecClass: kSecClassGenericPassword,
+                kSecAttrService: service,
+                kSecAttrAccount: account,
+                kSecUseDataProtectionKeychain: true,
+                kSecUseAuthenticationContext: context,
+            ]
+            var read = item
+            read[kSecReturnData] = true
+            read[kSecMatchLimit] = kSecMatchLimitOne
+            var current: CFTypeRef?
+            let found = SecItemCopyMatching(read as CFDictionary, &current)
+            guard found == errSecSuccess else { return found }
+            guard current as? Data == expected else { return errSecItemNotFound }
+            return SecItemUpdate(item as CFDictionary, [kSecValueData: data] as CFDictionary)
+        }
+        switch status {
+        case errSecSuccess: return true
+        case errSecItemNotFound: return false
+        default: throw VaultError.keychain(status)
+        }
+    }
+
+    /// Replaces the value of an item that exists; false when it doesn't. For `write`.
+    private func update(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool {
         let service = service
         let account = "\(domain.name)/\(credential.rawValue)"
         let status = context.withLock { context -> OSStatus in
@@ -99,7 +131,8 @@ public final class KeychainStore: SecretStore {
     }
 
     public func delete(_ credential: Credential, for domain: Domain) throws {
-        let status = SecItemDelete(query(credential, domain) as CFDictionary)
+        let query = query(credential, domain)
+        let status = context.withLock { _ in SecItemDelete(query as CFDictionary) }
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError.keychain(status)
         }

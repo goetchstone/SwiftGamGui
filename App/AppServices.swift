@@ -1,30 +1,41 @@
+import Directory
 import Foundation
 import GamEngine
 import Setup
 import Vault
 
-/// The app's long-lived services, built once at launch.
+/// The app's long-lived services, built once at launch. Setup and the directory share one runner, so
+/// every screen acts as the domain Setup connected.
 @MainActor
-enum AppServices {
-    static func makeSetup() -> SetupModel {
+struct AppServices {
+    let setup: SetupModel
+    let directory: DirectoryStore
+    /// The bundled gam and the private run folder, when both are usable: `gam version` runs there.
+    let gam: (runner: GamRunner, runtimeDirectory: URL)?
+
+    static func make() -> AppServices {
         #if DEBUG
-        if ProcessInfo.processInfo.environment["SWIFTGAMGUI_DEMO"] == "1" { return demoSetup() }
+        if ProcessInfo.processInfo.environment["SWIFTGAMGUI_DEMO"] == "1" { return demo() }
         #endif
-        let vault = Vault(store: KeychainStore())
-        // No runner when GAM isn't bundled or the private run folder isn't safe: Setup says so.
-        let runner = GamBinary.locate().flatMap { binary in
-            (try? RuntimeDirectory.prepare()).map {
-                AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: $0)
-            }
+        // No gam when it isn't bundled or the private run folder isn't safe: Setup and Home say so.
+        let gam = GamBinary.locate().flatMap { binary in
+            (try? RuntimeDirectory.prepare()).map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
-        return SetupModel(vault: vault, runner: runner)
+        return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain())
+    }
+
+    private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
+                                 gamgui: GamGUIKeychain) -> AppServices {
+        let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
+        let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui)
+        return AppServices(setup: setup, directory: DirectoryStore(setup: setup, runner: runner), gam: gam)
     }
 
     #if DEBUG
     /// Debug builds only: two example domains in memory, run against the strict mock — never the real
     /// GAM, so placeholder credentials can't reach Google. Without `SWIFTGAMGUI_GAM_BINARY` pointing at
-    /// the mock there is no runner at all.
-    private static func demoSetup() -> SetupModel {
+    /// the mock there is no runner at all. The mock's canned output is found beside it.
+    private static func demo() -> AppServices {
         let store = MemoryStore()
         let tokens = ["example.com": "admin@example.com", "example.org": "partialdwd@example.org"]
         for (name, admin) in tokens {
@@ -32,13 +43,15 @@ enum AppServices {
             try? store.write(Data(#"{"client_email": "gam@demo.iam.gserviceaccount.com"}"#.utf8), as: .oauth2Service, for: domain)
             try? store.write(Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8), as: .oauth2, for: domain)
         }
-        let vault = Vault(store: store)
-        let runner = mockGam().flatMap { binary -> AuthenticatedRunner? in
-            (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
-                .map { AuthenticatedRunner(runner: GamRunner(binary: binary), vault: vault, runtimeDirectory: $0) }
+        let mock = mockGam()
+        if let mock {
+            setenv("GAM_MOCK_FIXTURES", mock.deletingLastPathComponent().appending(path: "mock_gam").path, 0)
         }
-        return SetupModel(vault: vault, runner: runner,
-                          gamgui: GamGUIKeychain { _, _ in nil })
+        let gam = mock.flatMap { binary in
+            (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
+                .map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
+        }
+        return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil })
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a

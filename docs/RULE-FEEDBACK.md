@@ -22,6 +22,21 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-08 — The mock never printed GAM's first-run banner, so every live read would have broken
+- **What happened:** PR #8's review read GamGUI's runner and found `strip_cfgdir_noise`. Handed a fresh
+  config directory on every call, real GAM prints `Created: <dir>/gamcache` and `Config File: <dir>/gam.cfg,
+  Initialized` on stdout before its data. The Swift runner passed them on, so the first live directory
+  load would have parsed the banner as its CSV header. Every test was green: the mock never printed it.
+- **Invariant in force:** "the mock lies" (CLAUDE.md), and #11.
+- **Why it didn't hold:** the port read GamGUI's parsers but not the runner step between GAM and them,
+  and the mock, copied from GamGUI, didn't print what real GAM prints (GamGUI's own tests fed the
+  banner straight to `strip_cfgdir_noise` instead).
+- **Would a rule have caught it?** only if enforced differently: a port covers the whole path from the
+  process to the parser, and what the real binary prints locally (credential-free, `gam version` or a
+  call that fails on the missing key) is checked against the mock. The mock now prints the banner; a
+  test proves the load depends on stripping it.
+- **Enforcement home if changed:** tripwire (done: the mock), and a skill step for the next port.
+
 ## 2026-10-08 — Parity with Python held only for Python's Unicode version
 - **What happened:** PR #5's review found that a character added in Unicode 17 (`U+10940`) let an
   echoed password past the Swift scrub where GamGUI's masks it. Swift 6.4 has Unicode 17, and GamGUI's

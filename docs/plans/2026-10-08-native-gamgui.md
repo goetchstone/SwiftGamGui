@@ -441,6 +441,52 @@ default, plus "Just do it"). Still open:
 - **The GitHub repo:** a separate OK from the operator.
 - **Re-check the on-device model** once its assets finish downloading (`SWIFTGAMGUI_SPIKE=model`).
 
+## Phase 1, slice 2 progress (2026-10-08, unattended)
+
+Merged, each after an adversarial review whose findings were fixed with tests:
+- **#3 Setup screen:**
+  - import from a GAM folder, copy from GamGUI, Check access, tenants, removal;
+  - credential sets are whole or absent;
+  - one action at a time;
+  - Release isn't debuggable;
+  - `embed_gam.sh` refuses links and an unpinned tree;
+  - `check_app.sh` checks every Mach-O.
+- **#4 Argv builders:** 58 of 59 GamGUI builders, byte-identical on 1,293 cases with 142 refusals. The
+  closed sets are types. A CI check refuses invisible and bidirectional characters.
+- **#6 GAM error classification:** 1,807 GamGUI cases.
+  - It matches GamGUI's Unicode 16 rules, so an echoed password is masked as GamGUI masks it.
+  - Masking is linear.
+  - Every pattern branch has a case of its own.
+
+- **#7 Reading GAM's output:**
+  - JSON, NDJSON, `formatjson` CSV and plain CSV, 621 cases;
+  - users, groups and members, 523 records.
+  - Review fixed: CSV memory (13 GB to 43 MB), keys exact by text, Python's integer limit, `int()`
+    whitespace, case and `str()`.
+- **#9 ChangeCore, the guard:** GamGUI's `evaluate`/`enforce`/`alias_deletes`, 700 decisions.
+- **#10 ChangeCore, the audit log:** byte-for-byte GamGUI's lines; generations; redaction.
+
+Open:
+- **#8 Home and Users (read-only):**
+  - the connection, GAM's version, and the directory's counts;
+  - GamGUI's nine reports over 206 users;
+  - the `Directory` module's tenant-scoped cache.
+  - Review fixed, two of them blockers for the first live use:
+    - a load's token write-back could undo a re-import (now a compare-and-swap);
+    - GAM's first-run banner on stdout would have broken every read (now stripped, and the mock
+      prints it).
+
+**Next, for the operator first:** the held preview, the executor and its write ticket. The plan's ticket
+design means every builder returns a typed read or write command, a change to the builders' shape
+worth a look before it's made.
+
+Every port above is held to a fixture generated from frozen GamGUI (`scripts/gen_fixtures.py`).
+
+**Still the operator's (phase 1 "done when"):**
+- the first live import, the GamGUI copy (Allow prompts), Check access and a directory load on the
+  real tenant, with Touch ID and an explicit go for live reads;
+- re-checking the on-device model (`SWIFTGAMGUI_SPIKE=model`).
+
 ## Appendix: checked on this Mac (2026-10-08)
 
 Xcode 27.0 (27A266a), Swift 6.4, `MacOSX27.0.sdk`, macOS 27.0.1.

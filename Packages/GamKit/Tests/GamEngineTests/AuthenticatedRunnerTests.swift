@@ -58,6 +58,38 @@ struct AuthenticatedRunnerTests {
         #expect(try store.read(.oauth2, for: example) == nil)
     }
 
+    @Test func aDomainReImportedMidCallKeepsItsNewToken() async throws {
+        // PR #8's review: a load's write-back replaced a re-imported token with the old admin's.
+        let script = FileManager.default.temporaryDirectory.appending(path: "slow-gam-\(UUID().uuidString)")
+        try Data("#!/bin/sh\nsleep 0.6\nprintf 'refreshed\\n' > \"$GAMCFGDIR/oauth2.txt\"\n".utf8).write(to: script)
+        chmod(script.path, 0o755)
+        defer { try? FileManager.default.removeItem(at: script) }
+        let vault = Vault(store: store)
+        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
+        async let call = authenticated.run(["info"], as: example)
+        try await Task.sleep(for: .milliseconds(250))
+        try store.write(Data("new-admin-token".utf8), as: .oauth2, for: example)
+        _ = try await call
+        #expect(try store.read(.oauth2, for: example) == Data("new-admin-token".utf8))
+    }
+
+    @Test func gamsFirstRunBannerNeverReachesTheCaller() async throws {
+        // Real GAM prints it on stdout on every call, each having a fresh config directory (checked on
+        // the 7.48.22 build; the mock now does the same).
+        let result = try await runner().run(["print", "users"], as: example, extraEnvironment: Fixtures.mockEnvironment)
+        #expect(!result.stdout.contains("gamcache") && !result.stdout.contains("Initialized"))
+        #expect(result.stdout.contains("alice@example.com"))
+        let folder = URL(filePath: "/tmp/swiftgamgui-run/gamcfg-1")
+        let stdout = "Created: /tmp/swiftgamgui-run/gamcfg-1/gamcache\r\nConfig File: /tmp/swiftgamgui-run/gamcfg-1/gam.cfg, Initialized\n"
+            + "primaryEmail,JSON\r\na@example.com,\"{\"\"name\"\": \"\"x\u{2028}y\"\"}\"\n"
+        #expect(AuthenticatedRunner.withoutConfigNoise(stdout, configDirectory: folder)
+                == "primaryEmail,JSON\r\na@example.com,\"{\"\"name\"\": \"\"x\u{2028}y\"\"}\"\n",
+                "only the banner goes; the data keeps its line endings and its U+2028")
+        let crlf = "Created: /tmp/swiftgamgui-run/gamcfg-1/gamcache\r\nprimaryEmail\r\na@example.com\r\n"
+        #expect(AuthenticatedRunner.withoutConfigNoise(crlf, configDirectory: folder) == "primaryEmail\r\na@example.com\r\n",
+                "a CRLF banner line goes alone, not with the data after it")
+    }
+
     @Test func missingCredentialsStopTheCallBeforeAnythingIsWritten() async throws {
         let other = Domain("other.example.org")!
         await #expect(throws: VaultError.missing(other, [.oauth2Service, .oauth2])) {

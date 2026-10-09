@@ -16,9 +16,11 @@ public protocol SecretStore: Sendable {
     /// Creates the item or replaces its value in place. Never deletes first: a failed write must
     /// leave the old value stored.
     func write(_ data: Data, as credential: Credential, for domain: Domain) throws
-    /// Replaces the value of an item that exists; returns false, creating nothing, when it doesn't.
-    /// For write-backs: a domain removed while a call was in flight must stay removed.
-    func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool
+    /// Replaces an item's value only while it still holds `expected`, read and replaced as one step;
+    /// returns whether it did, creating nothing. For write-backs: a domain removed while a call was in
+    /// flight stays removed, and one re-imported meanwhile keeps its new value (PR #8's review: a load's
+    /// refreshed token undid a re-import, leaving another admin's token beside the new key).
+    func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool
     /// Removing an item that isn't there is not an error; any other failure throws.
     func delete(_ credential: Credential, for domain: Domain) throws
     /// Every domain with at least one stored credential. Reads attributes only, never secret data.
@@ -80,10 +82,10 @@ public final class MemoryStore: SecretStore {
         }
     }
 
-    public func replace(_ data: Data, as credential: Credential, for domain: Domain) throws -> Bool {
+    public func replace(_ data: Data, as credential: Credential, for domain: Domain, ifCurrent expected: Data) throws -> Bool {
         try state.withLock { state in
             try check(.write, in: &state)
-            guard state.items[key(credential, domain)] != nil else { return false }
+            guard state.items[key(credential, domain)] == expected else { return false }
             state.items[key(credential, domain)] = data
             return true
         }

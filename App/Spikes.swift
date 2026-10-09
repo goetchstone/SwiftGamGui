@@ -12,8 +12,9 @@ import Vault
 /// ever touch throwaway items named `swiftgamgui-spike*` — never GamGUI's `gamgui:<domain>` items.
 enum Spikes {
     @MainActor
-    static func runIfRequested(setup: SetupModel) async {
+    static func runIfRequested(services: AppServices) async {
         #if DEBUG
+        let setup = services.setup
         // Environment variables, not launch arguments: AppKit reads `-key value` arguments as
         // defaults, and a bare path left over is taken as a document to open — which made SwiftUI skip
         // the window entirely.
@@ -21,10 +22,15 @@ enum Spikes {
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
-                // Fill the demo screen: one passing check (connected), then one failing (the result panel).
+                // Fill the demo screen. Home and Users: connected, and the directory loaded. Setup: one
+                // passing check (connected), then one failing (the result panel).
                 await setup.refresh()
                 await setup.checkAccess(Domain("example.com")!)
-                await setup.checkAccess(Domain("example.org")!)
+                if Screen.initial != .setup {
+                    await services.directory.load()
+                } else {
+                    await setup.checkAccess(Domain("example.org")!)
+                }
             }
             await snapshot(to: URL(filePath: path))
             return

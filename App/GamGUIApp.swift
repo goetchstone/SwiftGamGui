@@ -1,4 +1,5 @@
 import AppKit
+import Directory
 import GamEngine
 import Setup
 import SwiftUI
@@ -6,12 +7,12 @@ import SwiftUI
 @main
 struct GamGUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var setup = AppServices.makeSetup()
+    @State private var services = AppServices.make()
 
     var body: some Scene {
         WindowGroup("GamGUI") {
-            ContentView(setup: setup)
-                .task { await Spikes.runIfRequested(setup: setup) }
+            ContentView(services: services)
+                .task { await Spikes.runIfRequested(services: services) }
         }
         // Every launch opens a fresh window: an admin tool has nothing worth restoring, and a restored
         // "no windows" state once left a launch with no window at all.
@@ -19,15 +20,63 @@ struct GamGUIApp: App {
     }
 }
 
+enum Screen: String, CaseIterable, Identifiable {
+    case home = "Home"
+    case users = "Users"
+    case setup = "Setup"
+
+    var id: Self { self }
+
+    var symbol: String {
+        switch self {
+        case .home: "house"
+        case .users: "person.2"
+        case .setup: "key"
+        }
+    }
+
+    /// The screen a launch opens on: Home, or in debug builds `SWIFTGAMGUI_SCREEN` (for snapshots).
+    static var initial: Screen {
+        #if DEBUG
+        if let name = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SCREEN"],
+           let screen = allCases.first(where: { $0.rawValue.lowercased() == name.lowercased() }) { return screen }
+        #endif
+        return .home
+    }
+}
+
 struct ContentView: View {
-    let setup: SetupModel
+    let services: AppServices
+    @State private var screen: Screen? = Screen.initial
+    @State private var gamVersion: String?
 
     var body: some View {
-        NavigationStack {
-            SetupView(model: setup)
-                .navigationTitle("Setup")
-                .navigationSubtitle(setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
+        NavigationSplitView {
+            List(Screen.allCases, selection: $screen) { item in
+                Label(item.rawValue, systemImage: item.symbol)
+            }
+            .navigationSplitViewColumnWidth(min: 150, ideal: 170)
+        } detail: {
+            switch screen ?? .home {
+            case .home:
+                HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
+                         hasGam: services.gam != nil) { screen = .setup }
+                    .navigationTitle("Home")
+            case .users:
+                UsersView(setup: services.setup, directory: services.directory)
+                    .navigationTitle("Users")
+            case .setup:
+                SetupView(model: services.setup)
+                    .navigationTitle("Setup")
+            }
         }
-        .frame(minWidth: 640, minHeight: 520)
+        .navigationSubtitle(services.setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
+        .frame(minWidth: 760, minHeight: 520)
+        .task {
+            // Local and credential-free: the only gam Home runs on its own.
+            if let gam = services.gam {
+                gamVersion = await GamVersion.running(gam.runner, runtimeDirectory: gam.runtimeDirectory)
+            }
+        }
     }
 }

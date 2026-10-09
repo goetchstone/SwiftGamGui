@@ -60,20 +60,42 @@ package enum PythonText {
         mapped(text) { $0.properties.uppercaseMapping }
     }
 
-    /// `str.lower()` in Python's Unicode version, without its final-sigma rule. It is used to compare
-    /// typed text: with ASCII words (roles, flags, keywords), where that rule can't matter, and in the
-    /// guard, where a Greek address ending in Σ then refuses where GamGUI would accept: the safe way.
+    /// `str.lower()` in Python's Unicode version, with its final-sigma rule: a capital sigma that ends
+    /// a word becomes ς, any other σ (PR #8's review: a search for "νικος" missed "ΝΙΚΟΣ").
     package static func lower(_ text: String) -> String {
-        mapped(text) { $0.properties.lowercaseMapping }
-    }
-
-    private static func mapped(_ text: String, _ mapping: (Unicode.Scalar) -> String) -> String {
+        let scalars = Array(text.unicodeScalars)
         var out: [Unicode.Scalar] = []
-        for scalar in text.unicodeScalars {
-            let target = knownToPython(scalar) ? Array(mapping(scalar).unicodeScalars) : [scalar]
-            out += target.allSatisfy(knownToPython) ? target : [scalar]
+        for (index, scalar) in scalars.enumerated() {
+            if scalar == "\u{03A3}" {
+                out.append(finalSigma(scalars, at: index) ? "\u{03C2}" : "\u{03C3}")
+            } else {
+                out += mapping(scalar) { $0.properties.lowercaseMapping }
+            }
         }
         return string(out)
+    }
+
+    /// CPython's `handle_capital_sigma`: a cased letter before it (case-ignorables skipped), and none
+    /// after it.
+    static func finalSigma(_ scalars: [Unicode.Scalar], at index: Int) -> Bool {
+        func cased(_ scalar: Unicode.Scalar) -> Bool { knownToPython(scalar) && scalar.properties.isCased }
+        func ignorable(_ scalar: Unicode.Scalar) -> Bool { knownToPython(scalar) && scalar.properties.isCaseIgnorable }
+        var before = index - 1
+        while before >= 0, ignorable(scalars[before]) { before -= 1 }
+        guard before >= 0, cased(scalars[before]) else { return false }
+        var after = index + 1
+        while after < scalars.count, ignorable(scalars[after]) { after += 1 }
+        return after == scalars.count || !cased(scalars[after])
+    }
+
+    private static func mapped(_ text: String, _ map: (Unicode.Scalar) -> String) -> String {
+        string(text.unicodeScalars.flatMap { mapping($0, map) })
+    }
+
+    /// One scalar's mapping, or the scalar itself when Python doesn't know it or what it maps to.
+    private static func mapping(_ scalar: Unicode.Scalar, _ map: (Unicode.Scalar) -> String) -> [Unicode.Scalar] {
+        let target = knownToPython(scalar) ? Array(map(scalar).unicodeScalars) : [scalar]
+        return target.allSatisfy(knownToPython) ? target : [scalar]
     }
 
     /// What `re.IGNORECASE` compares an ASCII pattern against: ASCII letters lowercased, and the four

@@ -145,6 +145,10 @@ acl_notify_tail() {
 case "${1:-}" in
   version)
     echo "GAM 7.48.22 - mock"
+    # As the real build does in a fresh config directory: its config line, then the cache it created.
+    if [ -n "${GAMCFGDIR:-}" ]; then
+      printf 'Config File: %s/gam.cfg, Section: DEFAULT\nCreated: %s/gamcache\n' "$GAMCFGDIR" "$GAMCFGDIR"
+    fi
     exit 0
     ;;
 esac
@@ -165,6 +169,10 @@ if [ ! -s "$GAMCFGDIR/oauth2.txt" ]; then
   printf 'ERROR: Client OAuth2 File: %s, Does not exist\nPlease run: gam oauth create\n' "$GAMCFGDIR/oauth2.txt" 1>&2
   exit 16
 fi
+# Real GAM, handed a fresh GAMCFGDIR, creates its cache and config there and says so on STDOUT, before
+# any output (checked against the 7.48.22 build). A reader that doesn't drop these lines parses them as
+# data: the first live directory load would have read the banner as its CSV header (PR #8's review).
+printf 'Created: %s/gamcache\nConfig File: %s/gam.cfg, Initialized\n' "$GAMCFGDIR" "$GAMCFGDIR"
 # GAM rewrites oauth2.txt whenever it refreshes the access token, on any authenticated call.
 if [ -n "${GAM_MOCK_REFRESH:-}" ]; then
   printf 'refreshed-token-payload\n' > "$GAMCFGDIR/oauth2.txt"
