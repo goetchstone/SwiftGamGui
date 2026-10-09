@@ -839,7 +839,17 @@ def setup_fixture() -> dict:
             fake = SimpleNamespace(runner=SimpleNamespace(gam_binary=gam))
             commands.append({"admin": admin, "cfgdir": cfgdir, "gam": gam}
                             | setup.SetupService.setup_commands(fake, admin, cfgdir))
-    return {"dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
+    # GamGUI's address check for writes that take an address (groups, delegates, calendars): GAM reads a
+    # bare name, `@domain` or a comma-joined list as something else entirely.
+    from gamgui.core.onboarding import looks_like_email
+    ws = [chr(c) for c in (0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1C, 0x1F, 0x20, 0x85, 0xA0, 0x1680, 0x2000, 0x2028, 0x3000)]
+    emails = ["a@example.com", "first.last+tag@sub.example.co.uk", "a@b", "@example.com", "a@", "a@@example.com",
+              "a@example..com", "a@.example.com", "a@example.com.", "a,b@example.com", "a@example.com,b@example.com",
+              "oauthuser", "admin", "a b@example.com", "a@exa mple.com", "", "   ", "\u00e9l\u00e8ve@\u00e9cole.fr",
+              "a@example.com\n", "a@b.c", "a\u200b@example.com"]
+    emails += [f"{w}a@example.com{w}" for w in ws] + [f"a{w}b@example.com" for w in ws]
+    checks = [{"value": e, "ok": looks_like_email(e)} for e in emails]
+    return {"looks_like_email": checks, "dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
             "user_security_scope": setup.USER_SECURITY_SCOPE,
             "admin_console_dwd_url": setup.ADMIN_CONSOLE_DWD_URL,
             "facts": facts, "user_security": security, "setup_commands": commands}

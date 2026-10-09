@@ -19,6 +19,7 @@ final class UserChangesTests {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: UserChanges
+    let access: UserAccess
     let argvLog: URL
     let auditURL: URL
 
@@ -33,8 +34,11 @@ final class UserChangesTests {
         let setup = setup
         let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
-        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path])
+        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
+                              "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path])
         changes = UserChanges(executor: executor, directory: directory)
+        access = UserAccess(setup: setup, runner: runner)
+        access.environment = ["GAM_MOCK_STATE": scratch.appending(path: "mock-state").path]
     }
 
     deinit {
@@ -70,7 +74,7 @@ final class UserChangesTests {
             calls.append(Array(fields[1...count]))
             fields.removeFirst(count + 1)
         }
-        return calls.filter { $0.first == "update" }
+        return calls.filter { $0.first == "update" || ($0.count > 3 && ["delegate", "delegates"].contains($0[3])) }
     }
 
     @Test func aTitleAndDepartmentChangeRunsGamGUIsArgvAndPatchesTheList() async throws {
@@ -152,5 +156,88 @@ final class UserChangesTests {
             $0.with(title: "Wrong tenant")
         }
         #expect(try user("alice@example.com").title == before)
+    }
+
+    // MARK: groups and delegates
+
+    @Test func aPersonsGroupsAndDelegatesAreReadForTheirTenant() async throws {
+        try await connect()
+        await access.load("alice@example.com")
+        #expect(access.lists(for: "alice@example.com") == .init(groups: ["sales@example.com", "staff@example.com"],
+                                                                delegates: ["assistant@example.com", "backup@example.com"]))
+        #expect(access.lists(for: "bob@example.com") == nil, "only the person read")
+    }
+
+    @Test func joiningAGroupRunsGamGUIsArgv() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewAddToGroup(alice, group: " it@example.com ")
+        let pending = try pending()
+        #expect(!pending.preview.needsConfirmClick)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        #expect(writes() == [["update", "group", "it@example.com", "add", "member", "alice@example.com"]])
+        #expect(changes.finished == 1)
+    }
+
+    @Test func aGroupThatIsntAnAddressIsRefusedBeforeAPreview() async throws {
+        try await connect()
+        await changes.previewRemoveFromGroup(try user("alice@example.com"), group: "a,b@example.com")
+        guard case .problem("Pick a group to remove.") = changes.state else { Issue.record("\(changes.state)"); return }
+        await changes.previewAddToGroup(try user("alice@example.com"), group: "sales")
+        guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(message.hasPrefix("“sales” isn't a group address"))
+    }
+
+    /// GamGUI's `confirm_step`: leaving a group runs only from its confirm step.
+    @Test func leavingAGroupNeedsTheConfirmStep() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewRemoveFromGroup(alice, group: "sales@example.com")
+        let pending = try pending()
+        #expect(pending.preview.needsConfirmClick)
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(writes().isEmpty)
+        await changes.previewRemoveFromGroup(alice, group: "sales@example.com")
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
+        #expect(writes() == [["update", "group", "sales@example.com", "remove", "alice@example.com"]])
+    }
+
+    @Test func aDelegateIsCheckedAsGamGUIChecksIt() async throws {
+        try await connect()
+        let users = directory.users
+        let check = { (delegate: String) in UserChanges.checkDelegate(delegate, for: "alice@example.com", directory: users) }
+        #expect(check("").error == "Enter a delegate email.")
+        #expect(check("bob").error?.hasPrefix("“bob” isn't an email address") == true)
+        #expect(check("ALICE@example.com").error == "A mailbox can't be delegated to its own owner.")
+        #expect(UserChanges.checkDelegate("a.anders@example.com", for: "carol@example.com", directory: users).error
+                == "a.anders@example.com is an alias of alice@example.com — enter the primary address.")
+        #expect(check("stranger@example.com").warning?.hasPrefix("stranger@example.com isn't in the directory") == true)
+        #expect(check("bob@example.com").warning?.hasPrefix("bob@example.com is suspended") == true)
+        #expect(UserChanges.checkDelegate("bob@example.com", for: "alice@example.com", directory: nil).warning != nil)
+    }
+
+    @Test func addingAndRemovingADelegateRunsGamGUIsArgvAndTheListFollows() async throws {
+        try await connect()
+        let carol = try user("carol@example.com")
+        await changes.previewAddDelegate(carol, delegate: "alice@example.com", directory: directory.users)
+        let pending = try pending()
+        #expect(pending.warning == nil)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        await access.load("carol@example.com")
+        #expect(access.lists(for: "carol@example.com")?.delegates == ["helpdesk@example.com", "alice@example.com"])
+        await changes.previewRemoveDelegate(carol, delegate: "alice@example.com")
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
+        await access.load("carol@example.com")
+        #expect(access.lists(for: "carol@example.com")?.delegates == ["helpdesk@example.com"])
+        #expect(writes() == [["user", "carol@example.com", "add", "delegate", "alice@example.com"],
+                             ["user", "carol@example.com", "delete", "delegate", "alice@example.com"]])
+    }
+
+    @Test func aDelegateWarningIsShownAndConfirmingIsAddAnyway() async throws {
+        try await connect()
+        await changes.previewAddDelegate(try user("carol@example.com"), delegate: "bob@example.com", directory: directory.users)
+        let pending = try pending()
+        #expect(pending.warning?.hasPrefix("bob@example.com is suspended") == true)
+        #expect(pending.confirmLabel == "Add Anyway")
     }
 }

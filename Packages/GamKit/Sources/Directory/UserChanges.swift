@@ -28,6 +28,8 @@ public final class UserChanges {
         public let confirmLabel: String
         /// The address the change is for.
         public let email: String
+        /// Something the operator should know before confirming (GamGUI's "Add anyway" warnings).
+        public let warning: String?
         let patch: @Sendable (GamUser) -> GamUser
 
         public var id: UUID { preview.id }
@@ -35,6 +37,8 @@ public final class UserChanges {
     }
 
     public private(set) var state: State = .idle
+    /// Counts confirmed changes that succeeded: a screen showing a person's live lists reads them again.
+    public private(set) var finished = 0
     /// The address the current state is about, so a panel shows a result only under its own person.
     public private(set) var subject: String?
     private let executor: Executor?
@@ -80,17 +84,93 @@ public final class UserChanges {
         }
     }
 
-    private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String,
-                      patch: @escaping @Sendable (GamUser) -> GamUser) async {
+    // MARK: groups and delegates
+
+    /// GamGUI's `/users/groups/add`: one person, one group, as a member. LOW.
+    public func previewAddToGroup(_ user: GamUser, group: String) async {
+        let group = PythonText.strip(group)
+        guard Address.looksLikeEmail(group) else {
+            subject = user.primaryEmail
+            state = .problem("“\(group)” isn't a group address: enter the group's full address, like sales@example.com.")
+            return
+        }
+        let step = WriteStep(GamCommands.addGroupMember(group: group, member: user.primaryEmail), target: user.primaryEmail,
+                             summary: "Add \(user.primaryEmail) to \(group) as a member.", about: ["group": group])
+        await hold(step, title: "Add to \(group)", confirmLabel: "Add", email: user.primaryEmail)
+    }
+
+    /// GamGUI's `/users/groups/remove`: LOW, but only from its confirm step (`confirm_step`).
+    public func previewRemoveFromGroup(_ user: GamUser, group: String) async {
+        // GamGUI's preview checks both addresses: GAM would read anything else as something else.
+        guard Address.looksLikeEmail(group), Address.looksLikeEmail(user.primaryEmail) else {
+            subject = user.primaryEmail
+            state = .problem("Pick a group to remove.")
+            return
+        }
+        let step = WriteStep(GamCommands.removeGroupMember(group: group, member: user.primaryEmail), target: user.primaryEmail,
+                             summary: "Remove \(user.primaryEmail) from \(group).", about: ["group": group])
+        await hold(step, title: "Remove from \(group)", confirmLabel: "Remove", email: user.primaryEmail, confirmStep: true)
+    }
+
+    /// GamGUI's `/users/delegate/add` with its `_check_delegate`: an error blocks the add; a warning is shown
+    /// on the preview, and confirming it is the "Add anyway".
+    public func previewAddDelegate(_ user: GamUser, delegate: String, directory: [GamUser]?) async {
+        let delegate = PythonText.strip(delegate)
+        subject = user.primaryEmail
+        let check = Self.checkDelegate(delegate, for: user.primaryEmail, directory: directory)
+        if let error = check.error {
+            state = .problem(error)
+            return
+        }
+        let step = WriteStep(GamCommands.addDelegate(email: user.primaryEmail, delegate: delegate), target: user.primaryEmail,
+                             summary: "Let \(delegate) read and send as \(user.primaryEmail).", about: ["delegate": delegate])
+        await hold(step, title: "Add a delegate", confirmLabel: check.warning == nil ? "Add" : "Add Anyway",
+                   email: user.primaryEmail, warning: check.warning)
+    }
+
+    /// GamGUI's `/users/delegate/remove`. LOW.
+    public func previewRemoveDelegate(_ user: GamUser, delegate: String) async {
+        let step = WriteStep(GamCommands.removeDelegate(email: user.primaryEmail, delegate: delegate), target: user.primaryEmail,
+                             summary: "Stop \(delegate) reading and sending as \(user.primaryEmail).", about: ["delegate": delegate])
+        await hold(step, title: "Remove a delegate", confirmLabel: "Remove", email: user.primaryEmail)
+    }
+
+    /// GamGUI's `_check_delegate`, against the cached directory: (error, warning).
+    static func checkDelegate(_ delegate: String, for email: String, directory: [GamUser]?) -> (error: String?, warning: String?) {
+        if delegate.isEmpty { return ("Enter a delegate email.", nil) }
+        guard Address.looksLikeEmail(delegate) else {
+            return ("“\(delegate)” isn't an email address — enter the delegate's full address, like name@example.com.", nil)
+        }
+        let key = PythonText.lower(delegate)
+        if key == PythonText.lower(PythonText.strip(email)) { return ("A mailbox can't be delegated to its own owner.", nil) }
+        guard let directory else {
+            return (nil, "Couldn't check \(delegate) against the directory: it isn't loaded. Load it on Home or Users first.")
+        }
+        guard let found = directory.first(where: { PythonText.lower($0.primaryEmail) == key }) else {
+            if let owner = directory.first(where: { $0.aliases.contains { PythonText.lower($0) == key } }) {
+                return ("\(delegate) is an alias of \(owner.primaryEmail) — enter the primary address.", nil)
+            }
+            return (nil, "\(delegate) isn't in the directory. Gmail only accepts a delegate from your own organization — check for a typo. "
+                + "(An account created in the last few minutes shows after Users → Refresh.)")
+        }
+        if found.suspended {
+            return (nil, "\(delegate) is suspended — Gmail may refuse the delegation, and the account can't sign in to use it.")
+        }
+        return (nil, nil)
+    }
+
+    private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String, confirmStep: Bool = false,
+                      warning: String? = nil, patch: @escaping @Sendable (GamUser) -> GamUser = { $0 }) async {
         guard !isBusy else { return }
         subject = email
         guard let executor else {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
         }
-        switch await executor.preview([step]) {
+        switch await executor.preview([step], confirmStep: confirmStep) {
         case .success(let preview):
-            state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email, patch: patch))
+            state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email,
+                                        warning: warning, patch: patch))
         case .failure(let refusal):
             state = .problem(refusal.message)
         }
@@ -111,6 +191,7 @@ public final class UserChanges {
         switch outcome.steps.first {
         case .succeeded:
             directory.patch(pending.email, on: pending.preview.domain, generation: pending.preview.generation, pending.patch)
+            finished += 1
             let note = outcome.auditProblem.map { " \($0)" } ?? ""
             state = .done("Done: \(pending.preview.steps.first?.summary ?? pending.title)\(note)")
         case .failed(let message, let kind):

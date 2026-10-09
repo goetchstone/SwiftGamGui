@@ -63,7 +63,8 @@ struct ContentView: View {
                          hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL) { screen = .setup }
                     .navigationTitle("Home")
             case .users:
-                UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges)
+                UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
+                          access: services.userAccess)
                     .navigationTitle("Users")
             case .setup:
                 SetupView(model: services.setup)
