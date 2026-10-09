@@ -26,7 +26,10 @@ public struct AuthenticatedRunner: Sendable {
         timeout: Duration = GamRunner.defaultTimeout,
         extraEnvironment: [String: String] = [:]
     ) async throws -> GamResult {
-        try await run(argv: read.argv, as: domain, timeout: timeout, extraEnvironment: extraEnvironment)
+        // Only the mock's own variables (passed in debug builds only): a caller outside GamKit can't
+        // change HOME, PATH or a proxy for a credentialed call.
+        try await run(argv: read.argv, as: domain, timeout: timeout,
+                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
     }
 
     /// Any argv, with the domain's credentials. `private`: a write must not reach it except through the
@@ -43,7 +46,7 @@ public struct AuthenticatedRunner: Sendable {
 
         let outcome: Result<GamResult, any Error>
         do {
-            outcome = .success(try await runner.run(argv, configDirectory: config.url, timeout: timeout,
+            outcome = .success(try await runner.runRaw(argv, configDirectory: config.url, timeout: timeout,
                                                     extraEnvironment: extraEnvironment))
         } catch {
             outcome = .failure(error)

@@ -12,7 +12,7 @@ public enum GamVersion {
     public static func running(_ runner: GamRunner, runtimeDirectory: URL) async -> String? {
         guard let config = try? EphemeralConfig.materialize(files: [:], in: runtimeDirectory) else { return nil }
         defer { _ = config.wipe() }
-        guard let result = try? await runner.run(GamCommands.version().argv, configDirectory: config.url), result.exitCode == 0 else {
+        guard let result = try? await runner.runRaw(GamCommands.version().argv, configDirectory: config.url), result.exitCode == 0 else {
             return nil
         }
         return parse(AuthenticatedRunner.withoutConfigNoise(result.stdout, configDirectory: config.url))

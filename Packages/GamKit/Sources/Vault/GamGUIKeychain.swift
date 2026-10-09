@@ -18,7 +18,13 @@ public struct GamGUIKeychain: Sendable {
 
     private let read: Reader
 
-    public init(read: @escaping Reader = GamGUIKeychain.legacyRead) {
+    /// GamGUI's real items, through the legacy keychain.
+    public init() {
+        self.init(read: Self.legacyRead)
+    }
+
+    /// Items from `read` instead (the demo tenant, tests).
+    public init(read: @escaping Reader) {
         self.read = read
     }
 
@@ -44,7 +50,8 @@ public struct GamGUIKeychain: Sendable {
     }
 
     /// A legacy-keychain read: nil only for "no such item", every other status throws.
-    public static let legacyRead: Reader = { service, account in
+    /// `package`: it returns an item's raw bytes, which only GamKit may hold.
+    package static let legacyRead: Reader = { service, account in
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,

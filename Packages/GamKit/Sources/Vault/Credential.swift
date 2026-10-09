@@ -46,10 +46,11 @@ public struct Domain: Hashable, Sendable, Comparable, CustomStringConvertible {
     public static func < (lhs: Domain, rhs: Domain) -> Bool { lhs.name < rhs.name }
 }
 
-/// Credential bytes that never print, log, encode or `dump` their contents (invariant 4).
+/// Credential bytes that never print, log, encode or `dump` their contents (invariant 4). The bytes are
+/// `package`: code outside GamKit can create a secret and hand it to the Vault, but never read one.
 public struct Secret: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
     CustomReflectable {
-    public let bytes: Data
+    package let bytes: Data
 
     public init(_ bytes: Data) {
         self.bytes = bytes

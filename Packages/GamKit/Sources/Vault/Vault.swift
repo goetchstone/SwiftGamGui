@@ -14,7 +14,17 @@ public actor Vault {
     private let clock = ContinuousClock()
     private var sessionStarted: ContinuousClock.Instant?
 
-    public init(store: any SecretStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+    /// The Keychain, for the app.
+    public init(store: KeychainStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+        self.init(secretStore: store, sessionLifetime: sessionLifetime)
+    }
+
+    /// Memory, for the demo tenant and tests.
+    public init(store: MemoryStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
+        self.init(secretStore: store, sessionLifetime: sessionLifetime)
+    }
+
+    package init(secretStore store: any SecretStore, sessionLifetime: Duration = Vault.defaultSessionLifetime) {
         self.store = store
         self.sessionLifetime = sessionLifetime
     }
@@ -68,7 +78,7 @@ public actor Vault {
     /// removed one stays removed, and one replaced meanwhile (a re-import) keeps its new value. Returns
     /// whether it replaced anything. For GAM's refreshed `oauth2.txt`.
     @discardableResult
-    public func refresh(_ secret: Secret, as credential: Credential, for domain: Domain, replacing original: Secret) async throws -> Bool {
+    package func refresh(_ secret: Secret, as credential: Credential, for domain: Domain, replacing original: Secret) async throws -> Bool {
         try await offMainThread { [store] in
             try store.replace(secret.bytes, as: credential, for: domain, ifCurrent: original.bytes)
         }

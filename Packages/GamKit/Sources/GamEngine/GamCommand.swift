@@ -1,6 +1,7 @@
 /// A `gam` argv, typed by what it does to the tenant (design: docs/plans/2026-10-09-write-path-options.md,
 /// option A). Only GamKit builds one: a read any caller may run, a write only ChangeCore's executor can.
-public protocol GamCommand: Sendable, Equatable {
+/// `package`, so code outside GamKit can't declare a command type of its own.
+package protocol GamCommand: Sendable, Equatable {
     var argv: [String] { get }
 }
 
@@ -10,8 +11,9 @@ public protocol GamCommand: Sendable, Equatable {
 public struct GamRead: GamCommand {
     public let argv: [String]
 
-    /// `package`: GamEngine's builders, and later Catalog's read-only promotion, are the only sources.
-    package init(_ argv: [String]) {
+    /// `internal`: GamEngine's builders are the only source (Catalog's read-only promotion, phase 4, will
+    /// need a deliberate door here). Not even GamKit's other targets can make one.
+    init(_ argv: [String]) {
         self.argv = argv
     }
 }
@@ -23,7 +25,7 @@ public struct GamWrite: GamCommand {
     public let argv: [String]
     public let action: WriteAction
 
-    package init(_ argv: [String], action: WriteAction) {
+    init(_ argv: [String], action: WriteAction) {
         self.argv = argv
         self.action = action
     }
@@ -31,7 +33,7 @@ public struct GamWrite: GamCommand {
 
 /// What a `GamWrite` does, one case per write builder.
 public enum WriteAction: String, Sendable, CaseIterable {
-    case createUser, updateOrganization, setSuspended
+    case createUser, updateOrganization, suspendUser, unsuspendUser
     case addCalendarACL, deleteCalendarACL, subscribeCalendar, removeCalendar, deleteEvent
     case resetPassword, signOutUser, deprovisionUser, createDataTransfer, removeAllCalendarACLs
     case addCalendarEvent, deleteUser, undeleteUser

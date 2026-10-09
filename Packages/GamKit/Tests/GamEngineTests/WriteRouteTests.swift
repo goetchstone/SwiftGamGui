@@ -23,19 +23,29 @@ struct WriteRouteTests {
         }
     }
 
-    static func files(in directory: String, matching needles: [String]) throws -> Set<String> {
+    static func files(in directory: String, matching needles: [String], orWord word: String? = nil) throws -> Set<String> {
         Set(try swiftFiles(in: directory).filter { file in
-            file.lines.contains { line in needles.contains { line.contains($0) } }
+            file.lines.contains { line in
+                needles.contains { line.contains($0) } || word.map { line.contains(try! Regex("\\b\($0)\\b")) } == true
+            }
         }.map(\.path))
     }
 
-    static let processStarts = ["posix_spawn", "Process(", "Process.run", "NSTask", "execv", "execl", "popen(",
-                                "system(", "fork(", "NSUserUnixTask", "NSAppleScript"]
+    /// Any use of Foundation's `Process` type, however spelled (`Process()`, `: Process = .init()`,
+    /// `Process.launchedProcess`), plus the lower-level and indirect ways to start a program.
+    static let processWord = "Process"
+    static let processStarts = ["posix_spawn", "NSTask", "execv", "execl", "popen(", "system(", "fork(", "dlopen(",
+                                "dlsym(", "NSUserUnixTask", "NSUserScriptTask", "NSUserAppleScriptTask",
+                                "NSUserAutomatorTask", "NSAppleScript", "OSAScript", "OSAKit", "LSOpen",
+                                "openApplication", "launchApplication", "SMAppService", "NSXPCConnection", "xpc_"]
+    /// Reinterpreting memory would forge a `GamRead` from a write's argv.
+    static let memoryCasts = ["unsafeBitCast", "unsafeDowncast", "withMemoryRebound", "assumingMemoryBound",
+                              "bindMemory", "unsafeAddress"]
 
     @Test func onlyGamRunnerStartsAProcess() throws {
-        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: Self.processStarts)
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: Self.processStarts, orWord: Self.processWord)
                 == ["Packages/GamKit/Sources/GamEngine/GamRunner.swift"])
-        #expect(try Self.files(in: "App", matching: Self.processStarts).isEmpty)
+        #expect(try Self.files(in: "App", matching: Self.processStarts, orWord: Self.processWord).isEmpty)
     }
 
     @Test func onlyTheBuildersMintCommands() throws {
@@ -44,12 +54,20 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["GamRead(", "GamWrite("]).isEmpty)
     }
 
-    /// `GamRunner.run(_:configDirectory:…)` takes any argv: only the authenticated runner (credentials)
-    /// and the version probe (no credentials) call it.
+    /// `GamRunner.runRaw` takes any argv, and without a config directory GAM falls back to `~/.gam`
+    /// (the operator's own GAM, if any). Only the authenticated runner (credentials) and the version probe
+    /// (an empty config) call it, and only they make a config directory.
     @Test func onlyTheRunnersCallTheRawRunner() throws {
-        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["configDirectory: config.url"])
-                == ["Packages/GamKit/Sources/GamEngine/AuthenticatedRunner.swift",
-                    "Packages/GamKit/Sources/GamEngine/GamVersion.swift"])
+        let runners: Set = ["Packages/GamKit/Sources/GamEngine/AuthenticatedRunner.swift",
+                            "Packages/GamKit/Sources/GamEngine/GamVersion.swift"]
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["runRaw("])
+                == runners.union(["Packages/GamKit/Sources/GamEngine/GamRunner.swift"]))
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["materialize("])
+                == runners.union(["Packages/GamKit/Sources/GamEngine/EphemeralConfig.swift"]))
+    }
+
+    @Test func theAppNeverReinterpretsMemory() throws {
+        #expect(try Self.files(in: "App", matching: Self.memoryCasts).isEmpty)
     }
 
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.

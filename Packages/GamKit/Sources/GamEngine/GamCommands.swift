@@ -81,7 +81,7 @@ public enum GamCommands {
     }
 
     public static func setSuspended(email: String, suspended: Bool) -> GamWrite {
-        GamWrite(["update", "user", email, "suspended", suspended ? "on" : "off"], action: .setSuspended)
+        GamWrite(["update", "user", email, "suspended", suspended ? "on" : "off"], action: suspended ? .suspendUser : .unsuspendUser)
     }
 
     // MARK: calendar access, as the calendar's user

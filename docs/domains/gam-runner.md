@@ -34,12 +34,14 @@ an allowlisted environment, a timeout, and capped output capture.
 `GoldenArgvTests`: 58 of 59. `todrive_args` is not ported, because Sheet export is dropped (CSV only).
 - **Each builder returns a `GamRead` or a `GamWrite`** (`GamCommand.swift`; design:
   `docs/plans/2026-10-09-write-path-options.md`, option A). 24 reads, 34 writes. Only GamKit can make
-  one (`package` init), and a `GamWrite` carries its `WriteAction`, fixed by the builder, which is
-  what a per-action rule (preview, confirm, "Just do it") will key on.
+  one (the inits are GamEngine-internal), and a `GamWrite` carries its `WriteAction`, fixed by the
+  builder, which is what a per-action rule (preview, confirm, "Just do it") will key on. Suspend and
+  unsuspend are one builder but two actions; `CommandKindTests` holds every builder's action exactly.
   - `CommandKindTests` holds every `GamRead` to GamGUI's catalog verb rule (the first known verb in
     the first six tokens is a read verb), called with placeholder values so an operator value can't
     pass for a verb. `check serviceaccount` is the one reviewed exception: the rule has no verb for it.
-  - A new builder picks its side; a new write adds its `WriteAction` case.
+  - A new builder picks its side; a new write adds its `WriteAction` case. `CommandKindTests` counts
+    the builders in the source, so one the golden test doesn't cover fails.
 - **Closed sets are types** (`GamChoices.swift`: `GroupRole`, `CalendarRole`, `ForwardAction`,
   `TransferPrivacy`, `MessageDetail`), so a builder can't be handed a value GAM doesn't know.
   `init(validating:)` ports GamGUI's validator for free-form text: Python's `strip().lower()` scalar
@@ -57,12 +59,17 @@ an allowlisted environment, a timeout, and capped output capture.
 ## Authenticated runs
 `AuthenticatedRunner` (phase 1, slice 2) runs `gam` as a domain: credentials from the Vault into a
 per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets.md](secrets.md).
-- **Its public `run` takes only a `GamRead`.** Beneath it, `GamRunner.run`, `EphemeralConfig.materialize`,
-  `Vault.credentials(for:)` and `GamGUIKeychain.credentials(for:)` are `package`, so the app target
-  can read the tenant but has no route to a write or to a secret. Writes arrive with ChangeCore's
+- **Its public `run` takes only a `GamRead`.** Beneath it, `GamRunner.runRaw`, `EphemeralConfig.materialize`,
+  `Vault.credentials(for:)`, `Vault.refresh`, `GamGUIKeychain.credentials(for:)` and `legacyRead`, the
+  `SecretStore` protocol, `KeychainStore`'s methods and `Secret.bytes` are `package` (a `Secret` the app
+  holds is opaque), so the app target can read the tenant but has
+  no route to a write or to a secret: it picks a store and hands it to `Vault`. Writes arrive with ChangeCore's
   executor and ticket (slice 3).
+- A credentialed read takes only the mock's variables as extra environment (debug builds pass them).
 - `WriteRouteTests` scans the source for what access levels can't stop: only `GamRunner.swift` starts
-  a process, only `GamCommands.swift` makes a command, only the two runners call the raw runner, and
+  a process (any use of the `Process` type counts), only `GamCommands.swift` makes a command, only the
+  two runners call `runRaw` or make a config directory (without one GAM falls back to `~/.gam`), the
+  app never reinterprets memory (`unsafeBitCast` would forge a `GamRead`), and
   the app never imports GamKit `@testable`.
 - The app's vault spike reads the Keychain through `Vault.spikeRead`/`spikeOAuth2`, compiled only in
   debug builds; they say which credentials were found, never their values.
