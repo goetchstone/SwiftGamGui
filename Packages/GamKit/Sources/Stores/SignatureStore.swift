@@ -94,37 +94,6 @@ public struct SignatureStore: Sendable {
     /// GamGUI's templates (its `app_data_dir()`), read only by `copy(fromGamGUI:)`.
     public static var gamGUIFile: URL { URL.applicationSupportDirectory.appending(path: "GamGUI/signatures.json") }
 
-    /// GamGUI's three starters (`signatures.py:162-189`), in its order. Each line break below is one of
-    /// its `\n`s; a trailing backslash joins two of its literals.
-    public static let seeds: [(name: String, body: String)] = [
-        ("Classic", """
-            <div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\
-            font-size:13px;line-height:1.5;color:#3f4a5a;">
-              <div style="font-weight:600;color:#1f2733;">{name}</div>
-              <div>[[{title} · ]]Your Company</div>
-              <div style="color:#6b7280;">{email}[[ · {phone}]]</div>
-            </div>
-            """),
-        ("Modern accent", """
-            <table cellpadding="0" cellspacing="0" role="presentation" \
-            style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\
-            font-size:13px;color:#3f4a5a;">
-              <tr>
-                <td style="border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;">
-                  <div style="font-weight:600;font-size:14px;color:#1f2733;">{name}</div>
-                  <div style="color:#52647B;">[[{title} · ]]Your Company</div>
-                  <div style="color:#6b7280;">{email}[[ · {phone}]]</div>
-                  [[<div style="color:#6b7280;">{department}</div>]]
-                </td>
-              </tr>
-            </table>
-            """),
-        ("Minimal", """
-            <div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;\
-            font-size:13px;color:#3f4a5a;">{name}[[ · {title}]] · Your Company · {email}</div>
-            """),
-    ]
-
     public let root: URL
     public var url: URL { root.appending(path: Self.fileName) }
     /// Where opening moved an unreadable file, for the screen to say so; nil when nothing was moved.
@@ -233,8 +202,9 @@ public struct SignatureStore: Sendable {
 
     // MARK: rules
 
+    /// GamGUI's three starters (`Signature.seeds`), when there's no file yet.
     static var seeded: JSONObject {
-        seeds.reduce(into: JSONObject()) { $0[$1.name] = .string($1.body) }
+        Signature.seeds.reduce(into: JSONObject()) { $0[$1.name] = .string($1.body) }
     }
 
     /// GamGUI's name rules: stripped as `str.strip` strips, required, at most 60 code points.

@@ -114,6 +114,13 @@ package enum PythonText {
         return string(scalars[first...last])
     }
 
+    /// `str.rstrip(chars)`: the characters in `set` removed from the end.
+    package static func rstrip(_ text: String, of set: Set<UInt32>) -> String {
+        let scalars = Array(text.unicodeScalars)
+        guard let last = scalars.lastIndex(where: { !set.contains($0.value) }) else { return "" }
+        return string(scalars[...last])
+    }
+
     /// `str.splitlines()`.
     package static func lines(_ text: String) -> [String] {
         var lines: [String] = [], current = String.UnicodeScalarView()

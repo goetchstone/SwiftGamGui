@@ -2,16 +2,14 @@
 import Darwin
 import Foundation
 import GamEngine
+import TestSupport
 import Testing
 
 /// The signature template store (design doc D2). GamGUI's half (seeds, name rules, `names()` order and
-/// messages) is held to GamGUI's source, quoted here, and to what its store did when pointed at a
-/// temporary path. The native half: a format number, atomic `0600` writes in a `0700` folder, an
-/// unreadable file moved aside rather than replaced, replacing asked first, and the one-time copy of
-/// GamGUI's templates read by descriptor.
-///
-/// TODO(S1a): `Tests/Fixtures/signatures.json` (seeds, `store_errors` and the `names()` order, generated
-/// from frozen GamGUI by `scripts/gen_fixtures.py`) takes over from the quotes and the order below.
+/// messages) is held to Tests/Fixtures/signatures.json, generated from frozen GamGUI's store pointed at
+/// a temporary file, and to what that store did for the crafted names below. The native half: a format
+/// number, atomic `0600` writes in a `0700` folder, an unreadable file moved aside rather than replaced,
+/// replacing asked first, and the one-time copy of GamGUI's templates read by descriptor.
 @Suite("Signature store")
 struct SignatureStoreTests {
     let base: URL
@@ -24,70 +22,20 @@ struct SignatureStoreTests {
         root = base.appending(path: "SwiftGamGui")
     }
 
-    // MARK: GamGUI's, quoted
+    // MARK: GamGUI's, from the fixture
 
-    /// `gamgui/core/signatures.py:163-188` at GamGUI 834493c, byte for byte.
-    static let seedSource = #"""
-        "Classic": (
-            '<div style="font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;'
-            'font-size:13px;line-height:1.5;color:#3f4a5a;">\n'
-            '  <div style="font-weight:600;color:#1f2733;">{name}</div>\n'
-            '  <div>[[{title} · ]]Your Company</div>\n'
-            '  <div style="color:#6b7280;">{email}[[ · {phone}]]</div>\n'
-            '</div>'
-        ),
-        "Modern accent": (
-            '<table cellpadding="0" cellspacing="0" role="presentation" '
-            'style="font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;'
-            'font-size:13px;color:#3f4a5a;">\n'
-            '  <tr>\n'
-            '    <td style="border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;">\n'
-            '      <div style="font-weight:600;font-size:14px;color:#1f2733;">{name}</div>\n'
-            '      <div style="color:#52647B;">[[{title} · ]]Your Company</div>\n'
-            '      <div style="color:#6b7280;">{email}[[ · {phone}]]</div>\n'
-            '      [[<div style="color:#6b7280;">{department}</div>]]\n'
-            '    </td>\n'
-            '  </tr>\n'
-            '</table>'
-        ),
-        "Minimal": (
-            '<div style="font-family:-apple-system,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;'
-            'font-size:13px;color:#3f4a5a;">{name}[[ · {title}]] · Your Company · {email}</div>'
-        ),
-    """#
-
-    /// `signatures.py:236-240`, with `_MAX_NAME_LEN` (191) formatted in.
-    static let nameRequired = "Template name is required."
-    static let nameTooLong = "Template name must be {} characters or fewer.".replacingOccurrences(of: "{}", with: "60")
-    static let bodyEmpty = "Template body is empty — put some HTML in the editor before saving."
-
-    /// The seeds as Python reads the quoted source: each key's adjacent `'…'` literals joined, with the
-    /// two escapes they use (`\'` and `\n`) decoded.
-    static var quotedSeeds: [(name: String, body: String)] {
-        var seeds: [(name: String, body: String)] = []
-        for line in seedSource.split(separator: "\n") {
-            let text = line.trimmingCharacters(in: .whitespaces)
-            if text.hasPrefix("\""), text.hasSuffix("\": (") {
-                seeds.append((String(text.dropFirst().dropLast(4)), ""))
-            } else if text.hasPrefix("'"), text.hasSuffix("'") {
-                var decoded = "", escaped = false
-                for scalar in text.dropFirst().dropLast().unicodeScalars {
-                    if escaped {
-                        decoded.unicodeScalars.append(scalar == "n" ? "\n" : scalar)
-                        escaped = false
-                    } else if scalar == "\\" {
-                        escaped = true
-                    } else {
-                        decoded.unicodeScalars.append(scalar)
-                    }
-                }
-                seeds[seeds.count - 1].body += decoded
-            }
+    struct Fixture: Decodable {
+        struct Store: Decodable {
+            let seed_names: [String], names: [String], messages: [String: String], max_name_length: Int
         }
-        return seeds
+        let store: Store
     }
 
-    static let seedNames = ["Classic", "Minimal", "Modern accent"]
+    static let gamGUI = try! JSONDecoder().decode(Fixture.self, from: Data(contentsOf: Fixtures.signaturesJSON)).store
+    static var nameRequired: String { gamGUI.messages["name_required"]! }
+    static var nameTooLong: String { gamGUI.messages["name_too_long"]! }
+    static var bodyEmpty: String { gamGUI.messages["body_empty"]! }
+    static var seedNames: [String] { gamGUI.seed_names }
 
     // MARK: helpers
 
@@ -130,15 +78,12 @@ struct SignatureStoreTests {
     // MARK: seeds and names
 
     @Test func seedsOnFirstUse() throws {
-        let quoted = Self.quotedSeeds
-        #expect(quoted.map(\.name) == ["Classic", "Modern accent", "Minimal"], "the quote parsed")
-        #expect(SignatureStore.seeds.map(\.name) == quoted.map(\.name))
-        for (seed, expected) in zip(SignatureStore.seeds, quoted) {
-            #expect(Array(seed.body.utf8) == Array(expected.body.utf8), "\(expected.name)")
-        }
+        // Signature.seeds is GamGUI's, byte for byte (SignatureTests.variablesAndSeedsAreGamGUIs).
+        #expect(Signature.seeds.map(\.name).sorted() == Self.seedNames)
+        #expect(Self.gamGUI.max_name_length == SignatureStore.maxNameLength)
         let store = try SignatureStore(root: root)
         #expect(store.names == Self.seedNames)
-        for (name, body) in quoted { #expect(store.body(name).map { Array($0.utf8) } == Array(body.utf8)) }
+        for (name, body) in Signature.seeds { #expect(store.body(name).map { Array($0.utf8) } == Array(body.utf8)) }
         #expect(store.quarantined == nil)
         #expect(!FileManager.default.fileExists(atPath: root.path), "loading writes nothing, as GamGUI's doesn't")
     }
@@ -155,7 +100,7 @@ struct SignatureStoreTests {
                 return "\(error)"
             }
         }
-        // What GamGUI's store said for each (its probe at 834493c).
+        // What GamGUI's store said for each.
         #expect(refusal("") == Self.nameRequired)
         #expect(refusal("  \u{3000}") == Self.nameRequired)
         #expect(refusal(String(repeating: "x", count: 61)) == Self.nameTooLong)
@@ -191,12 +136,22 @@ struct SignatureStoreTests {
                      String(repeating: "\u{1D400}", count: 60), String(repeating: "e\u{301}", count: 30)] {
             try store.save(name, body: "<b>x</b>")
         }
-        // GamGUI's `names()` for the same saves: Python's `sorted`, code point by code point.
+        // GamGUI's `names()` for the same saves (frozen GamGUI's store, probed): Python's `sorted`, code
+        // point by code point.
         let gamGUIs = ["B", "Classic", "Minimal", "Modern accent", "Spaced", "Z", "a", "b", "classic",
                        String(repeating: "e", count: 60), "e\u{301}", String(repeating: "e\u{301}", count: 30), "\u{E9}",
                        "\u{200B}", "\u{FF5E}", String(repeating: "\u{1D400}", count: 60), "\u{1F600}"]
         #expect(Self.utf8(store.names) == Self.utf8(gamGUIs))
         #expect(Self.utf8(try SignatureStore(root: root).names) == Self.utf8(gamGUIs))
+    }
+
+    /// The fixture's names, saved here as GamGUI's store saved them, come back in the order it listed them.
+    @Test func namesAreGamGUIsForItsOwnSaves() throws {
+        var store = try SignatureStore(root: root)
+        for name in Self.gamGUI.names where !Self.seedNames.contains(name) {
+            try store.save(name, body: "body")
+        }
+        #expect(Self.utf8(store.names) == Self.utf8(Self.gamGUI.names))
     }
 
     // MARK: the file
@@ -438,7 +393,7 @@ struct SignatureStoreTests {
         #expect(report.kept == ["Minimal"], "a different body keeps this app's version")
         #expect(Self.utf8(report.refused) == Self.utf8(["", " padded ", "Blank", long, "Number"]))
         #expect(store.body("Mine") == "<b>mine</b>")
-        #expect(store.body("Minimal") == SignatureStore.seeds[2].body)
+        #expect(store.body("Minimal") == Signature.seeds[2].body)
         #expect(store.body("Classic") == classic)
         #expect(bytes(source) == original, "GamGUI's file is only read")
 

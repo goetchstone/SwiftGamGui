@@ -67,6 +67,16 @@ struct FixtureTests {
         }
     }
 
+    /// The signature fixture comes from the same GamGUI commit as the argv, and from the pinned GAM, whose
+    /// own functions it ran.
+    @Test func signaturesComeFromTheSameGamGUIAndThePin() throws {
+        struct SignaturesDoc: Decodable { let source: ArgvDoc.Source }
+        let argv = try decode(ArgvDoc.self, Fixtures.argvJSON)
+        let signatures = try decode(SignaturesDoc.self, Fixtures.signaturesJSON)
+        #expect(signatures.source.gamgui_commit == argv.source.gamgui_commit)
+        #expect(signatures.source.gam_version == GamVersion.expected)
+    }
+
     @Test func catalogIsStampedWithThePinnedVersion() throws {
         let doc = try decode(CatalogDoc.self, Fixtures.catalogJSON)
         #expect(doc.version == GamVersion.expected)
