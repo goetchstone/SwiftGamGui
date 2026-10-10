@@ -252,8 +252,12 @@ private struct UserDetail: View {
                 }
             case nil:
                 Section("Auto-reply") {
-                    HStack { ProgressView().controlSize(.small); Text("Reading the auto-reply…") }
-                        .accessibilityElement(children: .combine)
+                    if let problem = access.problem(for: user.primaryEmail) {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    } else {
+                        HStack { ProgressView().controlSize(.small); Text("Reading the auto-reply…") }
+                            .accessibilityElement(children: .combine)
+                    }
                 }
             }
             AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
