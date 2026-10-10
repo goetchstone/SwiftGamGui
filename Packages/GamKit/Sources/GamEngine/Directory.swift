@@ -26,18 +26,15 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
     public let recoveryEmail: String
     public let lastLoginTime: String?
     public let aliases: [String]
+    /// The name, or the address when there is none. Stored, not worked out on each read: the list sorts
+    /// by it, and a sort reads it a hundred thousand times in a large directory.
+    public let fullName: String
     public let record: GamOutput.Record
     /// The address, or a one-off identity for a record without one, so two such rows never share an id.
     public let id: String
 
     public var customMirror: Mirror {
         Mirror(self, children: ["primaryEmail": primaryEmail, "suspended": suspended, "orgUnitPath": orgUnitPath])
-    }
-
-    /// The name, or the address when there is none.
-    public var fullName: String {
-        let name = PythonText.strip(givenName + " " + familyName)
-        return name.isEmpty ? primaryEmail : name
     }
 
     public init(record: GamOutput.Record) {
@@ -62,6 +59,8 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
         recoveryEmail = Fields.text(Fields.truthy(Fields.first(record, "recoveryEmail")))
         lastLoginTime = Fields.first(record, "lastLoginTime", "Last Login Time").map(Fields.text)
         aliases = Fields.list(Fields.first(record, "aliases", "Aliases"))
+        let joined = PythonText.strip(givenName + " " + familyName)
+        fullName = joined.isEmpty ? primaryEmail : joined
         id = Fields.identity(primaryEmail)
     }
 }

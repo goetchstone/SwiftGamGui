@@ -63,6 +63,36 @@ struct DirectoryStoreTests {
         #expect(store.reports?.first { $0.key == "suspended" }?.count == users.suspendedCount)
     }
 
+    /// The list's rows are worked out once per list, filter and order: asking again (a click) returns the
+    /// same rows without sorting again, and a patch, which keeps the count, shows at once.
+    @Test func rowsAreSortedOnceAndFollowAPatch() async throws {
+        try await connect("example.com", admin: "admin@example.com")
+        await store.load()
+        let users = try #require(store.users)
+        let byName = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
+        let all = UserFilter()
+        let rows = try #require(store.rows(all, sortedBy: byName))
+        #expect(rows.map(\.id) == users.sorted(using: byName).map(\.id))
+        let again = try #require(store.rows(all, sortedBy: byName))
+        #expect(rows.withUnsafeBufferPointer { $0.baseAddress } == again.withUnsafeBufferPointer { $0.baseAddress },
+                "asked again with nothing changed, the rows were sorted again")
+
+        let suspended = UserFilter(scope: .suspended)
+        #expect(store.rows(suspended, sortedBy: byName)?.map(\.id) == suspended.apply(users).sorted(using: byName).map(\.id))
+        let byAddress = [KeyPathComparator(\GamUser.primaryEmail, order: .reverse)]
+        #expect(store.rows(all, sortedBy: byAddress)?.map(\.id) == users.sorted(using: byAddress).map(\.id))
+
+        // The same filter and order as just before the patch: only the patch can make the rows change.
+        _ = store.rows(all, sortedBy: byName)
+        let target = rows[0].primaryEmail
+        store.patch(target, on: example, generation: setup.generation) { $0.with(title: "Patched Title") }
+        #expect(store.rows(all, sortedBy: byName)?.first { $0.primaryEmail == target }?.title == "Patched Title",
+                "a patch keeps the count; the rows must not be the old ones")
+
+        try await connect("example.org", admin: "admin@example.org")
+        #expect(store.rows(all, sortedBy: byName) == nil, "example.com's rows, shown as example.org's")
+    }
+
     @Test func anotherTenantNeverSeesTheList() async throws {
         try await connect("example.com", admin: "admin@example.com")
         await store.load()

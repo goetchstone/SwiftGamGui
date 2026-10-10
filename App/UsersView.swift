@@ -48,22 +48,9 @@ struct UsersView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if let users = directory.users {
-            let rows = filter.apply(users).sorted(using: sortOrder)
-            Table(rows, selection: $selection, sortOrder: $sortOrder) {
-                TableColumn("Name", value: \.fullName)
-                // With a person's page open the list narrows: only who and their status, readable.
-                if selection == nil {
-                    TableColumn("Address", value: \.primaryEmail)
-                    TableColumn("Title", value: \.title)
-                    TableColumn("Department", value: \.department)
-                    TableColumn("Organizational Unit", value: \.orgUnitPath)
-                }
-                TableColumn("Status") { user in
-                    Text(user.suspended ? "Suspended" : "Active")
-                        .foregroundStyle(user.suspended ? .orange : .primary)
-                }
-            }
+        // Filtered and sorted once per list, filter and order (`DirectoryStore.rows`), not on every click.
+        if let users = directory.users, let rows = directory.rows(filter, sortedBy: sortOrder) {
+            UsersTable(rows: rows, selection: $selection, sortOrder: $sortOrder)
             .searchable(text: $filter.query, prompt: "Name, address, title, department or unit")
             .safeAreaInset(edge: .bottom) {
                 // A refresh shows here: running, or why it failed (the list above is the last good one).
@@ -107,6 +94,126 @@ struct UsersView: View {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+}
+
+/// The Users list's columns. The raw values key the saved layout: renaming one forgets its width and
+/// whether it shows.
+enum UserColumn: String, CaseIterable, Identifiable {
+    case name, status, address, title, department, orgUnit
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .name: "Name"
+        case .status: "Status"
+        case .address: "Address"
+        case .title: "Title"
+        case .department: "Department"
+        case .orgUnit: "Organizational Unit"
+        }
+    }
+
+    /// Every column but Name, which always shows, first.
+    static var hideable: [UserColumn] { allCases.filter { $0 != .name } }
+
+    private static let key = "usersTableColumns"
+
+    /// The layout the operator left, from the app's preferences: windows aren't restored
+    /// (`restorationBehavior(.disabled)`), so scene storage would forget it at every launch. Read when a
+    /// list appears, not bound live, so two windows never push widths into each other; a list writes only
+    /// what the operator changed in it. A debug spike or snapshot reads and writes none of the operator's.
+    static func saved() -> TableColumnCustomization<GamUser> {
+        guard !Spikes.isRequested, let data = UserDefaults.standard.data(forKey: key),
+              let columns = try? JSONDecoder().decode(TableColumnCustomization<GamUser>.self, from: data)
+        else { return TableColumnCustomization() }
+        return columns
+    }
+
+    static func save(_ columns: TableColumnCustomization<GamUser>) {
+        guard !Spikes.isRequested, let data = try? JSONEncoder().encode(columns) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+}
+
+/// The list itself, in the columns the operator chose. The same columns whether or not a person's page is
+/// open: a list that dropped four of them when a name was clicked read as lost headers, and rebuilt the
+/// table while the page slid in. Beside the page, the list scrolls sideways. Its own view, so a column
+/// dragged wider redraws only the list.
+private struct UsersTable: View {
+    let rows: [GamUser]
+    @Binding var selection: GamUser.ID?
+    @Binding var sortOrder: [KeyPathComparator<GamUser>]
+    @State private var columns = UserColumn.saved()
+    /// The operator changed the layout here since it was last saved. A list nobody touched never writes:
+    /// leaving Users in a second window would otherwise put back what was just changed in the first.
+    @State private var unsaved = false
+
+    var body: some View {
+        Table(rows, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns) {
+            // Every row keeps its name: Name can't be hidden, or dragged from the front.
+            TableColumn(UserColumn.name.label, value: \.fullName)
+                .width(min: 160)
+                .customizationID(UserColumn.name.rawValue)
+                .disabledCustomizationBehavior([.visibility, .reorder])
+            // Wide enough for "Suspended" in full: the word, not only its color.
+            TableColumn(UserColumn.status.label) { user in
+                Text(user.suspended ? "Suspended" : "Active")
+                    .foregroundStyle(user.suspended ? .orange : .primary)
+            }
+            .width(min: 84, max: 120)
+            .customizationID(UserColumn.status.rawValue)
+            TableColumn(UserColumn.address.label, value: \.primaryEmail)
+                .width(min: 120)
+                .customizationID(UserColumn.address.rawValue)
+            TableColumn(UserColumn.title.label, value: \.title)
+                .width(min: 60)
+                .customizationID(UserColumn.title.rawValue)
+            TableColumn(UserColumn.department.label, value: \.department)
+                .width(min: 60)
+                .customizationID(UserColumn.department.rawValue)
+            TableColumn(UserColumn.orgUnit.label, value: \.orgUnitPath)
+                .width(min: 60)
+                .customizationID(UserColumn.orgUnit.rawValue)
+        }
+        .toolbar {
+            ToolbarItem {
+                // The header's right-click menu, from the keyboard and VoiceOver too.
+                Menu("Columns", systemImage: "tablecells") {
+                    ForEach(UserColumn.hideable) { column in
+                        Toggle(column.label, isOn: shown(column))
+                    }
+                    Divider()
+                    Button("Show All Columns") {
+                        for column in UserColumn.hideable { columns[visibility: column.rawValue] = .visible }
+                    }
+                    Button("Restore Column Order") { columns.resetOrder() }
+                }
+                .accessibilityHint("Choose which columns the list of users shows.")
+            }
+        }
+        // Saved a second after the last change (dragging a column's edge changes it continuously), and
+        // when the list goes away or the app quits before that second is up.
+        .onChange(of: columns) { unsaved = true }
+        .task(id: columns) {
+            guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
+            save()
+        }
+        .onDisappear(perform: save)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in save() }
+    }
+
+    private func save() {
+        guard unsaved else { return }
+        UserColumn.save(columns)
+        unsaved = false
+    }
+
+    /// Shown unless the operator hid it: a column never touched reads `.automatic`, which shows.
+    private func shown(_ column: UserColumn) -> Binding<Bool> {
+        Binding(get: { columns[visibility: column.rawValue] != .hidden },
+                set: { columns[visibility: column.rawValue] = $0 ? .visible : .hidden })
     }
 }
 
@@ -211,13 +318,14 @@ private struct UserDetail: View {
     /// GAM's ISO 8601 time as a date and time in the Mac's own format; GAM says never with the epoch.
     static func signIn(_ value: String?) -> String {
         guard let value, !value.isEmpty else { return "Never" }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let plain = ISO8601DateFormatter()
-        guard let date = formatter.date(from: value) ?? plain.date(from: value) else { return value }
+        guard let date = (try? Date(value, strategy: withFraction)) ?? (try? Date(value, strategy: .iso8601))
+        else { return value }
         guard date.timeIntervalSince1970 > 0 else { return "Never" }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
+
+    /// Made once, not on every redraw of the page.
+    private static let withFraction = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 
     @ViewBuilder private var tabContent: some View {
         switch tab {
