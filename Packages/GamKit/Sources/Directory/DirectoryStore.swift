@@ -33,7 +33,14 @@ public final class DirectoryStore {
         let loadedAt: Date
         let domain: Domain
         let generation: Int
+        /// Which list this is: a patch keeps the count, so what's derived from the list keys on this.
+        let revision: Int
     }
+
+    /// The last snapshot's revision.
+    @ObservationIgnored private var revisions = 0
+    /// The list as last filtered and sorted, and what for. Not observed: it is filled while a view reads it.
+    @ObservationIgnored private var listed: (revision: Int, filter: UserFilter, order: [KeyPathComparator<GamUser>], rows: [GamUser])?
 
     private let setup: SetupModel
     private let runner: AuthenticatedRunner?
@@ -73,8 +80,22 @@ public final class DirectoryStore {
         else { return }
         var users = snapshot.users
         users[index] = change(users[index])
+        revisions += 1
         self.snapshot = Snapshot(users: users, reports: DirectoryReport.build(users, now: snapshot.loadedAt),
-                                 loadedAt: snapshot.loadedAt, domain: domain, generation: generation)
+                                 loadedAt: snapshot.loadedAt, domain: domain, generation: generation, revision: revisions)
+    }
+
+    /// The users a list shows, filtered and sorted, worked out again only when the list, the filter or the
+    /// order changes. A click that only selects someone does no work: re-sorting the whole directory on
+    /// every click held up the person page's opening.
+    public func rows(_ filter: UserFilter, sortedBy order: [KeyPathComparator<GamUser>]) -> [GamUser]? {
+        guard let current else { return nil }
+        if let listed, listed.revision == current.revision, listed.filter == filter, listed.order == order {
+            return listed.rows
+        }
+        let rows = filter.apply(current.users).sorted(using: order)
+        listed = (current.revision, filter, order, rows)
+        return rows
     }
 
     /// The users, while they belong to the connected tenant.
@@ -147,7 +168,9 @@ public final class DirectoryStore {
         guard setup.active == domain, setup.generation == generation else { return }
         switch outcome {
         case .success(let (users, reports, loadedAt)):
-            snapshot = Snapshot(users: users, reports: reports, loadedAt: loadedAt, domain: domain, generation: generation)
+            revisions += 1
+            snapshot = Snapshot(users: users, reports: reports, loadedAt: loadedAt, domain: domain, generation: generation,
+                                revision: revisions)
         case .failure(let error):
             failure = (Self.problem(for: error, argv: read.argv), domain, generation)
         }

@@ -125,9 +125,18 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   wider and resizable, with the name, address and status in words at the top, an **Actions** menu for
   what changes the account (suspend apart and marked destructive), the last change's result as a
   banner VoiceOver announces, and tabs (Profile, Groups, Mail, Security; mail delegates sit with the
-  auto-reply under Mail). With a page open the list shows only name and status. A preview leads with
-  the change in words; the command is under **Show command**. CI renders each tab
-  (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
+  auto-reply under Mail). A preview leads with the change in words; the command is under **Show
+  command**. CI renders each tab (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
+- **The list's columns (2026-10-10):** the same six whether or not a page is open. Dropping four
+  when a name was clicked read to the operator as lost headers, and rebuilt the table while the page
+  slid in. The operator hides, shows, reorders and resizes them (right-click a header, or the toolbar's
+  **Columns** menu for the keyboard and VoiceOver); Name always shows, first. The layout is saved in
+  the app's preferences (`UserColumn`), read when the list appears and written a second after the last
+  change; a debug snapshot touches none of it. Beside an open page the list scrolls sideways.
+- **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
+  revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
+  directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's
+  opening. `GamUser.fullName` is stored, and the search's query is prepared once per search.
 - **Widths (failure-log 2026-10-10):** on macOS 27 an open inspector adds its width, and the floating
   sidebar's a second time, to the list's minimum without raising the window's; when the window can't
   hold the sum, AppKit loops until the app crashes. `ColumnWidths` bounds the sidebar (150–190) and
