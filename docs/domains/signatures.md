@@ -43,6 +43,30 @@ messages; the store's own rules below (no template is ever lost to a failed save
   vendored build over the bodies, and reads SORF_FILE_ARGUMENTS from it, so a GAM bump that changes
   either fails the generator's run or the tests.
 
+## The write (S1c): `Directory/SignatureChanges.swift`
+One person at a time, through ChangeCore (invariant 2); the operator sets signatures per person.
+- **Who:** `activePeople` (active users, code-point order by address, GamGUI's `scope_options`);
+  `defaultPerson` is the connected admin when they're an active user, else nobody, never whoever sorts
+  first (GamGUI review F18).
+- **Preview:** `preview(person:template:current:)` renders the template (`Signature.render`), refuses a
+  render GAM would read as a file keyword before any preview, and holds one
+  `user <email> signature <render> html` with its confirm step and the typed count above 25 (D5), and
+  `expecting:` the tenant the screen's reads belong to. Warnings, none changing the argv: GamGUI's
+  curly-quote text, an empty render ("confirming clears their Gmail signature"), and the stored form
+  differing ("GAM will store this with … changed").
+- **The held body:** `Pending.body` is the held argv element (`WriteStep.signatureBody`), so the sheet
+  shows the bytes the run sends; the audit and `shownArgv` keep it masked.
+- **Confirm** runs the pending it's given only while it's the one shown, exactly as held: an edited
+  template, another person, a directory change since, a replay or a bare confirm writes nothing.
+- **Failure:** "Couldn't set the signature." plus the kind's remediation, GAM's error as `detail`. A
+  never-signed-in account refused "Requested client not authorized" is told to wait for Google
+  (live 2026-09-30); for anyone else those words stay GAM's unexplained error.
+- **Put Back Previous:** the signature as read before the change (`current`, from `UserAccess`, stamped
+  with its tenant), previewed again as GAM showed it; refused on another tenant or when it's a keyword.
+- **Reading the current signature:** `UserAccess` reads `show signature` with the person's other lists,
+  on its own (Gmail off fails only it), parsed by `Signature.parseShown`; tenant-stamped and bounded
+  like the rest.
+
 ## The mock (`Tests/Fixtures/mock_gam.sh`)
 - `show signature` prints GAM's shape for the address given, with the indent; with `GAM_MOCK_STATE`,
   the body the mock last set, in the form GAM stored it.
