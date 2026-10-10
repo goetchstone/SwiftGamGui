@@ -121,6 +121,12 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   for the connected admin at each run (`SetupModel.connectedAdmin`).
 - **Signature** moves to the Signatures screen (templates, the rendered preview, the Siri intent);
   **account delete** comes with offboarding (destructive, proven on the next real leaver).
+- **The person page (2026-10-10):** the operator found the single long column hard going. The page is
+  wider and resizable, with the name, address and status in words at the top, an **Actions** menu for
+  what changes the account (suspend apart and marked destructive), the last change's result as a
+  banner VoiceOver announces, and tabs (Profile, Groups & Delegates, Mail, Security). With a page open
+  the list shows only name and status. A preview leads with the change in words; the command is under
+  **Show command**. CI renders each tab (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
   app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
   destructive, so (no spare license) it is first proven on the operator's next real leaver.
