@@ -17,12 +17,13 @@ public func fuzz(_ data: UnsafePointer<UInt8>, _ size: Int) -> Int32 {
     func field(_ index: Int) -> String { index < fields.count ? fields[index] : "" }
     let whole = String(decoding: bytes.dropFirst(), as: UTF8.self)
 
-    switch selector % 5 {
+    switch selector % 6 {
     case 0: parsers(whole)
     case 1: errors(stderr: field(0), secret: field(1), stdout: field(2), exitCode: Int32(bitPattern: UInt32(selector)))
     case 2: builders(field(0), field(1), field(2), field(3))
     case 3: choices(whole)
-    default: redaction(fields)
+    case 4: redaction(fields)
+    default: csvRoundTrip(fields)
     }
     return 0
 }
@@ -38,6 +39,24 @@ func parsers(_ stdout: String) {
     _ = JSONValue.parse(stdout)
     _ = PythonText.lower(stdout)
     _ = PythonText.strip(stdout)
+}
+
+/// The fields, written as GAM writes a CSV row (CPython 3.14's writer in GAM's dialect: every backslash
+/// escaped, a field with a comma, quote, CR or LF quoted, its quotes doubled), read back unchanged.
+func csvRoundTrip(_ fields: [String]) {
+    var written = fields.map { field in
+        var cell = String.UnicodeScalarView(), quoted = false
+        for scalar in field.unicodeScalars {
+            if scalar == "\\" || scalar == "\"" { cell.append(scalar) }
+            quoted = quoted || [",", "\"", "\r", "\n"].contains(scalar)
+            cell.append(scalar)
+        }
+        return quoted ? "\"" + String(cell) + "\"" : String(cell)
+    }.joined(separator: ",") + "\n"
+    if fields.count == 1 && fields[0].isEmpty { written = "\"\"\n" }
+    let read = CSVReader.records(written)
+    require(read.count == 1 && read[0].count == fields.count
+            && zip(read[0], fields).allSatisfy { $0.utf8.elementsEqual($1.utf8) }, "csv round trip \(written.debugDescription)")
 }
 
 /// Any stderr is classified without a crash, and a password in the argv never survives redaction.

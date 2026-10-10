@@ -2,7 +2,8 @@
 /// the command: one JSON value (`info user … formatjson`), newline-delimited JSON, a CSV whose `JSON`
 /// column holds each record (`print … formatjson`), or plain CSV. Held to
 /// `Tests/Fixtures/gam_output.json` (GamGUI's `parse_records` over the mock's output for every read and
-/// its property tests' shapes) by `GamOutputTests`.
+/// its property tests' shapes) by `GamOutputTests`. One deliberate difference: GAM escapes its CSV with a
+/// backslash, which GamGUI's reader doesn't know (see `CSVReader`); the fixture lists where they differ.
 public enum GamOutput {
     public typealias Record = JSONObject
 
@@ -91,12 +92,22 @@ public enum GamOutput {
     }
 }
 
-/// Python's `csv.reader` in its default dialect (comma, double quote, quotes doubled, not strict) over
-/// `io.StringIO(text, newline="")`: lines end at "\n", "\r" or "\r\n", a quoted field may span them,
-/// a stray quote inside an unquoted field is data, and text after a closing quote joins the field.
-/// Never fails: an unterminated quote ends with the input.
+/// Python's `csv.reader` in GAM's dialect over `io.StringIO(text, newline="")`: comma, double quote,
+/// quotes doubled, a backslash escaping the next character, not strict. GAM 7.48.22 writes every CSV so
+/// (`gam/__init__.py:8830-8839`; `csv_output_no_escape_char` is off by default): each backslash in a
+/// value doubled, a value with a comma, quote, CR or LF quoted. A reader without the escape character,
+/// GamGUI's included, drops a JSON cell holding `\"`, doubles each backslash and reads an escaped newline
+/// as "\n" (failure-log 2026-10-10, "GAM's CSV escapes"). Lines end at "\n", "\r" or "\r\n", a quoted
+/// field may span them, a stray quote inside an unquoted field is data, and text after a closing quote
+/// joins the field. Never fails: an unterminated quote or a final escape ends with the input.
+///
+/// A literal port of CPython 3.14.6's `Modules/_csv.c` reader (`parse_process_char`, `Reader_iternext`),
+/// state for state.
 enum CSVReader {
-    private enum State { case startRecord, startField, inField, inQuotedField, quoteInQuotedField, eatCRNL }
+    private enum State {
+        case startRecord, startField, escapedChar, afterEscapedCRNL, inField, inQuotedField, escapeInQuotedField
+        case quoteInQuotedField, eatCRNL
+    }
 
     /// Every record, a blank line as `[]`.
     static func records(_ text: String) -> [[String]] {
@@ -123,16 +134,32 @@ enum CSVReader {
                     state = scalar == nil ? .startRecord : .eatCRNL
                 } else if scalar == "\"" {
                     state = .inQuotedField
+                } else if scalar == "\\" {
+                    state = .escapedChar
                 } else if scalar == "," {
                     save()
                 } else {
                     field.append(scalar!)
                     state = .inField
                 }
-            case .inField:
+            case .escapedChar:
+                // An escaped CR or LF is data, and the line it ends doesn't end the record.
+                if isBreak {
+                    field.append(scalar!)
+                    state = .afterEscapedCRNL
+                } else {
+                    field.append(scalar ?? "\n")
+                    state = .inField
+                }
+            case .afterEscapedCRNL, .inField:
+                // As in C: AFTER_ESCAPED_CRNL ignores the line's end, and otherwise follows IN_FIELD without
+                // leaving its own state for a plain character.
+                if state == .afterEscapedCRNL && scalar == nil { return }
                 if isBreak || scalar == nil {
                     save()
                     state = scalar == nil ? .startRecord : .eatCRNL
+                } else if scalar == "\\" {
+                    state = .escapedChar
                 } else if scalar == "," {
                     save()
                     state = .startField
@@ -141,9 +168,19 @@ enum CSVReader {
                 }
             case .inQuotedField:
                 if let scalar {
-                    if scalar == "\"" { state = .quoteInQuotedField } else { field.append(scalar) }
+                    if scalar == "\\" {
+                        state = .escapeInQuotedField
+                    } else if scalar == "\"" {
+                        state = .quoteInQuotedField
+                    } else {
+                        field.append(scalar)
+                    }
                 }
+            case .escapeInQuotedField:
+                field.append(scalar ?? "\n")
+                state = .inQuotedField
             case .quoteInQuotedField:
+                // No escape after a closing quote: C looks for one only inside quotes and in a bare field.
                 if scalar == "\"" {
                     field.append("\"")
                     state = .inQuotedField

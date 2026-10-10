@@ -3,8 +3,9 @@
 
 They make code read differently from how it runs (Trojan Source, CVE-2021-42574), and an editing tool
 can write one by decoding an escape a script meant to keep (RULE-FEEDBACK 2026-10-08). Write such
-characters as escapes. Only the generated argv fixture is exempt: it is data from GamGUI built to
-exercise exactly these characters. The mock and its data are hand-written and run by the tests.
+characters as escapes. Only the generated argv fixture and the fuzzer's seed inputs are exempt: they are
+data built to exercise exactly these characters (a seed input separates its strings with NUL bytes). The
+mock and its data are hand-written and run by the tests.
 
     python3 scripts/check_text.py
 """
@@ -40,7 +41,7 @@ def main() -> int:
     found = 0
     for raw in paths:
         path = raw.decode()
-        if not path or path in EXEMPT:
+        if not path or path in EXEMPT or path.startswith("Fuzz/corpus/"):
             continue
         try:
             with open(path, encoding="utf-8") as handle:

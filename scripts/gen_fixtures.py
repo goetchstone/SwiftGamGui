@@ -12,7 +12,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   Unicode tables its regexes use.
   Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
                                   property tests' JSON/CSV shapes and noise, and the inputs its
-                                  failure log names.
+                                  failure log names. CSV is read in GAM's dialect, which GamGUI's
+                                  reader isn't (gam_reader); each case it reads differently keeps its
+                                  records too.
   Tests/Fixtures/gam_models.json  GamGUI's user, group and member models over the mock's records and
                                   seeded variants.
   Tests/Fixtures/guard.json       GamGUI's guard (evaluate, enforce, alias_deletes) over seeded change
@@ -39,12 +41,17 @@ Re-run on every GAM bump (scripts/bump_gam.py does).
 from __future__ import annotations
 
 import argparse
+import contextlib
+import csv
 import dis
+import functools
 import inspect
+import io
 import itertools
 import json
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +78,86 @@ EDGES = (
 BOUNDARY = ("", " ", "\xa0", "admin", "own\u0435r", "null")
 # Every character Python's str.isspace() is true for (what GamGUI's validators strip): derived, not typed.
 PY_WHITESPACE = "".join(c for c in map(chr, range(0x110000)) if c.isspace())
+
+# How GAM 7.48.22 writes every CSV: setDialect (gam/__init__.py:8830-8839) with csv_output_no_escape_char
+# off, its default (gamlib/glcfg.py:373), lines ending in "\n" on stdout (:8849-8853). CPython 3.14's writer
+# in this dialect doubles each backslash in a value and quotes a value holding a comma, quote, CR or LF.
+# gam_dialect_in_build refuses a build where this moved.
+GAM_DIALECT = {"delimiter": ",", "doublequote": True, "escapechar": "\\", "lineterminator": "\n", "quotechar": '"',
+               "quoting": csv.QUOTE_MINIMAL, "skipinitialspace": False, "strict": False}
+
+
+def gam_csv(rows) -> str:
+    """Rows as GAM prints them."""
+    out = io.StringIO()
+    csv.writer(out, **GAM_DIALECT).writerows(rows)
+    return out.getvalue()
+
+
+@contextlib.contextmanager
+def gam_reader():
+    """GamGUI's parse_records reading CSV in GAM's dialect: its parser module's csv swapped, in memory only,
+    for one whose DictReader knows GAM's escape character. Frozen GamGUI reads GAM's CSV without it, so a
+    JSON cell holding an escaped quote is dropped, a backslash comes back doubled and an escaped newline as
+    "\\n" (failure-log 2026-10-10, "GAM's CSV escapes"). The Swift reader reads it as GAM wrote it; the
+    fixtures are generated with this, and gam_output.json keeps frozen GamGUI's records beside each case
+    where the two differ."""
+    from gamgui.core.gam import parser
+
+    frozen = parser.csv
+    parser.csv = types.SimpleNamespace(DictReader=functools.partial(csv.DictReader, escapechar="\\"),
+                                       field_size_limit=csv.field_size_limit)
+    try:
+        yield parser.parse_records
+    finally:
+        parser.csv = frozen
+
+
+def gam_dialect_in_build(blob: bytes, code) -> None:
+    """Refuse a GAM build that may not write its CSV as GAM_DIALECT says, read from the build the way its
+    exit codes are: setDialect's constants (quotes doubled, a backslash escape unless noEscapeChar, then
+    QUOTE_MINIMAL), csv_output_no_escape_char's default (FALSE), and the bundled Python, whose csv module
+    writes the bytes (macOS's 3.9 doesn't double a backslash; 3.14 does). This script's own Python writes
+    the reference bytes, so it must be the same minor version. A bump that trips this: read the source of
+    the new tag, update GAM_DIALECT, the Swift reader and the mock's gam_cell, then regenerate."""
+    from tests.test_gam_exit_codes import _COOKIE, _COOKIE_MAGIC, _TOC_ENTRY
+
+    at = blob.rfind(_COOKIE_MAGIC)
+    _, length, toc_offset, toc_length, pyvers, _ = _COOKIE.unpack_from(blob, at)
+    if pyvers != 314 or sys.version_info[:2] != (3, 14):
+        raise SystemExit(f"GAM's Python is {pyvers}, this script's {sys.version_info[:2]}: GAM_DIALECT is 3.14's")
+
+    def nested(parent):
+        for const in parent.co_consts:
+            if inspect.iscode(const):
+                yield const
+                yield from nested(const)
+
+    dialect = [c for c in nested(code) if c.co_name == "setDialect"]
+    expected = ("delimiter", "doublequote", True, "escapechar", "\\", None, "lineterminator", "quotechar", "quoting",
+                "skipinitialspace", False, "strict")
+    if len(dialect) != 1 or dialect[0].co_consts != expected or "QUOTE_MINIMAL" not in dialect[0].co_names:
+        raise SystemExit("GAM's setDialect changed: read it at the new tag before regenerating")
+    # gamlib.glcfg from the PYZ, found as tests/test_gam_exit_codes.py's _gam_module_code finds `gam`.
+    import marshal
+    import struct
+    import zlib
+
+    start = at + _COOKIE.size - length
+    pos, end, pyz = start + toc_offset, start + toc_offset + toc_length, None
+    while pos < end and pyz is None:
+        size, offset, *_, typecode = _TOC_ENTRY.unpack_from(blob, pos)
+        pyz = start + offset if typecode == b"z" else None
+        pos += size
+    (pyz_toc,) = struct.unpack_from("!i", blob, pyz + 8)
+    # The vendored binary is checksum-pinned and runs as the app's own subprocess: trusted, not input.
+    _, offset, size = dict(marshal.loads(blob[pyz + pyz_toc:]))["gamlib.glcfg"]  # noqa: S302
+    glcfg = marshal.loads(zlib.decompress(blob[pyz + offset:pyz + offset + size]))  # noqa: S302
+    found = [i for i in dis.get_instructions(glcfg) if i.opname != "EXTENDED_ARG"]
+    after = [(b.opname, b.argval) for a, b in zip(found, found[1:])
+             if a.opname == "LOAD_NAME" and a.argval == "CSV_OUTPUT_NO_ESCAPE_CHAR"]
+    if after != [("LOAD_NAME", "FALSE"), ("LOAD_NAME", "VAR_TYPE")]:   # Defaults = {...: FALSE}, then VAR_INFO
+        raise SystemExit("GAM's csv_output_no_escape_char default changed: read gamlib/glcfg.py at the new tag")
 
 
 def variants(value: str) -> list:
@@ -307,11 +394,13 @@ def errors_fixture() -> dict:
 
 
 def output_fixture(mock: Path) -> dict:
-    """GamGUI's parse_records over GAM's output shapes: what the strict mock prints for every read the
-    app makes; the JSON, CSV and formatjson shapes and the noise GamGUI's property tests generate
-    (drawn deterministically); and the inputs its failure log names (a long cell, a bare CR, deep
-    nesting, raw line separators in NDJSON, an empty header) with JSON's and CSV's own edges. The
-    records are stored as Python's json.dumps text, NaN and Infinity included."""
+    """GamGUI's parse_records, reading CSV in GAM's dialect (gam_reader), over GAM's output shapes: what
+    the strict mock prints for every read the app makes; the JSON, CSV and formatjson shapes and the noise
+    GamGUI's property tests generate (drawn deterministically, the CSV ones printed by GAM's writer); the
+    inputs its failure log names (a long cell, a bare CR, deep nesting, raw line separators in NDJSON, an
+    empty header) with JSON's and CSV's own edges; and GAM's escaping. The records are stored as Python's
+    json.dumps text, NaN and Infinity included. A case frozen GamGUI reads differently also holds its
+    records, as `gamgui`: the escape character is the only difference, so each holds a backslash."""
     from hypothesis import HealthCheck, Phase, given, seed, settings
     from hypothesis import strategies as st
 
@@ -321,7 +410,25 @@ def output_fixture(mock: Path) -> dict:
     cases = []
 
     def add(stdout: str) -> None:
-        cases.append({"stdout": stdout, "records": json.dumps(parse_records(stdout), ensure_ascii=True)})
+        frozen = json.dumps(parse_records(stdout), ensure_ascii=True)
+        with gam_reader() as read:
+            case = {"stdout": stdout, "records": json.dumps(read(stdout), ensure_ascii=True)}
+        if frozen != case["records"]:
+            if "\\" not in stdout:   # nothing else was swapped: an escape character is the only difference
+                raise SystemExit(f"the two readers differ on text without a backslash: {stdout[:80]!r}")
+            case["gamgui"] = frozen
+        cases.append(case)
+
+    def as_gam_prints(draw) -> str:
+        """A drawn CSV as GAM prints it. GamGUI's test writer (props._csv) leaves a backslash single, which
+        GAM never does: its rows, read back in the dialect they were written in, are written again in GAM's.
+        Read in GAM's dialect they must give the draw's own records, an oracle neither reader made."""
+        text, expected = draw
+        printed = gam_csv(csv.reader(io.StringIO(text, newline="")))
+        with gam_reader() as read:
+            if read(printed) != expected:
+                raise SystemExit(f"a draw printed as GAM prints it reads back wrong: {printed[:80]!r}")
+        return printed
 
     for stdouts in mock_outputs(mock).values():
         for stdout in stdouts:
@@ -352,10 +459,10 @@ def output_fixture(mock: Path) -> dict:
 
     for text, _ in drawn(props._json_output(), 120):
         add(text)
-    for text, _ in drawn(props._plain_csv(), 120):
-        add(text)
-    for text, _ in drawn(props._formatjson_csv(), 120):
-        add(text)
+    for draw in drawn(props._plain_csv(), 120):
+        add(as_gam_prints(draw))
+    for draw in drawn(props._formatjson_csv(), 120):
+        add(as_gam_prints(draw))
     noise = st.one_of(st.text(props._ANY), props._noise()).map(lambda s: s.replace("\r", "\r\n"))
     for text in drawn(noise, 200):
         add(text)
@@ -430,6 +537,22 @@ def output_fixture(mock: Path) -> dict:
         ",".join(["h"] * 2000) + "\n" + "\n".join(["x"] * 200) + "\n",
         "h,h,JSON\n" + "x,y," + '"{}"' + "\n",
     ]
+    # GAM's escaping (failure-log 2026-10-10): values holding a quote, a backslash, CR, LF, a tab, non-ASCII,
+    # as GAM prints them in a formatjson cell and in plain CSV; then the reader's own edges after a header,
+    # inputs GAM's writer never makes (an escape at the end, before CR, LF or CRLF, a comma or a quote, and
+    # after a closing quote) that CPython still reads one way.
+    values = ['Ann "Q" Lee', "C:" + backslash + "dir", "l1\nl2", "a\rb", "tab\tend", "ends" + backslash,
+              backslash + '"', "Zo" + chr(0xEB) + " " + chr(0x1F600), '""', ""]
+    edges += [gam_csv([["primaryEmail", "JSON"]] + [[f"u{n}@example.com", json.dumps(
+        {"name": {"fullName": value}, "primaryEmail": f"u{n}@example.com"}, ensure_ascii=False, sort_keys=True)]
+        for n, value in enumerate(values)])]
+    edges += [gam_csv([["primaryEmail", "notes"]] + [[f"u{n}@example.com", value] for n, value in enumerate(values)])]
+    escapes = ["a" + backslash, "a" + backslash + "\nb\n", '"a' + backslash, '"a' + backslash + '"b"',
+               backslash + '"x,y', "a" + backslash + ",b", '"x"' + backslash + "y", "a" + backslash + "\r\nb",
+               "a" + backslash + "\rb", backslash, backslash * 2, '"' + backslash * 2 + '"', "a," + backslash + "\n",
+               '"a' + backslash + '\nb"', "x" + backslash + "\r", backslash + "\n", '"' + backslash + '\r\n"',
+               '"a""b' + backslash + '"c"', "a" + backslash + "\r\r\nb", "x,y" + backslash + "\n" + "z,w\n"]
+    edges += ["a,b\n" + text for text in escapes]
     for text in edges:
         add(text)
 
@@ -439,7 +562,10 @@ def output_fixture(mock: Path) -> dict:
         if key not in seen:
             seen.add(key)
             unique.append(case)
-    return {"cases": unique}
+    dialect = GAM_DIALECT | {"quoting": "QUOTE_MINIMAL",
+                             "source": "GAM 7.48.22 setDialect (gam/__init__.py:8830-8839), csv_output_no_escape_char "
+                                       "off (gamlib/glcfg.py:373), written by CPython 3.14's csv module"}
+    return {"dialect": dialect, "cases": unique}
 
 
 def mock_outputs(mock: Path) -> dict:
@@ -475,9 +601,10 @@ def models_fixture(mock: Path) -> dict:
     import random
 
     from gamgui.core.gam.models import GAMGroup, GAMUser, GroupMember
-    from gamgui.core.gam.parser import parse_records
 
     outputs = mock_outputs(mock)
+    with gam_reader() as read:
+        records = {name: [r for out in found for r in read(out)] for name, found in outputs.items()}
     rng = random.Random(20261008)
     flags = [True, False, "TRUE", "false", " yes ", "1", "0", "on", "off", "", None, 0, 1, 2]
     texts = ["", None, "Zo" + chr(0xEB) + " " + chr(0xC5) + "ngstr" + chr(0xF6) + "m", "a@example.com", " padded "]
@@ -498,7 +625,7 @@ def models_fixture(mock: Path) -> dict:
             items.append(item)
         return items
 
-    users = [r for name in ("print_users", "info_user") for out in outputs[name] for r in parse_records(out)]
+    users = records["print_users"] + records["info_user"]
     for _ in range(250):
         record = {}
         maybe(record, rng.choice(["primaryEmail", "email", "User"]), texts)
@@ -521,8 +648,8 @@ def models_fixture(mock: Path) -> dict:
                " a@example.com\tb@example.com ,," + chr(0x3000) + "c@example.com", "", None])
         users.append(record)
 
-    groups = [r for out in outputs["print_groups"] for r in parse_records(out)]
-    members = [r for name in ("print_group_members",) for out in outputs[name] for r in parse_records(out)]
+    groups = records["print_groups"]
+    members = records["print_group_members"]
     counts = [12, 0, "12", " 7 ", "1_000", "3.7", 3.7, True, "x", "", None, chr(0x661) + chr(0x662), "-4", "+5"]
     for _ in range(120):
         group = {}
@@ -730,11 +857,11 @@ def reports_fixture(mock: Path) -> dict:
     from datetime import datetime, timezone
 
     from gamgui.core.gam.models import GAMUser
-    from gamgui.core.gam.parser import parse_records
     from gamgui.core.reports import build_reports
 
     now = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
-    records = [r for out in mock_outputs(mock)["print_users"] for r in parse_records(out)][:]
+    with gam_reader() as read:
+        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
     rng = random.Random(20261008)
     logins = ["2026-10-01T09:30:00.000Z", "2026-07-10T12:00:00.000Z", "2026-07-10T11:59:59Z", "2026-07-10T12:00:00Z",
               "1970-01-01T00:00:00.000Z", "2026-09-30T23:00:00+02:00", "2026-09-30", "2026-09-30 08:00:00",
@@ -941,6 +1068,13 @@ def main() -> int:
     gamgui = Path(args.gamgui).resolve()
     sys.path.insert(0, str(gamgui))
 
+    # Before anything is written: the build must still write GAM_DIALECT's CSV.
+    from tests.test_gam_exit_codes import _gam_module_code
+
+    blob = Path(args.gam_binary).read_bytes()
+    code = _gam_module_code(blob)
+    gam_dialect_in_build(blob, code)
+
     from gamgui.core.catalog import parser as catalog_parser
     from gamgui.core.gam import commands as commands_mod
     from gamgui.core.gam.commands import EXPECTED_GAM_VERSION, GAMCommands
@@ -1072,9 +1206,6 @@ def main() -> int:
 
     # Exit codes: the build's *_RC table, read like tests/test_gam_exit_codes.py's build_rc fixture.
     from gamgui.core.setup import CHECK_ANSWER_RCS, OAUTH2SERVICE_JSON_REQUIRED_RC, SCOPES_NOT_AUTHORIZED_RC
-    from tests.test_gam_exit_codes import _gam_module_code
-
-    code = _gam_module_code(Path(args.gam_binary).read_bytes())
     table, prev = {}, None
     for ins in dis.get_instructions(code):
         if ins.opname == "EXTENDED_ARG":
@@ -1101,7 +1232,8 @@ def main() -> int:
     (OUT / "gam_errors.json").write_text(json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_errors.json: {len(errors_doc['cases'])} cases")
 
-    # GAM's output, read into records as GamGUI reads it. ASCII-escaped, like gam_errors.json.
+    # GAM's output, read into records as GamGUI reads it (its CSV in GAM's dialect). ASCII-escaped, like
+    # gam_errors.json.
     output_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | output_fixture(OUT / "mock_gam.sh")
     (OUT / "gam_output.json").write_text(json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")

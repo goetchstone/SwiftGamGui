@@ -123,14 +123,34 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
 `GamOutput.swift` ports GamGUI's `core/gam/parser.py`: GAM's stdout as records, whether it printed one
 JSON value, newline-delimited JSON, a `formatjson` CSV (a `JSON` column with key columns beside it)
 or plain CSV. `GamOutputTests` holds it to `Tests/Fixtures/gam_output.json`: GamGUI's `parse_records`
-over 600 inputs.
+over 600 inputs, its CSV read in GAM's dialect (below).
 - **The fixture's sources:**
   - the strict mock's output for every read the app makes
   - GamGUI's property-test strategies (JSON shapes, plain and `formatjson` CSV, noise), drawn
-    deterministically
+    deterministically; the CSV draws are printed again by GAM's writer, and the generator checks they
+    read back as each draw's own records
   - the inputs its failure log names (a cell past the csv module's limit, a bare CR, deep nesting,
     raw U+2028 in NDJSON, an empty header)
-  - JSON's and CSV's own edges
+  - JSON's and CSV's own edges, GAM's escaping, and the escape edges CPython reads one way
+- **GAM's CSV dialect.** GAM 7.48.22 writes every CSV with CPython 3.14's `csv` module in this
+  dialect (`setDialect`, `gam/__init__.py:8830-8839`; stdout lines end in "\n"):
+  - comma, double quote, quotes doubled, QUOTE_MINIMAL;
+  - **a backslash escape character**: `csv_output_no_escape_char` is off by default, so every
+    backslash in a value is doubled, and a value is quoted only for a comma, a quote, CR or LF.
+
+  A JSON cell holding `\"` (any value with a quote) needs the escape character to read at all.
+  Without it a `formatjson` row is dropped silently, a backslash comes back doubled and a newline in a
+  value comes back as `\n` (failure-log 2026-10-10, "GAM's CSV escapes").
+  - **Frozen GamGUI has this defect** (`parser.py`'s `csv.DictReader` has no escape character), so
+    parity is deliberately broken here. `gen_fixtures.py` generates every fixture with GamGUI's parser
+    reading in GAM's dialect (`gam_reader`, an in-memory swap of its `csv`; no GamGUI file changes).
+    `gam_output.json` keeps frozen GamGUI's own records beside each case it reads differently
+    (`gamgui`, 95 of 643 cases). `everyCaseReadsAsGamWritesIt` holds the Swift reader to the corrected
+    records and each listed case to the deviation's shape: a backslash in the text, read as CSV.
+  - **A GAM bump** re-runs the generator, which reads `setDialect`'s constants, the
+    `csv_output_no_escape_char` default and the bundled Python (3.14) from the vendored build. It
+    refuses to write anything if one moved, and it must run under the same Python minor version
+    (macOS's `python3` 3.9 doesn't double a backslash).
 - **`JSONValue`** reads as `json.loads`:
   - `NaN` and `Infinity` are accepted;
   - integers keep their digits;
@@ -145,8 +165,15 @@ over 600 inputs.
     - nesting past 128 is refused (Python's limit is its C stack; a debug build overflowed a 512 KiB
       thread at about 470);
     - a lone surrogate escape becomes U+FFFD.
-- **`CSVReader`** is `_csv.c`'s state machine in the default dialect over `newline=""` lines, with
-  `DictReader`'s `restval` and its handling of duplicated headers.
+- **`CSVReader`** is a literal port of CPython 3.14.6's `_csv.c` reader, state for state, in GAM's
+  dialect over `newline=""` lines, with `DictReader`'s `restval` and its handling of duplicated
+  headers.
+  - The escape states are C's: an escaped CR or LF is data and doesn't end the record
+    (`AFTER_ESCAPED_CRNL`); an escape at a line's or the input's end reads as "\n"; there is no escape
+    after a closing quote (`"x"\y` reads `x\y`).
+  - Held to CPython's own output for those edges (`csvReadsEscapesAsCPythonDoes`), and to GAM's writer
+    by seeded round trips of rows and `formatjson` tables and by the fuzzer's `csvRoundTrip` target
+    (seeded from `Fuzz/corpus`).
   - Each distinct column holds its last position's cell. That is computed once per column, not per
     header cell per row: an 80 KB CSV with a wide header of repeated names took 13 GB (now 43 MB).
 
