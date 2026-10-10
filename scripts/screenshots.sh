@@ -16,14 +16,14 @@ mkdir -p "$out"
 
 status=0
 # name:screen[:person:tab[:window]] — the person page is captured once per tab, for alice@example.com.
-# The narrow-* runs open it in the smallest window (ContentView's minimum) and at 900x572, where opening a
-# person once crashed AppKit's layout (failure-log 2026-10-10): they are there to not crash.
+# The narrow-* runs open it in the smallest window with the sidebar and the page dragged to their
+# widest, where clicking a name once crashed AppKit's layout (failure-log 2026-10-10): they fail when
+# the page has too little room to spare, and on any non-zero exit.
 for spec in home:home users:users setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
-            narrow-profile:users:alice@example.com:profile:760x520 narrow-groups:users:alice@example.com:groups:760x520 \
-            narrow-mail:users:alice@example.com:mail:760x520 narrow-security:users:alice@example.com:security:760x520 \
-            narrow-900:users:alice@example.com:profile:900x572; do
+            narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
+            narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest; do
   IFS=: read -r name screen person tab window <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"
