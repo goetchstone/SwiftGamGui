@@ -94,6 +94,7 @@ struct HomeView: View {
             Text(failure.problem).foregroundStyle(.secondary)
             HStack {
                 Button("Try Again") { Task { await setup.reconnect() } }
+                    .disabled(setup.isBusy)
                 Button("Open Setup…", action: openSetup)
             }
         } else {

@@ -104,6 +104,7 @@ struct UsersView: View {
                         .foregroundStyle(.orange)
                     Text(failure.problem).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     Button("Try Again") { Task { await setup.reconnect() } }
+                        .disabled(setup.isBusy)
                 } else if setup.active == nil {
                     Text("Connect a domain on Setup to list its users.").foregroundStyle(.secondary)
                 } else {

@@ -63,6 +63,7 @@ struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
     @State private var gamVersion: String?
+    @Environment(\.appearsActive) private var appearsActive
 
     private var connection: String {
         let setup = services.setup, directory = services.directory
@@ -73,15 +74,6 @@ struct ContentView: View {
         if let domain = setup.reconnecting { return "Connecting to \(domain.name)…" }
         if let failure = setup.reconnectFailure { return "Couldn't reconnect to \(failure.domain.name)" }
         return "Not connected"
-    }
-
-    /// The same steps as spoken: the subtitle goes back to "Connected" when the load ends, which says
-    /// nothing about the load.
-    private var progress: String {
-        if services.setup.active != nil, !services.directory.isLoading, let users = services.directory.users {
-            return "\(connection). \(users.count.formatted()) accounts loaded."
-        }
-        return connection
     }
 
     var body: some View {
@@ -106,9 +98,22 @@ struct ContentView: View {
                     .navigationTitle("Setup")
             }
         }
-        // On every screen: connecting at launch, then loading, in words; VoiceOver hears each step.
+        // On every screen: connecting at launch, then loading, in words.
         .navigationSubtitle(connection)
-        .onChange(of: progress) { _, new in AccessibilityNotification.Announcement(new).post() }
+        // And spoken, each step once: from the window in front only (every window sees the same models),
+        // and "loaded" only for a load that succeeded.
+        .onChange(of: services.setup.reconnecting) { _, domain in
+            if let domain { announce("Connecting to \(domain.name).") }
+        }
+        .onChange(of: services.setup.reconnectFailure) { _, failure in
+            if let failure { announce("Couldn't reconnect to \(failure.domain.name). \(failure.problem)") }
+        }
+        .onChange(of: services.directory.loadedAt) { _, loaded in
+            if loaded != nil, let users = services.directory.users { announce("\(users.count.formatted()) accounts loaded.") }
+        }
+        .onChange(of: services.directory.problem) { _, problem in
+            if let problem { announce("Couldn't load the directory. \(problem.summary)") }
+        }
         .frame(minWidth: ColumnWidths.windowMin, minHeight: 520)
         .task {
             // Local and credential-free.
@@ -118,9 +123,15 @@ struct ContentView: View {
         }
         .task {
             // The domain connected last time is checked again (one Touch ID), and connecting loads the
-            // directory: no trip to Setup on every launch. Never during a spike or a snapshot.
+            // directory: no trip to Setup on every launch. Once per run, not per window; never during a
+            // spike or a snapshot.
             guard !Spikes.isRequested else { return }
-            await services.setup.reconnect()
+            services.setup.reconnectAtLaunch()
         }
+    }
+
+    private func announce(_ text: String) {
+        guard appearsActive else { return }
+        AccessibilityNotification.Announcement(text).post()
     }
 }

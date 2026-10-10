@@ -15,8 +15,12 @@ click meanwhile waits for it instead of starting a second.
 `SetupModel.reconnecting` names the domain from the start of the reconnect to its end, and
 `reconnectFailure` keeps why it failed until a domain connects or that one is removed. Home, Users and
 the window's subtitle (every screen) say "Connecting to …", then "Loading the directory…", with a
-spinner; a failure says why, with **Try Again**. VoiceOver hears each step, ending with the count of
-accounts loaded.
+spinner; a failure says why, with **Try Again**. The launch's reconnect runs once per run of the app,
+in a task of its own (`reconnectAtLaunch`): closing the window that started it no longer cancels it into
+"CancellationError()", and a cancelled check reports nothing. A reconnect is refused while another
+action runs (Try Again during a Setup check cleared the reason and checked nothing). VoiceOver hears
+"Connecting to …", "N accounts loaded." only for a load that succeeded, and either failure, each once,
+from the window in front.
 
 **Enforcement home:** `Tests/DirectoryStoreTests`.
 
