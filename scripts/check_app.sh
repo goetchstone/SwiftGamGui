@@ -80,8 +80,10 @@ if unnamed:
 PY
 
 # The name Siri hears and matches, on screen too (Config/Info.plist, App/en.lproj/InfoPlist.strings), and
-# as VoiceOver says it.
-[ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GAM GUI" ] || fail "display name"
+# as VoiceOver says it. macOS shows the localized name only while the Info.plist's own display name is the
+# bundle's file name: anything else reads as a user's rename, and the Dock showed the file name.
+[ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "$(basename "$APP" .app)" ] \
+  || fail "the Info.plist display name isn't the bundle's name, so the localized name is ignored"
 [ "$(plutil -extract LSHasLocalizedDisplayName raw -o - "$PLIST")" = "true" ] || fail "the name isn't localized"
 STRINGS="$APP/Contents/Resources/en.lproj/InfoPlist.strings"
 [ -f "$STRINGS" ] || fail "no localized name"

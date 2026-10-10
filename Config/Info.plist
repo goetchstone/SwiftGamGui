@@ -6,7 +6,9 @@
 	     2026-10-10): Siri hears the operator's "Gam Gooey" as "GAM GUI" and matches only an app's
 	     localized display name (it ignored INAlternativeAppNames on the Mac). The name is localized
 	     (App/en.lproj/InfoPlist.strings), so Finder, the Dock and Spotlight show it while the bundle and
-	     its executable keep the product name. VoiceOver says it as the operator does. -->
+	     its executable keep the product name. The unlocalized display name must stay the bundle's file
+	     name (the INFOPLIST_KEY_CFBundleDisplayName build setting): macOS treats any other as a rename
+	     by the user and shows the file name. VoiceOver says the name as the operator does. -->
 	<key>LSHasLocalizedDisplayName</key>
 	<true/>
 	<key>CFBundleSpokenName</key>
