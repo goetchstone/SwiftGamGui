@@ -5,7 +5,8 @@
 #   GAM_MOCK_REFRESH   - if set, simulate an OAuth token refresh by rewriting oauth2.txt in GAMCFGDIR
 #   GAM_MOCK_ARGV_LOG  - if set, append every invocation's argv to this file (tests/helpers.py reads it)
 #   GAM_MOCK_STATE     - if set, a directory where the mock keeps settings between calls the way GAM
-#                        merges into them (`vacation`; the `gam_state` fixture). A number in its
+#                        merges into them (`vacation`, `signature`; the `gam_state` fixture), and the
+#                        accounts `create user` made (`created`). A number in its
 #                        `new_account_lag` file makes each account `create user` makes "still being set
 #                        up by Google" for that many per-user calls (signature, calendar subscribe, task
 #                        list), each failing as it did live — see still_provisioning. (A file, not an env
@@ -57,6 +58,8 @@ check_exists() {  # <entity> <name>: the *missing*/*nonexistent* trigger
 }
 
 in_directory() { grep -qF "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json"; }
+# A directory user, or an account `create user` made while the mock keeps state: GAM can act as either.
+known_user() { in_directory "$1" || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/created/$1" ]; }; }
 # A per-user Gmail/Calendar command acts AS the user, so GAM first needs a token for that address. For
 # one that isn't a user the token request fails, and GAM reports the token endpoint's words against it
 # (handleOAuthTokenError -> entityActionFailedWarning, ACTION_FAILED_RC; read from the vendored build).
@@ -376,16 +379,35 @@ EOF
   exit 0
 fi
 
-# `gam user <email> show signature` (no formatjson) -> THAT user's signature, as text.
+# `gam user <email> show signature` (no formatjson) -> THAT address's signature, as text. Without
+# `primary` or `default`, printShowSignature gets the one send-as named by the address given, not the
+# list (gam/__init__.py:78862-78865), and _showSendAs prints it (78560-78591): `SendAs Address: <addr>`
+# (with the display name before it when one is set), its fields indented, `Signature:`, then the body
+# (`None` when empty) as Ind.MultiLineText prints it (gamlib/glindent.py:45-46): every "\n" followed by
+# the indent, then rstrip, so only "\n" starts an indented line. Only that shape: the app sends no option.
+# With GAM_MOCK_STATE and a signature the mock set, that one, in the form GAM stored it; otherwise each
+# fixture user's own. (rstrip here strips ASCII whitespace only; Python's also strips Unicode spaces,
+# which every reader strips again.)
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "signature" ]; then
   [ $# -eq 4 ] || invalid_arg "$5"
-  in_directory "$2" || not_a_user "$2" Show
-  case "$2" in
-    alice@example.com) sig='Best,<br>Alice' ;;
-    carol@example.com) sig='Carol Clark<br>Operations' ;;
-    *) sig='None' ;;
-  esac
-  printf 'SendAs Address: <%s>\n  IsPrimary: True\n  Default: True\n  Signature:\n    %s\n' "$2" "$sig"
+  known_user "$2" || not_a_user "$2" Show
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$2" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$2" 1>&2; exit 1
+  fi
+  sfile="${GAM_MOCK_STATE:-}/signature/$2"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$sfile" ]; then
+    sig=$(cat "$sfile"; printf .); sig=${sig%.}
+  else
+    case "$2" in
+      alice@example.com) sig='Best,<br>Alice' ;;
+      carol@example.com) sig='Carol Clark<br>Operations' ;;
+      *) sig='' ;;
+    esac
+  fi
+  [ -n "$sig" ] || sig=None
+  shown=$(printf '%s\n' "$sig" | LC_ALL=C sed '1!s/^/    /'; printf .); shown=${shown%.}
+  while :; do case "$shown" in *[[:space:]]) shown=${shown%?} ;; *) break ;; esac; done
+  printf 'SendAs Address: <%s>\n  IsPrimary: True\n  Default: True\n  Signature:\n    %s\n' "$2" "$shown"
   exit 0
 fi
 
@@ -685,6 +707,10 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && [ "${2:-}" = "user" ]
     # Seen live 2026-09-30, when the subscription had no free license.
     *USERLIMIT*) echo "ERROR: User: $user, Create Failed: Domain user limit reached. Contact Support." 1>&2; exit 50 ;;
   esac
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/created"
+    : > "$GAM_MOCK_STATE/created/$user"
+  fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/new_account_lag" ]; then
     mkdir -p "$GAM_MOCK_STATE/provisioning"
     cp "$GAM_MOCK_STATE/new_account_lag" "$GAM_MOCK_STATE/provisioning/$user"
@@ -766,20 +792,63 @@ fi
 
 # `gam user <email> signature <String> [html [<Boolean>]] [replyto <addr>] [default] [treatasalias <B>]
 #  [name <String>] [primary]` — the signature text is required (an empty string clears it).
+# A body GAM reads as a keyword: getStringOrFile (gam/__init__.py:1896-1899) normalizes the word after
+# `signature` as checkArgumentPresent does (:892, strip, lower, `_` removed) and, when it names one of
+# SORF_FILE_ARGUMENTS, reads the next argument (`html`) as that file or document instead of taking the
+# word as the signature. Each fails before any user is touched, as it fails in the parse (wording
+# approximate for the documents): readFile (:3054-3068) can't open `html` (FILE_ERROR_RC); gdoc and ghtml
+# take `html` as the owner and then want a file (getGDocData :3134-3135); gcsdoc and gcshtml want a
+# storage object name. Here the strip is ASCII whitespace only; the app refuses each such body itself.
+gam_choice() {  # <argument>: checkArgumentPresent's normalization
+  c=$1
+  while :; do case "$c" in [[:space:]]*) c=${c#?} ;; *) break ;; esac; done
+  while :; do case "$c" in *[[:space:]]) c=${c%?} ;; *) break ;; esac; done
+  printf '%s' "$c" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C tr -d '_'
+}
+# The body as GAM stores it: _processSignature (gam/__init__.py:78601-78608) removes every CR, turns each
+# backslash-n pair into `<br/>`, and without html each line break too.
+gam_stored_signature() {  # <body> <html: 1 or 0>
+  printf '%s.' "$1" | LC_ALL=C tr -d '\r' | LC_ALL=C sed 's/\\n/<br\/>/g' \
+    | if [ "$2" = 1 ]; then cat; else awk 'BEGIN { ORS = "" } NR > 1 { print "<br/>" } { print }'; fi
+}
+# `gam user <email> signature <String> [html [<Boolean>]] [replyto <addr>] [default] [treatasalias <B>]
+#  [name <String>] [primary]` — the signature text is required (an empty string clears it). For an address
+# that isn't a user, GAM's token request fails as it does for any per-user write (the live provisioning
+# refusal's shape, with the token endpoint's words); with Gmail off, the service refusal. With
+# GAM_MOCK_STATE the body is kept in the form GAM stored it, and `show signature` prints it.
 if [ "${1:-}" = "user" ] && { [ "${3:-}" = "signature" ] || [ "${3:-}" = "sig" ]; }; then
   [ $# -ge 4 ] || missing_arg "String"
-  user="$2"; shift 4
+  user="$2"; body="$4"
+  case "$(gam_choice "$body")" in
+    file|htmlfile|textfile)
+      [ -n "${5:-}" ] || missing_arg "FileName"
+      printf 'ERROR: Unable to read File: %s, [Errno 2] No such file or directory: '"'"'%s'"'"'\n' "$5" "$5" 1>&2
+      exit 6 ;;
+    gdoc|ghtml) [ -n "${5:-}" ] || missing_arg "EmailAddress"; missing_arg "DriveFileEntity" ;;
+    gcsdoc|gcshtml) [ -n "${5:-}" ] || missing_arg "StorageBucketObjectName"; invalid_arg "Expected <StorageBucketObjectName>" ;;
+  esac
+  shift 4; html=0
   while [ $# -gt 0 ]; do
     case "$1" in
-      html) shift; if is_bool "${1:-}"; then shift; fi ;;
+      html) html=1; shift; if is_bool "${1:-}"; then case "$1" in false|off|no|disabled|0) html=0 ;; esac; shift; fi ;;
       default|primary) shift ;;
       replyto|name) need_value $# "String"; shift 2 ;;
       treatasalias) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       *) invalid_arg "$1" ;;
     esac
   done
-  check_exists "User" "$user"
+  if ! known_user "$user"; then
+    printf 'User: %s, User Set Failed: invalid_grant: Invalid email or User ID\n' "$user" 1>&2; exit 50
+  fi
   if still_provisioning "$user"; then not_ready_token "$user" "User Set"; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 1
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/signature"
+    stored=$(gam_stored_signature "$body" "$html"); stored=${stored%.}
+    printf '%s' "$stored" > "$GAM_MOCK_STATE/signature/$user"
+  fi
   echo "User: $user, SendAs Address: <$user>, Updated"
   exit 0
 fi

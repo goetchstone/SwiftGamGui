@@ -26,6 +26,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   link and sign-out-scope note, and the fresh-setup Terminal commands.
   Tests/Fixtures/vacation.json    GamGUI's auto-reply helpers: show vacation parsed, the body to and from
                                   the operator's text (Python's HTMLParser and html.unescape beneath).
+  Tests/Fixtures/signatures.json  GamGUI's signature render, curly-quote warning and show-signature reader,
+                                  and GAM's own handling of a signature argument (the stored form; the
+                                  bodies it reads as a file keyword), run from the vendored build.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -1090,6 +1093,166 @@ def vacation_fixture(mock: Path) -> dict:
     return {"show_vacation": show, "autoreply_text": texts_html, "autoreply_html": replies, "unescape": unescapes}
 
 
+def gam_function(code, name: str, **names):
+    """One of the vendored GAM's own functions, by name, to run as the oracle for what GAM does: the
+    build is checksum-pinned and trusted. `names` are the globals it reads; a call that needs any other
+    fails with NameError, so the oracle can't quietly take a path the fixture doesn't model."""
+    import builtins
+
+    found = []
+
+    def walk(parent):
+        for const in parent.co_consts:
+            if inspect.iscode(const):
+                if const.co_name == name:
+                    found.append(const)
+                walk(const)
+
+    walk(code)
+    if len(found) != 1:
+        raise SystemExit(f"GAM's {name} wasn't found once in the build: read it at the new tag")
+    return types.FunctionType(found[0], {"__builtins__": builtins} | names)
+
+
+def gam_constant(code, name: str):
+    """A module-level frozenset GAM builds as `NAME = {\u2026}` (BUILD_SET, its frozenset, SET_UPDATE)."""
+    found = [i for i in dis.get_instructions(code) if i.opname != "EXTENDED_ARG"]
+    values = [found[n - 2].argval for n, i in enumerate(found)
+              if i.opname == "STORE_NAME" and i.argval == name and found[n - 1].opname == "SET_UPDATE"]
+    if len(values) != 1 or not isinstance(values[0], frozenset):
+        raise SystemExit(f"GAM's {name} isn't a set literal in the build: read it at the new tag")
+    return values[0]
+
+
+def signature_fixture(mock: Path, code) -> dict:
+    """GamGUI's signature helpers (core/signatures.py) and its reader of `show signature`
+    (gam_connector._parse_signature), and what the vendored GAM does with a signature argument, from its
+    own functions: _processSignature, the stored form, and checkArgumentPresent over SORF_FILE_ARGUMENTS,
+    the bodies it reads as a file or document keyword. Never constructs a SignatureStore, which reads the
+    operator's GamGUI data by default (failure-log 2026-09-25)."""
+    import random
+    import subprocess
+    import tempfile
+
+    from gamgui.core import signatures
+    from gamgui.core.connectors.gam_connector import _parse_signature
+    from gamgui.core.gam.models import GAMUser
+    from gamgui.core.gam.runner import strip_cfgdir_noise
+
+    # The people a template renders for: the mock's directory as GAM prints it, then crafted records.
+    with gam_reader() as read:
+        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
+    records += [
+        {"primaryEmail": "a@e.com", "name": {"givenName": "Al", "familyName": "Ant"},
+         "organizations": [{"title": "Director", "primary": True}]},
+        {"primaryEmail": "b@e.com"},   # no name: the full name falls back to the address
+        {"primaryEmail": "c@e.com", "orgUnitPath": "", "phones": [{"value": "860.388.0891", "type": "work", "primary": True}],
+         "locations": [{"buildingId": "B-12", "type": "desk"}]},
+        {"primaryEmail": "d@e.com", "name": {"fullName": "{phone} [[x]]", "givenName": "{name}", "familyName": "]]"},
+         "organizations": [{"title": "{title}", "department": "[[", "primary": True}],
+         "phones": [{"value": "{email}"}], "orgUnitPath": "/{ou}"},
+        {"primaryEmail": "e@e.com", "name": {"givenName": "Zo\u00eb", "familyName": "e\u0301"},
+         "organizations": [{"title": "Lead \u201cOps\u201d", "department": "R&D <b>"}, {"title": "Other", "primary": True}],
+         "locations": [{"buildingName": "Riverside", "buildingId": "R1", "primary": True}], "orgUnitPath": "/Sales/East"},
+        {"primaryEmail": "f@e.com", "name": {"givenName": "", "familyName": ""}, "suspended": True},
+    ]
+    users = [GAMUser.from_json(r) for r in records]
+
+    tokens = list(signatures.VARIABLES) + ["{x}", "{", "}", "{{name}}", "{name", "name}", "[[", "]]", "[", "]", "[[[",
+                                           "]]]", "<", ">", "<div>", "</div>", '<a href="x">', "<a href=\u201cx\u201d>",
+                                           "\u201c", "\u201d", "\u2018", "\u2019", '"', "'", "\n", "\r\n", "\r", "\\n",
+                                           "\u00e9", "\u0301", "}\u0301", "]]\u0301", "[[\u0301", "a", " ", " \u00b7 ",
+                                           "\u2028", "<br>", "Your Company", "\U0001F600"]
+    curated = ["{name} | {role} | {email}", "{title}={role}", "Call {phone}", "{name}[[ \u2014 {title}]] \u00b7 Example Co",
+               "[[{title}/{phone}]]x", "[[{title}]]x", "Visit us in {location}", "", "[[", "]]", "[[]]", "[[ a ]] [[ b",
+               "x]][[y", "[[{phone}]] [[{title}]]", "{phone}{phone}", "{nam{name}e}", "<div style=\u201ccolor:#000\u201d>{name}</div>",
+               "<a<b \u2019 >", "<div\n style=\u2019x\u2019>", "<a>b \u2019 c>", "<x \u2019 y", "\u2019<div>",
+               "<div>we\u2019re hiring \u201cnow\u201d</div>", '<div style="color:#000">{name}</div>',
+               "[[{title} \u00b7 ]]{name}\n[[{department}]]", "{ou}{ou}[[{ou}]]", "{location}[[ in {location}]]"]
+    rng = random.Random(20261010)
+    generated = ["".join(rng.choice(tokens) for _ in range(rng.randint(1, 16))) for _ in range(1500)]
+
+    render = []
+    for template in list(signatures._DEFAULT_TEMPLATES.values()) + curated:
+        for index, user in enumerate(users):
+            render.append({"template": template, "user": index, "out": signatures.render_signature(template, user)})
+    for template in generated:
+        index = rng.randrange(len(users))
+        render.append({"template": template, "user": index, "out": signatures.render_signature(template, users[index])})
+
+    warning = signatures.smart_quote_warning("<a \u201c>")
+    templates = list(signatures._DEFAULT_TEMPLATES.values()) + curated + generated
+    curly = [{"template": t, "warns": signatures.smart_quote_warning(t) == warning} for t in templates]
+    if any(signatures.smart_quote_warning(t) not in ("", warning) for t in templates):
+        raise SystemExit("smart_quote_warning has more than one message")
+
+    # show signature: the mock's text for each directory user, then crafted shapes.
+    shown = []
+    with tempfile.TemporaryDirectory() as config:
+        for name in ("oauth2service.json", "oauth2.txt"):
+            Path(config, name).write_text('{"placeholder": true}')
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config, "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        for record in records[:4]:
+            run = subprocess.run([str(mock), "user", record["primaryEmail"], "show", "signature"], capture_output=True,
+                                 text=True, env=environment)
+            if run.returncode != 0:
+                raise SystemExit(f"the mock refused show signature for {record['primaryEmail']}")
+            shown.append(strip_cfgdir_noise(run.stdout, Path(config)))
+    shown += [
+        "", "Signature:", "Signature:\n    None\n", "SendAs Address: <a@example.com>\n  Signature:\n    None\n",
+        "SendAs Address: Al Ant <a@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n"
+        "    <div>\n      <b>Al</b>\n\n    </div>\n",
+        "  Signature:\r\n    one\r\n    two\r\n", "  Signature: x\n    y\n", "  signature:\n    lower\n",
+        "  Signature:::\n    colons\n", "Signature\n  no colon\n", "  Signature:\n\tTabbed\n    spaced\n",
+        "  Signature:\n    None\n    more\n", "  Signature:\n    a\u2028b\n    c\n", "  Signature:\n    a\x85b\x0cc\n",
+        "SendAs Address: <a@example.com>\n  Signature:\n    first\nSendAs Address: <b@example.com>\n  Signature:\n    second\n",
+        "  Signature:\n    x\nUser: a@example.com\n    y\n", "  Signature:\n\n    after a blank\n", "  Signature:\n  \u00a0\n",
+        "  Signature:\n     None  \n", "Signature:\n None\n", "\u00a0Signature:\u3000\n    wide\n",
+    ]
+    parse = [{"text": t, "body": _parse_signature(t)} for t in shown]
+
+    # GAM's own handling of the signature argument.
+    process = gam_function(code, "_processSignature")
+    keywords = gam_constant(code, "SORF_FILE_ARGUMENTS")
+
+    class Command:
+        """checkArgumentPresent's view of the command line: one argument left, the body."""
+        def __init__(self, body):
+            self.body, self.taken = body, False
+
+        def ArgumentsRemaining(self):   # noqa: N802 (GAM's names)
+            return True
+
+        def Current(self):   # noqa: N802
+            return self.body
+
+        def Advance(self):   # noqa: N802
+            self.taken = True
+
+    def read_as_keyword(body):
+        command = Command(body)
+        present = gam_function(code, "checkArgumentPresent", Cmd=command)
+        # At run time the name holds a set (BUILD_SET, then SET_UPDATE from the frozenset constant), and
+        # checkArgumentPresent treats anything but a list or a set as one choice. getStringOrFile passes no
+        # `required`: False.
+        return present(set(keywords), False) and command.taken
+
+    bodies = [t["template"] for t in render[:400]] + [r["out"] for r in render[:400]]
+    bodies += ["\\n", "a\\nb", "\\\\n", "\\\rn", "a\r\nb\rc\n", "\\N", "\\\n", "<br/>", ""]
+    words = sorted(keywords) + ["File", " file ", "\tHTML_FILE\n", "g_doc", "G_C_S_HTML", "_ file", "file_ ", "html",
+                                "sig", "files", "file.html", "\u00a0gdoc\u3000", "\u212aile", "f\u0130le", "\u017fig",
+                                "GDOC", "gdoc\u200b", "fi le", "\u2028textfile\u2029", "file\x1c", "\x1ffile"]
+    stored = [{"body": b, "stored": process({"tags": {}}, b, True)} for b in bodies]
+    keyword = [{"body": w, "keyword": read_as_keyword(w)} for w in words + bodies[:50]]
+    if not all(read_as_keyword(w) for w in keywords) or read_as_keyword("Best, Al"):
+        raise SystemExit("the keyword oracle doesn't read GAM's own keywords as keywords: check checkArgumentPresent")
+    return {"variables": [[token, description] for token, description in signatures.VARIABLES.items()],
+            "seeds": [[name, body] for name, body in signatures._DEFAULT_TEMPLATES.items()],
+            "users": records, "render": render, "smart_quote_warning": warning, "smart_quote": curly,
+            "parse_signature": parse,
+            "gam": {"file_keywords": sorted(keywords), "stored": stored, "keyword": keyword}}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -1301,6 +1464,13 @@ def main() -> int:
         | vacation_fixture(OUT / "mock_gam.sh")
     (OUT / "vacation.json").write_text(json.dumps(vacation_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"vacation.json: {len(vacation_doc['autoreply_text'])} bodies, {len(vacation_doc['unescape'])} references")
+
+    # Signatures: GamGUI's render, curly-quote check and show-signature reader, and GAM's own handling of
+    # the signature argument, run from the build.
+    signature_doc = {"source": {"gamgui_commit": commit, "gam_version": EXPECTED_GAM_VERSION,
+                                "generator": "scripts/gen_fixtures.py"}} | signature_fixture(OUT / "mock_gam.sh", code)
+    (OUT / "signatures.json").write_text(json.dumps(signature_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"signatures.json: {len(signature_doc['render'])} renders, {len(signature_doc['parse_signature'])} shown texts")
     return 0
 
 
