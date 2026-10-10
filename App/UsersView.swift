@@ -18,6 +18,7 @@ struct UsersView: View {
 
     var body: some View {
         content
+            .task(id: directory.users?.count ?? 0) { selectForSnapshot() }
             .toolbar {
                 ToolbarItem {
                     Picker("Show", selection: $filter.scope) {
@@ -35,6 +36,15 @@ struct UsersView: View {
                     .accessibilityIdentifier("users.load")
                 }
             }
+    }
+
+    /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it.
+    private func selectForSnapshot() {
+        #if DEBUG
+        guard selection == nil, let email = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"],
+              let user = directory.users?.first(where: { $0.primaryEmail == email }) else { return }
+        selection = user.id
+        #endif
     }
 
     @ViewBuilder private var content: some View {
@@ -98,67 +108,54 @@ struct UsersView: View {
 }
 
 /// One person's fields, read-only.
+/// The person page's sections, as tabs: a long single column was hard to find things in.
+enum PersonTab: String, CaseIterable, Identifiable {
+    case profile = "Profile"
+    case access = "Groups & Delegates"
+    case mail = "Mail"
+    case security = "Security"
+
+    var id: Self { self }
+
+    /// Profile, or in debug builds `SWIFTGAMGUI_TAB` (for snapshots).
+    static var initial: PersonTab {
+        #if DEBUG
+        if let name = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"],
+           let tab = allCases.first(where: { "\($0)" == name.lowercased() }) { return tab }
+        #endif
+        return .profile
+    }
+}
+
+/// One person: who they are and their status at the top, an Actions menu for what changes the account,
+/// the result of the last change as a banner, and the rest in tabs. Every change opens a preview first.
 private struct UserDetail: View {
     let user: GamUser
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
     @State private var newDelegate = ""
     @State private var editingAutoReply = false
 
     var body: some View {
-        Form {
-            Section(user.fullName) {
-                LabeledContent("Address") { Text(user.primaryEmail).textSelection(.enabled) }
-                LabeledContent("Status", value: user.suspended ? "Suspended" : "Active")
-                LabeledContent("Organizational unit", value: user.orgUnitPath)
-                LabeledContent("Last sign-in", value: user.lastLoginTime ?? "Never")
-                Button(user.suspended ? "Unsuspend…" : "Suspend…") {
-                    Task { await changes.previewSuspend(user, suspend: !user.suspended) }
-                }
-                .disabled(changes.isBusy)
-                .accessibilityHint(user.suspended ? "Shows what unsuspending changes, before anything runs."
-                                                  : "Shows what suspending changes, before anything runs.")
-                Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
-                    .disabled(changes.isBusy)
-                    .accessibilityHint("Shows what signing out does, before anything runs.")
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            if changes.concerns(user.primaryEmail) { ResultBanner(changes: changes) }
+            Picker("Section", selection: $tab) {
+                ForEach(PersonTab.allCases) { Text($0.rawValue).tag($0) }
             }
-            if changes.concerns(user.primaryEmail) { ChangeStatus(changes: changes) }
-            Section("Role") {
-                LabeledContent("Title", value: user.title.isEmpty ? "—" : user.title)
-                LabeledContent("Department", value: user.department.isEmpty ? "—" : user.department)
-                Button("Edit Title and Department…") { editingRole = true }
-                    .disabled(changes.isBusy)
-                LabeledContent("Location", value: user.location.isEmpty ? "—" : user.location)
-                LabeledContent("Phone", value: user.phone.isEmpty ? "—" : user.phone)
-            }
-            Section("Security") {
-                LabeledContent("Administrator", value: user.isAdmin ? "Super admin" : user.isDelegatedAdmin ? "Delegated" : "No")
-                LabeledContent("2-step verification", value: user.isEnrolledIn2SV ? "Enrolled" : "Not enrolled")
-                LabeledContent("Recovery email", value: user.recoveryEmail.isEmpty ? "—" : user.recoveryEmail)
-            }
-            AccessLists(user: user, directory: directory, changes: changes, access: access,
-                        newGroup: $newGroup, newDelegate: $newDelegate)
-            switch access.lists(for: user.primaryEmail)?.vacation {
-            case .success(let vacation)?:
-                AutoReplySection(user: user, vacation: vacation, changes: changes) { editingAutoReply = true }
-            case .failure(let problem)?:
-                Section("Auto-reply") {
-                    Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                }
-            case nil:
-                EmptyView()
-            }
-            if !user.aliases.isEmpty {
-                Section("Aliases") {
-                    ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
-                }
-            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel("Section")
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            Form { tabContent }
+                .formStyle(.grouped)
         }
-        .formStyle(.grouped)
-        .inspectorColumnWidth(min: 260, ideal: 300)
+        .inspectorColumnWidth(min: 380, ideal: 460, max: 720)
         // Read when the person is selected, and again after a change of theirs lands.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
         .sheet(isPresented: $editingAutoReply) {
@@ -170,6 +167,122 @@ private struct UserDetail: View {
         }
         .sheet(item: Binding(get: { changes.previewing }, set: { if $0 == nil { changes.dismiss() } })) { pending in
             ChangePreviewSheet(pending: pending, changes: changes)
+        }
+    }
+
+    /// The name, the address and the status in words, with everything that changes the account in one menu.
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.fullName).font(.title2.bold())
+                Text(user.primaryEmail).foregroundStyle(.secondary).textSelection(.enabled)
+                if user.suspended {
+                    Label("Suspended", systemImage: "pause.circle.fill").foregroundStyle(.orange)
+                } else {
+                    Label("Active", systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Menu {
+                Button("Edit Title and Department…") { editingRole = true }
+                Divider()
+                Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
+                Button(user.suspended ? "Unsuspend…" : "Suspend…", role: user.suspended ? nil : .destructive) {
+                    Task { await changes.previewSuspend(user, suspend: !user.suspended) }
+                }
+            } label: {
+                Label("Actions", systemImage: "ellipsis.circle")
+            }
+            .menuStyle(.button)
+            .fixedSize()
+            .disabled(changes.isBusy)
+            .accessibilityHint("Each action shows what it changes, before anything runs.")
+        }
+        .padding()
+    }
+
+    @ViewBuilder private var tabContent: some View {
+        switch tab {
+        case .profile:
+            Section("Role") {
+                LabeledContent("Title", value: user.title.isEmpty ? "—" : user.title)
+                LabeledContent("Department", value: user.department.isEmpty ? "—" : user.department)
+                Button("Edit Title and Department…") { editingRole = true }
+                    .disabled(changes.isBusy)
+            }
+            Section("Details") {
+                LabeledContent("Organizational unit", value: user.orgUnitPath)
+                LabeledContent("Location", value: user.location.isEmpty ? "—" : user.location)
+                LabeledContent("Phone", value: user.phone.isEmpty ? "—" : user.phone)
+                LabeledContent("Last sign-in", value: user.lastLoginTime ?? "Never")
+            }
+            if !user.aliases.isEmpty {
+                Section("Aliases") {
+                    ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
+                }
+            }
+        case .access:
+            AccessLists(user: user, directory: directory, changes: changes, access: access,
+                        newGroup: $newGroup, newDelegate: $newDelegate)
+        case .mail:
+            switch access.lists(for: user.primaryEmail)?.vacation {
+            case .success(let vacation)?:
+                AutoReplySection(user: user, vacation: vacation, changes: changes) { editingAutoReply = true }
+            case .failure(let problem)?:
+                Section("Auto-reply") {
+                    Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+            case nil:
+                Section("Auto-reply") {
+                    HStack { ProgressView().controlSize(.small); Text("Reading the auto-reply…") }
+                        .accessibilityElement(children: .combine)
+                }
+            }
+        case .security:
+            Section("Security") {
+                LabeledContent("Administrator", value: user.isAdmin ? "Super admin" : user.isDelegatedAdmin ? "Delegated" : "No")
+                LabeledContent("2-step verification", value: user.isEnrolledIn2SV ? "Enrolled" : "Not enrolled")
+                LabeledContent("Recovery email", value: user.recoveryEmail.isEmpty ? "—" : user.recoveryEmail)
+            }
+        }
+    }
+}
+
+/// The last change's result, at the top of the page where it can't be missed, and spoken by VoiceOver.
+private struct ResultBanner: View {
+    let changes: UserChanges
+
+    var body: some View {
+        if let (text, symbol, tint) = content {
+            HStack(alignment: .firstTextBaseline) {
+                if case .running = changes.state {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: symbol).foregroundStyle(tint)
+                }
+                Text(text).frame(maxWidth: .infinity, alignment: .leading)
+                if !changes.isBusy {
+                    Button { changes.dismiss() } label: { Image(systemName: "xmark") }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Dismiss")
+                }
+            }
+            .padding(10)
+            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityElement(children: .combine)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .onAppear { AccessibilityNotification.Announcement(text).post() }
+            .onChange(of: text) { _, new in AccessibilityNotification.Announcement(new).post() }
+        }
+    }
+
+    private var content: (String, String, Color)? {
+        switch changes.state {
+        case .done(let text): (text, "checkmark.circle.fill", .green)
+        case .problem(let text): (text, "exclamationmark.triangle.fill", .orange)
+        case .running(let pending): ("\(pending.title)…", "hourglass", .blue)
+        case .idle, .previewing: nil
         }
     }
 }
@@ -365,27 +478,6 @@ private struct AutoReplyEditor: View {
     }
 }
 
-/// The last change's result, in words: done, or why not.
-private struct ChangeStatus: View {
-    let changes: UserChanges
-
-    var body: some View {
-        switch changes.state {
-        case .done(let text):
-            Section { Label(text, systemImage: "checkmark.circle") }
-        case .problem(let text):
-            Section { Label(text, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
-        case .running(let pending):
-            Section {
-                HStack { ProgressView().controlSize(.small); Text("\(pending.title)…") }
-                    .accessibilityElement(children: .combine)
-            }
-        case .idle, .previewing:
-            EmptyView()
-        }
-    }
-}
-
 /// GamGUI's organization form: both fields, prefilled, then a preview of exactly what will run.
 private struct RoleEditor: View {
     let user: GamUser
@@ -443,10 +535,12 @@ private struct ChangePreviewSheet: View {
             Section(pending.title) {
                 ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
                     Text(step.summary)
-                    LabeledContent("Runs") {
+                    // The exact command is there for an admin who wants it, not the first thing to read.
+                    DisclosureGroup("Show command") {
                         Text(step.shownArgv.joined(separator: " "))
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }

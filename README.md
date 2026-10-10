@@ -69,9 +69,9 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Remove from a group (Users) | **confirmed** (2026-10-09) |
 | Add to a group (Users) | argv-identical |
 | Add a mail delegate (Users) | **confirmed** (2026-10-09) |
-| Remove a mail delegate (Users) | argv-identical |
+| Remove a mail delegate (Users) | **confirmed** (2026-10-10) |
 | Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
-| Turn off an auto-reply (Users) | argv-identical |
+| Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
 
 ## License
