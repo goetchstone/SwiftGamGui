@@ -6,7 +6,7 @@ import AppIntents
 struct ChangeTitleIntent: AppIntent {
     static let title: LocalizedStringResource = "Change a Title"
     static let description = IntentDescription(
-        "Opens GamGUI with a person's new title, and department if you give one, drafted for you to check. Nothing changes until you click Save.")
+        "Opens GAM GUI with a person's new title, and department if you give one, drafted for you to check. Nothing changes until you click Save.")
     static let supportedModes: IntentModes = .foreground
 
     @Parameter(title: "Person", requestValueDialog: "Who's getting the new title?")
@@ -36,11 +36,13 @@ struct ChangeTitleIntent: AppIntent {
         let department = department?.trimmingCharacters(in: .whitespacesAndNewlines)
         drafts.titleChange = SiriDrafts.TitleChange(person: person, title: title,
                                                     department: department?.isEmpty == false ? department : nil)
-        return .result(dialog: "Opening GamGUI with the change for you to check.")
+        return .result(dialog: "Opening GAM GUI with the change for you to check.")
     }
 }
 
-/// The phrases Siri listens for. Each names the app, as Siri requires.
+/// The phrases Siri listens for. Each names the app, as Siri requires. They're also in
+/// App/AppShortcuts.xcstrings: without that catalog Xcode builds no phrase localization, and Siri never
+/// matched them by voice (failure-log 2026-10-10, "Siri phrases never trained"). Change both together.
 struct GamGUIShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: ChangeTitleIntent(), phrases: [
