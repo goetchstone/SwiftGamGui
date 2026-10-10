@@ -132,18 +132,14 @@ public final class GroupMembers {
     }
 
     /// GamGUI's order (`_ROLE_RANK`): owners, then managers, then members, then any other role, each by
-    /// address lowercased and compared code point by code point, as Python compares. Members alike keep
-    /// GAM's order, as Python's stable `sorted` does.
+    /// address lowercased and compared code point by code point, as Python compares (Swift's `<` takes a
+    /// decomposed "é" for the composed one). Members alike keep GAM's order: Swift's `sorted` is
+    /// documented stable, as Python's is.
     nonisolated static func sorted(_ members: [GroupMember]) -> [GroupMember] {
         let ranks = ["OWNER": 0, "MANAGER": 1, "MEMBER": 2]
-        return members.enumerated()
-            .map { (index: $0.offset, rank: ranks[$0.element.role] ?? 3,
-                    email: PythonText.lower($0.element.email).unicodeScalars.map(\.value), member: $0.element) }
-            .sorted { a, b in
-                if a.rank != b.rank { return a.rank < b.rank }
-                if a.email != b.email { return a.email.lexicographicallyPrecedes(b.email) }
-                return a.index < b.index
-            }
+        return members
+            .map { (rank: ranks[$0.role] ?? 3, email: PythonText.lower($0.email).unicodeScalars.map(\.value), member: $0) }
+            .sorted { a, b in a.rank != b.rank ? a.rank < b.rank : a.email.lexicographicallyPrecedes(b.email) }
             .map(\.member)
     }
 
