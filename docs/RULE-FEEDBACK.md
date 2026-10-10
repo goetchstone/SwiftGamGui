@@ -22,6 +22,17 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-10 — Session builds became apps Siri could pick by name
+- **What happened:** spoken, Siri couldn't find the app. Spotlight indexed four apps named GamGUI: the
+  original, the operator's Xcode build, and two command-line builds this session made under `build/`
+  (one an old Release without the intent). Siri resolves a spoken name over that index.
+- **Invariant in force:** none — new shape (build products are part of what the operator's Mac sees).
+- **Why it didn't hold:** not covered; a build folder looked private to the repo.
+- **Would a rule have caught it?** yes but unworded: command-line builds go in a `.noindex` folder (now
+  in CLAUDE.md's Commands) and are deleted when done.
+- **Enforcement home if changed:** CLAUDE.md Commands (done); a hook could refuse `-derivedDataPath`
+  outside `.noindex`.
+
 ## 2026-10-10 — An investigating agent relaunched a test app on the operator's screen, over and over
 - **What happened:** while diagnosing the person-page crash (failure-log 2026-10-10, "person-page layout loop"), a workflow agent
   built a standalone copy of the layout and launched it dozens of times at different sizes. Each launch
