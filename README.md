@@ -27,9 +27,9 @@ placeholders. Each screen's pull request refreshes its own.
 
 A person's page, opened from Users: an Actions menu for what changes the account, and tabs.
 
-| Profile | Groups & Delegates | Mail |
+| Profile | Groups | Mail |
 |---|---|---|
-| ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups and mail delegates, each with Remove and Add](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off](docs/screenshots/person-mail.png) |
+| ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups, each with Remove, and a field to add one](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off, and their mail delegates](docs/screenshots/person-mail.png) |
 
 ## Build from source
 

@@ -75,7 +75,7 @@ enum Spikes {
             NSApp.terminate(nil)
             return
         }
-        let view = splitView(in: content)?.arrangedSubviews.last ?? content
+        let view = splitViews(in: content).first?.arrangedSubviews.last ?? content
         // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
         var rect = view.bounds
         let toolbar = min(view.safeAreaInsets.top, rect.height)
@@ -96,8 +96,37 @@ enum Spikes {
         } catch {
             print("snapshot: \(error)")
         }
-        fflush(stdout)
+        // After the image, so CI keeps a picture of the layout that failed.
+        let tooNarrow = columnsTooNarrow(in: content)
+        if !tooNarrow.isEmpty {
+            print("snapshot: a column is narrower than its content's minimum: \(tooNarrow.joined(separator: "; "))")
+            fflush(stdout)
+            exit(EXIT_FAILURE)
+        }
         NSApp.terminate(nil)
+    }
+
+    /// Every split view column whose content needs more width than it has. When a person's page opens,
+    /// the inspector's width is added to the list's minimum, but the window's minimum isn't raised: in
+    /// a window narrower than the sum, AppKit on a Mac loops until it raises NSGenericException
+    /// (failure-log 2026-10-10). CI's AppKit only clips, so the snapshot fails here instead.
+    @MainActor
+    static func columnsTooNarrow(in content: NSView) -> [String] {
+        var problems: [String] = []
+        for (s, split) in splitViews(in: content).enumerated() {
+            for (c, column) in split.arrangedSubviews.enumerated() where !column.isHidden {
+                let needs = column.fittingSize.width, has = column.frame.width
+                print("layout: split \(s) column \(c): \(Int(has)) pt wide, needs \(Int(needs.rounded(.up)))")
+                if needs > has + 0.5 { problems.append("split \(s) column \(c) needs \(Int(needs.rounded(.up))) pt, has \(Int(has))") }
+            }
+        }
+        return problems
+    }
+
+    /// Every split view in the window, outermost (sidebar | screen) first.
+    @MainActor
+    static func splitViews(in view: NSView) -> [NSSplitView] {
+        (view is NSSplitView ? [view as! NSSplitView] : []) + view.subviews.flatMap(splitViews(in:))
     }
 
     /// `SWIFTGAMGUI_WINDOW=900x572`: the window's content size, set before the demo fills the screen, so a
@@ -120,13 +149,6 @@ enum Spikes {
             try? await Task.sleep(for: .milliseconds(100))
         }
         print("snapshot: no window to size")
-    }
-
-    /// The window's split view (sidebar | screen), searched depth first.
-    @MainActor
-    static func splitView(in view: NSView) -> NSSplitView? {
-        if let split = view as? NSSplitView { return split }
-        return view.subviews.lazy.compactMap(splitView(in:)).first
     }
 
     static let service = "swiftgamgui-spike"

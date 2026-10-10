@@ -19,9 +19,9 @@ status=0
 # The narrow-* runs open it in the smallest window (ContentView's minimum) and at 900x572, where opening a
 # person once crashed AppKit's layout (failure-log 2026-10-10): they are there to not crash.
 for spec in home:home users:users setup:setup \
-            person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:access \
+            person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
-            narrow-profile:users:alice@example.com:profile:760x520 narrow-groups:users:alice@example.com:access:760x520 \
+            narrow-profile:users:alice@example.com:profile:760x520 narrow-groups:users:alice@example.com:groups:760x520 \
             narrow-mail:users:alice@example.com:mail:760x520 narrow-security:users:alice@example.com:security:760x520 \
             narrow-900:users:alice@example.com:profile:900x572; do
   IFS=: read -r name screen person tab window <<< "$spec"

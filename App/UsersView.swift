@@ -110,11 +110,12 @@ struct UsersView: View {
     }
 }
 
-/// One person's fields, read-only.
-/// The person page's sections, as tabs: a long single column was hard to find things in.
+/// The person page's sections, as tabs: a long single column was hard to find things in. The names stay
+/// short: the segmented control is as wide as its labels, and the panel can be narrow.
 enum PersonTab: String, CaseIterable, Identifiable {
     case profile = "Profile"
-    case access = "Groups & Delegates"
+    case groups = "Groups"
+    /// The auto-reply and who can read the mailbox (Gmail delegates).
     case mail = "Mail"
     case security = "Security"
 
@@ -235,9 +236,9 @@ private struct UserDetail: View {
                     ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
                 }
             }
-        case .access:
-            AccessLists(user: user, directory: directory, changes: changes, access: access,
-                        newGroup: $newGroup, newDelegate: $newDelegate)
+        case .groups:
+            AccessList(kind: .groups, user: user, directory: directory, changes: changes, access: access,
+                       newAddress: $newGroup)
         case .mail:
             switch access.lists(for: user.primaryEmail)?.vacation {
             case .success(let vacation)?:
@@ -252,6 +253,8 @@ private struct UserDetail: View {
                         .accessibilityElement(children: .combine)
                 }
             }
+            AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
+                       newAddress: $newDelegate)
         case .security:
             Section("Security") {
                 LabeledContent("Administrator", value: user.isAdmin ? "Super admin" : user.isDelegatedAdmin ? "Delegated" : "No")
@@ -309,77 +312,85 @@ extension UserChanges {
     }
 }
 
-/// The person's groups and mail delegates, each with Remove, and a field to add one. Every change is a
-/// preview first (`UserChanges`).
-private struct AccessLists: View {
+/// The person's groups, or their mail delegates: each with Remove, and a field to add one. Every change
+/// is a preview first (`UserChanges`).
+private struct AccessList: View {
+    enum Kind { case groups, delegates }
+    let kind: Kind
     let user: GamUser
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
-    @Binding var newGroup: String
-    @Binding var newDelegate: String
+    @Binding var newAddress: String
 
     var body: some View {
         if let lists = access.lists(for: user.primaryEmail) {
-            Section("Groups") {
-                if lists.groups.isEmpty { Text("Not in any group.").foregroundStyle(.secondary) }
-                ForEach(lists.groups, id: \.self) { group in
-                    LabeledContent(group) {
-                        Button("Remove…") { Task { await changes.previewRemoveFromGroup(user, group: group) } }
-                            .accessibilityLabel("Remove \(user.fullName) from \(group)")
-                    }
-                }
-                HStack {
-                    TextField("Group address", text: $newGroup, prompt: Text(verbatim: "sales@example.com"))
-                        .onSubmit(addGroup)
-                    Button("Add…", action: addGroup)
-                        .disabled(newGroup.isEmpty)
-                        .accessibilityLabel("Add \(user.fullName) to the group")
-                }
+            switch kind {
+            case .groups: groups(lists.groups)
+            case .delegates: delegates(lists.delegates)
             }
-            .disabled(changes.isBusy)
-            Section("Mail delegates") {
-                if lists.delegates.isEmpty { Text("No one can read this mailbox.").foregroundStyle(.secondary) }
-                ForEach(lists.delegates, id: \.self) { delegate in
-                    LabeledContent(delegate) {
-                        Button("Remove…") { Task { await changes.previewRemoveDelegate(user, delegate: delegate) } }
-                            .accessibilityLabel("Stop \(delegate) reading \(user.fullName)'s mail")
-                    }
-                }
-                HStack {
-                    TextField("Delegate address", text: $newDelegate, prompt: Text(verbatim: "assistant@example.com"))
-                        .onSubmit(addDelegate)
-                    Button("Add…", action: addDelegate)
-                        .disabled(newDelegate.isEmpty)
-                        .accessibilityLabel("Add a delegate to \(user.fullName)'s mailbox")
-                }
-            }
-            .disabled(changes.isBusy)
         } else if let problem = access.problem(for: user.primaryEmail) {
-            Section("Groups and delegates") {
+            Section(heading) {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
         } else if access.loading == user.primaryEmail {
-            Section("Groups and delegates") {
-                HStack { ProgressView().controlSize(.small); Text("Reading groups and delegates…") }
+            Section(heading) {
+                HStack { ProgressView().controlSize(.small); Text("Reading \(heading.lowercased())…") }
                     .accessibilityElement(children: .combine)
             }
         }
     }
 
-    private func addGroup() {
-        let group = newGroup
-        Task {
-            await changes.previewAddToGroup(user, group: group)
-            if changes.previewing != nil { newGroup = "" }
+    private var heading: String { kind == .groups ? "Groups" : "Mail delegates" }
+
+    private func groups(_ groups: [String]) -> some View {
+        Section(heading) {
+            if groups.isEmpty { Text("Not in any group.").foregroundStyle(.secondary) }
+            ForEach(groups, id: \.self) { group in
+                LabeledContent(group) {
+                    Button("Remove…") { Task { await changes.previewRemoveFromGroup(user, group: group) } }
+                        .accessibilityLabel("Remove \(user.fullName) from \(group)")
+                }
+            }
+            HStack {
+                TextField("Group address", text: $newAddress, prompt: Text(verbatim: "sales@example.com"))
+                    .onSubmit(add)
+                Button("Add…", action: add)
+                    .disabled(newAddress.isEmpty)
+                    .accessibilityLabel("Add \(user.fullName) to the group")
+            }
         }
+        .disabled(changes.isBusy)
     }
 
-    private func addDelegate() {
-        let delegate = newDelegate
+    private func delegates(_ delegates: [String]) -> some View {
+        Section(heading) {
+            if delegates.isEmpty { Text("No one can read this mailbox.").foregroundStyle(.secondary) }
+            ForEach(delegates, id: \.self) { delegate in
+                LabeledContent(delegate) {
+                    Button("Remove…") { Task { await changes.previewRemoveDelegate(user, delegate: delegate) } }
+                        .accessibilityLabel("Stop \(delegate) reading \(user.fullName)'s mail")
+                }
+            }
+            HStack {
+                TextField("Delegate address", text: $newAddress, prompt: Text(verbatim: "assistant@example.com"))
+                    .onSubmit(add)
+                Button("Add…", action: add)
+                    .disabled(newAddress.isEmpty)
+                    .accessibilityLabel("Add a delegate to \(user.fullName)'s mailbox")
+            }
+        }
+        .disabled(changes.isBusy)
+    }
+
+    private func add() {
+        let address = newAddress
         Task {
-            await changes.previewAddDelegate(user, delegate: delegate, directory: directory.users)
-            if changes.previewing != nil { newDelegate = "" }
+            switch kind {
+            case .groups: await changes.previewAddToGroup(user, group: address)
+            case .delegates: await changes.previewAddDelegate(user, delegate: address, directory: directory.users)
+            }
+            if changes.previewing != nil { newAddress = "" }
         }
     }
 }
