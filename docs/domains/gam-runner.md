@@ -145,8 +145,20 @@ over 600 inputs, its CSV read in GAM's dialect (below).
     parity is deliberately broken here. `gen_fixtures.py` generates every fixture with GamGUI's parser
     reading in GAM's dialect (`gam_reader`, an in-memory swap of its `csv`; no GamGUI file changes).
     `gam_output.json` keeps frozen GamGUI's own records beside each case it reads differently
-    (`gamgui`, 95 of 643 cases). `everyCaseReadsAsGamWritesIt` holds the Swift reader to the corrected
-    records and each listed case to the deviation's shape: a backslash in the text, read as CSV.
+    (`gamgui`, 98 of 637 cases; on the mock's own reads it drops Dana and the IT group).
+    `everyCaseReadsAsGamWritesIt` holds the Swift reader to the corrected records and each listed case
+    to the deviation's shape: a backslash in the text, read as CSV.
+  - **The mock prints GAM's bytes.** Each `formatjson` read it models (`print users`, `groups`,
+    `group-members`, `domains`, `cros`) prints GAM's header and a row per record, through `gam_row`,
+    one POSIX helper written to GAM's dialect. Each data file in `mock_gam/` holds one record per line
+    in the form GAM prints it in the JSON cell (`json.dumps(…, ensure_ascii=False, sort_keys=True)`).
+    `gen_fixtures.py` refuses a data line in any other form, and any of those reads whose bytes differ
+    from Python's writer over the same records; `MockCSVTests` checks the same in Swift. Dana
+    (`dana@example.com`) and IT's description hold a quote, a backslash, a comma, a newline, a tab,
+    non-ASCII and an emoji.
+  - **Refused as not modelled:** `print filelist`, `print resources`, `print calendars`, and calendar
+    ACL and event reads. They printed NDJSON, which GAM never prints for them, and no screen reads them
+    yet. The mock's comment cites each one's real shape in GAM's source.
   - **A GAM bump** re-runs the generator, which reads `setDialect`'s constants, the
     `csv_output_no_escape_char` default and the bundled Python (3.14) from the vendored build. It
     refuses to write anything if one moved, and it must run under the same Python minor version

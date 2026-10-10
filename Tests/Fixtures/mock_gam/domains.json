@@ -1,0 +1,2 @@
+{"creationTime": "2020-01-06T17:00:00.000Z", "domainAliases": [{"creationTime": "2021-03-01T09:00:00.000Z", "domainAliasName": "alias.example.net", "parentDomainName": "example.com", "verified": true}], "domainName": "example.com", "isPrimary": true, "verified": true}
+{"creationTime": "2022-05-10T12:00:00.000Z", "domainName": "example.net", "isPrimary": false, "verified": true}

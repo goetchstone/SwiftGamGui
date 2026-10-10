@@ -108,6 +108,8 @@ struct GroupStoreTests {
                                         "sales@example.com", "staff@example.com", "team@example.com"])
         let sales = try #require(groups.first { $0.email == "sales@example.com" })
         #expect(sales.name == "Sales" && sales.description == "Everyone who sells" && sales.membersCount == 2)
+        let it = try #require(groups.first { $0.email == "it@example.com" })
+        #expect(Array(it.description.utf8) == Array("The \"IT\" team\nC:\\Support, Zoë".utf8), "read back as GAM escaped it")
         #expect(app.groups.loadedAt == loadedAt)
     }
 

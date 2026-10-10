@@ -1,2 +1,0 @@
-{"id": "alice@example.com", "summary": "Alice Anders", "accessRole": "owner", "primary": true}
-{"id": "team@group.calendar.google.com", "summary": "Team Events", "accessRole": "writer", "primary": false}

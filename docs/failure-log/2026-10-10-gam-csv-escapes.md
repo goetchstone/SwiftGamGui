@@ -24,6 +24,10 @@
   - `gen_fixtures.py` generates every fixture with GamGUI's parser reading in GAM's dialect, an
     in-memory swap with no GamGUI file changed. `gam_output.json` keeps frozen GamGUI's records beside
     each case it reads differently, and the test holds that list narrow.
+  - The mock writes every `formatjson` read it models as GAM does (`gam_row`; users, groups, group
+    members, domains, ChromeOS devices), from data files that hold each record as GAM prints it, with a
+    user (Dana) and a group description that need the escapes. It refuses the reads whose shape it doesn't
+    model (Drive files, resources, calendars, calendar ACLs, events) instead of printing NDJSON.
   - The argv is unchanged, so invariant 1's byte-identical argv still holds. The rejected alternative
     was `redirect csv - noescapechar true`, which changes every read's argv away from GamGUI's
     live-proven one.
@@ -33,5 +37,9 @@
   - `gen_fixtures.py` reads `setDialect`, the `csv_output_no_escape_char` default and the bundled
     Python (3.14) from the vendored build, and refuses to generate if one moved: a GAM bump can't
     change the dialect silently.
+  - `gen_fixtures.py` also refuses a mock whose `formatjson` bytes differ from Python's csv writer in
+    GAM's dialect over the same records, or a data line not in GAM's JSON form; `MockCSVTests` checks
+    the bytes in Swift. `DirectoryStoreTests` and `GroupStoreTests` compare whole records and IT's
+    description, so a dropped row or a doubled backslash fails.
   - Not live-proven: a live read-only check of a user or group whose fields hold a quote, a backslash
     or a newline is still owed (`live-verify`).

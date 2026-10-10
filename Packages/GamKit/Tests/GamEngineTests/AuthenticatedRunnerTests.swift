@@ -75,8 +75,11 @@ struct AuthenticatedRunnerTests {
 
     @Test func gamsFirstRunBannerNeverReachesTheCaller() async throws {
         // Real GAM prints it on stdout on every call, each having a fresh config directory (checked on
-        // the 7.48.22 build; the mock now does the same).
-        let result = try await runner().run(GamRead(["print", "users"]), as: example, extraEnvironment: Fixtures.mockEnvironment)
+        // the 7.48.22 build; the mock now does the same). The users read the app sends: the mock models
+        // only that shape.
+        let result = try await runner().run(GamCommands.printUsers(fields: GamCommands.cacheFields), as: example,
+                                            extraEnvironment: Fixtures.mockEnvironment)
+        #expect(result.exitCode == 0, "\(result.stderr)")
         #expect(!result.stdout.contains("gamcache") && !result.stdout.contains("Initialized"))
         #expect(result.stdout.contains("alice@example.com"))
         let folder = URL(filePath: "/tmp/swiftgamgui-run/gamcfg-1")

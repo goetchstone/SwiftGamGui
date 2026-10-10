@@ -568,27 +568,57 @@ def output_fixture(mock: Path) -> dict:
     return {"dialect": dialect, "cases": unique}
 
 
+# GamGUI's reads whose GAM shape the mock doesn't model (they printed NDJSON, which GAM never prints for
+# them): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_resources", "print_user_calendars", "print_all_calendars",
+                "print_calendar_acls", "print_calendar_acls_cal", "print_events", "get_event"}
+# The `formatjson` reads the mock models: GAM's key column, and the data file holding each record as GAM
+# prints it in the JSON cell.
+GAM_PRINTED = {"print_users": ("primaryEmail", "print_users.json"), "print_groups": ("email", "groups.json"),
+               "print_group_members": ("group", "group_members.json"), "print_domains": ("domainName", "domains.json"),
+               "print_cros": ("deviceId", "cros.json")}
+
+
 def mock_outputs(mock: Path) -> dict:
-    """What the strict mock prints for every read the app makes, by builder."""
+    """What the strict mock prints for every read the app makes, by builder. Refuses a mock whose
+    formatjson output isn't what GAM prints: a data line not in json.dumps(ensure_ascii=False,
+    sort_keys=True) form, or bytes other than Python's csv writer in GAM's dialect writes for its records
+    (the mock escapes in POSIX sh; this is the check that it escapes as GAM does)."""
     import subprocess
     import tempfile
 
     from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests.test_mock_gam import READS
 
+    data = mock.parent / "mock_gam"
+    for path in sorted(data.glob("*.json")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line != json.dumps(json.loads(line), ensure_ascii=False, sort_keys=True):
+                raise SystemExit(f"{path.name}: a record not in the form GAM prints it: {line[:80]}")
     outputs = {}
     with tempfile.TemporaryDirectory() as config:
         for name in ("oauth2service.json", "oauth2.txt"):
             Path(config, name).write_text('{"placeholder": true}')
-        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config,
-                       "GAM_MOCK_FIXTURES": str(mock.parent / "mock_gam")}
+        environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config, "GAM_MOCK_FIXTURES": str(data)}
         for builder, argvs in READS.items():
             for argv in argvs:
                 run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
+                if builder in NOT_MODELLED:
+                    if run.returncode != 2 or "isn't modelled" not in run.stderr:
+                        raise SystemExit(f"the mock answered a read it doesn't model: {argv}")
+                    continue
                 if run.returncode != 0:
                     raise SystemExit(f"the mock refused a read: {argv}")
                 # As GamGUI's runner hands it on: without the first-run banner naming the config dir.
-                outputs.setdefault(builder, []).append(strip_cfgdir_noise(run.stdout, Path(config)))
+                stdout = strip_cfgdir_noise(run.stdout, Path(config))
+                if builder in GAM_PRINTED:   # its bytes after the banner, the last line ending kept
+                    printed = "\n".join(line for line in run.stdout.split("\n") if config not in line)
+                    key, name = GAM_PRINTED[builder]
+                    records = [line for line in (data / name).read_text(encoding="utf-8").splitlines()
+                               if builder != "print_group_members" or json.loads(line)["group"] == argv[3].lower()]
+                    if printed != gam_csv([[key, "JSON"]] + [[json.loads(line)[key], line] for line in records]):
+                        raise SystemExit(f"the mock's bytes aren't GAM's for {argv}")
+                outputs.setdefault(builder, []).append(stdout)
     return outputs
 
 
