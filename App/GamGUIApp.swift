@@ -17,7 +17,7 @@ struct GamGUIApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("GamGUI") {
+        WindowGroup("GAM GUI") {
             ContentView(services: services)
                 .task { await Spikes.runIfRequested(services: services) }
         }
