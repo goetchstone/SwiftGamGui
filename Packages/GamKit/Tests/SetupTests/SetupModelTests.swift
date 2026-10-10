@@ -83,6 +83,22 @@ struct SetupModelTests {
         #expect(model.lastCheck?.result.authorizationURL?.host() == "admin.google.com")
     }
 
+    /// The directory and the group list both stop old work on a switch: each observer is told every time,
+    /// and a re-check of the same domain tells none.
+    @Test func everyTenantObserverIsToldOfEachChange() async throws {
+        let model = model()
+        var told: [String] = []
+        model.onTenantChange { told.append("first") }
+        model.onTenantChange { told.append("second") }
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(Domain("example.com")!)
+        #expect(told == ["first", "second"])
+        await model.checkAccess(Domain("example.com")!)
+        #expect(told.count == 2, "the same domain re-checked isn't a change")
+        await model.remove(Domain("example.com")!)
+        #expect(told == ["first", "second", "first", "second"])
+    }
+
     @Test func switchingToAnotherDomainBumpsTheGeneration() async throws {
         let model = model()
         await model.importFolder(try gamFolder(), as: "example.com")

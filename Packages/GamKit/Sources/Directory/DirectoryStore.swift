@@ -50,7 +50,7 @@ public final class DirectoryStore {
         self.setup = setup
         self.runner = runner
         self.now = now
-        setup.tenantDidChange = { [weak self] in self?.tenantChanged() }
+        setup.onTenantChange { [weak self] in self?.tenantChanged() }
     }
 
     /// A load runs for the connected tenant. One still running for an earlier tenant isn't this
