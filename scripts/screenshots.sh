@@ -15,17 +15,22 @@ binary="$app/Contents/MacOS/GamGUI"
 mkdir -p "$out"
 
 status=0
-for screen in home users setup; do
-  file="$out/$screen.png"
+# name:screen[:person:tab] — the person page is captured once per tab, for alice@example.com.
+for spec in home:home users:users setup:setup \
+            person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:access \
+            person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security; do
+  IFS=: read -r name screen person tab <<< "$spec"
+  file="$out/$name.png"
   rm -f "$file"
   # Each launch quits itself after the capture; give up on one that hangs.
   env -i HOME="$HOME" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
     SWIFTGAMGUI_DEMO=1 SWIFTGAMGUI_SCREEN="$screen" SWIFTGAMGUI_SNAPSHOT="$file" \
+    ${person:+SWIFTGAMGUI_SELECT="$person"} ${tab:+SWIFTGAMGUI_TAB="$tab"} \
     SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" "$binary" &
   pid=$!
   for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
-  if kill -0 "$pid" 2>/dev/null; then kill "$pid"; echo "::error::$screen: no snapshot within 60 s" >&2; status=1; fi
+  if kill -0 "$pid" 2>/dev/null; then kill "$pid"; echo "::error::$name: no snapshot within 60 s" >&2; status=1; fi
   wait "$pid" || true
-  if [ -s "$file" ]; then echo "$screen: $file"; else echo "::error::$screen: no image written" >&2; status=1; fi
+  if [ -s "$file" ]; then echo "$name: $file"; else echo "::error::$name: no image written" >&2; status=1; fi
 done
 exit "$status"

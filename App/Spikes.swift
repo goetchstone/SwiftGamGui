@@ -66,7 +66,9 @@ enum Spikes {
     /// this way (the selected row came out as a black bar).
     @MainActor
     static func snapshot(to file: URL) async {
-        try? await Task.sleep(for: .seconds(1.5))
+        // A person's page reads their groups, delegates and auto-reply after the list loads.
+        let selecting = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] != nil
+        try? await Task.sleep(for: .seconds(selecting ? 4 : 1.5))
         guard let content = NSApp.windows.first(where: \.isVisible)?.contentView else {
             print("snapshot: no window")
             NSApp.terminate(nil)

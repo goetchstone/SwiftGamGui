@@ -25,6 +25,12 @@ placeholders. Each screen's pull request refreshes its own.
 |---|---|---|
 | ![Home: the connected domain, GAM's version and the directory's counts](docs/screenshots/home.png) | ![Users: the directory as a table](docs/screenshots/users.png) | ![Setup: the domains on this Mac and a failed check of delegation](docs/screenshots/setup.png) |
 
+A person's page, opened from Users: an Actions menu for what changes the account, and tabs.
+
+| Profile | Groups & Delegates | Mail |
+|---|---|---|
+| ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups and mail delegates, each with Remove and Add](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off](docs/screenshots/person-mail.png) |
+
 ## Build from source
 
 You need macOS 27 and Xcode 27.
@@ -69,9 +75,9 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Remove from a group (Users) | **confirmed** (2026-10-09) |
 | Add to a group (Users) | argv-identical |
 | Add a mail delegate (Users) | **confirmed** (2026-10-09) |
-| Remove a mail delegate (Users) | argv-identical |
+| Remove a mail delegate (Users) | **confirmed** (2026-10-10) |
 | Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
-| Turn off an auto-reply (Users) | argv-identical |
+| Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
 
 ## License
