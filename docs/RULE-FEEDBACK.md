@@ -22,6 +22,20 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-10 — An investigating agent relaunched a test app on the operator's screen, over and over
+- **What happened:** while diagnosing the person-page crash (failure-log 2026-10-10), a workflow agent
+  built a standalone copy of the layout and launched it dozens of times at different sizes. Each launch
+  opened a visible window that crashed; the operator saw windows flash "hundreds of times" and had to
+  ask what was doing it. The local hook that keeps the app itself from being launched didn't apply to
+  a separate test binary.
+- **Invariant in force:** none — new shape (the operator's machine as shared space, not a sandbox).
+- **Why it didn't hold:** not covered. The rules guard credentials and the tenant; nothing says a
+  session or its agents must not put windows, Dock icons or crash dialogs in front of the operator.
+- **Would a rule have caught it?** yes but unworded: GUI experiments run on CI or invisibly
+  (transparent, off-screen, accessory activation), and a subagent prompt that may launch GUI code says so.
+- **Enforcement home if changed:** skill (the investigation prompt, `start-session`), or a hook that
+  flags GUI launches from agents.
+
 ## 2026-10-08 — The mock never printed GAM's first-run banner, so every live read would have broken
 - **What happened:** PR #8's review read GamGUI's runner and found `strip_cfgdir_noise`. Handed a fresh
   config directory on every call, real GAM prints `Created: <dir>/gamcache` and `Config File: <dir>/gam.cfg,

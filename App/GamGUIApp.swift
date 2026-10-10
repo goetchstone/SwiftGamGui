@@ -45,6 +45,17 @@ enum Screen: String, CaseIterable, Identifiable {
     }
 }
 
+/// The widths the window is built from. On macOS 27, when a person's page opens, SwiftUI adds the
+/// inspector's width (and the floating sidebar's, a second time) to the list's minimum without raising
+/// the window's: in a window narrower than that sum, AppKit loops until it raises NSGenericException
+/// (failure-log 2026-10-10). So the sidebar and the inspector are bounded, and the smallest window holds
+/// both at their widest with `Spikes.spareWidth` to spare; the screenshot runs check it.
+enum ColumnWidths {
+    static let sidebar = (min: 150.0, ideal: 170.0, max: 190.0)
+    static let inspector = (min: 320.0, ideal: 360.0, max: 400.0)
+    static let windowMin = 920.0
+}
+
 struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
@@ -55,7 +66,8 @@ struct ContentView: View {
             List(Screen.allCases, selection: $screen) { item in
                 Label(item.rawValue, systemImage: item.symbol)
             }
-            .navigationSplitViewColumnWidth(min: 150, ideal: 170)
+            .navigationSplitViewColumnWidth(min: ColumnWidths.sidebar.min, ideal: ColumnWidths.sidebar.ideal,
+                                            max: ColumnWidths.sidebar.max)
         } detail: {
             switch screen ?? .home {
             case .home:
@@ -72,7 +84,7 @@ struct ContentView: View {
             }
         }
         .navigationSubtitle(services.setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
-        .frame(minWidth: 760, minHeight: 520)
+        .frame(minWidth: ColumnWidths.windowMin, minHeight: 520)
         .task {
             // Local and credential-free.
             if let gam = services.gam {

@@ -159,7 +159,10 @@ private struct UserDetail: View {
             Form { tabContent }
                 .formStyle(.grouped)
         }
-        .inspectorColumnWidth(min: 380, ideal: 460, max: 720)
+        // Long values wrap or clip rather than widen the inspector past its bounds (ColumnWidths).
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .inspectorColumnWidth(min: ColumnWidths.inspector.min, ideal: ColumnWidths.inspector.ideal,
+                              max: ColumnWidths.inspector.max)
         // Read when the person is selected, and again after a change of theirs lands.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
         .sheet(isPresented: $editingAutoReply) {
