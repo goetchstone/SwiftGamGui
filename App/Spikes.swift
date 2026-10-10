@@ -32,12 +32,13 @@ enum Spikes {
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
             await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
-                // Fill the demo screen. Home and Users: connected, and the directory loaded. Setup: one
-                // passing check (connected), then one failing (the result panel).
+                // Fill the demo screen. Home, Users and Groups: connected, and the directory loaded (Groups:
+                // its groups too). Setup: one passing check (connected), then one failing (the result panel).
                 await setup.refresh()
                 await setup.checkAccess(Domain("example.com")!)
                 if Screen.initial != .setup {
                     await services.directory.load()
+                    if Screen.initial == .groups { await services.groups.load() }
                 } else {
                     await setup.checkAccess(Domain("example.org")!)
                 }

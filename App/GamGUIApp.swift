@@ -32,6 +32,7 @@ struct GamGUIApp: App {
 enum Screen: String, CaseIterable, Identifiable {
     case home = "Home"
     case users = "Users"
+    case groups = "Groups"
     case setup = "Setup"
 
     var id: Self { self }
@@ -40,6 +41,7 @@ enum Screen: String, CaseIterable, Identifiable {
         switch self {
         case .home: "house"
         case .users: "person.2"
+        case .groups: "person.3"
         case .setup: "key"
         }
     }
@@ -100,6 +102,9 @@ struct ContentView: View {
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
                           access: services.userAccess, drafts: services.siriDrafts)
                     .navigationTitle("Users")
+            case .groups:
+                GroupsView(setup: services.setup, groups: services.groups, members: services.groupMembers)
+                    .navigationTitle("Groups")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")

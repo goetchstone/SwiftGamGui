@@ -15,15 +15,18 @@ binary="$app/Contents/MacOS/GamGUI"
 mkdir -p "$out"
 
 status=0
-# name:screen[:person:tab[:window]] — the person page is captured once per tab, for alice@example.com.
-# The narrow-* runs open it in the smallest window with the sidebar and the page dragged to their
-# widest, where clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they fail when
-# the page has too little room to spare, and on any non-zero exit.
-for spec in home:home users:users setup:setup \
+# name:screen[:selected:tab[:window]] — the person page is captured once per tab, for alice@example.com,
+# and a group's page for sales@example.com. The narrow-* runs open a page in the smallest window with the
+# sidebar and the page dragged to their widest, where clicking a name once crashed AppKit's layout
+# (failure-log 2026-10-10, person-page layout loop): they fail when the page has too little room to spare,
+# and on any non-zero exit.
+for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
+            group-sales:groups:sales@example.com \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
-            narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest; do
+            narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
+            narrow-group-sales:groups:sales@example.com::smallest; do
   IFS=: read -r name screen person tab window <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

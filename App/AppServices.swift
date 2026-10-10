@@ -19,6 +19,10 @@ struct AppServices {
     let userChanges: UserChanges
     /// A selected person's groups and delegates, read live.
     let userAccess: UserAccess
+    /// The tenant's groups, read when Groups is first shown.
+    let groups: GroupStore
+    /// An open group's members, read live.
+    let groupMembers: GroupMembers
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -51,7 +55,9 @@ struct AppServices {
         let directory = DirectoryStore(setup: setup, runner: runner)
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
                            userChanges: UserChanges(executor: executor, directory: directory),
-                           userAccess: UserAccess(setup: setup, runner: runner), auditURL: auditURL)
+                           userAccess: UserAccess(setup: setup, runner: runner),
+                           groups: GroupStore(setup: setup, runner: runner),
+                           groupMembers: GroupMembers(setup: setup, runner: runner), auditURL: auditURL)
     }
 
     #if DEBUG
