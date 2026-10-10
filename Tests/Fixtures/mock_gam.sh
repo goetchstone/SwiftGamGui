@@ -100,6 +100,51 @@ delegates_of() {  # <user>: the current list — with GAM_MOCK_STATE, the stored
   fi
 }
 has_delegate() { delegates_of "$1" | grep -qixF -- "$2"; }   # Gmail compares addresses case-insensitively
+# The tenant's groups, in the order GAM lists them (by address). One data set for every group read, held
+# together by MockGroupsTests: each count is its member list's length, and each directory user's
+# `print groups member` names exactly the groups listing them (alice: sales, staff; bob: staff; carol:
+# it). allhands' twelve members aren't in the mock's directory, so `print groups member` refuses them.
+TENANT_GROUPS="allhands@example.com empty-group@example.com it@example.com sales@example.com staff@example.com team@example.com"
+is_group() {  # <address>, already lowercased
+  for known in $TENANT_GROUPS; do [ "$known" = "$1" ] && return 0; done
+  return 1
+}
+group_name() {
+  case "$1" in
+    allhands@example.com) echo "All Hands" ;;
+    empty-group@example.com) echo "Empty Group" ;;
+    it@example.com) echo "IT" ;;
+    sales@example.com) echo "Sales" ;;
+    staff@example.com) echo "Staff" ;;
+    team@example.com) echo "Team" ;;
+  esac
+}
+group_description() { case "$1" in sales@example.com) echo "Everyone who sells" ;; esac; }
+# <group>: its members, one Directory API member record per line, keys sorted as GAM's formatjson writes
+# them. Covered: every role, a nested GROUP (its address only; GAM doesn't expand it without `recursive`),
+# a suspended USER, and the CUSTOMER row (everyone in the organization), which has no address (shapes
+# approximate: not captured from a tenant).
+canned_members() {
+  case "$1" in
+    sales@example.com)
+      echo '{"email": "alice@example.com", "id": "100000000000000000001", "role": "OWNER", "status": "ACTIVE", "type": "USER"}'
+      echo '{"email": "it@example.com", "id": "03abc000000000001", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}' ;;
+    staff@example.com)
+      echo '{"email": "alice@example.com", "id": "100000000000000000001", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}'
+      echo '{"email": "bob@example.com", "id": "100000000000000000002", "role": "MANAGER", "status": "SUSPENDED", "type": "USER"}'
+      echo '{"id": "C01abc234", "role": "MEMBER", "type": "CUSTOMER"}' ;;
+    it@example.com)
+      echo '{"email": "carol@example.com", "id": "100000000000000000003", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}' ;;
+    team@example.com)
+      echo '{"email": "sales@example.com", "id": "03abc000000000004", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}'
+      echo '{"email": "staff@example.com", "id": "03abc000000000005", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}' ;;
+    allhands@example.com)   # 12 members: past the bulk threshold
+      for n in 01 02 03 04 05 06 07 08 09 10 11 12; do
+        printf '{"email": "member%s@example.com", "id": "1000000000000000001%s", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}\n' "$n" "$n"
+      done ;;
+  esac
+}
+csv_cell() { printf '"%s"' "$(printf '%s' "$1" | sed 's/"/""/g')"; }   # one quoted CSV cell, quotes doubled
 # `todrive <ToDriveAttribute>*` (grammar 655) after a print/report read: only the shape the Builder emits
 # (GAMCommands.todrive_args) — `todrive [tduser <EmailAddress>] [tdtitle <String>]`, each once, in that order,
 # last on the line. GAM (CSVPrintFile.GetTodriveParameters, read from the vendored build) reads tduser with
@@ -245,20 +290,28 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   esac
   exit 0
 fi
-# `gam print group-members group <addr>` -> members, but ONLY for an address that is really a group.
-# Real GAM fails for a user's address, and code that has to tell a person from a group (calendar
-# sharing fans a group grant out to its members) would otherwise pass here and break live.
+# `gam print group-members group <addr> formatjson` -> CSV, a `group` and a `JSON` column per member (GAM's
+# SetJSONTitles; the column order is approximate), and the header alone for a memberless group. Only that
+# shape, the one the app sends: without formatjson GAM flattens each member into columns this mock doesn't
+# model. The address matches a group's whole address, case-insensitively, as the Directory API's groupKey
+# does: a substring once answered for `xsales@` and refused `SALES@`. Anything else, a user's address
+# included, isn't a group: code that has to tell a person from a group would otherwise pass here and break
+# live. GAM's groupNotFound -> entityUnknownWarning: "Group: <addr>, Does not exist", ENTITY_DOES_NOT_EXIST_RC
+# (read from the vendored build; wording approximate).
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
-  case "$*" in
-    *sales@example.com*|*staff@example.com*|*it@example.com*|*team@example.com*)
-      cat "$GAM_MOCK_FIXTURES/group_members.json" ;;
-    *allhands@example.com*)
-      cat "$GAM_MOCK_FIXTURES/group_members_allhands.json" ;;   # 12 members: past the bulk threshold
-    *empty-group@example.com*)
-      printf 'email\n' ;;          # a real, but memberless, group
-    *)
-      echo "ERROR: 400: Bad Request - notFound: Resource Not Found: groupKey" 1>&2; exit 1 ;;
-  esac
+  [ $# -ge 3 ] || { echo "ERROR: mock: print group-members without a group isn't modelled" 1>&2; exit 2; }
+  [ "$3" = "group" ] || invalid_arg "$3"
+  [ $# -ge 4 ] || missing_arg "GroupItem"
+  [ -n "$4" ] || empty_arg "GroupItem"
+  [ $# -ge 5 ] || { echo "ERROR: mock: print group-members without formatjson isn't modelled" 1>&2; exit 2; }
+  [ "$5" = "formatjson" ] || invalid_arg "$5"
+  [ $# -eq 5 ] || invalid_arg "$6"
+  addr=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
+  is_group "$addr" || does_not_exist "Group" "$4"
+  echo "group,JSON"
+  canned_members "$addr" | while IFS= read -r member; do
+    printf '%s,%s\n' "$addr" "$(csv_cell "$member")"
+  done
   exit 0
 fi
 
@@ -360,12 +413,53 @@ EOF
   exit 0
 fi
 
-# `gam print groups [fields ...]` -> NDJSON list of groups.
+# `gam print groups [fields <GroupFieldNameList>]* formatjson` -> CSV, an `email` and a `JSON` column per
+# group (GAM's SetJSONTitles), the record holding only the fields asked for (and the address, which GAM
+# always prints). Each field must be a <GroupFieldName> (grammar 3965), matched as GAM matches it,
+# lowercased with underscores dropped; another is GAM's invalid choice. Of the valid ones only the four the
+# app asks for are modelled. The count is a string, as the Directory API sends an int64 (approximate). GAM
+# also takes quotechar, and without formatjson flattens the record into columns; the app sends neither, so
+# each is refused rather than answered in a guessed shape.
+GROUP_FIELDS="admincreated|aliases|allowexternalmembers|allowgooglecommunication|allowwebposting|archiveonly|customfootertext|customreplyto|customrolesenabledforsettingstobemerged|defaultmessagedenynotificationtext|description|directmemberscount|email|enablecollaborativeinbox|collaborative|favoriterepliesontop|id|includecustomfooter|includeinglobaladdresslist|gal|isarchived|maxmessagebytes|memberscanpostasthegroup|messagedisplayfont|messagemoderationlevel|name|primarylanguage|replyto|sendmessagedenynotification|showingroupdirectory|spammoderationlevel|whocanaddreferences|whocanadd|whocanaddexternalmembers|whocanapprovemessages|whocanassigntopics|whocanassistcontent|whocancontactowner|whocandeleteanypost|whocandeletetopics|whocandiscovergroup|whocanenterfreeformtags|whocanhideabuse|whocaninvite|whocanjoin|whocanleavegroup|whocanlocktopics|whocanmaketopicssticky|whocanmarkduplicate|whocanmarkfavoritereplyonanytopic|whocanmarkfavoritereplyonowntopic|whocanmarknoresponseneeded|whocanmoderatecontent|whocanmodifytagsandcategories|whocanmovetopicsin|whocanmovetopicsout|whocanpostannouncements|whocanpostmessage|whocantaketopics|whocanunassigntopic|whocanunmarkfavoritereplyonanytopic|whocanviewgroup|whocanviewmembership"
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
-  printf '%s\n' \
-    '{"email":"sales@example.com","name":"Sales","directMembersCount":3}' \
-    '{"email":"staff@example.com","name":"Staff","directMembersCount":10}' \
-    '{"email":"it@example.com","name":"IT","directMembersCount":2}'
+  shift 2; fj=""; want=" email "
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      fields)
+        need_value $# "GroupFieldNameList"
+        [ -n "$2" ] || empty_arg "GroupFieldNameList"
+        set -f   # a field of `*` is a word, not a glob
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          field=$(printf '%s' "$field" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+          case "|$GROUP_FIELDS|" in *"|$field|"*) ;; *) invalid_choice "$field" "$GROUP_FIELDS" ;; esac
+          case "$field" in
+            email|name|description|directmemberscount) want="$want$field " ;;
+            *) echo "ERROR: mock: print groups field $field isn't modelled" 1>&2; exit 2 ;;
+          esac
+        done
+        set +f
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      quotechar)
+        [ -n "$fj" ] || invalid_arg "$1"
+        need_value $# "Character"
+        echo "ERROR: mock: print groups with quotechar isn't modelled" 1>&2; exit 2 ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || { echo "ERROR: mock: print groups without formatjson isn't modelled" 1>&2; exit 2; }
+  echo "email,JSON"
+  for group in $TENANT_GROUPS; do
+    # The record's keys in sorted order, as GAM's formatjson writes them.
+    record=""
+    description=$(group_description "$group")
+    case "$want" in *" description "*) [ -z "$description" ] || record="$record\"description\": \"$description\", " ;; esac
+    case "$want" in *" directmemberscount "*)
+      record="$record\"directMembersCount\": \"$(canned_members "$group" | wc -l | tr -d ' ')\", " ;; esac
+    record="$record\"email\": \"$group\""
+    case "$want" in *" name "*) record="$record, \"name\": \"$(group_name "$group")\"" ;; esac
+    printf '%s,%s\n' "$group" "$(csv_cell "{$record}")"
+  done
   exit 0
 fi
 
