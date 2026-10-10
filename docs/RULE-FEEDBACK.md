@@ -22,6 +22,26 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-10 — The template store departs from GamGUI where GamGUI loses data (D2's quarantine)
+- **What happened:** porting GamGUI's signature store (S1b), its `_load` showed the starters over a
+  corrupt or unreadable file, and its next save replaced that file: the operator's templates were gone
+  with no trace (`core/signatures.py:205-213`). The port moves such a file aside to
+  `signatures.json.unreadable-<UTC time>` (never over another), says so on the Signatures screen (S1c),
+  and refuses to open at all when the file can't be read, so nothing saves over it. Its writes are
+  atomic and private from creation, and replacing or deleting a template is asked first. No incident
+  had hit GamGUI here; the design pass found it by asking what a faithful port would destroy.
+- **Invariant in force:** #11 (parity is a test) for the names, messages and order, which are
+  GamGUI's byte for byte; nothing for the data-loss path, which parity would have copied.
+- **Why it didn't hold:** not a failure, a pressure on #11: as with the 2026-10-09 wipe and today's
+  CSV reader, the frozen reference is the oracle for what the operator sees, but for code that writes
+  or destroys the operator's own data, matching it only proves we share its blind spot.
+- **Would a rule have caught it?** only if enforced differently: a port of anything that writes the
+  operator's data starts by listing how the reference can lose it (a failed write, a corrupt read, a
+  concurrent save), and each native departure is named in the domain runbook and tested.
+- **Enforcement home if changed:** skill (the `pre-commit` "read before you wrote" item, or a "port an
+  area" checklist); `SignatureStoreTests`' mutants (`anUnreadableFileIsQuarantinedNeverOverwritten`) are
+  the backstop for this store.
+
 ## 2026-10-10 — Parity held the reader to GamGUI's defect, and no test came from GAM
 - **What happened:** GAM writes its CSV with a backslash escape. GamGUI's parser has none, and the Swift
   port, held byte for byte to it by `gam_output.json`, dropped rows whose JSON held a quote, as GamGUI
