@@ -77,6 +77,43 @@ public enum JSONValue: Equatable, Sendable {
         return reader.atEnd ? value : nil
     }
 
+    /// `json.dumps(value, ensure_ascii=False)`: `", "` and `": "` separators, non-ASCII kept as it is,
+    /// and only `"`, `\` and the C0 controls escaped. The audit log's line and the signature store's file.
+    package static func dumps(_ value: JSONValue) -> String {
+        switch value {
+        case .null: return "null"
+        case .bool(let flag): return flag ? "true" : "false"
+        case .number(let text): return text
+        case .string(let text): return quoted(text)
+        case .array(let items): return "[" + items.map(dumps).joined(separator: ", ") + "]"
+        case .object(let members):
+            return "{" + members.map { quoted($0.key) + ": " + dumps($0.value) }.joined(separator: ", ") + "}"
+        }
+    }
+
+    static func quoted(_ text: String) -> String {
+        var out = "\""
+        for scalar in text.unicodeScalars {
+            switch scalar {
+            case "\"": out += "\\\""
+            case "\\": out += "\\\\"
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\t": out += "\\t"
+            case "\u{08}": out += "\\b"
+            case "\u{0C}": out += "\\f"
+            default:
+                if scalar.value < 0x20 {
+                    let hex = String(scalar.value, radix: 16)
+                    out += "\\u" + String(repeating: "0", count: 4 - hex.count) + hex
+                } else {
+                    out.unicodeScalars.append(scalar)
+                }
+            }
+        }
+        return out + "\""
+    }
+
     private struct Reader {
         let scalars: [Unicode.Scalar]
         var index = 0

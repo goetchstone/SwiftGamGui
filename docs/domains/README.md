@@ -11,6 +11,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | Importing credentials, verifying access, tenants | [setup-credentials.md](setup-credentials.md) | phase 1: built; first live run pending |
 | The directory cache and Home | [directory-home.md](directory-home.md) | phase 1: built; first live load pending |
 | The Groups screen: the group list and a group's members | [groups.md](groups.md) | phase 2: reads built; first live read pending |
+| Signatures: saved templates, render, set for one person | [signatures.md](signatures.md) | phase 2: template store built; render, screen and write next |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
 
