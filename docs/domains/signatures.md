@@ -1,20 +1,58 @@
 # Signatures
 
 **One line:** saved HTML signature templates with `{variables}` and `[[optional]]` blocks, rendered for
-one person and set as their Gmail signature through ChangeCore. Built so far: the template store (S1b).
-The renderer, the parser of `show signature` and the mock (S1a), and the screen and the write (S1c)
-follow the plan for signatures (design doc D1–D5). GamGUI's runbook of the same name is the history
+one person and set as their Gmail signature through ChangeCore. Built so far: the template store (S1b)
+and the parity core: the render, the reader of `show signature`, GAM's stored form and the strict mock
+(S1a). The screen and the write (S1c) follow the plan for signatures (design doc D1–D5). GamGUI's runbook of the same name is the history
 this inherits: its render rules, its 2026-09-23 apply incidents and its mock traps all carry over.
 
-**Owns invariants:** #11 for the store's seeds, name rules, order and messages; the store's own rules
-below (no template is ever lost to a failed save or an unreadable file).
+**Owns invariants:** #11 for the render, the reader, the seeds and the store's name rules, order and
+messages; the store's own rules below (no template is ever lost to a failed save or an unreadable file).
 
-**Enforcement home:** `Packages/GamKit/Tests/StoresTests/SignatureStoreTests.swift`.
+**Enforcement home:** `Packages/GamKit/Tests/GamEngineTests/SignatureTests.swift` and
+`MockSignatureTests.swift`, `Packages/GamKit/Tests/StoresTests/SignatureStoreTests.swift`, all held to
+`Tests/Fixtures/signatures.json` (`scripts/gen_fixtures.py`'s `signature_fixture`).
 
 ## Files
+- `Packages/GamKit/Sources/GamEngine/Signature.swift`: the variables, the seeds, `render`,
+  `smartQuoteWarning`, `parseShown`, `stored` and `readAsKeyword`.
 - `Packages/GamKit/Sources/Stores/SignatureStore.swift`: the store.
 - `Packages/GamKit/Sources/GamEngine/JSONValue.swift`: `JSONValue.parse` and `dumps`, Python's
   `json.loads` and `json.dumps`, which the store reads and writes with (shared with the audit log).
+
+## What GAM does with a signature (7.48.22, read from the vendored build)
+- **The write** is GamGUI's argv, `gam user <email> signature <body> html` (`argv.json`'s `set_signature`).
+- **GAM changes the body before Gmail stores it** (`_processSignature`, gam/__init__.py:78601-78608):
+  every CR is removed and each backslash followed by `n` becomes `<br/>`. Real line breaks stay, since
+  `html` is always passed. A preview of the argv alone would show the operator something else, so the
+  screen shows `Signature.stored` and says when it differs. GamGUI's preview hid this.
+- **Some bodies are read as a file keyword, not as the signature** (getStringOrFile :1896-1899): the
+  body stripped, lowercased and with `_` removed (checkArgumentPresent :892), when it's `file`,
+  `htmlfile`, `textfile`, `gdoc`, `ghtml`, `gcsdoc` or `gcshtml`, makes GAM read the next argument
+  (`html`) as that file or document. `textfile` is missing from the grammar file. `readAsKeyword`
+  finds them; the screen refuses them before a preview. An empty body is accepted and clears the
+  signature.
+- **`show signature` prints one block, for the address given** (printShowSignature :78862-78865, without
+  `primary` or `default`): `SendAs Address: [Name ]<addr>`, its fields, `Signature:`, then the body with
+  each line indented (Ind.MultiLineText: only `\n` starts a new indented line; `None` when empty).
+  GamGUI's reader, ported exactly, strips each line, so leading whitespace inside the body is lost, and
+  a body line break other than `\n` (U+2028, a form feed) ends the read early, as in GamGUI. The plan
+  once read this as one block per send-as address and planned a reader choosing among them; the build
+  says otherwise, and the port stays GamGUI's.
+- **The oracle is GAM itself:** the fixture runs `_processSignature` and `checkArgumentPresent` from the
+  vendored build over the bodies, and reads SORF_FILE_ARGUMENTS from it, so a GAM bump that changes
+  either fails the generator's run or the tests.
+
+## The mock (`Tests/Fixtures/mock_gam.sh`)
+- `show signature` prints GAM's shape for the address given, with the indent; with `GAM_MOCK_STATE`,
+  the body the mock last set, in the form GAM stored it.
+- A set for an address that isn't a user fails on its token, as every per-user write does
+  (`invalid_grant: Invalid email or User ID`, exit 50, classified `.notFound`); Gmail off for the user
+  (`nogmail/<user>`) is refused (exit 1); a keyword body never sets anything: a file keyword fails to
+  read `html` (exit 6), a document keyword wants its file (exit 2; wording approximate).
+- Accounts `create user` made are known users while the mock keeps state, so onboarding's signature set
+  reaches the same handler.
+- Approximations, invisible to the reader: the mock's strips are ASCII whitespace only.
 
 ## The store
 - **Where:** `signatures.json` in the folder the caller names. The app's is `SignatureStore.defaultRoot`
@@ -60,9 +98,17 @@ below (no template is ever lost to a failed save or an unreadable file).
   when GamGUI's file exists, and never in demo mode (S1c).
 
 ## Testing
-- `SignatureStoreTests` holds the seeds to GamGUI's source, quoted in the test, and the order and
-  messages to what frozen GamGUI's store did when pointed at a temporary path. S1a's GamGUI-generated
-  `Tests/Fixtures/signatures.json` takes over from both (a TODO in the test marks it).
+- `signatures.json` holds GamGUI's render (1,920 renders over the mock's directory and crafted people,
+  including values that hold `{variables}` and `[[`), its curly-quote warning (1,530 templates), its
+  reader (25 texts), its seeds, its store's messages and order, and GAM's own stored form and keyword
+  reading.
+- `SignatureStoreTests` holds the store to the fixture's messages, names and seeds (`Signature.seeds`,
+  the one copy), and to what frozen GamGUI's store did for crafted names.
+- Mutants of the core and the mock (2026-10-10, 19, all killed): `{role}` from another field, a token
+  skipped short, blocks dropped when set, `]]` overlapped, a curly quote left out, the warning's words,
+  a blank line ending the read, `None` kept, only `\n` splitting lines, CR kept, `<br>` for `<br/>`,
+  `_` kept or the body unstripped for the keyword; the mock showing canned text over a set, answering
+  any address, taking a keyword body, storing the argv, not indenting, or ignoring Gmail off.
 - A save is interrupted halfway (an internal `interrupt` hook) to prove the old file survives, and to
   observe the new file's mode at that moment.
 - Mutants the suite kills (2026-10-10): a non-atomic write, no folder chmod, the file created `0644`

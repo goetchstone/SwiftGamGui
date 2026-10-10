@@ -16136,6 +16136,36 @@
    "body": "wide"
   }
  ],
+ "store": {
+  "seed_names": [
+   "Classic",
+   "Minimal",
+   "Modern accent"
+  ],
+  "names": [
+   "10",
+   "9",
+   "A",
+   "Classic",
+   "E\u0301te",
+   "Minimal",
+   "Modern accent",
+   "Zed",
+   "_x",
+   "a b",
+   "alpha",
+   "e",
+   "\u00c9t\u00e9",
+   "\uff5e",
+   "\ud83d\ude00"
+  ],
+  "messages": {
+   "name_required": "Template name is required.",
+   "name_too_long": "Template name must be 60 characters or fewer.",
+   "body_empty": "Template body is empty \u2014 put some HTML in the editor before saving."
+  },
+  "max_name_length": 60
+ },
  "gam": {
   "file_keywords": [
    "file",

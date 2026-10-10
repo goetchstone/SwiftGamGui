@@ -1246,10 +1246,27 @@ def signature_fixture(mock: Path, code) -> dict:
     keyword = [{"body": w, "keyword": read_as_keyword(w)} for w in words + bodies[:50]]
     if not all(read_as_keyword(w) for w in keywords) or read_as_keyword("Best, Al"):
         raise SystemExit("the keyword oracle doesn't read GAM's own keywords as keywords: check checkArgumentPresent")
+    # The template store's rules, from GamGUI's store pointed at a temporary file (never its default).
+    with tempfile.TemporaryDirectory() as folder:
+        store = signatures.SignatureStore(Path(folder, "signatures.json"))
+        messages = {}
+        for key, name, body in (("name_required", " \u3000", "x"), ("name_too_long", "x" * 61, "x"),
+                                ("body_empty", "ok", " \u00a0\n")):
+            try:
+                store.save(name, body)
+            except ValueError as error:
+                messages[key] = str(error)
+        if len(messages) != 3:
+            raise SystemExit("GamGUI's store accepted a name or body it refuses")
+        crafted = ["Zed", "alpha", "\u00c9t\u00e9", "E\u0301te", "e", "\U0001F600", "\uff5e", "a b", "A", "_x", "10", "9"]
+        for name in crafted:
+            store.save(name, "body")
+        store_doc = {"seed_names": sorted(signatures._DEFAULT_TEMPLATES), "names": store.names(), "messages": messages,
+                     "max_name_length": signatures._MAX_NAME_LEN}
     return {"variables": [[token, description] for token, description in signatures.VARIABLES.items()],
             "seeds": [[name, body] for name, body in signatures._DEFAULT_TEMPLATES.items()],
             "users": records, "render": render, "smart_quote_warning": warning, "smart_quote": curly,
-            "parse_signature": parse,
+            "parse_signature": parse, "store": store_doc,
             "gam": {"file_keywords": sorted(keywords), "stored": stored, "keyword": keyword}}
 
 
