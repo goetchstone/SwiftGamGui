@@ -162,6 +162,31 @@ public enum Signature {
         return fileKeywords.contains(where: { $0.unicodeScalars.elementsEqual(choice.unicodeScalars) }) ? choice : nil
     }
 
+    // MARK: the preview (design doc D1)
+
+    /// The Rendered view's page policy: nothing loads but HTTPS images (the only images Gmail shows) and
+    /// inline styles; no base URL, no form target. GamGUI's sandboxed iframe also allowed `data:` images,
+    /// which Gmail refuses.
+    public static let previewPolicy =
+        "default-src 'none'; img-src https:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+
+    /// The page the Rendered view draws: a fixed shell with `previewPolicy` in its head, then `body` as it
+    /// is. The policy comes first, so one the body carries can only narrow it. Dark text on white in
+    /// Gmail's default font, as a message reads there.
+    public static func previewDocument(_ body: String) -> String {
+        "<!doctype html><html><head><meta charset=\"utf-8\">"
+            + "<meta http-equiv=\"Content-Security-Policy\" content=\"\(previewPolicy)\">"
+            + "<meta name=\"color-scheme\" content=\"light\">"
+            + "<style>html{background:#fff;color:#222}body{margin:8px;font:small Arial,Helvetica,sans-serif}</style>"
+            + "</head><body>" + body + "</body></html>"
+    }
+
+    /// The rule list the Rendered view compiles once (a WKContentRuleList): every load blocked, then
+    /// HTTPS images let through. It says what the page's policy says, and holds for loads a policy
+    /// doesn't govern.
+    public static let contentRules = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},"#
+        + #"{"trigger":{"url-filter":"^https://","resource-type":["image"]},"action":{"type":"ignore-previous-rules"}}]"#
+
     /// Python's `str.find`: the first index at or after `from` where `needle` starts.
     static func find(_ needle: [Unicode.Scalar], in text: [Unicode.Scalar], from: Int) -> Int? {
         guard !needle.isEmpty, from <= text.count - needle.count else { return nil }

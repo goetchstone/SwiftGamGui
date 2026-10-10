@@ -11,10 +11,11 @@ the tests check that they match GamGUI's exactly.
 
 **Status: early.** You can import credentials (or copy them from GamGUI), check access, see the
 directory's counts and reports, browse users, and change a person: title and department, suspend,
-groups, mail delegates, auto-reply, sign-out. Every change shows what it will run first and runs only
-when you confirm it ([Live verification](#live-verification) lists what has run on a real tenant).
-Groups lists the domain's groups and a group's members, read-only for now. Changing members from a
-group, calendars, signatures, onboarding and offboarding are still GamGUI's. The plan is in
+groups, mail delegates, auto-reply, sign-out, and their Gmail signature from a saved template
+(Signatures, one person at a time). Every change shows what it will run first and runs only when you
+confirm it ([Live verification](#live-verification) lists what has run on a real tenant). Groups lists
+the domain's groups and a group's members, read-only for now. Changing members from a group,
+calendars, a signature for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
@@ -105,6 +106,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
 | Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
+| Set signature (Signatures) | argv-identical |
 
 ## License
 

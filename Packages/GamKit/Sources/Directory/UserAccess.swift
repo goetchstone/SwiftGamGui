@@ -4,7 +4,7 @@ import Observation
 import Setup
 import Vault
 
-/// One person's groups and mail delegates, read live when their page opens (GamGUI's `/users/groups` and
+/// One person's groups, mail delegates, auto-reply and signature, read live when their page opens (GamGUI's `/users/groups` and
 /// `/users/delegates`, lazy-loaded the same way). Kept only for the tenant, generation and person they were
 /// read for, so a switch never shows one tenant's memberships as another's; the last few people are kept,
 /// so pages open in two windows each keep their own.
@@ -19,6 +19,9 @@ public final class UserAccess {
         /// Their auto-reply (`show vacation`), read on its own: a person without Gmail still shows their
         /// groups and delegates (GamGUI loads each panel separately).
         public let vacation: Result<Vacation, Problem>
+        /// Their Gmail signature (`show signature`) as GAM showed it, read by GamGUI's reader
+        /// (`Signature.parseShown`), "" when none is set. On its own too: Gmail off fails only this.
+        public let signature: Result<String, Problem>
     }
 
     private struct Loaded {
@@ -79,7 +82,8 @@ public final class UserAccess {
         loaded.first { $0.email == email && $0.domain == setup.active && $0.generation == setup.generation }
     }
 
-    /// Three reads as the connected domain: `print groups member`, `print delegates`, `show vacation`.
+    /// Four reads as the connected domain: `print groups member`, `print delegates`, `show vacation`,
+    /// `show signature`.
     /// `delay` holds them back, reading from the start: a page that opens and is left within it reads
     /// nothing (arrowing down the list).
     public func load(_ email: String, after delay: Duration = .zero) async {
@@ -91,18 +95,20 @@ public final class UserAccess {
         if delay > .zero {
             guard (try? await Task.sleep(for: delay)) != nil else { return }
         }
-        // The three reads at once: each is its own gam call.
+        // The four reads at once: each is its own gam call.
         let environment = environment
         async let groupsRead = Self.result { try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment) }
         async let delegatesRead = Self.result { try await Self.read(GamCommands.printDelegates(email: email), with: runner, as: domain, environment) }
         async let vacationRead = Self.result { try await Self.read(GamCommands.showVacation(email: email), with: runner, as: domain, environment) }
-        let (groups, delegates, vacation) = await (groupsRead, delegatesRead, vacationRead)
+        async let signatureRead = Self.result { try await Self.read(GamCommands.showSignature(email: email), with: runner, as: domain, environment) }
+        let (groups, delegates, vacation, signature) = await (groupsRead, delegatesRead, vacationRead, signatureRead)
         guard !Task.isCancelled else { return }
         let result: Result<Lists, Problem>
         switch (groups, delegates) {
         case (.success(let groups), .success(let delegates)):
             result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates),
-                                    vacation: vacation.map(Vacation.init(showText:))))
+                                    vacation: vacation.map(Vacation.init(showText:)),
+                                    signature: signature.map(Signature.parseShown)))
         case (.failure(let problem), _), (_, .failure(let problem)):
             result = .failure(problem)
         }

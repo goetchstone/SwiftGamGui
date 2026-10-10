@@ -447,6 +447,49 @@ final class ExecutorTests {
         #expect(Executor.unfinished(in: auditURL).isEmpty)
     }
 
+    // MARK: signatures (S1c)
+
+    /// The confirm sheet shows the signature the run will send, not a copy made beside it: `signatureBody`
+    /// is the held argv element, byte for byte, while `shownArgv` (what the audit and logs see) masks it.
+    @Test func aHeldSignatureBodyIsTheArgvElement() async throws {
+        let executor = executor()
+        // Bytes a copy could lose: a decomposed accent, a CR, a literal backslash-n, a token left as typed.
+        let body = "<div>Ame\u{301}lie\r\nBest,\\n{x}</div>"
+        let step = WriteStep(GamCommands.setSignature(email: "alice@example.com", signature: body, html: true),
+                             target: "alice@example.com", summary: "Replace alice@example.com's signature")
+        let preview = try await executor.preview([step], confirmStep: true).get()
+        let held = try #require(preview.steps.first?.signatureBody)
+        #expect(Array(held.utf8) == Array(body.utf8))
+        #expect(preview.steps.first?.shownArgv == ["user", "alice@example.com", "signature", ArgvRedaction.mask, "html"])
+        #expect(await executor.run(preview, confirmation: confirmed).succeeded)
+        #expect(ran().map { $0.map { Array($0.utf8) } }
+                == [["user", "alice@example.com", "signature", body, "html"].map { Array($0.utf8) }])
+        #expect(try !String(contentsOf: auditURL, encoding: .utf8).contains("Best,"), "the audit keeps the body masked")
+        // Only a signature's body: no other write exposes an argv element this way.
+        #expect(WriteStep(GamCommands.vacationOff(email: "a@example.com"), target: "a@example.com", summary: "").signatureBody == nil)
+        let password = WriteStep(GamCommands.createUser(email: "d@example.com", firstName: "D", lastName: "X", password: "signature"),
+                                 target: "d@example.com", summary: "Create")
+        #expect(password.signatureBody == nil)
+    }
+
+    /// GamGUI failure-log 2026-09-25: a preview stamped its tenant only when held, so what a screen read on
+    /// one domain could be held for another. A preview names the tenant its reads began on, and one held
+    /// after a switch (or a re-import) is refused, never held for the new one.
+    @Test func aPreviewReadOnAnotherTenantIsRefused() async throws {
+        let executor = executor()
+        let off = WriteStep(GamCommands.vacationOff(email: "alice@example.com"), target: "alice@example.com", summary: "Off")
+        for stale in [(other, 1), (example, 0), (example, 2)] {
+            let result = await executor.preview([off], expecting: (stale.0, stale.1))
+            #expect(throws: Executor.PreviewRefusal.tenantChanged) { try result.get() }
+        }
+        #expect(Executor.PreviewRefusal.tenantChanged.message
+                == "The active domain changed after this was read — preview again on this domain.")
+        let held = try await executor.preview([off], expecting: (example, 1)).get()
+        #expect(held.domain == example && held.generation == 1)
+        #expect(await executor.run(held, confirmation: confirmed).succeeded)
+        #expect(ran().count == 1)
+    }
+
     // MARK: outcome unknown
 
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {

@@ -80,6 +80,37 @@ struct SignatureTests {
         }
     }
 
+    /// Design doc D1: the preview draws the body inside a fixed page whose policy loads nothing but HTTPS
+    /// images (Gmail shows only those) and inline styles. The body comes after the policy, so a policy it
+    /// carries can only narrow it; the rule list blocks every load and then lets HTTPS images through.
+    @Test func thePreviewShellCarriesTheCSPAndOnlyHTTPSImages() throws {
+        let policy = "default-src 'none'; img-src https:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+        #expect(Signature.previewPolicy == policy)
+        let body = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *\"><b>{name}</b>\r\n</body>"
+        let page = Signature.previewDocument(body)
+        let meta = "<meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\">"
+        let scalars = Array(page.unicodeScalars)
+        func first(_ text: String) -> Int? { Signature.find(Array(text.unicodeScalars), in: scalars, from: 0) }
+        let metaAt = try #require(first(meta)), bodyAt = try #require(first(body)), headEnd = try #require(first("</head>"))
+        #expect(metaAt < headEnd && headEnd < bodyAt, "the shell's policy is in the head, before the body")
+        #expect(first("<meta charset=\"utf-8\">").map { $0 < metaAt } == true)
+        #expect(page.unicodeScalars.starts(with: "<!doctype html>".unicodeScalars))
+        // The body is inserted as it is, once: the Rendered view draws exactly these bytes.
+        #expect(Signature.find(Array(body.unicodeScalars), in: scalars, from: bodyAt + 1) == nil)
+        let shell = Signature.previewDocument("")
+        #expect(Array(page.utf8) == Array(shell.replacingOccurrences(of: "<body></body>", with: "<body>\(body)</body>").utf8))
+
+        let rules = try #require(JSONValue.parse(Signature.contentRules)?.array)
+        #expect(rules.count == 2)
+        let block = try #require(rules.first?.object), allow = try #require(rules.last?.object)
+        #expect(block["trigger"]?.object?["url-filter"]?.string == ".*")
+        #expect(block["trigger"]?.object?.count == 1, "every load, of every type")
+        #expect(block["action"]?.object?["type"]?.string == "block")
+        #expect(allow["trigger"]?.object?["url-filter"]?.string == "^https://")
+        #expect(allow["trigger"]?.object?["resource-type"]?.array?.compactMap(\.string) == ["image"])
+        #expect(allow["action"]?.object?["type"]?.string == "ignore-previous-rules")
+    }
+
     /// Unclosed `[[` and `<` cost GamGUI quadratic time per mailbox before its walks; these stay linear.
     @Test func renderAndQuoteScanAreLinear() {
         let user = users[0]

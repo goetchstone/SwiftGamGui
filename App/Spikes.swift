@@ -5,6 +5,7 @@ import Setup
 import LocalAuthentication
 import Security
 import Vault
+import WebKit
 
 /// Phase 1 spikes, debug builds only. Launch the built binary with `SWIFTGAMGUI_SPIKE` set to
 /// `keychain`, `legacy-keychain`, `vault` or `model`; results print to stdout and the app quits. They only
@@ -67,7 +68,8 @@ enum Spikes {
     /// this way (the selected row came out as a black bar).
     @MainActor
     static func snapshot(to file: URL) async {
-        // A person's page reads their groups, delegates and auto-reply after the list loads.
+        // A person's page reads their groups, delegates, auto-reply and signature after the list loads, and
+        // a signature preview compiles its rule list before it draws.
         let selecting = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] != nil
         try? await Task.sleep(for: .seconds(selecting ? 4 : 1.5))
         guard let content = NSApp.windows.first(where: \.isVisible)?.contentView else {
@@ -94,6 +96,10 @@ enum Spikes {
             return
         }
         view.cacheDisplay(in: rect, to: bitmap)
+        // TEMPORARY (to be removed): the capture before the web views are drawn over it.
+        try? bitmap.representation(using: .png, properties: [:])?
+            .write(to: file.deletingPathExtension().appendingPathExtension("raw.png"))
+        await drawWebViews(in: view, rect: rect, onto: bitmap)
         do {
             try bitmap.representation(using: .png, properties: [:])?.write(to: file)
             print("snapshot: \(file.path)")
@@ -109,6 +115,41 @@ enum Spikes {
             exit(EXIT_FAILURE)
         }
         NSApp.terminate(nil)
+    }
+
+    /// `cacheDisplay` leaves a web view blank: WebKit draws it in another process. Each signature preview
+    /// is drawn from its own snapshot (`takeSnapshot`) over its place in the image, only its visible part.
+    @MainActor
+    static func drawWebViews(in view: NSView, rect: NSRect, onto bitmap: NSBitmapImageRep) async {
+        func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
+        let webViews = descendants(view).compactMap { $0 as? WKWebView }.filter { !$0.isHiddenOrHasHiddenAncestor }
+        guard let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return }
+        for webView in webViews {
+            let visible = webView.visibleRect
+            guard !visible.isEmpty else { continue }
+            let configuration = WKSnapshotConfiguration()
+            configuration.rect = visible
+            guard let image = try? await webView.takeSnapshot(configuration: configuration) else {
+                print("snapshot: a web view couldn't be drawn")
+                continue
+            }
+            let frame = webView.convert(visible, to: view)
+            let y = view.isFlipped ? rect.maxY - frame.maxY : frame.minY - rect.minY
+            // TEMPORARY geometry log (to be removed): where the web view and its neighbours are.
+            print("snapgeo: view flipped=\(view.isFlipped) rect=\(rect) web bounds=\(webView.bounds) visible=\(visible)"
+                  + " frameInView=\(frame) image=\(image.size) drawY=\(y)")
+            let band = frame.insetBy(dx: -400, dy: -80)
+            for other in descendants(view) where !(other is WKWebView) && other.superview != nil {
+                let at = other.convert(other.bounds, to: view)
+                guard band.intersects(at), at.height < 120, !other.isHiddenOrHasHiddenAncestor else { continue }
+                print("snapgeo:   \(type(of: other)) \(at) alpha=\(other.alphaValue)")
+            }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = context
+            image.draw(in: NSRect(x: frame.minX - rect.minX, y: y, width: frame.width, height: frame.height))
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        if !webViews.isEmpty { print("snapshot: drew \(webViews.count) web view(s) from their own snapshots") }
     }
 
     /// What the screen's pane must have beyond what it needs in the smallest window, with the sidebar and
