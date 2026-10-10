@@ -83,7 +83,7 @@ final class UserChangesTests {
     @Test func aTitleAndDepartmentChangeRunsGamGUIsArgvAndPatchesTheList() async throws {
         try await connect()
         let alice = try user("alice@example.com")
-        await changes.previewOrganization(of: alice, title: "  Head of IT ", department: alice.department)
+        await changes.previewOrganization(of: alice, title: "  Head of IT ", department: alice.department, origin: .form)
         let pending = try pending()
         #expect(!pending.isDestructive)
         #expect(pending.preview.steps.first?.shownArgv
@@ -119,7 +119,7 @@ final class UserChangesTests {
     @Test func anUnchangedTitleAndDepartmentIsNotAWrite() async throws {
         try await connect()
         let alice = try user("alice@example.com")
-        await changes.previewOrganization(of: alice, title: alice.title, department: " \(alice.department) ")
+        await changes.previewOrganization(of: alice, title: alice.title, department: " \(alice.department) ", origin: .form)
         guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(message.hasPrefix("Nothing to change"))
     }

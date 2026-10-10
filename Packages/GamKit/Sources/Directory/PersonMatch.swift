@@ -10,7 +10,8 @@ public enum PersonMatch: Equatable, Sendable {
     case none
 
     /// An address names its account (or an alias of it); otherwise a whole name that only one person
-    /// has; otherwise the people the words find as Users' search does, if exactly one.
+    /// has; otherwise the one person whose name or address contains the words. Never a title,
+    /// department or unit: "Finance" isn't a person, even when only one person works there.
     public static func resolve(_ words: String, in users: [GamUser]) -> PersonMatch {
         let wanted = PythonText.lower(PythonText.strip(words))
         guard !wanted.isEmpty else { return .none }
@@ -22,7 +23,10 @@ public enum PersonMatch: Equatable, Sendable {
         }
         let named = users.filter { PythonText.lower($0.fullName) == wanted }
         if !named.isEmpty { return match(named) }
-        return match(UserFilter(query: words).apply(users))
+        let needle = Array(wanted.unicodeScalars)
+        return match(users.filter { user in
+            [user.fullName, user.primaryEmail].contains { UserFilter.contains(Array(PythonText.lower($0).unicodeScalars), needle) }
+        })
     }
 
     private static func match(_ users: [GamUser]) -> PersonMatch {

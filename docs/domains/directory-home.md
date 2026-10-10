@@ -162,12 +162,19 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **Siri drafts a title (2026-10-10):** `ChangeTitleIntent` ("Change a title in GamGUI", and in
   Shortcuts) takes a person, a title and an optional department, opens the app and hands the words to
   `SiriDrafts`, nothing else. Users waits for the directory, resolves the person
-  (`PersonMatch`: an address or alias, else a whole name only one person has, else a search that finds
-  exactly one; never a guess between two), selects them and drafts `previewOrganization(origin: .siri)`.
+  (`PersonMatch`: an address or alias, else a whole name only one person has, else the one person whose
+  name or address holds the words; never a title or department, never a guess between two), selects
+  them and drafts `previewOrganization(origin: .siri)` (the origin has no default: each caller says).
+  Not over the operator's own open change; a person's page shows only its own preview; an editor open
+  for the last person closes; blank values from Shortcuts are asked again (person, title) or dropped
+  (department).
   The executor demands the Confirm click for it, the sheet says it was drafted from Siri and Save isn't
   the Return-key default, and the audit records `origin: siri`. Several or no matches: the list says
   so, filtered by the words, and nothing is drafted. A request older than ten minutes is dropped.
-  `WriteRouteTests.noIntentReachesAWrite` keeps every voice or model file away from every write.
+  `WriteRouteTests.noIntentReachesAWrite` keeps every voice or model file away from every write;
+  `onlyAScreenMakesTheOperatorsConfirmation` pins the confirmation to `ChangePreviewSheet.swift` (by
+  word and by `.init(confirmed:)`); `scripts/check_app.sh` reads the built app's App Intents metadata
+  (the intent is foreground, every phrase names the app).
 - **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
   revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
   directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's

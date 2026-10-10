@@ -80,14 +80,18 @@ struct UsersView: View {
         switch PersonMatch.resolve(request.person, in: users) {
         case .one(let id):
             guard let user = users.first(where: { $0.id == id }) else { return }
-            guard !changes.isBusy else {
-                siriNotice = "A change is still running. Ask Siri again when it's done."
+            // Never over the operator's own change: one running, or a preview waiting for them.
+            guard !changes.isBusy, changes.previewing == nil else {
+                siriNotice = "Finish or cancel the change that's open, then ask Siri again."
                 return
             }
             siriNotice = nil
             select(id)
-            await changes.previewOrganization(of: user, title: request.title,
-                                              department: request.department ?? user.department, origin: .siri)
+            // Its own task: this one is cancelled as the request it was started for is cleared.
+            Task {
+                await changes.previewOrganization(of: user, title: request.title,
+                                                  department: request.department ?? user.department, origin: .siri)
+            }
         case .several:
             filter.query = request.person
             siriNotice = "More than one person matches “\(request.person)”. Choose one, then Edit Title and Department."
@@ -356,7 +360,13 @@ private struct UserDetail: View {
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
-        .sheet(item: Binding(get: { changes.previewing }, set: { if $0 == nil { changes.dismiss() } })) { pending in
+        // Another person chosen (by a click or a Siri draft): an editor open for the last one closes, so
+        // what was typed for them can't become a preview for someone else.
+        .onChange(of: user.id) {
+            editingRole = false
+            editingAutoReply = false
+        }
+        .sheet(item: Binding(get: { changes.previewing(for: user.primaryEmail) }, set: { if $0 == nil { changes.dismiss() } })) { pending in
             ChangePreviewSheet(pending: pending, changes: changes)
         }
     }
@@ -492,14 +502,6 @@ private struct ResultBanner: View {
         case .running(let pending): ("\(pending.title)…", "hourglass", .blue)
         case .idle, .previewing: nil
         }
-    }
-}
-
-extension UserChanges {
-    /// The preview a sheet shows, while one is held.
-    var previewing: Pending? {
-        if case .previewing(let pending) = state { return pending }
-        return nil
     }
 }
 
@@ -746,72 +748,11 @@ private struct RoleEditor: View {
                     // Close first: the preview opens its own sheet.
                     let user = user, title = title, department = department, changes = changes
                     close()
-                    Task { await changes.previewOrganization(of: user, title: title, department: department) }
+                    Task { await changes.previewOrganization(of: user, title: title, department: department, origin: .form) }
                 }
             }
         }
     }
 }
 
-/// What a confirm will run, exactly: the change in words, the command as GAM gets it (secrets masked),
-/// how much it can hurt, then Cancel or the confirm. The confirmation is made here, in a screen, never
-/// in code that also talks to Siri or a model (invariant 10, `WriteRouteTests`).
-private struct ChangePreviewSheet: View {
-    let pending: UserChanges.Pending
-    let changes: UserChanges
 
-    private func confirm() {
-        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
-    }
-
-    var body: some View {
-        Form {
-            Section(pending.title) {
-                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
-                    Text(step.summary)
-                    // The exact command is there for an admin who wants it, not the first thing to read.
-                    DisclosureGroup("Show command") {
-                        Text(step.shownArgv.joined(separator: " "))
-                            .font(.caption.monospaced())
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            if pending.preview.origin != .form {
-                Section {
-                    Label("Drafted from Siri. Check it, then click \(pending.confirmLabel).", systemImage: "waveform")
-                }
-            }
-            if let warning = pending.warning {
-                Section {
-                    Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                }
-            }
-            Section {
-                if pending.isDestructive {
-                    Label("Destructive: confirm to run it.", systemImage: "exclamationmark.octagon.fill")
-                        .foregroundStyle(.red)
-                } else {
-                    Label("A reversible change.", systemImage: "arrow.uturn.backward.circle")
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .frame(minWidth: 460)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() } }
-            // A destructive change, or one Siri drafted (it opens on its own), isn't confirmed by Return
-            // alone: it isn't the default button, so it has to be chosen (clicked, or Tab and Space).
-            if pending.isDestructive || pending.preview.origin != .form {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(pending.confirmLabel, role: pending.isDestructive ? .destructive : nil) { confirm() }
-                }
-            } else {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(pending.confirmLabel) { confirm() }
-                }
-            }
-        }
-    }
-}

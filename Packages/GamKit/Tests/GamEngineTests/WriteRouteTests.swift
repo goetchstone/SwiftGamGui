@@ -87,7 +87,9 @@ struct WriteRouteTests {
     /// draft). The executor also demands a Confirm click for every non-form preview.
     @Test func onlyAScreenMakesTheOperatorsConfirmation() throws {
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["OperatorConfirmation("]).isEmpty)
-        let confirming = try Self.files(in: "App", matching: ["OperatorConfirmation("])
+        // By word, and by the `.init(confirmed:)` spelling, which never names the type.
+        let confirming = try Self.files(in: "App", matching: ["confirmed:", ".confirm("], orWord: "OperatorConfirmation")
+        #expect(confirming == ["App/ChangePreviewSheet.swift"], "only the confirm sheet confirms: \(confirming)")
         let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
         #expect(confirming.isDisjoint(with: voiceOrModel))
     }
@@ -97,10 +99,15 @@ struct WriteRouteTests {
     /// confirms; the executor then demands the Confirm click for it.
     @Test func noIntentReachesAWrite() throws {
         let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
-        let writing = try Self.files(in: "App", matching: ["UserChanges", "Executor", "executor", ".confirm(", "WriteStep",
-                                                           "GamWrite", "AuthenticatedRunner", "previewOrganization"])
+        let writing = try Self.files(in: "App", matching: ["UserChanges", "userChanges", "Executor", "executor", ".confirm(",
+                                                           "confirmed:", "WriteStep", "GamWrite", "AuthenticatedRunner",
+                                                           "previewOrganization", "AppServices", "HeldPreview", "Origin",
+                                                           ".run("], orWord: "OperatorConfirmation")
         #expect(voiceOrModel.isDisjoint(with: writing), "\(voiceOrModel.intersection(writing))")
         #expect(voiceOrModel.contains { $0.hasSuffix("SiriIntents.swift") }, "the scan must see the intents")
+        // What the intents are given is the drafts, and only there; the drafts themselves reach no write.
+        #expect(try Self.files(in: "App", matching: ["AppDependencyManager", "@Dependency"]) == ["App/SiriIntents.swift"])
+        #expect(!writing.contains("App/SiriDrafts.swift"))
     }
 
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.

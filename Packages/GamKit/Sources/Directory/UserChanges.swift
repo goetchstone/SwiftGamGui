@@ -71,7 +71,7 @@ public final class UserChanges {
     /// GamGUI's organization editor: GAM's `organization … primary` sets the title and department together,
     /// so both are always sent (an unchanged one as it is now), trimmed. `origin` is who drafted it: a
     /// Siri draft needs the operator's Confirm click like a destructive change (invariant 10).
-    public func previewOrganization(of user: GamUser, title: String, department: String, origin: Origin = .form) async {
+    public func previewOrganization(of user: GamUser, title: String, department: String, origin: Origin) async {
         let title = PythonText.strip(title), department = PythonText.strip(department)
         subject = user.primaryEmail
         guard title != user.title || department != user.department else {

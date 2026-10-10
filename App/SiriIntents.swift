@@ -28,7 +28,14 @@ struct ChangeTitleIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        drafts.titleChange = SiriDrafts.TitleChange(person: person, title: title, department: department)
+        // A blank value from Shortcuts would draft an erase: ask again, or keep the department.
+        let person = person.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !person.isEmpty else { throw $person.needsValueError("Whose title?") }
+        guard !title.isEmpty else { throw $title.needsValueError("What's the new title?") }
+        let department = department?.trimmingCharacters(in: .whitespacesAndNewlines)
+        drafts.titleChange = SiriDrafts.TitleChange(person: person, title: title,
+                                                    department: department?.isEmpty == false ? department : nil)
         return .result(dialog: "Opening GamGUI with the change for you to check.")
     }
 }
