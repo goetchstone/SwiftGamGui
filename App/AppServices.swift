@@ -41,7 +41,8 @@ struct AppServices {
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
         // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
         let executor = runner.map { runner in
-            Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor [weak setup] in
+            Executor(runner: runner, audit: AuditLog(url: auditURL),
+                     currentActor: { @MainActor [weak setup] in setup?.connectedAdmin }, tenant: { @MainActor [weak setup] in
                 setup?.active.map { ($0, setup!.generation) }
             }, extraEnvironment: extraEnvironment)
         }

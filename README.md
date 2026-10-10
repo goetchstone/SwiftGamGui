@@ -65,7 +65,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Write | Status |
 |---|---|
 | Title and department (Users) | **confirmed** (2026-10-09) |
-| Suspend and unsuspend (Users) | argv-identical |
+| Suspend and unsuspend (Users) | **confirmed** (2026-10-09) |
 | Remove from a group (Users) | **confirmed** (2026-10-09) |
 | Add to a group (Users) | argv-identical |
 | Add a mail delegate (Users) | **confirmed** (2026-10-09) |

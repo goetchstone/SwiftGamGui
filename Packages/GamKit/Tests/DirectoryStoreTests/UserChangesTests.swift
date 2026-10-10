@@ -36,7 +36,7 @@ final class UserChangesTests {
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
                               "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path])
-        changes = UserChanges(executor: executor, directory: directory)
+        changes = UserChanges(executor: executor, directory: directory, today: { "2026-10-09" })
         access = UserAccess(setup: setup, runner: runner)
         access.environment = ["GAM_MOCK_STATE": scratch.appending(path: "mock-state").path]
     }
@@ -287,6 +287,36 @@ final class UserChangesTests {
         #expect(lists.groups == ["sales@example.com", "staff@example.com"])
         guard case .failure(let problem) = lists.vacation else { Issue.record("\(lists.vacation)"); return }
         #expect(problem.summary.contains("Gmail Service/App not enabled"))
+    }
+
+    /// Live, 2026-10-09: the operator blanked a reply's message on purpose. Allowed (as in GamGUI), and said.
+    @Test func anAutoReplyWithNoMessageIsWarnedAboutNotRefused() async throws {
+        try await connect()
+        await changes.previewAutoReply(try user("bob@example.com"), subject: "Away", text: " \n ", contactsOnly: false,
+                                       domainOnly: false, start: "", end: "")
+        let pending = try pending()
+        #expect(pending.warning?.hasPrefix("No message: senders get only the subject line.") == true)
+        #expect(pending.confirmLabel == "Turn On Anyway")
+    }
+
+    @Test func anAutoReplyWhoseEndHasPassedIsWarnedAbout() async throws {
+        try await connect()
+        await changes.previewAutoReply(try user("bob@example.com"), subject: "Away", text: "Back soon.", contactsOnly: false,
+                                       domainOnly: false, start: "2026-01-14", end: "2026-01-16")
+        let pending = try pending()
+        #expect(pending.warning?.hasPrefix("The end date (2026-01-16) has already passed") == true)
+        #expect(pending.confirmLabel == "Turn On Anyway")
+        await changes.previewAutoReply(try user("bob@example.com"), subject: "Away", text: "Back soon.", contactsOnly: false,
+                                       domainOnly: false, start: "", end: "2026-10-09")
+        #expect(try self.pending().warning == nil, "ending today hasn't passed")
+    }
+
+    @Test func anAutoReplyEndingBeforeItStartsIsRefused() async throws {
+        try await connect()
+        await changes.previewAutoReply(try user("bob@example.com"), subject: "Away", text: "Back soon.", contactsOnly: false,
+                                       domainOnly: false, start: "2026-10-20", end: "2026-10-12")
+        guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(message == "The end date (2026-10-12) is before the start date (2026-10-20).")
     }
 
     @Test func anAutoReplyIsTurnedOff() async throws {
