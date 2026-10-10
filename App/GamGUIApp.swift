@@ -33,6 +33,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case home = "Home"
     case users = "Users"
     case groups = "Groups"
+    case signatures = "Signatures"
     case setup = "Setup"
 
     var id: Self { self }
@@ -42,6 +43,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .home: "house"
         case .users: "person.2"
         case .groups: "person.3"
+        case .signatures: "signature"
         case .setup: "key"
         }
     }
@@ -71,6 +73,8 @@ enum ColumnWidths {
 struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
+    /// The person Signatures opens on when another screen sends it one.
+    @State private var signaturesPerson: String?
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -100,11 +104,19 @@ struct ContentView: View {
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess, drafts: services.siriDrafts)
-                    .navigationTitle("Users")
+                          access: services.userAccess, drafts: services.siriDrafts) { email in
+                    signaturesPerson = email
+                    screen = .signatures
+                }
+                .navigationTitle("Users")
             case .groups:
                 GroupsView(setup: services.setup, groups: services.groups, members: services.groupMembers)
                     .navigationTitle("Groups")
+            case .signatures:
+                SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
+                               access: services.userAccess, templates: services.signatureTemplates,
+                               requested: $signaturesPerson)
+                    .navigationTitle("Signatures")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")

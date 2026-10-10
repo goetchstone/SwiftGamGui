@@ -12,6 +12,7 @@
 		5A6D00000000000000000103 /* Setup in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000203 /* Setup */; };
 		5A6D00000000000000000104 /* Directory in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000204 /* Directory */; };
 		5A6D00000000000000000105 /* ChangeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000205 /* ChangeCore */; };
+		5A6D00000000000000000106 /* Stores in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000206 /* Stores */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 				5A6D00000000000000000103 /* Setup in Frameworks */,
 				5A6D00000000000000000104 /* Directory in Frameworks */,
 				5A6D00000000000000000105 /* ChangeCore in Frameworks */,
+				5A6D00000000000000000106 /* Stores in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,6 +100,7 @@
 				5A6D00000000000000000203 /* Setup */,
 				5A6D00000000000000000204 /* Directory */,
 				5A6D00000000000000000205 /* ChangeCore */,
+				5A6D00000000000000000206 /* Stores */,
 			);
 			productName = GamGUI;
 			productReference = 5A6D00000000000000000001 /* GamGUI.app */;
@@ -330,6 +333,10 @@
 		5A6D00000000000000000205 /* ChangeCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ChangeCore;
+		};
+		5A6D00000000000000000206 /* Stores */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Stores;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

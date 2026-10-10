@@ -3,6 +3,7 @@ import Directory
 import Foundation
 import GamEngine
 import Setup
+import Stores
 import Vault
 
 /// The app's long-lived services, built once at launch. Setup and the directory share one runner, so
@@ -17,8 +18,12 @@ struct AppServices {
     let executor: Executor?
     /// The user page's writes, through the executor.
     let userChanges: UserChanges
-    /// A selected person's groups and delegates, read live.
+    /// A selected person's groups, delegates, auto-reply and signature, read live.
     let userAccess: UserAccess
+    /// One person's Gmail signature, through the executor.
+    let signatureChanges: SignatureChanges
+    /// The saved signature templates.
+    let signatureTemplates: SignatureTemplates
     /// The tenant's groups, read when Groups is first shown.
     let groups: GroupStore
     /// An open group's members, read live.
@@ -37,12 +42,13 @@ struct AppServices {
             (try? RuntimeDirectory.prepare()).map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
-                        setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL)
+                        setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
+                        templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
-                                 gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, lastDomain: LastDomain = .userDefaults,
-                                 extraEnvironment: [String: String] = [:]) -> AppServices {
+                                 gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
+                                 lastDomain: LastDomain = .userDefaults, extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
         // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
@@ -56,6 +62,8 @@ struct AppServices {
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
+                           signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory),
+                           signatureTemplates: templates,
                            groups: GroupStore(setup: setup, runner: runner),
                            groupMembers: GroupMembers(setup: setup, runner: runner), auditURL: auditURL)
     }
@@ -83,6 +91,10 @@ struct AppServices {
         return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
                         setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"),
                         auditURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl"),
+                        // A fresh folder each launch, never the operator's templates, and no copy from GamGUI.
+                        templates: SignatureTemplates(
+                            root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-signatures-\(UUID().uuidString)"),
+                            gamGUIFile: nil),
                         lastDomain: .memory())
     }
 

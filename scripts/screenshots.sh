@@ -15,25 +15,29 @@ binary="$app/Contents/MacOS/GamGUI"
 mkdir -p "$out"
 
 status=0
-# name:screen[:selected:tab[:window]] — the person page is captured once per tab, for alice@example.com,
-# and a group's page for sales@example.com. The narrow-* runs open a page in the smallest window with the
-# sidebar and the page dragged to their widest, where clicking a name once crashed AppKit's layout
-# (failure-log 2026-10-10, person-page layout loop): they fail when the page has too little room to spare,
-# and on any non-zero exit.
+# name:screen[:selected:tab[:window[:template]]] — the person page is captured once per tab, for
+# alice@example.com, and a group's page for sales@example.com. Signatures opens on nobody (the demo admin
+# isn't in the directory), then on alice@example.com with the saved template Classic loaded. The narrow-*
+# runs open a page in the smallest window with the sidebar and the page dragged to their widest, where
+# clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they
+# fail when the page has too little room to spare, and on any non-zero exit.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com \
+            signatures:signatures signatures-alice:signatures:alice@example.com:::Classic \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
-            narrow-group-sales:groups:sales@example.com::smallest; do
-  IFS=: read -r name screen person tab window <<< "$spec"
+            narrow-group-sales:groups:sales@example.com::smallest \
+            narrow-signatures:signatures:alice@example.com::smallest:Classic; do
+  IFS=: read -r name screen person tab window template <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"
   # Each launch quits itself after the capture; give up on one that hangs.
   env -i HOME="$HOME" PATH="/usr/bin:/bin" TMPDIR="${TMPDIR:-/tmp}" \
     SWIFTGAMGUI_DEMO=1 SWIFTGAMGUI_SCREEN="$screen" SWIFTGAMGUI_SNAPSHOT="$file" \
     ${person:+SWIFTGAMGUI_SELECT="$person"} ${tab:+SWIFTGAMGUI_TAB="$tab"} ${window:+SWIFTGAMGUI_WINDOW="$window"} \
+    ${template:+SWIFTGAMGUI_TEMPLATE="$template"} \
     SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" "$binary" &
   pid=$!
   for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done

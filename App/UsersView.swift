@@ -14,6 +14,8 @@ struct UsersView: View {
     let changes: UserChanges
     let access: UserAccess
     let drafts: SiriDrafts
+    /// Opens Signatures for a person (the Mail tab's "Change Signature…").
+    let openSignatures: (String) -> Void
     @State private var filter = UserFilter()
     /// What became of Siri's last request, when it couldn't be drafted.
     @State private var siriNotice: String?
@@ -168,7 +170,8 @@ struct UsersView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
-                    UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen)
+                    UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen,
+                               openSignatures: openSignatures)
                 }
             }
         } else {
@@ -332,7 +335,7 @@ private struct UsersTable: View {
 enum PersonTab: String, CaseIterable, Identifiable {
     case profile = "Profile"
     case groups = "Groups"
-    /// The auto-reply and who can read the mailbox (Gmail delegates).
+    /// The auto-reply, the Gmail signature and who can read the mailbox (Gmail delegates).
     case mail = "Mail"
     case security = "Security"
 
@@ -357,6 +360,7 @@ private struct UserDetail: View {
     let access: UserAccess
     /// Tells the list an editor is open, so Siri doesn't change the person under it.
     @Binding var editorOpen: Bool
+    let openSignatures: (String) -> Void
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
@@ -500,6 +504,7 @@ private struct UserDetail: View {
                     }
                 }
             }
+            SignatureCard(user: user, access: access, openSignatures: openSignatures)
             AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
                        newAddress: $newDelegate)
         case .security:
@@ -566,7 +571,42 @@ private struct NotRead: View {
             HStack {
                 Text("Not read.").foregroundStyle(.secondary)
                 Button("Read Again") { Task { await access.load(user.primaryEmail) } }
-                    .accessibilityLabel("Read Again: \(user.fullName)'s groups, delegates and auto-reply")
+                    .accessibilityLabel("Read Again: \(user.fullName)'s groups, delegates, auto-reply and signature")
+            }
+        }
+    }
+}
+
+/// The person's Gmail signature as GAM shows it (Rendered or HTML, with Copy HTML), and the way to change
+/// it: Signatures, for this person. Only an active person's signature is set there.
+private struct SignatureCard: View {
+    let user: GamUser
+    let access: UserAccess
+    let openSignatures: (String) -> Void
+
+    var body: some View {
+        Section("Gmail signature") {
+            switch access.lists(for: user.primaryEmail)?.signature {
+            case .success(let body)?:
+                SignaturePane(html: body, rendered: body, label: "Current signature of \(user.fullName)", height: 120)
+            case .failure(let problem)?:
+                Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            case nil:
+                if let problem = access.problem(for: user.primaryEmail) {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                } else {
+                    NotRead(what: "the signature", user: user, access: access)
+                }
+            }
+            HStack {
+                if user.suspended {
+                    Text("Suspended: a signature is set only for active people.").foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Change Signature…") { openSignatures(user.primaryEmail) }
+                    .disabled(user.suspended)
+                    .accessibilityLabel("Change \(user.fullName)'s signature")
+                    .accessibilityHint("Opens Signatures for them.")
             }
         }
     }
