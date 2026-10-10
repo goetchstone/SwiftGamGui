@@ -137,22 +137,31 @@ enum UserColumn: String, CaseIterable, Identifiable {
     /// Every column but Name, which always shows, first.
     static var hideable: [UserColumn] { allCases.filter { $0 != .name } }
 
-    private static let key = "usersTableColumns"
+    private static let key = "usersHiddenColumns"
 
-    /// The layout the operator left, from the app's preferences: windows aren't restored
-    /// (`restorationBehavior(.disabled)`), so scene storage would forget it at every launch. Read when a
-    /// list appears, not bound live, so two windows never push widths into each other; a list writes only
-    /// what the operator changed in it. A debug spike or snapshot reads and writes none of the operator's.
+    /// The columns the operator hid, kept in the app's preferences: windows aren't restored
+    /// (`restorationBehavior(.disabled)`), so scene storage would forget them at every launch. Only which
+    /// columns are hidden is kept, not widths or order: the table rewrites widths by itself whenever the
+    /// list narrows or widens (17 times in three openings of a page, measured), which saved squeezed
+    /// widths as the operator's choice (failure-log 2026-10-10). A debug spike or snapshot reads and writes
+    /// none of the operator's.
     static func saved() -> TableColumnCustomization<GamUser> {
-        guard !Spikes.isRequested, let data = UserDefaults.standard.data(forKey: key),
-              let columns = try? JSONDecoder().decode(TableColumnCustomization<GamUser>.self, from: data)
-        else { return TableColumnCustomization() }
+        var columns = TableColumnCustomization<GamUser>()
+        guard !Spikes.isRequested else { return columns }
+        UserDefaults.standard.removeObject(forKey: "usersTableColumns")   // PR #29's whole layout
+        let hidden = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        for column in hideable where hidden.contains(column.rawValue) { columns[visibility: column.rawValue] = .hidden }
         return columns
     }
 
-    static func save(_ columns: TableColumnCustomization<GamUser>) {
-        guard !Spikes.isRequested, let data = try? JSONEncoder().encode(columns) else { return }
-        UserDefaults.standard.set(data, forKey: key)
+    /// The hidden columns' keys, in a fixed order.
+    static func hidden(in columns: TableColumnCustomization<GamUser>) -> [String] {
+        hideable.filter { columns[visibility: $0.rawValue] == .hidden }.map(\.rawValue)
+    }
+
+    static func save(hidden: [String]) {
+        guard !Spikes.isRequested else { return }
+        UserDefaults.standard.set(hidden, forKey: key)
     }
 }
 
@@ -165,9 +174,6 @@ private struct UsersTable: View {
     @Binding var selection: GamUser.ID?
     @Binding var sortOrder: [KeyPathComparator<GamUser>]
     @State private var columns = UserColumn.saved()
-    /// The operator changed the layout here since it was last saved. A list nobody touched never writes:
-    /// leaving Users in a second window would otherwise put back what was just changed in the first.
-    @State private var unsaved = false
 
     var body: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns) {
@@ -212,21 +218,9 @@ private struct UsersTable: View {
                 .accessibilityHint("Choose which columns the list of users shows.")
             }
         }
-        // Saved a second after the last change (dragging a column's edge changes it continuously), and
-        // when the list goes away or the app quits before that second is up.
-        .onChange(of: columns) { unsaved = true }
-        .task(id: columns) {
-            guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
-            save()
-        }
-        .onDisappear(perform: save)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in save() }
-    }
-
-    private func save() {
-        guard unsaved else { return }
-        UserColumn.save(columns)
-        unsaved = false
+        // Saved when the operator hides or shows one, never on the table's own width changes; a list
+        // nobody touched never writes, so a second window can't put back what the first changed.
+        .onChange(of: UserColumn.hidden(in: columns)) { _, hidden in UserColumn.save(hidden: hidden) }
     }
 
     /// Shown unless the operator hid it: a column never touched reads `.automatic`, which shows.
@@ -289,8 +283,12 @@ private struct UserDetail: View {
         .frame(minWidth: 0, maxWidth: .infinity)
         .inspectorColumnWidth(min: ColumnWidths.inspector.min, ideal: ColumnWidths.inspector.ideal,
                               max: ColumnWidths.inspector.max)
-        // Read when the person is selected, and again after a change of theirs lands.
-        .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail) }
+        // Read when the person is selected, and again after a change of theirs lands; a quarter second later,
+        // so arrowing down the list starts no gam for the people passed over, and none as the page appears.
+        .task(id: "\(user.id)#\(changes.finished)") {
+            guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
+            await access.load(user.primaryEmail)
+        }
         .sheet(isPresented: $editingAutoReply) {
             AutoReplyEditor(user: user, vacation: (try? access.lists(for: user.primaryEmail)?.vacation.get()) ?? Vacation(),
                             changes: changes) { editingAutoReply = false }
@@ -467,7 +465,8 @@ private struct AccessList: View {
             Section(heading) {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
-        } else if access.loading == user.primaryEmail {
+        } else {
+            // Read a moment after the page opens (UserDetail's task), or reading now.
             Section(heading) {
                 HStack { ProgressView().controlSize(.small); Text("Reading \(heading.lowercased())…") }
                     .accessibilityElement(children: .combine)
