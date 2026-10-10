@@ -96,10 +96,11 @@ public enum GamOutput {
 /// quotes doubled, a backslash escaping the next character, not strict. GAM 7.48.22 writes every CSV so
 /// (`gam/__init__.py:8830-8839`; `csv_output_no_escape_char` is off by default): each backslash in a
 /// value doubled, a value with a comma, quote, CR or LF quoted. A reader without the escape character,
-/// GamGUI's included, drops a JSON cell holding `\"`, doubles each backslash and reads an escaped newline
-/// as "\n" (failure-log 2026-10-10, "GAM's CSV escapes"). Lines end at "\n", "\r" or "\r\n", a quoted
-/// field may span them, a stray quote inside an unquoted field is data, and text after a closing quote
-/// joins the field. Never fails: an unterminated quote or a final escape ends with the input.
+/// GamGUI's included, drops a JSON cell holding `\"`, doubles each backslash and turns a newline in a
+/// JSON value into a backslash and an `n` (failure-log 2026-10-10, "GAM's CSV escapes"). Lines end at
+/// "\n", "\r" or "\r\n", a quoted field may span them, a stray quote inside an unquoted field is data,
+/// and text after a closing quote joins the field. Never fails: an unterminated quote ends with the
+/// input, and an escape at a line's or the input's end reads as "\n", as in C.
 ///
 /// A literal port of CPython 3.14.6's `Modules/_csv.c` reader (`parse_process_char`, `Reader_iternext`),
 /// state for state.
