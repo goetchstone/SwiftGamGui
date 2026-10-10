@@ -57,6 +57,28 @@ pin="$(sed -nE 's/.*expected = "([0-9.]+)".*/\1/p' "$ROOT/Packages/GamKit/Source
 [ -n "$pin" ] || fail "can't read the pinned GAM version"
 grep -qF "GAM $pin " <<<"$version" || fail "embedded gam reports [$version], pin is $pin"
 
+# Siri: the intents ship as the code says (invariant 10). The title intent drafts in the app, in front
+# (foreground, 2), never in the background, and every phrase names the app. Xcode checks these rules only
+# when it builds the app, so the built metadata is what's read.
+INTENTS="$APP/Contents/Resources/Metadata.appintents/extract.actionsdata"
+[ -f "$INTENTS" ] || fail "no App Intents metadata"
+python3 -I - "$INTENTS" <<'PY' || fail "App Intents metadata (above)"
+import json, sys
+d = json.load(open(sys.argv[1]))
+action = d.get("actions", {}).get("ChangeTitleIntent")
+if not action:
+    sys.exit("no ChangeTitleIntent")
+if action.get("supportedModes") != 2:
+    sys.exit(f"ChangeTitleIntent's modes are {action.get('supportedModes')}, not foreground (2)")
+phrases = [p.get("key", "") if isinstance(p, dict) else str(p)
+           for s in d.get("autoShortcuts", []) for p in s.get("phraseTemplates", [])]
+if not phrases:
+    sys.exit("no Siri phrases")
+unnamed = [p for p in phrases if "${applicationName}" not in p]
+if unnamed:
+    sys.exit(f"phrases without the app's name: {unnamed}")
+PY
+
 [ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GamGUI" ] || fail "display name"
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$PLIST")" = "27.0" ] || fail "minimum macOS"
 echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); no app entitlements; $count signed Mach-O files; $version)"

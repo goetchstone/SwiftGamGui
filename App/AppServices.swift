@@ -21,6 +21,8 @@ struct AppServices {
     let userAccess: UserAccess
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
+    /// Siri's requests, waiting for the screens to draft them.
+    let siriDrafts = SiriDrafts()
 
     static func make() -> AppServices {
         #if DEBUG

@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import FoundationModels
 import GamEngine
 import Setup
 import LocalAuthentication
@@ -51,7 +50,7 @@ enum Spikes {
         switch spike {
         case "keychain": keychain()
         case "legacy-keychain": legacyKeychain()
-        case "model": model()
+        case "model": ModelSpike.run()
         case "vault": await vault()
         default: print("unknown spike \(spike)")
         }
@@ -295,12 +294,6 @@ enum Spikes {
         } catch {
             print("cleanup error: \(error)")
         }
-    }
-
-    static func model() {
-        let model = SystemLanguageModel.default
-        print("SystemLanguageModel.default.availability: \(model.availability)")
-        print("supported languages: \(model.supportedLanguages.count)")
     }
 
     static func teamIdentifier() -> String? {

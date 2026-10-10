@@ -3,6 +3,7 @@ import Directory
 import GamEngine
 import Setup
 import SwiftUI
+import Vault
 
 /// Users: the loaded directory as a table, searched and scoped as GamGUI's list is, with one person's
 /// fields beside it, where the first writes live: title and department, suspend and unsuspend. Each is
@@ -12,13 +13,26 @@ struct UsersView: View {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    let drafts: SiriDrafts
     @State private var filter = UserFilter()
+    /// What became of Siri's last request, when it couldn't be drafted.
+    @State private var siriNotice: String?
+    /// The domain a Siri request was asked under (connected, or reconnecting), by request.
+    @State private var siriTenant: (request: UUID, domain: Domain, generation: Int?)?
+    /// An editor is open on the person's page: Siri waits rather than change the person under it.
+    @State private var editorOpen = false
+    /// Only the window in front takes Siri's request (each window has its own Users).
+    @Environment(\.appearsActive) private var appearsActive
     @State private var sortOrder = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
     @State private var selection: GamUser.ID?
 
     var body: some View {
         content
             .task(id: directory.users?.count ?? 0) { selectForSnapshot() }
+            // Waits for the directory: Siri can open the app before it has connected and loaded.
+            .task(id: "\(drafts.titleChange?.id.uuidString ?? "")#\(directory.users?.count ?? -1)#\(appearsActive)#\(editorOpen)") {
+                await draftFromSiri()
+            }
             .toolbar {
                 ToolbarItem {
                     Picker("Show", selection: $filter.scope) {
@@ -57,6 +71,64 @@ struct UsersView: View {
         withTransaction(instant) { selection = id }
     }
 
+    /// Siri's "change a title": the person it names is selected, and the change waits as a preview the
+    /// operator saves with a click (the executor won't run a Siri draft without one). Nobody, or more than
+    /// one person: the list says so, filtered by the words, and nothing is drafted.
+    private func draftFromSiri() async {
+        guard appearsActive, let request = drafts.titleChange else { return }
+        // The domain it was asked under: connected, or being reconnected at launch. Drafted only there.
+        if siriTenant?.request != request.id {
+            guard let domain = setup.active ?? setup.reconnecting else {
+                drafts.titleChange = nil
+                notify("Connect a domain, then ask Siri again.")
+                return
+            }
+            siriTenant = (request.id, domain, setup.active == nil ? nil : setup.generation)
+        }
+        guard !request.isStale else {
+            drafts.titleChange = nil
+            notify("Siri's request to change a title came too long ago. Ask again.")
+            return
+        }
+        guard let users = directory.users, let tenant = siriTenant else { return }
+        guard setup.active == tenant.domain, tenant.generation.map({ $0 == setup.generation }) ?? true else {
+            drafts.titleChange = nil
+            notify("Siri's request was for \(tenant.domain.name), which isn't the domain connected now. Ask again.")
+            return
+        }
+        // Never over the operator's own change: one running, a preview waiting, or an editor open.
+        guard !changes.isBusy, changes.previewing == nil, !editorOpen else {
+            drafts.titleChange = nil
+            notify("Finish or cancel the change that's open, then ask Siri again.")
+            return
+        }
+        drafts.titleChange = nil
+        switch PersonMatch.resolve(request.person, in: users) {
+        case .one(let id):
+            guard let user = users.first(where: { $0.id == id }) else { return }
+            siriNotice = nil
+            // The person's row shows, whatever the list was narrowed to.
+            if !filter.apply([user]).contains(where: { $0.id == id }) { filter = UserFilter() }
+            select(id)
+            // Its own task: this one is cancelled as the request it was started for is cleared.
+            Task {
+                await changes.previewOrganization(of: user, title: request.title,
+                                                  department: request.department ?? user.department, origin: .siri)
+            }
+        case .several(let ids):
+            filter = UserFilter(query: request.person)
+            notify("\(ids.count) people match “\(request.person)”. Choose one, then Edit Title and Department.")
+        case .none:
+            notify("No one in the directory matches “\(request.person)”.")
+        }
+    }
+
+    /// Shown under the list (or in place of it), and spoken each time, even when it repeats.
+    private func notify(_ text: String) {
+        siriNotice = text
+        AccessibilityNotification.Announcement(text).post()
+    }
+
     /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
@@ -75,6 +147,12 @@ struct UsersView: View {
                 // A refresh shows here: running, or why it failed (the list above is the last good one).
                 HStack(spacing: 12) {
                     Text("\(rows.count) of \(users.count) accounts").foregroundStyle(.secondary)
+                    if let siriNotice {
+                        Label(siriNotice, systemImage: "waveform").lineLimit(2)
+                        Button { self.siriNotice = nil } label: { Image(systemName: "xmark") }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Dismiss")
+                    }
                     if directory.isLoading {
                         HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
                             .accessibilityElement(children: .combine)
@@ -90,11 +168,12 @@ struct UsersView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
-                    UserDetail(user: user, directory: directory, changes: changes, access: access)
+                    UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen)
                 }
             }
         } else {
             VStack(spacing: 12) {
+                if let siriNotice { Label(siriNotice, systemImage: "waveform").foregroundStyle(.secondary) }
                 if directory.isLoading {
                     ProgressView("Loading the directory…")
                 } else if let domain = setup.reconnecting {
@@ -276,6 +355,8 @@ private struct UserDetail: View {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    /// Tells the list an editor is open, so Siri doesn't change the person under it.
+    @Binding var editorOpen: Bool
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
@@ -311,7 +392,15 @@ private struct UserDetail: View {
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
-        .sheet(item: Binding(get: { changes.previewing }, set: { if $0 == nil { changes.dismiss() } })) { pending in
+        .onChange(of: editingRole || editingAutoReply, initial: true) { _, open in editorOpen = open }
+        .onDisappear { editorOpen = false }
+        // Another person chosen while an editor is open (nothing should, but if it does): the editor
+        // closes, so what was typed for the last person can't become a preview for this one.
+        .onChange(of: user.id) {
+            editingRole = false
+            editingAutoReply = false
+        }
+        .sheet(item: Binding(get: { changes.previewing(for: user.primaryEmail) }, set: { if $0 == nil { changes.dismiss() } })) { pending in
             ChangePreviewSheet(pending: pending, changes: changes)
         }
     }
@@ -447,14 +536,6 @@ private struct ResultBanner: View {
         case .running(let pending): ("\(pending.title)…", "hourglass", .blue)
         case .idle, .previewing: nil
         }
-    }
-}
-
-extension UserChanges {
-    /// The preview a sheet shows, while one is held.
-    var previewing: Pending? {
-        if case .previewing(let pending) = state { return pending }
-        return nil
     }
 }
 
@@ -701,67 +782,11 @@ private struct RoleEditor: View {
                     // Close first: the preview opens its own sheet.
                     let user = user, title = title, department = department, changes = changes
                     close()
-                    Task { await changes.previewOrganization(of: user, title: title, department: department) }
+                    Task { await changes.previewOrganization(of: user, title: title, department: department, origin: .form) }
                 }
             }
         }
     }
 }
 
-/// What a confirm will run, exactly: the change in words, the command as GAM gets it (secrets masked),
-/// how much it can hurt, then Cancel or the confirm. The confirmation is made here, in a screen, never
-/// in code that also talks to Siri or a model (invariant 10, `WriteRouteTests`).
-private struct ChangePreviewSheet: View {
-    let pending: UserChanges.Pending
-    let changes: UserChanges
 
-    private func confirm() {
-        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
-    }
-
-    var body: some View {
-        Form {
-            Section(pending.title) {
-                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
-                    Text(step.summary)
-                    // The exact command is there for an admin who wants it, not the first thing to read.
-                    DisclosureGroup("Show command") {
-                        Text(step.shownArgv.joined(separator: " "))
-                            .font(.caption.monospaced())
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            }
-            if let warning = pending.warning {
-                Section {
-                    Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                }
-            }
-            Section {
-                if pending.isDestructive {
-                    Label("Destructive: confirm to run it.", systemImage: "exclamationmark.octagon.fill")
-                        .foregroundStyle(.red)
-                } else {
-                    Label("A reversible change.", systemImage: "arrow.uturn.backward.circle")
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .frame(minWidth: 460)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() } }
-            // A destructive change isn't confirmed by Return alone: it isn't the default button, so it has
-            // to be chosen (clicked, or reached with Tab and Space).
-            if pending.isDestructive {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(pending.confirmLabel, role: .destructive) { confirm() }
-                }
-            } else {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(pending.confirmLabel) { confirm() }
-                }
-            }
-        }
-    }
-}

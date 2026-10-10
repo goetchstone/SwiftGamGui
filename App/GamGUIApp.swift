@@ -7,7 +7,14 @@ import SwiftUI
 @main
 struct GamGUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var services = AppServices.make()
+    @State private var services: AppServices
+
+    init() {
+        let services = AppServices.make()
+        _services = State(initialValue: services)
+        // Siri's intents reach the drafts only (invariant 10).
+        SiriIntents.register(services.siriDrafts)
+    }
 
     var body: some Scene {
         WindowGroup("GamGUI") {
@@ -91,12 +98,16 @@ struct ContentView: View {
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess)
+                          access: services.userAccess, drafts: services.siriDrafts)
                     .navigationTitle("Users")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")
             }
+        }
+        // Siri's request opens Users in the window in front, where it's drafted.
+        .onChange(of: services.siriDrafts.titleChange != nil && appearsActive, initial: true) { _, wanted in
+            if wanted { screen = .users }
         }
         // On every screen: connecting at launch, then loading, in words.
         .navigationSubtitle(connection)

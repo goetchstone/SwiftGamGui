@@ -69,8 +69,9 @@ public final class UserChanges {
     // MARK: previews
 
     /// GamGUI's organization editor: GAM's `organization … primary` sets the title and department together,
-    /// so both are always sent (an unchanged one as it is now), trimmed.
-    public func previewOrganization(of user: GamUser, title: String, department: String) async {
+    /// so both are always sent (an unchanged one as it is now), trimmed. `origin` is who drafted it: a
+    /// Siri draft needs the operator's Confirm click like a destructive change (invariant 10).
+    public func previewOrganization(of user: GamUser, title: String, department: String, origin: Origin) async {
         let title = PythonText.strip(title), department = PythonText.strip(department)
         subject = user.primaryEmail
         guard title != user.title || department != user.department else {
@@ -79,7 +80,7 @@ public final class UserChanges {
         }
         let step = WriteStep(GamCommands.updateOrganization(email: user.primaryEmail, title: title, department: department),
                              target: user.primaryEmail, summary: "Set \(user.fullName)'s title to “\(title)” and department to “\(department)”")
-        await hold(step, title: "Change title and department", confirmLabel: "Save", email: user.primaryEmail) {
+        await hold(step, title: "Change title and department", confirmLabel: "Save", email: user.primaryEmail, origin: origin) {
             $0.with(title: title, department: department)
         }
     }
@@ -219,14 +220,15 @@ public final class UserChanges {
     }
 
     private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String, confirmStep: Bool = false,
-                      warning: String? = nil, patch: @escaping @Sendable (GamUser) -> GamUser = { $0 }) async {
+                      warning: String? = nil, origin: Origin = .form,
+                      patch: @escaping @Sendable (GamUser) -> GamUser = { $0 }) async {
         guard !isBusy else { return }
         subject = email
         guard let executor else {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
         }
-        switch await executor.preview([step], confirmStep: confirmStep) {
+        switch await executor.preview([step], origin: origin, confirmStep: confirmStep) {
         case .success(let preview):
             state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email,
                                         warning: warning, patch: patch))
