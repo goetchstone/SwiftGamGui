@@ -38,6 +38,8 @@ struct SignaturesView: View {
             }
             .formStyle(.grouped)
         }
+        // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
+        .frame(minWidth: 0, maxWidth: .infinity)
         .toolbar {
             ToolbarItem {
                 Button("Read Again", systemImage: "arrow.clockwise") {
