@@ -31,6 +31,7 @@ enum Spikes {
         let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
+            await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
                 // Fill the demo screen. Home and Users: connected, and the directory loaded. Setup: one
                 // passing check (connected), then one failing (the result panel).
@@ -97,6 +98,28 @@ enum Spikes {
         }
         fflush(stdout)
         NSApp.terminate(nil)
+    }
+
+    /// `SWIFTGAMGUI_WINDOW=900x572`: the window's content size, set before the demo fills the screen, so a
+    /// person's page opens in a window that size. A narrow window once crashed AppKit's layout when a
+    /// name was clicked; screenshots.sh opens the page at the smallest sizes.
+    @MainActor
+    static func sizeWindow(_ spec: String?) async {
+        guard let spec else { return }
+        let parts = spec.split(separator: "x")
+        guard parts.count == 2, let width = Double(parts[0]), let height = Double(parts[1]) else {
+            print("snapshot: SWIFTGAMGUI_WINDOW is WIDTHxHEIGHT, not \(spec)")
+            return
+        }
+        for _ in 0..<50 {
+            if let window = NSApp.windows.first(where: \.isVisible) {
+                window.setContentSize(NSSize(width: width, height: height))
+                try? await Task.sleep(for: .milliseconds(300))
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        print("snapshot: no window to size")
     }
 
     /// The window's split view (sidebar | screen), searched depth first.
