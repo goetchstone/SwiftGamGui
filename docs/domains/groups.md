@@ -99,10 +99,10 @@ held to `gam_models.json`).
   don't model it, so a name or description with a double quote may drop a row (the Users list too).
 
 ## Testing / live-verification status
-- Mock-tested only. **Not live yet:** the operator's first read, with a go, runs `print groups` and
-  `print group-members` on one real group and on one address that isn't a group, to capture the real
-  formatjson headers and the not-found wording and exit code (GamGUI's acceptance never checked
-  `print group-members`).
+- **Live (2026-10-10):** on the operator's real tenant the screen listed the groups (`print groups`)
+  and a group's members (`print group-members`): GAM's real formatjson output read as the mock models
+  it. Still approximate: the not-found wording and exit code for an address that isn't a group (the
+  screen only opens groups it listed, so it can't ask for one yet).
 - Screens: CI renders `groups`, `group-sales` and `narrow-group-sales` (the smallest window with the
   sidebar and the page at their widest); the images reach `docs/screenshots` from that run's artifact.
 
