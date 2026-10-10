@@ -425,6 +425,18 @@ final class ExecutorTests {
         #expect(a.digest.count == 64)
     }
 
+    /// Live, 2026-10-09: every record said `actor: null`. The connected admin is asked at each run.
+    @Test func theAuditNamesTheAdminWhoActed() async throws {
+        let tenant = tenantState, offset = offset, start = start
+        var environment = Fixtures.mockEnvironment
+        environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        let executor = Executor(runner: runner, audit: audit, currentActor: { "it-admin@example.com" },
+                                tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
+                                extraEnvironment: environment)
+        _ = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
+        #expect(records.map { $0["actor"]?.string } == ["it-admin@example.com", "it-admin@example.com"])
+    }
+
     @Test func anUnfinishedWriteCanBeAcknowledged() async throws {
         try audit.record("suspendUser", target: "bob@example.com", argv: [],
                          extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])

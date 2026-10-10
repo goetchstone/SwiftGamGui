@@ -43,6 +43,11 @@ public final class SetupModel {
     @ObservationIgnored public var tenantDidChange: (@MainActor () -> Void)?
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
+    /// The admin the connected domain signs in as (its last passing check): who the audit says acted.
+    public var connectedAdmin: String? {
+        guard let active, let lastCheck, lastCheck.domain == active, lastCheck.result.isAuthorized else { return nil }
+        return lastCheck.admin
+    }
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.

@@ -152,6 +152,8 @@ public actor Executor {
     private let tenant: Tenant
     private let now: @Sendable () -> ContinuousClock.Instant
     private let actor: String?
+    /// Who is making the change, asked at each run: the admin the connected domain signs in as.
+    private let currentActor: (@Sendable () async -> String?)?
     private let extraEnvironment: [String: String]
 
     private var held: [UUID: HeldPreview] = [:]
@@ -164,12 +166,14 @@ public actor Executor {
 
     /// `tenant` is the connected domain and its generation (`SetupModel`); `now` and the mock's
     /// environment are for tests.
-    public init(runner: AuthenticatedRunner, audit: AuditLog, actor: String? = nil, tenant: @escaping Tenant,
+    public init(runner: AuthenticatedRunner, audit: AuditLog, actor: String? = nil,
+                currentActor: (@Sendable () async -> String?)? = nil, tenant: @escaping Tenant,
                 now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
                 extraEnvironment: [String: String] = [:]) {
         self.runner = runner
         self.audit = audit
         self.actor = actor
+        self.currentActor = currentActor
         self.tenant = tenant
         self.now = now
         self.extraEnvironment = extraEnvironment
@@ -297,6 +301,7 @@ public actor Executor {
     static func key(_ target: String) -> String { Guard.normalized(target) }
 
     private func execute(_ preview: HeldPreview) async -> RunOutcome {
+        let who = await currentActor?() ?? actor
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
@@ -327,7 +332,7 @@ public actor Executor {
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
             do {
-                try record(step, phase: "begin", extra: base, secrets: secrets)
+                try record(step, phase: "begin", extra: base, actor: who, secrets: secrets)
             } catch {
                 AuditFailure.report(error)
                 stoppedBy = "Stopped: the audit log couldn't be written."
@@ -335,7 +340,7 @@ public actor Executor {
                                        kind: nil))
                 continue
             }
-            let ran = await run(step, index: index, of: preview, base: base, secrets: secrets)
+            let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets)
             results.append(ran.result)
             if let stop = ran.stop { stoppedBy = stop }
             if let problem = ran.auditProblem { auditProblem = problem }
@@ -344,7 +349,7 @@ public actor Executor {
     }
 
     /// One step through the runner, with its end record.
-    private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject,
+    private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
                      secrets: [String]) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
@@ -387,7 +392,7 @@ public actor Executor {
         }
         let ok: Bool = if case .succeeded = result { true } else { false }
         do {
-            try record(step, phase: "end", extra: extra, exitCode: exitCode, ok: ok, secrets: secrets)
+            try record(step, phase: "end", extra: extra, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
             return (result, stop, nil)
         } catch {
             AuditFailure.report(error)
@@ -408,7 +413,7 @@ public actor Executor {
     }
 
     private func record(_ step: WriteStep, phase: String, extra: JSONObject, exitCode: Int32? = nil, ok: Bool? = nil,
-                        secrets: [String]) throws {
+                        actor: String?, secrets: [String]) throws {
         var extra = extra
         extra["phase"] = .string(phase)
         try audit.record(step.write.action.rawValue, target: step.target, argv: step.write.argv, exitCode: exitCode,

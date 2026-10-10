@@ -236,6 +236,14 @@ struct SetupModelTests {
 
     // MARK: reconnecting at launch (operator, 2026-10-09)
 
+    @Test func theConnectedAdminIsTheLastPassingChecks() async throws {
+        let model = model()
+        #expect(model.connectedAdmin == nil)
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(Domain("example.com")!)
+        #expect(model.connectedAdmin == "admin@example.com")
+    }
+
     @Test func theLastConnectedDomainIsCheckedAgainAtLaunch() async throws {
         let first = model()
         await first.importFolder(try gamFolder(), as: "example.com")

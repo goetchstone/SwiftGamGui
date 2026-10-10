@@ -44,9 +44,21 @@ public final class UserChanges {
     private let executor: Executor?
     private let directory: DirectoryStore
 
-    public init(executor: Executor?, directory: DirectoryStore) {
+    /// Today as `YYYY-MM-DD` in the Mac's calendar (an auto-reply's dates are days).
+    private let today: @Sendable () -> String
+
+    public init(executor: Executor?, directory: DirectoryStore,
+                today: @escaping @Sendable () -> String = { UserChanges.day(Date()) }) {
         self.executor = executor
         self.directory = directory
+        self.today = today
+    }
+
+    public nonisolated static func day(_ date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     public var isBusy: Bool {
@@ -142,12 +154,30 @@ public final class UserChanges {
     /// `Started` / `NotSpecified`. LOW.
     public func previewAutoReply(_ user: GamUser, subject: String, text: String, contactsOnly: Bool, domainOnly: Bool,
                                  start: String, end: String) async {
+        self.subject = user.primaryEmail
+        let start = PythonText.strip(start), end = PythonText.strip(end)
+        // Live, 2026-10-09: a reply went out with no message (on purpose: the operator blanked it) and with
+        // dates left over from an earlier setting that had already passed, so Gmail would never send it.
+        // Both are said on the preview; neither is refused (GamGUI allows them).
+        if !start.isEmpty, !end.isEmpty, end < start {
+            state = .problem("The end date (\(end)) is before the start date (\(start)).")
+            return
+        }
+        var warnings: [String] = []
+        if PythonText.strip(text).isEmpty {
+            warnings.append("No message: senders get only the subject line. To stop replying altogether, turn the auto-reply off instead.")
+        }
+        if !end.isEmpty, end < today() {
+            warnings.append("The end date (\(end)) has already passed: Gmail won't send this reply. Change the dates, or turn it on anyway.")
+        }
+        let warning = warnings.isEmpty ? nil : warnings.joined(separator: " ")
         let step = WriteStep(
             GamCommands.setVacation(email: user.primaryEmail, subject: subject, message: HTMLText.autoreplyHTML(text),
                                     html: true, start: PythonText.strip(start), end: PythonText.strip(end),
                                     contactsOnly: contactsOnly, domainOnly: domainOnly),
             target: user.primaryEmail, summary: "Turn on \(user.primaryEmail)'s auto-reply: “\(subject)”.")
-        await hold(step, title: "Turn on the auto-reply", confirmLabel: "Turn On", email: user.primaryEmail)
+        await hold(step, title: "Turn on the auto-reply", confirmLabel: warning == nil ? "Turn On" : "Turn On Anyway",
+                   email: user.primaryEmail, warning: warning)
     }
 
     /// GamGUI's `/users/vacation/off`. LOW.

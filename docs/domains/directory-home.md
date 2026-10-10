@@ -114,6 +114,11 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   `Tests/Fixtures/vacation.json`: 1,816 bodies (curated and seeded random over tags, comments, raw-text
   elements, references and the letters `re.IGNORECASE` folds) and 7,525 references (every HTML5 name).
   Turning it off and signing out are LOW, as GamGUI rates them.
+- **From the first live day's audit log (2026-10-09):** a reply went out with no message (the operator
+  blanked it on purpose) and with dates left over from an earlier setting that had passed. Neither is
+  refused (GamGUI allows both); the preview now says each, and its button reads "Turn On Anyway". An
+  end date before the start date is refused. Every record named `actor: null`: the executor now asks
+  for the connected admin at each run (`SetupModel.connectedAdmin`).
 - **Signature** moves to the Signatures screen (templates, the rendered preview, the Siri intent);
   **account delete** comes with offboarding (destructive, proven on the next real leaver).
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
