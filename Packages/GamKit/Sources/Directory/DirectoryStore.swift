@@ -13,7 +13,8 @@ import Vault
 @MainActor
 @Observable
 public final class DirectoryStore {
-    public struct Problem: Equatable, Sendable {
+    /// Why a read shows nothing, worded for the screen. The group list and a group's members say it the same way.
+    public struct Problem: Error, Equatable, Sendable {
         /// What to do about it.
         public let summary: String
         /// What GAM said, when it said something.
