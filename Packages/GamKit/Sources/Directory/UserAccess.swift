@@ -25,7 +25,16 @@ public final class UserAccess {
         let email: String
         let domain: Domain
         let generation: Int
+        /// When the read started: a slower, older read of the same person never replaces it.
+        let serial: Int
         let result: Result<Lists, Problem>
+    }
+
+    /// A person as read for one tenant.
+    private struct Key: Hashable {
+        let email: String
+        let domain: Domain
+        let generation: Int
     }
 
     public struct Problem: Error, Sendable, Equatable {
@@ -37,9 +46,8 @@ public final class UserAccess {
     /// The people read, newest first, kept per person: two windows' pages never evict each other's lists.
     /// Bounded (invariant 9), and only the connected tenant's are kept.
     private var loaded: [Loaded] = []
-    /// The people being read, each with their latest request: an older, slower read of the same person
-    /// never replaces a newer one, and reading one person never cancels another's.
-    private var reading: [String: UUID] = [:]
+    /// The people being read, for the tenant they're read for: an old tenant's read never shows as this one's.
+    private var reading = ReadsInFlight<Key>()
     private let keep: Int
     /// Tests only: the mock's state folder, so a read sees what a write just changed.
     var environment: [String: String] = [:]
@@ -52,7 +60,8 @@ public final class UserAccess {
 
     /// A read of `email` is waiting or running.
     public func isReading(_ email: String) -> Bool {
-        reading[email] != nil
+        guard let domain = setup.active else { return false }
+        return reading.isRunning(Key(email: email, domain: domain, generation: setup.generation))
     }
 
     /// The lists for `email`, while they belong to the connected tenant.
@@ -76,9 +85,9 @@ public final class UserAccess {
     public func load(_ email: String, after delay: Duration = .zero) async {
         guard let domain = setup.active, let runner else { return }
         let generation = setup.generation
-        let request = UUID()
-        reading[email] = request
-        defer { if reading[email] == request { reading[email] = nil } }
+        let key = Key(email: email, domain: domain, generation: generation)
+        let serial = reading.start(key)
+        defer { reading.end(key, serial) }
         if delay > .zero {
             guard (try? await Task.sleep(for: delay)) != nil else { return }
         }
@@ -98,10 +107,11 @@ public final class UserAccess {
             result = .failure(problem)
         }
         // A switch while reading: these belong to the old tenant, so they're dropped.
-        guard reading[email] == request, !Task.isCancelled, setup.active == domain, setup.generation == generation
+        guard !Task.isCancelled, setup.active == domain, setup.generation == generation,
+              current(email).map({ $0.serial < serial }) ?? true
         else { return }
         loaded.removeAll { $0.email == email || $0.domain != domain || $0.generation != generation }
-        loaded.insert(Loaded(email: email, domain: domain, generation: generation, result: result), at: 0)
+        loaded.insert(Loaded(email: email, domain: domain, generation: generation, serial: serial, result: result), at: 0)
         if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
     }
 

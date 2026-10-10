@@ -145,19 +145,23 @@ struct DirectoryStoreTests {
         #expect(store.users?.isEmpty == false, "example.org loads")
     }
 
-    @Test func aLoadForAnotherTenantNeverShowsAsLoading() async throws {
-        // Even for a store Setup doesn't notify (its one observer is the store made last).
+    /// Every store on one Setup is told of a switch, not only the one made last: Setup once had a single
+    /// observer slot, and a second store took it from the first.
+    @Test func everyStoreOnOneSetupStopsItsOldLoad() async throws {
         let slow = try slowRunner()
         let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
-        let unwatched = DirectoryStore(setup: setup, runner: slow)
-        _ = DirectoryStore(setup: setup, runner: slow)
+        let first = DirectoryStore(setup: setup, runner: slow)
+        let second = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
-        let old = Task { await unwatched.load() }
-        while !unwatched.isLoading { await Task.yield() }
+        let clock = ContinuousClock(), started = clock.now
+        let old = Task { await first.load() }
+        while !first.isLoading { await Task.yield() }
         try await connect("example.org", admin: "admin@example.org", in: setup)
-        #expect(!unwatched.isLoading)
+        #expect(first.isLoading && second.isLoading, "each store loads example.org")
         await old.value
-        #expect(unwatched.users == nil)
+        #expect(clock.now - started < .seconds(1.5), "the first store's old load was stopped, not waited for")
+        await first.load()
+        #expect(first.users?.isEmpty == false)
     }
 
     @Test func askingAgainWhileALoadRunsStartsNoSecond() async throws {

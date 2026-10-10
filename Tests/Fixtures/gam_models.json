@@ -15205,28 +15205,55 @@
  ],
  "groups": [
   {
-   "record": "{\"email\": \"sales@example.com\", \"name\": \"Sales\", \"directMembersCount\": 3}",
+   "record": "{\"email\": \"allhands@example.com\", \"directMembersCount\": \"12\", \"name\": \"All Hands\"}",
+   "model": {
+    "email": "allhands@example.com",
+    "name": "All Hands",
+    "description": "",
+    "members_count": 12
+   }
+  },
+  {
+   "record": "{\"email\": \"empty-group@example.com\", \"directMembersCount\": \"0\", \"name\": \"Empty Group\"}",
+   "model": {
+    "email": "empty-group@example.com",
+    "name": "Empty Group",
+    "description": "",
+    "members_count": 0
+   }
+  },
+  {
+   "record": "{\"email\": \"it@example.com\", \"directMembersCount\": \"1\", \"name\": \"IT\"}",
+   "model": {
+    "email": "it@example.com",
+    "name": "IT",
+    "description": "",
+    "members_count": 1
+   }
+  },
+  {
+   "record": "{\"email\": \"sales@example.com\", \"description\": \"Everyone who sells\", \"directMembersCount\": \"2\", \"name\": \"Sales\"}",
    "model": {
     "email": "sales@example.com",
     "name": "Sales",
+    "description": "Everyone who sells",
+    "members_count": 2
+   }
+  },
+  {
+   "record": "{\"email\": \"staff@example.com\", \"directMembersCount\": \"3\", \"name\": \"Staff\"}",
+   "model": {
+    "email": "staff@example.com",
+    "name": "Staff",
     "description": "",
     "members_count": 3
    }
   },
   {
-   "record": "{\"email\": \"staff@example.com\", \"name\": \"Staff\", \"directMembersCount\": 10}",
+   "record": "{\"email\": \"team@example.com\", \"directMembersCount\": \"2\", \"name\": \"Team\"}",
    "model": {
-    "email": "staff@example.com",
-    "name": "Staff",
-    "description": "",
-    "members_count": 10
-   }
-  },
-  {
-   "record": "{\"email\": \"it@example.com\", \"name\": \"IT\", \"directMembersCount\": 2}",
-   "model": {
-    "email": "it@example.com",
-    "name": "IT",
+    "email": "team@example.com",
+    "name": "Team",
     "description": "",
     "members_count": 2
    }
@@ -16422,20 +16449,20 @@
  ],
  "members": [
   {
-   "record": "{\"email\": \"alice@example.com\", \"role\": \"MEMBER\", \"type\": \"USER\", \"status\": \"ACTIVE\"}",
+   "record": "{\"group\": \"sales@example.com\", \"email\": \"alice@example.com\", \"id\": \"100000000000000000001\", \"role\": \"OWNER\", \"status\": \"ACTIVE\", \"type\": \"USER\"}",
    "model": {
     "email": "alice@example.com",
-    "role": "MEMBER",
+    "role": "OWNER",
     "member_type": "USER",
     "status": "ACTIVE"
    }
   },
   {
-   "record": "{\"email\": \"bob@example.com\", \"role\": \"MANAGER\", \"type\": \"USER\", \"status\": \"ACTIVE\"}",
+   "record": "{\"group\": \"sales@example.com\", \"email\": \"it@example.com\", \"id\": \"03abc000000000001\", \"role\": \"MEMBER\", \"status\": \"ACTIVE\", \"type\": \"GROUP\"}",
    "model": {
-    "email": "bob@example.com",
-    "role": "MANAGER",
-    "member_type": "USER",
+    "email": "it@example.com",
+    "role": "MEMBER",
+    "member_type": "GROUP",
     "status": "ACTIVE"
    }
   },

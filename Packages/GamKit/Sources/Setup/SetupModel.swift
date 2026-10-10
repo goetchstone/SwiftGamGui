@@ -44,9 +44,11 @@ public final class SetupModel {
     /// 2026-09-25: a tenant switch left the old tenant's previews live). A re-check of the same domain
     /// keeps it.
     public private(set) var generation = 0
-    /// Called when the connected tenant changes (another domain, or none), so work started for the old
-    /// one can stop: the directory cancels a load in flight. One observer.
-    @ObservationIgnored public var tenantDidChange: (@MainActor () -> Void)?
+    /// Told when the connected tenant changes (another domain, or none), so work started for the old one
+    /// can stop: the directory and the group list each cancel a load in flight. Every observer is told, in
+    /// the order added: with one slot, the store made last took it, and the directory silently stopped
+    /// loading on connect.
+    @ObservationIgnored private var tenantObservers: [@MainActor () -> Void] = []
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
     /// The domain being connected again at launch (Touch ID, then its check), so every screen can say so
@@ -316,13 +318,22 @@ public final class SetupModel {
         }
     }
 
+    /// Adds an observer of tenant changes. It is kept as long as the model, so it should hold its owner weakly.
+    public func onTenantChange(_ observer: @escaping @MainActor () -> Void) {
+        tenantObservers.append(observer)
+    }
+
+    private func tenantChanged() {
+        for observer in tenantObservers { observer() }
+    }
+
     private func activate(_ domain: Domain) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         guard active != domain else { return }
         active = domain
         generation += 1
-        tenantDidChange?()
+        tenantChanged()
     }
 
     /// Makes `found` the domain's whole set. New credentials haven't been checked, so a domain that
@@ -346,7 +357,7 @@ public final class SetupModel {
         if active == domain {
             active = nil
             generation += 1
-            tenantDidChange?()
+            tenantChanged()
         }
         if lastCheck?.domain == domain { lastCheck = nil }
         if delegation?.domain == domain { delegation = nil }
