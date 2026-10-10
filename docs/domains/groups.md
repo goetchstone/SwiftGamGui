@@ -70,20 +70,23 @@ held to `gam_models.json`).
   "400 … groupKey", exit 1; `print groups` printed NDJSON whatever it was asked. Now:
   - `print groups` takes `fields <GroupFieldNameList>` and `formatjson`; each field must be a
     `<GroupFieldName>` (grammar line 3965), matched lowercased with underscores dropped as GAM matches
-    it, else GAM's invalid choice (exit 2). Only the four the app asks for are modelled; `quotechar`, no
-    `formatjson` and any other word are refused. It prints GAM's formatjson shape, `email,JSON`, with
-    only the fields asked for.
+    it, else GAM's invalid choice (exit 2). Only the four the app asks for, together, are modelled;
+    fewer, `quotechar`, no `formatjson` and any other word are refused. It prints GAM's formatjson
+    shape, `email,JSON`, in GAM's CSV dialect (`gam_row`; see the runner runbook).
   - `print group-members` takes exactly `group <g> formatjson`; the whole address, case-insensitively;
     an unknown group (a person's address included) is "Group: <g>, Does not exist", exit 56. It prints
-    `group,JSON` per member, the header alone for a memberless group.
+    `group,JSON` per member, the header alone for a memberless group. The JSON holds the group too, and
+    every default member field, empty where a member has none (read in GAM's source at 7.48.22).
   - **Approximate, from the vendored build's bytecode, not a tenant:** the not-found wording and exit
-    code, the `group` column's place, the count as a string. The operator's first live read replaces them.
-- **One data set:** every group's `directMembersCount` is worked out from its member list, and each
-  directory user's `print groups member` names exactly the groups listing them (alice: sales, staff;
-  bob: staff; carol: it). `MockGroupsTests.theGroupsAgreeWithOneAnother` holds both. allhands' twelve
-  members aren't in the mock's directory, so `print groups member` refuses them.
+    code, the count as a string. The operator's first live read replaces them.
+- **One data set** (`mock_gam/groups.json`, `group_members.json`): every group's `directMembersCount`
+  is its member list's length, and each directory user's `print groups member` names exactly the
+  groups listing them (alice: sales, staff; bob: staff; carol: it; dana: none, the header alone).
+  `MockGroupsTests.theGroupsAgreeWithOneAnother` holds both. allhands' twelve members aren't in the
+  mock's directory, so `print groups member` refuses them. IT's description holds a quote, a
+  backslash, a newline and non-ASCII, so GAM's escaping reaches the reader (`GroupStoreTests`).
 - **bash reserves `GROUPS`** (the user's group IDs): assigning it fails, and under `set -e` the mock
-  exited 1 with no output at all, before any handler. The list is `TENANT_GROUPS`.
+  exited 1 with no output at all, before any handler. (The groups now live in `mock_gam/groups.json`.)
 - `gen_fixtures.py` reads `print_groups` and `print_group_members("sales@example.com")` through the mock
   and stops if the mock refuses either: re-run it after any change to their output.
 
@@ -95,8 +98,9 @@ held to `gam_models.json`).
 - A page whose read is gone (another window read eight more) reads it again by itself.
 - The list speaks a load's outcome ("N groups loaded.", or why not) from the window in front; Show
   Group moves the focus to the new page's heading; a refresh that drops the open group closes its page.
-- **Open, its own slice:** GAM writes CSV with a backslash escape character, and the reader and mock
-  don't model it, so a name or description with a double quote may drop a row (the Users list too).
+- **Closed:** GAM writes CSV with a backslash escape character, which neither the reader nor the mock
+  modelled, so a name or description with a double quote dropped a row (the Users list too).
+  Failure-log 2026-10-10, "GAM's CSV escapes".
 
 ## Testing / live-verification status
 - **Live (2026-10-10):** on the operator's real tenant the screen listed the groups (`print groups`)

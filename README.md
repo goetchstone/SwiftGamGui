@@ -83,7 +83,11 @@ Developer ID and notarized by Apple.
 how it's signed.
 
 The fixtures the tests compare against are generated from GamGUI. To regenerate them you need a GamGUI
-checkout next to this one: `../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py`.
+checkout next to this one: `../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py`. One deliberate
+difference: GAM escapes its CSV output with a backslash, which GamGUI's reader doesn't handle, so a name
+or description holding a quote can vanish there. This app reads the output as GAM writes it, and the
+fixtures list each place where GamGUI reads it differently
+([docs/domains/gam-runner.md](docs/domains/gam-runner.md#reading-output)).
 
 ## Live verification
 

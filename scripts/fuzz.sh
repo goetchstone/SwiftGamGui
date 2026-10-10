@@ -6,7 +6,8 @@
 #     scripts/fuzz.sh -seed=1 -runs=200000 -max_len=4096
 #
 # Arguments go to libFuzzer; pass a crash file to reproduce it. Only GamEngine's platform-free sources are
-# compiled in (the rest need Darwin), as one module with the fuzz entry point.
+# compiled in (the rest need Darwin), as one module with the fuzz entry point. Without a crash file the run
+# starts from Fuzz/corpus (seed inputs, read only) and keeps what it finds in a scratch corpus, never the repo.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,4 +19,8 @@ swiftc -sanitize=fuzzer,address -parse-as-library -package-name gamfuzz -module-
   "$engine"/GamChoices.swift "$engine"/GamCommand.swift "$engine"/GamCommands.swift \
   "$engine"/GamError.swift "$engine"/GamOutput.swift "$engine"/JSONValue.swift "$engine"/PythonText.swift \
   -o "$out/gamfuzz"
-exec "$out/gamfuzz" -dict=Fuzz/gam.dict "$@"
+for arg in "$@"; do
+  case "$arg" in -*) ;; *) exec "$out/gamfuzz" -dict=Fuzz/gam.dict "$@" ;; esac   # a crash file: reproduce it
+done
+mkdir -p "$out/corpus"
+exec "$out/gamfuzz" -dict=Fuzz/gam.dict "$@" "$out/corpus" Fuzz/corpus

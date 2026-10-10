@@ -26,10 +26,10 @@
 # not exist) written from its source conventions, not captured from a tenant — only a live capture
 # (plan Phase 8) proves them.
 #
-# The per-user reads (info user, show vacation/signature, print delegates, print groups member, user
-# print calendaracls) answer for THAT user: each fixture user (tests/fixtures/print_users.json) has
-# different data, and an address that isn't a user fails as GAM fails. Answering Alice's data for
-# anyone let five wrong-target reads pass the whole suite (failure-log 2026-09-23).
+# The per-user reads (info user, show vacation/signature, print delegates, print groups member) answer for
+# THAT user: each fixture user (mock_gam/print_users.json) has different data, and an address that isn't a
+# user fails as GAM fails. Answering Alice's data for anyone let five wrong-target reads pass the whole
+# suite (failure-log 2026-09-23).
 
 set -eu
 
@@ -100,51 +100,47 @@ delegates_of() {  # <user>: the current list — with GAM_MOCK_STATE, the stored
   fi
 }
 has_delegate() { delegates_of "$1" | grep -qixF -- "$2"; }   # Gmail compares addresses case-insensitively
-# The tenant's groups, in the order GAM lists them (by address). One data set for every group read, held
-# together by MockGroupsTests: each count is its member list's length, and each directory user's
-# `print groups member` names exactly the groups listing them (alice: sales, staff; bob: staff; carol:
-# it). allhands' twelve members aren't in the mock's directory, so `print groups member` refuses them.
-TENANT_GROUPS="allhands@example.com empty-group@example.com it@example.com sales@example.com staff@example.com team@example.com"
+# GAM's CSV (failure-log 2026-10-10, "GAM's CSV escapes"). GAM 7.48.22 writes every CSV with CPython 3.14's
+# csv module in setDialect's dialect (gam/__init__.py:8830-8839): comma, double quote, quotes doubled, a
+# backslash escape (csv_output_no_escape_char is off by default), QUOTE_MINIMAL, rows ending in "\n". So a
+# backslash in a value is doubled, and a value holding a comma or a quote is quoted, its quotes doubled.
+# A value here is one line (a JSON cell never holds a raw newline); one with CR or LF is refused.
+CR=$(printf '\r')
+gam_cell() {  # <value>: one CSV field as GAM writes it
+  case "$1" in *"$CR"*|*'
+'*) echo "ERROR: mock: a CSV value with a line break isn't modelled" 1>&2; exit 2 ;; esac
+  escaped=$(printf '%s' "$1" | LC_ALL=C sed -e 's/\\/\\\\/g' -e 's/"/""/g')
+  case "$1" in *[,\"]*) printf '"%s"' "$escaped" ;; *) printf '%s' "$escaped" ;; esac
+}
+gam_row() {  # <value>...: one CSV row as GAM writes it
+  separator=""
+  for value in "$@"; do printf '%s' "$separator"; gam_cell "$value"; separator=","; done
+  printf '\n'
+}
+# `print … formatjson` (GAM's SetJSONTitles): a header of the key columns and `JSON`, then per record its
+# key values and the record as GAM prints it, json.dumps(…, ensure_ascii=False, sort_keys=True). The data
+# files hold one record per line in exactly that form (scripts/gen_fixtures.py refuses one that isn't, and
+# any formatjson output whose bytes differ from Python's csv writer in GAM's dialect).
+json_text() {  # <key> <json line>: a top-level string value holding no quote or backslash (an address, an ID)
+  found=$(printf '%s' "$2" | sed -n "s/.*\"$1\": \"\([^\"\\\\]*\)\".*/\1/p")
+  [ -n "$found" ] || { echo "ERROR: mock: no $1 in a data line" 1>&2; exit 2; }
+  printf '%s' "$found"
+}
+print_formatjson() {  # <key column> <data file>: every record in the file
+  echo "$1,JSON"
+  while IFS= read -r record; do gam_row "$(json_text "$1" "$record")" "$record"; done < "$GAM_MOCK_FIXTURES/$2"
+}
+not_modelled() { echo "ERROR: mock: $1 isn't modelled" 1>&2; exit 2; }
+# The tenant's groups, in the order GAM lists them (by address), and their members: mock_gam/groups.json
+# and group_members.json. One data set for every group read, held together by MockGroupsTests: each count
+# is its member list's length, and each directory user's `print groups member` names exactly the groups
+# listing them (alice: sales, staff; bob: staff; carol: it; dana: none). allhands' twelve members aren't in
+# the mock's directory, so `print groups member` refuses them. Members cover every role, a nested GROUP (its
+# address only; GAM doesn't expand it without `recursive`), a suspended USER, and the CUSTOMER row (everyone
+# in the organization), which has no address (shapes approximate: not captured from a tenant).
 is_group() {  # <address>, already lowercased
-  for known in $TENANT_GROUPS; do [ "$known" = "$1" ] && return 0; done
-  return 1
+  grep -qF "\"email\": \"$1\", " "$GAM_MOCK_FIXTURES/groups.json"
 }
-group_name() {
-  case "$1" in
-    allhands@example.com) echo "All Hands" ;;
-    empty-group@example.com) echo "Empty Group" ;;
-    it@example.com) echo "IT" ;;
-    sales@example.com) echo "Sales" ;;
-    staff@example.com) echo "Staff" ;;
-    team@example.com) echo "Team" ;;
-  esac
-}
-group_description() { case "$1" in sales@example.com) echo "Everyone who sells" ;; esac; }
-# <group>: its members, one Directory API member record per line, keys sorted as GAM's formatjson writes
-# them. Covered: every role, a nested GROUP (its address only; GAM doesn't expand it without `recursive`),
-# a suspended USER, and the CUSTOMER row (everyone in the organization), which has no address (shapes
-# approximate: not captured from a tenant).
-canned_members() {
-  case "$1" in
-    sales@example.com)
-      echo '{"email": "alice@example.com", "id": "100000000000000000001", "role": "OWNER", "status": "ACTIVE", "type": "USER"}'
-      echo '{"email": "it@example.com", "id": "03abc000000000001", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}' ;;
-    staff@example.com)
-      echo '{"email": "alice@example.com", "id": "100000000000000000001", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}'
-      echo '{"email": "bob@example.com", "id": "100000000000000000002", "role": "MANAGER", "status": "SUSPENDED", "type": "USER"}'
-      echo '{"id": "C01abc234", "role": "MEMBER", "type": "CUSTOMER"}' ;;
-    it@example.com)
-      echo '{"email": "carol@example.com", "id": "100000000000000000003", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}' ;;
-    team@example.com)
-      echo '{"email": "sales@example.com", "id": "03abc000000000004", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}'
-      echo '{"email": "staff@example.com", "id": "03abc000000000005", "role": "MEMBER", "status": "ACTIVE", "type": "GROUP"}' ;;
-    allhands@example.com)   # 12 members: past the bulk threshold
-      for n in 01 02 03 04 05 06 07 08 09 10 11 12; do
-        printf '{"email": "member%s@example.com", "id": "1000000000000000001%s", "role": "MEMBER", "status": "ACTIVE", "type": "USER"}\n' "$n" "$n"
-      done ;;
-  esac
-}
-csv_cell() { printf '"%s"' "$(printf '%s' "$1" | sed 's/"/""/g')"; }   # one quoted CSV cell, quotes doubled
 # `todrive <ToDriveAttribute>*` (grammar 655) after a print/report read: only the shape the Builder emits
 # (GAMCommands.todrive_args) — `todrive [tduser <EmailAddress>] [tdtitle <String>]`, each once, in that order,
 # last on the line. GAM (CSVPrintFile.GetTodriveParameters, read from the vendored build) reads tduser with
@@ -267,9 +263,25 @@ if [ -n "$td_read" ]; then
   fi
 fi
 
-# Read commands -> echo the matching fixture.
+# Read commands -> the matching fixture, as GAM prints it.
+# `gam print users [query <QueryUser>] [fields <UserFieldNameList>] formatjson` -> GAM's CSV: a `primaryEmail`
+# and a `JSON` column per user (gam/__init__.py:48707-48716, header :49045-49058). Every user in
+# mock_gam/print_users.json, whatever the query or fields (approximate: GAM asks Google for only the users the
+# query matches and the fields named). Without formatjson GAM flattens each user into columns this mock
+# doesn't model, and quotechar changes the CSV itself: each is refused rather than answered in a guessed
+# shape, as is any other option of the grammar's (`gam print users`), none of which the app sends.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "users" ]; then
-  cat "$GAM_MOCK_FIXTURES/print_users.json"
+  shift 2; fj=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      query) need_value $# "QueryUser"; shift 2 ;;
+      fields) need_value $# "UserFieldNameList"; [ -n "$2" ] || empty_arg "UserFieldNameList"; shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print users with $1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print users without formatjson"
+  print_formatjson primaryEmail print_users.json
   exit 0
 fi
 # `gam info user <addr>` -> THAT user's record, keyed on the address like GAM. An address that isn't in
@@ -290,14 +302,16 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   esac
   exit 0
 fi
-# `gam print group-members group <addr> formatjson` -> CSV, a `group` and a `JSON` column per member (GAM's
-# SetJSONTitles; the column order is approximate), and the header alone for a memberless group. Only that
-# shape, the one the app sends: without formatjson GAM flattens each member into columns this mock doesn't
-# model. The address matches a group's whole address, case-insensitively, as the Directory API's groupKey
-# does: a substring once answered for `xsales@` and refused `SALES@`. Anything else, a user's address
-# included, isn't a group: code that has to tell a person from a group would otherwise pass here and break
-# live. GAM's groupNotFound -> entityUnknownWarning: "Group: <addr>, Does not exist", ENTITY_DOES_NOT_EXIST_RC
-# (read from the vendored build; wording approximate).
+# `gam print group-members group <addr> formatjson` -> GAM's CSV, a `group` and a `JSON` column per member
+# (gam/__init__.py:37588-37595), and the header alone for a memberless group. The JSON holds the group too,
+# and each default member field (GROUPMEMBERS_DEFAULT_FIELDS, :37424), empty where a member has none
+# (:37640-37648, :37741-37750). Only that shape, the one the app sends: without formatjson GAM flattens each
+# member into columns this mock doesn't model. The address matches a group's whole address,
+# case-insensitively, as the Directory API's groupKey does: a substring once answered for `xsales@` and
+# refused `SALES@`. Anything else, a user's address included, isn't a group: code that has to tell a person
+# from a group would otherwise pass here and break live. GAM's groupNotFound -> entityUnknownWarning:
+# "Group: <addr>, Does not exist", ENTITY_DOES_NOT_EXIST_RC (read from the vendored build; wording
+# approximate).
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
   [ $# -ge 3 ] || { echo "ERROR: mock: print group-members without a group isn't modelled" 1>&2; exit 2; }
   [ "$3" = "group" ] || invalid_arg "$3"
@@ -309,8 +323,8 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
   addr=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
   is_group "$addr" || does_not_exist "Group" "$4"
   echo "group,JSON"
-  canned_members "$addr" | while IFS= read -r member; do
-    printf '%s,%s\n' "$addr" "$(csv_cell "$member")"
+  grep -F "\"group\": \"$addr\", " "$GAM_MOCK_FIXTURES/group_members.json" | while IFS= read -r member; do
+    gam_row "$addr" "$member"
   done
   exit 0
 fi
@@ -385,41 +399,41 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ] && [ "${3:-}" = "member" ];
     alice@example.com) printf 'email\nsales@example.com\nstaff@example.com\n' ;;
     bob@example.com)   printf 'email\nstaff@example.com\n' ;;
     carol@example.com) printf 'email\nit@example.com\n' ;;
+    dana@example.com)  printf 'email\n' ;;   # in no group: GAM still prints the header
     *) echo "ERROR: Group:, Print Failed: Invalid Input: memberKey" 1>&2; exit 50 ;;
   esac
   exit 0
 fi
 
-# `gam print domains formatjson` -> CSV, a `domainName` and a `JSON` column per domain: the Directory API's
-# Domains resource, its domain aliases nested in it. The tenant: example.com (primary, aliased by
-# alias.example.net) and a secondary example.net. GAM also takes todrive and showitemcountonly, and without
-# formatjson flattens the record into columns this mock doesn't model; the app sends neither, so each is
-# refused rather than answered in a guessed shape.
+# `gam print domains formatjson` -> GAM's CSV, a `domainName` and a `JSON` column per domain (gam/__init__.py
+# :17097, :17127): the Directory API's Domains resource, its domain aliases nested in it. The tenant
+# (mock_gam/domains.json): example.com (primary, aliased by alias.example.net) and a secondary example.net.
+# GAM also takes todrive and showitemcountonly, without formatjson flattens the record into columns this
+# mock doesn't model, and quotechar changes the CSV itself; the app sends none of them, so each is refused
+# rather than answered in a guessed shape.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "domains" ]; then
   shift 2; fj=""
   while [ $# -gt 0 ]; do
     case "$1" in
       formatjson) fj=1; shift ;;
-      quotechar) [ -n "$fj" ] || invalid_arg "$1"; [ -n "${2:-}" ] || missing_arg "Character"; shift 2 ;;
+      quotechar) [ -n "$fj" ] || invalid_arg "$1"; [ -n "${2:-}" ] || missing_arg "Character"
+        not_modelled "print domains with quotechar" ;;
       *) invalid_arg "$1" ;;
     esac
   done
-  [ -n "$fj" ] || { echo "ERROR: mock: print domains without formatjson isn't modelled" 1>&2; exit 2; }
-  cat <<'EOF'
-domainName,JSON
-example.com,"{""creationTime"": ""2020-01-06T17:00:00.000Z"", ""domainAliases"": [{""creationTime"": ""2021-03-01T09:00:00.000Z"", ""domainAliasName"": ""alias.example.net"", ""parentDomainName"": ""example.com"", ""verified"": true}], ""domainName"": ""example.com"", ""isPrimary"": true, ""verified"": true}"
-example.net,"{""creationTime"": ""2022-05-10T12:00:00.000Z"", ""domainName"": ""example.net"", ""isPrimary"": false, ""verified"": true}"
-EOF
+  [ -n "$fj" ] || not_modelled "print domains without formatjson"
+  print_formatjson domainName domains.json
   exit 0
 fi
 
-# `gam print groups [fields <GroupFieldNameList>]* formatjson` -> CSV, an `email` and a `JSON` column per
-# group (GAM's SetJSONTitles), the record holding only the fields asked for (and the address, which GAM
-# always prints). Each field must be a <GroupFieldName> (grammar 3965), matched as GAM matches it,
-# lowercased with underscores dropped; another is GAM's invalid choice. Of the valid ones only the four the
-# app asks for are modelled. The count is a string, as the Directory API sends an int64 (approximate). GAM
-# also takes quotechar, and without formatjson flattens the record into columns; the app sends neither, so
-# each is refused rather than answered in a guessed shape.
+# `gam print groups [fields <GroupFieldNameList>]* formatjson` -> GAM's CSV, an `email` and a `JSON` column
+# per group (gam/__init__.py:36720-36724, header :36870, :37014), the record holding the fields asked for
+# (and the address, which GAM always prints). Each field must be a <GroupFieldName> (grammar 3965), matched
+# as GAM matches it, lowercased with underscores dropped; another is GAM's invalid choice. Only the four the
+# app asks for, together, are modelled (mock_gam/groups.json holds them); fewer would need the records cut
+# down. The count is a string, as the Directory API sends an int64 (approximate). GAM also takes quotechar,
+# and without formatjson flattens the record into columns; the app sends neither, so each is refused rather
+# than answered in a guessed shape.
 GROUP_FIELDS="admincreated|aliases|allowexternalmembers|allowgooglecommunication|allowwebposting|archiveonly|customfootertext|customreplyto|customrolesenabledforsettingstobemerged|defaultmessagedenynotificationtext|description|directmemberscount|email|enablecollaborativeinbox|collaborative|favoriterepliesontop|id|includecustomfooter|includeinglobaladdresslist|gal|isarchived|maxmessagebytes|memberscanpostasthegroup|messagedisplayfont|messagemoderationlevel|name|primarylanguage|replyto|sendmessagedenynotification|showingroupdirectory|spammoderationlevel|whocanaddreferences|whocanadd|whocanaddexternalmembers|whocanapprovemessages|whocanassigntopics|whocanassistcontent|whocancontactowner|whocandeleteanypost|whocandeletetopics|whocandiscovergroup|whocanenterfreeformtags|whocanhideabuse|whocaninvite|whocanjoin|whocanleavegroup|whocanlocktopics|whocanmaketopicssticky|whocanmarkduplicate|whocanmarkfavoritereplyonanytopic|whocanmarkfavoritereplyonowntopic|whocanmarknoresponseneeded|whocanmoderatecontent|whocanmodifytagsandcategories|whocanmovetopicsin|whocanmovetopicsout|whocanpostannouncements|whocanpostmessage|whocantaketopics|whocanunassigntopic|whocanunmarkfavoritereplyonanytopic|whocanviewgroup|whocanviewmembership"
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
   shift 2; fj=""; want=" email "
@@ -434,7 +448,7 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
           case "|$GROUP_FIELDS|" in *"|$field|"*) ;; *) invalid_choice "$field" "$GROUP_FIELDS" ;; esac
           case "$field" in
             email|name|description|directmemberscount) want="$want$field " ;;
-            *) echo "ERROR: mock: print groups field $field isn't modelled" 1>&2; exit 2 ;;
+            *) not_modelled "print groups field $field" ;;
           esac
         done
         set +f
@@ -443,23 +457,15 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
       quotechar)
         [ -n "$fj" ] || invalid_arg "$1"
         need_value $# "Character"
-        echo "ERROR: mock: print groups with quotechar isn't modelled" 1>&2; exit 2 ;;
+        not_modelled "print groups with quotechar" ;;
       *) invalid_arg "$1" ;;
     esac
   done
-  [ -n "$fj" ] || { echo "ERROR: mock: print groups without formatjson isn't modelled" 1>&2; exit 2; }
-  echo "email,JSON"
-  for group in $TENANT_GROUPS; do
-    # The record's keys in sorted order, as GAM's formatjson writes them.
-    record=""
-    description=$(group_description "$group")
-    case "$want" in *" description "*) [ -z "$description" ] || record="$record\"description\": \"$description\", " ;; esac
-    case "$want" in *" directmemberscount "*)
-      record="$record\"directMembersCount\": \"$(canned_members "$group" | wc -l | tr -d ' ')\", " ;; esac
-    record="$record\"email\": \"$group\""
-    case "$want" in *" name "*) record="$record, \"name\": \"$(group_name "$group")\"" ;; esac
-    printf '%s,%s\n' "$group" "$(csv_cell "{$record}")"
+  [ -n "$fj" ] || not_modelled "print groups without formatjson"
+  for field in name description directmemberscount; do
+    case "$want" in *" $field "*) ;; *) not_modelled "print groups without field $field" ;; esac
   done
+  print_formatjson email groups.json
   exit 0
 fi
 
@@ -480,21 +486,42 @@ EOF
   exit 0
 fi
 
-# `gam print cros ...` -> formatjson NDJSON of ChromeOS devices (Builder: Find Chromebooks).
+# `gam print cros [query <QueryCrOS>] [fields <CrOSFieldNameList>] formatjson` -> GAM's CSV, a `deviceId` and a
+# `JSON` column per device (gam/__init__.py:25281-25291, header :25505-25507; Builder: Find Chromebooks).
+# Every device in mock_gam/cros.json, whatever the query or fields (approximate, as `print users`). Without
+# formatjson, with quotechar or with any other option of the grammar's (`gam print cros`) it is refused.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "cros" ]; then
-  printf '%s\n' \
-    '{"deviceId":"cros_1","serialNumber":"5CD123","status":"ACTIVE","orgUnitPath":"/Students","annotatedAssetId":"AST-1","annotatedUser":"sam@example.com","model":"HP Chromebook 11"}' \
-    '{"deviceId":"cros_2","serialNumber":"5CD999","status":"DEPROVISIONED","orgUnitPath":"/Staff","annotatedAssetId":"AST-2","annotatedUser":"","model":"Acer Chromebook 314"}'
+  shift 2; fj=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      query) need_value $# "QueryCrOS"; shift 2 ;;
+      fields) need_value $# "CrOSFieldNameList"; [ -n "$2" ] || empty_arg "CrOSFieldNameList"; shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print cros with $1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print cros without formatjson"
+  print_formatjson deviceId cros.json
   exit 0
 fi
 
-# `gam user <email> print filelist ...` -> formatjson NDJSON of Drive files (Builder: Find Drive files).
-if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "filelist" ]; then
-  printf '%s\n' \
-    '{"id":"file_1","name":"Q4 Budget","mimeType":"application/vnd.google-apps.spreadsheet","owners":"alice@example.com","modifiedTime":"2026-06-20T10:00:00Z"}' \
-    '{"id":"file_2","name":"Team Folder","mimeType":"application/vnd.google-apps.folder","owners":"alice@example.com","modifiedTime":"2026-05-01T09:00:00Z"}'
-  exit 0
-fi
+# Reads whose GAM shape this mock doesn't model, refused rather than answered in a guessed one: they printed
+# NDJSON, which GAM never prints for them. No app screen reads them yet. Their CSV, read at 7.48.22, for
+# whoever models one (in GAM's dialect, gam_row; the data from git history):
+# - `user <u> print filelist … formatjson`: an `Owner` column, then Drive's own (printFileList, :60674).
+# - `print resources … formatjson`: resourceId,resourceName,JSON; in the JSON, buildingId as `id:<id>` and
+#   a looked-up buildingName (:41423, :41513-41545).
+# - `user <u>|all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own
+#   calendars (printShowCalendars, :55691, :55800-55818).
+# - `user <u> print calendaracls <cal> formatjson`: primaryEmail,calendarId,JSON, `primary` read as the user;
+#   `calendars <cal> print calendaracls formatjson`: calendarId,JSON; the JSON holds the rule's id, role and
+#   scope only (:41833-41885, :41904-41925, :55338-55339).
+# - `calendars <cal> print events … formatjson`: calendarId,id,JSON, only the events the query or event ID
+#   selects (:43147-43165, :43440-43441).
+case "${1:-} ${2:-} ${3:-} ${4:-}" in
+  "user "*" print filelist"|"user "*" print calendars"|"user "*" print calendaracls"|"all users print calendars"|\
+  "calendars "*" print calendaracls"|"calendars "*" print events"|"print resources "*) not_modelled "gam $*" ;;
+esac
 
 # `gam <UserTypeEntity> show backupcodes|verificationcodes` (no options) -> text; a Builder sensitive
 # read. The canned codes are what the audit must never contain.
@@ -519,58 +546,6 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "delegates" ]
   delegates_of "$2" | while IFS= read -r d; do
     if [ -n "$d" ]; then printf '%s,%s,accepted\n' "$2" "$d"; fi
   done
-  exit 0
-fi
-
-# `gam user <email> print calendaracls primary formatjson` -> NDJSON of THAT user's calendar access rules.
-if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendaracls" ]; then
-  [ -n "${5:-}" ] || missing_arg "UserCalendarEntity"
-  case "${6:-}" in ""|formatjson) ;; *) invalid_arg "$6" ;; esac
-  [ $# -le 6 ] || invalid_arg "$7"
-  in_directory "$2" || not_a_user "$2" Print
-  [ "$5" = "primary" ] || [ "$5" = "$2" ] || does_not_exist "Calendar" "$5"
-  acl() {  # <scope value> <role>: one user-scoped rule on this user's primary calendar
-    printf '{"primaryEmail": "%s", "calendarId": "%s", "id": "user:%s", "role": "%s", "scope": {"type": "user", "value": "%s"}}\n' \
-      "$user" "$user" "$1" "$2" "$1"
-  }
-  user="$2"
-  case "$user" in
-    alice@example.com) cat "$GAM_MOCK_FIXTURES/calendar_acls.json" ;;
-    carol@example.com) acl "$user" owner; acl helpdesk@example.com reader ;;
-    *) acl "$user" owner ;;
-  esac
-  exit 0
-fi
-
-# `gam print resources ...` -> NDJSON of resource (room) calendars.
-if [ "${1:-}" = "print" ] && [ "${2:-}" = "resources" ]; then
-  cat "$GAM_MOCK_FIXTURES/resources.json"
-  exit 0
-fi
-
-# `gam all users print calendars ...` -> real GAM shape: CSV with a `primaryEmail` sibling column
-# next to the per-row `JSON` blob (the owning user is NOT inside the JSON). Used for name search.
-if [ "${1:-}" = "all" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]; then
-  cat "$GAM_MOCK_FIXTURES/all_calendars.csv"
-  exit 0
-fi
-
-# `gam user <email> print calendars ...` -> NDJSON of a user's calendars.
-if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]; then
-  cat "$GAM_MOCK_FIXTURES/user_calendars.json"
-  exit 0
-fi
-
-# `gam calendars <id> print calendaracls|events ...` -> NDJSON (standalone calendar form).
-if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendaracls" ]; then
-  case "${2:-}" in
-    *orphan*) cat "$GAM_MOCK_FIXTURES/calendar_acls_orphan.json" ;;  # sole owner is a suspended user
-    *)        cat "$GAM_MOCK_FIXTURES/calendar_acls.json" ;;
-  esac
-  exit 0
-fi
-if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "events" ]; then
-  cat "$GAM_MOCK_FIXTURES/events.json"
   exit 0
 fi
 

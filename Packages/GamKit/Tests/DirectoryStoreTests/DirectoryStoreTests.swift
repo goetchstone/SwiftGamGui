@@ -58,7 +58,10 @@ struct DirectoryStoreTests {
         #expect(store.problem == nil, "\(String(describing: store.problem))")
         let users = try #require(store.users)
         #expect(users.map(\.primaryEmail) == mockUsers.map(\.primaryEmail))
-        #expect(users.count > 2 && users.suspendedCount > 0 && users.adminCount > 0)
+        // Whole records, as the data file holds them: the mock prints them as GAM's CSV, escaped, so a row
+        // dropped, a backslash doubled or a newline read as "\n" fails here (failure-log 2026-10-10).
+        #expect(users.map { JSONValue.object($0.record) } == mockUsers.map { JSONValue.object($0.record) })
+        #expect(users.count > 3 && users.suspendedCount > 0 && users.adminCount > 0)
         #expect(store.loadedAt == Date(timeIntervalSince1970: 1_800_000_000))
         #expect(store.reports?.first { $0.key == "suspended" }?.count == users.suspendedCount)
     }

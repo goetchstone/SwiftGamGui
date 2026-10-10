@@ -6582,123 +6582,163 @@
  "records": [
   {
    "primaryEmail": "alice@example.com",
-   "name": {
-    "givenName": "Alice",
-    "familyName": "Anders"
-   },
-   "suspended": false,
-   "orgUnitPath": "/Staff",
-   "isAdmin": true,
-   "isEnrolledIn2Sv": true,
-   "lastLoginTime": "2026-06-18T08:00:00Z",
-   "recoveryEmail": "alice.personal@example.org",
    "aliases": [
     "a.anders@example.com"
    ],
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-06-18T08:00:00Z",
    "locations": [
     {
      "buildingName": "HQ",
-     "type": "desk",
-     "primary": true
+     "primary": true,
+     "type": "desk"
     }
    ],
+   "name": {
+    "familyName": "Anders",
+    "givenName": "Alice"
+   },
+   "orgUnitPath": "/Staff",
    "organizations": [
     {
-     "title": "IT Director",
      "department": "IT",
-     "primary": true
+     "primary": true,
+     "title": "IT Director"
     }
-   ]
+   ],
+   "recoveryEmail": "alice.personal@example.org",
+   "suspended": false
   },
   {
    "primaryEmail": "bob@example.com",
-   "name": {
-    "givenName": "Bob",
-    "familyName": "Brown"
-   },
-   "suspended": true,
-   "orgUnitPath": "/Staff",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
+   "name": {
+    "familyName": "Brown",
+    "givenName": "Bob"
+   },
+   "orgUnitPath": "/Staff",
    "organizations": [
     {
-     "title": "Sales Lead",
-     "primary": true
+     "primary": true,
+     "title": "Sales Lead"
     }
-   ]
+   ],
+   "suspended": true
   },
   {
    "primaryEmail": "carol@example.com",
-   "name": {
-    "givenName": "Carol",
-    "familyName": "Clark"
-   },
-   "suspended": false,
-   "orgUnitPath": "/Students",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
-   "lastLoginTime": "2026-01-01T00:00:00Z"
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "name": {
+    "familyName": "Clark",
+    "givenName": "Carol"
+   },
+   "orgUnitPath": "/Students",
+   "suspended": false
+  },
+  {
+   "primaryEmail": "dana@example.com",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-10-01T09:30:00Z",
+   "name": {
+    "familyName": "Zo\u00eb \ud83d\ude00",
+    "givenName": "Dana \"DJ\""
+   },
+   "orgUnitPath": "/Staff",
+   "organizations": [
+    {
+     "department": "Sales, EMEA",
+     "description": "line1\nline2\tend",
+     "primary": true,
+     "title": "R&D\\Ops"
+    }
+   ],
+   "suspended": false
   },
   {
    "primaryEmail": "alice@example.com",
-   "name": {
-    "givenName": "Alice",
-    "familyName": "Anders"
-   },
-   "suspended": false,
-   "orgUnitPath": "/Staff",
-   "isAdmin": true,
-   "isEnrolledIn2Sv": true,
-   "lastLoginTime": "2026-06-18T08:00:00Z",
-   "recoveryEmail": "alice.personal@example.org",
    "aliases": [
     "a.anders@example.com"
    ],
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-06-18T08:00:00Z",
    "locations": [
     {
      "buildingName": "HQ",
-     "type": "desk",
-     "primary": true
+     "primary": true,
+     "type": "desk"
     }
    ],
+   "name": {
+    "familyName": "Anders",
+    "givenName": "Alice"
+   },
+   "orgUnitPath": "/Staff",
    "organizations": [
     {
-     "title": "IT Director",
      "department": "IT",
-     "primary": true
+     "primary": true,
+     "title": "IT Director"
     }
-   ]
+   ],
+   "recoveryEmail": "alice.personal@example.org",
+   "suspended": false
   },
   {
    "primaryEmail": "bob@example.com",
-   "name": {
-    "givenName": "Bob",
-    "familyName": "Brown"
-   },
-   "suspended": true,
-   "orgUnitPath": "/Staff",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
+   "name": {
+    "familyName": "Brown",
+    "givenName": "Bob"
+   },
+   "orgUnitPath": "/Staff",
    "organizations": [
     {
-     "title": "Sales Lead",
-     "primary": true
+     "primary": true,
+     "title": "Sales Lead"
     }
-   ]
+   ],
+   "suspended": true
   },
   {
    "primaryEmail": "carol@example.com",
-   "name": {
-    "givenName": "Carol",
-    "familyName": "Clark"
-   },
-   "suspended": false,
-   "orgUnitPath": "/Students",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
-   "lastLoginTime": "2026-01-01T00:00:00Z"
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "name": {
+    "familyName": "Clark",
+    "givenName": "Carol"
+   },
+   "orgUnitPath": "/Students",
+   "suspended": false
+  },
+  {
+   "primaryEmail": "dana@example.com",
+   "isAdmin": false,
+   "isEnrolledIn2Sv": false,
+   "lastLoginTime": "2026-10-01T09:30:00Z",
+   "name": {
+    "familyName": "Zo\u00eb \ud83d\ude00",
+    "givenName": "Dana \"DJ\""
+   },
+   "orgUnitPath": "/Staff",
+   "organizations": [
+    {
+     "department": "Sales, EMEA",
+     "description": "line1\nline2\tend",
+     "primary": true,
+     "title": "R&D\\Ops"
+    }
+   ],
+   "suspended": false
   },
   {
    "primaryEmail": "user0@example.com",
@@ -10299,7 +10339,9 @@
    "description": "Active users not enrolled in 2SV \u2014 a real security gap.",
    "members": [
     "carol@example.com",
+    "dana@example.com",
     "carol@example.com",
+    "dana@example.com",
     "user0@example.com",
     "user1@example.com",
     "user4@example.com",
@@ -10567,7 +10609,9 @@
    "description": "Active users without a recovery email set.",
    "members": [
     "carol@example.com",
+    "dana@example.com",
     "carol@example.com",
+    "dana@example.com",
     "user0@example.com",
     "user1@example.com",
     "user6@example.com",
@@ -10984,8 +11028,10 @@
    "members": [
     "alice@example.com",
     "carol@example.com",
+    "dana@example.com",
     "alice@example.com",
     "carol@example.com",
+    "dana@example.com",
     "user1@example.com",
     "user4@example.com",
     "user6@example.com",
@@ -11108,7 +11154,9 @@
    "description": "Active users with no location set.",
    "members": [
     "carol@example.com",
+    "dana@example.com",
     "carol@example.com",
+    "dana@example.com",
     "user1@example.com",
     "user4@example.com",
     "user7@example.com",
