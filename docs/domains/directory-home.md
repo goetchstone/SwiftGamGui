@@ -124,9 +124,17 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **The person page (2026-10-10):** the operator found the single long column hard going. The page is
   wider and resizable, with the name, address and status in words at the top, an **Actions** menu for
   what changes the account (suspend apart and marked destructive), the last change's result as a
-  banner VoiceOver announces, and tabs (Profile, Groups & Delegates, Mail, Security). With a page open
-  the list shows only name and status. A preview leads with the change in words; the command is under
-  **Show command**. CI renders each tab (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
+  banner VoiceOver announces, and tabs (Profile, Groups, Mail, Security; mail delegates sit with the
+  auto-reply under Mail). With a page open the list shows only name and status. A preview leads with
+  the change in words; the command is under **Show command**. CI renders each tab
+  (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
+- **Widths (failure-log 2026-10-10):** on macOS 27 an open inspector adds its width, and the floating
+  sidebar's a second time, to the list's minimum without raising the window's; when the window can't
+  hold the sum, AppKit loops until the app crashes. `ColumnWidths` bounds the sidebar (150–190) and
+  the inspector (320–400) and sets the window's minimum (920) so both at their widest leave 100 pt
+  to spare; the page's content may shrink rather than widen the inspector. The screenshot runs open
+  the page in the smallest window with both dragged wide (`SWIFTGAMGUI_WINDOW=smallest`) and fail
+  without that margin. Apple has acknowledged the bug on its forums; nothing here relies on a fix.
 - **Live (2026-10-09):** title and department **confirmed**: the operator changed a title through the
   app's preview and confirm, and checked the change in Google. Suspend stays argv-identical: it is
   destructive, so (no spare license) it is first proven on the operator's next real leaver.

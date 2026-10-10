@@ -31,6 +31,7 @@ enum Spikes {
         let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
+            await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
                 // Fill the demo screen. Home and Users: connected, and the directory loaded. Setup: one
                 // passing check (connected), then one failing (the result panel).
@@ -74,7 +75,11 @@ enum Spikes {
             NSApp.terminate(nil)
             return
         }
-        let view = splitView(in: content)?.arrangedSubviews.last ?? content
+        if ProcessInfo.processInfo.environment["SWIFTGAMGUI_WINDOW"] == "smallest" {
+            widenSideColumns(in: content)
+            try? await Task.sleep(for: .seconds(1))
+        }
+        let view = splitViews(in: content).first?.arrangedSubviews.last ?? content
         // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
         var rect = view.bounds
         let toolbar = min(view.safeAreaInsets.top, rect.height)
@@ -95,15 +100,88 @@ enum Spikes {
         } catch {
             print("snapshot: \(error)")
         }
-        fflush(stdout)
+        // After the image, so CI keeps a picture of the layout that failed.
+        let smallest = ProcessInfo.processInfo.environment["SWIFTGAMGUI_WINDOW"] == "smallest"
+        let tooNarrow = columnsTooNarrow(in: content, spare: smallest ? spareWidth : 0)
+        if !tooNarrow.isEmpty {
+            print("snapshot: a column is narrower than its content's minimum: \(tooNarrow.joined(separator: "; "))")
+            fflush(stdout)
+            exit(EXIT_FAILURE)
+        }
         NSApp.terminate(nil)
     }
 
-    /// The window's split view (sidebar | screen), searched depth first.
+    /// What the screen's pane must have beyond what it needs in the smallest window, with the sidebar and
+    /// the inspector at their widest. The operator's crash came with 84 pt to spare, for a reason no
+    /// copy of the layout reproduced (failure-log 2026-10-10).
+    static let spareWidth = 100.0
+
+    /// Every split view column whose content needs more width than it has, and the screen's pane (the
+    /// outer split's last column) when it has less than `spare` beyond that. When a person's page opens,
+    /// the inspector's width is added to the list's minimum but the window's minimum isn't raised: on a
+    /// Mac, AppKit loops until it raises NSGenericException. CI's AppKit grows the window or clips
+    /// instead, so the snapshot fails here.
     @MainActor
-    static func splitView(in view: NSView) -> NSSplitView? {
-        if let split = view as? NSSplitView { return split }
-        return view.subviews.lazy.compactMap(splitView(in:)).first
+    static func columnsTooNarrow(in content: NSView, spare: Double) -> [String] {
+        var problems: [String] = []
+        for (s, split) in splitViews(in: content).enumerated() {
+            for (c, column) in split.arrangedSubviews.enumerated() where !column.isHidden {
+                let needs = column.fittingSize.width.rounded(.up), has = column.frame.width
+                let wanted = s == 0 && c == split.arrangedSubviews.count - 1 ? spare : 0
+                print("layout: split \(s) column \(c): \(Int(has)) pt wide, needs \(Int(needs))")
+                if needs + wanted > has + 0.5 {
+                    problems.append("split \(s) column \(c) needs \(Int(needs)) pt and \(Int(wanted)) to spare, has \(Int(has))")
+                }
+            }
+        }
+        return problems
+    }
+
+    /// Every split view in the window, outermost (sidebar | screen) first.
+    @MainActor
+    static func splitViews(in view: NSView) -> [NSSplitView] {
+        (view is NSSplitView ? [view as! NSSplitView] : []) + view.subviews.flatMap(splitViews(in:))
+    }
+
+    /// `SWIFTGAMGUI_WINDOW`: the window's content size, `900x572`, set before the demo fills the screen so
+    /// a person's page opens in a window that size; or `smallest`, the window's minimum, with the sidebar
+    /// and the page then dragged to their widest: the tightest layout an operator can make. A narrow
+    /// window once crashed AppKit's layout when a name was clicked (failure-log 2026-10-10).
+    @MainActor
+    static func sizeWindow(_ spec: String?) async {
+        guard let spec else { return }
+        let parts = spec.split(separator: "x")
+        let size = parts.count == 2 ? Double(parts[0]).flatMap { w in Double(parts[1]).map { NSSize(width: w, height: $0) } } : nil
+        guard spec == "smallest" || size != nil else {
+            print("snapshot: SWIFTGAMGUI_WINDOW is WIDTHxHEIGHT or smallest, not \(spec)")
+            return
+        }
+        for _ in 0..<50 {
+            if let window = NSApp.windows.first(where: \.isVisible) {
+                window.setContentSize(size ?? window.contentMinSize)
+                try? await Task.sleep(for: .milliseconds(300))
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        print("snapshot: no window to size")
+    }
+
+    /// Drags the sidebar and the inspector as wide as they go, as an operator can. Not remembered: the
+    /// positions aren't autosaved over the operator's own.
+    @MainActor
+    static func widenSideColumns(in content: NSView) {
+        for split in splitViews(in: content) {
+            guard let items = (split.delegate as? NSSplitViewController)?.splitViewItems else { continue }
+            split.autosaveName = nil
+            for (index, item) in items.enumerated() {
+                switch item.behavior {
+                case .sidebar where index < items.count - 1: split.setPosition(split.bounds.width, ofDividerAt: index)
+                case .inspector where index > 0: split.setPosition(0, ofDividerAt: index - 1)
+                default: break
+                }
+            }
+        }
     }
 
     static let service = "swiftgamgui-spike"

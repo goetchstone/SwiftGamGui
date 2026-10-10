@@ -38,6 +38,9 @@ Act on the items your diff touches.
   Say in the PR what was checked.
 - **Screenshots as we go**: CI renders each screen (`scripts/screenshots.sh`); a PR that changes one
   refreshes its image in `docs/screenshots` from that run's artifact.
+- **Fits the smallest window**: a new column, panel or inspector, or a wider one, gets bounds in
+  `ColumnWidths` and a `smallest` run in `scripts/screenshots.sh`. On macOS 27 an inspector that can't
+  fit crashes the app on a Mac and only clips on CI (failure-log 2026-10-10).
 
 ## Before the PR
 11. `/code-review medium` on every diff; `high` plus `/security-review` when it touches Vault,
