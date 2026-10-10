@@ -1,3 +1,4 @@
+import ChangeCore
 import Foundation
 import GamEngine
 import Observation
@@ -32,6 +33,8 @@ public final class GroupStore {
     @ObservationIgnored private var revisions = 0
     /// The list as last searched, and what for. Not observed: it is filled while a view reads it.
     @ObservationIgnored private var listed: (revision: Int, query: String, rows: [GamGroup])?
+    /// The list by address, as `Guard` compares addresses, made once per list.
+    @ObservationIgnored private var indexed: (revision: Int, groups: [String: GamGroup])?
 
     private let setup: SetupModel
     private let runner: AuthenticatedRunner?
@@ -73,6 +76,16 @@ public final class GroupStore {
 
     /// The groups, while they belong to the connected tenant.
     public var groups: [GamGroup]? { current?.groups }
+
+    /// The tenant's group at `address`, any case: a nested group's row on another group's page opens it.
+    public func group(at address: String) -> GamGroup? {
+        guard let current else { return nil }
+        if indexed?.revision != current.revision {
+            indexed = (current.revision, Dictionary(current.groups.map { (Guard.normalized($0.email), $0) },
+                                                    uniquingKeysWith: { first, _ in first }))
+        }
+        return indexed?.groups[Guard.normalized(address)]
+    }
 
     /// Why there are no groups, while it still applies to the connected tenant.
     public var problem: Problem? {

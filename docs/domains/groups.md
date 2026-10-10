@@ -87,6 +87,17 @@ held to `gam_models.json`).
 - `gen_fixtures.py` reads `print_groups` and `print_group_members("sales@example.com")` through the mock
   and stops if the mock refuses either: re-run it after any change to their output.
 
+## Reads in flight (PR #35's review)
+- A group's (and a person's) reads are counted per key (`ReadsInFlight`): a key is reading while any
+  read of it is out, and a finished read is kept unless a later read of the same key is already in
+  hand. One window arrowing past a group no longer ends another window's read of it, and an older,
+  slower read never replaces a newer one. `UserAccess` had the same single-slot flaw and shares the fix.
+- A page whose read is gone (another window read eight more) reads it again by itself.
+- The list speaks a load's outcome ("N groups loaded.", or why not) from the window in front; Show
+  Group moves the focus to the new page's heading; a refresh that drops the open group closes its page.
+- **Open, its own slice:** GAM writes CSV with a backslash escape character, and the reader and mock
+  don't model it, so a name or description with a double quote may drop a row (the Users list too).
+
 ## Testing / live-verification status
 - Mock-tested only. **Not live yet:** the operator's first read, with a go, runs `print groups` and
   `print group-members` on one real group and on one address that isn't a group, to capture the real

@@ -12,6 +12,8 @@ struct GroupsView: View {
     let members: GroupMembers
     @State private var query = ""
     @State private var selection: GamGroup.ID?
+    /// Only the window in front speaks a load's outcome (every window sees the same groups).
+    @Environment(\.appearsActive) private var appearsActive
 
     var body: some View {
         content
@@ -23,6 +25,14 @@ struct GroupsView: View {
             }
             // Another tenant's group isn't this one's: its page closes.
             .onChange(of: setup.generation) { select(nil) }
+            // A refresh can take the open group away (deleted elsewhere): its page closes rather than empty.
+            .onChange(of: groups.loadedAt) {
+                if let selection, groups.groups?.contains(where: { $0.id == selection }) != true { select(nil) }
+                if let all = groups.groups { announce("\(all.count.formatted()) group\(all.count == 1 ? "" : "s") loaded.") }
+            }
+            .onChange(of: groups.problem) { _, problem in
+                if let problem { announce("Couldn't load the groups. \(problem.summary)") }
+            }
             .task(id: groups.groups?.count ?? 0) { selectForSnapshot() }
             .toolbar {
                 ToolbarItem {
@@ -56,6 +66,11 @@ struct GroupsView: View {
     private func show(_ group: GamGroup) {
         if groups.rows(query: query)?.contains(where: { $0.id == group.id }) != true { query = "" }
         select(group.id)
+    }
+
+    private func announce(_ text: String) {
+        guard appearsActive else { return }
+        AccessibilityNotification.Announcement(text).post()
     }
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` opens that group's page, for the snapshot of it.
@@ -105,7 +120,7 @@ struct GroupsView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let group = all.first(where: { $0.id == selection }) {
-                    GroupPage(group: group, groups: all, members: members, show: show)
+                    GroupPage(group: group, store: groups, members: members, show: show)
                 }
             }
         } else {
@@ -151,10 +166,16 @@ struct GroupsView: View {
 private struct GroupPage: View {
     let group: GamGroup
     /// The tenant's groups, so a nested group's row can open its page.
-    let groups: [GamGroup]
+    let store: GroupStore
     let members: GroupMembers
     let show: (GamGroup) -> Void
     @State private var query = ""
+    /// The group whose members this page last had: if they go (another window read eight more groups),
+    /// the page reads them again rather than sit at "Not read."
+    @State private var readFor: GamGroup.ID?
+    /// Show Group was used: the new page's heading takes the focus, and VoiceOver says which group.
+    @State private var focusNext = false
+    @AccessibilityFocusState private var headingFocused: Bool
 
     private var title: String { group.name.isEmpty ? group.email : group.name }
 
@@ -163,6 +184,7 @@ private struct GroupPage: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($headingFocused)
                 Text(group.email).foregroundStyle(.secondary).textSelection(.enabled)
                 if !group.description.isEmpty { Text(group.description).foregroundStyle(.secondary) }
             }
@@ -183,7 +205,27 @@ private struct GroupPage: View {
         // Read each time a group is opened; a quarter second later, so arrowing down the list starts no gam
         // for the groups passed over, and none as the page appears.
         .task(id: group.id) { await members.load(group.email, after: .milliseconds(250)) }
-        .onChange(of: group.id) { query = "" }
+        .onChange(of: group.id) {
+            query = ""
+            if focusNext {
+                focusNext = false
+                headingFocused = true
+                AccessibilityNotification.Announcement("Showing \(title)").post()
+            }
+        }
+        .onChange(of: hasRead, initial: true) { _, has in
+            if has {
+                readFor = group.id
+            } else if readFor == group.id, !members.isReading(group.email) {
+                readFor = nil
+                Task { await members.load(group.email) }
+            }
+        }
+    }
+
+    /// The page has this group's members, or why they couldn't be read.
+    private var hasRead: Bool {
+        members.members(of: group.email) != nil || members.problem(for: group.email) != nil
     }
 
     /// The search as GamGUI compares it: stripped.
@@ -198,7 +240,10 @@ private struct GroupPage: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(rows) { member in
-                        MemberRow(member: member, nested: nested(member), show: show)
+                        MemberRow(member: member, nested: nested(member)) { nested in
+                            focusNext = true
+                            show(nested)
+                        }
                     }
                 } header: {
                     Text(searched.isEmpty ? "\(all.count.formatted()) member\(all.count == 1 ? "" : "s")"
@@ -228,14 +273,13 @@ private struct GroupPage: View {
 
     private var readAgain: some View {
         Button("Read Again") { Task { await members.load(group.email) } }
-            .accessibilityLabel("Read \(title)'s members again")
+            .accessibilityLabel("Read Again: \(title)'s members")
     }
 
     /// The tenant's group this member is, when it is one (GamGUI links a nested group to its board).
     private func nested(_ member: GroupMember) -> GamGroup? {
         guard member.memberType == "GROUP", !member.email.isEmpty else { return nil }
-        let address = member.email.lowercased()
-        return groups.first { $0.email.lowercased() == address }
+        return store.group(at: member.email)
     }
 }
 
@@ -257,7 +301,7 @@ private struct MemberRow: View {
             Spacer()
             if let nested {
                 Button("Show Group") { show(nested) }
-                    .accessibilityLabel("Show \(nested.email)")
+                    .accessibilityLabel("Show Group \(nested.email)")
             }
         }
     }

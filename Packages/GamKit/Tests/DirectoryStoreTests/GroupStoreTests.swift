@@ -304,6 +304,58 @@ struct GroupStoreTests {
         #expect(members.members(of: "sales@example.com") == nil)
     }
 
+    /// A nested group's row opens its page: the tenant's group at an address, in any case.
+    @Test func aGroupIsFoundByItsAddressInAnyCase() async throws {
+        let app = app(try runner())
+        try await connect("example.com", in: app.setup)
+        #expect(app.groups.group(at: "sales@example.com") == nil, "not loaded yet")
+        await app.groups.load()
+        #expect(app.groups.group(at: " SALES@Example.com ")?.email == "sales@example.com")
+        #expect(app.groups.group(at: "nobody@example.com") == nil)
+        try await connect("example.org", in: app.setup)
+        #expect(app.groups.group(at: "sales@example.com") == nil, "example.com's group, found under example.org")
+    }
+
+    /// Two windows on one group: the second arrows past it (its read cancelled while it waits), and the
+    /// first window's read, still running, still shows as reading and is kept (PR #35's review).
+    @Test func aNewerReadCancelledWhileWaitingLeavesTheOlderOne() async throws {
+        let app = app(try runner(slow: "print group-members"))
+        try await connect("example.com", in: app.setup)
+        let members = app.members
+        let first = Task { await members.load("sales@example.com") }
+        while !members.isReading("sales@example.com") { await Task.yield() }
+        let second = Task { await members.load("sales@example.com", after: .seconds(30)) }
+        await Task.yield()
+        second.cancel()
+        await second.value
+        #expect(members.isReading("sales@example.com"), "the first window's read still runs")
+        await first.value
+        #expect(members.members(of: "sales@example.com") != nil, "the first window's read was thrown away")
+    }
+
+    /// An older read that finishes after a newer one is in hand doesn't replace it.
+    @Test func anOlderReadNeverReplacesANewerOne() async throws {
+        let marker = scratch.appending(path: "first-call")
+        let script = scratch.appending(path: "mock-first-slow.sh")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        // Only the first member read is slow (connecting runs gam too).
+        try Data(("#!/bin/sh\ntrap 'exit 143' TERM\ncase \"$1 $2\" in \"print group-members\") "
+                  + "if [ ! -e '\(marker.path)' ]; then : > '\(marker.path)'; sleep 2 >/dev/null 2>&1 & wait $!; fi ;; esac\n"
+                  + "exec '\(Fixtures.mockGam.path)' \"$@\"\n").utf8).write(to: script)
+        chmod(script.path, 0o755)
+        let app = app(AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base))
+        try await connect("example.com", in: app.setup)
+        let members = app.members
+        let older = Task { await members.load("sales@example.com") }
+        while !FileManager.default.fileExists(atPath: marker.path) { await Task.yield() }
+        await members.load("sales@example.com")
+        let newer = try #require(members.rows("sales@example.com", query: ""))
+        await older.value
+        let after = try #require(members.rows("sales@example.com", query: ""))
+        #expect(newer.withUnsafeBufferPointer { $0.baseAddress } == after.withUnsafeBufferPointer { $0.baseAddress },
+                "the older read replaced the newer one")
+    }
+
     /// A page left before its delay is up reads nothing, and isn't left reading.
     @Test func aDelayedReadLeftEarlyReadsNothing() async throws {
         let app = app(try runner())

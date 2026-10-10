@@ -362,6 +362,9 @@ private struct UserDetail: View {
     @State private var newGroup = ""
     @State private var newDelegate = ""
     @State private var editingAutoReply = false
+    /// The person whose lists this page last had: if they go (another window read eight more people), the
+    /// page reads them again rather than sit at "Not read."
+    @State private var readFor: GamUser.ID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -385,6 +388,15 @@ private struct UserDetail: View {
         // Read when the person is selected, and again after a change of theirs lands; a quarter second later,
         // so arrowing down the list starts no gam for the people passed over, and none as the page appears.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail, after: .milliseconds(250)) }
+        .onChange(of: access.lists(for: user.primaryEmail) != nil || access.problem(for: user.primaryEmail) != nil,
+                  initial: true) { _, has in
+            if has {
+                readFor = user.id
+            } else if readFor == user.id, !access.isReading(user.primaryEmail) {
+                readFor = nil
+                Task { await access.load(user.primaryEmail) }
+            }
+        }
         .sheet(isPresented: $editingAutoReply) {
             AutoReplyEditor(user: user, vacation: (try? access.lists(for: user.primaryEmail)?.vacation.get()) ?? Vacation(),
                             changes: changes) { editingAutoReply = false }
@@ -554,7 +566,7 @@ private struct NotRead: View {
             HStack {
                 Text("Not read.").foregroundStyle(.secondary)
                 Button("Read Again") { Task { await access.load(user.primaryEmail) } }
-                    .accessibilityLabel("Read \(user.fullName)'s groups, delegates and auto-reply again")
+                    .accessibilityLabel("Read Again: \(user.fullName)'s groups, delegates and auto-reply")
             }
         }
     }

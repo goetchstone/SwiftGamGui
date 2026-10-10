@@ -24,6 +24,8 @@ public final class GroupMembers {
         let key: Key
         /// Which read this is: the rows worked out from it key on this.
         let revision: Int
+        /// When the read started: a slower, older read of the same group never replaces it.
+        let serial: Int
         let result: Result<[GroupMember], Problem>
     }
 
@@ -32,10 +34,8 @@ public final class GroupMembers {
     /// The groups read, newest first, kept per group: two windows' pages never evict each other's members.
     /// Bounded (invariant 9), and only the connected tenant's are kept.
     private var loaded: [Loaded] = []
-    /// The groups being read, each with its latest request: an older, slower read of the same group never
-    /// replaces a newer one, and reading one group never cancels another's. Keyed by tenant too, so an old
-    /// tenant's read never shows as this one's.
-    private var reading: [Key: UUID] = [:]
+    /// The groups being read. Keyed by tenant too, so an old tenant's read never shows as this one's.
+    private var reading = ReadsInFlight<Key>()
     private let keep: Int
     @ObservationIgnored private var revisions = 0
     /// Each kept read's rows as last searched, and what for. Not observed: it is filled while a view reads it.
@@ -51,7 +51,7 @@ public final class GroupMembers {
 
     /// A read of `group` for the connected tenant is waiting or running.
     public func isReading(_ group: String) -> Bool {
-        key(group).map { reading[$0] != nil } ?? false
+        key(group).map { reading.isRunning($0) } ?? false
     }
 
     /// `group`'s members in GamGUI's order, while they belong to the connected tenant.
@@ -90,9 +90,8 @@ public final class GroupMembers {
     public func load(_ group: String, after delay: Duration = .zero) async {
         guard let domain = setup.active, let runner else { return }
         let key = Key(group: Guard.normalized(group), domain: domain, generation: setup.generation)
-        let request = UUID()
-        reading[key] = request
-        defer { if reading[key] == request { reading[key] = nil } }
+        let serial = reading.start(key)
+        defer { reading.end(key, serial) }
         if delay > .zero {
             guard (try? await Task.sleep(for: delay)) != nil else { return }
         }
@@ -105,12 +104,14 @@ public final class GroupMembers {
         } catch {
             result = .failure(Self.problem(for: error, argv: read.argv))
         }
-        // A switch while reading: these belong to the old tenant, so they're dropped.
-        guard reading[key] == request, !Task.isCancelled, setup.active == domain, setup.generation == key.generation
+        // A switch while reading: these belong to the old tenant, so they're dropped. A later read of the
+        // group already in hand is kept.
+        guard !Task.isCancelled, setup.active == domain, setup.generation == key.generation,
+              loaded.first(where: { $0.key == key }).map({ $0.serial < serial }) ?? true
         else { return }
         revisions += 1
         loaded.removeAll { $0.key.group == key.group || $0.key.domain != domain || $0.key.generation != key.generation }
-        loaded.insert(Loaded(key: key, revision: revisions, result: result), at: 0)
+        loaded.insert(Loaded(key: key, revision: revisions, serial: serial, result: result), at: 0)
         if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
         listed = listed.filter { entry in loaded.contains { $0.revision == entry.key } }
     }
