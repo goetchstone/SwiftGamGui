@@ -52,10 +52,13 @@ struct UsersView: View {
             let rows = filter.apply(users).sorted(using: sortOrder)
             Table(rows, selection: $selection, sortOrder: $sortOrder) {
                 TableColumn("Name", value: \.fullName)
-                TableColumn("Address", value: \.primaryEmail)
-                TableColumn("Title", value: \.title)
-                TableColumn("Department", value: \.department)
-                TableColumn("Organizational Unit", value: \.orgUnitPath)
+                // With a person's page open the list narrows: only who and their status, readable.
+                if selection == nil {
+                    TableColumn("Address", value: \.primaryEmail)
+                    TableColumn("Title", value: \.title)
+                    TableColumn("Department", value: \.department)
+                    TableColumn("Organizational Unit", value: \.orgUnitPath)
+                }
                 TableColumn("Status") { user in
                     Text(user.suspended ? "Suspended" : "Active")
                         .foregroundStyle(user.suspended ? .orange : .primary)
@@ -179,7 +182,7 @@ private struct UserDetail: View {
                 if user.suspended {
                     Label("Suspended", systemImage: "pause.circle.fill").foregroundStyle(.orange)
                 } else {
-                    Label("Active", systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                    Label("Active", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
             }
             Spacer()
@@ -201,6 +204,17 @@ private struct UserDetail: View {
         .padding()
     }
 
+    /// GAM's ISO 8601 time as a date and time in the Mac's own format; GAM says never with the epoch.
+    static func signIn(_ value: String?) -> String {
+        guard let value, !value.isEmpty else { return "Never" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plain = ISO8601DateFormatter()
+        guard let date = formatter.date(from: value) ?? plain.date(from: value) else { return value }
+        guard date.timeIntervalSince1970 > 0 else { return "Never" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
     @ViewBuilder private var tabContent: some View {
         switch tab {
         case .profile:
@@ -214,7 +228,7 @@ private struct UserDetail: View {
                 LabeledContent("Organizational unit", value: user.orgUnitPath)
                 LabeledContent("Location", value: user.location.isEmpty ? "—" : user.location)
                 LabeledContent("Phone", value: user.phone.isEmpty ? "—" : user.phone)
-                LabeledContent("Last sign-in", value: user.lastLoginTime ?? "Never")
+                LabeledContent("Last sign-in", value: Self.signIn(user.lastLoginTime))
             }
             if !user.aliases.isEmpty {
                 Section("Aliases") {
@@ -316,7 +330,7 @@ private struct AccessLists: View {
                     }
                 }
                 HStack {
-                    TextField("Group address", text: $newGroup, prompt: Text("sales@example.com"))
+                    TextField("Group address", text: $newGroup, prompt: Text(verbatim: "sales@example.com"))
                         .onSubmit(addGroup)
                     Button("Add…", action: addGroup)
                         .disabled(newGroup.isEmpty)
@@ -333,7 +347,7 @@ private struct AccessLists: View {
                     }
                 }
                 HStack {
-                    TextField("Delegate address", text: $newDelegate, prompt: Text("assistant@example.com"))
+                    TextField("Delegate address", text: $newDelegate, prompt: Text(verbatim: "assistant@example.com"))
                         .onSubmit(addDelegate)
                     Button("Add…", action: addDelegate)
                         .disabled(newDelegate.isEmpty)
