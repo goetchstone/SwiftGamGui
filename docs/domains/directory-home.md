@@ -134,7 +134,7 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   Name can't be hidden. Which columns are hidden is saved in the app's preferences (`UserColumn`) the
   moment the operator hides or shows one; widths and order last the session. The table rewrites widths
   by itself whenever the list narrows or widens (17 times in three openings of a page), so a saved
-  whole layout kept squeezed widths as the operator's choice (failure-log 2026-10-10). A debug snapshot
+  whole layout kept squeezed widths as the operator's choice (failure-log 2026-10-10, "table saved its own widths"). A debug snapshot
   touches none of it. Beside an open page the list scrolls sideways, and a sideways scroll takes Name
   out of view: an NSTableView has no frozen column.
 - **Opening a page (2026-10-10):** it appears at once, without the inspector's slide. A copy of the
@@ -145,12 +145,14 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   Without the slide: none, at 920 pt, 1,100 pt and 3,000 rows; the page shows about 60 ms after the
   click (about 200 ms the first time after launch). New windows open at 1,200 × 760. The page's
   three reads start a quarter second after it opens, so arrowing down the list starts no `gam` for the
-  people passed over.
+  people passed over. `UserAccess` keeps the last eight people's lists, each read on its own, so pages
+  in two windows never evict each other; a page shows "Reading…" only while a read of its person is
+  waiting or running, and otherwise "Not read" with **Read Again**.
 - **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
   revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
   directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's
   opening. `GamUser.fullName` is stored, and the search's query is prepared once per search.
-- **Widths (failure-log 2026-10-10):** on macOS 27 an open inspector adds its width, and the floating
+- **Widths (failure-log 2026-10-10, "person-page layout loop"):** on macOS 27 an open inspector adds its width, and the floating
   sidebar's a second time, to the list's minimum without raising the window's; when the window can't
   hold the sum, AppKit loops until the app crashes. `ColumnWidths` bounds the sidebar (150–190) and
   the inspector (320–400) and sets the window's minimum (920) so both at their widest leave 100 pt

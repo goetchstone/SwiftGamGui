@@ -50,7 +50,7 @@ enum Screen: String, CaseIterable, Identifiable {
 /// The widths the window is built from. On macOS 27, when a person's page opens, SwiftUI adds the
 /// inspector's width (and the floating sidebar's, a second time) to the list's minimum without raising
 /// the window's: in a window narrower than that sum, AppKit loops until it raises NSGenericException
-/// (failure-log 2026-10-10). So the sidebar and the inspector are bounded, and the smallest window holds
+/// (failure-log 2026-10-10, "person-page layout loop"). So the sidebar and the inspector are bounded, and the smallest window holds
 /// both at their widest with `Spikes.spareWidth` to spare; the screenshot runs check it.
 enum ColumnWidths {
     static let sidebar = (min: 150.0, ideal: 170.0, max: 190.0)

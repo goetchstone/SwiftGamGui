@@ -113,7 +113,7 @@ enum Spikes {
 
     /// What the screen's pane must have beyond what it needs in the smallest window, with the sidebar and
     /// the inspector at their widest. The operator's crash came with 84 pt to spare, for a reason no
-    /// copy of the layout reproduced (failure-log 2026-10-10).
+    /// copy of the layout reproduced (failure-log 2026-10-10, "person-page layout loop").
     static let spareWidth = 100.0
 
     /// Every split view column whose content needs more width than it has, and the screen's pane (the
@@ -146,7 +146,8 @@ enum Spikes {
     /// `SWIFTGAMGUI_WINDOW`: the window's content size, `900x572`, set before the demo fills the screen so
     /// a person's page opens in a window that size; or `smallest`, the window's minimum, with the sidebar
     /// and the page then dragged to their widest: the tightest layout an operator can make. A narrow
-    /// window once crashed AppKit's layout when a name was clicked (failure-log 2026-10-10).
+    /// window once crashed AppKit's layout when a name was clicked (failure-log 2026-10-10,
+    /// "person-page layout loop").
     @MainActor
     static func sizeWindow(_ spec: String?) async {
         guard let spec else { return }

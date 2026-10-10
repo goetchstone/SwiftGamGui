@@ -6,7 +6,8 @@ import Vault
 
 /// One person's groups and mail delegates, read live when their page opens (GamGUI's `/users/groups` and
 /// `/users/delegates`, lazy-loaded the same way). Kept only for the tenant, generation and person they were
-/// read for, so a switch never shows one tenant's memberships as another's.
+/// read for, so a switch never shows one tenant's memberships as another's; the last few people are kept,
+/// so pages open in two windows each keep their own.
 @MainActor
 @Observable
 public final class UserAccess {
@@ -33,15 +34,25 @@ public final class UserAccess {
 
     private let setup: SetupModel
     private let runner: AuthenticatedRunner?
-    private var loaded: Loaded?
-    public private(set) var loading: String?
-    private var latest: UUID?
+    /// The people read, newest first, kept per person: two windows' pages never evict each other's lists.
+    /// Bounded (invariant 9), and only the connected tenant's are kept.
+    private var loaded: [Loaded] = []
+    /// The people being read, each with their latest request: an older, slower read of the same person
+    /// never replaces a newer one, and reading one person never cancels another's.
+    private var reading: [String: UUID] = [:]
+    private let keep: Int
     /// Tests only: the mock's state folder, so a read sees what a write just changed.
     var environment: [String: String] = [:]
 
-    public init(setup: SetupModel, runner: AuthenticatedRunner?) {
+    public init(setup: SetupModel, runner: AuthenticatedRunner?, keep: Int = 8) {
         self.setup = setup
         self.runner = runner
+        self.keep = keep
+    }
+
+    /// A read of `email` is waiting or running.
+    public func isReading(_ email: String) -> Bool {
+        reading[email] != nil
     }
 
     /// The lists for `email`, while they belong to the connected tenant.
@@ -56,20 +67,21 @@ public final class UserAccess {
     }
 
     private func current(_ email: String) -> Loaded? {
-        guard let loaded, loaded.email == email, loaded.domain == setup.active, loaded.generation == setup.generation
-        else { return nil }
-        return loaded
+        loaded.first { $0.email == email && $0.domain == setup.active && $0.generation == setup.generation }
     }
 
     /// Three reads as the connected domain: `print groups member`, `print delegates`, `show vacation`.
-    public func load(_ email: String) async {
+    /// `delay` holds them back, reading from the start: a page that opens and is left within it reads
+    /// nothing (arrowing down the list).
+    public func load(_ email: String, after delay: Duration = .zero) async {
         guard let domain = setup.active, let runner else { return }
         let generation = setup.generation
-        // The latest request wins: a slower read for someone selected earlier never replaces it.
         let request = UUID()
-        latest = request
-        loading = email
-        defer { if latest == request { loading = nil } }
+        reading[email] = request
+        defer { if reading[email] == request { reading[email] = nil } }
+        if delay > .zero {
+            guard (try? await Task.sleep(for: delay)) != nil else { return }
+        }
         // The three reads at once: each is its own gam call.
         let environment = environment
         async let groupsRead = Self.result { try await Self.read(GamCommands.printGroups(member: email), with: runner, as: domain, environment) }
@@ -86,8 +98,11 @@ public final class UserAccess {
             result = .failure(problem)
         }
         // A switch while reading: these belong to the old tenant, so they're dropped.
-        guard latest == request, !Task.isCancelled, setup.active == domain, setup.generation == generation else { return }
-        loaded = Loaded(email: email, domain: domain, generation: generation, result: result)
+        guard reading[email] == request, !Task.isCancelled, setup.active == domain, setup.generation == generation
+        else { return }
+        loaded.removeAll { $0.email == email || $0.domain != domain || $0.generation != generation }
+        loaded.insert(Loaded(email: email, domain: domain, generation: generation, result: result), at: 0)
+        if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
     }
 
     /// A read's outcome as a value, with any error worded for the screen.

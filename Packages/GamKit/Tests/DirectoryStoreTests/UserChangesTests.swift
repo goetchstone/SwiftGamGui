@@ -20,6 +20,7 @@ final class UserChangesTests {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    let runner: AuthenticatedRunner
     let argvLog: URL
     let auditURL: URL
 
@@ -27,6 +28,7 @@ final class UserChangesTests {
         setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         let base = try RuntimeDirectory.prepare(scratch.appending(path: "run"))
         let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
+        self.runner = runner
         setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         directory = DirectoryStore(setup: setup, runner: runner)
         argvLog = scratch.appending(path: "argv.log")
@@ -170,16 +172,41 @@ final class UserChangesTests {
         #expect(access.lists(for: "bob@example.com") == nil, "only the person read")
     }
 
-    /// Select one person, then another: the later request's lists win, whichever read finishes last.
-    @Test func theLatestPersonsListsWin() async throws {
+    /// Two people read at once (two windows' pages): each keeps their own lists, and neither read is
+    /// left showing as running.
+    @Test func eachPersonKeepsTheirOwnLists() async throws {
         try await connect()
         let access = access
         let first = Task { await access.load("alice@example.com") }
-        while access.loading != "alice@example.com" { await Task.yield() }
+        while !access.isReading("alice@example.com") { await Task.yield() }
         await access.load("bob@example.com")
         await first.value
         #expect(access.lists(for: "bob@example.com")?.groups == ["staff@example.com"])
-        #expect(access.loading == nil)
+        #expect(access.lists(for: "alice@example.com")?.groups == ["sales@example.com", "staff@example.com"],
+                "reading Bob evicted Alice's lists, and her page would wait for a read that never comes")
+        #expect(!access.isReading("alice@example.com") && !access.isReading("bob@example.com"))
+    }
+
+    /// Only the last few people are kept (invariant 9), the oldest going first.
+    @Test func theOldestPersonIsForgottenPastTheBound() async throws {
+        try await connect()
+        let access = UserAccess(setup: setup, runner: runner, keep: 2)
+        access.environment = self.access.environment
+        for email in ["alice@example.com", "bob@example.com", "carol@example.com"] { await access.load(email) }
+        #expect(access.lists(for: "alice@example.com") == nil)
+        #expect(access.lists(for: "bob@example.com") != nil && access.lists(for: "carol@example.com") != nil)
+    }
+
+    /// A page left before its delay is up reads nothing, and says so: it isn't left reading.
+    @Test func aDelayedReadLeftEarlyReadsNothing() async throws {
+        try await connect()
+        let access = access
+        let read = Task { await access.load("alice@example.com", after: .seconds(30)) }
+        while !access.isReading("alice@example.com") { await Task.yield() }
+        read.cancel()
+        await read.value
+        #expect(!access.isReading("alice@example.com"))
+        #expect(access.lists(for: "alice@example.com") == nil)
     }
 
     @Test func joiningAGroupRunsGamGUIsArgv() async throws {

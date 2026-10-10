@@ -23,7 +23,7 @@ The most valuable answer is *"only if enforced differently"*: the invariant exis
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
 ## 2026-10-10 — An investigating agent relaunched a test app on the operator's screen, over and over
-- **What happened:** while diagnosing the person-page crash (failure-log 2026-10-10), a workflow agent
+- **What happened:** while diagnosing the person-page crash (failure-log 2026-10-10, "person-page layout loop"), a workflow agent
   built a standalone copy of the layout and launched it dozens of times at different sizes. Each launch
   opened a visible window that crashed; the operator saw windows flash "hundreds of times" and had to
   ask what was doing it. The local hook that keeps the app itself from being launched didn't apply to

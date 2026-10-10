@@ -139,11 +139,15 @@ enum UserColumn: String, CaseIterable, Identifiable {
 
     private static let key = "usersHiddenColumns"
 
+    /// This launch's layout (widths, order, which show), kept while the app runs: leaving Users and coming
+    /// back doesn't reset it. Only which columns are hidden outlasts the app.
+    @MainActor static var session: TableColumnCustomization<GamUser>?
+
     /// The columns the operator hid, kept in the app's preferences: windows aren't restored
     /// (`restorationBehavior(.disabled)`), so scene storage would forget them at every launch. Only which
     /// columns are hidden is kept, not widths or order: the table rewrites widths by itself whenever the
     /// list narrows or widens (17 times in three openings of a page, measured), which saved squeezed
-    /// widths as the operator's choice (failure-log 2026-10-10). A debug spike or snapshot reads and writes
+    /// widths as the operator's choice (failure-log 2026-10-10, "table saved its own widths"). A debug spike or snapshot reads and writes
     /// none of the operator's.
     static func saved() -> TableColumnCustomization<GamUser> {
         var columns = TableColumnCustomization<GamUser>()
@@ -159,9 +163,12 @@ enum UserColumn: String, CaseIterable, Identifiable {
         hideable.filter { columns[visibility: $0.rawValue] == .hidden }.map(\.rawValue)
     }
 
-    static func save(hidden: [String]) {
+    /// One list's change, applied to what's saved: a second window with an older set changes only the
+    /// column toggled in it.
+    static func save(hiding: Set<String>, showing: Set<String>) {
         guard !Spikes.isRequested else { return }
-        UserDefaults.standard.set(hidden, forKey: key)
+        let hidden = Set(UserDefaults.standard.stringArray(forKey: key) ?? []).subtracting(showing).union(hiding)
+        UserDefaults.standard.set(hideable.map(\.rawValue).filter(hidden.contains), forKey: key)
     }
 }
 
@@ -173,7 +180,7 @@ private struct UsersTable: View {
     let rows: [GamUser]
     @Binding var selection: GamUser.ID?
     @Binding var sortOrder: [KeyPathComparator<GamUser>]
-    @State private var columns = UserColumn.saved()
+    @State private var columns = UserColumn.session ?? UserColumn.saved()
 
     var body: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns) {
@@ -218,9 +225,12 @@ private struct UsersTable: View {
                 .accessibilityHint("Choose which columns the list of users shows.")
             }
         }
-        // Saved when the operator hides or shows one, never on the table's own width changes; a list
-        // nobody touched never writes, so a second window can't put back what the first changed.
-        .onChange(of: UserColumn.hidden(in: columns)) { _, hidden in UserColumn.save(hidden: hidden) }
+        .onChange(of: columns) { _, new in UserColumn.session = new }
+        // Saved when the operator hides or shows one, never on the table's own width changes, and only
+        // what changed: a second window can't put back what the first changed.
+        .onChange(of: UserColumn.hidden(in: columns)) { old, new in
+            UserColumn.save(hiding: Set(new).subtracting(old), showing: Set(old).subtracting(new))
+        }
     }
 
     /// Shown unless the operator hid it: a column never touched reads `.automatic`, which shows.
@@ -285,10 +295,7 @@ private struct UserDetail: View {
                               max: ColumnWidths.inspector.max)
         // Read when the person is selected, and again after a change of theirs lands; a quarter second later,
         // so arrowing down the list starts no gam for the people passed over, and none as the page appears.
-        .task(id: "\(user.id)#\(changes.finished)") {
-            guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
-            await access.load(user.primaryEmail)
-        }
+        .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail, after: .milliseconds(250)) }
         .sheet(isPresented: $editingAutoReply) {
             AutoReplyEditor(user: user, vacation: (try? access.lists(for: user.primaryEmail)?.vacation.get()) ?? Vacation(),
                             changes: changes) { editingAutoReply = false }
@@ -380,8 +387,7 @@ private struct UserDetail: View {
                     if let problem = access.problem(for: user.primaryEmail) {
                         Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     } else {
-                        HStack { ProgressView().controlSize(.small); Text("Reading the auto-reply…") }
-                            .accessibilityElement(children: .combine)
+                        NotRead(what: "the auto-reply", user: user, access: access)
                     }
                 }
             }
@@ -444,6 +450,27 @@ extension UserChanges {
     }
 }
 
+/// A person's lists not in hand: reading (in words, for VoiceOver too), or not read, with a way to read
+/// them. Never a spinner with no read behind it.
+private struct NotRead: View {
+    let what: String
+    let user: GamUser
+    let access: UserAccess
+
+    var body: some View {
+        if access.isReading(user.primaryEmail) {
+            HStack { ProgressView().controlSize(.small); Text("Reading \(what)…") }
+                .accessibilityElement(children: .combine)
+        } else {
+            HStack {
+                Text("Not read.").foregroundStyle(.secondary)
+                Button("Read Again") { Task { await access.load(user.primaryEmail) } }
+                    .accessibilityLabel("Read \(user.fullName)'s groups, delegates and auto-reply again")
+            }
+        }
+    }
+}
+
 /// The person's groups, or their mail delegates: each with Remove, and a field to add one. Every change
 /// is a preview first (`UserChanges`).
 private struct AccessList: View {
@@ -466,11 +493,7 @@ private struct AccessList: View {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
         } else {
-            // Read a moment after the page opens (UserDetail's task), or reading now.
-            Section(heading) {
-                HStack { ProgressView().controlSize(.small); Text("Reading \(heading.lowercased())…") }
-                    .accessibilityElement(children: .combine)
-            }
+            Section(heading) { NotRead(what: heading.lowercased(), user: user, access: access) }
         }
     }
 

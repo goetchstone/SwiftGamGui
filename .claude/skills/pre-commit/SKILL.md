@@ -40,7 +40,7 @@ Act on the items your diff touches.
   refreshes its image in `docs/screenshots` from that run's artifact.
 - **Fits the smallest window**: a new column, panel or inspector, or a wider one, gets bounds in
   `ColumnWidths` and a `smallest` run in `scripts/screenshots.sh`. On macOS 27 an inspector that can't
-  fit crashes the app on a Mac and only clips on CI (failure-log 2026-10-10).
+  fit crashes the app on a Mac and only clips on CI (failure-log 2026-10-10, "person-page layout loop").
 
 ## Before the PR
 11. `/code-review medium` on every diff; `high` plus `/security-review` when it touches Vault,

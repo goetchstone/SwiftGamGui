@@ -17,7 +17,7 @@ mkdir -p "$out"
 status=0
 # name:screen[:person:tab[:window]] — the person page is captured once per tab, for alice@example.com.
 # The narrow-* runs open it in the smallest window with the sidebar and the page dragged to their
-# widest, where clicking a name once crashed AppKit's layout (failure-log 2026-10-10): they fail when
+# widest, where clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they fail when
 # the page has too little room to spare, and on any non-zero exit.
 for spec in home:home users:users setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
