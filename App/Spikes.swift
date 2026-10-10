@@ -96,6 +96,9 @@ enum Spikes {
             return
         }
         view.cacheDisplay(in: rect, to: bitmap)
+        // TEMPORARY (to be removed): the capture before the web views are drawn over it.
+        try? bitmap.representation(using: .png, properties: [:])?
+            .write(to: file.deletingPathExtension().appendingPathExtension("raw.png"))
         await drawWebViews(in: view, rect: rect, onto: bitmap)
         do {
             try bitmap.representation(using: .png, properties: [:])?.write(to: file)
@@ -132,6 +135,15 @@ enum Spikes {
             }
             let frame = webView.convert(visible, to: view)
             let y = view.isFlipped ? rect.maxY - frame.maxY : frame.minY - rect.minY
+            // TEMPORARY geometry log (to be removed): where the web view and its neighbours are.
+            print("snapgeo: view flipped=\(view.isFlipped) rect=\(rect) web bounds=\(webView.bounds) visible=\(visible)"
+                  + " frameInView=\(frame) image=\(image.size) drawY=\(y)")
+            let band = frame.insetBy(dx: -400, dy: -80)
+            for other in descendants(view) where !(other is WKWebView) && other.superview != nil {
+                let at = other.convert(other.bounds, to: view)
+                guard band.intersects(at), at.height < 120, !other.isHiddenOrHasHiddenAncestor else { continue }
+                print("snapgeo:   \(type(of: other)) \(at) alpha=\(other.alphaValue)")
+            }
             NSGraphicsContext.saveGraphicsState()
             NSGraphicsContext.current = context
             image.draw(in: NSRect(x: frame.minX - rect.minX, y: y, width: frame.width, height: frame.height))
