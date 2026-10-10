@@ -261,6 +261,98 @@ struct SetupModelTests {
         lastDomain.save("example.org")
         await first.reconnect()
         #expect(first.active == nil)
+        #expect(first.reconnecting == nil)
+        let failure = try #require(first.reconnectFailure, "a failed reconnect must say why, not look disconnected")
+        #expect(failure.domain == Domain("example.org")! && !failure.problem.isEmpty)
+
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        #expect(first.reconnectFailure == nil, "a domain connected since: the failure no longer applies")
+    }
+
+    /// While the launch's reconnect runs, the model says which domain it is connecting, for every screen.
+    @Test func reconnectingSaysWhichDomainUntilItEnds() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        let relaunched = model()
+        #expect(relaunched.reconnecting == nil)
+        let reconnect = Task { await relaunched.reconnect() }
+        for _ in 0..<10_000 where relaunched.reconnecting == nil && relaunched.active == nil { await Task.yield() }
+        #expect(relaunched.reconnecting == Domain("example.com")!, "connecting, and the screens can't say so")
+        await reconnect.value
+        #expect(relaunched.reconnecting == nil)
+        #expect(relaunched.active == Domain("example.com")!)
+        #expect(relaunched.reconnectFailure == nil)
+    }
+
+    /// Try Again while another action runs: refused, and the reason stays.
+    @Test func aReconnectWhileAnActionRunsKeepsTheFailure() async throws {
+        let model = model()
+        await model.importFolder(try gamFolder(admin: "partialdwd@example.org"), as: "example.org")
+        lastDomain.save("example.org")
+        await model.reconnect()
+        let failure = try #require(model.reconnectFailure)
+        await model.importFolder(try gamFolder(), as: "example.com")
+        let check = Task { await model.checkAccess(Domain("example.com")!) }
+        while !model.isBusy { await Task.yield() }
+        await model.reconnect()
+        #expect(model.reconnectFailure == failure, "the reason was cleared by a reconnect that checked nothing")
+        #expect(model.reconnecting == nil)
+        await check.value
+    }
+
+    /// A second reconnect while one runs (a new window at launch) changes nothing: the first still shows.
+    @Test func aSecondReconnectWhileOneRunsChangesNothing() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        let relaunched = model()
+        let reconnect = Task { await relaunched.reconnect() }
+        for _ in 0..<10_000 where relaunched.reconnecting == nil { await Task.yield() }
+        await relaunched.reconnect()
+        #expect(relaunched.reconnecting == Domain("example.com")!, "the second call ended the first's \"Connecting\"")
+        await reconnect.value
+        #expect(relaunched.active == Domain("example.com")!)
+    }
+
+    /// A reconnect cancelled mid-check has no outcome: no failure, and no "CancellationError()" shown.
+    @Test func aCancelledReconnectRecordsNoFailure() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        let relaunched = model()
+        let reconnect = Task { await relaunched.reconnect() }
+        while !relaunched.isBusy { await Task.yield() }
+        reconnect.cancel()
+        await reconnect.value
+        #expect(relaunched.reconnectFailure == nil)
+        if case .problem(let problem) = relaunched.activity { #expect(!problem.contains("Cancellation"), "\(problem)") }
+    }
+
+    @Test func theLaunchReconnectRunsOnce() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        let relaunched = model()
+        relaunched.reconnectAtLaunch()
+        while relaunched.active == nil { await Task.yield() }
+        await relaunched.remove(Domain("example.com")!)
+        await relaunched.importFolder(try gamFolder(), as: "example.com")
+        lastDomain.save("example.com")
+        relaunched.reconnectAtLaunch()
+        for _ in 0..<1_000 { await Task.yield() }
+        #expect(relaunched.active == nil && relaunched.reconnecting == nil, "a second window reconnected again")
+    }
+
+    @Test func removingTheDomainThatFailedClearsTheFailure() async throws {
+        let model = model()
+        await model.importFolder(try gamFolder(admin: "partialdwd@example.org"), as: "example.org")
+        lastDomain.save("example.org")
+        await model.reconnect()
+        #expect(model.reconnectFailure != nil)
+        await model.remove(Domain("example.org")!)
+        #expect(model.reconnectFailure == nil)
     }
 
     @Test func aRemovedDomainIsForgottenForTheNextLaunch() async throws {
