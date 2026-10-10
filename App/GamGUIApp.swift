@@ -17,6 +17,8 @@ struct GamGUIApp: App {
         // Every launch opens a fresh window: an admin tool has nothing worth restoring, and a restored
         // "no windows" state once left a launch with no window at all.
         .restorationBehavior(.disabled)
+        // Room for the list and a person's page side by side. A window the operator sized keeps its size.
+        .defaultSize(width: 1200, height: 760)
     }
 }
 

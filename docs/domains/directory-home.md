@@ -136,6 +136,13 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   it goes away or the app quits), so a second window can't put back what the first changed. A debug
   snapshot touches none of it. Beside an open page the list scrolls sideways, and a sideways scroll
   takes Name out of view: an NSTableView has no frozen column.
+- **Opening a page (2026-10-10):** it appears at once, without the inspector's slide. A copy of the
+  layout timed frame by frame on the operator's Mac (transparent, click-through window, no Dock icon,
+  `NSView.displayLink` plus a run-loop observer) dropped frames in 7 or 8 runs per opening below about
+  1,300 pt, with a plain List as with the Table and with a one-line page: macOS 27 lays the window's
+  content out wider than the window on every frame of the slide (the sidebar counted twice again).
+  Without the slide: none, at 920 pt, 1,100 pt and 3,000 rows; the page shows about 60 ms after the
+  click (about 200 ms the first time after launch). New windows open at 1,200 × 760.
 - **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
   revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
   directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's

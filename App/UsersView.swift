@@ -38,6 +38,25 @@ struct UsersView: View {
             }
     }
 
+    /// The list's selection. A person's page opens and closes at once, without the inspector's slide: on
+    /// macOS 27, below about 1,300 pt, every frame of the slide lays the window's content out wider than
+    /// the window, and the page stuttered in (measured with a copy of this layout: 7 or 8 runs of dropped
+    /// frames per opening; none without the slide). Moving from one person to another changes nothing
+    /// the slide would animate.
+    private var selectionWithoutSlide: Binding<GamUser.ID?> {
+        Binding(get: { selection }, set: select)
+    }
+
+    private func select(_ id: GamUser.ID?) {
+        guard (id == nil) != (selection == nil) else {
+            selection = id
+            return
+        }
+        var instant = Transaction(animation: nil)
+        instant.disablesAnimations = true
+        withTransaction(instant) { selection = id }
+    }
+
     /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
@@ -50,7 +69,7 @@ struct UsersView: View {
     @ViewBuilder private var content: some View {
         // Filtered and sorted once per list, filter and order (`DirectoryStore.rows`), not on every click.
         if let users = directory.users, let rows = directory.rows(filter, sortedBy: sortOrder) {
-            UsersTable(rows: rows, selection: $selection, sortOrder: $sortOrder)
+            UsersTable(rows: rows, selection: selectionWithoutSlide, sortOrder: $sortOrder)
             .searchable(text: $filter.query, prompt: "Name, address, title, department or unit")
             .safeAreaInset(edge: .bottom) {
                 // A refresh shows here: running, or why it failed (the list above is the last good one).
@@ -69,7 +88,7 @@ struct UsersView: View {
                 .font(.callout)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
-            .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { selection = nil } })) {
+            .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
                     UserDetail(user: user, directory: directory, changes: changes, access: access)
                 }
