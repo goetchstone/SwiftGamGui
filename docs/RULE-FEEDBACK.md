@@ -22,6 +22,24 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-10 — Parity held the reader to GamGUI's defect, and no test came from GAM
+- **What happened:** GAM writes its CSV with a backslash escape. GamGUI's parser has none, and the Swift
+  port, held byte for byte to it by `gam_output.json`, dropped rows whose JSON held a quote, as GamGUI
+  does. Found by reading GAM's source, not by any test (failure-log 2026-10-10, "GAM's CSV escapes").
+- **Invariant in force:** #11 (GamGUI parity is a test), with the "mock lies" rule.
+- **Why it didn't hold:** #11 makes the frozen reference the oracle for outputs as well as argv. Where
+  the reference reads GAM wrongly, parity faithfully copies the defect. Every input the parity fixture
+  held came from GamGUI's own writer and mock, which share the blind spot. The second time a faithful
+  port carried a GamGUI defect (2026-10-09, the wipe rules).
+- **Would a rule have caught it?** only if enforced differently: for code that reads GAM's output, the
+  oracle is GAM's own writer (its source at the pinned tag, CPython's csv module), and GamGUI parity is
+  held where GamGUI reads correctly. This change added that path without editing #11: the fixture keeps
+  frozen GamGUI's records beside each case where they differ, and a test holds that list narrow (each
+  holds a backslash and reads as CSV). #11 says nothing about how a deliberate deviation is recorded.
+- **Enforcement home if changed:** tripwire test (a deviation list held narrow, as `gam_output.json`'s
+  is), plus a line in #11 that a deviation from the reference is a documented, tested list, never a
+  hand-edited fixture.
+
 ## 2026-10-10 — Session builds became apps Siri could pick by name
 - **What happened:** spoken, Siri couldn't find the app. Spotlight indexed four apps named GamGUI: the
   original, the operator's Xcode build, and two command-line builds this session made under `build/`

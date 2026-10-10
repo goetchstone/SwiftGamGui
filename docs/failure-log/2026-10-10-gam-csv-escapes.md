@@ -31,6 +31,11 @@
   - The argv is unchanged, so invariant 1's byte-identical argv still holds. The rejected alternative
     was `redirect csv - noescapechar true`, which changes every read's argv away from GamGUI's
     live-proven one.
+  - **GamGUI keeps the defect** (frozen except GAM updates): reported to the operator, not fixed here.
+    It affects every `print … formatjson` read GamGUI makes (users, groups, group members, ChromeOS
+    devices, resources, calendars, events, domains, Drive files). In its plain-CSV reads (delegates,
+    messages and the rest) a backslash comes back doubled. The one-line fix there is
+    `csv.DictReader(…, escapechar="\\")` in `gamgui/core/gam/parser.py`.
 - **Prevention:**
   - `CSVReader` is held to CPython's own output for the escape edges, to GAM's writer by seeded round
     trips, and by the fuzzer's `csvRoundTrip` target, seeded from `Fuzz/corpus/escaped-quote`.
