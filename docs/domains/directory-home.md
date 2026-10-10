@@ -165,9 +165,11 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   (`PersonMatch`: an address or alias, else a whole name only one person has, else the one person whose
   name or address holds the words; never a title or department, never a guess between two), selects
   them and drafts `previewOrganization(origin: .siri)` (the origin has no default: each caller says).
-  Not over the operator's own open change; a person's page shows only its own preview; an editor open
-  for the last person closes; blank values from Shortcuts are asked again (person, title) or dropped
-  (department).
+  Only the window in front takes a request. It's drafted only on the domain it was asked under
+  (connected, or being reconnected at launch), never over the operator's own change (one running, a
+  preview held, an editor open), and a person's page shows only its own preview; the sheet names the
+  address and domain. Blank values from Shortcuts are asked again (person, title) or dropped
+  (department); "Alice's" names Alice. Every notice is spoken, even when it repeats.
   The executor demands the Confirm click for it, the sheet says it was drafted from Siri and Save isn't
   the Return-key default, and the audit records `origin: siri`. Several or no matches: the list says
   so, filtered by the words, and nothing is drafted. A request older than ten minutes is dropped.

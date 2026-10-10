@@ -13,7 +13,7 @@ public enum PersonMatch: Equatable, Sendable {
     /// has; otherwise the one person whose name or address contains the words. Never a title,
     /// department or unit: "Finance" isn't a person, even when only one person works there.
     public static func resolve(_ words: String, in users: [GamUser]) -> PersonMatch {
-        let wanted = PythonText.lower(PythonText.strip(words))
+        let wanted = withoutPossessive(PythonText.lower(PythonText.strip(words)))
         guard !wanted.isEmpty else { return .none }
         if wanted.contains("@") {
             let found = users.filter { user in
@@ -27,6 +27,14 @@ public enum PersonMatch: Equatable, Sendable {
         return match(users.filter { user in
             [user.fullName, user.primaryEmail].contains { UserFilter.contains(Array(PythonText.lower($0).unicodeScalars), needle) }
         })
+    }
+
+    /// "Alice's", answering "Who's getting the new title?" as people do: the name without its "'s".
+    static func withoutPossessive(_ words: String) -> String {
+        for ending in ["'s", "\u{2019}s", "s'", "s\u{2019}"] where words.hasSuffix(ending) && words.count > ending.count {
+            return String(words.dropLast(ending.hasPrefix("s") ? 1 : 2))
+        }
+        return words
     }
 
     private static func match(_ users: [GamUser]) -> PersonMatch {

@@ -27,6 +27,13 @@ struct PersonMatchTests {
         #expect(PersonMatch.resolve("alice@example", in: users) == .none, "an address must match whole")
     }
 
+    /// "Who's getting the new title?" is often answered "Alice's".
+    @Test func aPossessiveNamesThePerson() {
+        #expect(PersonMatch.resolve("Alice Anders's", in: users) == .one("alice@example.com"))
+        #expect(PersonMatch.resolve("bob brown\u{2019}s", in: users) == .one("bob@example.com"))
+        #expect(PersonMatch.resolve("anders'", in: users) == .one("alice@example.com"))
+    }
+
     @Test func aWholeNameOnlyOnePersonHas() {
         #expect(PersonMatch.resolve("alice anders", in: users) == .one("alice@example.com"))
         #expect(PersonMatch.resolve("Bob Brown", in: users) == .one("bob@example.com"))

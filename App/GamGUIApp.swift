@@ -105,9 +105,9 @@ struct ContentView: View {
                     .navigationTitle("Setup")
             }
         }
-        // Siri's request opens Users, where it's drafted.
-        .onChange(of: services.siriDrafts.titleChange?.id, initial: true) { _, id in
-            if id != nil { screen = .users }
+        // Siri's request opens Users in the window in front, where it's drafted.
+        .onChange(of: services.siriDrafts.titleChange != nil && appearsActive, initial: true) { _, wanted in
+            if wanted { screen = .users }
         }
         // On every screen: connecting at launch, then loading, in words.
         .navigationSubtitle(connection)

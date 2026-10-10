@@ -43,7 +43,8 @@ struct ChangePreviewSheet: View {
             }
             if pending.preview.origin != .form {
                 Section {
-                    Label("Drafted from Siri. Check it, then click \(pending.confirmLabel).", systemImage: "waveform")
+                    Label("Drafted from Siri for \(pending.email) on \(pending.preview.domain.name). Check it, then click \(pending.confirmLabel).",
+                          systemImage: "waveform")
                 }
             }
             if let warning = pending.warning {

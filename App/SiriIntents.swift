@@ -9,7 +9,7 @@ struct ChangeTitleIntent: AppIntent {
         "Opens GamGUI with a person's new title, and department if you give one, drafted for you to check. Nothing changes until you click Save.")
     static let supportedModes: IntentModes = .foreground
 
-    @Parameter(title: "Person", requestValueDialog: "Whose title?")
+    @Parameter(title: "Person", requestValueDialog: "Who's getting the new title?")
     var person: String
 
     @Parameter(title: "Title", requestValueDialog: "What's the new title?")
@@ -31,7 +31,7 @@ struct ChangeTitleIntent: AppIntent {
         // A blank value from Shortcuts would draft an erase: ask again, or keep the department.
         let person = person.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !person.isEmpty else { throw $person.needsValueError("Whose title?") }
+        guard !person.isEmpty else { throw $person.needsValueError("Who's getting the new title?") }
         guard !title.isEmpty else { throw $title.needsValueError("What's the new title?") }
         let department = department?.trimmingCharacters(in: .whitespacesAndNewlines)
         drafts.titleChange = SiriDrafts.TitleChange(person: person, title: title,
