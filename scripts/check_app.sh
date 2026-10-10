@@ -80,5 +80,9 @@ if unnamed:
 PY
 
 [ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GamGUI" ] || fail "display name"
+# The name as the operator says it, for Siri and VoiceOver (Config/Info.plist).
+[ "$(plutil -extract CFBundleSpokenName raw -o - "$PLIST")" = "Gam Gooey" ] || fail "spoken name"
+[ "$(plutil -extract INAlternativeAppNames.0.INAlternativeAppName raw -o - "$PLIST")" = "Gam Gooey" ] \
+  || fail "Siri's alternative name"
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$PLIST")" = "27.0" ] || fail "minimum macOS"
 echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); no app entitlements; $count signed Mach-O files; $version)"

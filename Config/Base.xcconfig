@@ -15,4 +15,7 @@ CODE_SIGN_ENTITLEMENTS = Config/GamGUI.entitlements
 // app holding credentials lets a same-user process read them from its memory. Debug keeps it.
 CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
 
+// Keys the generated Info.plist can't express (an array): the names Siri hears the app by.
+INFOPLIST_FILE = Config/Info.plist
+
 #include? "Local.xcconfig"
