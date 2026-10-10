@@ -56,6 +56,14 @@ public struct WriteStep: Sendable {
 
     var secretTexts: [String] { secrets.map { String(decoding: $0.bytes, as: UTF8.self) } }
 
+    /// The signature a `.setSignature` step sends, as held: the argv element itself, so the confirm sheet
+    /// shows the bytes the run will send rather than a copy made beside them. `shownArgv` keeps it masked
+    /// for the audit and the logs. Nil for any other write.
+    public var signatureBody: String? {
+        guard write.action == .setSignature, write.argv.count > 3 else { return nil }
+        return write.argv[3]
+    }
+
     var change: Change { Change(target: target, summary: rawSummary, risk: risk, argv: write.argv) }
 }
 
@@ -183,17 +191,23 @@ public actor Executor {
 
     // MARK: previewing
 
-    /// Holds `steps` as a preview of the connected tenant. `precondition`, when given, re-reads what the
-    /// preview assumed (the member is still in the group, the event still exists) just before the run:
-    /// false means it changed, and the run is refused with "preview again", never re-planned silently.
+    /// Holds `steps` as a preview of the connected tenant. `expecting` is the tenant the screen's reads
+    /// began on (a person, the signature a Put Back restores): when that is no longer the connected one,
+    /// the preview is refused rather than held for a tenant they weren't read on (GamGUI failure-log
+    /// 2026-09-25). `precondition`, when given, re-reads what the preview assumed (the member is still in
+    /// the group, the event still exists) just before the run: false means it changed, and the run is
+    /// refused with "preview again", never re-planned silently.
     public func preview(_ steps: [WriteStep], origin: Origin = .form, confirmStep: Bool = false,
-                        typedCountAbove: Int? = nil,
+                        typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated() where step.requires.contains(where: { $0 < 0 || $0 >= index }) {
             return .failure(.badPrerequisite(step: index))
         }
         guard let current = await tenant() else { return .failure(.notConnected) }
+        if let expecting, expecting.domain != current.domain || expecting.generation != current.generation {
+            return .failure(.tenantChanged)
+        }
         let preview = HeldPreview(
             id: UUID(), steps: steps, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
@@ -207,12 +221,13 @@ public actor Executor {
     }
 
     public enum PreviewRefusal: Error, Equatable, Sendable {
-        case nothingToRun, notConnected, badPrerequisite(step: Int)
+        case nothingToRun, notConnected, tenantChanged, badPrerequisite(step: Int)
 
         public var message: String {
             switch self {
             case .nothingToRun: "There's nothing to change."
             case .notConnected: "Connect a domain on Setup first."
+            case .tenantChanged: "The active domain changed after this was read — preview again on this domain."
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
             }
         }

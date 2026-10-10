@@ -100,6 +100,16 @@ Twelve findings, each now a test that fails without its fix (14 mutants, all cau
   writes nothing; a timeout fails only its step; the argv stays inside ChangeCore and the summary is
   masked; "outcome unknown" is read off the main actor, bounded, and can be marked as checked.
 
+## Built for Signatures (S1c, 2026-10-10)
+Two small additions, each a test that failed first (`ExecutorTests`):
+- **`WriteStep.signatureBody`**: a `.setSignature` step's held argv element, so the confirm sheet shows
+  the exact bytes the run will send, not a copy made beside them (`aHeldSignatureBodyIsTheArgvElement`).
+  `shownArgv` and the audit keep the body masked; nil for every other write.
+- **`preview(…, expecting:)`**: the tenant the screen's reads began on. A preview held after a switch
+  or a re-import is refused (`PreviewRefusal.tenantChanged`), not held for the new tenant: GamGUI
+  stamped the tenant only at hold time (its failure-log 2026-09-25), and Signatures' "Put Back
+  Previous" holds a body read earlier (`aPreviewReadOnAnotherTenantIsRefused`).
+
 ## Not built yet
 The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
 operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.
