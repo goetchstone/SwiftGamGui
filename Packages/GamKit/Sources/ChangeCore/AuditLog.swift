@@ -51,7 +51,7 @@ public final class AuditLog: Sendable {
         entry["actor"] = actor.map(JSONValue.string) ?? .null
         if let extra, !extra.isEmpty { entry["extra"] = .object(extra) }
         guard case .object(let redacted) = Self.redact(.object(entry), secrets: secrets) else { return entry }
-        let line = Self.dumps(.object(redacted)) + "\n"
+        let line = JSONValue.dumps(.object(redacted)) + "\n"
         try lock.withLock { _ in
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
@@ -210,42 +210,5 @@ public final class AuditLog: Sendable {
             }
         }
         return walk(value)
-    }
-
-    /// `json.dumps(value, ensure_ascii=False)`: `", "` and `": "` separators, non-ASCII kept as it is,
-    /// and only `"`, `\` and the C0 controls escaped.
-    static func dumps(_ value: JSONValue) -> String {
-        switch value {
-        case .null: return "null"
-        case .bool(let flag): return flag ? "true" : "false"
-        case .number(let text): return text
-        case .string(let text): return quoted(text)
-        case .array(let items): return "[" + items.map(dumps).joined(separator: ", ") + "]"
-        case .object(let members):
-            return "{" + members.map { quoted($0.key) + ": " + dumps($0.value) }.joined(separator: ", ") + "}"
-        }
-    }
-
-    static func quoted(_ text: String) -> String {
-        var out = "\""
-        for scalar in text.unicodeScalars {
-            switch scalar {
-            case "\"": out += "\\\""
-            case "\\": out += "\\\\"
-            case "\n": out += "\\n"
-            case "\r": out += "\\r"
-            case "\t": out += "\\t"
-            case "\u{08}": out += "\\b"
-            case "\u{0C}": out += "\\f"
-            default:
-                if scalar.value < 0x20 {
-                    let hex = String(scalar.value, radix: 16)
-                    out += "\\u" + String(repeating: "0", count: 4 - hex.count) + hex
-                } else {
-                    out.unicodeScalars.append(scalar)
-                }
-            }
-        }
-        return out + "\""
     }
 }
