@@ -97,6 +97,25 @@ final class UserChangesTests {
         #expect(AuditLog.records(at: auditURL).first?["action"]?.string == "updateOrganization")
     }
 
+    /// Invariant 10: a title Siri drafted is only a preview. It runs on the operator's Confirm click, never
+    /// on a bare confirm, and the audit says Siri drafted it.
+    @Test func aTitleSiriDraftedRunsOnlyOnTheConfirmClick() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewOrganization(of: alice, title: "Warehouse Lead", department: alice.department, origin: .siri)
+        let pending = try pending()
+        #expect(pending.preview.origin == .siri)
+        #expect(pending.preview.needsConfirmClick, "a Siri draft must need the operator's click")
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(writes().isEmpty, "a Siri draft ran without the operator's click")
+        await changes.previewOrganization(of: alice, title: "Warehouse Lead", department: alice.department, origin: .siri)
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
+        guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(writes().count == 1)
+        #expect(AuditLog.records(at: auditURL).contains { $0["extra"]?.object?["origin"]?.string == "siri" },
+                "the audit must say Siri drafted it")
+    }
+
     @Test func anUnchangedTitleAndDepartmentIsNotAWrite() async throws {
         try await connect()
         let alice = try user("alice@example.com")

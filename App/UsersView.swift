@@ -12,13 +12,21 @@ struct UsersView: View {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    let drafts: SiriDrafts
     @State private var filter = UserFilter()
+    /// What became of Siri's last request, when it couldn't be drafted.
+    @State private var siriNotice: String?
     @State private var sortOrder = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
     @State private var selection: GamUser.ID?
 
     var body: some View {
         content
             .task(id: directory.users?.count ?? 0) { selectForSnapshot() }
+            // Waits for the directory: Siri can open the app before it has connected and loaded.
+            .task(id: "\(drafts.titleChange?.id.uuidString ?? "")#\(directory.users?.count ?? -1)") { await draftFromSiri() }
+            .onChange(of: siriNotice) { _, notice in
+                if let notice { AccessibilityNotification.Announcement(notice).post() }
+            }
             .toolbar {
                 ToolbarItem {
                     Picker("Show", selection: $filter.scope) {
@@ -57,6 +65,37 @@ struct UsersView: View {
         withTransaction(instant) { selection = id }
     }
 
+    /// Siri's "change a title": the person it names is selected, and the change waits as a preview the
+    /// operator saves with a click (the executor won't run a Siri draft without one). Nobody, or more than
+    /// one person: the list says so, filtered by the words, and nothing is drafted.
+    private func draftFromSiri() async {
+        guard let request = drafts.titleChange else { return }
+        guard !request.isStale else {
+            drafts.titleChange = nil
+            siriNotice = "Siri's request to change a title came too long ago. Ask again."
+            return
+        }
+        guard let users = directory.users else { return }
+        drafts.titleChange = nil
+        switch PersonMatch.resolve(request.person, in: users) {
+        case .one(let id):
+            guard let user = users.first(where: { $0.id == id }) else { return }
+            guard !changes.isBusy else {
+                siriNotice = "A change is still running. Ask Siri again when it's done."
+                return
+            }
+            siriNotice = nil
+            select(id)
+            await changes.previewOrganization(of: user, title: request.title,
+                                              department: request.department ?? user.department, origin: .siri)
+        case .several:
+            filter.query = request.person
+            siriNotice = "More than one person matches “\(request.person)”. Choose one, then Edit Title and Department."
+        case .none:
+            siriNotice = "No one in the directory matches “\(request.person)”."
+        }
+    }
+
     /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
@@ -75,6 +114,12 @@ struct UsersView: View {
                 // A refresh shows here: running, or why it failed (the list above is the last good one).
                 HStack(spacing: 12) {
                     Text("\(rows.count) of \(users.count) accounts").foregroundStyle(.secondary)
+                    if let siriNotice {
+                        Label(siriNotice, systemImage: "waveform").lineLimit(2)
+                        Button { self.siriNotice = nil } label: { Image(systemName: "xmark") }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Dismiss")
+                    }
                     if directory.isLoading {
                         HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
                             .accessibilityElement(children: .combine)
@@ -733,6 +778,11 @@ private struct ChangePreviewSheet: View {
                     }
                 }
             }
+            if pending.preview.origin != .form {
+                Section {
+                    Label("Drafted from Siri. Check it, then click \(pending.confirmLabel).", systemImage: "waveform")
+                }
+            }
             if let warning = pending.warning {
                 Section {
                     Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
@@ -751,11 +801,11 @@ private struct ChangePreviewSheet: View {
         .frame(minWidth: 460)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() } }
-            // A destructive change isn't confirmed by Return alone: it isn't the default button, so it has
-            // to be chosen (clicked, or reached with Tab and Space).
-            if pending.isDestructive {
+            // A destructive change, or one Siri drafted (it opens on its own), isn't confirmed by Return
+            // alone: it isn't the default button, so it has to be chosen (clicked, or Tab and Space).
+            if pending.isDestructive || pending.preview.origin != .form {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(pending.confirmLabel, role: .destructive) { confirm() }
+                    Button(pending.confirmLabel, role: pending.isDestructive ? .destructive : nil) { confirm() }
                 }
             } else {
                 ToolbarItem(placement: .confirmationAction) {

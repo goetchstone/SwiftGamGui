@@ -92,6 +92,17 @@ struct WriteRouteTests {
         #expect(confirming.isDisjoint(with: voiceOrModel))
     }
 
+    /// Invariant 10, the other half: code that speaks to Siri or a model reaches no write at all, not even
+    /// a preview. It hands its words to the screens (`SiriDrafts`), which draft the preview the operator
+    /// confirms; the executor then demands the Confirm click for it.
+    @Test func noIntentReachesAWrite() throws {
+        let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
+        let writing = try Self.files(in: "App", matching: ["UserChanges", "Executor", "executor", ".confirm(", "WriteStep",
+                                                           "GamWrite", "AuthenticatedRunner", "previewOrganization"])
+        #expect(voiceOrModel.isDisjoint(with: writing), "\(voiceOrModel.intersection(writing))")
+        #expect(voiceOrModel.contains { $0.hasSuffix("SiriIntents.swift") }, "the scan must see the intents")
+    }
+
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.
     @Test func theAppNeverImportsGamKitTestably() throws {
         #expect(try Self.files(in: "App", matching: ["@testable"]).isEmpty)

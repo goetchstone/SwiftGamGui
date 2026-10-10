@@ -159,6 +159,15 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   people passed over. `UserAccess` keeps the last eight people's lists, each read on its own, so pages
   in two windows never evict each other; a page shows "Reading…" only while a read of its person is
   waiting or running, and otherwise "Not read" with **Read Again**.
+- **Siri drafts a title (2026-10-10):** `ChangeTitleIntent` ("Change a title in GamGUI", and in
+  Shortcuts) takes a person, a title and an optional department, opens the app and hands the words to
+  `SiriDrafts`, nothing else. Users waits for the directory, resolves the person
+  (`PersonMatch`: an address or alias, else a whole name only one person has, else a search that finds
+  exactly one; never a guess between two), selects them and drafts `previewOrganization(origin: .siri)`.
+  The executor demands the Confirm click for it, the sheet says it was drafted from Siri and Save isn't
+  the Return-key default, and the audit records `origin: siri`. Several or no matches: the list says
+  so, filtered by the words, and nothing is drafted. A request older than ten minutes is dropped.
+  `WriteRouteTests.noIntentReachesAWrite` keeps every voice or model file away from every write.
 - **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
   revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
   directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's

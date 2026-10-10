@@ -1,0 +1,35 @@
+import GamEngine
+
+/// Who a spoken or typed name means in the loaded directory. Siri hands the app words, not an account,
+/// so a draft starts from the one person they name, or stops to let the operator choose: it never
+/// guesses between two.
+public enum PersonMatch: Equatable, Sendable {
+    case one(GamUser.ID)
+    /// More than one person fits; the list shows them, filtered by the words.
+    case several([GamUser.ID])
+    case none
+
+    /// An address names its account (or an alias of it); otherwise a whole name that only one person
+    /// has; otherwise the people the words find as Users' search does, if exactly one.
+    public static func resolve(_ words: String, in users: [GamUser]) -> PersonMatch {
+        let wanted = PythonText.lower(PythonText.strip(words))
+        guard !wanted.isEmpty else { return .none }
+        if wanted.contains("@") {
+            let found = users.filter { user in
+                ([user.primaryEmail] + user.aliases).contains { PythonText.lower(PythonText.strip($0)) == wanted }
+            }
+            return match(found)
+        }
+        let named = users.filter { PythonText.lower($0.fullName) == wanted }
+        if !named.isEmpty { return match(named) }
+        return match(UserFilter(query: words).apply(users))
+    }
+
+    private static func match(_ users: [GamUser]) -> PersonMatch {
+        switch users.count {
+        case 0: .none
+        case 1: .one(users[0].id)
+        default: .several(users.map(\.id))
+        }
+    }
+}

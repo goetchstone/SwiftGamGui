@@ -10,8 +10,10 @@ app built on [GAM7](https://github.com/GAM-team/GAM). It runs the same `gam` com
 the tests check that they match GamGUI's exactly.
 
 **Status: early.** You can import credentials (or copy them from GamGUI), check access, see the
-directory's counts and reports, and browse users. Those reads have run against a real tenant;
-nothing writes yet. Use GamGUI for real work for now. The plan is in
+directory's counts and reports, browse users, and change a person: title and department, suspend,
+groups, mail delegates, auto-reply, sign-out. Every change shows what it will run first and runs only
+when you confirm it ([Live verification](#live-verification) lists what has run on a real tenant).
+Groups, calendars, signatures, onboarding and offboarding are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
@@ -30,6 +32,15 @@ A person's page, opened from Users: an Actions menu for what changes the account
 | Profile | Groups | Mail |
 |---|---|---|
 | ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups, each with Remove, and a field to add one](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off, and their mail delegates](docs/screenshots/person-mail.png) |
+
+## Siri
+
+Say **"Change a title in GamGUI"**. Siri asks whose title and the new one (a department too, if you
+like), and GamGUI opens on Users with that person selected and the change drafted. Nothing changes
+until you check it and click **Save**: Siri only drafts. The same action is in Shortcuts as **Change
+a Title**. If more than one person matches the name, the list shows them and nothing is drafted.
+
+Not yet tried with a voice: Siri hearing "GamGUI" is the plan's open Siri spike.
 
 ## Build from source
 
