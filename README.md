@@ -40,7 +40,9 @@ like), and GamGUI opens on Users with that person selected and the change drafte
 until you check it and click **Save**: Siri only drafts. The same action is in Shortcuts as **Change
 a Title**. If more than one person matches the name, the list shows them and nothing is drafted.
 
-Not yet tried with a voice: Siri hearing "GamGUI" is the plan's open Siri spike.
+**Confirmed through Shortcuts (2026-10-10):** the action drafted a title and department change on a
+real tenant, the operator saved it with a click, and the audit recorded `origin: siri`. Not yet tried
+with a voice: Siri hearing "GamGUI" is the plan's open Siri spike.
 
 ## Build from source
 
