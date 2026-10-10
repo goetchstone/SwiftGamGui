@@ -130,9 +130,12 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **The list's columns (2026-10-10):** the same six whether or not a page is open. Dropping four
   when a name was clicked read to the operator as lost headers, and rebuilt the table while the page
   slid in. The operator hides, shows, reorders and resizes them (right-click a header, or the toolbar's
-  **Columns** menu for the keyboard and VoiceOver); Name always shows, first. The layout is saved in
-  the app's preferences (`UserColumn`), read when the list appears and written a second after the last
-  change; a debug snapshot touches none of it. Beside an open page the list scrolls sideways.
+  **Columns** menu for the keyboard and VoiceOver, with Show All Columns and Restore Column Order).
+  Name can't be hidden. The layout is saved in the app's preferences (`UserColumn`): read when the list
+  appears, and written only by a list the operator changed (a second after the last change, or when
+  it goes away or the app quits), so a second window can't put back what the first changed. A debug
+  snapshot touches none of it. Beside an open page the list scrolls sideways, and a sideways scroll
+  takes Name out of view: an NSTableView has no frozen column.
 - **Rows (2026-10-10):** `DirectoryStore.rows(_:sortedBy:)` filters and sorts once per list (a
   revision bumped on load and patch), filter and order. Sorting in the view's body re-sorted the whole
   directory on every click (about 19 ms at 500 users, 185 ms at 5,000), which held up the page's

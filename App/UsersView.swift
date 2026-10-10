@@ -122,8 +122,8 @@ enum UserColumn: String, CaseIterable, Identifiable {
 
     /// The layout the operator left, from the app's preferences: windows aren't restored
     /// (`restorationBehavior(.disabled)`), so scene storage would forget it at every launch. Read when a
-    /// list appears, not bound live, so two windows never push widths into each other. A debug spike or
-    /// snapshot reads and writes none of the operator's.
+    /// list appears, not bound live, so two windows never push widths into each other; a list writes only
+    /// what the operator changed in it. A debug spike or snapshot reads and writes none of the operator's.
     static func saved() -> TableColumnCustomization<GamUser> {
         guard !Spikes.isRequested, let data = UserDefaults.standard.data(forKey: key),
               let columns = try? JSONDecoder().decode(TableColumnCustomization<GamUser>.self, from: data)
@@ -146,10 +146,13 @@ private struct UsersTable: View {
     @Binding var selection: GamUser.ID?
     @Binding var sortOrder: [KeyPathComparator<GamUser>]
     @State private var columns = UserColumn.saved()
+    /// The operator changed the layout here since it was last saved. A list nobody touched never writes:
+    /// leaving Users in a second window would otherwise put back what was just changed in the first.
+    @State private var unsaved = false
 
     var body: some View {
         Table(rows, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns) {
-            // Who each row is stays in view, first, beside an open page: Name can't be hidden or moved.
+            // Every row keeps its name: Name can't be hidden, or dragged from the front.
             TableColumn(UserColumn.name.label, value: \.fullName)
                 .width(min: 160)
                 .customizationID(UserColumn.name.rawValue)
@@ -185,17 +188,26 @@ private struct UsersTable: View {
                     Button("Show All Columns") {
                         for column in UserColumn.hideable { columns[visibility: column.rawValue] = .visible }
                     }
+                    Button("Restore Column Order") { columns.resetOrder() }
                 }
                 .accessibilityHint("Choose which columns the list of users shows.")
             }
         }
-        // Saved a second after the last change (dragging a column's edge changes it continuously), and when
-        // the list goes away.
+        // Saved a second after the last change (dragging a column's edge changes it continuously), and
+        // when the list goes away or the app quits before that second is up.
+        .onChange(of: columns) { unsaved = true }
         .task(id: columns) {
             guard (try? await Task.sleep(for: .seconds(1))) != nil else { return }
-            UserColumn.save(columns)
+            save()
         }
-        .onDisappear { UserColumn.save(columns) }
+        .onDisappear(perform: save)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in save() }
+    }
+
+    private func save() {
+        guard unsaved else { return }
+        UserColumn.save(columns)
+        unsaved = false
     }
 
     /// Shown unless the operator hid it: a column never touched reads `.automatic`, which shows.
