@@ -35,7 +35,7 @@ A person's page, opened from Users: an Actions menu for what changes the account
 
 ## Siri
 
-Say **"Change a title in GamGUI"**. Siri asks whose title and the new one (a department too, if you
+Say **"Change a title in Gam Gooey"** (Siri also knows the app as GamGUI, Gamgooey and Gam GUI). Siri asks whose title and the new one (a department too, if you
 like), and GamGUI opens on Users with that person selected and the change drafted. Nothing changes
 until you check it and click **Save**: Siri only drafts. The same action is in Shortcuts as **Change
 a Title**. If more than one person matches the name, the list shows them and nothing is drafted.
