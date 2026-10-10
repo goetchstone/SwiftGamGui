@@ -1,0 +1,39 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Change a title in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change a title in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Change someone's title in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change someone's title in ${applicationName}"
+          }
+        }
+      }
+    },
+    "Update a job title in ${applicationName}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update a job title in ${applicationName}"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -79,6 +79,11 @@ if unnamed:
     sys.exit(f"phrases without the app's name: {unnamed}")
 PY
 
+# Siri trains its matching of the phrases from this catalog; without it the phrases never matched by voice.
+PHRASES="$APP/Contents/Resources/en.lproj/AppShortcuts.strings"
+[ -f "$PHRASES" ] || fail "no App Shortcuts phrase catalog (App/AppShortcuts.xcstrings)"
+[ "$(plutil -extract 'Change a title in ${applicationName}' raw -o - "$PHRASES" 2>/dev/null)" = 'Change a title in ${applicationName}' ] \
+  || fail "the phrase catalog doesn't hold the title intent's phrase"
 # The name Siri hears and matches, on screen too (Config/Info.plist, App/en.lproj/InfoPlist.strings), and
 # as VoiceOver says it. macOS shows the localized name only while the Info.plist's own display name is the
 # bundle's file name: anything else reads as a user's rename, and the Dock showed the file name.

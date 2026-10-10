@@ -176,7 +176,10 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   **The name Siri matches (2026-10-10):** only the app's localized display name, **GAM GUI** (the
   operator's "Gam Gooey" is heard that way); `INAlternativeAppNames` did nothing on the Mac. The
   unlocalized display name stays the bundle's file name, or macOS reads the difference as a rename and
-  shows the file name (failure-log 2026-10-10, "display name ignored"). Every
+  shows the file name (failure-log 2026-10-10, "display name ignored"). Phrases are matched by voice
+  only from `App/AppShortcuts.xcstrings` (shipped as `en.lproj/AppShortcuts.strings`): without it Siri
+  never trained on them (failure-log 2026-10-10, "Siri phrases never trained"). Check a phrase with
+  Xcode's Product → App Shortcuts Preview before a voice test. Every
   Spotlight-indexed copy of the app is another candidate, so command-line builds use
   `build/DerivedData.noindex`, and the original GamGUI's name is distinct from this app's.
   `WriteRouteTests.noIntentReachesAWrite` keeps every voice or model file away from every write;
