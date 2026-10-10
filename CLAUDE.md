@@ -1,8 +1,9 @@
 # Working on SwiftGamGui
 
 **GamGUI as a native macOS app**: SwiftUI, macOS 27 only, driving the vendored GAM7 CLI exactly as the
-Python GamGUI does. The app's name is **GamGUI** (spoken to Siri); this repo and the Xcode project
-are **SwiftGamGui**. Public repo, MIT. The design and phases are in
+Python GamGUI does. On screen and to Siri the app is **GAM GUI** (operator, 2026-10-10: Siri hears
+"Gam Gooey" as "GAM GUI" and matches only the display name); its product, scheme and bundle stay
+**GamGUI**, and this repo and the Xcode project are **SwiftGamGui**. Public repo, MIT. The design and phases are in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md); read its Status line
 first.
 
@@ -103,12 +104,14 @@ xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build  # the app
 scripts/fetch_gam.sh                                            # vendor GAM against the pin
 ../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py        # regenerate parity fixtures from GamGUI
 ../gamgui/.venv/bin/python -I -B scripts/bump_gam.py vX.Y.Z     # bump GAM (attested), then test
+# Command-line builds go in build/DerivedData.noindex (-derivedDataPath): Spotlight skips a .noindex
+# folder, and every indexed copy of the app is one more app Siri can pick by name (2026-10-10).
 # Look at a screen (debug builds): renders the real window to a PNG and quits. The demo fills the screen
 # from memory and the strict mock, never the real GAM. SWIFTGAMGUI_SCREEN picks it (home, the default,
 # users or setup). The capture is the screen's own pane (the sidebar's and toolbar's system materials don't draw this way).
 SWIFTGAMGUI_SCREEN=home SWIFTGAMGUI_SNAPSHOT=/tmp/home.png SWIFTGAMGUI_DEMO=1 \
   SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" \
-  build/DerivedData/Build/Products/Debug/GamGUI.app/Contents/MacOS/GamGUI
+  build/DerivedData.noindex/Build/Products/Debug/GamGUI.app/Contents/MacOS/GamGUI
 ```
 
 Debug switches are **environment variables**, never launch arguments: AppKit reads `-key value`

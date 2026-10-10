@@ -2,29 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Merged into the generated Info.plist. The operator says "Gam Gooey": Siri couldn't find an app
-	     named "GamGUI" from that (2026-10-10), so the spoken forms are the app's alternative names, and
-	     VoiceOver says the name the same way. At most three alternative names. -->
+	<!-- Merged into the generated Info.plist. The app is "GAM GUI" on screen and to Siri (operator,
+	     2026-10-10): Siri hears the operator's "Gam Gooey" as "GAM GUI" and matches only an app's
+	     localized display name (it ignored INAlternativeAppNames on the Mac). The name is localized
+	     (App/en.lproj/InfoPlist.strings), so Finder, the Dock and Spotlight show it while the bundle and
+	     its executable keep the product name. VoiceOver says it as the operator does. -->
+	<key>LSHasLocalizedDisplayName</key>
+	<true/>
 	<key>CFBundleSpokenName</key>
 	<string>Gam Gooey</string>
-	<key>INAlternativeAppNames</key>
-	<array>
-		<dict>
-			<key>INAlternativeAppName</key>
-			<string>Gam Gooey</string>
-			<key>INAlternativeAppNamePronunciationHint</key>
-			<string>gam gooey</string>
-		</dict>
-		<dict>
-			<key>INAlternativeAppName</key>
-			<string>Gamgooey</string>
-		</dict>
-		<dict>
-			<key>INAlternativeAppName</key>
-			<string>Gam GUI</string>
-			<key>INAlternativeAppNamePronunciationHint</key>
-			<string>gam gee you eye</string>
-		</dict>
-	</array>
 </dict>
 </plist>

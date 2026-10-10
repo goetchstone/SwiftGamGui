@@ -79,10 +79,13 @@ if unnamed:
     sys.exit(f"phrases without the app's name: {unnamed}")
 PY
 
-[ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GamGUI" ] || fail "display name"
-# The name as the operator says it, for Siri and VoiceOver (Config/Info.plist).
+# The name Siri hears and matches, on screen too (Config/Info.plist, App/en.lproj/InfoPlist.strings), and
+# as VoiceOver says it.
+[ "$(plutil -extract CFBundleDisplayName raw -o - "$PLIST")" = "GAM GUI" ] || fail "display name"
+[ "$(plutil -extract LSHasLocalizedDisplayName raw -o - "$PLIST")" = "true" ] || fail "the name isn't localized"
+STRINGS="$APP/Contents/Resources/en.lproj/InfoPlist.strings"
+[ -f "$STRINGS" ] || fail "no localized name"
+[ "$(plutil -extract CFBundleDisplayName raw -o - "$STRINGS")" = "GAM GUI" ] || fail "localized display name"
 [ "$(plutil -extract CFBundleSpokenName raw -o - "$PLIST")" = "Gam Gooey" ] || fail "spoken name"
-[ "$(plutil -extract INAlternativeAppNames.0.INAlternativeAppName raw -o - "$PLIST")" = "Gam Gooey" ] \
-  || fail "Siri's alternative name"
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$PLIST")" = "27.0" ] || fail "minimum macOS"
 echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); no app entitlements; $count signed Mach-O files; $version)"
