@@ -23,6 +23,12 @@ public final class SetupModel {
         public let result: AccessCheck
     }
 
+    /// Why the launch's reconnect didn't connect.
+    public struct ReconnectFailure: Equatable, Sendable {
+        public let domain: Domain
+        public let problem: String
+    }
+
     public enum Status: Equatable, Sendable {
         case notConnected
         case connected
@@ -43,6 +49,11 @@ public final class SetupModel {
     @ObservationIgnored public var tenantDidChange: (@MainActor () -> Void)?
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
+    /// The domain being connected again at launch (Touch ID, then its check), so every screen can say so
+    /// rather than look disconnected (operator, 2026-10-10).
+    public private(set) var reconnecting: Domain?
+    /// Why the launch's reconnect failed, until a domain connects or this one is removed.
+    public private(set) var reconnectFailure: ReconnectFailure?
     /// The admin the connected domain signs in as (its last passing check): who the audit says acted.
     public var connectedAdmin: String? {
         guard let active, let lastCheck, lastCheck.domain == active, lastCheck.result.isAuthorized else { return nil }
@@ -262,10 +273,16 @@ public final class SetupModel {
     /// directory loads) without a trip to Setup. Still a real Check access: only a pass connects, as
     /// always. Nothing happens when a domain is already connected or none was remembered.
     public func reconnect() async {
-        guard active == nil, let name = lastDomain.load(), let domain = Domain(name) else { return }
+        guard active == nil, reconnecting == nil, let name = lastDomain.load(), let domain = Domain(name) else { return }
+        reconnecting = domain
+        reconnectFailure = nil
+        defer { reconnecting = nil }
         if domains.isEmpty { await refresh() }
         guard domains.contains(domain) else { return }
         await checkAccess(domain)
+        if active != domain, case .problem(let problem) = activity {
+            reconnectFailure = ReconnectFailure(domain: domain, problem: problem)
+        }
     }
 
     public func remove(_ domain: Domain) async {
@@ -284,6 +301,7 @@ public final class SetupModel {
     }
 
     private func activate(_ domain: Domain) {
+        reconnectFailure = nil
         lastDomain.save(domain.name)
         guard active != domain else { return }
         active = domain
@@ -316,6 +334,7 @@ public final class SetupModel {
         }
         if lastCheck?.domain == domain { lastCheck = nil }
         if delegation?.domain == domain { delegation = nil }
+        if reconnectFailure?.domain == domain { reconnectFailure = nil }
     }
 
     /// File and Keychain reads can block (a prompt, a slow volume): never on the main actor.

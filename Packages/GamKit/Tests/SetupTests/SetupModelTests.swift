@@ -261,6 +261,39 @@ struct SetupModelTests {
         lastDomain.save("example.org")
         await first.reconnect()
         #expect(first.active == nil)
+        #expect(first.reconnecting == nil)
+        let failure = try #require(first.reconnectFailure, "a failed reconnect must say why, not look disconnected")
+        #expect(failure.domain == Domain("example.org")! && !failure.problem.isEmpty)
+
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        #expect(first.reconnectFailure == nil, "a domain connected since: the failure no longer applies")
+    }
+
+    /// While the launch's reconnect runs, the model says which domain it is connecting, for every screen.
+    @Test func reconnectingSaysWhichDomainUntilItEnds() async throws {
+        let first = model()
+        await first.importFolder(try gamFolder(), as: "example.com")
+        await first.checkAccess(Domain("example.com")!)
+        let relaunched = model()
+        #expect(relaunched.reconnecting == nil)
+        let reconnect = Task { await relaunched.reconnect() }
+        for _ in 0..<10_000 where relaunched.reconnecting == nil && relaunched.active == nil { await Task.yield() }
+        #expect(relaunched.reconnecting == Domain("example.com")!, "connecting, and the screens can't say so")
+        await reconnect.value
+        #expect(relaunched.reconnecting == nil)
+        #expect(relaunched.active == Domain("example.com")!)
+        #expect(relaunched.reconnectFailure == nil)
+    }
+
+    @Test func removingTheDomainThatFailedClearsTheFailure() async throws {
+        let model = model()
+        await model.importFolder(try gamFolder(admin: "partialdwd@example.org"), as: "example.org")
+        lastDomain.save("example.org")
+        await model.reconnect()
+        #expect(model.reconnectFailure != nil)
+        await model.remove(Domain("example.org")!)
+        #expect(model.reconnectFailure == nil)
     }
 
     @Test func aRemovedDomainIsForgottenForTheNextLaunch() async throws {

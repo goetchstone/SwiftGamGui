@@ -97,6 +97,13 @@ struct UsersView: View {
             VStack(spacing: 12) {
                 if directory.isLoading {
                     ProgressView("Loading the directory…")
+                } else if let domain = setup.reconnecting {
+                    ProgressView("Connecting to \(domain.name)…")
+                } else if let failure = setup.reconnectFailure, setup.active == nil {
+                    Label("Couldn't reconnect to \(failure.domain.name)", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(failure.problem).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Button("Try Again") { Task { await setup.reconnect() } }
                 } else if setup.active == nil {
                     Text("Connect a domain on Setup to list its users.").foregroundStyle(.secondary)
                 } else {

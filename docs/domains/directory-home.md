@@ -11,6 +11,13 @@ at launch by checking the last connected domain again (`SetupModel.reconnect`, o
 Check access, never an assumed connection). A load is marked running before the connect returns, so a
 click meanwhile waits for it instead of starting a second.
 
+**Startup, shown (operator, 2026-10-10):** the app looked disconnected while it reconnected. Now
+`SetupModel.reconnecting` names the domain from the start of the reconnect to its end, and
+`reconnectFailure` keeps why it failed until a domain connects or that one is removed. Home, Users and
+the window's subtitle (every screen) say "Connecting to …", then "Loading the directory…", with a
+spinner; a failure says why, with **Try Again**. VoiceOver hears each step, ending with the count of
+accounts loaded.
+
 **Enforcement home:** `Tests/DirectoryStoreTests`.
 
 ## Files

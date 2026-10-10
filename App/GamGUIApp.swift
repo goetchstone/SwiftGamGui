@@ -50,8 +50,9 @@ enum Screen: String, CaseIterable, Identifiable {
 /// The widths the window is built from. On macOS 27, when a person's page opens, SwiftUI adds the
 /// inspector's width (and the floating sidebar's, a second time) to the list's minimum without raising
 /// the window's: in a window narrower than that sum, AppKit loops until it raises NSGenericException
-/// (failure-log 2026-10-10, "person-page layout loop"). So the sidebar and the inspector are bounded, and the smallest window holds
-/// both at their widest with `Spikes.spareWidth` to spare; the screenshot runs check it.
+/// (failure-log 2026-10-10, "person-page layout loop"). So the sidebar and the inspector are bounded,
+/// and the smallest window holds both at their widest with `Spikes.spareWidth` to spare; the screenshot
+/// runs check it.
 enum ColumnWidths {
     static let sidebar = (min: 150.0, ideal: 170.0, max: 190.0)
     static let inspector = (min: 320.0, ideal: 360.0, max: 400.0)
@@ -62,6 +63,26 @@ struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
     @State private var gamVersion: String?
+
+    private var connection: String {
+        let setup = services.setup, directory = services.directory
+        if let domain = setup.active {
+            return directory.isLoading && directory.users == nil
+                ? "Connected to \(domain.name) · Loading the directory…" : "Connected to \(domain.name)"
+        }
+        if let domain = setup.reconnecting { return "Connecting to \(domain.name)…" }
+        if let failure = setup.reconnectFailure { return "Couldn't reconnect to \(failure.domain.name)" }
+        return "Not connected"
+    }
+
+    /// The same steps as spoken: the subtitle goes back to "Connected" when the load ends, which says
+    /// nothing about the load.
+    private var progress: String {
+        if services.setup.active != nil, !services.directory.isLoading, let users = services.directory.users {
+            return "\(connection). \(users.count.formatted()) accounts loaded."
+        }
+        return connection
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -85,7 +106,9 @@ struct ContentView: View {
                     .navigationTitle("Setup")
             }
         }
-        .navigationSubtitle(services.setup.active.map { "Connected to \($0.name)" } ?? "Not connected")
+        // On every screen: connecting at launch, then loading, in words; VoiceOver hears each step.
+        .navigationSubtitle(connection)
+        .onChange(of: progress) { _, new in AccessibilityNotification.Announcement(new).post() }
         .frame(minWidth: ColumnWidths.windowMin, minHeight: 520)
         .task {
             // Local and credential-free.

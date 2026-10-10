@@ -80,6 +80,22 @@ struct HomeView: View {
                     Label(domain.name, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                 }
             }
+        } else if let domain = setup.reconnecting {
+            // Touch ID, then a real check: it can take a few seconds, and must not look disconnected.
+            LabeledContent("Domain") {
+                HStack { ProgressView().controlSize(.small); Text("Connecting to \(domain.name)…") }
+            }
+            .accessibilityElement(children: .combine)
+        } else if let failure = setup.reconnectFailure {
+            LabeledContent("Domain") {
+                Label("Couldn't reconnect to \(failure.domain.name)", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+            Text(failure.problem).foregroundStyle(.secondary)
+            HStack {
+                Button("Try Again") { Task { await setup.reconnect() } }
+                Button("Open Setup…", action: openSetup)
+            }
         } else {
             LabeledContent("Domain") {
                 Button("Connect on Setup…", action: openSetup)
@@ -108,18 +124,22 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.refresh")
                 }
             }
+        } else if directory.isLoading {
+            HStack { ProgressView().controlSize(.small); Text("Loading the directory…") }
+                .accessibilityElement(children: .combine)
         } else if setup.active != nil {
             LabeledContent("Not loaded yet. It loads when a domain connects, or now:") {
                 Button("Load the Directory") { Task { await directory.load() } }
                     .keyboardShortcut("r")
-                    .disabled(directory.isLoading)
                     .accessibilityIdentifier("home.load")
             }
+        } else if setup.reconnecting != nil {
+            Text("Loads once connected.").foregroundStyle(.secondary)
         } else {
             Text("Connect a domain on Setup to see its counts.").foregroundStyle(.secondary)
         }
-        if directory.isLoading {
-            HStack { ProgressView().controlSize(.small); Text("Loading the directory…") }
+        if directory.isLoading, directory.users != nil {
+            HStack { ProgressView().controlSize(.small); Text("Refreshing…") }
                 .accessibilityElement(children: .combine)
         }
         if let problem = directory.problem {
