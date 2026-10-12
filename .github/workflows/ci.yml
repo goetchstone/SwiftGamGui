@@ -68,7 +68,7 @@ jobs:
           scripts/screenshots.sh "$RUNNER_TEMP/dd/Build/Products/Debug/GamGUI.app" "$RUNNER_TEMP/attachments/screens"
       - name: Keep the snapshot attachments
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: snapshots
           path: ${{ runner.temp }}/attachments
@@ -94,7 +94,7 @@ jobs:
           scripts/fuzz.sh -seed=1 -runs=300000 -max_len=4096 -print_final_stats=1 -artifact_prefix=fuzz-crash/
       - name: Keep a crashing input
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzz-crash
           path: fuzz-crash
