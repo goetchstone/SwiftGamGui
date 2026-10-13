@@ -221,6 +221,85 @@ public enum Onboarding {
     }
 }
 
+// MARK: the role store's rules (O2)
+
+extension Onboarding {
+    /// Why a role or a welcome email can't be saved, in GamGUI's words where it has them.
+    public enum RoleProblem: Error, Equatable, Sendable {
+        case nameRequired, nameTooLong
+        /// GamGUI's: a role names a welcome email the store doesn't have (exact text).
+        case noSuchWelcome(String)
+        /// Native: a group or calendar entry that isn't one address.
+        case notAnAddress(list: String, entry: String)
+        /// Native: past `roleListLimit`.
+        case tooMany(list: String)
+        case welcomeNameRequired
+        case defaultWelcomeStays
+        /// GamGUI's: a welcome email a role still picks, with those roles.
+        case welcomeInUse(String, roles: [String])
+
+        public var message: String {
+            switch self {
+            case .nameRequired: "Role name is required."
+            case .nameTooLong: "A role name is at most \(Onboarding.roleNameLimit) characters."
+            case .noSuchWelcome(let name): "There is no welcome email named \u{201C}\(name)\u{201D}."
+            case .notAnAddress(let list, let entry):
+                "\u{201C}\(entry)\u{201D} isn't one address: each of a role's \(list) is a single address, like sales@example.com."
+            case .tooMany(let list): "A role holds at most \(Onboarding.roleListLimit) \(list)."
+            case .welcomeNameRequired: "A welcome email needs a name."
+            case .defaultWelcomeStays: "The Default welcome email can be edited but not deleted."
+            case .welcomeInUse(let name, let roles):
+                "\u{201C}\(name)\u{201D} is the welcome email of \(roles.joined(separator: ", ")): pick another for "
+                    + "\(roles.count == 1 ? "that role" : "those roles") first."
+            }
+        }
+    }
+
+    /// A role's name, at most this many code points (the template stores' rule).
+    public static let roleNameLimit = 60
+    /// A role's steps, groups or calendars, each at most this many: far past a real role, and a hire's preview stays
+    /// well under the guard's two hundred targets.
+    public static let roleListLimit = 100
+
+    /// A role as the store saves it. GamGUI's `set_role`: the name, signature, org unit and welcome stripped, blank
+    /// steps dropped and the others stripped, groups and calendars as `_as_str_list` makes them, "Default" stored as
+    /// blank, and a welcome email the store has. Then the native bounds: a group or calendar is one address (GAM
+    /// reads a comma or a space in one argument as more than one), each once (compared as GAM compares addresses),
+    /// a name of at most `roleNameLimit`, and no list past `roleListLimit`. `welcomes` are the store's names.
+    public static func savable(_ role: RoleTemplate, welcomes: [String]) throws(RoleProblem) -> RoleTemplate {
+        let name = PythonText.strip(role.name)
+        guard !name.isEmpty else { throw .nameRequired }
+        var welcome = PythonText.strip(role.welcome)
+        if welcome.utf8.elementsEqual(defaultWelcome.utf8) { welcome = "" }
+        if !welcome.isEmpty, !welcomes.contains(where: { $0.utf8.elementsEqual(welcome.utf8) }) {
+            throw .noSuchWelcome(welcome)
+        }
+        guard name.unicodeScalars.count <= roleNameLimit else { throw .nameTooLong }
+        let steps = role.steps.map { PythonText.strip($0) }.filter { !$0.isEmpty }
+        guard steps.count <= roleListLimit else { throw .tooMany(list: "steps") }
+        func addresses(_ entries: [String], _ list: String) throws(RoleProblem) -> [String] {
+            var out: [String] = [], seen: Set<String> = []
+            for entry in entries.map({ PythonText.strip($0) }) where !entry.isEmpty {
+                guard Address.looksLikeEmail(entry) else { throw .notAnAddress(list: list, entry: entry) }
+                if seen.insert(PythonText.lower(entry)).inserted { out.append(entry) }
+            }
+            guard out.count <= roleListLimit else { throw .tooMany(list: list) }
+            return out
+        }
+        return RoleTemplate(name: name, steps: steps, signature: PythonText.strip(role.signature),
+                            orgUnit: PythonText.strip(role.orgUnit), groups: try addresses(role.groups, "groups"),
+                            calendars: try addresses(role.calendars, "calendars"), welcome: welcome)
+    }
+
+    /// GamGUI's `set_welcome` naming: stripped, required, and an existing name that differs only by case is saved
+    /// over rather than added beside it. Returns the name it's saved under.
+    public static func welcomeName(_ name: String, existing: [String]) throws(RoleProblem) -> String {
+        let name = PythonText.strip(name)
+        guard !name.isEmpty else { throw .welcomeNameRequired }
+        return existing.first { PythonText.lower($0).utf8.elementsEqual(PythonText.lower(name).utf8) } ?? name
+    }
+}
+
 /// A role as GamGUI stores it: the checklist's steps, and what a new hire in it gets.
 public struct RoleTemplate: Sendable, Equatable {
     public let name: String

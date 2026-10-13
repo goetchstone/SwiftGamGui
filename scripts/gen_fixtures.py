@@ -1980,6 +1980,54 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
                 case["welcomes"] = [[name, w["subject"], w["body"]] for name, w in loaded._data["welcomes"].items()]
             out["load"].append(case)
             path.unlink()
+
+        # The store's rules (RunbookStore over a temporary file, never GamGUI's own: failure-log 2026-09-25): its
+        # seed, what set_role keeps and refuses, and the welcome emails' names and refusals. The native role store
+        # keeps these, and adds its own bounds on top.
+        def role_doc(r):
+            return {"name": r.name, "steps": r.steps, "signature": r.signature, "org_unit": r.org_unit,
+                    "groups": r.groups, "calendars": r.calendars, "welcome": r.welcome}
+
+        store = onboarding.RunbookStore(root / "store.json")
+        doc = {"seed_roles": [role_doc(r) for r in store.roles()],
+               "seed_welcomes": [[n, w["subject"], w["body"]] for n, w in store._data["welcomes"].items()],
+               "set_role": [], "set_welcome": [], "delete_welcome": []}
+        store.set_welcome("Contract subject", "Contract body", "Contractor")
+        for name, steps, signature, org_unit, groups, calendars, welcome in [
+                ("  Sales  ", ["  a  ", "", " ", "b"], " Classic ", "  /Sales ", [" x@e.com ", "", "y@e.com"],
+                 ["c@e.com\n"], ""),
+                ("Ops", [], "", "", None, None, "Default"),
+                ("Ops", ["replaced"], "", "", [], [], " Contractor "),
+                ("Floor", ["a"], "", "", "x@e.com\ny@e.com", " ", "contractor"),
+                ("", ["a"], "", "", [], [], ""), ("  \u3000", ["a"], "", "", [], [], ""),
+                ("Lab", ["a"], "", "", [], [], "Nobody")]:
+            case = {"name": name, "steps": steps, "signature": signature, "org_unit": org_unit, "groups": groups,
+                    "calendars": calendars, "welcome": welcome}
+            try:
+                store.set_role(name, steps, signature, org_unit, groups, calendars, welcome)
+                case["saved"] = role_doc(store.role(name.strip()))
+            except ValueError as error:
+                case["error"] = str(error)
+            doc["set_role"].append(case)
+        for name in ["contractor", "CONTRACTOR", "New one", " Trimmed "]:
+            doc["set_welcome"].append({"name": name, "saved_as": store.set_welcome("s", "b", name)})
+        for name in ["", " "]:
+            try:
+                store.set_welcome("s", "b", name)
+            except ValueError as error:
+                doc["set_welcome"].append({"name": name, "error": str(error)})
+        store.set_role("Ops", ["x"], welcome="Contractor")
+        for name in ["Default", "Contractor", "New one"]:
+            case = {"name": name}
+            try:
+                store.delete_welcome(name)
+                case["deleted"] = True
+            except ValueError as error:
+                case["error"] = str(error)
+            doc["delete_welcome"].append(case)
+        doc["role_names"] = store.role_names()
+        doc["welcome_names"] = store.welcome_names()
+        out["store"] = doc
     return out
 
 

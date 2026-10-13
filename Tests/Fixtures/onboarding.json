@@ -4377,5 +4377,207 @@
    "hex": "7bff7d",
    "unreadable": true
   }
- ]
+ ],
+ "store": {
+  "seed_roles": [
+   {
+    "name": "Salesperson",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop",
+     "Add to the team channel",
+     "Add to the sales group"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": ""
+   }
+  ],
+  "seed_welcomes": [
+   [
+    "Default",
+    "Welcome to the team, {name}!",
+    "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   ]
+  ],
+  "set_role": [
+   {
+    "name": "  Sales  ",
+    "steps": [
+     "  a  ",
+     "",
+     " ",
+     "b"
+    ],
+    "signature": " Classic ",
+    "org_unit": "  /Sales ",
+    "groups": [
+     " x@e.com ",
+     "",
+     "y@e.com"
+    ],
+    "calendars": [
+     "c@e.com\n"
+    ],
+    "welcome": "",
+    "saved": {
+     "name": "Sales",
+     "steps": [
+      "a",
+      "b"
+     ],
+     "signature": "Classic",
+     "org_unit": "/Sales",
+     "groups": [
+      "x@e.com",
+      "y@e.com"
+     ],
+     "calendars": [
+      "c@e.com"
+     ],
+     "welcome": ""
+    }
+   },
+   {
+    "name": "Ops",
+    "steps": [],
+    "signature": "",
+    "org_unit": "",
+    "groups": null,
+    "calendars": null,
+    "welcome": "Default",
+    "saved": {
+     "name": "Ops",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   },
+   {
+    "name": "Ops",
+    "steps": [
+     "replaced"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": " Contractor ",
+    "saved": {
+     "name": "Ops",
+     "steps": [
+      "replaced"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": "Contractor"
+    }
+   },
+   {
+    "name": "Floor",
+    "steps": [
+     "a"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": "x@e.com\ny@e.com",
+    "calendars": " ",
+    "welcome": "contractor",
+    "error": "There is no welcome email named \u201ccontractor\u201d."
+   },
+   {
+    "name": "",
+    "steps": [
+     "a"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "",
+    "error": "Role name is required."
+   },
+   {
+    "name": "  \u3000",
+    "steps": [
+     "a"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "",
+    "error": "Role name is required."
+   },
+   {
+    "name": "Lab",
+    "steps": [
+     "a"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "Nobody",
+    "error": "There is no welcome email named \u201cNobody\u201d."
+   }
+  ],
+  "set_welcome": [
+   {
+    "name": "contractor",
+    "saved_as": "Contractor"
+   },
+   {
+    "name": "CONTRACTOR",
+    "saved_as": "Contractor"
+   },
+   {
+    "name": "New one",
+    "saved_as": "New one"
+   },
+   {
+    "name": " Trimmed ",
+    "saved_as": "Trimmed"
+   },
+   {
+    "name": "",
+    "error": "A welcome email needs a name."
+   },
+   {
+    "name": " ",
+    "error": "A welcome email needs a name."
+   }
+  ],
+  "delete_welcome": [
+   {
+    "name": "Default",
+    "error": "The Default welcome email can be edited but not deleted."
+   },
+   {
+    "name": "Contractor",
+    "error": "\u201cContractor\u201d is the welcome email of Ops: pick another for that role first."
+   },
+   {
+    "name": "New one",
+    "deleted": true
+   }
+  ],
+  "role_names": [
+   "Ops",
+   "Sales",
+   "Salesperson"
+  ],
+  "welcome_names": [
+   "Default",
+   "Contractor",
+   "Trimmed"
+  ]
+ }
 }

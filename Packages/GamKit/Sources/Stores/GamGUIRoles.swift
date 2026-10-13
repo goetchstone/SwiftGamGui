@@ -2,8 +2,8 @@ import Darwin
 import Foundation
 import GamEngine
 
-/// GamGUI's onboarding roles, read and never written (design doc D5, slice O1): this app has no role editor
-/// yet, so the Onboard screen offers the roles the operator keeps in GamGUI. The file sits in GamGUI's
+/// GamGUI's onboarding roles, read and never written (design doc D5): what `RoleStore.copy` reads when the
+/// operator copies GamGUI's roles into this app's own, once. The file sits in GamGUI's
 /// app-data folder, so it's read as invariant 5 reads credentials: the folder opened once, the file
 /// `openat` without following a link or blocking on a FIFO, a regular file under `SignatureStore.sizeCap`,
 /// read from that same descriptor (`SignatureStore.read`). It's migrated as GamGUI's own load migrates it

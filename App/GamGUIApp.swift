@@ -145,11 +145,12 @@ struct ContentView: View {
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
                                access: services.userAccess, templates: services.signatureTemplates,
-                               requested: $signaturesPerson)
+                               roles: services.onboardRoles, requested: $signaturesPerson)
                     .navigationTitle("Signatures")
             case .onboard:
                 OnboardView(setup: services.setup, directory: services.directory, changes: services.onboardChanges,
-                            roles: services.onboardRoles, templates: services.signatureTemplates, hasGam: services.executor != nil)
+                            roles: services.onboardRoles, templates: services.signatureTemplates, groups: services.groups,
+                            hasGam: services.executor != nil)
                     .navigationTitle("Onboard")
             case .offboard:
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,

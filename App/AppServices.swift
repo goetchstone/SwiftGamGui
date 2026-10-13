@@ -32,7 +32,7 @@ struct AppServices {
     let groupChanges: GroupChanges
     /// One new hire, through the executor (slice O1).
     let onboardChanges: OnboardChanges
-    /// The roles Onboard offers: GamGUI's, read only.
+    /// The onboarding roles: this app's own, edited on Onboard.
     let onboardRoles: OnboardRoles
     /// Rooms, a person's calendars and who has access, read when a screen needs them.
     let calendarReads: CalendarReads
@@ -61,13 +61,15 @@ struct AppServices {
                         setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
                         templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile),
                         offboardTemplates: OffboardTemplates(root: SignatureStore.defaultRoot),
-                        // GamGUI's roles file, built here at run time only (GamGUI's `paths.py`, `onboarding.py:47`).
-                        rolesFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json"))
+                        // This app's roles; GamGUI's file, built here at run time only (GamGUI's `paths.py`,
+                        // `onboarding.py:47`), is read only when the operator copies it once.
+                        onboardRoles: OnboardRoles(root: SignatureStore.defaultRoot,
+                                                   gamGUIFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json")))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
-                                 offboardTemplates: OffboardTemplates, rolesFile: URL, lastDomain: LastDomain = .userDefaults,
+                                 offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -91,7 +93,7 @@ struct AppServices {
                            groupMembers: groupMembers,
                            groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
                            onboardChanges: OnboardChanges(executor: executor, setup: setup, directory: directory),
-                           onboardRoles: OnboardRoles(file: rolesFile),
+                           onboardRoles: onboardRoles,
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
@@ -135,20 +137,17 @@ struct AppServices {
                             gamGUIFile: nil),
                         offboardTemplates: OffboardTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-offboarding-\(UUID().uuidString)")),
-                        rolesFile: demoRoles(beside: mock), lastDomain: .memory())
+                        onboardRoles: demoRoles(beside: mock), lastDomain: .memory())
     }
 
-    /// The demo's roles: `Tests/Fixtures/demo/onboarding.json` (GamGUI's format; app data, not GAM's output, so not in
-    /// `mock_gam/`, whose files are GAM's records), copied into a fresh temporary folder
-    /// each launch, so Onboard never reads the operator's GamGUI roles. Without the mock, a file that isn't there.
-    private static func demoRoles(beside mock: URL?) -> URL {
-        let folder = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roles-\(UUID().uuidString)")
-        let file = folder.appending(path: "onboarding.json")
-        if let source = mock?.deletingLastPathComponent().appending(path: "demo/onboarding.json") {
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try? FileManager.default.copyItem(at: source, to: file)
-        }
-        return file
+    /// The demo's roles: a role store in a fresh temporary folder each launch, never the operator's, holding
+    /// `Tests/Fixtures/demo/onboarding.json`'s roles (GamGUI's format; app data, not GAM's output, so not in
+    /// `mock_gam/`). No copy from GamGUI is offered. Without the mock, the starter role alone.
+    private static func demoRoles(beside mock: URL?) -> OnboardRoles {
+        let roles = OnboardRoles(root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roles-\(UUID().uuidString)"),
+                                 gamGUIFile: nil)
+        if let source = mock?.deletingLastPathComponent().appending(path: "demo/onboarding.json") { roles.seedForDemo(from: source) }
+        return roles
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a
