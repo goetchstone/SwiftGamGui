@@ -739,6 +739,29 @@ final class ExecutorTests {
         #expect(ran().isEmpty)
     }
 
+    /// The rule a run uses for a list's id, for a caller holding the list's output (a retry preview of the
+    /// tasks that failed, on the list that exists).
+    @Test func theListIdRuleIsTheRunsOwn() {
+        #expect(Executor.taskListID(printed: "Got 1 Tasklist\nMDQ5_Mi0x\n\n") == "MDQ5_Mi0x")
+        #expect(Executor.taskListID(printed: "a,b\n") == nil)
+        #expect(Executor.taskListID(printed: "tltitle:Onboard") == nil)
+        #expect(Executor.taskListID(printed: "  \n") == nil)
+    }
+
+    /// A step whose `gam` didn't finish (it timed out, or the app stopped it) may have made its change:
+    /// onboarding still shows a create's one-time password then, marked unsure.
+    @Test func aStepThatDidntFinishMayHaveChanged() async throws {
+        let executor = executor()
+        let slow = WriteStep(GamCommands.setSuspended(email: "alice@example.com", suspended: true), target: "alice@example.com",
+                             summary: "", timeout: .nanoseconds(1))
+        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true), target: "missing@example.com",
+                             summary: "")
+        let outcome = await executor.run(try await held(executor, [slow, gone, suspend("bob@example.com")]), confirmation: confirmed)
+        #expect(outcome.steps.map(\.mayHaveChanged) == [true, false, false])
+        #expect(RunOutcome.Step.failed(message: Executor.interrupted, kind: nil).mayHaveChanged)
+        #expect(!RunOutcome.Step.skipped(reason: "Cancelled before it ran.").mayHaveChanged)
+    }
+
     // MARK: a new account's wait (D3a, D3b)
 
     private let password = "Xk7m-Qp9r-2Tzv"

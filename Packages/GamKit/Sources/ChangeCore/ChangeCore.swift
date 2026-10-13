@@ -208,6 +208,11 @@ public struct RunOutcome: Sendable {
 
         public var isSucceeded: Bool { if case .succeeded = self { true } else { false } }
         public var isWaiting: Bool { if case .waiting = self { true } else { false } }
+        /// A step whose `gam` didn't finish (a timeout, or an interruption): it may have made its change.
+        public var mayHaveChanged: Bool {
+            guard case .failed(let message, let kind) = self else { return false }
+            return kind == .timeout || message == Executor.interrupted
+        }
     }
 
     /// Why nothing ran, in the operator's words; nil when the preview ran.
@@ -615,8 +620,7 @@ public actor Executor {
     /// element a run takes from outside its preview can be nothing but that list's id.
     static func taskOnItsList(_ held: WriteStep, _ task: WriteStep.ListedTask, listStep: WriteStep,
                               printed: String?) -> GamWrite? {
-        let lines = PythonText.lines(printed ?? "").map { PythonText.strip($0) }.filter { !$0.isEmpty }
-        guard let id = lines.last, usableListID(id), listStep.write.argv.count > 1 else { return nil }
+        guard let id = taskListID(printed: printed ?? ""), listStep.write.argv.count > 1 else { return nil }
         let write = GamCommands.createTask(assignee: listStep.write.argv[1], taskListID: id, title: task.title, notes: task.notes)
         let heldArgv = held.write.argv, idElement = 4
         guard write.argv.count == heldArgv.count, heldArgv.count > idElement,
@@ -624,6 +628,14 @@ public actor Executor {
               heldArgv.indices.allSatisfy({ $0 == idElement || same(write.argv[$0], heldArgv[$0]) })
         else { return nil }
         return write
+    }
+
+    /// The id a list step's `returnidonly` printed: its last non-empty line, stripped (GamGUI's
+    /// `create_onboarding_runbook`), when `usableListID` takes it; nil otherwise.
+    public static func taskListID(printed: String) -> String? {
+        let lines = PythonText.lines(printed).map { PythonText.strip($0) }.filter { !$0.isEmpty }
+        guard let id = lines.last, usableListID(id) else { return nil }
+        return id
     }
 
     /// GAM's longest task list id is far below this; a longer "id" is output that isn't one.
