@@ -45,7 +45,7 @@ A person's page, opened from Users: an Actions menu for what changes the account
 
 | Calendar | Security |
 |---|---|
-| ![A person's Calendar tab: who can see their calendar, each with Remove…, an access level and a field to share it](docs/screenshots/person-calendar.png) | ![A person's security: 2-step verification, admin roles and sign-out](docs/screenshots/person-security.png) |
+| ![A person's Calendar tab: who can see their calendar, each with Remove…, an access level and a field to share it](docs/screenshots/person-calendar.png) | ![A person's security: admin role, 2-step verification and recovery email](docs/screenshots/person-security.png) |
 
 Groups: the domain's groups, and a group's members, owners first, with Add Members… and a Remove… for
 each member.
