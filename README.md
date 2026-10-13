@@ -135,20 +135,21 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Title and department (Users) | **confirmed** (2026-10-09) |
 | Suspend and unsuspend (Users) | **confirmed** (2026-10-09) |
 | Remove from a group (Users) | **confirmed** (2026-10-09) |
-| Add to a group (Users) | argv-identical |
+| Add to a group (Users) | **confirmed** (2026-10-13; the same command as Groups' add as member) |
 | Add a mail delegate (Users) | **confirmed** (2026-10-09) |
 | Remove a mail delegate (Users) | **confirmed** (2026-10-10) |
 | Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
 | Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
-| Set signature (Signatures) | argv-identical |
-| Add people to a group as members (Groups) | argv-identical |
+| Set signature (Signatures) | **confirmed** (2026-10-13) |
+| Add people to a group as members (Groups) | **confirmed** (2026-10-13) |
 | Add people to a group as managers or owners (Groups) | not yet: never run live in either app |
-| Remove a member (Groups) | argv-identical |
+| Remove a member (Groups) | **confirmed** (2026-10-13) |
 | Share a calendar with a person (Calendars) | argv-identical |
 | Put a shared calendar in their list (Calendars) | argv-identical |
-| Share their own calendar (Users) | argv-identical |
-| Remove someone's access to a calendar (Calendars, Users) | GamGUI's command, which GamGUI never ran live either |
+| Share their own calendar (Users) | **confirmed** (2026-10-13) |
+| Remove someone's access to their own calendar (Users) | **confirmed** (2026-10-13) |
+| Remove someone's access to a calendar (Calendars) | GamGUI's command, which GamGUI never ran live either |
 | Create an account (Onboard) | argv-identical |
 | Task checklist: a task list and its tasks (Onboard) | argv-identical |
 | Subscribe to a calendar (Onboard) | argv-identical |
