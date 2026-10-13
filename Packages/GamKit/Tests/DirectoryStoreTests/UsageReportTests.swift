@@ -184,6 +184,8 @@ struct UsageReportTests {
         #expect(app.usage.report != nil)
         try await connect("example.org", in: app.setup)
         #expect(app.usage.report == nil, "example.com's usage, shown as example.org's")
+        try await connect("example.com", in: app.setup)
+        #expect(app.usage.report == nil, "a later generation of the same domain reads again")
     }
 
     @Test func aTenantSwitchStopsTheOldLoad() async throws {
