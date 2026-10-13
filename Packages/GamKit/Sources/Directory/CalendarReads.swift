@@ -180,8 +180,8 @@ public final class CalendarReads {
     }
 
     /// What a finished run found, or why nothing. A calendar with no rules exits 60 with the header alone (F3),
-    /// which is none, not a failure (plan Q4); a list never does. GAM's "Getting … for …" line is dropped before
-    /// a failure is classified (`GettingLines`). Output the runner cut at its cap is refused.
+    /// which is none, not a failure (plan Q4); a list never does. GAM's "Getting … for …" line before a failure is
+    /// progress to GamError (failure-log 2026-10-13). Output the runner cut at its cap is refused.
     nonisolated static func found(from result: GamResult, for read: Read, argv: [String]) throws -> Found {
         let isAccess: Bool = switch read {
         case .access, .primaryAccess: true
@@ -189,7 +189,7 @@ public final class CalendarReads {
         }
         let records = GamOutput.records(result.stdout)
         guard result.exitCode == 0 || (isAccess && result.exitCode == 60 && records.isEmpty) else {
-            throw GamError(exitCode: result.exitCode, stderr: GettingLines.removed(from: result.stderr), argv: argv,
+            throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv,
                            stdout: result.stdout)
         }
         guard !result.stdoutTruncated else { throw DirectoryStore.Truncated() }

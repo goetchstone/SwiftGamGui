@@ -22,7 +22,7 @@ writes end to end), `WriteRouteTests` (the one confirm screen).
 ## Files
 - `Packages/GamKit/Sources/GamEngine/Calendar.swift`: `CalendarACL`, `UserCalendar`, `ResourceCalendar`
   (GamGUI's models), `ResourceCalendar.search` (GamGUI's room filter), `CalendarSharing` (who GAM acts
-  as, the share target check, the picker's four roles) and `GettingLines`.
+  as, the share target check, the picker's four roles).
 - `Packages/GamKit/Sources/Directory/CalendarReads.swift`: the four reads (C1b).
 - `Packages/GamKit/Sources/Directory/CalendarChanges.swift`: the screen's share and removal (C2a);
   `UserChanges.previewShareCalendar` and `previewUnshareCalendar`, the person page's; `CalendarPreviewSheet`
@@ -77,8 +77,8 @@ writes end to end), `WriteRouteTests` (the one confirm screen).
   "Getting Calendar ACLs for <calendar>" to stderr (`printGettingEntityItemForWhom`, :2718-2722;
   `show_gettings` is on by default). GamError, held to GamGUI's classification, knows only "Getting all
   …" as progress, so this line reads as an unknown failure and outranks the real one (a person with
-  Calendar off read as "GAM reported an error"). The calendar reads drop it before classifying
-  (`GettingLines`); GamError itself is unchanged.
+  Calendar off read as "GAM reported an error"). GamError now reads every "Getting …" line as progress
+  (failure-log 2026-10-13); this branch's own filter for the calendar reads was removed then.
 
 ## The reads (C1b): `Directory/CalendarReads.swift`
 - **GroupMembers' reviewed shape:** each read (`.rooms`, `.calendars(of:)`, `.access(calendar:)`,
@@ -90,7 +90,7 @@ writes end to end), `WriteRouteTests` (the one confirm screen).
 - **Exit 60 is none, for rules only** (Q4): a calendar's rules with exit 60 and no records read as an
   empty list ("No access rules returned." on the screen, GamGUI's "Only the owner has access." on the
   tab); a list never exits 60, so there it is a failure.
-- **Failures** are GamError's remediation with GAM's line beneath, after `GettingLines`.
+- **Failures** are GamError's remediation with GAM's line beneath.
 
 ## The screen and the tab
 - **Calendars** (sidebar, after Groups): Rooms | Person. Rooms are read when Rooms is first shown for a

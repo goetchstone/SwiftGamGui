@@ -155,18 +155,12 @@ struct CalendarTests {
         let roles = GamCommands.CalendarRole.allCases.map(\.rawValue)
         let mock = try String(contentsOf: Fixtures.mockGam, encoding: .utf8)
         #expect(mock.contains("ACL_ROLES=\"\(roles.joined(separator: "|"))\""))
-        let grammar = try String(contentsOf: Fixtures.repoRoot.appending(path: "Vendor/gam7/GamCommands.txt"), encoding: .utf8)
-        let definitions = grammar.matches(of: /<CalendarACLRole> ::=\s*(\S+)/).map { String($0.output.1) }
+        // The vendored grammar's definitions, as scripts/gen_fixtures.py read them into argv.json (Vendor/gam7 isn't
+        // in the repo, and the package tests run before CI fetches it).
+        let argv = try #require(JSONValue.parse(String(decoding: Data(contentsOf: Fixtures.argvJSON), as: UTF8.self))?.object)
+        let definitions = try #require(argv["constants"]?.object?["GRAMMAR_CALENDAR_ACL_ROLES"]?.array).compactMap(\.string)
         #expect(definitions.count >= 3 && Set(definitions) == [roles.joined(separator: "|")])
         #expect(CalendarSharing.pickerRoles.map(\.role) == [.reader, .freeBusyReader, .writer, .owner])
         #expect(CalendarSharing.pickerRoles.map(\.label) == ["See all details", "Free/busy only", "Make changes", "Make changes & manage"])
-    }
-
-    /// GAM's "Getting … for …" line is progress, not a failure: dropped before a read's error is classified.
-    @Test func gettingLinesAreDropped() {
-        let stderr = "Getting Calendars for carol@example.com\nUser: carol@example.com, Calendar Service/App not enabled\n"
-        #expect(GettingLines.removed(from: stderr) == "User: carol@example.com, Calendar Service/App not enabled\n")
-        #expect(GettingLines.removed(from: "Calendar: x, Print Failed: Not Found\n") == "Calendar: x, Print Failed: Not Found\n")
-        #expect(GettingLines.removed(from: "Getting nothing done\n") == "Getting nothing done\n", "not GAM's shape")
     }
 }

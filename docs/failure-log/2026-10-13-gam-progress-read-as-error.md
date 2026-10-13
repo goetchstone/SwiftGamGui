@@ -68,5 +68,5 @@
     mock.
   - Five mutants all fail the suite: GamGUI's rule, case-insensitive, anywhere in the line, a counter
     refused, no space after "Getting".
-  - The Calendars branch's `GettingLines` filter comes out in a later change.
+  - The Calendars branch's `GettingLines` filter was removed when it landed (#53).
   - Not live-proven: a refused report or a deprovision on a real tenant is still owed (`live-verify`).

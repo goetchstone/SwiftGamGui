@@ -54,6 +54,7 @@ import inspect
 import io
 import itertools
 import json
+import re
 import subprocess
 import sys
 import types
@@ -1558,6 +1559,12 @@ def main() -> int:
         "cases": unique,
         "defaults": defaults,
     }
+    # The vendored grammar's definitions the Swift tests check against (Vendor/gam7 isn't in the repo, and CI runs
+    # the package tests before it fetches GAM).
+    grammar = Path(args.gam_binary).with_name("GamCommands.txt").read_text(encoding="utf-8")
+    argv_doc["constants"]["GRAMMAR_CALENDAR_ACL_ROLES"] = re.findall(r"<CalendarACLRole> ::=\s*(\S+)", grammar)
+    if len(argv_doc["constants"]["GRAMMAR_CALENDAR_ACL_ROLES"]) < 3:
+        raise SystemExit("the grammar's <CalendarACLRole> definitions weren't found")
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "argv.json").write_text(json.dumps(argv_doc, indent=1, ensure_ascii=False) + "\n")
     covered = {c["builder"] for c in unique}

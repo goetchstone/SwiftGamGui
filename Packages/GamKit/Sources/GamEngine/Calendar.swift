@@ -232,22 +232,3 @@ public enum CalendarSharing {
         return "“\(target)” isn't one address: enter a person's full address, like name@example.com."
     }
 }
-
-/// GAM's per-entity progress line on stderr (`printGettingEntityItemForWhom`, on by default:
-/// "Getting Calendar ACLs for c_team@…"). GamError, like GamGUI's `_PROGRESS_LINE`, knows only "Getting all …",
-/// and reads this as an unknown failure that outranks the real one ("Calendar Service/App not enabled"). A read
-/// that prints it drops it before classifying.
-public enum GettingLines {
-    public static func removed(from stderr: String) -> String {
-        stderr.split(separator: "\n", omittingEmptySubsequences: false)
-            .filter { !isGetting(PythonText.strip(String($0))) }
-            .joined(separator: "\n")
-    }
-
-    /// "Getting <items> for <whom>".
-    static func isGetting(_ line: String) -> Bool {
-        let scalars = Array(line.unicodeScalars)
-        guard scalars.starts(with: "Getting ".unicodeScalars) else { return false }
-        return ResourceCalendar.contains(Array(scalars.dropFirst(8)), Array(" for ".unicodeScalars))
-    }
-}

@@ -117,8 +117,8 @@ struct MockCalendarsTests {
     }
 
     /// F3/F4: a person with Calendar off is GAM's per-user refusal, exit 73. Listing their calendars says "Getting
-    /// Calendars for …" first, which GamError (GamGUI's `_PROGRESS_LINE`, "Getting all " only) reads as an
-    /// unknown failure: the reads drop that line before classifying (`GettingLines`).
+    /// Calendars for …" first, which GamError reads as progress, so the refusal keeps its own kind (GamGUI's
+    /// `_PROGRESS_LINE` knows only "Getting all …"; failure-log 2026-10-13).
     @Test func calendarOffExits73() async throws {
         let state = try stateFolder()
         defer { try? FileManager.default.removeItem(at: state) }
@@ -126,8 +126,7 @@ struct MockCalendarsTests {
         let list = try await run(GamCommands.printUserCalendars(email: "carol@example.com").argv, state: state)
         #expect(list.exitCode == 73)
         #expect(list.stderr == "Getting Calendars for carol@example.com\nUser: carol@example.com, Calendar Service/App not enabled\n")
-        #expect(GamError(exitCode: list.exitCode, stderr: list.stderr).kind == .unknown, "the trap GettingLines closes")
-        #expect(GamError(exitCode: list.exitCode, stderr: GettingLines.removed(from: list.stderr)).kind == .serviceNotEnabled)
+        #expect(GamError(exitCode: list.exitCode, stderr: list.stderr).kind == .serviceNotEnabled, "\(list.stderr)")
         // The user form checks their primary calendar before it says it's getting the rules.
         let acls = try await run(GamCommands.printCalendarACLs(email: "carol@example.com").argv, state: state)
         #expect(acls.exitCode == 73)
