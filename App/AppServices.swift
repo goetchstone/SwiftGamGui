@@ -132,12 +132,13 @@ struct AppServices {
                         rolesFile: demoRoles(beside: mock), lastDomain: .memory())
     }
 
-    /// The demo's roles: the mock's GamGUI-format `onboarding.json`, copied into a fresh temporary folder
+    /// The demo's roles: `Tests/Fixtures/demo/onboarding.json` (GamGUI's format; app data, not GAM's output, so not in
+    /// `mock_gam/`, whose files are GAM's records), copied into a fresh temporary folder
     /// each launch, so Onboard never reads the operator's GamGUI roles. Without the mock, a file that isn't there.
     private static func demoRoles(beside mock: URL?) -> URL {
         let folder = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roles-\(UUID().uuidString)")
         let file = folder.appending(path: "onboarding.json")
-        if let source = mock?.deletingLastPathComponent().appending(path: "mock_gam/onboarding.json") {
+        if let source = mock?.deletingLastPathComponent().appending(path: "demo/onboarding.json") {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try? FileManager.default.copyItem(at: source, to: file)
         }

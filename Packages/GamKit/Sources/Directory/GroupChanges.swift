@@ -199,7 +199,8 @@ public final class GroupChanges {
             case .failed(let message, let kind):
                 failed.append((why(message, kind: kind, member: member, group: group, adding: pending.adding != nil),
                                kind == nil ? nil : message))
-            case .skipped(let reason):
+            case .skipped(let reason), .waiting(let reason):
+                // A group step never waits (only a new account's steps may): one that did is said, not counted.
                 failed.append((reason, nil))
             }
         }

@@ -93,9 +93,9 @@ struct GamGUIRolesTests {
         #expect(listing() == ["onboarding.json"])
     }
 
-    /// The demo's roles (the mock's GamGUI-format file, copied to a temporary folder at a demo launch) read.
+    /// The demo's roles (GamGUI's format, in `Tests/Fixtures/demo`, copied to a temporary folder at a demo launch) read.
     @Test func theDemoRolesRead() throws {
-        let roles = try GamGUIRoles.read(Fixtures.mockGamData.appending(path: "onboarding.json"))
+        let roles = try GamGUIRoles.read(Fixtures.directory.appending(path: "demo/onboarding.json"))
         #expect(roles.roles.map(\.name) == ["Salesperson", "Warehouse"])
         #expect(roles.roles[0].signature == "Classic" && roles.roles[1].steps.count == 3)
     }

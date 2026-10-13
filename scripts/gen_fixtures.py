@@ -1852,8 +1852,11 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
     out["waiting_note"] = [{"steps": [s["what"] for s in steps], "note": onboarding.waiting_note(steps)} for steps in lists]
 
     # not_ready_yet over the classifier's own corpus (by index into gam_errors.json), then the live lines
-    # and their case and fold variants.
-    flags = [onboarding.not_ready_yet(GAMError.from_run(c["exit_code"], c["stderr"])) for c in gam_error_cases]
+    # and their case and fold variants, read with GAM's progress lines as progress, as gam_errors.json is
+    # (gam_progress; failure-log 2026-10-13): frozen GamGUI's misreading would make a not-ready refusal behind a
+    # "Getting …" line look like an unknown failure here too.
+    with gam_progress():
+        flags = [onboarding.not_ready_yet(GAMError.from_run(c["exit_code"], c["stderr"])) for c in gam_error_cases]
     extra = [(50, "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n"),
              (73, "User: new@example.com, Calendar Service/App not enabled\n"),
              (50, "User: new@example.com, Tasklist Create Failed: access_denied: REQUESTED CLIENT NOT AUTHORIZED\n"),
