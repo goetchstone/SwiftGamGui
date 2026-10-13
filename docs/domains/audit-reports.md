@@ -96,6 +96,11 @@ and the tenant generation for the usage report.
   real GAM walks back itself and prints a header alone only when it gives up.
 - **Not live yet:** the usage report has never run on the operator's tenant from this app. It is a read.
 - The fixture generator reads `report users` through the mock: re-run it after changing that handler.
+- **A page's text set the window's height.** Audit's header and a report's description were
+  `fixedSize(vertical: true)` in a page that may shrink to zero width, so SwiftUI measured them one character
+  a line: Audit asked for a window 1,755 points tall (drawn in part), and Reports for 808 at the smallest
+  width. Outside a scroll view, let text wrap in the space it's given; the snapshots now fail any page that
+  needs the window taller than its own 520-point minimum.
 
 ## Testing / live-verification status
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's

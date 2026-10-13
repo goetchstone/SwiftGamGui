@@ -195,7 +195,7 @@ private struct ReportPeople: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(report.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                Text(report.description).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(report.description).foregroundStyle(.secondary)
                 Text("\(report.count.formatted()) account\(report.count == 1 ? "" : "s")")
             }
             .padding()

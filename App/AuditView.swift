@@ -183,7 +183,7 @@ struct AuditView: View {
             }
             Text("Read-only: this screen reads the audit log on this Mac and never runs GAM. Each change is "
                  + "recorded when it starts and again when it ends.")
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(.callout).foregroundStyle(.secondary)
             if let notice {
                 Label(notice.text, systemImage: notice.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                     .foregroundStyle(notice.failed ? .orange : .secondary)

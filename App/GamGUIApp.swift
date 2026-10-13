@@ -76,6 +76,9 @@ enum ColumnWidths {
     static let sidebar = (min: 150.0, ideal: 170.0, max: 190.0)
     static let inspector = (min: 320.0, ideal: 360.0, max: 400.0)
     static let windowMin = 920.0
+    /// The window's own minimum height. A page never asks for more (the snapshots hold it): a taller minimum
+    /// grows the window past the screen.
+    static let windowMinHeight = 520.0
 }
 
 struct ContentView: View {
@@ -176,7 +179,7 @@ struct ContentView: View {
         .onChange(of: services.directory.problem) { _, problem in
             if let problem { announce("Couldn't load the directory. \(problem.summary)") }
         }
-        .frame(minWidth: ColumnWidths.windowMin, minHeight: 520)
+        .frame(minWidth: ColumnWidths.windowMin, minHeight: ColumnWidths.windowMinHeight)
         .task {
             // Local and credential-free.
             if let gam = services.gam {
