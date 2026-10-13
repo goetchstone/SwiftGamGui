@@ -359,6 +359,24 @@ final class OnboardChangesTests {
         #expect(instances(of: TemporaryPassword.self, in: changes) == 0, "dropped, not just hidden")
     }
 
+    /// A new account's card would replace one not yet handed over, whose password exists nowhere else: a new
+    /// create waits for Done. A run that creates nothing can go ahead.
+    @Test func aNewCreateWaitsForTheLastCardToBeHandedOver() async throws {
+        try await connect()
+        let changes = model()
+        await changes.confirm(try await preview(changes, role: RoleTemplate(name: "Sales", steps: ["A"])), confirmed)
+        let card = try #require(changes.card)
+        changes.startAnother()
+        await changes.preview(hire: Hire(name: "Sam Rivers", email: "sam@example.com", createAccount: true),
+                              role: RoleTemplate(name: "Sales", steps: ["A"]), signatureTemplate: nil)
+        #expect(changes.problem == "Print or copy the sign-in details for jordan@example.com, then click Done, before creating another account.")
+        #expect(changes.pending == nil && changes.card?.id == card.id)
+        _ = try await preview(changes, Hire(name: "Carol Clark", email: "carol@example.com"), role: RoleTemplate(name: "Sales", steps: ["A"]))
+        changes.doneWithCard()
+        _ = try await preview(changes, Hire(name: "Sam Rivers", email: "sam@example.com", createAccount: true),
+                              role: RoleTemplate(name: "Sales", steps: ["A"]))
+    }
+
     /// Failure-log 2026-09-22 ("feed"): nothing but the card holds the password. While it's held for the card
     /// it's there once; no held preview stays behind in the model after the run.
     @Test func noStateButTheCardHoldsThePassword() async throws {
@@ -516,6 +534,19 @@ final class OnboardChangesTests {
         #expect(changes.card?.signature == .notApplied("Classic"))
         #expect(writes().count == before)
         #expect(!changes.isBusy)
+        #expect(await executor.parkedRuns == 0, "the executor holds nothing for a retry, the password with it")
+    }
+
+    /// Done or the last round leave nothing held for a retry either.
+    @Test func aFinishedWaitLeavesNothingHeld() async throws {
+        try await connect()
+        try lag(100)
+        let changes = model(waits: [.zero, .zero])
+        await changes.confirm(try await preview(changes, role: RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic")), confirmed)
+        #expect(await executor.parkedRuns == 1)
+        await changes.waitForFinishing()
+        #expect(changes.finishing?.phase == .gaveUp && changes.finishing?.round == 2)
+        #expect(await executor.parkedRuns == 0, "the rounds this model didn't use are dropped, not left to expire")
     }
 
     // MARK: refused at preview, in GamGUI's words
