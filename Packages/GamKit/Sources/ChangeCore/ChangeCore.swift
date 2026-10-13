@@ -205,9 +205,32 @@ public struct RunOutcome: Sendable {
     /// Set when an end record couldn't be written: the change ran, but the audit is missing its result.
     public let auditProblem: String?
 
+    /// Steps still waiting for a new account, when they can be retried: pass it to `Executor.retry`.
+    public let retry: PendingRetry?
+
     public var succeeded: Bool { refusal == nil && steps.allSatisfy { if case .succeeded = $0 { true } else { false } } }
 
+    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil) {
+        self.refusal = refusal
+        self.steps = steps
+        self.auditProblem = auditProblem
+        self.retry = retry
+    }
+
     static func refused(_ why: String) -> RunOutcome { RunOutcome(refusal: why, steps: [], auditProblem: nil) }
+}
+
+/// A confirmed run's steps still waiting for Google to finish a new account (D3d). Opaque: only the
+/// executor makes one, and each is good for one `Executor.retry` or `abandon`.
+public struct PendingRetry: Sendable, Hashable {
+    let id: UUID
+    /// Retry rounds already run: 0 after the run itself.
+    public let round: Int
+
+    package init(id: UUID, round: Int) {
+        self.id = id
+        self.round = round
+    }
 }
 
 /// The only path to a write. An actor, with writes serialized beyond that (GamGUI's `_write_lock`): a
@@ -218,6 +241,12 @@ public actor Executor {
     public static let previewLifetime: Duration = .seconds(15 * 60)
     /// Held previews kept; the oldest goes first (invariant 9).
     public static let previewsKept = 8
+    /// Retry rounds after a run: GamGUI's `NEW_ACCOUNT_WAITS` has five.
+    public static let newAccountRounds = 5
+    /// A run's waiting steps can be retried this long after it ended.
+    public static let retryLifetime: Duration = .seconds(15 * 60)
+    /// Runs with steps waiting kept; the oldest goes first (invariant 9).
+    public static let retriesKept = 8
 
     public typealias Tenant = @Sendable () async -> (domain: Domain, generation: Int)?
 
@@ -232,6 +261,9 @@ public actor Executor {
 
     private var held: [UUID: HeldPreview] = [:]
     private var order: [UUID] = []
+    /// Confirmed runs with steps waiting for a new account, by `PendingRetry.id`: what `retry` continues.
+    private var parked: [UUID: Parked] = [:]
+    private var parkedOrder: [UUID] = []
     private var inFlight: Set<String> = []
     private var writing = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
@@ -379,7 +411,74 @@ public actor Executor {
         }
         if let why = await aliasRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
-        return await execute(taken, progress: progress)
+        let ran = await execute(taken, progress: progress)
+        return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
+                          retry: park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
+    }
+
+    // MARK: retrying what waits for a new account (D3d)
+
+    /// A run whose steps wait: the held preview (so a retry runs its argv, under its digest), the results
+    /// so far and the lists' output (a waiting task's id), the rounds run and when the run ended.
+    private struct Parked {
+        let preview: HeldPreview
+        let results: [RunOutcome.Step]
+        let listOutputs: [Int: String]
+        let round: Int
+        let ranAt: ContinuousClock.Instant
+    }
+
+    static let retrySpent = "Those steps were already retried, or the retry was stopped."
+    static let retryOver = "The wait for Google is over — preview what's left again."
+    static let heldChanged = "What the preview held has changed since — preview again."
+
+    /// Keeps `results` for a retry when a step waits and a round is left; nil otherwise.
+    private func park(_ preview: HeldPreview, _ results: [RunOutcome.Step], _ listOutputs: [Int: String], round: Int,
+                      ranAt: ContinuousClock.Instant) -> PendingRetry? {
+        guard results.contains(where: \.isWaiting), round < Self.newAccountRounds, now() - ranAt <= Self.retryLifetime
+        else { return nil }
+        let handle = PendingRetry(id: UUID(), round: round)
+        while parkedOrder.count >= Self.retriesKept { parked[parkedOrder.removeFirst()] = nil }
+        parked[handle.id] = Parked(preview: preview, results: results, listOutputs: listOutputs, round: round, ranAt: ranAt)
+        parkedOrder.append(handle.id)
+        return handle
+    }
+
+    /// The confirmed run, continued (GamGUI's `finish_new_accounts`, one round): runs again only the steps
+    /// still waiting, and those waiting on them, exactly as held, through the same checks as `run` but the
+    /// confirmation, which the run already had. Single use: the outcome carries the next handle while a
+    /// step still waits and a round is left. Refused after `newAccountRounds` rounds, `retryLifetime`
+    /// after the run, on another tenant, or while a target is in flight. The caller does the waiting.
+    public func retry(_ handle: PendingRetry, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation? = nil) async -> RunOutcome {
+        // Taken before any await: two retries of one handle can't both get it.
+        guard let state = parked.removeValue(forKey: handle.id) else { return .refused(Self.retrySpent) }
+        parkedOrder.removeAll { $0 == handle.id }
+        guard state.round < Self.newAccountRounds, now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
+        guard await isCurrent(state.preview) else { return .refused(Self.switched) }
+        let again = state.preview.steps.indices.filter { state.results[$0].isWaiting }.map { state.preview.steps[$0] }
+        let targets = Set(again.map { Self.key($0.target) })
+        if let busy = again.first(where: { inFlight.contains(Self.key($0.target)) }) {
+            return .refused("A change to \(busy.target) is already running — wait for it to finish, then preview again.")
+        }
+        inFlight.formUnion(targets)
+        defer { inFlight.subtract(targets) }
+        await acquireWriteLock()
+        defer { releaseWriteLock() }
+        guard now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
+        // What runs is still what the operator confirmed.
+        guard Self.same(HeldPreview.digest(of: state.preview.steps), state.preview.digest) else { return .refused(Self.heldChanged) }
+        guard await isCurrent(state.preview) else { return .refused(Self.switched) }
+        let round = state.round + 1
+        let ran = await execute(state.preview, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
+                                progress: progress)
+        return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
+                          retry: park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+    }
+
+    /// Stop: the waiting steps are dropped, and the handle runs nothing.
+    public func abandon(_ handle: PendingRetry) {
+        parked[handle.id] = nil
+        parkedOrder.removeAll { $0 == handle.id }
     }
 
     /// Design doc §6, GamGUI failure-log 2026-09-24: `gam delete user <alias>` deletes the account the alias
@@ -417,14 +516,22 @@ public actor Executor {
     /// Targets compare as GamGUI compares addresses: trimmed and lowercased.
     static func key(_ target: String) -> String { Guard.normalized(target) }
 
-    private func execute(_ preview: HeldPreview, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async -> RunOutcome {
+    /// Runs the preview's steps in order. `resuming` a retry: a step whose prior result isn't `.waiting`
+    /// keeps it, unrun; `attempt` numbers the retry's audit records.
+    private func execute(_ preview: HeldPreview, resuming prior: [RunOutcome.Step]? = nil, listOutputs priorOutputs: [Int: String] = [:],
+                         attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
+        -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
         /// What each list step that succeeded printed: its tasks' id (D3c).
-        var listOutputs: [Int: String] = [:]
+        var listOutputs = priorOutputs
         for (index, planned) in preview.steps.enumerated() {
+            if let prior, !prior[index].isWaiting {
+                results.append(prior[index])
+                continue
+            }
             // Each result as it's decided: for a step that ran, after its end record.
             defer { progress?.yield((index, results[index])) }
             if let stoppedBy {
@@ -464,7 +571,7 @@ public actor Executor {
                 step = planned.running(write)
             }
             await beforeEachStep?()
-            let base = extra(for: step, of: preview, index: index)
+            let base = extra(for: step, of: preview, index: index, attempt: attempt)
             let secrets = step.secretTexts
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
@@ -485,7 +592,7 @@ public actor Executor {
             if let stop = ran.stop { stoppedBy = stop }
             if let problem = ran.auditProblem { auditProblem = problem }
         }
-        return RunOutcome(refusal: nil, steps: results, auditProblem: auditProblem)
+        return (results, listOutputs, auditProblem)
     }
 
     /// GamGUI's words when a list's `returnidonly` gave no id (`onboarding.py` `_why(None)`).
@@ -593,13 +700,15 @@ public actor Executor {
 
     static let interrupted = "Interrupted before GAM finished: check the result in Google before running it again."
 
-    private func extra(for step: WriteStep, of preview: HeldPreview, index: Int) -> JSONObject {
+    private func extra(for step: WriteStep, of preview: HeldPreview, index: Int, attempt: Int?) -> JSONObject {
         var extra: JSONObject = [:]
         for key in step.about.keys.sorted() where !(step.about[key] ?? "").isEmpty { extra[key] = .string(step.about[key]!) }
         extra["preview"] = .string(preview.id.uuidString)
         extra["digest"] = .string(preview.digest)
         extra["origin"] = .string(preview.origin.rawValue)
         extra["step"] = .number(String(index))
+        // A retry's records: the run's own are attempt 1, unnumbered.
+        if let attempt { extra["attempt"] = .number(String(attempt)) }
         return extra
     }
 

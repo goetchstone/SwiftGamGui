@@ -810,6 +810,130 @@ final class ExecutorTests {
         #expect(!records.contains { [2, 5].contains($0["extra"]?.object?["step"]?.int) })
     }
 
+    // MARK: retrying what waits (D3d)
+
+    /// The confirmed run, continued: a retry runs again exactly the held argv of the steps still waiting,
+    /// and the steps that waited on them, never a step that succeeded or failed. A task waiting on its list
+    /// takes the id the list printed when it finally ran.
+    @Test func aRetryRunsOnlyTheHeldArgvOfWaitingSteps() async throws {
+        let executor = executor(state: try mockState(lag: 4))
+        let email = "new@example.com"
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0])
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 4, target: email, summary: "T", requires: [0], newAccountFrom: 0)
+        let missing = WriteStep(GamCommands.addGroupMember(group: "missing@example.com", member: email), target: email,
+                                summary: "Group", requires: [0])
+        let preview = try await held(executor, [create(email), signature(email, waitsOn: 0), group, calendar(email, waitsOn: 0),
+                                                list, task, missing])
+        let first = await executor.run(preview, confirmation: confirmed)
+        #expect(first.steps.map(\.isWaiting) == [false, true, false, true, true, true, false])
+        let handle = try #require(first.retry)
+        #expect(handle.round == 0)
+        #expect(ran().count == 6)
+
+        let second = await executor.retry(handle)
+        #expect(second.refusal == nil)
+        guard case .succeeded(let printed) = second.steps[4] else { Issue.record("\(second.steps)"); return }
+        #expect(Array(ran()[6...]) == [preview.steps[1].write.argv, preview.steps[3].write.argv, preview.steps[4].write.argv,
+                                       ["user", email, "create", "task", PythonText.strip(printed), "title", "T"]])
+        #expect(second.steps.map(\.isWaiting) == [false, true, false, false, false, false, false])
+        #expect(second.steps[0] == first.steps[0] && second.steps[2] == first.steps[2] && second.steps[6] == first.steps[6])
+        let next = try #require(second.retry)
+        #expect(next.round == 1)
+
+        let third = await executor.retry(next)
+        #expect(Array(ran()[10...]) == [preview.steps[1].write.argv], "only the signature, still waiting")
+        #expect(third.steps.allSatisfy { !$0.isWaiting })
+        #expect(third.retry == nil, "nothing left to wait for")
+    }
+
+    @Test func aRetryHandleIsSingleUse() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        #expect(await executor.retry(handle).refusal == nil)
+        let count = ran().count
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.")
+        #expect(ran().count == count)
+    }
+
+    @Test func aRetryAfterATenantSwitchRunsNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let count = ran().count
+        tenantState.value.withLock { $0 = (other, 2) }
+        #expect(await executor.retry(handle).refusal
+                == "The active domain changed after the preview — preview again, so it runs on this one.")
+        tenantState.value.withLock { $0 = (example, 1) }
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.",
+                "spent by the refusal")
+        #expect(ran().count == count)
+    }
+
+    /// GamGUI's five waits, and never past fifteen minutes after the run (time asleep counts).
+    @Test func aRetryStopsAfterFiveRoundsOrItsDeadline() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let steps = [create("new@example.com"), signature("new@example.com", waitsOn: 0)]
+        var outcome = await executor.run(try await held(executor, steps), confirmation: confirmed)
+        var rounds = 0
+        while let handle = outcome.retry {
+            outcome = await executor.retry(handle)
+            rounds += 1
+            #expect(outcome.refusal == nil)
+        }
+        #expect(rounds == Executor.newAccountRounds && rounds == 5)
+        #expect(outcome.steps[1] == .waiting(message: notReady("new@example.com")), "still waiting, given up")
+        #expect(ran().count == 2 + 5)
+
+        let late = await executor.run(try await held(executor, [create("new2@example.com"), signature("new2@example.com", waitsOn: 0)]),
+                                      confirmation: confirmed)
+        let handle = try #require(late.retry)
+        offset.value.withLock { $0 = Executor.retryLifetime + .seconds(1) }
+        let count = ran().count
+        #expect(await executor.retry(handle).refusal == "The wait for Google is over — preview what's left again.")
+        #expect(ran().count == count)
+    }
+
+    /// Each attempt is audited begin and end, under the run's preview, digest and step, with its attempt.
+    @Test func aRetryIsAuditedWithItsAttempt() async throws {
+        let executor = executor(state: try mockState(lag: 2))
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)])
+        let first = await executor.run(preview, confirmation: confirmed)
+        let second = await executor.retry(try #require(first.retry))
+        let third = await executor.retry(try #require(second.retry))
+        #expect(third.succeeded)
+        let signature = records.filter { $0["extra"]?.object?["step"]?.int == 1 }.compactMap { $0["extra"]?.object }
+        #expect(signature.map { $0["phase"]?.string } == ["begin", "end", "begin", "end", "begin", "end"])
+        #expect(signature.map { $0["attempt"]?.int } == [nil, nil, 2, 2, 3, 3])
+        #expect(signature.allSatisfy { $0["preview"]?.string == preview.id.uuidString && $0["digest"]?.string == preview.digest })
+    }
+
+    /// Stop: the retry is dropped, and a later call runs nothing.
+    @Test func anAbandonedRetryRunsNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let count = ran().count
+        await executor.abandon(handle)
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.")
+        #expect(ran().count == count)
+    }
+
+    /// A run with nothing waiting leaves nothing to retry.
+    @Test func aRunWithNothingWaitingHasNoRetry() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let outcome = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: nil)]),
+                                         confirmation: confirmed)
+        guard case .failed = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.retry == nil)
+    }
+
     // MARK: outcome unknown
 
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {
