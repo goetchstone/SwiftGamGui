@@ -252,7 +252,8 @@ private struct GroupPage: View {
         // removal's preview alone. It closes when the change starts running and its result shows on the page.
         .sheet(isPresented: sheetShown) {
             if let pending = changes.sheetPending(for: group.email) {
-                GroupPreviewSheet(pending: pending, changes: changes)
+                // Its own view per preview: a count typed for an earlier one never carries over.
+                GroupPreviewSheet(pending: pending, changes: changes).id(pending.id)
             } else {
                 AddMembersForm(title: title, group: group, directory: directory, changes: changes, addresses: $addresses,
                                role: $role, search: $peopleSearch) { adding = false }
