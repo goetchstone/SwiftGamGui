@@ -209,8 +209,15 @@ public final class OffboardChanges {
 
     /// The run going on, or the last one, while it belongs to the connected tenant.
     public var run: Run? {
-        guard let ran, ran.domain == setup.active, ran.generation == setup.generation else { return nil }
+        // While it runs, whatever is connected now: its steps, and Stop, stay on screen (a domain switch stops it
+        // after the step in flight, which can be the hour-long sweep).
+        guard let ran, isRunning || (ran.domain == setup.active && ran.generation == setup.generation) else { return nil }
         return ran.run
+    }
+    /// The domain the run acts on, when it isn't the one connected now: the panel says so.
+    public var runElsewhere: Domain? {
+        guard let ran, ran.domain != setup.active || ran.generation != setup.generation else { return nil }
+        return ran.domain
     }
     public private(set) var isRunning = false
     /// Why a confirm didn't run, in the operator's words.
@@ -310,7 +317,11 @@ public final class OffboardChanges {
             let reason = directory.problem?.summary ?? "Something went wrong talking to GAM."
             return refuse("Couldn't read the directory to check the addresses — \(reason)")
         }
-        let check = Offboarding.checkAddresses(users, user: leaver, manager: manager, connectedAdmin: setup.connectedAdmin ?? "")
+        // Never planned without it: an unknown admin would skip the check that the app isn't offboarding itself.
+        guard let admin = setup.connectedAdmin, !admin.isEmpty else {
+            return refuse("The admin this app signs in as isn't known. Check access on Setup, then preview again.")
+        }
+        let check = Offboarding.checkAddresses(users, user: leaver, manager: manager, connectedAdmin: admin)
         guard check.errors.isEmpty, let leaving = check.user, let takingOver = check.manager else {
             return refuse(check.errors.joined(separator: " "))
         }
@@ -342,15 +353,25 @@ public final class OffboardChanges {
         // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list).
         var preview: HeldPreview?
         if let executor, let domain = tenant.domain {
-            let admin = setup.connectedAdmin ?? ""
+            let setup = setup
             let precondition: @Sendable () async throws -> Bool = { [access] in
-                let nowLeaving = try await access.account(user, in: domain)
-                let nowTakingOver = try await access.account(boss, in: domain)
+                let nowLeaving: GamUser, nowTakingOver: GamUser
+                do {
+                    nowLeaving = try await access.account(user, in: domain)
+                    nowTakingOver = try await access.account(boss, in: domain)
+                } catch let problem as UserAccess.Problem {
+                    throw PreconditionFailure(problem.summary)
+                }
+                // The admin as connected now, not as when the plan was made; unknown refuses.
+                guard let admin = await setup.connectedAdmin, !admin.isEmpty else { return false }
                 return Self.unchanged(nowLeaving, since: leaving) && Self.unchanged(nowTakingOver, since: takingOver)
                     && Guard.normalized(nowLeaving.primaryEmail) != Guard.normalized(admin)
             }
+            // The leaver's address is typed when a step acts on the leaver. The rest of a run can be the manager's
+            // reminder alone (low risk), with nothing of the leaver's left to confirm.
+            let typed = steps.contains { Guard.normalized($0.target) == Guard.normalized(user) } ? user : nil
             switch await executor.preview(steps, confirmStep: true, expecting: (domain, tenant.generation),
-                                          stopsAtAccountWideFailure: false, typedAddress: user, precondition: precondition) {
+                                          stopsAtAccountWideFailure: false, typedAddress: typed, precondition: precondition) {
             case .success(let held): preview = held
             case .failure(let refusal): return refuse(refusal.message)
             }
@@ -429,7 +450,11 @@ public final class OffboardChanges {
     /// Stop between steps (GamGUI's Stop): the step running finishes, nothing after it begins.
     public func stop() async {
         guard isRunning, let id = ran?.run.plan.preview?.id, let executor else { return }
-        if await executor.stopAfterCurrentStep(id), var run = ran?.run, let at = ran {
+        guard await executor.stopAfterCurrentStep(id) else {
+            problem = "The offboarding had already ended: there was nothing left to stop."
+            return
+        }
+        if var run = ran?.run, let at = ran {
             run.stopping = true
             ran = (run, at.domain, at.generation)
         }

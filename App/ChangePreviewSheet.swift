@@ -455,15 +455,18 @@ struct OffboardConfirmSheet: View {
     @State private var typed = ""
 
     private var leaver: String { plan.leaver.primaryEmail }
+    /// The address the executor asks for: the leaver's while a step acts on them; none for the reminder alone.
+    private var toType: String? { plan.preview?.typedAddress }
     /// The field matches, as the executor compares it (trimmed, case aside): only then is Run offered.
     private var matches: Bool {
-        typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == leaver.lowercased()
+        guard let toType else { return true }
+        return typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == toType.lowercased()
     }
 
     private func confirm() {
-        let plan = plan, changes = changes, typed = typed
+        let plan = plan, changes = changes, typed = toType == nil ? [] : [typed]
         dismiss()
-        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: [typed])) }
+        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: typed)) }
     }
 
     var body: some View {
@@ -482,17 +485,20 @@ struct OffboardConfirmSheet: View {
                 Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
             }
             Section {
-                Label("The password reset can't be undone, and the leaver is signed out of everything.",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.multicolor)
+                if plan.runningRows.contains(where: { $0.key == .password || $0.key == .revoke }) {
+                    Label("The password reset and the sign-out can't be undone.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
                 Label("It can take up to an hour: the calendar step visits every user. Other changes in the app wait until it "
                       + "ends, and Touch ID may be asked again after the calendar step.", systemImage: "clock")
                 Label("Stop takes effect between steps: the step running finishes first.", systemImage: "info.circle")
             }
-            Section("Type \(leaver) to run it") {
-                TextField("Leaver's address", text: $typed, prompt: Text(verbatim: leaver))
-                    .autocorrectionDisabled()
-                    .accessibilityLabel("Type the leaver's address, \(leaver), to run the offboarding")
+            if let toType {
+                Section("Type \(toType) to run it") {
+                    TextField("Leaver's address", text: $typed, prompt: Text(verbatim: toType))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the leaver's address, \(toType), to run the offboarding")
+                }
             }
         }
         .formStyle(.grouped)
@@ -504,6 +510,7 @@ struct OffboardConfirmSheet: View {
                 Button("Run Offboarding", role: .destructive) { confirm() }
                     .disabled(!matches)
                     .help(matches ? "Runs exactly these steps, once" : "Type the leaver's address first")
+                    .disabled(plan.preview == nil)
             }
         }
     }

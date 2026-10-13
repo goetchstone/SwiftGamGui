@@ -260,6 +260,21 @@ struct SetupModelTests {
         #expect(model.connectedAdmin == "admin@example.com")
     }
 
+    /// Off2's review: the admin is the connected domain's own, kept while it stays connected. A failed check of
+    /// another domain once made it unknown, and offboarding then let the app reset its own admin's password.
+    @Test func theConnectedAdminStaysTheConnectedDomainsOwn() async throws {
+        let model = model()
+        await model.importFolder(try gamFolder(), as: "example.com")
+        await model.checkAccess(Domain("example.com")!)
+        await model.importFolder(try gamFolder(admin: "partialdwd@example.org"), as: "example.org")
+        await model.checkAccess(Domain("example.org")!)
+        #expect(model.active == Domain("example.com"), "the failed check left example.com connected")
+        #expect(model.connectedAdmin == "admin@example.com")
+        // Its credentials replaced: forgotten, admin and all, until a check passes again.
+        await model.importFolder(try gamFolder(), as: "example.com")
+        #expect(model.active == nil && model.connectedAdmin == nil)
+    }
+
     @Test func theLastConnectedDomainIsCheckedAgainAtLaunch() async throws {
         let first = model()
         await first.importFolder(try gamFolder(), as: "example.com")

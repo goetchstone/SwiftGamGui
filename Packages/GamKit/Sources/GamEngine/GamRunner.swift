@@ -45,6 +45,9 @@ public struct GamRunner: Sendable {
     /// running keeps acting on the tenant with nothing tracking it (GamGUI failure-log 2026-09-23).
     /// pid → executable path.
     static let children = Mutex<[pid_t: String]>([:])
+    /// Children `stop` ended: their run is cut off, not a failure of `gam`'s own (SIGTERM's exit 15 read as one,
+    /// and a quit mid-sweep left no "outcome unknown" to check; Off2's review, 2026-10-13).
+    static let stopped = Mutex<Set<pid_t>>([])
 
     public init(binary: URL) {
         self.binary = binary
@@ -60,6 +63,7 @@ public struct GamRunner: Sendable {
     static func stop(_ pids: Set<pid_t>, grace: Duration = .seconds(2)) {
         let mine = pids.intersection(children.withLock { $0.keys })
         guard !mine.isEmpty else { return }
+        stopped.withLock { $0.formUnion(mine) }
         for pid in mine { kill(pid, SIGTERM) }
         let clock = ContinuousClock()
         let deadline = clock.now + grace
@@ -107,6 +111,8 @@ public struct GamRunner: Sendable {
         _ = await outDrained
         _ = await errDrained
 
+        // Stopped at quit: cut off, as a cancelled run is.
+        if Self.stopped.withLock({ $0.remove(pid) != nil }) { throw CancellationError() }
         try Task.checkCancellation()
         guard let status else {
             throw GamRunnerError.timedOut(seconds: timeout.components.seconds)

@@ -11,9 +11,11 @@
   - **M3:** success printed "Requested transfer of …", a line GAM never prints. GAM prints "Transfer
     Request Performed", then the transfer's ID, services, From and To (:17907-17912). A second transfer
     for the same leaver 409d only for a `CONFLICT409` address; with state it never did.
-  - **M5:** deprovisioning a suspended user exited 0. GAM leaves a suspended user's backup codes alone,
-    says why ("User is suspended. You must unsuspend to process backupcodes", read from the build's
-    glmsgs), still runs the other parts, and exits 51 (`deprovisionUser`, :74188, :74222-74229).
+  - **M5:** deprovisioning a suspended user exited 0. GAM leaves a suspended user's backup codes alone and,
+    when they have codes, says why ("User is suspended. You must unsuspend to process backupcodes", read
+    from the build's glmsgs), still runs the other parts, and exits 51 (`deprovisionUser`, :74188,
+    :74220-74229); a suspended user without codes exits 0 (corrected after Off2's review: the first fix
+    made 51 unconditional).
   - **M8:** the default sweep printed one "Deleted" line and the leaver's own calendar. GAM walks every
     active user with progress lines, a header per user and a "Delete Failed: Not Found" where the user
     never shared with the leaver (:55925-55935, :41681-41708).

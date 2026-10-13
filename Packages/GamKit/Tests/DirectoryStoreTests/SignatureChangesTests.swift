@@ -108,8 +108,8 @@ final class SignatureChangesTests {
                 "active people only, in code-point order")
     }
 
-    /// `test_signatures_test_user_is_an_explicit_choice_otherwise`: an admin outside the directory, a
-    /// suspended one, or none known (the last check, of another domain, failed): nobody, never the first.
+    /// `test_signatures_test_user_is_an_explicit_choice_otherwise`: an admin outside the directory or a
+    /// suspended one: nobody, never the first. A failed check of another domain leaves the connected one's admin.
     @Test func theDefaultPersonIsOtherwiseNobody() async throws {
         try await connect(admin: "admin@example.com")
         #expect(setup.connectedAdmin == "admin@example.com")
@@ -121,8 +121,8 @@ final class SignatureChangesTests {
         #expect(changes.defaultPerson?.primaryEmail == "carol@example.com")
         try await connect("example.org", admin: "partialdwd@example.org")
         #expect(setup.active == Domain("example.com"), "the failed check left example.com connected")
-        #expect(setup.connectedAdmin == nil)
-        #expect(changes.defaultPerson == nil, "the admin isn't known")
+        #expect(setup.connectedAdmin == "carol@example.com", "and its admin with it")
+        #expect(changes.defaultPerson?.primaryEmail == "carol@example.com")
     }
 
     // MARK: the preview and the confirm

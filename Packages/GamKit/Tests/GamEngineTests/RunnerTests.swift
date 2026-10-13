@@ -99,9 +99,10 @@ struct RunnerTests {
         let pids = mine()
         #expect(pids.count == 1)
         GamRunner.stop(pids)
-        let result = try await run.value
-        #expect(result.exitCode == SIGTERM)
+        // Cut off, as a cancelled run is: never a failure of gam's own with SIGTERM's exit code.
+        await #expect(throws: CancellationError.self) { try await run.value }
         #expect(pids.allSatisfy { kill($0, 0) != 0 })
+        #expect(GamRunner.stopped.withLock { $0.isDisjoint(with: pids) }, "nothing kept once read")
     }
 
     @Test func aMissingBinaryIsReportedNotLaunched() async {

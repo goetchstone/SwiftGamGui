@@ -88,8 +88,9 @@ struct MockOffboardingTests {
         #expect(try await run(transfer("CONFLICT409@example.com", to: "alice@example.com")).exitCode == 9)
     }
 
-    /// M5: a suspended user's backup codes aren't touched (checkUserSuspended): GAM says so on stderr, still
-    /// deletes the tokens and signs out, and exits ACTION_NOT_PERFORMED_RC (51). An active user exits 0.
+    /// M5: a suspended user's backup codes aren't touched (checkUserSuspended): when they have codes GAM says so on
+    /// stderr, still deletes the tokens and signs out, and exits ACTION_NOT_PERFORMED_RC (51). An active user, or a
+    /// suspended one without codes, exits 0.
     @Test func mockDeprovisionOfASuspendedUserExits51() async throws {
         let bob = try await run(GamCommands.deprovisionUser(email: "bob@example.com"))
         #expect(bob.exitCode == 51)
@@ -97,6 +98,13 @@ struct MockOffboardingTests {
             + "You must unsuspend to process backupcodes\n"))
         #expect(lines(bob.stdout).last == "User: bob@example.com, Deprovisioned", "the other parts still ran")
         #expect(try await run(GamCommands.deprovisionUser(email: "carol@example.com")).exitCode == 0)
+        // Only when they have codes (`if jcount > 0`, :74220): a suspended user without any exits 0, unsaid.
+        try await withState { state in
+            try FileManager.default.createDirectory(at: state.appending(path: "nobackupcodes"), withIntermediateDirectories: true)
+            try Data().write(to: state.appending(path: "nobackupcodes/bob@example.com"))
+            let none = try await run(GamCommands.deprovisionUser(email: "bob@example.com"), state: state)
+            #expect(none.exitCode == 0 && !none.stderr.contains("Not Deprovisioned"), "\(none.stderr)")
+        }
     }
 
     /// M8: the default sweep is GAM's walk of every active user: the progress lines, each user's header and rule,
