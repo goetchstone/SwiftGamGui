@@ -14,9 +14,9 @@ struct GamGUIApp: App {
         _services = State(initialValue: services)
         // Siri's intents reach the drafts only (invariant 10).
         SiriIntents.register(services.siriDrafts)
-        // Quitting mid-onboarding asks first.
-        let onboarding = services.onboardChanges
-        AppDelegate.interruptible = { onboarding.interruptible }
+        // Quitting mid-onboarding or mid-offboarding asks first.
+        let onboarding = services.onboardChanges, offboarding = services.offboardChanges
+        AppDelegate.interruptible = { offboarding.interruptible ?? onboarding.interruptible }
     }
 
     var body: some Scene {
@@ -153,7 +153,7 @@ struct ContentView: View {
                     .navigationTitle("Onboard")
             case .offboard:
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
-                             templates: services.offboardTemplates)
+                             templates: services.offboardTemplates, hasGam: services.executor != nil)
                     .navigationTitle("Offboard")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in

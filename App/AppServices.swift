@@ -38,7 +38,7 @@ struct AppServices {
     let calendarReads: CalendarReads
     /// Sharing a calendar with one person, and taking access away, through the executor.
     let calendarChanges: CalendarChanges
-    /// Offboarding's read-only plan (Off1): no executor, so it can't run anything.
+    /// A leaver's offboarding: the plan, held through the executor, and its run.
     let offboardChanges: OffboardChanges
     /// The saved offboarding templates the Offboard form is filled from.
     let offboardTemplates: OffboardTemplates
@@ -96,7 +96,7 @@ struct AppServices {
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
                            // Its own reader: the leaver's delegates are read live, never from a page's lists.
-                           offboardChanges: OffboardChanges(setup: setup, directory: directory,
+                           offboardChanges: OffboardChanges(executor: executor, setup: setup, directory: directory,
                                                             access: UserAccess(setup: setup, runner: runner)),
                            offboardTemplates: offboardTemplates,
                            usage: UsageStore(setup: setup, runner: runner),

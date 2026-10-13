@@ -569,7 +569,8 @@ public actor Executor {
         return true
     }
 
-    static let stopped = "Not run: stopped."
+    /// A step after a Stop: never begun.
+    public static let stopped = "Not run: stopped."
 
     /// Tests: how many runs' waiting steps are held for a retry.
     var parkedRuns: Int { parked.count }
@@ -826,7 +827,8 @@ public actor Executor {
         }
     }
 
-    static let interrupted = "Interrupted before GAM finished: check the result in Google before running it again."
+    /// A step cut off by a cancellation (a quit): it may have made its change.
+    public static let interrupted = "Interrupted before GAM finished: check the result in Google before running it again."
 
     private func extra(for step: WriteStep, of preview: HeldPreview, index: Int, attempt: Int?) -> JSONObject {
         var extra: JSONObject = [:]
