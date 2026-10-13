@@ -30,14 +30,24 @@ struct SignaturesView: View {
         let person = people.first { $0.primaryEmail == personEmail }
         VStack(spacing: 0) {
             SignatureResult(changes: changes)
-            Form {
-                PersonSection(setup: setup, directory: directory, people: people, personEmail: $personEmail)
-                // What will change comes first, with Review and Replace, then the template that makes it.
-                previewSection(person: person)
-                TemplateSection(template: $template, templates: templates)
-                SavedTemplatesSection(template: $template, templates: templates)
+            ScrollViewReader { scroller in
+                Form {
+                    PersonSection(setup: setup, directory: directory, people: people, personEmail: $personEmail)
+                        .id(Self.top)
+                    // What will change comes first, with Review and Replace, then the template that makes it.
+                    previewSection(person: person)
+                    TemplateSection(template: $template, templates: templates)
+                    SavedTemplatesSection(template: $template, templates: templates)
+                }
+                .formStyle(.grouped)
+                // The editor takes the keyboard when the screen opens, and AppKit scrolls the form down to it,
+                // past the preview. Back to the top once that has settled, and for each person chosen: what
+                // will change is what the screen is for. The editor keeps the keyboard.
+                .task(id: personEmail) {
+                    guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
+                    scroller.scrollTo(Self.top, anchor: .top)
+                }
             }
-            .formStyle(.grouped)
         }
         // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -161,6 +171,9 @@ struct SignaturesView: View {
             }
         }
     }
+
+    /// The screen's first section, scrolled to when it opens.
+    private static let top = "signatures.top"
 
     /// The narrowest a preview stands beside the other: a typical signature (a name, a title, a phone and a
     /// small logo) is about this wide in Gmail.
