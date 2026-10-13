@@ -3,9 +3,8 @@
 **One line:** one new hire through one ChangeCore preview: create the account (with a one-time password
 shown once on a sign-in card), the role's signature, groups and calendars, and a checklist of tasks in
 someone's Google Tasks, in GamGUI's order and with its gates. Built: slice O1 (2026-10-12), from the
-onboarding plan (D1–D8, §2). Roles are read from GamGUI's own `onboarding.json`, read only, until O2's
-editor. Next: the live stages B and C (below), then O2 (the role store and editor) and W (the welcome
-email). The CSV of hires (O3) and the Siri and model drafts (O5) wait until the operator asks. GamGUI's
+onboarding plan (D1–D8, §2), and O2 (2026-10-13), this app's own roles, created and edited on Onboard. Next:
+W (the welcome email), and the live stages B and C (below). The CSV of hires (O3) and the Siri and model drafts (O5) wait until the operator asks. GamGUI's
 runbook of the same name, and its failure log, are the history this inherits.
 
 **Owns invariants:** #2 (one preview, one confirm, the run is the preview; the one derived argv element is
@@ -26,15 +25,39 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
   `signatureHTML`, the waits and their reasons, `Waiting.label` and `waitingNote`, `roleFile` (GamGUI's
   load and migrations), `RoleTemplate`, `Hire`, `TemporaryPassword`, D7's `createRefusal`, and
   `GamError.saysNewAccountNotReady` (GamGUI's `not_ready_yet`).
-- `Packages/GamKit/Sources/Stores/GamGUIRoles.swift`: GamGUI's roles file, read by descriptor, never written.
+- `Packages/GamKit/Sources/Stores/RoleStore.swift`: this app's roles and welcome emails (O2, below).
+- `Packages/GamKit/Sources/Stores/GamGUIRoles.swift`: GamGUI's roles file, read by descriptor, never written:
+  what the one-time copy reads.
 - `Packages/GamKit/Sources/ChangeCore/ChangeCore.swift`: D3 a–g (below).
 - `Packages/GamKit/Sources/Directory/OnboardChanges.swift`: the model.
 - `App/OnboardView.swift` (the screen), `App/OnboardCredentialSheet.swift` (the card and its print
   view: the only reader of the password text), `OnboardPreviewSheet` in `App/ChangePreviewSheet.swift`,
-  `App/OnboardRoles.swift` (the roles for the screen), the quit guard in `App/AppDelegate.swift`, Home's
-  create line in `App/HomeView.swift`.
+  `App/OnboardRoles.swift` (the store for the screen), `App/OnboardRolesView.swift` (the role editor), the quit
+  guard in `App/AppDelegate.swift`, Home's create line in `App/HomeView.swift`.
 - `scripts/gen_fixtures.py`'s `onboarding_fixture` → `Tests/Fixtures/onboarding.json`;
-  `Tests/Fixtures/mock_gam/onboarding.json` is the demo's GamGUI-format roles file.
+  `Tests/Fixtures/demo/onboarding.json` holds the demo's roles, in GamGUI's format, saved into a temporary store at
+  a demo launch.
+
+## The roles (O2, 2026-10-13)
+- **This app's own:** `onboarding.json` beside the signature templates, `{"version": 1, "roles": {…}, "welcomes":
+  {…}}` with GamGUI's key names. GamGUI's file is read only by **Copy Roles from GamGUI** (in the editor, never in
+  demo): names this store lacks are copied, one with other contents keeps this store's, one it wouldn't save is
+  refused and said. One store for every domain, as in GamGUI.
+- **GamGUI's rules** (`Onboarding.savable`, `welcomeName`; held to `onboarding.json`'s `store` cases, from
+  GamGUI's own `RunbookStore`): its seed (Salesperson and the Default welcome), the name required and stripped,
+  blank steps dropped, groups and calendars stripped, "Default" stored as blank, a welcome the store has (by
+  exact text); a welcome name that differs only by case saves over the existing one, Default can't be deleted,
+  nor one a role picks.
+- **Native, each tested:** a group or calendar is one address, each once (GAM reads a comma or a space in one
+  argument as more than one); a name of at most 60 characters; at most 100 steps, groups or calendars; replacing a
+  role asked, and a rename saved in one write; the file read by descriptor, written atomically `0600` in a `0700`
+  folder, and one it can't read (including a role it wouldn't save as it stands) moved aside, never replaced.
+- **The editor** (`OnboardRolesSheet`, "Edit Roles…" on Onboard): the roles beside the one being edited; the
+  checklist one step a line (no smart substitutions), the org unit, a saved signature (one that isn't saved any
+  more is shown and said), the groups (suggested from the tenant's groups) and calendars, each with Remove; Save
+  (⌘S), Revert, Delete (asked), New Role, Duplicate; leaving unsaved edits is asked. Deleting a signature template
+  on Signatures names the roles that use it. The welcome email a role sends is kept as saved; its editor comes
+  with W.
 
 ## How one hire runs (GamGUI's `provision_hire`, `routes/onboarding.py` single flow)
 - **The plan** (`OnboardChanges.plan`), in GamGUI's order and gates:
@@ -143,13 +166,15 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
 - Everything that doesn't write is checked at preview, not at run; plus the 60-character name limit.
 - An unreadable GamGUI roles file is reported, not replaced by GamGUI's starter role (D5); a list or
   object where text belongs is refused rather than read as Python's `repr`.
+- The roles are this app's (O2), with the bounds above; GamGUI's are copied in only when asked.
 - A new create is refused while the last card is unhanded; GamGUI replaced its result panel.
 
 ## Testing and live verification
 - **Not yet run live.** Every O1 argv is GamGUI's and live-proven there (create account, signature, group
   add, calendar subscribe, task checklist), so each is argv-identical (README). The new-account wait has
   never run live, in either app.
-- **Stage A, read-only:** open Onboard on the operator's real GamGUI roles and preview the next hire
+- **Stage A, read-only:** copy the operator's GamGUI roles in (Edit Roles… → Copy Roles from GamGUI), check them,
+  and preview the next hire
   without confirming: check the commands, that the role's groups exist, that the signature renders;
   Cancel discards it.
 - **Stage B, license-free, the operator's own account** (each write needs the operator's yes): a role

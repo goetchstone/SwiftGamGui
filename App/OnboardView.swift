@@ -4,8 +4,8 @@ import GamEngine
 import Setup
 import SwiftUI
 
-/// Onboard (slice O1): one new hire through one preview. The form (GamGUI's `onboarding.html`) picks a
-/// role from GamGUI's own roles (read only), names the hire and who gets the checklist, and can create the
+/// Onboard: one new hire through one preview. The form (GamGUI's `onboarding.html`) picks one of this app's
+/// roles (edited in `OnboardRolesSheet`), names the hire and who gets the checklist, and can create the
 /// account. "Preview Onboarding…" holds every step as one preview (`OnboardChanges`); only its sheet runs
 /// it. The run panel shows each step as it ends, the sign-in card the moment the account exists, the wait
 /// for Google with Stop, and afterwards a retry of what failed, as a new preview.
@@ -15,7 +15,9 @@ struct OnboardView: View {
     let changes: OnboardChanges
     let roles: OnboardRoles
     let templates: SignatureTemplates
+    let groups: GroupStore
     let hasGam: Bool
+    @State private var editingRoles = false
     @SceneStorage("onboard.role") private var roleName = ""
     @State private var name = ""
     @State private var email = ""
@@ -48,10 +50,7 @@ struct OnboardView: View {
         .formStyle(.grouped)
         // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
-        .task {
-            if !roles.loaded { roles.reload() }
-            debugSelection()
-        }
+        .task { debugSelection() }
         .onChange(of: roles.roles.map(\.name), initial: true) { _, names in
             if !names.contains(roleName) { roleName = names.first ?? "" }
         }
@@ -63,6 +62,9 @@ struct OnboardView: View {
         }
         .sheet(item: Binding(get: { changes.pending }, set: { if $0 == nil { changes.cancelPreview() } })) { pending in
             OnboardPreviewSheet(pending: pending, changes: changes)
+        }
+        .sheet(isPresented: $editingRoles) {
+            OnboardRolesSheet(roles: roles, templates: templates, groups: groups) { editingRoles = false }
         }
         .onChange(of: announcement) { _, text in
             if let text, appearsActive { AccessibilityNotification.Announcement(text).post() }
@@ -90,10 +92,13 @@ struct OnboardView: View {
                 TextField("Last name", text: $last, prompt: Text(Onboarding.splitName(name: name, first: "", last: "").last))
             }
         }
-        Section("Role") {
-            if roles.roles.isEmpty {
-                Label(roles.problem ?? "Reading GamGUI's roles\u{2026}", systemImage: "info.circle")
-                Button("Read GamGUI's Roles Again") { roles.reload() }
+        Section {
+            if let problem = roles.openProblem {
+                Label("The saved roles can't be read: \(problem)", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+            } else if roles.roles.isEmpty {
+                Text("No roles yet. Add one: its checklist, org unit, signature, groups and calendars.")
+                    .foregroundStyle(.secondary)
             } else {
                 Picker("Role", selection: $roleName) {
                     ForEach(roles.roles, id: \.name) { role in
@@ -101,8 +106,13 @@ struct OnboardView: View {
                     }
                 }
                 if let role { RoleSummary(role: role, templates: templates) }
-                Text("Roles come from GamGUI's Onboarding \u{2192} Role templates, read only. Edit them there.")
-                    .font(.callout).foregroundStyle(.secondary)
+            }
+        } header: {
+            HStack {
+                Text("Role")
+                Spacer()
+                Button("Edit Roles\u{2026}") { editingRoles = true }
+                    .help("Add, change or delete the roles a new hire can have")
             }
         }
         Section {
@@ -136,7 +146,7 @@ struct OnboardView: View {
     private var blocked: String? {
         if setup.active == nil { return "Connect a domain on Setup first." }
         if !hasGam { return "This build has no GAM. Build the app again after running scripts/fetch_gam.sh." }
-        guard let role else { return roles.problem ?? "Choose a role." }
+        guard let role else { return roles.roles.isEmpty ? "Add a role first: Edit Roles\u{2026}" : "Choose a role." }
         if changes.isBusy { return "Onboarding is running\u{2026}" }
         return OnboardChanges.refusal(hire: hire, role: role)
     }
@@ -172,8 +182,8 @@ struct OnboardView: View {
         return said
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` picks a role and `SWIFTGAMGUI_TAB` fills the form (`create`) or
-    /// shows a made-up finished run (`result`, no gam), for the snapshots.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` picks a role and `SWIFTGAMGUI_TAB` fills the form (`create`), shows a
+    /// made-up finished run (`result`, no gam), or opens the role editor (`roles`), for the snapshots.
     private func debugSelection() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -181,6 +191,10 @@ struct OnboardView: View {
         debugApplied = true
         if let role = environment["SWIFTGAMGUI_SELECT"] { roleName = role }
         guard let tab = environment["SWIFTGAMGUI_TAB"] else { return }
+        if tab == "roles" {
+            editingRoles = true
+            return
+        }
         name = "Jordan Lee"
         email = "jordan@example.com"
         createAccount = true

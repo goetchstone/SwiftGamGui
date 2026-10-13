@@ -21,6 +21,7 @@ public enum Fixtures {
     public static var vacationJSON: URL { directory.appending(path: "vacation.json") }
     public static var signaturesJSON: URL { directory.appending(path: "signatures.json") }
     public static var offboardingJSON: URL { directory.appending(path: "offboarding.json") }
+    public static var onboardingJSON: URL { directory.appending(path: "onboarding.json") }
     public static var gamModelsJSON: URL { directory.appending(path: "gam_models.json") }
     public static var guardJSON: URL { directory.appending(path: "guard.json") }
     public static var auditJSON: URL { directory.appending(path: "audit.json") }

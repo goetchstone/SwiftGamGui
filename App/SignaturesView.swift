@@ -14,6 +14,8 @@ struct SignaturesView: View {
     let changes: SignatureChanges
     let access: UserAccess
     let templates: SignatureTemplates
+    /// The onboarding roles: deleting a template says which roles name it.
+    let roles: OnboardRoles
     /// A person another screen asked for (Users' "Change Signature…"), taken once.
     @Binding var requested: String?
     /// Kept per window while the app runs, so leaving the screen doesn't lose what was typed.
@@ -37,7 +39,7 @@ struct SignaturesView: View {
                     // What will change comes first, with Review and Replace, then the template that makes it.
                     previewSection(person: person)
                     TemplateSection(template: $template, templates: templates)
-                    SavedTemplatesSection(template: $template, templates: templates)
+                    SavedTemplatesSection(template: $template, templates: templates, roles: roles)
                 }
                 .formStyle(.grouped)
                 // The editor takes the keyboard when the screen opens, and AppKit scrolls the form down to it,
@@ -336,6 +338,7 @@ private struct TemplateSection: View {
 private struct SavedTemplatesSection: View {
     @Binding var template: String
     let templates: SignatureTemplates
+    let roles: OnboardRoles
     @State private var deleting: String?
     @State private var note: (text: String, problem: Bool)?
 
@@ -379,7 +382,10 @@ private struct SavedTemplatesSection: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("No copy is kept. Signatures already set with it don't change.")
+            let using = deleting.map { roles.roles(usingSignature: $0) } ?? []
+            Text("No copy is kept. Signatures already set with it don't change."
+                 + (using.isEmpty ? "" : " Onboarding role\(using.count == 1 ? "" : "s") \(using.joined(separator: ", ")) "
+                    + "name\(using.count == 1 ? "s" : "") it: a new account there would get no signature until you pick another."))
         }
     }
 
