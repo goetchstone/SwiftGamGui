@@ -121,14 +121,30 @@ public final class UserAccess {
     /// decides on them (GamGUI's `list_delegates`, read live by `_delegate_warning`). A failure is GAM's own
     /// words (`GamError.message`), which that warning quotes.
     public func delegates(of email: String) async -> Result<[String], Problem> {
+        await readNow(GamCommands.printDelegates(email: email), parse: Self.delegates(from:))
+    }
+
+    /// The secondary calendars the person owns, hidden ones included, read now and not kept: offboarding's preview
+    /// warns that the transfer doesn't move them and the delete loses them. A failure is GAM's own words.
+    public func ownedSecondaryCalendars(of email: String) async -> Result<[UserCalendar], Problem> {
+        await readNow(GamCommands.printOwnedSecondaryCalendars(email: email)) { GamOutput.records($0).map(UserCalendar.init(record:)) }
+    }
+
+    /// The Vault holds that cover the person, read now and not kept: offboarding's preview warns that a hold stops
+    /// the transfer and the delete. A failure is GAM's own words (an admin without Vault access, say).
+    public func vaultHolds(of email: String) async -> Result<[Offboarding.VaultHold], Problem> {
+        await readNow(GamCommands.printVaultHolds(email: email)) { GamOutput.records($0).map(Offboarding.VaultHold.init(record:)) }
+    }
+
+    /// `read` run now as the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
+    private func readNow<T>(_ read: GamRead, parse: (String) -> T) async -> Result<T, Problem> {
         guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
-        let read = GamCommands.printDelegates(email: email)
         do {
             let result = try await runner.run(read, as: domain, extraEnvironment: environment)
             guard result.exitCode == 0 else {
                 return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
             }
-            return .success(Self.delegates(from: result.stdout))
+            return .success(parse(result.stdout))
         } catch GamRunnerError.timedOut {
             return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
         } catch {

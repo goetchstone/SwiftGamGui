@@ -5,17 +5,27 @@ import Foundation
 /// offboarding runs, in order, each one `gam` write built by `GamCommands` with what it needs to have
 /// succeeded first, and the directory's verdict on the two addresses. No suspend and no group removal:
 /// the leaver keeps a live mailbox so the delegate, the auto-reply and the transfer work. Held byte for
-/// byte to Tests/Fixtures/offboarding.json, generated from frozen GamGUI. Text is handled by Unicode scalar,
-/// as Python does, never by `Character`.
+/// byte to Tests/Fixtures/offboarding.json, generated from frozen GamGUI. A template can add native steps to
+/// GamGUI's eight (`Step.addable`, docs/plans/2026-10-13-offboarding-options.md); with none added, every routine
+/// is GamGUI's. Text is handled by Unicode scalar, as Python does, never by `Character`.
 public enum Offboarding {
-    /// The steps, in run order (GamGUI's keys).
+    /// The steps, in run order: GamGUI's eight (its keys) and the native ones a template adds.
     public enum Step: String, CaseIterable, Sendable {
-        case password, revoke, forward, delegate, vacation, transfer, calacls, reminder
+        case password
+        case clearRecovery = "clear_recovery"
+        case revoke, forward, delegate, vacation, transfer, calacls, reminder
+        case hideFromDirectory = "hide_from_directory"
 
-        /// GamGUI's `STEP_NAMES`: the step as the form's boxes and the run log name it.
+        /// GamGUI's eight, in its run order: every routine its fixture holds.
+        public static let gamgui: [Step] = [.password, .revoke, .forward, .delegate, .vacation, .transfer, .calacls, .reminder]
+        /// The native steps a template may add, in run order. Each runs only when added.
+        public static let addable: [Step] = [.clearRecovery, .hideFromDirectory]
+
+        /// GamGUI's `STEP_NAMES` (and the added steps' own): the step as the form's boxes and the run log name it.
         public var name: String {
             switch self {
             case .password: "Reset password"
+            case .clearRecovery: "Clear recovery email & phone"
             case .revoke: "Revoke access & sign out"
             case .forward: "Turn off forwarding"
             case .delegate: "Set delegate"
@@ -23,6 +33,18 @@ public enum Offboarding {
             case .transfer: "Transfer Drive & Calendar"
             case .calacls: "Remove from everyone's calendars"
             case .reminder: "Manager reminder"
+            case .hideFromDirectory: "Hide from the directory"
+            }
+        }
+
+        /// What an added step is for, said beside its switch; nil for GamGUI's eight.
+        public var addedNote: String? {
+            switch self {
+            case .clearRecovery: "So “Forgot password?” can't send a code to their own phone or address and undo the reset. "
+                + "The old values aren't kept."
+            case .hideFromDirectory: "Colleagues stop being offered their address; mail to it still arrives. Google can "
+                + "take up to a day."
+            default: nil
             }
         }
 
@@ -35,7 +57,7 @@ public enum Offboarding {
             case .transfer: "Drive files and calendars are not transferred: deleting the account loses them."
             case .calacls: "Colleagues' calendars stay shared with the leaver's address."
             case .reminder: "No reminder: nothing prompts the account's deletion later."
-            case .password, .revoke, .forward: nil
+            case .password, .revoke, .forward, .clearRecovery, .hideFromDirectory: nil
             }
         }
     }
@@ -44,6 +66,8 @@ public enum Offboarding {
     public enum Invalid: Error, Equatable, Sendable {
         /// A step outside `optionalSteps` was left out (GamGUI's ValueError, its words).
         case notOptional(String)
+        /// A step outside `Step.addable` was added.
+        case notAddable(String)
         /// A date outside Python's (years 1 to 9999).
         case outOfRange
     }
@@ -56,6 +80,11 @@ public enum Offboarding {
 
     /// The steps an operator may leave out ("doesn't apply"): the hand-over, the sweep and the reminder.
     public static let optionalSteps: [Step] = [.delegate, .vacation, .transfer, .calacls, .reminder]
+
+    /// The routine's steps in run order: GamGUI's eight and those `adding` names.
+    public static func routine(adding: Set<Step> = []) -> [Step] {
+        Step.allCases.filter { Step.gamgui.contains($0) || adding.contains($0) }
+    }
 
     public static let defaultSubject = "{employee} is no longer with the company"
     public static let defaultMessage = "Thank you for your email. {employee} is no longer with the company. "
@@ -73,11 +102,11 @@ public enum Offboarding {
     /// GamGUI's `REQUIRES`: what each step needs to have succeeded before it runs. The reset gates
     /// everything; the delegate (the first write to the manager) gates the auto-reply, the transfer and
     /// the reminder; no transfer, no reminder (deleting before the transfer loses the files). The revoke,
-    /// forwarding off, the auto-reply and the sweep gate nothing.
+    /// forwarding off, the auto-reply and the sweep gate nothing. An added step needs the reset, and gates nothing.
     public static func requires(_ step: Step) -> [Step] {
         switch step {
         case .password: []
-        case .revoke, .forward, .delegate, .calacls: [.password]
+        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .hideFromDirectory: [.password]
         case .vacation, .transfer: [.password, .delegate]
         case .reminder: [.password, .delegate, .transfer]
         }
@@ -209,16 +238,19 @@ public enum Offboarding {
     }
 
     /// GamGUI's `build_offboard_steps`: the eight steps in order, every one returned (for the preview to
-    /// show) with the steps left out (`notApplicable`, only `optionalSteps`) routed around. The caller runs
-    /// only the steps not left out. `employeeName` and `managerContact` are the directory's display forms,
-    /// used only in the auto-reply's text; `manager` is what the delegate, the transfer and the reminder act
-    /// on. With nothing left out the steps are GamGUI's, byte for byte.
+    /// show) with the steps left out (`notApplicable`, only `optionalSteps`) routed around, and the native steps
+    /// `adding` names in their places. The caller runs only the steps not left out. `employeeName` and
+    /// `managerContact` are the directory's display forms, used only in the auto-reply's text; `manager` is what
+    /// the delegate, the transfer and the reminder act on. With nothing added the steps are GamGUI's, byte for byte.
     public static func steps(user: String, manager: String, subject: String, message: String, days: Int, today: Day,
                              notify: String = "", employeeName: String = "", managerContact: String = "",
-                             notApplicable: Set<Step> = []) throws -> [Planned] {
+                             notApplicable: Set<Step> = [], adding: Set<Step> = []) throws -> [Planned] {
         guard notApplicable.isSubset(of: optionalSteps) else {
             throw Invalid.notOptional("only \(optionalSteps.map(\.rawValue).joined(separator: ", ")) can be left out; "
                 + "the reset, the sign-out and forwarding off always run")
+        }
+        guard adding.isSubset(of: Step.addable) else {
+            throw Invalid.notAddable("only \(Step.addable.map(\.rawValue).joined(separator: ", ")) can be added")
         }
         let employee = employeeName.isEmpty ? user : employeeName
         let contact = managerContact.isEmpty ? manager : managerContact
@@ -235,6 +267,10 @@ public enum Offboarding {
             (.password, "Reset password",
              "Set \(user)'s password to a random one nobody is shown, so the old password stops working (the mailbox stays live)",
              GamCommands.resetPassword(email: user)),
+            (.clearRecovery, Step.clearRecovery.name,
+             "Remove \(user)'s recovery email and recovery phone, so “Forgot password?” can't send them a code and undo the "
+                + "reset. The old values aren't kept",
+             GamCommands.clearRecovery(email: user)),
             (.revoke, Step.revoke.name,
              "Sign \(user) out of every web and device session, delete their app passwords, invalidate their 2-Step "
                 + "Verification backup codes and revoke every connected app's access (OAuth tokens). 2-Step Verification "
@@ -263,8 +299,13 @@ public enum Offboarding {
                 + " for \(due.iso) to confirm deletion",
              GamCommands.addCalendarEvent(calendar: manager, summary: reminderSummary, start: due.iso, end: end.iso,
                                           description: reminderDescription, attendee: notify)),
+            (.hideFromDirectory, Step.hideFromDirectory.name,
+             "Hide \(user) from the directory and address autocomplete (Google can take up to a day); mail to the address "
+                + "still arrives",
+             GamCommands.hideFromDirectory(email: user)),
         ]
-        return steps.map { key, label, summary, write in
+        let routine = routine(adding: adding)
+        return steps.filter { routine.contains($0.0) }.map { key, label, summary, write in
             Planned(key: key, label: label, summary: summary, write: write,
                     requires: effectiveRequires(key, notApplicable: notApplicable),
                     timeout: key == .calacls ? GamRunner.domainWideTimeout : GamRunner.defaultTimeout)
@@ -325,15 +366,53 @@ public enum Offboarding {
         }
     }
 
+    /// The secondary calendars the leaver owns: the transfer doesn't move them, and Google deletes them with the
+    /// account (Workspace accounts, from 2026-10-05). A failed read is said too: it's the delete that loses them, so
+    /// the operator has to look. Nil when they own none. At most five are named.
+    public static func secondaryCalendarsWarning(user: String, calendars: Result<[UserCalendar], Unread>) -> String? {
+        switch calendars {
+        case .failure(let unread):
+            return "Couldn't check whether \(user) owns secondary calendars (\(unread.reason)). Google deletes the secondary "
+                + "calendars a deleted account owns: check before the account is deleted."
+        case .success(let owned):
+            guard !owned.isEmpty else { return nil }
+            let named = owned.prefix(5).map { "“\($0.label)”" }.joined(separator: ", ")
+                + (owned.count > 5 ? " and \(owned.count - 5) more" : "")
+            return "\(user) owns \(owned.count) secondary calendar\(owned.count == 1 ? "" : "s"): \(named). The Drive & Calendar "
+                + "transfer doesn't move \(owned.count == 1 ? "it" : "them"), and Google deletes \(owned.count == 1 ? "it" : "them") "
+                + "with the account: hand \(owned.count == 1 ? "it" : "each") to someone before the account is deleted."
+        }
+    }
+
+    /// Vault holds on the leaver (directly or through their org unit): Google says held data can't be transferred,
+    /// and a held account can't be deleted. A failed read is said: a hold would go unseen. Nil when there's none.
+    public static func vaultHoldsWarning(user: String, holds: Result<[VaultHold], Unread>, transferRuns: Bool) -> String? {
+        let transfer = transferRuns ? "the Drive & Calendar transfer and " : ""
+        switch holds {
+        case .failure(let unread):
+            return "Couldn't check \(user) for Vault holds (\(unread.reason)). A hold stops \(transfer)the account's deletion: "
+                + "check in Google Vault."
+        case .success(let holds):
+            guard !holds.isEmpty else { return nil }
+            let named = holds.prefix(5).map { hold in
+                "“\(hold.hold)” in “\(hold.matter)”" + (hold.orgUnit.isEmpty ? "" : " (through the org unit \(hold.orgUnit))")
+            }.joined(separator: ", ") + (holds.count > 5 ? " and \(holds.count - 5) more" : "")
+            return "\(user) is under \(holds.count == 1 ? "a Vault hold" : "\(holds.count) Vault holds"): \(named). Google doesn't "
+                + "transfer held data\(transferRuns ? ", so the Drive & Calendar transfer may move nothing" : ""), and the account "
+                + "can't be deleted while it's held."
+        }
+    }
+
     // MARK: the form's own refusals
 
     /// What the preview refuses before reading anything (GamGUI's route): a step ticked both as already done
     /// and as doesn't apply (the first in run order), then nothing left to run.
-    public static func tickProblem(done: Set<Step>, notApplicable: Set<Step>) -> String? {
-        if let both = Step.allCases.first(where: { done.contains($0) && notApplicable.contains($0) }) {
+    public static func tickProblem(done: Set<Step>, notApplicable: Set<Step>, adding: Set<Step> = []) -> String? {
+        let routine = routine(adding: adding)
+        if let both = routine.first(where: { done.contains($0) && notApplicable.contains($0) }) {
             return "“\(both.name)” is ticked both as already done and as doesn't apply — pick one."
         }
-        if Set(Step.allCases).subtracting(done).subtracting(notApplicable).isEmpty {
+        if Set(routine).subtracting(done).subtracting(notApplicable).isEmpty {
             return "Every step is ticked as already done or left out — there is nothing to run."
         }
         return nil
@@ -341,12 +420,15 @@ public enum Offboarding {
 
     // MARK: templates (native: GamGUI has none)
 
-    /// A saved offboarding: the optional steps it leaves out, and the auto-reply, the reminder and its invitee
-    /// it fills in. Everything but the two addresses and the "already done" ticks, which are one leaver's. A
-    /// template only fills the form: the plan made from it is the plan that form makes, GamGUI's byte for byte.
+    /// A saved offboarding: the optional steps it leaves out, the native steps it adds, and the auto-reply, the
+    /// reminder and its invitee it fills in. Everything but the two addresses and the "already done" ticks, which
+    /// are one leaver's. A template only fills the form: the plan made from it is the plan that form makes,
+    /// GamGUI's byte for byte when it adds nothing.
     public struct Template: Equatable, Sendable {
         /// Only `optionalSteps`: the lock (the reset, the sign-out and forwarding off) always runs.
         public var leftOut: Set<Step>
+        /// Only `Step.addable`.
+        public var added: Set<Step>
         /// As typed: an empty one runs the default text, as the form's does.
         public var subject: String
         public var message: String
@@ -355,9 +437,10 @@ public enum Offboarding {
         /// Also invited to the reminder (IT or HR); empty for nobody.
         public var invitee: String
 
-        public init(leftOut: Set<Step> = [], subject: String = Offboarding.defaultSubject,
+        public init(leftOut: Set<Step> = [], added: Set<Step> = [], subject: String = Offboarding.defaultSubject,
                     message: String = Offboarding.defaultMessage, days: Int = 30, invitee: String = "") {
             self.leftOut = leftOut
+            self.added = added
             self.subject = subject
             self.message = message
             self.days = days
@@ -365,12 +448,16 @@ public enum Offboarding {
         }
 
         /// The steps it runs, in run order.
-        public var runs: [Step] { Step.allCases.filter { !leftOut.contains($0) } }
+        public var runs: [Step] { routine(adding: added).filter { !leftOut.contains($0) } }
 
         /// Why it can't be saved, in words; nil when it can.
         public var problem: String? {
             if let locked = Step.allCases.first(where: { leftOut.contains($0) && !optionalSteps.contains($0) }) {
-                return "“\(locked.name)” always runs: the reset, the sign-out and forwarding off lock the account."
+                return Step.addable.contains(locked) ? "“\(locked.name)” isn't left out: it runs only when added."
+                    : "“\(locked.name)” always runs: the reset, the sign-out and forwarding off lock the account."
+            }
+            if let odd = Step.allCases.first(where: { added.contains($0) && !Step.addable.contains($0) }) {
+                return "“\(odd.name)” is one of GamGUI's steps: it isn't added, it runs unless left out."
             }
             guard Template.days.contains(days) else {
                 return "The reminder is between \(Template.days.lowerBound) and \(Template.days.upperBound.formatted()) days out."
@@ -401,14 +488,17 @@ public enum Offboarding {
 
     /// The routine in one sentence, its steps named in run order (GamGUI's intro once left out the two that
     /// lock the leaver out).
-    public static let intro = "Runs the sequence in order: " + Step.allCases.map(\.name).joined(separator: " → ")
-        + ". The account is not deleted: that is a separate step, later."
+    public static func intro(adding: Set<Step> = []) -> String {
+        "Runs the sequence in order: " + routine(adding: adding).map(\.name).joined(separator: " → ")
+            + ". The account is not deleted: that is a separate step, later."
+    }
 
     /// "Offboarding carol@example.com — 8 steps", or how many run and why the others don't.
-    public static func header(user: String, done: Set<Step>, notApplicable: Set<Step>) -> String {
-        let total = Step.allCases.count
+    public static func header(user: String, done: Set<Step>, notApplicable: Set<Step>, adding: Set<Step> = []) -> String {
+        let routine = routine(adding: adding), total = routine.count
+        let done = done.intersection(routine)
         guard !done.isEmpty || !notApplicable.isEmpty else { return "Offboarding \(user) — \(total) steps" }
-        let runs = Step.allCases.filter { !done.contains($0) && !notApplicable.contains($0) }.count
+        let runs = routine.filter { !done.contains($0) && !notApplicable.contains($0) }.count
         let why = [done.isEmpty ? nil : "\(done.count) ticked as already done",
                    notApplicable.isEmpty ? nil : "\(notApplicable.count) left out"].compactMap(\.self)
         return "Offboarding \(user) — \(runs) of \(total) steps (\(why.joined(separator: ", ")))"
@@ -417,8 +507,8 @@ public enum Offboarding {
     /// What a failure stops, worked out from `effectiveRequires` for the steps that run, so it can't go stale
     /// as GamGUI's hand-written sentence did twice (it still names the delegate as stopping the routine,
     /// though the sweep no longer needs it, and never names forwarding).
-    public static func whatStopsWhat(done: Set<Step>, notApplicable: Set<Step>) -> String {
-        let runs = Step.allCases.filter { !done.contains($0) && !notApplicable.contains($0) }
+    public static func whatStopsWhat(done: Set<Step>, notApplicable: Set<Step>, adding: Set<Step> = []) -> String {
+        let runs = routine(adding: adding).filter { !done.contains($0) && !notApplicable.contains($0) }
         func names(_ steps: [Step], _ last: String) -> String {
             let quoted = steps.map { "“\($0.name)”" }
             return quoted.count > 1 ? quoted.dropLast().joined(separator: ", ") + " \(last) " + quoted.last! : quoted.joined()
@@ -456,6 +546,28 @@ public enum Offboarding {
                 + "account until they finish, or the data not yet transferred is lost.")
         }
         return notes
+    }
+
+    // MARK: Vault
+
+    /// One Vault hold that covers a person (`print vaultholds`, `printShowUserVaultHolds`): its matter, its name,
+    /// and the org unit it covers them through (empty for a hold on their account).
+    public struct VaultHold: Sendable, Equatable {
+        public let matter: String
+        public let hold: String
+        public let orgUnit: String
+
+        public init(matter: String, hold: String, orgUnit: String = "") {
+            self.matter = matter
+            self.hold = hold
+            self.orgUnit = orgUnit
+        }
+
+        /// A `print vaultholds` row: `matterName`, `name`, `orgUnitPath` (with `User`, the ids beside them).
+        public init(record: GamOutput.Record) {
+            self.init(matter: Fields.text(Fields.first(record, "matterName")), hold: Fields.text(Fields.first(record, "name")),
+                      orgUnit: Fields.text(Fields.first(record, "orgUnitPath")))
+        }
     }
 
     // MARK: dates

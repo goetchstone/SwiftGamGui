@@ -468,8 +468,13 @@ struct OffboardConfirmSheet: View {
     let changes: OffboardChanges
     let dismiss: () -> Void
     @State private var typed = ""
+    @State private var word = ""
 
     private var leaver: String { plan.leaver.primaryEmail }
+    /// Ten steps or more with a destructive one: the guard asks for the word `confirm` too (GamGUI's rule for a
+    /// destructive bulk change), which the executor checks whatever this sheet sends.
+    private var needsWord: Bool { plan.preview?.decision.requiresTypedConfirmation == true }
+    private var wordMatches: Bool { !needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord }
     /// The address the executor asks for: the leaver's while a step acts on them; none for the reminder alone.
     private var toType: String? { plan.preview?.typedAddress }
     /// The field matches, as the executor compares it (trimmed, case aside): only then is Run offered.
@@ -479,9 +484,9 @@ struct OffboardConfirmSheet: View {
     }
 
     private func confirm() {
-        let plan = plan, changes = changes, typed = toType == nil ? [] : [typed]
+        let plan = plan, changes = changes, typed = toType == nil ? [] : [typed], word = needsWord ? word : ""
         dismiss()
-        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: typed)) }
+        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedWord: word, typedAddresses: typed)) }
     }
 
     var body: some View {
@@ -500,12 +505,15 @@ struct OffboardConfirmSheet: View {
                 Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
             }
             Section {
-                if plan.runningRows.contains(where: { $0.key == .password || $0.key == .revoke }) {
-                    Label("The password reset and the sign-out can't be undone.", systemImage: "exclamationmark.triangle.fill")
+                let final = plan.runningRows.filter { [.password, .clearRecovery, .revoke].contains($0.key) }.map { "“\($0.label)”" }
+                if !final.isEmpty {
+                    Label("\(ListFormatter.localizedString(byJoining: final)) can't be undone.", systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
                 }
-                Label("It can take up to an hour: the calendar step visits every user. Other changes in the app wait until it "
-                      + "ends, and Touch ID may be asked again after the calendar step.", systemImage: "clock")
+                if plan.runningRows.contains(where: { $0.key == .calacls }) {
+                    Label("It can take up to an hour: the calendar step visits every user. Other changes in the app wait until it "
+                          + "ends, and Touch ID may be asked again after the calendar step.", systemImage: "clock")
+                }
                 Label("Stop takes effect between steps: the step running finishes first.", systemImage: "info.circle")
             }
             if let toType {
@@ -513,6 +521,17 @@ struct OffboardConfirmSheet: View {
                     TextField("Leaver's address", text: $typed, prompt: Text(verbatim: toType))
                         .autocorrectionDisabled()
                         .accessibilityLabel("Type the leaver's address, \(toType), to run the offboarding")
+                }
+            }
+            if needsWord {
+                Section {
+                    TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the word confirm to run all \(plan.runningRows.count) steps")
+                } header: {
+                    Text("Type \(Guard.typedWord) too")
+                } footer: {
+                    Text("\(plan.runningRows.count) steps, some that can't be undone: a run this long is confirmed in words as well.")
                 }
             }
         }
@@ -523,8 +542,8 @@ struct OffboardConfirmSheet: View {
             // Not the confirmation action: Return in the field mustn't run an offboarding.
             ToolbarItem(placement: .primaryAction) {
                 Button("Run Offboarding", role: .destructive) { confirm() }
-                    .disabled(!matches)
-                    .help(matches ? "Runs exactly these steps, once" : "Type the leaver's address first")
+                    .disabled(!matches || !wordMatches)
+                    .help(!matches ? "Type the leaver's address first" : !wordMatches ? "Type confirm first" : "Runs exactly these steps, once")
                     .disabled(plan.preview == nil)
             }
         }

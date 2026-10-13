@@ -42,6 +42,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case addForwardingAddress, setForward, forwardOff
     case createUserAlias, deleteAlias
     case createGroup, addGroupMember, removeGroupMember
+    // Native: no GamGUI builder (`GamCommands`' native section).
+    case clearRecovery, hideFromDirectory
 }
 
 /// Permission to run one `GamWrite`, minted only by ChangeCore's executor once a held preview has passed

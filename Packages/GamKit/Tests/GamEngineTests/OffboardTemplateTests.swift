@@ -20,9 +20,10 @@ struct OffboardTemplateTests {
     }
 
     @Test func theOtherStartersAreGamGUIsRoutineAndTheLock() throws {
-        #expect(try starter("All eight steps").runs == Offboarding.Step.allCases)
+        #expect(try starter("All eight steps").runs == Offboarding.Step.gamgui)
         #expect(try starter("Lock only").runs == [.password, .revoke, .forward])
         #expect(Offboarding.starterTemplates.map(\.name) == ["Hand-over", "All eight steps", "Lock only"])
+        #expect(Offboarding.starterTemplates.allSatisfy { $0.template.added.isEmpty }, "an added step joins a starter once proven live")
         for (name, template) in Offboarding.starterTemplates {
             #expect(template.problem == nil, "\(name)")
             #expect(template.subject == Offboarding.defaultSubject && template.message == Offboarding.defaultMessage)

@@ -39,7 +39,7 @@ struct OffboardView: View {
                     }
                     Group {
                         Section {
-                            Text(Offboarding.intro).foregroundStyle(.secondary)
+                            Text(Offboarding.intro(adding: form.added)).foregroundStyle(.secondary)
                         }
                         TemplateSection(form: $form, chosen: $chosen, templates: templates)
                         WhoSection(form: $form, directory: directory)
@@ -183,7 +183,8 @@ struct OffboardView: View {
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over, and
     /// `SWIFTGAMGUI_TAB` shows, for the snapshots, once the directory is loaded: its plan (`plan`), the confirm
-    /// sheet over it (`confirm`), or a finished run's panel (`result`, made up: nothing runs).
+    /// sheet over it (`confirm`), or a finished run's panel (`result`, made up: nothing runs). `-added` after any
+    /// of them adds every one of this app's own steps first.
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -191,7 +192,12 @@ struct OffboardView: View {
         debugApplied = true
         form.leaver = leaver
         form.manager = "alice@example.com"
-        guard let tab = environment["SWIFTGAMGUI_TAB"], ["plan", "confirm", "result"].contains(tab) else { return }
+        guard var tab = environment["SWIFTGAMGUI_TAB"] else { return }
+        if tab.hasSuffix("-added") {
+            tab.removeLast("-added".count)
+            form.added = Set(Offboarding.Step.addable)
+        }
+        guard ["plan", "confirm", "result"].contains(tab) else { return }
         let form = form, changes = changes
         Task {
             await changes.plan(form)
@@ -323,15 +329,23 @@ private struct ReminderSection: View {
     }
 }
 
-/// The eight steps, each saying whether it runs: the three that lock the account always do; the five a
-/// leaver may not need are switched off here ("doesn't apply"), with what leaving each out means.
+/// The steps in run order, each saying whether it runs: the three that lock the account always do; the five a
+/// leaver may not need are switched off here ("doesn't apply"), with what leaving each out means; this app's own
+/// steps run only when switched on, with what each is for.
 private struct StepsSection: View {
     @Binding var form: OffboardChanges.Form
 
     var body: some View {
         Section {
             ForEach(Offboarding.Step.allCases, id: \.self) { step in
-                if Offboarding.optionalSteps.contains(step) {
+                if let note = step.addedNote {
+                    Toggle(isOn: added(step)) {
+                        Text(step.name)
+                        Text(note)
+                    }
+                    .accessibilityLabel("Adds: \(step.name)")
+                    .accessibilityHint(note)
+                } else if Offboarding.optionalSteps.contains(step) {
                     Toggle(isOn: runs(step)) {
                         Text(step.name)
                         if form.notApplicable.contains(step), let cost = step.leftOutCost {
@@ -353,8 +367,22 @@ private struct StepsSection: View {
         } footer: {
             Text("Switch off a step that doesn't apply to this leaver: it is not run and never counts as done, and the "
                  + "plan says what leaving it out means. The reset, the sign-out and turning off forwarding lock the "
-                 + "account, so they always run.")
+                 + "account, so they always run. Clearing recovery info and hiding from the directory are this app's own "
+                 + "steps: they run only when switched on.")
         }
+    }
+
+    /// On when the step is added. Switched off, its "already done" tick goes too: it would come back with it, unseen.
+    private func added(_ step: Offboarding.Step) -> Binding<Bool> {
+        Binding(get: { form.added.contains(step) },
+                set: { on in
+                    if on {
+                        form.added.insert(step)
+                    } else {
+                        form.added.remove(step)
+                        form.done.remove(step)
+                    }
+                })
     }
 
     /// On when the step runs: off is "doesn't apply".
@@ -376,7 +404,7 @@ private struct AlreadyDoneSection: View {
         Section {
             DisclosureGroup("Running again after a failure? Tick the steps that already succeeded",
                             isExpanded: Binding(get: { expanded || !form.done.isEmpty }, set: { expanded = $0 })) {
-                ForEach(Offboarding.Step.allCases, id: \.self) { step in
+                ForEach(Offboarding.routine(adding: form.added), id: \.self) { step in
                     Toggle(step.name, isOn: done(step))
                         .accessibilityLabel("Already done: \(step.name)")
                 }
@@ -422,7 +450,7 @@ private struct TemplateSection: View {
                     Text(name == templates.defaultName ? "\(name) (default)" : name).tag(Optional(name))
                 }
             }
-            Text("Runs \(form.template.runs.count) of \(Offboarding.Step.allCases.count) steps: "
+            Text("Runs \(form.template.runs.count) of \(Offboarding.routine(adding: form.added).count) steps: "
                  + form.template.runs.map(\.name).joined(separator: " → ") + ".")
                 .font(.callout).foregroundStyle(.secondary)
             if let chosen, changed {

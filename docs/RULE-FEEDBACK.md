@@ -22,6 +22,20 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-13 — A live-proven routine went stale under a Google policy change
+- **What happened:** GamGUI's delete was confirmed live on 2026-10-08, after its offboarding transferred Drive and
+  Calendar. From 2026-10-05 Google deletes a Workspace user's secondary calendars with the account, and the
+  Calendar transfer doesn't include them, so that routine now loses team calendars the leaver owned. Found by
+  research for the offboarding options plan, not by any test (docs/plans/2026-10-13-offboarding-options.md).
+  Separately, GAM's grammar file lists `calendars <id> transfer <user>` (1685) where its source needs
+  `transfer ownership`: the grammar can lie as the mock can.
+- **Invariant in force:** none: invariants 1 and 11 hold the argv, not what Google does with it; the "mock lies"
+  rule names the grammar as the source of truth.
+- **Why it didn't hold:** not covered. "Confirmed live" has a shelf life when the platform changes underneath.
+- **Would a rule have caught it?** Only if enforced differently: a destructive flow's runbook re-checked against
+  Google's release notes (Workspace Updates) before each live use, and the source, not the grammar, as the last word.
+- **Enforcement home if changed:** skill (`live-verify`: re-read the platform's changes for the flow first).
+
 ## 2026-10-13 — Parity held the error reader to GamGUI's misreading of GAM, a second time
 - **What happened:** `GamError`, held to `gam_errors.json`, read GAM's per-entity progress lines
   ("Getting Reports for all users") as unknown failures, as frozen GamGUI does, so a refused report

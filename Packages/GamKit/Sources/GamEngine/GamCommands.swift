@@ -84,6 +84,35 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "suspended", suspended ? "on" : "off"], action: suspended ? .suspendUser : .unsuspendUser)
     }
 
+    // MARK: native (no GamGUI builder)
+    // Each is held to its exact argv by NativeArgvTests, against the vendored grammar and GAM's source, not GamGUI.
+
+    /// Both recovery fields emptied, so "Forgot password?" can't reach the leaver's own phone or address
+    /// (grammar 5842-5843 under `update user`, 5942; GAM sends an empty value as a cleared field). The command
+    /// line shown and audited masks both (`ArgvRedaction`), so the step's words say what it does.
+    public static func clearRecovery(email: String) -> GamWrite {
+        GamWrite(["update", "user", email, "recoveryemail", "", "recoveryphone", ""], action: .clearRecovery)
+    }
+
+    /// Out of the Global Address List and autocomplete (grammar 5831). Always the explicit `off`: GAM reads a
+    /// bare `gal` as on.
+    public static func hideFromDirectory(email: String) -> GamWrite {
+        GamWrite(["update", "user", email, "gal", "off"], action: .hideFromDirectory)
+    }
+
+    /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own
+    /// calendar list, which leaves hidden entries out unless asked (grammar 6287-6288; printShowCalendars).
+    /// Rows `primaryEmail,calendarId,JSON`, the JSON with `id`, `summary` and `dataOwner`.
+    public static func printOwnedSecondaryCalendars(email: String) -> GamRead {
+        GamRead(["user", email, "print", "calendars", "ownedsecondary", "showhidden", "fields", "id,summary", "formatjson"])
+    }
+
+    /// The open Vault matters' holds that cover `email`, directly or through an org unit above them (grammar 5704;
+    /// printShowUserVaultHolds). CSV only: `User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath`.
+    public static func printVaultHolds(email: String) -> GamRead {
+        GamRead(["user", email, "print", "vaultholds"])
+    }
+
     // MARK: calendar access, as the calendar's user
 
     public static func printCalendarACLs(email: String, calendar: String = "primary") -> GamRead {

@@ -5,11 +5,12 @@ import Observation
 import Setup
 import Vault
 
-/// Offboarding a leaver: exactly what GamGUI's eight-step offboarding runs for a leaver and a manager, held
-/// as one ChangeCore preview and run once on the operator's confirm. Ports GamGUI's preview and run
+/// Offboarding a leaver: exactly what GamGUI's eight-step offboarding runs for a leaver and a manager, plus the
+/// native steps the form adds, held as one ChangeCore preview and run once on the operator's confirm. Ports GamGUI's preview and run
 /// (`routes/lifecycle.py` `offboard_preview` and `offboard_run`): the form's own refusals, both addresses
 /// against a directory read within the last five minutes (never an older one), the leaver's mail delegates,
-/// the directory's display names for the auto-reply, then the steps (`Offboarding.steps`) as `WriteStep`s.
+/// the directory's display names for the auto-reply, then the steps (`Offboarding.steps`) as `WriteStep`s. Native
+/// reads beside GamGUI's: the secondary calendars the leaver owns and the Vault holds on them, each a warning.
 ///
 /// The run is the executor's (invariant 2): the plan's preview, held as shown, with the leaver's address to
 /// type (ChangeCore D), only `requires` stopping a step (B), the sweep tolerating its benign notices (A), and
@@ -32,13 +33,18 @@ public final class OffboardChanges {
         public var done: Set<Offboarding.Step> = []
         /// Steps left out ("doesn't apply"): not run, and never counted as succeeded. Only the optional ones.
         public var notApplicable: Set<Offboarding.Step> = []
+        /// Native steps added to GamGUI's eight (`Offboarding.Step.addable`).
+        public var added: Set<Offboarding.Step> = []
 
         public init() {}
 
-        /// The form filled from `template`: the steps it leaves out, the auto-reply, the reminder and its invitee.
-        /// The addresses and the "already done" ticks are this leaver's, and stay.
+        /// The form filled from `template`: the steps it leaves out and adds, the auto-reply, the reminder and its
+        /// invitee. The addresses and the "already done" ticks are this leaver's, and stay.
         public mutating func apply(_ template: Offboarding.Template) {
             notApplicable = template.leftOut
+            added = template.added
+            // A tick on a step this routine no longer has would come back with it, unseen.
+            done.subtract(Set(Offboarding.Step.addable).subtracting(added))
             subject = template.subject
             message = template.message
             days = template.days
@@ -47,7 +53,7 @@ public final class OffboardChanges {
 
         /// What saving this form as a template keeps.
         public var template: Offboarding.Template {
-            Offboarding.Template(leftOut: notApplicable, subject: subject, message: message, days: days, invitee: invitee)
+            Offboarding.Template(leftOut: notApplicable, added: added, subject: subject, message: message, days: days, invitee: invitee)
         }
     }
 
@@ -67,7 +73,7 @@ public final class OffboardChanges {
         case leftOut(cost: String)
     }
 
-    /// One of the eight steps, as the plan lists it.
+    /// One step of the routine, as the plan lists it.
     public struct Row: Identifiable, Sendable {
         public let key: Offboarding.Step
         public let label: String
@@ -87,7 +93,7 @@ public final class OffboardChanges {
         public let header: String
         /// Said before anything runs; none blocks.
         public let warnings: [String]
-        /// All eight steps, in run order.
+        /// Every step of the routine (GamGUI's eight and those added), in run order.
         public let rows: [Row]
         public let whatStopsWhat: String
         /// Nil when the auto-reply is left out.
@@ -305,7 +311,9 @@ public final class OffboardChanges {
 
         let leaver = PythonText.strip(form.leaver), manager = PythonText.strip(form.manager)
         guard !leaver.isEmpty, !manager.isEmpty else { return refuse("Enter both the departing user and the manager email.") }
-        if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable) { return refuse(problem) }
+        if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: form.added) {
+            return refuse(problem)
+        }
         let invitee = PythonText.strip(form.invitee)
         guard invitee.isEmpty || Address.looksLikeEmail(invitee) else {
             return refuse("The invitee “\(invitee)” isn't one email address. Enter one, like it@example.com, or leave it empty.")
@@ -327,9 +335,24 @@ public final class OffboardChanges {
         }
         let user = leaving.primaryEmail, boss = takingOver.primaryEmail
         var warnings = check.warnings
-        if !form.done.union(form.notApplicable).contains(.delegate) {
-            let delegates = await access.delegates(of: user).mapError { Offboarding.Unread($0.summary) }
-            if let warning = Offboarding.delegateWarning(user: user, manager: boss, delegates: delegates) { warnings.append(warning) }
+        // The three reads at once: each is one gam call, and none needs another's answer.
+        let readsDelegates = !form.done.union(form.notApplicable).contains(.delegate)
+        async let delegateRead = readsDelegates ? access.delegates(of: user) : nil
+        async let calendarRead = access.ownedSecondaryCalendars(of: user)
+        async let holdRead = access.vaultHolds(of: user)
+        if let delegates = await delegateRead?.mapError({ Offboarding.Unread($0.summary) }),
+           let warning = Offboarding.delegateWarning(user: user, manager: boss, delegates: delegates) {
+            warnings.append(warning)
+        }
+        // What the later delete would lose, and what a hold stops: said whatever the steps (native reads).
+        let transferRuns = !form.done.union(form.notApplicable).contains(.transfer)
+        if let warning = Offboarding.vaultHoldsWarning(user: user, holds: await holdRead.mapError { Offboarding.Unread($0.summary) },
+                                                      transferRuns: transferRuns) {
+            warnings.append(warning)
+        }
+        if let warning = Offboarding.secondaryCalendarsWarning(user: user,
+                                                               calendars: await calendarRead.mapError { Offboarding.Unread($0.summary) }) {
+            warnings.append(warning)
         }
         // An emptied field runs the default text, as the auto-reply block shows it.
         let subject = form.subject.isEmpty ? Offboarding.defaultSubject : form.subject
@@ -341,14 +364,16 @@ public final class OffboardChanges {
                 user: user, manager: boss, subject: subject, message: message, days: days,
                 today: Offboarding.Day(now(), in: calendar), notify: invitee,
                 employeeName: Offboarding.displayName(of: user, in: users),
-                managerContact: Offboarding.managerContact(boss, in: users), notApplicable: form.notApplicable)
+                managerContact: Offboarding.managerContact(boss, in: users), notApplicable: form.notApplicable,
+                adding: form.added)
         } catch Offboarding.Invalid.outOfRange {
             return refuse("The reminder would fall after the year 9999. Enter fewer days.")
         } catch {
             return refuse("\(error)")
         }
         let block = Offboarding.composeAutoreply(user: user, manager: boss, subject: subject, message: message, directory: users)
-        let steps = Self.writeSteps(planned, leaver: user, manager: boss, done: form.done, notApplicable: form.notApplicable)
+        let steps = Self.writeSteps(planned, leaver: user, manager: boss, done: form.done, notApplicable: form.notApplicable,
+                                    added: form.added)
         // Held as shown: the leaver's address to type, only `requires` stopping a step, and both accounts read
         // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list).
         var preview: HeldPreview?
@@ -389,9 +414,9 @@ public final class OffboardChanges {
         }
         finish(.planned(Plan(
             form: form, leaver: leaving, manager: takingOver,
-            header: Offboarding.header(user: user, done: form.done, notApplicable: form.notApplicable),
+            header: Offboarding.header(user: user, done: form.done, notApplicable: form.notApplicable, adding: form.added),
             warnings: warnings, rows: rows,
-            whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable),
+            whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable, adding: form.added),
             autoreply: form.notApplicable.contains(.vacation) ? nil : Autoreply(subject: block.subject, message: block.message),
             notes: Offboarding.notes(days: days, notApplicable: form.notApplicable), steps: steps, preview: preview)))
         // A plan that arrived after a newer one, or on another tenant, is dropped with its preview.
@@ -503,14 +528,17 @@ public final class OffboardChanges {
     /// leaver, the reminder on the manager's calendar, and each needing the earlier steps that run and that
     /// it requires (a step ticked as done counts as succeeded).
     nonisolated static func writeSteps(_ planned: [Offboarding.Planned], leaver: String, manager: String,
-                                       done: Set<Offboarding.Step>, notApplicable: Set<Offboarding.Step>) -> [WriteStep] {
+                                       done: Set<Offboarding.Step>, notApplicable: Set<Offboarding.Step>,
+                                       added: Set<Offboarding.Step> = []) -> [WriteStep] {
         let running = planned.filter { !done.contains($0.key) && !notApplicable.contains($0.key) }
-        // GamGUI's `offboard_plan` record: what was left out goes in the first step's audit.
+        // GamGUI's `offboard_plan` record: what was left out goes in the first step's audit, and what was added beside it.
         let leftOut = Offboarding.Step.allCases.filter(notApplicable.contains).map(\.rawValue).joined(separator: ",")
+        let adds = Offboarding.Step.allCases.filter(added.contains).map(\.rawValue).joined(separator: ",")
         return running.enumerated().map { index, step in
             var about = ["offboard": leaver]
             if step.key == .transfer { about["new_owner"] = manager }
             if index == 0, !leftOut.isEmpty { about["not_applicable"] = leftOut }
+            if index == 0, !adds.isEmpty { about["added"] = adds }
             return WriteStep(step.write, target: step.key == .reminder ? manager : leaver, summary: step.summary,
                              requires: step.requires.compactMap { needed in running.firstIndex { $0.key == needed } },
                              about: about, timeout: step.timeout,
