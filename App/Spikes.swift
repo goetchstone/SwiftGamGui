@@ -117,6 +117,9 @@ enum Spikes {
             fflush(stdout)
             exit(EXIT_FAILURE)
         }
+        // A sheet open over the window holds the quit until it ends (CI's group-sales-add hung, 2026-10-12);
+        // ended here, the app quits as it always does, wiping its runtime folder on the way out.
+        if let window, let attached = window.attachedSheet { window.endSheet(attached) }
         NSApp.terminate(nil)
     }
 
