@@ -239,7 +239,60 @@ final class OffboardChangesTests {
         _ = try await plan(form())
         #expect(delegateReads() == 1)
         let plan = try await plan(form(notApplicable: [.delegate]))
-        #expect(delegateReads() == 1 && plan.warnings.isEmpty)
+        #expect(delegateReads() == 1 && !plan.warnings.contains { $0.contains("delegate") }, "\(plan.warnings)")
+    }
+
+    // MARK: native reads and added steps (docs/plans/2026-10-13-offboarding-options.md)
+
+    /// The secondary calendars the leaver owns (hidden ones too) and the Vault holds on them are said before the run,
+    /// whatever the steps: the transfer doesn't move the calendars and the delete loses them; a hold stops both. A
+    /// refused read is said, never taken as none.
+    @Test func ownedCalendarsAndVaultHoldsAreSaid() async throws {
+        try await connect()
+        let carol = try await plan(form())
+        #expect(carol.warnings.contains { $0.hasPrefix("carol@example.com owns 2 secondary calendars: “Operations”, “Old projects”.") },
+                "\(carol.warnings)")
+        #expect(!carol.warnings.contains { $0.contains("Vault") })
+        let dana = try await plan(form("dana@example.com"))
+        #expect(dana.warnings.contains("dana@example.com is under a Vault hold: “Mail and Drive” in “Contract audit”. Google doesn't "
+                                       + "transfer held data, so the Drive & Calendar transfer may move nothing, and the account can't "
+                                       + "be deleted while it's held."), "\(dana.warnings)")
+        #expect(!dana.warnings.contains { $0.contains("secondary calendar") })
+        try marker("novault")
+        try marker("nocalendar/carol@example.com")
+        let refused = try await plan(form(notApplicable: [.transfer]))
+        #expect(refused.warnings.contains { $0.hasPrefix("Couldn't check carol@example.com for Vault holds (") && $0.hasSuffix(
+            "A hold stops the account's deletion: check in Google Vault.") }, "\(refused.warnings)")
+        #expect(refused.warnings.contains { $0.hasPrefix("Couldn't check whether carol@example.com owns secondary calendars (") })
+    }
+
+    /// Added steps run in their places and the first step's audit names them; a routine of ten or more steps with a
+    /// destructive one needs `confirm` typed beside the leaver's address (the guard's rule for a destructive bulk run).
+    @Test func addedStepsRunAndALongRoutineNeedsConfirmTyped() async throws {
+        try await connect()
+        var form = form()
+        form.added = [.clearRecovery, .hideFromDirectory]
+        let plan = try await plan(form)
+        #expect(plan.header == "Offboarding carol@example.com — 10 steps")
+        #expect(plan.rows.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer, .calacls,
+                                         .reminder, .hideFromDirectory])
+        // Masked, as GamGUI masks these keywords' values, though they're empty: the step's words say what it does.
+        #expect(lines(plan)[1] == "gam update user carol@example.com recoveryemail '***redacted***' recoveryphone '***redacted***'")
+        #expect(lines(plan).last?.hasSuffix("update user carol@example.com gal off") == true)
+        #expect(plan.steps[1].requires == [0] && plan.steps.last?.requires == [0])
+        #expect(plan.steps[0].about["added"] == "clear_recovery,hide_from_directory" && plan.steps[1].about["added"] == nil)
+        #expect(plan.preview?.decision.requiresTypedConfirmation == true)
+        await changes.confirm(plan, typed("carol@example.com"))
+        #expect(changes.problem == "Type confirm to run this destructive bulk change." && changes.run == nil && writes().isEmpty)
+        let again = try await self.plan(form)
+        clock.advance(10)
+        await changes.confirm(again, OperatorConfirmation(confirmed: true, typedWord: "confirm", typedAddresses: ["carol@example.com"]))
+        let run = try #require(changes.run)
+        #expect(run.isComplete, "\(run.results)")
+        #expect(writes() == lines(again))
+        #expect(writes()[1].contains("recoveryemail '***redacted***' recoveryphone") && writes().last?.hasSuffix("gal off") == true)
+        // Without them, GamGUI's eight stay under the guard's bulk line: no word to type.
+        #expect(try await self.plan(self.form()).preview?.decision.requiresTypedConfirmation == false)
     }
 
     /// `test_offboard_refuses_the_connected_admin`: revoking its access deletes the app's own token mid-run.

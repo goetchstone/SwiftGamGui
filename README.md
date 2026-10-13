@@ -20,8 +20,10 @@ person or takes access away. Onboard sets up one new hire from a role you create
 with a one-time sign-in card, their signature, groups, calendars, a task checklist and a welcome email,
 waiting for Google where it must. Offboard
 runs GamGUI's offboarding for a leaver from a saved template of the steps you run (yours, Hand-over, by
-default): every step's exact command first, then, with the leaver's address typed, each step as it ends, Stop
-between steps, and what's left to finish. Reports lists the people behind each of the directory's counts and
+default), with steps of its own to add (clear their recovery info, hide them from the directory) and warnings
+for what the later delete would lose (their secondary calendars) or a Vault hold would stop: every step's exact
+command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
+left to finish. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
@@ -158,6 +160,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Welcome email (Onboard) | GamGUI's command (sent live 2026-09-30), but the body keeps its line breaks: never run live |
 | Offboarding: reset password, sign out, forwarding off, delegate, auto-reply, transfer, calendar sweep (Offboard) | argv-identical (GamGUI ran all eight live, 2026-10-07) |
 | Offboarding: the manager's reminder with an invitee (Offboard) | argv-identical; the invitee's email unproven live in either app |
+| Offboarding: clear recovery email & phone, hide from the directory (Offboard, added steps) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.

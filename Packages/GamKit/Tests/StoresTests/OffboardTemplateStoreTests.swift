@@ -59,18 +59,22 @@ struct OffboardTemplateStoreTests {
         #expect(reopened.template("contractor") == nil, "names compare by their exact text")
     }
 
-    /// The file's shape, pinned: the steps left out in run order, every field, the default.
+    /// The file's shape, pinned: the steps left out and added, each in run order, every field, the default.
     @Test func theFileIsThisFormat() throws {
         var store = try OffboardTemplateStore(root: root)
         for name in store.names { try store.delete(name) }
-        try store.save("Contractor", Self.mine)
+        var mine = Self.mine
+        mine.added = [.hideFromDirectory, .clearRecovery]
+        try store.save("Contractor", mine)
         let text = String(decoding: try #require(bytes(file)), as: UTF8.self)
         let parsed = try #require(JSONValue.parse(text))
-        #expect(parsed["version"]?.int == 1)
+        #expect(parsed["version"]?.int == 2)
         #expect(parsed["default"] == .null, "deleting the default left none")
         let saved = try #require(parsed["templates"]?["Contractor"]?.object)
-        #expect(saved.keys.sorted() == ["days", "invitee", "leave_out", "message", "subject"])
+        #expect(saved.keys.sorted() == ["add", "days", "invitee", "leave_out", "message", "subject"])
         #expect(saved["leave_out"] == .array([.string("calacls"), .string("reminder")]))
+        #expect(saved["add"] == .array([.string("clear_recovery"), .string("hide_from_directory")]))
+        #expect(try OffboardTemplateStore(root: root).template("Contractor") == mine)
         #expect(saved["days"]?.int == 14 && saved["invitee"]?.string == "it@example.com")
         #expect(saved["subject"]?.string == "{employee} has left" && saved["message"]?.string == "Write to {manager}.")
     }
@@ -123,24 +127,47 @@ struct OffboardTemplateStoreTests {
         #expect(listing(root) == [OffboardTemplateStore.fileName], "no partial file behind")
     }
 
+    /// A version 1 file, written before templates could add steps, reads as adding none and is never moved aside;
+    /// the next save writes version 2 with the same templates.
+    @Test func aVersionOneFileReadsAsAddingNothing() throws {
+        #expect(mkdir(root.path, 0o700) == 0)
+        let v1 = #"{"version": 1, "default": "A", "templates": {"A": {"leave_out": ["calacls"], "subject": "s", "message": "m", "days": 30, "invitee": ""}}}"#
+        try Data(v1.utf8).write(to: file)
+        var store = try OffboardTemplateStore(root: root, now: Self.moment)
+        let a = Offboarding.Template(leftOut: [.calacls], subject: "s", message: "m")
+        #expect(store.quarantined == nil && store.names == ["A"] && store.template("A") == a && store.defaultName == "A")
+        try store.save("B", Self.mine)
+        let written = try #require(bytes(file))
+        let parsed = try #require(JSONValue.parse(String(decoding: written, as: UTF8.self)))
+        #expect(parsed["version"]?.int == 2 && parsed["templates"]?["A"]?["add"] == .array([]))
+        #expect(try OffboardTemplateStore(root: root).template("A") == a)
+    }
+
     /// A file this format can't read is moved aside whole and the starters shown, never saved over: whatever it
     /// held stays for the operator. A template that couldn't run is such a file: nothing half-read is offered.
     @Test func aFileItCantReadIsMovedAsideNeverOverwritten() throws {
-        let template = #"{"leave_out": ["calacls"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#
-        func file(_ templates: String, default name: String = "null") -> [UInt8] {
-            Array(#"{"version": 1, "default": \#(name), "templates": {\#(templates)}}"#.utf8)
+        let template = #"{"leave_out": ["calacls"], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#
+        func file(_ templates: String, default name: String = "null", version: Int = 2) -> [UInt8] {
+            Array(#"{"version": \#(version), "default": \#(name), "templates": {\#(templates)}}"#.utf8)
         }
         let bad: [(String, [UInt8])] = [
             ("not JSON", Array("{not json".utf8)),
-            ("a later version", Array(#"{"version": 2, "default": null, "templates": {}}"#.utf8)),
-            ("the lock left out", file(#""A": {"leave_out": ["password"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
-            ("a step GAM's routine doesn't have", file(#""A": {"leave_out": ["suspend"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
-            ("a step twice", file(#""A": {"leave_out": ["calacls", "calacls"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
-            ("no reminder day", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 0, "invitee": ""}"#)),
-            ("days as text", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": "30", "invitee": ""}"#)),
-            ("an invitee that isn't one address", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 30, "invitee": "a, b"}"#)),
-            ("a field missing", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 30}"#)),
-            ("a field more", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 30, "invitee": "", "x": 1}"#)),
+            ("a later version", Array(#"{"version": 3, "default": null, "templates": {}}"#.utf8)),
+            ("version 1 with an add list", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#,
+                                                    version: 1)),
+            ("version 2 without add", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("a GamGUI step added", file(#""A": {"leave_out": [], "add": ["calacls"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("an added step left out", file(#""A": {"leave_out": ["clear_recovery"], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("an added step twice", file(#""A": {"leave_out": [], "add": ["clear_recovery", "clear_recovery"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("an unknown step added", file(#""A": {"leave_out": [], "add": ["suspend"], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("the lock left out", file(#""A": {"leave_out": ["password"], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("a step GAM's routine doesn't have", file(#""A": {"leave_out": ["suspend"], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("a step twice", file(#""A": {"leave_out": ["calacls", "calacls"], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
+            ("no reminder day", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 0, "invitee": ""}"#)),
+            ("days as text", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": "30", "invitee": ""}"#)),
+            ("an invitee that isn't one address", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": "a, b"}"#)),
+            ("a field missing", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30}"#)),
+            ("a field more", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": "", "x": 1}"#)),
             ("a padded name", file(#"" A": \#(template)"#)),
             ("a default that names none", file(#""A": \#(template)"#, default: #""B""#)),
             ("a default that isn't text", file(#""A": \#(template)"#, default: "1")),

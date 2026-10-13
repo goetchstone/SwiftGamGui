@@ -626,9 +626,13 @@ print_acl_rows() {  # <file> <key value>...
 # (grammar 6266-6283), matched lowercased as GAM matches it; only the four the app asks for are modelled, and
 # GAM's other options are refused rather than answered in a guessed shape. GAM acts as the person: one who
 # isn't a user fails before anything prints, and one with Calendar off fails after the "Getting" line, exit 73.
+# `... ownedsecondary [showhidden] fields id,summary formatjson`: the calendars on that list the person is
+# dataOwner of, `dataOwner` added to the fields (:55747-55748, :55771-55776). The grammar (6288) shows the two
+# as alternatives, but they're one parser loop. calendarList.list leaves hidden entries out unless showHidden:
+# `user_owned_calendars/<u>.json` are the visible ones, `<u>.hidden.json` the hidden ones.
 CALENDAR_LIST_FIELDS="accessrole|backgroundcolor|colorid|conferenceproperties|defaultreminders|deleted|description|foregroundcolor|hidden|id|location|notificationsettings|primary|selected|summary|summaryoverride|timezone"
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]; then
-  user=$(lower "$2"); shift 4; fj=""; want=" "
+  user=$(lower "$2"); shift 4; fj=""; want=" "; owned=""; hidden=""
   while [ $# -gt 0 ]; do
     case "$1" in
       fields)
@@ -643,13 +647,28 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]
         set +f
         shift 2 ;;
       formatjson) fj=1; shift ;;
-      quotechar|delimiter|permissions|oneitemperrow|primary|noprimary|nogroups|noresources|nosystem|nousers|ownedsecondary|\
-      addcsvdata|minaccessrole|showdeleted|showhidden|showownorganizationonly|allcalendars)
+      ownedsecondary) owned=1; shift ;;
+      showhidden) hidden=1; shift ;;
+      quotechar|delimiter|permissions|oneitemperrow|primary|noprimary|nogroups|noresources|nosystem|nousers|\
+      addcsvdata|minaccessrole|showdeleted|showownorganizationonly|allcalendars)
         not_modelled "print calendars with $1" ;;
       *) invalid_arg "$1" ;;
     esac
   done
   [ -n "$fj" ] || not_modelled "print calendars without formatjson"
+  if [ -n "$owned" ]; then
+    [ "$want" = " id summary " ] || not_modelled "print calendars ownedsecondary with fields$want"
+    known_user "$user" || not_a_user "$user" Print
+    getting Calendars "$user"
+    if calendar_off "$user"; then calendar_service_off "$user"; fi
+    echo "primaryEmail,calendarId,JSON"
+    for file in "$GAM_MOCK_FIXTURES/user_owned_calendars/$user.json" ${hidden:+"$GAM_MOCK_FIXTURES/user_owned_calendars/$user.hidden.json"}; do
+      [ -f "$file" ] || continue
+      while IFS= read -r record; do gam_row "$user" "$(json_text id "$record")" "$record"; done < "$file"
+    done
+    exit 0
+  fi
+  [ -z "$hidden" ] || not_modelled "print calendars with showhidden"
   for field in id summary accessrole primary; do
     case "$want" in *" $field "*) ;; *) not_modelled "print calendars without field $field" ;; esac
   done
@@ -886,6 +905,25 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "datatransfers" ]; then
   exit 0
 fi
 
+# `gam user <u> print vaultholds|holds` (printShowUserVaultHolds, :45612-45690) -> CSV, no formatjson: every
+# open matter's holds that name the person or an org unit above them, `User,holdId,matterId,matterName,name,
+# orgUnitId,orgUnitPath` (sortall), the header alone for none. `vault_holds.csv` holds the rows. A Vault refusal
+# fails the matters' list before anything prints, entityActionFailedWarning, ACTION_FAILED_RC (50): modelled by
+# `$GAM_MOCK_STATE/novault` (approximate wording: GAM prints the API's reason).
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "vaultholds" ] || [ "${4:-}" = "holds" ]; }; then
+  user=$(lower "$2"); shift 4
+  if [ $# -gt 0 ]; then
+    case "$1" in todrive) not_modelled "print vaultholds todrive" ;; *) invalid_arg "$1" ;; esac
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/novault" ]; then
+    echo "Vault Hold: , Print Failed: Request had insufficient authentication scopes." 1>&2; exit 50
+  fi
+  known_user "$user" || not_a_user "$user" Print
+  echo "User,holdId,matterId,matterName,name,orgUnitId,orgUnitPath"
+  grep -i "^$user," "$GAM_MOCK_FIXTURES/vault_holds.csv" || true
+  exit 0
+fi
+
 # ================================ writes (strict) ================================================
 
 # <UserAttribute>* plus the notify clause, as `gam create|add user` / `gam update user` take them. Only
@@ -909,6 +947,8 @@ check_user_attrs() {
         shift 2 ;;
       displayname|recoveryemail|recoveryphone|ou|org|orgunitpath)
         need_value $# "String"; shift 2 ;;
+      gal|includeinglobaladdresslist)  # [<Boolean>]: getBoolean's optional form, true when bare (grammar 5831)
+        shift; if is_bool "${1:-}"; then shift; fi ;;
       notify|subject|notifypassword|from|mailbox|replyto|message|textmessage|htmlmessage)
         need_value $# "String"; shift 2 ;;
       notifyrecoveryemail|ignorenullpassword) shift ;;

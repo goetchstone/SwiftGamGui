@@ -5,8 +5,11 @@ off forwarding, delegate and auto-reply the mailbox, transfer Drive and Calendar
 every active user's primary calendar, and a dated reminder on the manager's calendar, plus the separate,
 later account delete. Built (2026-10-13): **Off1**, the plan (exactly what GamGUI's offboarding runs for a
 leaver and a manager, every step's `gam` line); **templates** (native) that fill its form with the
-operator's routine; and **Off2**, the run, through ChangeCore, adversarially reviewed and fixed. Next: the live
-checks L1 and L2, then **Off3**, the delete (below). GamGUI's runbook
+operator's routine; and **Off2**, the run, through ChangeCore, adversarially reviewed and fixed. **Added steps**
+(native, 2026-10-13, docs/plans/2026-10-13-offboarding-options.md slices 0-1): clear recovery info and hide from
+the directory, the owned secondary calendars and Vault holds read and warned, and the typed `confirm` a long
+routine needs. Next: the live checks L1 and L2, the plan's next slices, then **Close Out** with **Off3**, the delete
+(below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
 (2026-10-07, all eight steps ok) all carry over.
@@ -58,7 +61,15 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
    exists", exit 50, and a failed delegate stops the hand-over); a read that fails warns, quoting GAM,
    because the delegate step uses the same Gmail access and would fail after the irreversible reset.
 4. **Display names** for the auto-reply's text: the leaver's full name, the manager as "Name (address)".
-5. **Not read:** groups, calendars, forwarding state, Drive ownership. Forwarding is always turned off.
+5. **Not read by GamGUI:** groups, calendars, forwarding state, Drive ownership. Forwarding is always turned off.
+6. **Native reads, each a warning whatever the steps** (run at once with the delegates read):
+   - the secondary calendars the leaver owns, hidden ones too: `user L print calendars ownedsecondary showhidden
+     fields id,summary formatjson` (6287-6288; `showhidden` because GAM filters the person's own list, which
+     leaves hidden entries out). Google deletes them with the account (Workspace accounts, from 2026-10-05) and
+     the transfer doesn't move them, so the warning names them;
+   - the Vault holds that cover the leaver: `user L print vaultholds` (5704, CSV only; holds on an org unit above
+     them count). Google doesn't transfer held data, and a held account can't be deleted;
+   - a refused read (Calendar off, no Vault access) is said in GAM's words, never taken as "none".
 
 ### The steps (`Offboarding.steps`, GamGUI's `build_offboard_steps`)
 
@@ -80,6 +91,14 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
 - Risk floors (`WriteAction.minimumRisk`): the reset, the revoke, the transfer and the sweep are
   destructive; the rest low.
 - Only the sweep runs under `GamRunner.domainWideTimeout` (an hour): one call that visits every user.
+- **Added steps** (native, `Step.addable`, run only when the form or template adds them, each needing only the
+  reset): **Clear recovery email & phone** after the reset, `update user L recoveryemail '' recoveryphone ''`
+  (`clearRecovery`, destructive: the old values aren't kept; shown and audited masked, as GamGUI masks those
+  keywords, so its words say what it does); **Hide from the directory** last, `update user L gal off`
+  (`hideFromDirectory`, low; always the explicit `off`, since a bare `gal` means on). No GamGUI builder:
+  `NativeArgvTests` holds each exact argv, checked against the grammar (5831, 5842-5843, 5942) and GAM's
+  source. With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
+  audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
   `effectiveRequires` routes the others around it (no delegate: the auto-reply and the transfer need only
   the reset). The reminder says "nothing transferred" when the transfer is left out.
@@ -93,6 +112,12 @@ Worked out from `effectiveRequires` for the steps that run (`whatStopsWhat`), no
 GamGUI's template sentence went stale twice: it still says a failed delegate stops the routine (the sweep
 stopped needing the delegate on 2026-09-24) and never names forwarding. A deliberate deviation in words;
 the commands are unchanged.
+
+## Typed confirm for a long routine
+Ten or more steps with a destructive one is GamGUI's "destructive bulk change": the guard asks for the word
+`confirm` (Guard counts steps as targets). GamGUI's eight never reach it; GamGUI's eight plus both added steps
+do. The confirm sheet asks for the word beside the leaver's address whenever the held preview's decision says
+so, and the executor checks it whatever the sheet sends (`addedStepsRunAndALongRoutineNeedsConfirmTyped`).
 
 ## Grammar check (GAM 7.48.22, `Vendor/gam7/GamCommands.txt`)
 Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
@@ -158,7 +183,7 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   the accounts unchanged; what was left out), `ExecutorTests` (A-D), `MockOffboardingTests` (the mock).
 
 ## Templates (native: GamGUI has none)
-- **What one holds:** the optional steps it leaves out, the auto-reply's subject and message, the reminder's
+- **What one holds:** the optional steps it leaves out, the native steps it adds, the auto-reply's subject and message, the reminder's
   days and its invitee: the whole form but the two addresses and the "already done" ticks, which are one
   leaver's. Picking one fills the form, and nothing else: the plan is the form's, so every line is still
   GamGUI's (`aTemplateFillsTheFormAndThePlanIsTheFormsOwn`). The lock can't be left out by a template either.
@@ -172,8 +197,10 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   before replacing); **More**: open with it by default, or delete it (asked). A form that couldn't run
   (no reminder day, an invitee that isn't one address) can't be saved, and says why.
 - **The file:** `offboarding-templates.json` beside the signature templates in the app's folder,
-  `{"version": 1, "default": name, "templates": {name: {"leave_out", "subject", "message", "days",
-  "invitee"}}}`. Handled as the signature templates' file is, by the same code (`SignatureStore.load`,
+  `{"version": 2, "default": name, "templates": {name: {"leave_out", "add", "subject", "message", "days",
+  "invitee"}}}`. Version 1 (no `add`) reads as adding nothing and is never moved aside; the next save writes
+  version 2, which an older build moves aside as a format it doesn't know. The starters add nothing until an
+  added step has run live. Handled as the signature templates' file is, by the same code (`SignatureStore.load`,
   `writeFile`): read by descriptor, written atomically `0600` in a `0700` folder, and a file it can't read,
   or one holding a template that couldn't run, moved aside whole and the starters shown, never saved over.
   One set for every domain, as the signature templates are.
@@ -193,6 +220,9 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 - **The mock runs these writes as GAM does** (failure-log 2026-10-13, "offboarding mock lies"): a transfer
   resolves its owners (same account, non-user and a second transfer refused as GAM refuses them), a
   suspended user's deprovision exits 51, and the default sweep walks the active directory.
+- **The mock's native reads:** `user_owned_calendars/<u>.json` (and `<u>.hidden.json`, only with `showhidden`),
+  `vault_holds.csv` (dana@ is held), and `GAM_MOCK_STATE/novault` for a Vault refusal (exit 50; GAM's wording
+  approximate). `update user … gal [<Boolean>]` is GAM's optional Boolean.
 - **Not proven offline:** anything about a real tenant. The plan's lines are argv-identical to GamGUI's,
   which ran all eight live on 2026-10-07 (GAM 7.48.14); the reminder with an invitee is still unproven
   live there.
@@ -224,9 +254,11 @@ is the leaver's while a step acts on the leaver, none for the reminder alone; th
 the domain changes mid-run.
 
 ## Next
-- **Off3:** the account delete, with GamGUI's pending-transfer warning plus a precondition.
-- More steps a template could offer, each new to both apps (no GamGUI argv to hold it to), so each needs
-  the grammar read, a builder, the mock and a live check: remove from all groups, hide from the directory,
-  move to a leavers' org unit, a transfer to someone other than the delegate. The operator picks which.
+- The options plan's next slices (docs/plans/2026-10-13-offboarding-options.md): secondary calendars handed to the
+  manager (`calendars <id> transfer ownership M`: the grammar line 1685 lacks `ownership`, GAM's source needs it),
+  forwarding filters, POP/IMAP, other delegates, forward to the manager, admin roles, transfer options.
+- **Close Out** (the operator, 2026-10-13): groups, org unit, suspend, aliases and archive, after the transfer
+  finishes, with **Off3**, the account delete (GamGUI's pending-transfer warning plus a precondition; refused
+  under a Vault hold or while secondary calendars remain).
 - Extra read-only warnings, to decide: a transfer already running for L, and the sign-out scope missing
   from the token.

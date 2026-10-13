@@ -70,18 +70,21 @@ struct OffboardingTests {
 
     private func plan(_ user: String = "leaver@e.com", _ manager: String = "mgr@e.com", subject: String = "s",
                       message: String = "m", days: Int = 30, notify: String = "", employeeName: String = "",
-                      managerContact: String = "", notApplicable: Set<Offboarding.Step> = []) throws -> [Offboarding.Planned] {
+                      managerContact: String = "", notApplicable: Set<Offboarding.Step> = [],
+                      adding: Set<Offboarding.Step> = []) throws -> [Offboarding.Planned] {
         try Offboarding.steps(user: user, manager: manager, subject: subject, message: message, days: days, today: Self.today,
                               notify: notify, employeeName: employeeName, managerContact: managerContact,
-                              notApplicable: notApplicable)
+                              notApplicable: notApplicable, adding: adding)
     }
 
     // MARK: held to the fixture
 
     @Test func theConstantsAreGamGUIs() {
         let constants = document.constants
-        #expect(Set(Offboarding.Step.allCases.map(\.rawValue)) == Set(constants.requires.keys))
-        for step in Offboarding.Step.allCases {
+        #expect(Set(Offboarding.Step.gamgui.map(\.rawValue)) == Set(constants.requires.keys))
+        #expect(Offboarding.Step.allCases.filter(Offboarding.Step.gamgui.contains) == Offboarding.Step.gamgui, "GamGUI's order")
+        #expect(Offboarding.Step.allCases.filter { !Offboarding.Step.gamgui.contains($0) } == Offboarding.Step.addable)
+        for step in Offboarding.Step.gamgui {
             #expect(bytes(step.name) == bytes(constants.step_names[step.rawValue]!), "\(step)")
             #expect(Offboarding.requires(step).map(\.rawValue) == constants.requires[step.rawValue]!, "\(step)")
             #expect(step.leftOutCost.map(bytes) == constants.not_applicable_cost[step.rawValue].map(bytes), "\(step)")
@@ -121,7 +124,7 @@ struct OffboardingTests {
                     #expect(routine.error == "ValueError" && message == routine.message, "\(args)")
                 case .outOfRange?:
                     #expect(routine.error == "OverflowError", "\(args)")
-                case nil:
+                case .notAddable?, nil:
                     Issue.record("\(error) for \(args)")
                 }
             case (.success, nil):
@@ -408,9 +411,13 @@ struct OffboardingTests {
     /// `test_lifecycle_page_intro_names_every_step_in_run_order`: the intro once left out the two steps
     /// that lock the leaver out.
     @Test func theIntroNamesEveryStepInRunOrder() throws {
-        let intro = Offboarding.intro
-        let positions = try Offboarding.Step.allCases.map { try #require(intro.range(of: $0.name)?.lowerBound, "\($0.name)") }
+        let intro = Offboarding.intro()
+        let positions = try Offboarding.Step.gamgui.map { try #require(intro.range(of: $0.name)?.lowerBound, "\($0.name)") }
         #expect(positions == positions.sorted())
+        #expect(Offboarding.Step.addable.allSatisfy { !intro.contains($0.name) })
+        let added = Offboarding.intro(adding: Set(Offboarding.Step.addable))
+        let all = try Offboarding.Step.allCases.map { try #require(added.range(of: $0.name)?.lowerBound, "\($0.name)") }
+        #expect(all == all.sorted())
     }
 
     /// What stops what, worked out from the dependencies rather than written beside them (GamGUI's sentence
@@ -431,6 +438,97 @@ struct OffboardingTests {
         let rerun = Offboarding.whatStopsWhat(done: [.password, .revoke, .forward, .delegate], notApplicable: [])
         #expect(!rerun.contains("“Reset password” fails") && !rerun.contains("“Set delegate” fails"))
         #expect(rerun.contains("If “Transfer Drive & Calendar” fails, “Manager reminder” doesn't run."))
+    }
+
+    // MARK: added steps (native: docs/plans/2026-10-13-offboarding-options.md)
+
+    /// An added step runs in its place, needs only the reset, and leaves GamGUI's eight exactly as they are.
+    @Test func addedStepsRunInTheirPlacesAndChangeNothingElse() throws {
+        let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable))
+        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer, .calacls,
+                                     .reminder, .hideFromDirectory])
+        let recovery = try #require(added.first { $0.key == .clearRecovery })
+        #expect(recovery.write.argv == ["update", "user", "carol@example.com", "recoveryemail", "", "recoveryphone", ""])
+        #expect(recovery.summary.contains("recovery email and recovery phone") && recovery.label == "Clear recovery email & phone")
+        let hide = try #require(added.first { $0.key == .hideFromDirectory })
+        #expect(hide.write.argv == ["update", "user", "carol@example.com", "gal", "off"] && hide.label == "Hide from the directory")
+        for step in added where Offboarding.Step.addable.contains(step.key) {
+            #expect(step.requires == [.password] && step.timeout == GamRunner.defaultTimeout, "\(step.key)")
+        }
+        let plain = try plan("carol@example.com", "alice@example.com")
+        #expect(plain.count == 8)
+        let kept = added.filter { Offboarding.Step.gamgui.contains($0.key) }
+        for (a, b) in zip(kept, plain) {
+            #expect(a.key == b.key && a.write.argv == b.write.argv && a.summary == b.summary && a.requires == b.requires)
+        }
+        // Left-out steps route around as before; an added step can't be left out, nor a GamGUI step added.
+        #expect(try plan(notApplicable: [.delegate], adding: [.clearRecovery]).first { $0.key == .vacation }?.requires == [.password])
+        #expect(throws: Offboarding.Invalid.notAddable("only clear_recovery, hide_from_directory can be added")) {
+            try plan(adding: [.calacls])
+        }
+        #expect(throws: Offboarding.Invalid.self) { try plan(notApplicable: [.clearRecovery]) }
+    }
+
+    @Test func theWordsCountTheAddedSteps() {
+        let adding: Set<Offboarding.Step> = [.clearRecovery, .hideFromDirectory]
+        #expect(Offboarding.header(user: "c@example.com", done: [], notApplicable: [], adding: adding) == "Offboarding c@example.com — 10 steps")
+        #expect(Offboarding.header(user: "c@example.com", done: [.password, .clearRecovery], notApplicable: [.reminder], adding: adding)
+                == "Offboarding c@example.com — 7 of 10 steps (2 ticked as already done, 1 left out)")
+        #expect(Offboarding.header(user: "c@example.com", done: [.clearRecovery], notApplicable: [])
+                == "Offboarding c@example.com — 8 steps", "a step not added doesn't count, ticked or not")
+        let words = Offboarding.whatStopsWhat(done: [], notApplicable: [], adding: adding)
+        #expect(words.hasPrefix("If “Reset password” fails, nothing after it runs."))
+        #expect(words.contains("If “Clear recovery email & phone”, “Revoke access & sign out”")
+                && words.contains("or “Hide from the directory” fails, it is reported as failed and the rest still runs."))
+        #expect(Offboarding.tickProblem(done: Set(Offboarding.Step.gamgui), notApplicable: [], adding: [.hideFromDirectory]) == nil,
+                "an added step is still to run")
+        #expect(Offboarding.tickProblem(done: Set(Offboarding.Step.gamgui).union([.hideFromDirectory]), notApplicable: [],
+                                        adding: [.hideFromDirectory])?.contains("nothing to run") == true)
+    }
+
+    @Test func aTemplateAddsOnlyTheAddableSteps() {
+        let template = Offboarding.Template(leftOut: [.calacls], added: [.hideFromDirectory, .clearRecovery])
+        #expect(template.problem == nil)
+        #expect(template.runs == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer, .reminder,
+                                  .hideFromDirectory])
+        #expect(Offboarding.Template(added: [.calacls]).problem?.contains("one of GamGUI's steps") == true)
+        #expect(Offboarding.Template(leftOut: [.clearRecovery]).problem?.contains("runs only when added") == true)
+        #expect(Offboarding.Step.addable.allSatisfy { $0.addedNote != nil && $0.leftOutCost == nil })
+        #expect(Offboarding.Step.gamgui.allSatisfy { $0.addedNote == nil })
+    }
+
+    /// The reads' warnings: what the delete would lose, and what a hold stops, said whatever the steps; a failed read
+    /// is said, never taken as "none".
+    @Test func theCalendarAndVaultWarningsSayWhatWasFound() {
+        let user = "carol@example.com"
+        #expect(Offboarding.secondaryCalendarsWarning(user: user, calendars: .success([])) == nil)
+        let one = UserCalendar(record: ["id": .string("c_team@group.calendar.google.com"), "summary": .string("Team")])
+        #expect(Offboarding.secondaryCalendarsWarning(user: user, calendars: .success([one]))
+                == "carol@example.com owns 1 secondary calendar: “Team”. The Drive & Calendar transfer doesn't move it, and Google "
+                + "deletes it with the account: hand it to someone before the account is deleted.")
+        let seven = (1...7).map { UserCalendar(record: ["id": .string("c\($0)@group.calendar.google.com"), "summary": .string("")]) }
+        let many = Offboarding.secondaryCalendarsWarning(user: user, calendars: .success(seven)) ?? ""
+        #expect(many.contains("owns 7 secondary calendars: “c1@group.calendar.google.com”") && many.contains("and 2 more")
+                && !many.contains("c6@"))
+        #expect(Offboarding.secondaryCalendarsWarning(user: user, calendars: .failure(.init("Calendar Service/App not enabled")))
+                == "Couldn't check whether carol@example.com owns secondary calendars (Calendar Service/App not enabled). Google "
+                + "deletes the secondary calendars a deleted account owns: check before the account is deleted.")
+
+        #expect(Offboarding.vaultHoldsWarning(user: user, holds: .success([]), transferRuns: true) == nil)
+        let holds = [Offboarding.VaultHold(matter: "Smith v. Example", hold: "Mail"),
+                     Offboarding.VaultHold(matter: "Audit", hold: "Sales OU", orgUnit: "/Sales")]
+        #expect(Offboarding.vaultHoldsWarning(user: user, holds: .success(holds), transferRuns: true)
+                == "carol@example.com is under 2 Vault holds: “Mail” in “Smith v. Example”, “Sales OU” in “Audit” (through the org "
+                + "unit /Sales). Google doesn't transfer held data, so the Drive & Calendar transfer may move nothing, and the "
+                + "account can't be deleted while it's held.")
+        #expect(Offboarding.vaultHoldsWarning(user: user, holds: .success([holds[0]]), transferRuns: false)?
+                    .hasPrefix("carol@example.com is under a Vault hold: “Mail” in “Smith v. Example”. Google doesn't transfer held data, and") == true)
+        #expect(Offboarding.vaultHoldsWarning(user: user, holds: .failure(.init("Forbidden")), transferRuns: true)
+                == "Couldn't check carol@example.com for Vault holds (Forbidden). A hold stops the Drive & Calendar transfer and the "
+                + "account's deletion: check in Google Vault.")
+        let row = GamOutput.records("User,holdId,matterId,matterName,name,orgUnitId,orgUnitPath\n"
+                                    + "carol@example.com,h1,m1,Audit,Sales OU,ou1,/Sales\n")
+        #expect(row.map(Offboarding.VaultHold.init(record:)) == [holds[1]])
     }
 
     /// The notes under the steps: the account stays active, and when to delete it.

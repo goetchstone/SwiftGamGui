@@ -30,7 +30,8 @@ status=0
 # fail when the page has too little room to spare, and on any non-zero exit.
 # Offboard is filled in for carol@example.com leaving and alice@example.com taking over: the form, then (tab
 # `plan`) the plan it runs, scrolled into view; `confirm`, the confirm sheet over it; `result`, a finished
-# run's panel (made up: nothing runs). Reports opens on its first report, then on its
+# run's panel (made up: nothing runs); `-added`, with this app's own steps added (ten steps: the sheet asks for
+# `confirm` too). Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
@@ -41,6 +42,7 @@ for spec in home:home users:users groups:groups setup:setup \
             offboard:offboard:carol@example.com offboard-plan:offboard:carol@example.com:plan \
             offboard-confirm:offboard:carol@example.com:confirm offboard-result:offboard:carol@example.com:result \
             narrow-offboard:offboard:carol@example.com:plan:smallest \
+            offboard-added:offboard:carol@example.com:plan-added offboard-confirm-added:offboard:carol@example.com:confirm-added \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \

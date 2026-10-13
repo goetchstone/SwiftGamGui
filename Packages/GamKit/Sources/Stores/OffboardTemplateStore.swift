@@ -2,8 +2,10 @@ import Foundation
 import GamEngine
 
 /// The saved offboarding templates: `offboarding-templates.json` in the folder it's given, holding
-/// `{"version": 1, "default": name, "templates": {name: {"leave_out": [step], "subject": s, "message": m,
-/// "days": n, "invitee": e}}}`. Native: GamGUI has none. `Offboarding.starterTemplates` on first use, with
+/// `{"version": 2, "default": name, "templates": {name: {"leave_out": [step], "add": [step], "subject": s,
+/// "message": m, "days": n, "invitee": e}}}`. Version 1, written before templates could add steps, has no `add`
+/// and reads as adding none; the next save writes version 2 (an older build then moves the file aside, as it
+/// does any format it doesn't know). Native: GamGUI has none. `Offboarding.starterTemplates` on first use, with
 /// "Hand-over" the default; nothing is written until a save. The file is handled as the signature templates'
 /// is (`SignatureStore.load` and `writeFile`): read by descriptor, a file this format can't read moved aside
 /// and reported, never replaced, and written atomically, `0600` in a `0700` folder. Its names follow the
@@ -34,7 +36,7 @@ public struct OffboardTemplateStore: Sendable {
     }
 
     public static let fileName = "offboarding-templates.json"
-    public static let format = 1
+    public static let format = 2
 
     public let root: URL
     /// Where opening moved an unreadable file, for the screen to say so; nil when nothing was moved.
@@ -119,11 +121,11 @@ public struct OffboardTemplateStore: Sendable {
     /// run, under a name the store would save, and the default must name one of them.
     static func contents(in bytes: [UInt8]) -> Contents? {
         guard let text = String(validating: bytes, as: UTF8.self), let file = JSONValue.parse(text),
-              file["version"]?.int == format, let templates = file["templates"]?.object
+              let version = file["version"]?.int, version == 1 || version == format, let templates = file["templates"]?.object
         else { return nil }
         var saved: [(name: String, template: Offboarding.Template)] = []
         for (name, value) in templates {
-            guard (try? checked(name))?.utf8.elementsEqual(name.utf8) == true, let template = template(value),
+            guard (try? checked(name))?.utf8.elementsEqual(name.utf8) == true, let template = template(value, version: version),
                   template.problem == nil
             else { return nil }
             saved.append((name, template))
@@ -139,17 +141,25 @@ public struct OffboardTemplateStore: Sendable {
         return Contents(saved: sorted(saved), defaultName: defaultName)
     }
 
-    private static func template(_ value: JSONValue) -> Offboarding.Template? {
-        guard let object = value.object, object.count == 5, let keys = object["leave_out"]?.array,
+    /// One template as `version` writes it: exactly its keys, each step once.
+    private static func template(_ value: JSONValue, version: Int) -> Offboarding.Template? {
+        guard let object = value.object, object.count == (version == 1 ? 5 : 6), let leftOut = steps(object["leave_out"]),
+              let added = version == 1 ? [] : steps(object["add"]),
               let subject = object["subject"]?.string, let message = object["message"]?.string,
               let days = object["days"]?.int, let invitee = object["invitee"]?.string
         else { return nil }
-        var leftOut: Set<Offboarding.Step> = []
+        return Offboarding.Template(leftOut: leftOut, added: added, subject: subject, message: message, days: days, invitee: invitee)
+    }
+
+    /// A list of step keys, each known and once.
+    private static func steps(_ value: JSONValue?) -> Set<Offboarding.Step>? {
+        guard let keys = value?.array else { return nil }
+        var steps: Set<Offboarding.Step> = []
         for key in keys {
-            guard let raw = key.string, let step = Offboarding.Step(rawValue: raw), !leftOut.contains(step) else { return nil }
-            leftOut.insert(step)
+            guard let raw = key.string, let step = Offboarding.Step(rawValue: raw), !steps.contains(step) else { return nil }
+            steps.insert(step)
         }
-        return Offboarding.Template(leftOut: leftOut, subject: subject, message: message, days: days, invitee: invitee)
+        return steps
     }
 
     /// Writes the whole file, then takes it as the store's: a failed write changes nothing.
@@ -159,6 +169,7 @@ public struct OffboardTemplateStore: Sendable {
             templates[name] = .object([
                 // In run order, so the file reads as the routine does.
                 "leave_out": .array(Offboarding.Step.allCases.filter(template.leftOut.contains).map { .string($0.rawValue) }),
+                "add": .array(Offboarding.Step.allCases.filter(template.added.contains).map { .string($0.rawValue) }),
                 "subject": .string(template.subject), "message": .string(template.message),
                 "days": .number(String(template.days)), "invitee": .string(template.invitee),
             ])

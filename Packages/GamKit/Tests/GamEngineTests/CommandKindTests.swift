@@ -39,7 +39,8 @@ struct CommandKindTests {
 
     static func buildAll() throws -> [(name: String, command: any GamCommand)] {
         let document = GoldenArgvTests().document
-        return try GoldenArgvTests.implemented.keys.sorted().map { name in
+        let native = NativeArgvTests.cases.map { (name: $0.name, command: $0.command) }
+        return try native + GoldenArgvTests.implemented.keys.sorted().map { name in
             let item = try #require(document.cases.first { $0.builder == name && $0.argv != nil }, "\(name) has no case")
             var kwargs: [String: GoldenArgvTests.Value] = [:]
             for (key, value) in item.kwargs {
@@ -64,7 +65,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 24)
+        #expect(reads == 26)
     }
 
     @Test func noWriteHasAReadVerb() throws {
@@ -74,7 +75,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 34)
+        #expect(writes == 36)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -99,6 +100,7 @@ struct CommandKindTests {
         "add_forwarding_address": .addForwardingAddress, "set_forward": .setForward, "forward_off": .forwardOff,
         "create_user_alias": .createUserAlias, "delete_alias": .deleteAlias,
         "create_group": .createGroup, "add_group_member": .addGroupMember, "remove_group_member": .removeGroupMember,
+        "clear_recovery": .clearRecovery, "hide_from_directory": .hideFromDirectory,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -122,7 +124,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 24 && writes == 34, "a builder was added or removed: hold it here and in GoldenArgvTests")
+        #expect(reads == 26 && writes == 36, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }
