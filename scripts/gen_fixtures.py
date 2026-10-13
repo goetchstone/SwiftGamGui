@@ -24,6 +24,10 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/audit.json       GamGUI's audit log: the line each record writes, and what its reader
                                   finds across generations.
   Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
+  Tests/Fixtures/audit_screen.json  GamGUI's Audit screen over a log of odd records: the filter and the
+                                  page each query shows, the header's counts, and the CSV export's bytes.
+  Tests/Fixtures/usage_report.json  GamGUI's storage and mail usage: the progress lines dropped before the
+                                  CSV, the rows parsed and ordered, and the dates its walk back asks for.
   Tests/Fixtures/setup.json       GamGUI's guided setup: the delegation step's client ID, Admin-console
                                   link and sign-out-scope note, and the fresh-setup Terminal commands.
   Tests/Fixtures/vacation.json    GamGUI's auto-reply helpers: show vacation parsed, the body to and from
@@ -1122,6 +1126,203 @@ def reports_fixture(mock: Path) -> dict:
                          "members": [u.primary_email for u in r.users]} for r in reports]}
 
 
+def audit_screen_fixture() -> dict:
+    """GamGUI's Audit screen (web/routes/audit.py) over a log written across two generations: records as
+    both apps write them (this app's begin and end records too) and fields of every type json.loads makes
+    where text is expected. For each query, the page _rows_context shows (each row by its place in the
+    newest-first log), the header's counts, and the bytes _export_csv streams. Lists and objects where text
+    is expected are left out: Python prints their repr, which the Swift screen doesn't reproduce."""
+    import tempfile
+
+    from gamgui.core.audit import read_records
+    from gamgui.web.routes import audit as route
+
+    def stamp(n: int) -> str:
+        return f"2026-10-{1 + n // 24:02d}T{n % 24:02d}:00:00.{n * 1000:06d}+00:00"
+
+    preview = "6F1D2C3B-0000-4000-8000-00000000000"
+    swift = [
+        # This app's write: a begin with no result, then its end (ChangeCore.swift).
+        {"connector": "google_workspace", "action": "updateOrganization", "target": "alice@example.com",
+         "argv": ["update", "user", "alice@example.com", "organization", "title", "IT Director", "primary"],
+         "exit_code": None, "ok": None, "actor": "admin@example.com",
+         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "begin"}},
+        {"connector": "google_workspace", "action": "updateOrganization", "target": "alice@example.com",
+         "argv": ["update", "user", "alice@example.com", "organization", "title", "IT Director", "primary"],
+         "exit_code": 0, "ok": True, "actor": "admin@example.com",
+         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "end"}},
+        {"connector": "google_workspace", "action": "addGroupMember", "target": "bob@example.com",
+         "argv": ["update", "group", "sales@example.com", "add", "member", "bob@example.com"],
+         "exit_code": 50, "ok": False, "actor": "admin@example.com",
+         "extra": {"group": "sales@example.com", "error": "Member already exists.", "kind": "duplicate",
+                   "preview": preview + "2", "step": 0, "phase": "end"}},
+        # A begin whose end never came, then the operator's acknowledgement of it.
+        {"connector": "google_workspace", "action": "suspendUser", "target": "carol@example.com",
+         "argv": ["update", "user", "carol@example.com", "suspended", "on"], "exit_code": None, "ok": None,
+         "actor": "admin@example.com", "extra": {"preview": preview + "3", "step": 0, "phase": "begin"}},
+        {"connector": "google_workspace", "action": "suspendUser", "target": "carol@example.com", "argv": None,
+         "exit_code": None, "ok": None, "actor": None,
+         "extra": {"preview": preview + "3", "step": 0, "phase": "end", "acknowledged": True}},
+    ]
+    gamgui = [
+        {"connector": "google_workspace", "action": "add_group_member", "target": "dana@example.com",
+         "argv": ["update", "group", "sales@example.com", "add", "member", "dana@example.com"], "exit_code": 0,
+         "ok": True, "actor": None, "extra": {"group": "sales@example.com"}},
+        {"connector": "keychain", "action": "remove_domain", "target": "example.org", "argv": None, "exit_code": None,
+         "ok": True, "actor": None, "extra": {"detail": "Deleted example.org's credentials from the Keychain.",
+                                              "outcome": "deleted"}},
+        {"connector": "google_workspace", "action": "set_signature", "target": "erin@example.com",
+         "argv": ["user", "erin@example.com", "signature", "***redacted***", "html"], "exit_code": 1, "ok": False,
+         "actor": "admin@example.com", "extra": {"error": 'GAM said: "no", then\nmore\r\nlines, and a\rcarriage'}},
+    ]
+    # Each value a spreadsheet reads as a formula is prefixed; a comma, quote, CR or LF is quoted.
+    leads = ["=HYPERLINK(\"http://x.example\")", "+1 555", "-9", "@SUM(1)", "\tTab", "\rCR", " space", "'quote"]
+    odd = [{"action": "export", "target": f"lead{n}@example.com", "ok": False, "exit_code": -9,
+            "extra": {"error": lead}} for n, lead in enumerate(leads)]
+    odd += [
+        {"action": "rename", "target": "ΟΔΥΣΣΕΥΣ@example.com", "ok": True, "argv": ["user", "ΟΔΥΣΣΕΥΣ@example.com"]},
+        {"action": "rename", "target": chr(0x130) + "pek@example.com", "ok": True, "exit_code": 0},
+        {"action": "rename", "target": "straße@example.com", "ok": True, "extra": {"detail": "Zo" + chr(0xEB) + " " + chr(0x1F1FA) + chr(0x1F1F8)}},
+        {"action": "line", "target": "sep@example.com", "ok": False, "extra": {"error": "a" + chr(0x2028) + "b" + chr(0x85) + "c\x00d"}},
+        # ok as json.loads leaves it: only false is a failure, only true a success.
+        {"action": "flag", "target": "zero@example.com", "ok": 0},
+        {"action": "flag", "target": "one@example.com", "ok": 1},
+        {"action": "flag", "target": "text@example.com", "ok": "false"},
+        {"action": "flag", "target": "missing@example.com"},
+        # exit codes and times of every type.
+        {"ts": None, "action": "code", "target": "a@example.com", "exit_code": 1.5, "ok": False},
+        {"ts": 1.5, "action": "code", "target": "b@example.com", "exit_code": "x", "ok": True},
+        {"ts": 20261008, "action": "code", "target": "c@example.com", "exit_code": 12345678901234567890, "ok": True},
+        {"action": "code", "target": "d@example.com", "exit_code": 1e16, "ok": True},
+        {"action": "code", "target": "e@example.com", "exit_code": -0.0, "ok": True},
+        # extra that isn't an object, and errors and details that aren't text.
+        {"action": "extra", "target": "list@example.com", "ok": False, "extra": ["error", "x"]},
+        {"action": "extra", "target": "text@example.com", "ok": False, "extra": "error"},
+        {"action": "extra", "target": "null@example.com", "ok": False, "extra": None},
+        {"action": "extra", "target": "none@example.com", "ok": False, "extra": {"error": None, "detail": None}},
+        {"action": "extra", "target": "falsy@example.com", "ok": False, "extra": {"error": 0, "detail": False}},
+        {"action": "extra", "target": "num@example.com", "ok": False, "extra": {"error": 404, "detail": 5}},
+        {"action": "extra", "target": "empty@example.com", "ok": False, "extra": {"error": "", "detail": "only detail"}},
+        # argv as json.loads leaves it: its items joined by a space, a string's characters, an object's keys.
+        {"action": "argv", "target": "mixed@example.com", "ok": True, "argv": ["a", 5, None, True, 1.0]},
+        {"action": "argv", "target": "string@example.com", "ok": True, "argv": "str"},
+        {"action": "argv", "target": "object@example.com", "ok": True, "argv": {"k1": 1, "k2": 2}},
+        {"action": "argv", "target": "empty@example.com", "ok": True, "argv": []},
+        # action and target of other types.
+        {"action": None, "target": None, "ok": True},
+        {"action": "", "target": 7, "ok": True},
+        {"action": 0, "target": False, "ok": True},
+        {"action": True, "target": True, "ok": False},
+        {"action": 5, "target": 0.5, "ok": False},
+    ]
+    filler = [{"connector": "google_workspace", "action": ["vacationOff", "set_vacation", "signOutUser"][n % 3],
+               "target": f"user{n}@example.com", "argv": ["user", f"user{n}@example.com", "vacation", "off"],
+               "exit_code": 0 if n % 4 else 50, "ok": bool(n % 4), "actor": "admin@example.com"} for n in range(24)]
+    records = []
+    for n, record in enumerate(filler[:12] + gamgui + swift + odd + filler[12:]):
+        records.append(record if "ts" in record else {"ts": stamp(n), **record})
+    lines = [json.dumps(r, ensure_ascii=False) for r in records]
+    files = {"audit.jsonl.1": "\n".join(lines[:20]) + "\nnot json\n",
+             "audit.jsonl": "\n".join(lines[20:]) + "\n\n"}
+    queries = ["", "  ", "alice", " ALICE ", "ΟΔΥΣΣΕΥΣ", "οδυσσευς", "Σ", chr(0x130), "i" + chr(0x307), "STRASSE",
+               "straße", "member already", "=hyperlink", "keychain", "credentials", "true", "5", "none", "s t r",
+               "k1 k2", "update user", "sales", "user1", chr(0x2028), "\x00", "\t", "nomatch"]
+    with tempfile.TemporaryDirectory() as folder:
+        for name, text in files.items():
+            Path(folder, name).write_text(text, encoding="utf-8")
+        log = Path(folder, "audit.jsonl")
+        newest_first = read_records(log)
+        place = {id(r): n for n, r in enumerate(newest_first)}
+        pages = []
+        for q in queries:
+            for failed in (False, True):
+                for page in (1, 2, 3, 0, -1, 99):
+                    shown = route._rows_context(newest_first, q, failed, page)
+                    pages.append({"q": q, "failed": failed, "page": page, "rows": [place[id(r)] for r in shown["rows"]],
+                                  "shown_page": shown["page"], "pages": shown["pages"], "total": shown["total"]})
+        exports = [{"q": q, "failed": failed, "csv": "".join(route._export_csv(log, q, failed))}
+                   for q in ("", "alice", "ΟΔΥΣΣΕΥΣ", "true", "nomatch") for failed in (False, True)]
+    return {"constants": {"PAGE_SIZE": route.PAGE_SIZE}, "files": files, "read": len(newest_first),
+            "header": {"total": len(newest_first), "failures": sum(1 for r in newest_first if r.get("ok") is False)},
+            "pages": pages, "exports": exports}
+
+
+def usage_fixture(mock: Path) -> dict:
+    """GamGUI's storage and mail usage (core/reports.py, the connector's usage_report, the route's top 25):
+    _csv_from over GAM's output with progress before its CSV; parse_usage over the mock's report and rows
+    of every value float() reads or refuses (none it raises on); and usage_report's walk back, the argv of
+    each call made with a fake runner at a fixed date (no rows at all, rows on the third call, a failure on
+    the second)."""
+    import asyncio
+    from datetime import datetime, timezone
+    from unittest import mock as patching
+
+    from gamgui.core import reports
+    from gamgui.core.connectors import gam_connector
+
+    def row(u) -> dict:
+        return {"email": u.email, "quota_mb": u.quota_mb, "storage_gb": u.storage_gb, "received": u.received,
+                "sent": u.sent, "drive_created": u.drive_created, "storage": "%.1f" % u.storage_gb}
+
+    header = "email,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent"
+    outputs = ["Getting Reports for all users\nGot 3 Reports for all users on 2026-06-16...\n" + header + "\na@example.com,2026-06-16,1,2,3,4\n",
+               "  Email,date\r\nb@example.com,2026-06-16\r\n", chr(0x3000) + "EMAIL,x\nrow", "x" + chr(0x2028) + "email,date" + chr(0x2028) + "a,b",
+               "progress\nemail\nx", "emails,date\nrow", "no header here", "", "\n\nemail,date\n\na@example.com,1\n\n",
+               "email,date\x1cc@example.com,2\x0bd", "e-mail,x\nemail,y"]
+    csv_from = [[out, gam_connector._csv_from(out)] for out in outputs]
+    report = mock_outputs(mock)["report_users"][0]
+    with gam_reader() as read:
+        mocked = read(gam_connector._csv_from(report))
+    values = ["608873", "", None, "12.7", "-5", " 42 ", "1e3", "1.5E+2", "+.5e1", "nan", "-NaN", "abc", "1_000", "1__0",
+              "_1", "1_", "١٢", "١٢.٥", "0x10", "9007199254740993", "-0.5", "1.", ".", "\x1c7",
+              "7\x0c", "\xa07" + chr(0x3000), "7 7", "1e", "infinite", "256", "768", "1126", "51", "52", "1048576"]
+    rows = []
+    for n, value in enumerate(values):
+        record = {"email": f"user{n}@example.com", "date": "2026-06-16", "accounts:used_quota_in_mb": value,
+                  "gmail:num_emails_received": values[(n + 3) % len(values)], "gmail:num_emails_sent": values[(n + 7) % len(values)],
+                  "drive:num_items_created": values[(n + 11) % len(values)]}
+        if n % 9 == 4:
+            del record["gmail:num_emails_sent"]   # a column GAM didn't print
+        if n == 5:
+            record["email"] = None                  # DictReader's restval for a short row
+        if n == 6:
+            del record["email"]
+        rows.append(record)
+    rows += [{"email": f"tie{n}@example.com", "accounts:used_quota_in_mb": "100"} for n in range(4)]
+    parsed = [{"rows": records, "usage": [row(u) for u in reports.parse_usage(records)]} for records in (mocked, rows)]
+
+    class Runner:
+        def __init__(self, answers):
+            self.answers, self.calls = list(answers), []
+
+        async def run_authenticated(self, domain, argv):
+            self.calls.append(list(argv))
+            answer = self.answers.pop(0) if self.answers else ""
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+    walks = []
+    for today in (datetime(2026, 10, 8, 23, 59, tzinfo=timezone.utc), datetime(2028, 3, 2, 0, 30, tzinfo=timezone.utc)):
+        for name, answers in (("empty", []), ("third", ["", "email,date\n", report]), ("fails", ["", RuntimeError("gam")])):
+            connector = object.__new__(gam_connector.GAMConnector)
+            connector.runner, connector.domain = Runner(answers), "example.com"
+            clock = patching.Mock(wraps=datetime)
+            clock.now = lambda tz=None, today=today: today
+            with patching.patch.object(gam_connector, "datetime", clock), gam_reader():
+                try:
+                    found = asyncio.run(connector.usage_report(reports.USAGE_PARAMS))
+                    result = {"date": found["date"], "emails": [r.get("email") for r in found["rows"]]}
+                except RuntimeError:
+                    result = None
+            walks.append({"today": today.isoformat(), "answers": name, "argv": connector.runner.calls, "result": result})
+    import inspect
+
+    lookback = inspect.signature(gam_connector.GAMConnector.usage_report).parameters["max_lookback"].default
+    return {"constants": {"USAGE_PARAMS": list(reports.USAGE_PARAMS), "max_lookback": lookback},
+            "csv_from": csv_from, "parse_usage": parsed, "walks": walks}
+
+
 def setup_fixture() -> dict:
     """GamGUI's guided setup (core/setup.py): the delegation step's facts and link (dwd_details,
     dwd_auth_url) and the fresh-setup Terminal commands (setup_commands), over chosen inputs."""
@@ -1808,6 +2009,17 @@ def main() -> int:
         | reports_fixture(OUT / "mock_gam.sh")
     (OUT / "reports.json").write_text(json.dumps(reports_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"reports.json: {len(reports_doc['records'])} users")
+
+    # The Audit screen: its filter, pages and CSV export over a log of odd records.
+    audit_screen_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_screen_fixture()
+    (OUT / "audit_screen.json").write_text(json.dumps(audit_screen_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"audit_screen.json: {audit_screen_doc['read']} records, {len(audit_screen_doc['pages'])} pages")
+
+    # The usage report: GAM's CSV after its progress, the rows parsed, and the dates the walk back asks for.
+    usage_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | usage_fixture(OUT / "mock_gam.sh")
+    (OUT / "usage_report.json").write_text(json.dumps(usage_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"usage_report.json: {len(usage_doc['walks'])} walks")
 
     # The guided setup: the delegation step's facts and link, and the fresh-setup Terminal commands.
     setup_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | setup_fixture()

@@ -1,0 +1,1008 @@
+{
+ "source": {
+  "gamgui_commit": "834493c",
+  "generator": "scripts/gen_fixtures.py"
+ },
+ "constants": {
+  "USAGE_PARAMS": [
+   "accounts:used_quota_in_mb",
+   "gmail:num_emails_received",
+   "gmail:num_emails_sent",
+   "drive:num_items_created"
+  ],
+  "max_lookback": 6
+ },
+ "csv_from": [
+  [
+   "Getting Reports for all users\nGot 3 Reports for all users on 2026-06-16...\nemail,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent\na@example.com,2026-06-16,1,2,3,4\n",
+   "email,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent\na@example.com,2026-06-16,1,2,3,4"
+  ],
+  [
+   "  Email,date\r\nb@example.com,2026-06-16\r\n",
+   "  Email,date\nb@example.com,2026-06-16"
+  ],
+  [
+   "\u3000EMAIL,x\nrow",
+   "\u3000EMAIL,x\nrow"
+  ],
+  [
+   "x\u2028email,date\u2028a,b",
+   "email,date\na,b"
+  ],
+  [
+   "progress\nemail\nx",
+   "progress\nemail\nx"
+  ],
+  [
+   "emails,date\nrow",
+   "emails,date\nrow"
+  ],
+  [
+   "no header here",
+   "no header here"
+  ],
+  [
+   "",
+   ""
+  ],
+  [
+   "\n\nemail,date\n\na@example.com,1\n\n",
+   "email,date\n\na@example.com,1\n"
+  ],
+  [
+   "email,date\u001cc@example.com,2\u000bd",
+   "email,date\nc@example.com,2\nd"
+  ],
+  [
+   "e-mail,x\nemail,y",
+   "email,y"
+  ]
+ ],
+ "parse_usage": [
+  {
+   "rows": [
+    {
+     "email": "alice@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "608873",
+     "drive:num_items_created": "1",
+     "gmail:num_emails_received": "125",
+     "gmail:num_emails_sent": "10"
+    },
+    {
+     "email": "bob@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1048576",
+     "drive:num_items_created": "0",
+     "gmail:num_emails_received": "5",
+     "gmail:num_emails_sent": "0"
+    },
+    {
+     "email": "carol@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "2048",
+     "drive:num_items_created": "2",
+     "gmail:num_emails_received": "40",
+     "gmail:num_emails_sent": "3"
+    }
+   ],
+   "usage": [
+    {
+     "email": "bob@example.com",
+     "quota_mb": 1048576,
+     "storage_gb": 1024.0,
+     "received": 5,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "1024.0"
+    },
+    {
+     "email": "alice@example.com",
+     "quota_mb": 608873,
+     "storage_gb": 594.6,
+     "received": 125,
+     "sent": 10,
+     "drive_created": 1,
+     "storage": "594.6"
+    },
+    {
+     "email": "carol@example.com",
+     "quota_mb": 2048,
+     "storage_gb": 2.0,
+     "received": 40,
+     "sent": 3,
+     "drive_created": 2,
+     "storage": "2.0"
+    }
+   ]
+  },
+  {
+   "rows": [
+    {
+     "email": "user0@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "608873",
+     "gmail:num_emails_received": "12.7",
+     "gmail:num_emails_sent": "1.5E+2",
+     "drive:num_items_created": "abc"
+    },
+    {
+     "email": "user1@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "",
+     "gmail:num_emails_received": "-5",
+     "gmail:num_emails_sent": "+.5e1",
+     "drive:num_items_created": "1_000"
+    },
+    {
+     "email": "user2@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": null,
+     "gmail:num_emails_received": " 42 ",
+     "gmail:num_emails_sent": "nan",
+     "drive:num_items_created": "1__0"
+    },
+    {
+     "email": "user3@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "12.7",
+     "gmail:num_emails_received": "1e3",
+     "gmail:num_emails_sent": "-NaN",
+     "drive:num_items_created": "_1"
+    },
+    {
+     "email": "user4@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "-5",
+     "gmail:num_emails_received": "1.5E+2",
+     "drive:num_items_created": "1_"
+    },
+    {
+     "email": null,
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": " 42 ",
+     "gmail:num_emails_received": "+.5e1",
+     "gmail:num_emails_sent": "1_000",
+     "drive:num_items_created": "\u0661\u0662"
+    },
+    {
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1e3",
+     "gmail:num_emails_received": "nan",
+     "gmail:num_emails_sent": "1__0",
+     "drive:num_items_created": "\u0661\u0662.\u0665"
+    },
+    {
+     "email": "user7@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1.5E+2",
+     "gmail:num_emails_received": "-NaN",
+     "gmail:num_emails_sent": "_1",
+     "drive:num_items_created": "0x10"
+    },
+    {
+     "email": "user8@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "+.5e1",
+     "gmail:num_emails_received": "abc",
+     "gmail:num_emails_sent": "1_",
+     "drive:num_items_created": "9007199254740993"
+    },
+    {
+     "email": "user9@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "nan",
+     "gmail:num_emails_received": "1_000",
+     "gmail:num_emails_sent": "\u0661\u0662",
+     "drive:num_items_created": "-0.5"
+    },
+    {
+     "email": "user10@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "-NaN",
+     "gmail:num_emails_received": "1__0",
+     "gmail:num_emails_sent": "\u0661\u0662.\u0665",
+     "drive:num_items_created": "1."
+    },
+    {
+     "email": "user11@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "abc",
+     "gmail:num_emails_received": "_1",
+     "gmail:num_emails_sent": "0x10",
+     "drive:num_items_created": "."
+    },
+    {
+     "email": "user12@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1_000",
+     "gmail:num_emails_received": "1_",
+     "gmail:num_emails_sent": "9007199254740993",
+     "drive:num_items_created": "\u001c7"
+    },
+    {
+     "email": "user13@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1__0",
+     "gmail:num_emails_received": "\u0661\u0662",
+     "drive:num_items_created": "7\f"
+    },
+    {
+     "email": "user14@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "_1",
+     "gmail:num_emails_received": "\u0661\u0662.\u0665",
+     "gmail:num_emails_sent": "1.",
+     "drive:num_items_created": "\u00a07\u3000"
+    },
+    {
+     "email": "user15@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1_",
+     "gmail:num_emails_received": "0x10",
+     "gmail:num_emails_sent": ".",
+     "drive:num_items_created": "7 7"
+    },
+    {
+     "email": "user16@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "\u0661\u0662",
+     "gmail:num_emails_received": "9007199254740993",
+     "gmail:num_emails_sent": "\u001c7",
+     "drive:num_items_created": "1e"
+    },
+    {
+     "email": "user17@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "\u0661\u0662.\u0665",
+     "gmail:num_emails_received": "-0.5",
+     "gmail:num_emails_sent": "7\f",
+     "drive:num_items_created": "infinite"
+    },
+    {
+     "email": "user18@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "0x10",
+     "gmail:num_emails_received": "1.",
+     "gmail:num_emails_sent": "\u00a07\u3000",
+     "drive:num_items_created": "256"
+    },
+    {
+     "email": "user19@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "9007199254740993",
+     "gmail:num_emails_received": ".",
+     "gmail:num_emails_sent": "7 7",
+     "drive:num_items_created": "768"
+    },
+    {
+     "email": "user20@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "-0.5",
+     "gmail:num_emails_received": "\u001c7",
+     "gmail:num_emails_sent": "1e",
+     "drive:num_items_created": "1126"
+    },
+    {
+     "email": "user21@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1.",
+     "gmail:num_emails_received": "7\f",
+     "gmail:num_emails_sent": "infinite",
+     "drive:num_items_created": "51"
+    },
+    {
+     "email": "user22@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": ".",
+     "gmail:num_emails_received": "\u00a07\u3000",
+     "drive:num_items_created": "52"
+    },
+    {
+     "email": "user23@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "\u001c7",
+     "gmail:num_emails_received": "7 7",
+     "gmail:num_emails_sent": "768",
+     "drive:num_items_created": "1048576"
+    },
+    {
+     "email": "user24@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "7\f",
+     "gmail:num_emails_received": "1e",
+     "gmail:num_emails_sent": "1126",
+     "drive:num_items_created": "608873"
+    },
+    {
+     "email": "user25@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "\u00a07\u3000",
+     "gmail:num_emails_received": "infinite",
+     "gmail:num_emails_sent": "51",
+     "drive:num_items_created": ""
+    },
+    {
+     "email": "user26@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "7 7",
+     "gmail:num_emails_received": "256",
+     "gmail:num_emails_sent": "52",
+     "drive:num_items_created": null
+    },
+    {
+     "email": "user27@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1e",
+     "gmail:num_emails_received": "768",
+     "gmail:num_emails_sent": "1048576",
+     "drive:num_items_created": "12.7"
+    },
+    {
+     "email": "user28@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "infinite",
+     "gmail:num_emails_received": "1126",
+     "gmail:num_emails_sent": "608873",
+     "drive:num_items_created": "-5"
+    },
+    {
+     "email": "user29@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "256",
+     "gmail:num_emails_received": "51",
+     "gmail:num_emails_sent": "",
+     "drive:num_items_created": " 42 "
+    },
+    {
+     "email": "user30@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "768",
+     "gmail:num_emails_received": "52",
+     "gmail:num_emails_sent": null,
+     "drive:num_items_created": "1e3"
+    },
+    {
+     "email": "user31@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1126",
+     "gmail:num_emails_received": "1048576",
+     "drive:num_items_created": "1.5E+2"
+    },
+    {
+     "email": "user32@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "51",
+     "gmail:num_emails_received": "608873",
+     "gmail:num_emails_sent": "-5",
+     "drive:num_items_created": "+.5e1"
+    },
+    {
+     "email": "user33@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "52",
+     "gmail:num_emails_received": "",
+     "gmail:num_emails_sent": " 42 ",
+     "drive:num_items_created": "nan"
+    },
+    {
+     "email": "user34@example.com",
+     "date": "2026-06-16",
+     "accounts:used_quota_in_mb": "1048576",
+     "gmail:num_emails_received": null,
+     "gmail:num_emails_sent": "1e3",
+     "drive:num_items_created": "-NaN"
+    },
+    {
+     "email": "tie0@example.com",
+     "accounts:used_quota_in_mb": "100"
+    },
+    {
+     "email": "tie1@example.com",
+     "accounts:used_quota_in_mb": "100"
+    },
+    {
+     "email": "tie2@example.com",
+     "accounts:used_quota_in_mb": "100"
+    },
+    {
+     "email": "tie3@example.com",
+     "accounts:used_quota_in_mb": "100"
+    }
+   ],
+   "usage": [
+    {
+     "email": "user19@example.com",
+     "quota_mb": 9007199254740992,
+     "storage_gb": 8796093022208.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 768,
+     "storage": "8796093022208.0"
+    },
+    {
+     "email": "user34@example.com",
+     "quota_mb": 1048576,
+     "storage_gb": 1024.0,
+     "received": 0,
+     "sent": 1000,
+     "drive_created": 0,
+     "storage": "1024.0"
+    },
+    {
+     "email": "user0@example.com",
+     "quota_mb": 608873,
+     "storage_gb": 594.6,
+     "received": 12,
+     "sent": 150,
+     "drive_created": 0,
+     "storage": "594.6"
+    },
+    {
+     "email": "user31@example.com",
+     "quota_mb": 1126,
+     "storage_gb": 1.1,
+     "received": 1048576,
+     "sent": 0,
+     "drive_created": 150,
+     "storage": "1.1"
+    },
+    {
+     "email": "",
+     "quota_mb": 1000,
+     "storage_gb": 1.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 12,
+     "storage": "1.0"
+    },
+    {
+     "email": "user12@example.com",
+     "quota_mb": 1000,
+     "storage_gb": 1.0,
+     "received": 0,
+     "sent": 9007199254740992,
+     "drive_created": 0,
+     "storage": "1.0"
+    },
+    {
+     "email": "user30@example.com",
+     "quota_mb": 768,
+     "storage_gb": 0.8,
+     "received": 52,
+     "sent": 0,
+     "drive_created": 1000,
+     "storage": "0.8"
+    },
+    {
+     "email": "user29@example.com",
+     "quota_mb": 256,
+     "storage_gb": 0.2,
+     "received": 51,
+     "sent": 0,
+     "drive_created": 42,
+     "storage": "0.2"
+    },
+    {
+     "email": "user7@example.com",
+     "quota_mb": 150,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "tie0@example.com",
+     "quota_mb": 100,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "tie1@example.com",
+     "quota_mb": 100,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "tie2@example.com",
+     "quota_mb": 100,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "tie3@example.com",
+     "quota_mb": 100,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "user33@example.com",
+     "quota_mb": 52,
+     "storage_gb": 0.1,
+     "received": 0,
+     "sent": 42,
+     "drive_created": 0,
+     "storage": "0.1"
+    },
+    {
+     "email": "user32@example.com",
+     "quota_mb": 51,
+     "storage_gb": 0.0,
+     "received": 608873,
+     "sent": -5,
+     "drive_created": 5,
+     "storage": "0.0"
+    },
+    {
+     "email": "None",
+     "quota_mb": 42,
+     "storage_gb": 0.0,
+     "received": 5,
+     "sent": 1000,
+     "drive_created": 12,
+     "storage": "0.0"
+    },
+    {
+     "email": "user3@example.com",
+     "quota_mb": 12,
+     "storage_gb": 0.0,
+     "received": 1000,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user16@example.com",
+     "quota_mb": 12,
+     "storage_gb": 0.0,
+     "received": 9007199254740992,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user17@example.com",
+     "quota_mb": 12,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 7,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user24@example.com",
+     "quota_mb": 7,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 1126,
+     "drive_created": 608873,
+     "storage": "0.0"
+    },
+    {
+     "email": "user25@example.com",
+     "quota_mb": 7,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 51,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user8@example.com",
+     "quota_mb": 5,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 9007199254740992,
+     "storage": "0.0"
+    },
+    {
+     "email": "user21@example.com",
+     "quota_mb": 1,
+     "storage_gb": 0.0,
+     "received": 7,
+     "sent": 0,
+     "drive_created": 51,
+     "storage": "0.0"
+    },
+    {
+     "email": "user1@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": -5,
+     "sent": 5,
+     "drive_created": 1000,
+     "storage": "0.0"
+    },
+    {
+     "email": "user2@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 42,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user9@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 1000,
+     "sent": 12,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user10@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 12,
+     "drive_created": 1,
+     "storage": "0.0"
+    },
+    {
+     "email": "user11@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user13@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 12,
+     "sent": 0,
+     "drive_created": 7,
+     "storage": "0.0"
+    },
+    {
+     "email": "user14@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 12,
+     "sent": 1,
+     "drive_created": 7,
+     "storage": "0.0"
+    },
+    {
+     "email": "user15@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user18@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 1,
+     "sent": 7,
+     "drive_created": 256,
+     "storage": "0.0"
+    },
+    {
+     "email": "user20@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 0,
+     "drive_created": 1126,
+     "storage": "0.0"
+    },
+    {
+     "email": "user22@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 7,
+     "sent": 0,
+     "drive_created": 52,
+     "storage": "0.0"
+    },
+    {
+     "email": "user23@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 0,
+     "sent": 768,
+     "drive_created": 1048576,
+     "storage": "0.0"
+    },
+    {
+     "email": "user26@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 256,
+     "sent": 52,
+     "drive_created": 0,
+     "storage": "0.0"
+    },
+    {
+     "email": "user27@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 768,
+     "sent": 1048576,
+     "drive_created": 12,
+     "storage": "0.0"
+    },
+    {
+     "email": "user28@example.com",
+     "quota_mb": 0,
+     "storage_gb": 0.0,
+     "received": 1126,
+     "sent": 608873,
+     "drive_created": -5,
+     "storage": "0.0"
+    },
+    {
+     "email": "user4@example.com",
+     "quota_mb": -5,
+     "storage_gb": -0.0,
+     "received": 150,
+     "sent": 0,
+     "drive_created": 0,
+     "storage": "-0.0"
+    }
+   ]
+  }
+ ],
+ "walks": [
+  {
+   "today": "2026-10-08T23:59:00+00:00",
+   "answers": "empty",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-06",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-05",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-04",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-03",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-02",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-01",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": {
+    "date": "",
+    "emails": []
+   }
+  },
+  {
+   "today": "2026-10-08T23:59:00+00:00",
+   "answers": "third",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-06",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-05",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-04",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": {
+    "date": "2026-10-04",
+    "emails": [
+     "alice@example.com",
+     "bob@example.com",
+     "carol@example.com"
+    ]
+   }
+  },
+  {
+   "today": "2026-10-08T23:59:00+00:00",
+   "answers": "fails",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-06",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2026-10-05",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": null
+  },
+  {
+   "today": "2028-03-02T00:30:00+00:00",
+   "answers": "empty",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-29",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-28",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-27",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-26",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-25",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-24",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": {
+    "date": "",
+    "emails": []
+   }
+  },
+  {
+   "today": "2028-03-02T00:30:00+00:00",
+   "answers": "third",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-29",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-28",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-27",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": {
+    "date": "2028-02-27",
+    "emails": [
+     "alice@example.com",
+     "bob@example.com",
+     "carol@example.com"
+    ]
+   }
+  },
+  {
+   "today": "2028-03-02T00:30:00+00:00",
+   "answers": "fails",
+   "argv": [
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-29",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ],
+    [
+     "report",
+     "users",
+     "date",
+     "2028-02-28",
+     "parameters",
+     "accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created"
+    ]
+   ],
+   "result": null
+  }
+ ]
+}
