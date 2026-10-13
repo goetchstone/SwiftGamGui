@@ -33,6 +33,21 @@ public final class OffboardChanges {
         public var notApplicable: Set<Offboarding.Step> = []
 
         public init() {}
+
+        /// The form filled from `template`: the steps it leaves out, the auto-reply, the reminder and its invitee.
+        /// The addresses and the "already done" ticks are this leaver's, and stay.
+        public mutating func apply(_ template: Offboarding.Template) {
+            notApplicable = template.leftOut
+            subject = template.subject
+            message = template.message
+            days = template.days
+            invitee = template.invitee
+        }
+
+        /// What saving this form as a template keeps.
+        public var template: Offboarding.Template {
+            Offboarding.Template(leftOut: notApplicable, subject: subject, message: message, days: days, invitee: invitee)
+        }
     }
 
     /// The auto-reply as senders will read it.

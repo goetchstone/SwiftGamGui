@@ -152,7 +152,8 @@ struct ContentView: View {
                             roles: services.onboardRoles, templates: services.signatureTemplates, hasGam: services.executor != nil)
                     .navigationTitle("Onboard")
             case .offboard:
-                OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges)
+                OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
+                             templates: services.offboardTemplates)
                     .navigationTitle("Offboard")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in

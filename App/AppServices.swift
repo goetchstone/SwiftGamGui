@@ -40,6 +40,8 @@ struct AppServices {
     let calendarChanges: CalendarChanges
     /// Offboarding's read-only plan (Off1): no executor, so it can't run anything.
     let offboardChanges: OffboardChanges
+    /// The saved offboarding templates the Offboard form is filled from.
+    let offboardTemplates: OffboardTemplates
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -58,13 +60,14 @@ struct AppServices {
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
                         setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
                         templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile),
+                        offboardTemplates: OffboardTemplates(root: SignatureStore.defaultRoot),
                         // GamGUI's roles file, built here at run time only (GamGUI's `paths.py`, `onboarding.py:47`).
                         rolesFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json"))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
-                                 rolesFile: URL, lastDomain: LastDomain = .userDefaults,
+                                 offboardTemplates: OffboardTemplates, rolesFile: URL, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -95,6 +98,7 @@ struct AppServices {
                            // Its own reader: the leaver's delegates are read live, never from a page's lists.
                            offboardChanges: OffboardChanges(setup: setup, directory: directory,
                                                             access: UserAccess(setup: setup, runner: runner)),
+                           offboardTemplates: offboardTemplates,
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }
@@ -129,6 +133,8 @@ struct AppServices {
                         templates: SignatureTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-signatures-\(UUID().uuidString)"),
                             gamGUIFile: nil),
+                        offboardTemplates: OffboardTemplates(
+                            root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-offboarding-\(UUID().uuidString)")),
                         rolesFile: demoRoles(beside: mock), lastDomain: .memory())
     }
 

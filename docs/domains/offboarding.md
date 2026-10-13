@@ -5,7 +5,8 @@ off forwarding, delegate and auto-reply the mailbox, transfer Drive and Calendar
 every active user's primary calendar, and a dated reminder on the manager's calendar, plus the separate,
 later account delete. Built: **Off1, the read-only plan** (2026-10-13): the Offboard screen shows exactly
 what GamGUI's offboarding would run for a leaver and a manager, every step's `gam` line, and has no way
-to run it. Next: **Off2** runs the plan through ChangeCore, **Off3** the delete (below). GamGUI's runbook
+to run it; **templates** (2026-10-13, native) fill its form with the operator's routine. Next: **Off2** runs
+the plan through ChangeCore, **Off3** the delete (below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
 (2026-10-07, all eight steps ok) all carry over.
@@ -32,6 +33,8 @@ ChangeCore's `ExecutorTests.aStepsCommandLineIsGamGUIs`.
 - `Packages/GamKit/Sources/Directory/OffboardChanges.swift`: the model. No executor.
   `UserAccess.delegates(of:)` is the leaver's delegates, read live.
 - `App/OffboardView.swift`: the screen (sidebar "Offboard").
+- Templates: `Offboarding.Template` and `starterTemplates` (GamEngine), `OffboardTemplateStore` (Stores, the
+  file), `OffboardChanges.Form.apply(_:)` and `.template`, `App/OffboardTemplates.swift` (the screen's store).
 
 ## What GamGUI's offboarding does
 Two parts: the eight-step routine, and a separate, later account delete (GamGUI's user page; here Off3).
@@ -112,10 +115,12 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   `offboardingCantWrite` scans both. Its reads go through `DirectoryStore` and `UserAccess`.
 - **A plan belongs to its form and its tenant:** the screen shows it only while the form is the one it
   was made from ("The form changed since the last plan"), and a domain switch drops it.
-- **The screen:** the leaver and manager completed from the directory (`textInputSuggestions`), subject
-  and message with GamGUI's defaults and a live "Senders will receive" block from the directory as loaded
-  (no read while typing), days (at least one), an optional invitee, five "Doesn't apply" and eight
-  "Already done" toggles (VoiceOver hears "Doesn't apply: Set delegate", "Already done: Reset password"),
+- **The screen:** a template (below), the leaver and manager completed from the directory
+  (`textInputSuggestions`), the eight steps (the lock's three marked "Always runs"; the five others a
+  switch each, on when it runs, with what leaving it out costs; VoiceOver hears "Runs: Set delegate"),
+  subject and message with GamGUI's defaults and a live "Senders will receive" block from the directory as
+  loaded (no read while typing), days (at least one), an optional invitee, eight "Already done" toggles
+  behind a disclosure that opens whenever one is ticked (VoiceOver hears "Already done: Reset password"),
   then the plan: GamGUI's header ("Offboarding L — 8 steps", or "N of 8 steps (k ticked as already done,
   j left out)"), warnings with a symbol and words, each step with its summary and its `gam` line in
   selectable monospace (struck through, with why, when it won't run), what stops what, the auto-reply,
@@ -125,6 +130,27 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   live block reads the loaded directory rather than re-reading a stale one; the directory's age is
   counted from the end of its read (GamGUI's from the start: a read of a minute counts a minute fresher);
   the words say a delete is "a separate step, later" rather than naming GamGUI's user page.
+
+## Templates (native: GamGUI has none)
+- **What one holds:** the optional steps it leaves out, the auto-reply's subject and message, the reminder's
+  days and its invitee: the whole form but the two addresses and the "already done" ticks, which are one
+  leaver's. Picking one fills the form, and nothing else: the plan is the form's, so every line is still
+  GamGUI's (`aTemplateFillsTheFormAndThePlanIsTheFormsOwn`). The lock can't be left out by a template either.
+- **The starters**, on first use, each the operator's to change or delete: **Hand-over**, the default, the
+  operator's own routine (2026-10-13: reset, sign-out, delegate, transfer, auto-reply, reminder; forwarding
+  off comes with the lock), GamGUI's eight without the domain-wide calendar sweep; **All eight steps**,
+  GamGUI's routine; **Lock only**, the reset, the sign-out and forwarding off, for a leaver whose hand-over
+  waits. The screen opens on the default; a domain switch starts a new form from it.
+- **The screen:** a Template picker that fills the form; "Runs N of 8 steps: …" in words; "Changed from
+  “X”" once the form differs, with **Update “X”**; **Save as New Template…** (a name; an existing name asks
+  before replacing); **More**: open with it by default, or delete it (asked). A form that couldn't run
+  (no reminder day, an invitee that isn't one address) can't be saved, and says why.
+- **The file:** `offboarding-templates.json` beside the signature templates in the app's folder,
+  `{"version": 1, "default": name, "templates": {name: {"leave_out", "subject", "message", "days",
+  "invitee"}}}`. Handled as the signature templates' file is, by the same code (`SignatureStore.load`,
+  `writeFile`): read by descriptor, written atomically `0600` in a `0700` folder, and a file it can't read,
+  or one holding a template that couldn't run, moved aside whole and the starters shown, never saved over.
+  One set for every domain, as the signature templates are.
 
 ## Gotchas / mock-lies traps
 - **The mock's per-user reads answer for that user** (`print delegates`: Alice has assistant@ and
@@ -142,11 +168,12 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   live there.
 
 ## Testing / live verification
-`swift test --package-path Packages/GamKit --filter "Offboarding|OffboardChanges|MockDelegates"`.
+`swift test --package-path Packages/GamKit --filter "Offboard|MockDelegates"`.
 
 **L1 (read-only, the operator's go):** for the next real leaver L and manager M, enter both in GamGUI's
 Lifecycle page (its preview is read-only) and in Offboard here, then Preview. Every `gam` line must match
-byte for byte. Check: the header says "8 steps"; the leaver in every step and the manager in the delegate,
+byte for byte: pick **All eight steps** here, or leave the same steps out in GamGUI as the template here does
+(Hand-over leaves out the calendar sweep). Check: the header's step count; the leaver in every step and the manager in the delegate,
 the transfer and the reminder; `drive,calendar` one element, then `all`; the auto-reply block reads as
 senders should see it; the reminder's date and invitee; each warning dealt with. Nothing runs.
 
@@ -156,5 +183,8 @@ senders should see it; the reminder's date and invitee; each warning dealt with.
   progress, and the audit's `offboard_plan` when a step is left out. Waits on the onboarding branch
   (ChangeCore progress and discard) and one adversarial review.
 - **Off3:** the account delete, with GamGUI's pending-transfer warning plus a precondition.
+- More steps a template could offer, each new to both apps (no GamGUI argv to hold it to), so each needs
+  the grammar read, a builder, the mock and a live check: remove from all groups, hide from the directory,
+  move to a leavers' org unit, a transfer to someone other than the delegate. The operator picks which.
 - Extra read-only warnings, to decide: a transfer already running for L, and the sign-out scope missing
   from the token.
