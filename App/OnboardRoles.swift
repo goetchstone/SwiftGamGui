@@ -36,6 +36,12 @@ final class OnboardRoles {
     /// The roles naming `template` as their signature: what deleting it on Signatures would leave without one.
     func roles(usingSignature template: String) -> [String] { store?.roles(usingSignature: template) ?? [] }
 
+    /// The welcome email saved as `name` (blank is Default); nil when there's none of that name.
+    func welcome(named name: String) -> WelcomeEmail? { store?.welcome(name) }
+
+    /// The roles that send the welcome email `name`.
+    func roles(usingWelcome name: String) -> [String] { store?.roles(usingWelcome: name) ?? [] }
+
     /// GamGUI has a roles file to copy: only offered outside demo mode. A check for the editor; the copy itself reads
     /// the file by descriptor.
     var canCopyFromGamGUI: Bool {
@@ -51,6 +57,17 @@ final class OnboardRoles {
 
     func delete(_ name: String) throws(RoleStore.Problem) {
         try store?.delete(name)
+    }
+
+    /// The name it was saved under. Throws `.welcomeExists` when another has the name and `replacing` is false, so
+    /// the editor asks.
+    @discardableResult
+    func saveWelcome(_ email: WelcomeEmail, as name: String, replacing: Bool, renaming previous: String?) throws(RoleStore.Problem) -> String? {
+        try store?.saveWelcome(email, as: name, replacing: replacing, renaming: previous)
+    }
+
+    func deleteWelcome(_ name: String) throws(RoleStore.Problem) {
+        try store?.deleteWelcome(name)
     }
 
     func copyFromGamGUI() throws(RoleStore.Problem) -> RoleStore.CopyReport? {

@@ -14,6 +14,8 @@ public struct RoleStore: Sendable {
         case rule(Onboarding.RoleProblem)
         /// The role is saved already: saving over it needs `replacing: true`, which the screen asks first.
         case exists(String)
+        /// Another welcome email has the name (case aside): saving over it needs `replacing: true`, asked first.
+        case welcomeExists(String)
         /// The file couldn't be read, moved aside or saved, in the signature store's words.
         case file(SignatureStore.Problem)
         /// GamGUI has no roles file, or it couldn't be read; nothing was copied.
@@ -23,6 +25,7 @@ public struct RoleStore: Sendable {
             switch self {
             case .rule(let problem): problem.message
             case .exists(let name): "There's already a role named \u{201C}\(name)\u{201D}."
+            case .welcomeExists(let name): "There's already a welcome email named \u{201C}\(name)\u{201D}."
             case .file(let problem): problem.message.replacingOccurrences(of: "templates", with: "roles")
             case .gamGUI(let problem): problem.message
             }
@@ -114,16 +117,38 @@ public struct RoleStore: Sendable {
         try write(roles: roles.filter { !$0.name.utf8.elementsEqual(name.utf8) }, welcomes: welcomes)
     }
 
-    /// GamGUI's `set_welcome`: saved under `Onboarding.welcomeName` (a name differing only by case saves over the
-    /// existing one), the subject stripped, the body as typed. Returns the name it was saved under.
+    /// GamGUI's `set_welcome`: saved under `Onboarding.welcomeName` (a name differing only by case is the existing
+    /// one), the subject stripped, the body as typed. Returns the name it was saved under. Saving over another welcome
+    /// email throws `.welcomeExists` unless `replacing` (GamGUI replaced without asking). `renaming`, its name before
+    /// an edit, moves it: the roles that send it send it under its new name, in the same write. Default isn't renamed:
+    /// it's what a role without a choice sends.
     @discardableResult
-    public mutating func saveWelcome(_ email: WelcomeEmail, as name: String) throws(Problem) -> String {
+    public mutating func saveWelcome(_ email: WelcomeEmail, as name: String, replacing: Bool = false,
+                                     renaming previous: String? = nil) throws(Problem) -> String {
         let saved: String
         do { saved = try Onboarding.welcomeName(name, existing: welcomes.map(\.name)) } catch { throw .rule(error) }
+        let renamed = previous.map { !$0.utf8.elementsEqual(saved.utf8) } ?? false
+        if let previous, renamed, previous.utf8.elementsEqual(Onboarding.defaultWelcome.utf8) { throw .rule(.defaultWelcomeStays) }
+        guard replacing || (previous != nil && !renamed) || welcome(saved) == nil else { throw .welcomeExists(saved) }
         var changed = welcomes.filter { !$0.name.utf8.elementsEqual(saved.utf8) }
+        var changedRoles = roles
+        if let previous, renamed {
+            changed.removeAll { $0.name.utf8.elementsEqual(previous.utf8) }
+            let stored = saved.utf8.elementsEqual(Onboarding.defaultWelcome.utf8) ? "" : saved
+            changedRoles = roles.map { role in
+                guard role.welcome.utf8.elementsEqual(previous.utf8) else { return role }
+                return RoleTemplate(name: role.name, steps: role.steps, signature: role.signature, orgUnit: role.orgUnit,
+                                    groups: role.groups, calendars: role.calendars, welcome: stored)
+            }
+        }
         changed.append((saved, WelcomeEmail(subject: PythonText.strip(email.subject), body: email.body)))
-        try write(roles: roles, welcomes: changed)
+        try write(roles: changedRoles, welcomes: changed)
         return saved
+    }
+
+    /// The roles that send the welcome email `name` (a role without a choice sends Default), in name order.
+    public func roles(usingWelcome name: String) -> [String] {
+        roles.filter { $0.welcomeName.utf8.elementsEqual(name.utf8) }.map(\.name)
     }
 
     /// GamGUI's `delete_welcome`: Default stays, and one a role still picks is refused, naming the roles.

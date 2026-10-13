@@ -31,6 +31,8 @@ public final class OnboardChanges {
             case calendar(String)
             case taskList(title: String)
             case task(String)
+            /// The welcome email, by its name in the role store.
+            case welcome(String)
         }
 
         public let index: Int
@@ -63,12 +65,21 @@ public final class OnboardChanges {
         /// The template name and the body the run sets, as held; nil when nothing is set.
         public let signature: Signature?
         public let rows: [Row]
-        public let warnings: [String]
+        public internal(set) var warnings: [String]
         /// A retry's plan (design D8): a list id that already exists, for tasks on it.
         public let existingListID: String?
+        /// The welcome email as the hire will read it, rendered for them and held; nil when none is sent.
+        public var welcome: Welcome? = nil
 
         public struct Signature: Sendable, Equatable {
             public let template: String
+            public let body: String
+        }
+
+        public struct Welcome: Sendable, Equatable {
+            public let name: String
+            public let subject: String
+            /// The text as typed and rendered; what's sent is it as HTML, each line kept (`HTMLText.autoreplyHTML`).
             public let body: String
         }
 
@@ -219,7 +230,10 @@ public final class OnboardChanges {
 
     /// Holds `hire` in `role` as one preview, after every check that doesn't write. `signatureTemplate` is
     /// the body saved under the role's signature name, or nil when there's none of that name.
-    public func preview(hire: Hire, role: RoleTemplate, signatureTemplate: String?) async {
+    /// `welcome` is the role's welcome email as the role store has it, by name; nil when the store has none of
+    /// that name (then a hire that sends it is refused, as GamGUI refuses it).
+    public func preview(hire: Hire, role: RoleTemplate, signatureTemplate: String?,
+                        welcome: (name: String, email: WelcomeEmail)? = nil) async {
         guard !isBusy else { return }
         // The tenant the screen's reads (the directory's warnings) belong to, before any await.
         let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
@@ -229,6 +243,13 @@ public final class OnboardChanges {
             problem = refusal
             return
         }
+        // GamGUI's words (`routes/onboarding.py:273-278`): a vanished welcome refuses the send, not a hire without it.
+        if hire.sendWelcome, welcome == nil {
+            discardPending()
+            problem = "The role \u{201C}\(role.name)\u{201D} sends the welcome email \u{201C}\(role.welcomeName)\u{201D}, which no "
+                + "longer exists. Pick another for the role in Role templates."
+            return
+        }
         // A new account's card would replace one not yet handed over: its password exists nowhere else.
         if hire.createAccount, let card {
             discardPending()
@@ -236,7 +257,8 @@ public final class OnboardChanges {
             return
         }
         let password = hire.createAccount ? makePassword() : nil
-        let planned = Self.plan(hire: hire, role: role, signatureTemplate: signatureTemplate, password: password, timeout: timeout)
+        let planned = Self.plan(hire: hire, role: role, signatureTemplate: signatureTemplate, welcome: welcome, password: password,
+                                timeout: timeout)
         let plan = planned.plan.adding(warnings: directoryWarnings(planned.plan))
         await hold(planned.steps, plan: plan, password: password, isRetry: false, expecting: tenant)
     }
@@ -272,7 +294,8 @@ public final class OnboardChanges {
     /// creating), its signature (only for an account this run creates), each group and calendar (when
     /// there's an address), then the checklist and its tasks on the assignee. After a create, every step
     /// requires it, and those GamGUI parks wait for Google. Pure: the caller previews the steps.
-    public nonisolated static func plan(hire: Hire, role: RoleTemplate, signatureTemplate: String?, password: TemporaryPassword?,
+    public nonisolated static func plan(hire: Hire, role: RoleTemplate, signatureTemplate: String?,
+                                        welcome: (name: String, email: WelcomeEmail)? = nil, password: TemporaryPassword?,
                                         timeout: Duration = GamRunner.defaultTimeout) -> (plan: Plan, steps: [WriteStep]) {
         let email = PythonText.strip(hire.email), name = PythonText.strip(hire.name)
         let names = Onboarding.splitName(name: hire.name, first: hire.first, last: hire.last)
@@ -335,9 +358,26 @@ public final class OnboardChanges {
                                requires: afterCreate, newAccountFrom: listWaits ? 0 : nil),
                 .task(task), "Task: \(task)")
         }
-        let plan = Plan(hire: hire, role: role, email: email, name: shownName, first: names.first, last: names.last,
+        // The welcome email, last (GamGUI's `provision_hire`), only with an address, as held at preview: rendered for
+        // the hire, and sent as HTML with each line kept (a deviation: GamGUI sent the text as HTML, and its lines ran
+        // together; onboarding plan F5, Q2).
+        var held: Plan.Welcome?
+        if hire.sendWelcome, !email.isEmpty, let welcome {
+            let context = Onboarding.welcomeContext(name: name, email: email, role: role.name, manager: hire.manager)
+            let shown = Plan.Welcome(name: welcome.name, subject: Onboarding.render(welcome.email.subject, context),
+                                     body: Onboarding.render(welcome.email.body, context))
+            held = shown
+            add(WriteStep(GamCommands.sendEmail(to: email, subject: shown.subject, body: HTMLText.autoreplyHTML(shown.body)),
+                          target: email, summary: "Send the welcome email \u{201C}\(welcome.name)\u{201D} to \(email)",
+                          requires: afterCreate, about: ["welcome": welcome.name], timeout: timeout),
+                .welcome(welcome.name), "Welcome email \u{201C}\(welcome.name)\u{201D} to \(email)")
+        } else if hire.sendWelcome, email.isEmpty {
+            warnings.append("No email entered, so the welcome email isn't sent.")
+        }
+        var plan = Plan(hire: hire, role: role, email: email, name: shownName, first: names.first, last: names.last,
                         assignee: assignee, title: title, creates: creates, orgUnit: Onboarding.shownOrgUnit(role.orgUnit),
                         signature: signature, rows: rows, warnings: warnings, existingListID: nil)
+        plan.welcome = held
         return (plan, steps)
     }
 
@@ -383,7 +423,8 @@ public final class OnboardChanges {
                               summary: isRetry ? "Retry \(count) step\(count == 1 ? "" : "s") for \(plan.email.isEmpty ? plan.assignee : plan.email)"
                                                : "One new hire: \(count) step\(count == 1 ? "" : "s")",
                               confirmLabel: isRetry ? "Retry \(count) Step\(count == 1 ? "" : "s")"
-                                                    : plan.creates ? "Create Account and Onboard" : "Create the Task List",
+                                                    : plan.creates ? "Create Account and Onboard"
+                                                    : plan.welcome == nil ? "Create the Task List" : "Create the Task List and Send the Email",
                               password: password)
         case .failure(let refusal):
             problem = refusal.message
@@ -665,11 +706,18 @@ public final class OnboardChanges {
                     add(WriteStep(GamCommands.createTask(assignee: plan.assignee, taskListID: knownID, title: title),
                                   target: plan.assignee, summary: "Task: \(title)"), row)
                 }
+            case .welcome(let name):
+                // The email as held: the same subject and body, never rendered again.
+                guard failed.contains(row.index), let welcome = plan.welcome else { continue }
+                add(WriteStep(GamCommands.sendEmail(to: plan.email, subject: welcome.subject, body: HTMLText.autoreplyHTML(welcome.body)),
+                              target: plan.email, summary: "Send the welcome email \u{201C}\(name)\u{201D} to \(plan.email)",
+                              about: ["welcome": name]), row)
             }
         }
-        let retry = Plan(hire: plan.hire, role: plan.role, email: plan.email, name: plan.name, first: plan.first, last: plan.last,
+        var retry = Plan(hire: plan.hire, role: plan.role, email: plan.email, name: plan.name, first: plan.first, last: plan.last,
                          assignee: plan.assignee, title: plan.title, creates: false, orgUnit: plan.orgUnit, signature: plan.signature,
                          rows: rows, warnings: [], existingListID: newList == nil ? knownID : nil)
+        retry.welcome = rows.contains { if case .welcome = $0.kind { true } else { false } } ? plan.welcome : nil
         return (retry, steps)
     }
 
@@ -677,10 +725,10 @@ public final class OnboardChanges {
     /// Debug builds' screenshots only: a finished run's panel for `hire`, as if the account were made and its
     /// signature and calendars were waiting for Google: the card with a seeded, made-up password, and the
     /// wait going on. Nothing is held and no `gam` runs.
-    public func showDemoResult(hire: Hire, role: RoleTemplate, signatureTemplate: String?) {
+    public func showDemoResult(hire: Hire, role: RoleTemplate, signatureTemplate: String?, welcome: (name: String, email: WelcomeEmail)?) {
         var seeded = DemoGenerator()
         let password = TemporaryPassword.generate(using: &seeded)
-        let plan = Self.plan(hire: hire, role: role, signatureTemplate: signatureTemplate, password: password).plan
+        let plan = Self.plan(hire: hire, role: role, signatureTemplate: signatureTemplate, welcome: welcome, password: password).plan
         let notReady = "GAM failed (unknown, exit=50): User: \(plan.email), User Set Failed: access_denied: Requested client not authorized"
         let results: [RunOutcome.Step?] = plan.rows.map { row in
             switch row.kind {
@@ -717,9 +765,9 @@ public final class OnboardChanges {
 
 extension OnboardChanges.Plan {
     func adding(warnings more: [String]) -> Self {
-        Self(hire: hire, role: role, email: email, name: name, first: first, last: last, assignee: assignee, title: title,
-             creates: creates, orgUnit: orgUnit, signature: signature, rows: rows, warnings: warnings + more,
-             existingListID: existingListID)
+        var plan = self
+        plan.warnings += more
+        return plan
     }
 }
 
@@ -754,6 +802,10 @@ extension OnboardChanges.Run {
         if tasks.total > 0 {
             lines.append("Created \(tasks.done) of \(tasks.total) task\(tasks.total == 1 ? "" : "s") in \(plan.assignee)'s Google Tasks "
                 + "\u{2014} \u{201C}\(plan.title)\u{201D}.")
+        }
+        // GamGUI's `_onboard_run.html`: "Welcome email to x: sent ✓" or "failed to send", once it ran.
+        if let row = plan.rows.first(where: { if case .welcome = $0.kind { true } else { false } }), let result = results[row.index] {
+            lines.append("Welcome email to \(plan.email): \(result.isSucceeded ? "sent \u{2713}" : "failed to send").")
         }
         return lines
     }

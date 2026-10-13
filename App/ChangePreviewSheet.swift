@@ -403,6 +403,21 @@ struct OnboardPreviewSheet: View {
                     commands(checklist)
                 }
             }
+            let welcomeRows = rows { if case .welcome = $0 { true } else { false } }
+            if let welcome = plan.welcome, !welcomeRows.isEmpty {
+                Section("Welcome email") {
+                    Text("Sends \u{201C}\(welcome.name)\u{201D} to \(plan.email), after everything else, as they'll read it:")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(verbatim: welcome.subject).bold()
+                        Text(verbatim: welcome.body)
+                    }
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Subject: \(welcome.subject). \(welcome.body)")
+                    commands(welcomeRows)
+                }
+            }
             if !plan.warnings.isEmpty {
                 Section {
                     ForEach(plan.warnings, id: \.self) { warning in

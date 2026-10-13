@@ -213,6 +213,26 @@ struct OnboardingTests {
     }
 
     /// D7: GAM's duplicate and missing-org-unit refusals in words; the org unit as GAM looked for it.
+    struct RenderDocument: Decodable {
+        struct Render: Decodable {
+            struct Case: Decodable { let template: String, out: String }
+            let context: [String: String], vars: [String], cases: [Case]
+        }
+        let render: Render
+    }
+
+    /// GamGUI's `render` (W): each `{word}` that's one of the welcome's tokens, in one pass, others as written,
+    /// held to its output over curated and seeded templates.
+    @Test func renderIsGamGUIs() throws {
+        let fixture = try JSONDecoder().decode(RenderDocument.self, from: Data(contentsOf: Fixtures.onboardingJSON)).render
+        #expect(Onboarding.welcomeVariables == fixture.vars)
+        #expect(fixture.cases.count > 300)
+        for item in fixture.cases {
+            #expect(Array(Onboarding.render(item.template, fixture.context).unicodeScalars) == Array(item.out.unicodeScalars),
+                    "\(item.template.debugDescription)")
+        }
+    }
+
     @Test func createRefusalsAreSaidInWords() {
         let duplicate = "GAM failed (unknown, exit=57): User: jordan@example.com, Create Failed: Duplicate, User: jordan@example.com"
         #expect(Onboarding.createRefusal(duplicate, email: "jordan@example.com", orgUnit: "")

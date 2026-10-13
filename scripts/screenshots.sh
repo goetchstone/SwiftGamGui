@@ -22,8 +22,9 @@ status=0
 # open. Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. Onboard opens on the demo role
-# Salesperson with Create ticked, onboard-result on a made-up finished run (no gam runs), and onboard-roles
-# on the role editor (a sheet; its picture is the sheet). The narrow-*
+# Salesperson with Create and the welcome email ticked, onboard-result on a made-up finished run (no gam
+# runs), onboard-roles on the role editor and onboard-welcome on its Default welcome email (a sheet; its
+# picture is the sheet). The narrow-*
 # runs open a page in the smallest window with the sidebar and the page dragged to their widest, where
 # clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they
 # fail when the page has too little room to spare, and on any non-zero exit.
@@ -51,7 +52,8 @@ for spec in home:home users:users groups:groups setup:setup \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-audit:audit:::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \
-            onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest; do
+            onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \
+            onboard-welcome:onboard:Salesperson:welcome; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

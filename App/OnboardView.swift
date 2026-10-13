@@ -18,12 +18,15 @@ struct OnboardView: View {
     let groups: GroupStore
     let hasGam: Bool
     @State private var editingRoles = false
+    /// Debug snapshots only: what the role editor opens on.
+    @State private var rolesStart: OnboardRolesSheet.Selection?
     @SceneStorage("onboard.role") private var roleName = ""
     @State private var name = ""
     @State private var email = ""
     @State private var manager = ""
     @State private var assignee = ""
     @State private var createAccount = false
+    @State private var sendWelcome = false
     @State private var first = ""
     @State private var last = ""
     @State private var assigneeApplied = false
@@ -33,7 +36,8 @@ struct OnboardView: View {
     private var role: RoleTemplate? { roles.role(named: roleName) }
 
     private var hire: Hire {
-        Hire(name: name, email: email, manager: manager, assignee: assignee, createAccount: createAccount, first: first, last: last)
+        Hire(name: name, email: email, manager: manager, assignee: assignee, createAccount: createAccount, first: first, last: last,
+             sendWelcome: sendWelcome)
     }
 
     var body: some View {
@@ -64,7 +68,7 @@ struct OnboardView: View {
             OnboardPreviewSheet(pending: pending, changes: changes)
         }
         .sheet(isPresented: $editingRoles) {
-            OnboardRolesSheet(roles: roles, templates: templates, groups: groups) { editingRoles = false }
+            OnboardRolesSheet(roles: roles, templates: templates, groups: groups, start: rolesStart) { editingRoles = false }
         }
         .onChange(of: announcement) { _, text in
             if let text, appearsActive { AccessibilityNotification.Announcement(text).post() }
@@ -82,6 +86,10 @@ struct OnboardView: View {
                 .accessibilityHint("Whose Google Tasks gets the checklist. Leave blank for the new hire.")
             Text("Assignee: whose Google Tasks gets the checklist (blank = the new hire).")
                 .font(.callout).foregroundStyle(.secondary)
+            Toggle(isOn: $sendWelcome) {
+                Text("Also send the welcome email")
+                Text("The role's welcome email, filled in for them, to the email above, after everything else.")
+            }
             Toggle(isOn: $createAccount) {
                 Text("Create the Google account")
                 Text("With a temporary password shown once on a sign-in card; they must change it at first sign-in. "
@@ -105,7 +113,7 @@ struct OnboardView: View {
                         Text("\(role.name) (\(role.steps.count) step\(role.steps.count == 1 ? "" : "s"))").tag(role.name)
                     }
                 }
-                if let role { RoleSummary(role: role, templates: templates) }
+                if let role { RoleSummary(role: role, templates: templates, welcomeSaved: roles.welcome(named: role.welcome) != nil) }
             }
         } header: {
             HStack {
@@ -139,7 +147,9 @@ struct OnboardView: View {
     private func preview() {
         guard let role else { return }
         let hire = hire, template = role.signature.isEmpty ? nil : templates.body(role.signature)
-        Task { await changes.preview(hire: hire, role: role, signatureTemplate: template) }
+        // The role's welcome email as saved now; the preview holds it rendered, so a later edit doesn't change it.
+        let welcome = roles.welcome(named: role.welcome).map { (name: role.welcomeName, email: $0) }
+        Task { await changes.preview(hire: hire, role: role, signatureTemplate: template, welcome: welcome) }
     }
 
     /// Why Preview can't go ahead, in words; nil when it can. The model checks again, and refuses in GamGUI's words.
@@ -183,7 +193,8 @@ struct OnboardView: View {
     }
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` picks a role and `SWIFTGAMGUI_TAB` fills the form (`create`), shows a
-    /// made-up finished run (`result`, no gam), or opens the role editor (`roles`), for the snapshots.
+    /// made-up finished run (`result`, no gam), or opens the role editor on a role (`roles`) or the Default welcome
+    /// email (`welcome`), for the snapshots.
     private func debugSelection() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -191,15 +202,18 @@ struct OnboardView: View {
         debugApplied = true
         if let role = environment["SWIFTGAMGUI_SELECT"] { roleName = role }
         guard let tab = environment["SWIFTGAMGUI_TAB"] else { return }
-        if tab == "roles" {
+        if tab == "roles" || tab == "welcome" {
+            rolesStart = tab == "welcome" ? .welcome(Onboarding.defaultWelcome) : nil
             editingRoles = true
             return
         }
         name = "Jordan Lee"
         email = "jordan@example.com"
         createAccount = true
+        sendWelcome = true
         if tab == "result", let role {
-            changes.showDemoResult(hire: hire, role: role, signatureTemplate: templates.body(role.signature))
+            changes.showDemoResult(hire: hire, role: role, signatureTemplate: templates.body(role.signature),
+                                   welcome: roles.welcome(named: role.welcome).map { (name: role.welcomeName, email: $0) })
         }
         #endif
     }
@@ -209,6 +223,7 @@ struct OnboardView: View {
 private struct RoleSummary: View {
     let role: RoleTemplate
     let templates: SignatureTemplates
+    let welcomeSaved: Bool
 
     var body: some View {
         LabeledContent("Checklist", value: role.steps.joined(separator: " \u{B7} "))
@@ -225,6 +240,15 @@ private struct RoleSummary: View {
         }
         if !role.groups.isEmpty { LabeledContent("Groups", value: role.groups.joined(separator: ", ")) }
         if !role.calendars.isEmpty { LabeledContent("Calendars", value: role.calendars.joined(separator: ", ")) }
+        LabeledContent("Welcome email") {
+            if welcomeSaved {
+                Text("\u{201C}\(role.welcomeName)\u{201D}, when sent")
+            } else {
+                Label("\u{201C}\(role.welcomeName)\u{201D} isn't saved: pick another in Edit Roles\u{2026}",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
+        }
     }
 }
 

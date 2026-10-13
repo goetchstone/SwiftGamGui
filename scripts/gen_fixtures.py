@@ -1897,6 +1897,10 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
                 self.calls += [GAMCommands.create_task(assignee, "TASKLIST_ID", step) for step in steps]
                 return {"tasklist_id": "TASKLIST_ID", "created": len(steps), "failed": [], "total": len(steps)}
 
+            async def send_welcome_email(self, to, subject, body):
+                self.calls.append(GAMCommands.send_email(to, subject, body))
+                return self._ok()
+
         roles = {
             "Sales": {"steps": ["Set up the CRM login", "Order a laptop"], "signature": "Classic", "org_unit": "/Sales",
                       "groups": ["sales@example.com", "staff@example.com"], "calendars": ["team@group.calendar.google.com"]},
@@ -1932,9 +1936,41 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
                         out["provision"].append({"role": {"name": role_name, **role}, "hire": hire, "create_ok": create_ok,
                                                  "calls": conn.calls,
                                                  "credential_org_unit": (res["credential"] or {}).get("org_unit")})
+            # The welcome email (W): the hire's held welcome, rendered for them, sent last, only with an address.
+            welcomes = {"Default": onboarding._DEFAULT["welcomes"]["Default"],
+                        "Contractor": {"subject": "Hi {name} \u2014 {role}",
+                                       "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"}}
+            out["welcome_provision"] = []
+            for role_name in ("Sales", "Warehouse"):
+                role = roles[role_name]
+                for welcome_name in ("", "Contractor"):
+                    cfg = onboarding.RoleTemplate(role_name, role["steps"], role["signature"], role["org_unit"],
+                                                  role["groups"], role["calendars"], welcome_name)
+                    for hire in hires[:4]:
+                        conn = Recorder(True)
+                        held = welcomes[welcome_name or "Default"]
+                        row = {**hire, "role": role_name, "manager": "boss@example.com", "send_welcome": True, "notify": "",
+                               "welcome": held}
+                        asyncio.run(onboarding.provision_hire(conn, signatures, store, cfg, row))
+                        out["welcome_provision"].append({"role": {"name": role_name, **role, "welcome": welcome_name},
+                                                         "hire": hire, "manager": "boss@example.com", "welcome": held,
+                                                         "calls": conn.calls})
         finally:
             onboarding.generate_temp_password = real
         assert not (root / "onboarding.json").exists(), "provision_hire wrote the temporary role store"
+
+        # render: GamGUI's {token} substitution (one pass, WELCOME_VARS only, Unicode \\w), over curated and seeded
+        # templates, with values that hold tokens themselves.
+        import random as _random
+        ctx = onboarding.welcome_context("Zo\u00eb {role}", "zoe@example.com", "Sales {name}", "")
+        pieces = ["{name}", "{role}", "{email}", "{manager}", "{nobody}", "{", "}", "{{", "}}", "{na", "me}", "{n\u00e0me}",
+                  "{name\u0301}", "{\u00e9}", "{_}", "{1}", "text ", "\n", "\u00e9", "{NAME}", "{ name}", "{name }", "\u212a"]
+        rng = _random.Random(20261013)
+        templates = ["", "Hi {name}!", "{{name}}", "{na{name}me}", "{name}{role}{email}{manager}", "{unknown} {name",
+                     "Welcome aboard as our new {role}.", "{n\u00e0me} {\u00e9t\u00e9}"]
+        templates += ["".join(rng.choice(pieces) for _ in range(rng.randint(1, 10))) for _ in range(300)]
+        out["render"] = {"context": ctx, "vars": onboarding.WELCOME_VARS,
+                         "cases": [{"template": t, "out": onboarding.render(t, ctx)} for t in templates]}
 
         # RunbookStore's load over crafted files: what it migrates, and which it can't read (it falls back
         # to its seed then, which the native reader reports instead). The seed is swapped for a marked copy

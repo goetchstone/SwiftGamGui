@@ -102,6 +102,43 @@ public enum Onboarding {
         return "waiting for Google: " + parts.joined(separator: ", ")
     }
 
+    // MARK: the welcome email (W)
+
+    /// GamGUI's `WELCOME_VARS`: the `{tokens}` a welcome email understands.
+    public static let welcomeVariables = ["name", "role", "email", "manager"]
+
+    /// GamGUI's `welcome_context`.
+    public static func welcomeContext(name: String, email: String, role: String, manager: String) -> [String: String] {
+        ["name": name, "email": email, "role": role, "manager": manager]
+    }
+
+    /// GamGUI's `render`: each `{word}` (Python's Unicode `\w`, one or more) that's one of `welcomeVariables`
+    /// becomes its value (blank when the context lacks it); anything else stays as written. One pass: a value that
+    /// holds a `{token}` is inserted as it is, never expanded again. By scalar, as Python indexes.
+    public static func render(_ template: String, _ context: [String: String]) -> String {
+        let scalars = Array(template.unicodeScalars)
+        var out = String.UnicodeScalarView(), index = 0
+        while index < scalars.count {
+            if scalars[index] == "{" {
+                var end = index + 1
+                while end < scalars.count, PythonText.isWord(scalars[end]) { end += 1 }
+                if end > index + 1, end < scalars.count, scalars[end] == "}" {
+                    let word = String(String.UnicodeScalarView(scalars[(index + 1)..<end]))
+                    if welcomeVariables.contains(where: { $0.utf8.elementsEqual(word.utf8) }) {
+                        out.append(contentsOf: (context[word] ?? "").unicodeScalars)
+                    } else {
+                        out.append(contentsOf: scalars[index...end])
+                    }
+                    index = end + 1
+                    continue
+                }
+            }
+            out.append(scalars[index])
+            index += 1
+        }
+        return String(out)
+    }
+
     // MARK: GamGUI's role file
 
     public static let defaultWelcome = "Default"
@@ -357,9 +394,11 @@ public struct Hire: Sendable, Equatable {
     public var createAccount: Bool
     public var first: String
     public var last: String
+    /// GamGUI's `send_welcome`: the role's welcome email goes to the hire's address, last.
+    public var sendWelcome: Bool
 
     public init(name: String = "", email: String = "", manager: String = "", assignee: String = "", createAccount: Bool = false,
-                first: String = "", last: String = "") {
+                first: String = "", last: String = "", sendWelcome: Bool = false) {
         self.name = name
         self.email = email
         self.manager = manager
@@ -367,6 +406,7 @@ public struct Hire: Sendable, Equatable {
         self.createAccount = createAccount
         self.first = first
         self.last = last
+        self.sendWelcome = sendWelcome
     }
 }
 

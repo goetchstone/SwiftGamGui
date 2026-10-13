@@ -89,7 +89,8 @@ struct RoleStoreTests {
         }
         for item in Self.gamGUI.set_welcome {
             do {
-                #expect(try store.saveWelcome(WelcomeEmail(subject: "s", body: "b"), as: item.name) == item.saved_as)
+                // GamGUI replaces without asking; here the screen asks.
+                #expect(try store.saveWelcome(WelcomeEmail(subject: "s", body: "b"), as: item.name, replacing: true) == item.saved_as)
             } catch {
                 #expect(error.message == item.error, "\(item.name)")
             }
@@ -160,6 +161,36 @@ struct RoleStoreTests {
         try store.save(RoleTemplate(name: "A", steps: [], signature: "Classic"))
         try store.save(RoleTemplate(name: "C", steps: [], signature: "classic"))
         #expect(store.roles(usingSignature: "Classic") == ["A", "B"])
+    }
+
+    /// Saving over another welcome email is asked; a rename moves it and the roles that send it, in one write;
+    /// Default is edited, never renamed.
+    @Test func aWelcomeRenameTakesItsRolesAlong() throws {
+        var store = try RoleStore(root: root)
+        let email = WelcomeEmail(subject: " Hi {name} ", body: "Line one\nLine two")
+        #expect(try store.saveWelcome(email, as: "Contractor") == "Contractor")
+        #expect(store.welcome("Contractor") == WelcomeEmail(subject: "Hi {name}", body: "Line one\nLine two"))
+        #expect(throws: RoleStore.Problem.welcomeExists("Contractor")) { try store.saveWelcome(email, as: "contractor") }
+        #expect(try store.saveWelcome(WelcomeEmail(subject: "Edited", body: ""), as: "contractor", renaming: "Contractor") == "Contractor",
+                "an edit of the email itself saves over it, under its own name")
+        try store.save(RoleTemplate(name: "Ops", steps: [], welcome: "Contractor"))
+        try store.save(RoleTemplate(name: "Sales", steps: []))
+        #expect(store.roles(usingWelcome: "Contractor") == ["Ops"] && store.roles(usingWelcome: "Default") == ["Sales", "Salesperson"])
+        try store.saveWelcome(WelcomeEmail(subject: "Edited", body: ""), as: "Contractors", renaming: "Contractor")
+        #expect(store.welcomeNames == ["Default", "Contractors"])
+        #expect(store.role("Ops")?.welcome == "Contractors", "its role sends it under the new name")
+        #expect(throws: RoleStore.Problem.rule(.defaultWelcomeStays)) {
+            try store.saveWelcome(email, as: "Welcome", renaming: "Default")
+        }
+        try store.saveWelcome(email, as: "Spare")
+        #expect(throws: RoleStore.Problem.welcomeExists("Spare")) {
+            try store.saveWelcome(email, as: "Spare", renaming: "Contractors")
+        }
+        #expect(store.welcomeNames == ["Default", "Contractors", "Spare"], "a refused rename leaves both")
+        try store.saveWelcome(email, as: "Default", replacing: true, renaming: "Contractors")
+        #expect(store.welcomeNames == ["Default", "Spare"] && store.role("Ops")?.welcome == "", "Default is stored blank")
+        let reopened = try RoleStore(root: root)
+        #expect(reopened.roles == store.roles && reopened.welcomeNames == store.welcomeNames)
     }
 
     // MARK: the file

@@ -3,8 +3,8 @@
 **One line:** one new hire through one ChangeCore preview: create the account (with a one-time password
 shown once on a sign-in card), the role's signature, groups and calendars, and a checklist of tasks in
 someone's Google Tasks, in GamGUI's order and with its gates. Built: slice O1 (2026-10-12), from the
-onboarding plan (D1–D8, §2), and O2 (2026-10-13), this app's own roles, created and edited on Onboard. Next:
-W (the welcome email), and the live stages B and C (below). The CSV of hires (O3) and the Siri and model drafts (O5) wait until the operator asks. GamGUI's
+onboarding plan (D1–D8, §2), O2 (2026-10-13), this app's own roles, created and edited on Onboard, and W
+(2026-10-13), the welcome email. Next: the live stages B and C (below). The CSV of hires (O3) and the Siri and model drafts (O5) wait until the operator asks. GamGUI's
 runbook of the same name, and its failure log, are the history this inherits.
 
 **Owns invariants:** #2 (one preview, one confirm, the run is the preview; the one derived argv element is
@@ -56,8 +56,21 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
   checklist one step a line (no smart substitutions), the org unit, a saved signature (one that isn't saved any
   more is shown and said), the groups (suggested from the tenant's groups) and calendars, each with Remove; Save
   (⌘S), Revert, Delete (asked), New Role, Duplicate; leaving unsaved edits is asked. Deleting a signature template
-  on Signatures names the roles that use it. The welcome email a role sends is kept as saved; its editor comes
-  with W.
+  on Signatures names the roles that use it. Each role picks its welcome email (below).
+
+## The welcome email (W, 2026-10-13)
+- **Named emails** in the same store and editor ("Welcome Emails" beside "Roles"): a name, a subject and plain
+  text, with a sample rendered for a made-up hire. Default is edited, never renamed or deleted; one a role sends
+  isn't deleted (GamGUI's words name the roles). Native: saving over another is asked, and a rename moves the
+  email and the roles that send it in one write (GamGUI saved a copy and left the roles on the old name).
+- **`Onboarding.render`** is GamGUI's: one pass, only `{name}`, `{role}`, `{email}`, `{manager}`, anything
+  else left as typed; held to `onboarding.json`'s `render` cases (308).
+- **The send** ("Also send the welcome email" on Onboard): rendered at preview and held; the last step,
+  requiring the create; only with an address (without one the preview says it isn't sent); a role whose email
+  vanished refuses the send in GamGUI's words. Held to `provision_hire`'s calls (`welcome_provision`).
+- **One deliberate difference** (F5): the body goes as `HTMLText.autoreplyHTML` of the text, escaped with each
+  line kept, where GamGUI sent the text as HTML and its lines ran together. The preview shows the text as the
+  hire reads it.
 
 ## How one hire runs (GamGUI's `provision_hire`, `routes/onboarding.py` single flow)
 - **The plan** (`OnboardChanges.plan`), in GamGUI's order and gates:
@@ -68,7 +81,8 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
   3. each group, as a member (only with an address);
   4. each calendar (only with an address);
   5. the checklist on the assignee (blank is the hire): `create tasklist … returnidonly`, then one
-     `create task` per role step on that list.
+     `create task` per role step on that list;
+  6. the welcome email, when ticked and there's an address: `sendemail to … subject … message … html` (W).
   After a create every step requires it, so a failed create runs nothing else. Held to `provision_hire`'s
   own calls through a recording connector (`onboarding.json`'s `provision`).
 - **Checked before the first write**, in GamGUI's words: the address, a role with steps, first and last
