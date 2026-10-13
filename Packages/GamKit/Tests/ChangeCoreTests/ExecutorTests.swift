@@ -207,6 +207,22 @@ final class ExecutorTests {
         #expect(await executor.isHeld(oldest.id) == false)
     }
 
+    /// D3g: Cancel, or a new preview, drops the held one at once, so a temporary password in its argv doesn't
+    /// sit in the executor for its fifteen minutes.
+    @Test func discardDropsAHeldPreview() async throws {
+        let executor = executor()
+        let kept = try await held(executor, [suspend("bob@example.com")])
+        let preview = try await held(executor, [suspend()])
+        await executor.discard(preview.id)
+        #expect(await executor.isHeld(preview.id) == false)
+        #expect(await executor.isHeld(kept.id), "only that one")
+        #expect(await executor.run(preview, confirmation: confirmed).refusal
+                == "That preview has expired or was already run — preview again.")
+        #expect(ran().isEmpty)
+        await executor.discard(UUID())
+        #expect(await executor.run(kept, confirmation: confirmed).succeeded)
+    }
+
     @Test func noPreviewWithoutAConnectedDomain() async {
         tenantState.value.withLock { $0 = nil }
         let result = await executor().preview([suspend()])

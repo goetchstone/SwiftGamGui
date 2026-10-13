@@ -246,6 +246,13 @@ public actor Executor {
         return held[id] != nil
     }
 
+    /// Drops a held preview the operator cancelled or replaced, so what its argv carries (a temporary
+    /// password) doesn't stay here for `previewLifetime`. An unknown id is ignored.
+    public func discard(_ id: UUID) {
+        held[id] = nil
+        order.removeAll { $0 == id }
+    }
+
     // MARK: running
 
     static let expired = "That preview has expired or was already run — preview again."
