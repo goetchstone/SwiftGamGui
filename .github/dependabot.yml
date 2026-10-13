@@ -10,3 +10,9 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     labels: ["dependencies"]
+    # CodeQL refuses to run when its steps' versions differ ("All steps in a workflow that use
+    # github/codeql-action must use the same version"), so its init, analyze and upload-sarif move in
+    # one PR (2026-10-12: three separate bumps each failed CodeQL).
+    groups:
+      codeql-action:
+        patterns: ["github/codeql-action*"]
