@@ -143,11 +143,21 @@ struct OnboardView: View {
 
     // MARK: words for VoiceOver
 
-    /// What changed, said once: the account made, then how the run and the wait ended. Never the password.
+    /// What changed, said once: each step as it ends (the account with its card), then how the run and the
+    /// wait ended. Never the password.
     private var announcement: String? {
         guard let run = changes.run else { return nil }
         if !run.ended {
-            return changes.card.map { "Account created for \($0.email); sign-in sheet shown." }
+            guard let index = run.results.lastIndex(where: { $0 != nil }), let result = run.results[index] else { return nil }
+            let row = run.plan.rows[index]
+            if row.kind == .account, let card = changes.card { return "Account created for \(card.email); sign-in sheet shown." }
+            let word = switch result {
+            case .succeeded: "done"
+            case .failed: "failed"
+            case .skipped: "not run"
+            case .waiting: "waiting for Google"
+            }
+            return "\(row.label): \(word)."
         }
         let done = run.results.count { $0?.isSucceeded == true }
         var said = "Onboarding \(run.plan.email.isEmpty ? run.plan.assignee : run.plan.email): \(done) of \(run.results.count) steps done."
