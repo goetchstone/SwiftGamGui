@@ -148,6 +148,89 @@ final class OnboardChangesTests {
         let provision: [Provision]
     }
 
+    struct WelcomeFixture: Decodable {
+        struct Case: Decodable {
+            struct Role: Decodable {
+                let name: String, steps: [String], signature: String, org_unit: String, groups: [String], calendars: [String]
+                let welcome: String
+            }
+            struct HireRow: Decodable {
+                let name: String, email: String, assignee: String, create_account: Bool, first: String, last: String
+            }
+            struct Email: Decodable { let subject: String, body: String }
+            let role: Role, hire: HireRow, manager: String, welcome: Email, calls: [[String]]
+        }
+        let welcome_provision: [Case]
+    }
+
+    /// W: GamGUI's `provision_hire` with the welcome (the fixture): the email last, only with an address, rendered for
+    /// the hire, the same argv but one element. The one deliberate difference: the body goes as HTML with each line kept
+    /// (`HTMLText.autoreplyHTML` of GamGUI's text, whose lines ran together in Gmail; plan F5, Q2).
+    @Test func theWelcomeIsGamGUIsButItsLinesAreKept() throws {
+        let fixture = try JSONDecoder().decode(WelcomeFixture.self, from: Data(contentsOf: Fixtures.onboardingJSON)).welcome_provision
+        let templates = Dictionary(uniqueKeysWithValues: Signature.seeds.map { ($0.name, $0.body) })
+        #expect(fixture.count == 16)
+        for item in fixture {
+            let role = RoleTemplate(name: item.role.name, steps: item.role.steps, signature: item.role.signature,
+                                    orgUnit: item.role.org_unit, groups: item.role.groups, calendars: item.role.calendars,
+                                    welcome: item.role.welcome)
+            let hire = Hire(name: item.hire.name, email: item.hire.email, manager: item.manager, assignee: item.hire.assignee,
+                            createAccount: item.hire.create_account, first: item.hire.first, last: item.hire.last, sendWelcome: true)
+            var seeded = Seeded(state: 1)
+            let password = hire.createAccount ? TemporaryPassword.generate(using: &seeded) : nil
+            let welcome = (name: role.welcomeName, email: WelcomeEmail(subject: item.welcome.subject, body: item.welcome.body))
+            let (plan, steps) = OnboardChanges.plan(hire: hire, role: role, signatureTemplate: templates[role.signature], welcome: welcome,
+                                                    password: password)
+            var argv = steps.map(\.write.argv)
+            if password != nil { argv[0][8] = "PASSWORD" }
+            argv = argv.map { $0.count > 4 && $0[3] == "task" ? $0.enumerated().map { $0.offset == 4 ? "TASKLIST_ID" : $0.element } : $0 }
+            var expected = item.calls
+            let label = "\(role.name)/\(role.welcomeName) for \(hire.email.debugDescription)"
+            if let last = expected.last, last.first == "sendemail" {
+                expected[expected.count - 1][6] = HTMLText.autoreplyHTML(last[6])
+                #expect(steps.last?.action == .sendEmail && steps.last?.requires == (hire.createAccount ? [0] : []), "\(label)")
+                #expect(plan.welcome?.subject == last[4] && plan.welcome?.body == last[6], "\(label): the sheet shows what's sent")
+            } else {
+                #expect(plan.welcome == nil && !steps.contains { $0.action == .sendEmail }, "\(label): no address, no email")
+                #expect(plan.warnings.contains("No email entered, so the welcome email isn't sent."), "\(label): and it says so")
+            }
+            #expect(argv.map { $0.map { Array($0.utf8) } } == expected.map { $0.map { Array($0.utf8) } }, "\(label)")
+        }
+    }
+
+    /// GamGUI's `routes/onboarding.py:273-278`: a role whose welcome email is gone refuses the send, in its words, and
+    /// nothing is held; the same hire without the email previews.
+    @Test func aVanishedWelcomeRefusesTheSendNotTheHire() async throws {
+        try await connect()
+        let changes = model()
+        let role = RoleTemplate(name: "Sales", steps: ["A"], welcome: "Contractor")
+        await changes.preview(hire: Hire(name: "Carol Clark", email: "carol@example.com", sendWelcome: true), role: role,
+                              signatureTemplate: nil, welcome: nil)
+        #expect(changes.problem == "The role \u{201C}Sales\u{201D} sends the welcome email \u{201C}Contractor\u{201D}, which no longer "
+            + "exists. Pick another for the role in Role templates.")
+        #expect(changes.pending == nil)
+        await changes.preview(hire: Hire(name: "Carol Clark", email: "carol@example.com"), role: role, signatureTemplate: nil, welcome: nil)
+        #expect(changes.pending != nil)
+    }
+
+    /// GamGUI's provision with the welcome, end to end against the mock: sent last, its line in the run's tallies, and
+    /// a failed send (`*SENDFAIL*`) said, with the rest done.
+    @Test func theWelcomeIsSentLastAndItsResultSaid() async throws {
+        try await connect()
+        let changes = model()
+        let welcome = (name: "Default", email: Onboarding.seedWelcome)
+        let role = RoleTemplate(name: "Sales", steps: ["A"])
+        await changes.preview(hire: Hire(name: "Carol Clark", email: "carol@example.com", manager: "alice@example.com", sendWelcome: true),
+                              role: role, signatureTemplate: nil, welcome: welcome)
+        let pending = try #require(changes.pending)
+        #expect(pending.confirmLabel == "Create the Task List and Send the Email")
+        #expect(pending.plan.welcome?.subject == "Welcome to the team, Carol Clark!")
+        await changes.confirm(pending, confirmed)
+        let run = try #require(changes.run)
+        #expect(run.results.allSatisfy { $0?.isSucceeded == true })
+        #expect(run.tallies.last == "Welcome email to carol@example.com: sent \u{2713}.")
+    }
+
     /// GamGUI's `provision_hire`, through a recording connector (the fixture): the same argv in the same order,
     /// with its gates. The password and the list's id are the two elements a plan can't know in advance.
     @Test func thePlanIsGamGUIsOrderAndGates() throws {

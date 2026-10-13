@@ -3,41 +3,66 @@ import GamEngine
 import Stores
 import SwiftUI
 
-/// The role editor (onboarding plan O2): the saved roles beside the one being edited. A role is a checklist (one
-/// step a line), the org unit an account is created in, a saved signature, and the groups and calendars a new
-/// hire joins; the store saves it by GamGUI's rules plus this app's (`Onboarding.savable`). Replacing another
-/// role and deleting one are asked; switching away from unsaved edits is asked too. GamGUI's roles can be copied
-/// in once.
+/// The role editor (onboarding plan O2, W): the saved roles and welcome emails beside the one being edited. A role
+/// is a checklist (one step a line), the org unit an account is created in, a saved signature, the groups and
+/// calendars a new hire joins, and the welcome email it sends; the store saves it by GamGUI's rules plus this app's
+/// (`Onboarding.savable`). A welcome email is a subject and plain text, filled in for each hire. Replacing another
+/// and deleting one are asked; switching away from unsaved edits is asked too. GamGUI's roles can be copied in once.
 struct OnboardRolesSheet: View {
     let roles: OnboardRoles
     let templates: SignatureTemplates
     let groups: GroupStore
+    /// What the editor opens on; the first role when nil.
+    var start: Selection? = nil
     let dismiss: () -> Void
 
-    /// The role being edited, by its saved name; nil for a new one.
-    @State private var editing: String?
+    /// What the editor shows: a saved role or welcome email by its name, or a new one.
+    @State private var selection: Selection = .newRole
     @State private var draft = RoleDraft()
     /// What the draft was when it was loaded or saved: unsaved edits are the difference.
     @State private var loaded = RoleDraft()
+    @State private var letter = WelcomeDraft()
+    @State private var letterLoaded = WelcomeDraft()
+    @State private var started = false
     @State private var switchTo: Selection?
     @State private var closing = false
     @State private var replacing: String?
-    @State private var deleting: String?
+    @State private var replacingWelcome: String?
+    @State private var deleting: Selection?
     @State private var outcome: (text: String, failed: Bool)?
     @State private var report: RoleStore.CopyReport?
     @Environment(\.appearsActive) private var appearsActive
 
-    /// A list choice: a saved role, or a new one (the list's "New Role").
-    enum Selection: Hashable { case role(String), new }
+    /// A list choice.
+    enum Selection: Hashable {
+        case role(String), newRole, welcome(String), newWelcome
 
-    private var dirty: Bool { draft != loaded }
+        var isWelcome: Bool {
+            switch self {
+            case .welcome, .newWelcome: true
+            case .role, .newRole: false
+            }
+        }
+
+        /// The saved name, for a role or welcome email that is saved.
+        var saved: String? {
+            switch self {
+            case .role(let name), .welcome(let name): name
+            case .newRole, .newWelcome: nil
+            }
+        }
+    }
+
+    private var dirty: Bool { selection.isWelcome ? letter != letterLoaded : draft != loaded }
+    private var shownName: String { selection.isWelcome ? letter.name : draft.name }
+    private var isDefault: Bool { selection == .welcome(Onboarding.defaultWelcome) }
 
     var body: some View {
         HStack(spacing: 0) {
-            roleList
+            list
                 .frame(width: 210)
             Divider()
-            editor
+            if selection.isWelcome { welcomeEditor } else { roleEditor }
         }
         .frame(minWidth: 760, minHeight: 560)
         .toolbar {
@@ -47,17 +72,19 @@ struct OnboardRolesSheet: View {
             }
         }
         .onAppear {
-            if editing == nil, let first = roles.roles.first { open(.role(first.name)) }
+            guard !started else { return }
+            started = true
+            if let start { open(start) } else if let first = roles.roles.first { open(.role(first.name)) }
         }
         .task {
             // The picker's suggestions: the tenant's groups, read once if they aren't yet.
             if groups.groups == nil { await groups.load() }
         }
-        .confirmationDialog("Discard the changes to \u{201C}\(draft.name)\u{201D}?", isPresented: present($switchTo)) {
+        .confirmationDialog("Discard the changes to \u{201C}\(shownName)\u{201D}?", isPresented: present($switchTo)) {
             Button("Discard Changes", role: .destructive) { if let switchTo { open(switchTo) } }
             Button("Keep Editing", role: .cancel) {}
         }
-        .confirmationDialog("Close without saving \u{201C}\(draft.name)\u{201D}?", isPresented: $closing) {
+        .confirmationDialog("Close without saving \u{201C}\(shownName)\u{201D}?", isPresented: $closing) {
             Button("Discard Changes", role: .destructive) { dismiss() }
             Button("Keep Editing", role: .cancel) {}
         }
@@ -65,21 +92,35 @@ struct OnboardRolesSheet: View {
             Button("Replace") { save(replacing: true) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Its checklist, org unit, signature, groups and calendars become these. The old ones aren't kept.")
+            Text("Its checklist, org unit, signature, groups, calendars and welcome email become these. The old ones aren't kept.")
         }
-        .confirmationDialog("Delete the role \u{201C}\(deleting ?? "")\u{201D}?", isPresented: present($deleting)) {
+        .confirmationDialog("Replace the welcome email \u{201C}\(replacingWelcome ?? "")\u{201D}?", isPresented: present($replacingWelcome)) {
+            Button("Replace") { saveWelcome(replacing: true) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Its subject and body become these. The old ones aren't kept.")
+        }
+        .confirmationDialog(deletingTitle, isPresented: present($deleting)) {
             Button("Delete", role: .destructive) { if let deleting { delete(deleting) } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("No copy is kept. People already onboarded with it don't change.")
+            Text(deleting?.isWelcome == true ? "No copy is kept." : "No copy is kept. People already onboarded with it don't change.")
+        }
+    }
+
+    private var deletingTitle: String {
+        switch deleting {
+        case .role(let name): "Delete the role \u{201C}\(name)\u{201D}?"
+        case .welcome(let name): "Delete the welcome email \u{201C}\(name)\u{201D}?"
+        default: ""
         }
     }
 
     // MARK: the list
 
-    private var roleList: some View {
+    private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
-            List(selection: Binding(get: { editing.map(Selection.role) ?? .new }, set: { choose($0) })) {
+            List(selection: Binding(get: { selection }, set: { choose($0) })) {
                 Section("Roles") {
                     ForEach(roles.roles, id: \.name) { role in
                         VStack(alignment: .leading, spacing: 2) {
@@ -90,19 +131,34 @@ struct OnboardRolesSheet: View {
                         .tag(Selection.role(role.name))
                         .accessibilityElement(children: .combine)
                     }
-                    if editing == nil {
-                        Text(draft.name.isEmpty ? "New role" : draft.name).italic().tag(Selection.new)
+                    if selection == .newRole {
+                        Text(draft.name.isEmpty ? "New role" : draft.name).italic().tag(Selection.newRole)
+                    }
+                }
+                Section("Welcome Emails") {
+                    ForEach(roles.welcomeNames, id: \.self) { name in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(name)
+                            Text(roles.welcome(named: name)?.subject ?? "")
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .tag(Selection.welcome(name))
+                        .accessibilityElement(children: .combine)
+                    }
+                    if selection == .newWelcome {
+                        Text(letter.name.isEmpty ? "New welcome email" : letter.name).italic().tag(Selection.newWelcome)
                     }
                 }
             }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Button("New Role") { choose(.new) }
+                    Button("New Role") { choose(.newRole) }
                     Button("Duplicate") { duplicate() }
-                        .disabled(editing == nil)
-                        .help("A new role with this one's contents")
+                        .disabled(selection.saved == nil)
+                        .help("A new one with this one's contents")
                 }
+                Button("New Welcome Email") { choose(.newWelcome) }
                 if roles.canCopyFromGamGUI {
                     Button("Copy Roles from GamGUI") { copy() }
                         .disabled(roles.store == nil)
@@ -114,21 +170,25 @@ struct OnboardRolesSheet: View {
         }
     }
 
-    // MARK: the editor
+    // MARK: the editors
 
-    private var editor: some View {
+    @ViewBuilder private var storeNotes: some View {
+        if let problem = roles.openProblem {
+            Label("Roles can't be saved: \(problem)", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+        } else if let aside = roles.quarantined {
+            Label("The saved roles couldn't be read, so they were moved aside to \(aside.lastPathComponent) in the app's "
+                  + "folder, untouched. The starter role is shown instead.", systemImage: "info.circle")
+        }
+    }
+
+    private var roleEditor: some View {
         Form {
-            if let problem = roles.openProblem {
-                Label("Roles can't be saved: \(problem)", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
-            } else if let aside = roles.quarantined {
-                Label("The saved roles couldn't be read, so they were moved aside to \(aside.lastPathComponent) in the app's "
-                      + "folder, untouched. The starter role is shown instead.", systemImage: "info.circle")
-            }
+            storeNotes
             Section {
                 TextField("Name", text: $draft.name, prompt: Text("Warehouse"))
                     .accessibilityHint("The role's name, as the Onboard screen offers it")
             } header: {
-                Text(editing == nil ? "New role" : "Role").accessibilityAddTraits(.isHeader)
+                Text(selection == .newRole ? "New role" : "Role").accessibilityAddTraits(.isHeader)
             }
             Section {
                 SignatureEditor(text: $draft.steps, label: "Checklist steps, one a line")
@@ -152,62 +212,129 @@ struct OnboardRolesSheet: View {
             AddressListSection(title: "Calendars", noun: "calendar", entries: $draft.calendars,
                                note: "Each is added to the new hire's calendar list (a calendar's id, like team@group.calendar.google.com).",
                                suggestions: { _ in [] })
-            Section {
-                HStack {
-                    if let outcome {
-                        Label(outcome.text, systemImage: outcome.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
-                            .symbolRenderingMode(.multicolor)
-                    } else if dirty {
-                        Text("Unsaved changes").foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if let editing {
-                        Button("Delete\u{2026}") { deleting = editing }
-                    }
-                    Button("Revert") { draft = loaded; outcome = nil }
-                        .disabled(!dirty)
-                    Button("Save") { save(replacing: false) }
-                        .keyboardShortcut("s")
-                        .disabled(!dirty || roles.store == nil)
-                }
+            Section("Welcome email") {
+                WelcomePicker(selection: $draft.welcome, roles: roles)
             }
+            actions { save(replacing: false) }
         }
         .formStyle(.grouped)
     }
 
-    // MARK: actions
-
-    private func choose(_ selection: Selection) {
-        guard selection != (editing.map(Selection.role) ?? .new) else { return }
-        if dirty { switchTo = selection } else { open(selection) }
+    private var welcomeEditor: some View {
+        Form {
+            storeNotes
+            Section {
+                TextField("Name", text: $letter.name, prompt: Text("Contractor"))
+                    .disabled(isDefault)
+                    .accessibilityHint("The name a role picks it by")
+                let senders = selection.saved.map(roles.roles(usingWelcome:)) ?? []
+                if isDefault {
+                    Text("Sent by a role that doesn't pick another, so it can be edited but not renamed or deleted.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                Text(senders.isEmpty ? "No role sends it yet." : "Sent by \(senders.joined(separator: ", ")).")
+                    .font(.callout).foregroundStyle(.secondary)
+            } header: {
+                Text(selection == .newWelcome ? "New welcome email" : "Welcome email").accessibilityAddTraits(.isHeader)
+            }
+            Section {
+                TextField("Subject", text: $letter.subject, prompt: Text(verbatim: "Welcome to the team, {name}!"))
+                SignatureEditor(text: $letter.body, label: "Body")
+                    .frame(minHeight: 160)
+            } header: {
+                Text("Email")
+            } footer: {
+                Text(verbatim: "Plain text, sent with each line kept. Filled in for each new hire: {name}, {role}, {email} and {manager}.")
+            }
+            Section("As Jordan Lee would get it") {
+                let sample = Onboarding.welcomeContext(name: "Jordan Lee", email: "jordan@example.com",
+                                                       role: selection.saved.flatMap { roles.roles(usingWelcome: $0).first } ?? "Salesperson",
+                                                       manager: "manager@example.com")
+                Text(verbatim: Onboarding.render(letter.subject, sample)).bold()
+                Text(verbatim: Onboarding.render(letter.body, sample))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            actions { saveWelcome(replacing: false) }
+        }
+        .formStyle(.grouped)
     }
 
-    private func open(_ selection: Selection) {
-        switch selection {
-        case .role(let name):
-            editing = name
-            draft = roles.role(named: name).map(RoleDraft.init) ?? RoleDraft()
-        case .new:
-            editing = nil
-            draft = RoleDraft()
+    /// Delete (a saved one; never Default), Revert and Save, and what the last of them did.
+    private func actions(save: @escaping () -> Void) -> some View {
+        Section {
+            HStack {
+                if let outcome {
+                    Label(outcome.text, systemImage: outcome.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                        .symbolRenderingMode(.multicolor)
+                } else if dirty {
+                    Text("Unsaved changes").foregroundStyle(.secondary)
+                }
+                Spacer()
+                if selection.saved != nil, !isDefault {
+                    Button("Delete\u{2026}") { deleting = selection }
+                }
+                Button("Revert") { revert() }
+                    .disabled(!dirty)
+                Button("Save", action: save)
+                    .keyboardShortcut("s")
+                    .disabled(!dirty || roles.store == nil)
+            }
         }
-        loaded = draft
+    }
+
+    // MARK: actions
+
+    private func choose(_ next: Selection) {
+        guard next != selection else { return }
+        if dirty { switchTo = next } else { open(next) }
+    }
+
+    private func open(_ next: Selection) {
+        selection = next
+        switch next {
+        case .role(let name):
+            draft = roles.role(named: name).map(RoleDraft.init) ?? RoleDraft()
+            loaded = draft
+        case .newRole:
+            draft = RoleDraft()
+            loaded = draft
+        case .welcome(let name):
+            letter = WelcomeDraft(name: name, email: roles.welcome(named: name))
+            letterLoaded = letter
+        case .newWelcome:
+            letter = WelcomeDraft()
+            letterLoaded = letter
+        }
+        outcome = nil
+    }
+
+    private func revert() {
+        if selection.isWelcome { letter = letterLoaded } else { draft = loaded }
         outcome = nil
     }
 
     private func duplicate() {
-        var copy = draft
-        copy.name = draft.name + " copy"
-        editing = nil
-        loaded = RoleDraft()
-        draft = copy
+        if selection.isWelcome {
+            var copy = letter
+            copy.name = letter.name + " copy"
+            selection = .newWelcome
+            letterLoaded = WelcomeDraft()
+            letter = copy
+        } else {
+            var copy = draft
+            copy.name = draft.name + " copy"
+            selection = .newRole
+            loaded = RoleDraft()
+            draft = copy
+        }
         outcome = nil
     }
 
     private func save(replacing: Bool) {
         do {
-            guard let saved = try roles.save(draft.template, replacing: replacing, renaming: editing) else { return }
-            editing = saved.name
+            guard let saved = try roles.save(draft.template, replacing: replacing, renaming: selection.saved) else { return }
+            selection = .role(saved.name)
             draft = RoleDraft(saved)
             loaded = draft
             say("Saved \u{201C}\(saved.name)\u{201D}.", failed: false)
@@ -218,11 +345,37 @@ struct OnboardRolesSheet: View {
         }
     }
 
-    private func delete(_ name: String) {
+    private func saveWelcome(replacing: Bool) {
         do {
-            try roles.delete(name)
+            guard let saved = try roles.saveWelcome(letter.email, as: letter.name, replacing: replacing, renaming: selection.saved)
+            else { return }
+            selection = .welcome(saved)
+            letter = WelcomeDraft(name: saved, email: roles.welcome(named: saved))
+            letterLoaded = letter
+            say("Saved \u{201C}\(saved)\u{201D}.", failed: false)
+        } catch .welcomeExists(let name) {
+            replacingWelcome = name
+        } catch {
+            say(error.message, failed: true)
+        }
+    }
+
+    private func delete(_ target: Selection) {
+        do {
+            switch target {
+            case .role(let name): try roles.delete(name)
+            case .welcome(let name): try roles.deleteWelcome(name)
+            case .newRole, .newWelcome: return
+            }
+            let name = target.saved ?? ""
+            if target.isWelcome {
+                open(.welcome(Onboarding.defaultWelcome))
+            } else if let first = roles.roles.first {
+                open(.role(first.name))
+            } else {
+                open(.newRole)
+            }
             say("Deleted \u{201C}\(name)\u{201D}.", failed: false)
-            if let first = roles.roles.first { open(.role(first.name)) } else { open(.new) }
         } catch {
             say(error.message, failed: true)
         }
@@ -259,7 +412,7 @@ struct RoleDraft: Equatable {
     var orgUnit = ""
     var groups: [String] = []
     var calendars: [String] = []
-    /// Kept as saved: the welcome email isn't edited here yet.
+    /// The welcome email's name; blank is Default.
     var welcome = ""
 
     init() {}
@@ -278,6 +431,48 @@ struct RoleDraft: Equatable {
         RoleTemplate(name: name, steps: steps.split(whereSeparator: \.isNewline).map(String.init), signature: signature,
                      orgUnit: orgUnit, groups: groups,
                      calendars: calendars, welcome: welcome)
+    }
+}
+
+/// A welcome email as the editor holds it.
+struct WelcomeDraft: Equatable {
+    var name = ""
+    var subject = ""
+    var body = ""
+
+    init() {}
+
+    init(name: String, email: WelcomeEmail?) {
+        self.name = name
+        subject = email?.subject ?? ""
+        body = email?.body ?? ""
+    }
+
+    var email: WelcomeEmail { WelcomeEmail(subject: subject, body: body) }
+}
+
+/// The role's welcome email: one of the saved ones (Default is stored blank). One the role names that isn't saved
+/// any more is shown, and said.
+private struct WelcomePicker: View {
+    @Binding var selection: String
+    let roles: OnboardRoles
+
+    var body: some View {
+        Picker("Welcome email", selection: $selection) {
+            ForEach(roles.welcomeNames, id: \.self) { name in
+                Text(name).tag(name == Onboarding.defaultWelcome ? "" : name)
+            }
+            if !selection.isEmpty, roles.welcome(named: selection) == nil {
+                Text("\(selection) (not saved)").tag(selection)
+            }
+        }
+        .accessibilityHint("The email a new hire in this role gets, when Onboard sends one")
+        if !selection.isEmpty, roles.welcome(named: selection) == nil {
+            Label("\u{201C}\(selection)\u{201D} isn't saved: pick another before sending it.", systemImage: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor)
+        }
+        Text("Sent when Onboard's \u{201C}Also send the welcome email\u{201D} is on. Edit it under Welcome Emails.")
+            .font(.callout).foregroundStyle(.secondary)
     }
 }
 

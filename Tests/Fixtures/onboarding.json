@@ -3933,6 +3933,2522 @@
    "credential_org_unit": null
   }
  ],
+ "welcome_provision": [
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jordan Lee</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Welcome to the team, Jordan Lee!",
+     "message",
+     "Hi Jordan Lee,\n\nWelcome aboard as our new Sales. Your account is jordan@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jo Lee-Smith</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Welcome to the team, Jordan Lee!",
+     "message",
+     "Hi Jordan Lee,\n\nWelcome aboard as our new Sales. Your account is jordan@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "sam@example.com",
+     "subject",
+     "Welcome to the team, Sam Rivers!",
+     "message",
+     "Hi Sam Rivers,\n\nWelcome aboard as our new Sales. Your account is sam@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jordan Lee</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Hi Jordan Lee \u2014 Sales",
+     "message",
+     "Line one jordan@example.com\n\nAsk boss@example.com or {nobody} {Jordan Lee}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jo Lee-Smith</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Hi Jordan Lee \u2014 Sales",
+     "message",
+     "Line one jordan@example.com\n\nAsk boss@example.com or {nobody} {Jordan Lee}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ],
+    [
+     "sendemail",
+     "to",
+     "sam@example.com",
+     "subject",
+     "Hi Sam Rivers \u2014 Sales",
+     "message",
+     "Line one sam@example.com\n\nAsk boss@example.com or {nobody} {Sam Rivers}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Welcome to the team, Jordan Lee!",
+     "message",
+     "Hi Jordan Lee,\n\nWelcome aboard as our new Warehouse. Your account is jordan@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Welcome to the team, Jordan Lee!",
+     "message",
+     "Hi Jordan Lee,\n\nWelcome aboard as our new Warehouse. Your account is jordan@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "sam@example.com",
+     "subject",
+     "Welcome to the team, Sam Rivers!",
+     "message",
+     "Hi Sam Rivers,\n\nWelcome aboard as our new Warehouse. Your account is sam@example.com \u2014 your manager boss@example.com will help you get set up.\n\nGlad to have you here.",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": ""
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Welcome to the team, {name}!",
+    "body": "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+   },
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Hi Jordan Lee \u2014 Warehouse",
+     "message",
+     "Line one jordan@example.com\n\nAsk boss@example.com or {nobody} {Jordan Lee}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "jordan@example.com",
+     "subject",
+     "Hi Jordan Lee \u2014 Warehouse",
+     "message",
+     "Line one jordan@example.com\n\nAsk boss@example.com or {nobody} {Jordan Lee}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ],
+    [
+     "sendemail",
+     "to",
+     "sam@example.com",
+     "subject",
+     "Hi Sam Rivers \u2014 Warehouse",
+     "message",
+     "Line one sam@example.com\n\nAsk boss@example.com or {nobody} {Sam Rivers}\r\nBye <b>&",
+     "html"
+    ]
+   ]
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": [],
+    "welcome": "Contractor"
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "manager": "boss@example.com",
+   "welcome": {
+    "subject": "Hi {name} \u2014 {role}",
+    "body": "Line one {email}\n\nAsk {manager} or {nobody} {{name}}\r\nBye <b>&"
+   },
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ]
+  }
+ ],
+ "render": {
+  "context": {
+   "name": "Zo\u00eb {role}",
+   "email": "zoe@example.com",
+   "role": "Sales {name}",
+   "manager": ""
+  },
+  "vars": [
+   "name",
+   "role",
+   "email",
+   "manager"
+  ],
+  "cases": [
+   {
+    "template": "",
+    "out": ""
+   },
+   {
+    "template": "Hi {name}!",
+    "out": "Hi Zo\u00eb {role}!"
+   },
+   {
+    "template": "{{name}}",
+    "out": "{Zo\u00eb {role}}"
+   },
+   {
+    "template": "{na{name}me}",
+    "out": "{naZo\u00eb {role}me}"
+   },
+   {
+    "template": "{name}{role}{email}{manager}",
+    "out": "Zo\u00eb {role}Sales {name}zoe@example.com"
+   },
+   {
+    "template": "{unknown} {name",
+    "out": "{unknown} {name"
+   },
+   {
+    "template": "Welcome aboard as our new {role}.",
+    "out": "Welcome aboard as our new Sales {name}."
+   },
+   {
+    "template": "{n\u00e0me} {\u00e9t\u00e9}",
+    "out": "{n\u00e0me} {\u00e9t\u00e9}"
+   },
+   {
+    "template": "{_}}\u00e9\u212ame}{1}{manager}{\u00e9}{NAME}{NAME}",
+    "out": "{_}}\u00e9\u212ame}{1}{\u00e9}{NAME}{NAME}"
+   },
+   {
+    "template": "{role}{{\u00e9{email}{name}{{\u00e9\n{manager}{{",
+    "out": "Sales {name}{{\u00e9zoe@example.comZo\u00eb {role}{{\u00e9\n{{"
+   },
+   {
+    "template": "{nobody}}{_}{1}{nobody}{role}{nobody}{name }{name }{{",
+    "out": "{nobody}}{_}{1}{nobody}Sales {name}{nobody}{name }{name }{{"
+   },
+   {
+    "template": "\u00e9{NAME}me}",
+    "out": "\u00e9{NAME}me}"
+   },
+   {
+    "template": "{\u00e9}{name }me}\u212a{1}\u00e9\n",
+    "out": "{\u00e9}{name }me}\u212a{1}\u00e9\n"
+   },
+   {
+    "template": "{1}{\u00e9}{_}{name\u0301}{{{na{name}{nobody}",
+    "out": "{1}{\u00e9}{_}{name\u0301}{{{naZo\u00eb {role}{nobody}"
+   },
+   {
+    "template": "{{{manager}{NAME}{ name}{role}{ name}{_}",
+    "out": "{{{NAME}{ name}Sales {name}{ name}{_}"
+   },
+   {
+    "template": "{1}\n",
+    "out": "{1}\n"
+   },
+   {
+    "template": "{nobody}text {name}{\u00e9}{name}{\u00e9}}{n\u00e0me}",
+    "out": "{nobody}text Zo\u00eb {role}{\u00e9}Zo\u00eb {role}{\u00e9}}{n\u00e0me}"
+   },
+   {
+    "template": "{{{role}\u212a{1}",
+    "out": "{{Sales {name}\u212a{1}"
+   },
+   {
+    "template": "{na{role}",
+    "out": "{naSales {name}"
+   },
+   {
+    "template": "{na{nobody}text {_}",
+    "out": "{na{nobody}text {_}"
+   },
+   {
+    "template": "\n{n\u00e0me}{name\u0301}",
+    "out": "\n{n\u00e0me}{name\u0301}"
+   },
+   {
+    "template": "{ name}{email}\u212a",
+    "out": "{ name}zoe@example.com\u212a"
+   },
+   {
+    "template": "{name }\n{NAME}{ name}{name }{name}\u212a{_}}",
+    "out": "{name }\n{NAME}{ name}{name }Zo\u00eb {role}\u212a{_}}"
+   },
+   {
+    "template": "{_}{email}\n\u00e9{name\u0301}{manager}{_}{ name}\u00e9me}",
+    "out": "{_}zoe@example.com\n\u00e9{name\u0301}{_}{ name}\u00e9me}"
+   },
+   {
+    "template": "{name }text \u00e9{n\u00e0me}{_}",
+    "out": "{name }text \u00e9{n\u00e0me}{_}"
+   },
+   {
+    "template": "{name\u0301}{role}{name }{ name}}}\u212a}{{",
+    "out": "{name\u0301}Sales {name}{name }{ name}}}\u212a}{{"
+   },
+   {
+    "template": "{na{NAME}}}{name }\n}}",
+    "out": "{na{NAME}}}{name }\n}}"
+   },
+   {
+    "template": "\u00e9{n\u00e0me}\u00e9",
+    "out": "\u00e9{n\u00e0me}\u00e9"
+   },
+   {
+    "template": "\u212a{ name}}}}{{{NAME}\u00e9me}}}",
+    "out": "\u212a{ name}}}}{{{NAME}\u00e9me}}}"
+   },
+   {
+    "template": "\u212a{name}{manager}me}",
+    "out": "\u212aZo\u00eb {role}me}"
+   },
+   {
+    "template": "{email}}}{_}{name\u0301}{n\u00e0me}\n{_}{{{",
+    "out": "zoe@example.com}}{_}{name\u0301}{n\u00e0me}\n{_}{{{"
+   },
+   {
+    "template": "{n\u00e0me}{NAME}{nobody}{name }me}me}",
+    "out": "{n\u00e0me}{NAME}{nobody}{name }me}me}"
+   },
+   {
+    "template": "{name }{name}\u00e9{NAME}me}{NAME}}",
+    "out": "{name }Zo\u00eb {role}\u00e9{NAME}me}{NAME}}"
+   },
+   {
+    "template": "{name\u0301}text ",
+    "out": "{name\u0301}text "
+   },
+   {
+    "template": "{name }{name}{email}{\u00e9}{email}text ",
+    "out": "{name }Zo\u00eb {role}zoe@example.com{\u00e9}zoe@example.comtext "
+   },
+   {
+    "template": "}\u212ame}{nobody}{ name}{name }\n{role}{name\u0301}",
+    "out": "}\u212ame}{nobody}{ name}{name }\nSales {name}{name\u0301}"
+   },
+   {
+    "template": "me}",
+    "out": "me}"
+   },
+   {
+    "template": "{NAME}",
+    "out": "{NAME}"
+   },
+   {
+    "template": "{na\n\u212a\u212a\n{{{{{",
+    "out": "{na\n\u212a\u212a\n{{{{{"
+   },
+   {
+    "template": "\u212a\u00e9{manager}{manager}{NAME}text {\u00e9}",
+    "out": "\u212a\u00e9{NAME}text {\u00e9}"
+   },
+   {
+    "template": "me}}}{{n\u00e0me}{{{name }{",
+    "out": "me}}}{{n\u00e0me}{{{name }{"
+   },
+   {
+    "template": "{manager}{ name}{_}\n}}{name}{na{name}{\u00e9}",
+    "out": "{ name}{_}\n}}Zo\u00eb {role}{naZo\u00eb {role}{\u00e9}"
+   },
+   {
+    "template": "{role}{{{email}\u212a{_}{na",
+    "out": "Sales {name}{{zoe@example.com\u212a{_}{na"
+   },
+   {
+    "template": "text {1}{1}",
+    "out": "text {1}{1}"
+   },
+   {
+    "template": "{email}{email}{email}{role}\n",
+    "out": "zoe@example.comzoe@example.comzoe@example.comSales {name}\n"
+   },
+   {
+    "template": "{NAME}{manager}{role}{role}{name}{_}\u00e9{manager}{na{_}",
+    "out": "{NAME}Sales {name}Sales {name}Zo\u00eb {role}{_}\u00e9{na{_}"
+   },
+   {
+    "template": "me}{name }{nobody}{ name}{ name}\n",
+    "out": "me}{name }{nobody}{ name}{ name}\n"
+   },
+   {
+    "template": "{1}{n\u00e0me}{_}{email}{name\u0301}{",
+    "out": "{1}{n\u00e0me}{_}zoe@example.com{name\u0301}{"
+   },
+   {
+    "template": "\u00e9{natext {name }\u00e9{1}{{{ name}",
+    "out": "\u00e9{natext {name }\u00e9{1}{{{ name}"
+   },
+   {
+    "template": "{{{ name}}}}}",
+    "out": "{{{ name}}}}}"
+   },
+   {
+    "template": "me}{manager}{role}{na{\u00e9}\u00e9{1}{n\u00e0me}",
+    "out": "me}Sales {name}{na{\u00e9}\u00e9{1}{n\u00e0me}"
+   },
+   {
+    "template": "{name }{name }\u212a{name\u0301}",
+    "out": "{name }{name }\u212a{name\u0301}"
+   },
+   {
+    "template": "{NAME}{name}{n\u00e0me}{na\u212a{{",
+    "out": "{NAME}Zo\u00eb {role}{n\u00e0me}{na\u212a{{"
+   },
+   {
+    "template": "{\u00e9{name\u0301}{name\u0301}{name }{1}{{name }",
+    "out": "{\u00e9{name\u0301}{name\u0301}{name }{1}{{name }"
+   },
+   {
+    "template": "}}{ name}{ name}{\u00e9}{manager}text ",
+    "out": "}}{ name}{ name}{\u00e9}text "
+   },
+   {
+    "template": "{name\u0301}{email}text {1}",
+    "out": "{name\u0301}zoe@example.comtext {1}"
+   },
+   {
+    "template": "{role}{role}me}{name}{name }{role}{1}{manager}",
+    "out": "Sales {name}Sales {name}me}Zo\u00eb {role}{name }Sales {name}{1}"
+   },
+   {
+    "template": "\u00e9{ name}}}\n{name }",
+    "out": "\u00e9{ name}}}\n{name }"
+   },
+   {
+    "template": "{\u00e9}text {email}me}\u212a{name}{NAME}\u00e9{name\u0301}{name }",
+    "out": "{\u00e9}text zoe@example.comme}\u212aZo\u00eb {role}{NAME}\u00e9{name\u0301}{name }"
+   },
+   {
+    "template": "{nobody}{name\u0301}{{{ name}{_}{NAME}",
+    "out": "{nobody}{name\u0301}{{{ name}{_}{NAME}"
+   },
+   {
+    "template": "{nobody}",
+    "out": "{nobody}"
+   },
+   {
+    "template": "\u00e9text me}text {email}me}{role}{na{{",
+    "out": "\u00e9text me}text zoe@example.comme}Sales {name}{na{{"
+   },
+   {
+    "template": "{NAME}{_}{name\u0301}\n{name}{n\u00e0me}",
+    "out": "{NAME}{_}{name\u0301}\nZo\u00eb {role}{n\u00e0me}"
+   },
+   {
+    "template": "\u00e9{{email}{1}{manager}{1}{name\u0301}{{_}",
+    "out": "\u00e9{zoe@example.com{1}{1}{name\u0301}{{_}"
+   },
+   {
+    "template": "\n\u00e9{role}{email}{{",
+    "out": "\n\u00e9Sales {name}zoe@example.com{{"
+   },
+   {
+    "template": "{{\u00e9{na{n\u00e0me}",
+    "out": "{{\u00e9{na{n\u00e0me}"
+   },
+   {
+    "template": "{email}{",
+    "out": "zoe@example.com{"
+   },
+   {
+    "template": "{name\u0301}{1}{n\u00e0me}{\u00e9}}}{_}",
+    "out": "{name\u0301}{1}{n\u00e0me}{\u00e9}}}{_}"
+   },
+   {
+    "template": "{name }\n",
+    "out": "{name }\n"
+   },
+   {
+    "template": "{name\u0301}{NAME}}{NAME}{name\u0301}{NAME}",
+    "out": "{name\u0301}{NAME}}{NAME}{name\u0301}{NAME}"
+   },
+   {
+    "template": "{n\u00e0me}{na{name }{_}\n{\u00e9}",
+    "out": "{n\u00e0me}{na{name }{_}\n{\u00e9}"
+   },
+   {
+    "template": "{_}me}}}\n{name}{name}{{nobody}{1}{1}",
+    "out": "{_}me}}}\nZo\u00eb {role}Zo\u00eb {role}{{nobody}{1}{1}"
+   },
+   {
+    "template": "{{1}{role}{nobody}{role}{ name}{\u00e9}{{NAME}\u00e9",
+    "out": "{{1}Sales {name}{nobody}Sales {name}{ name}{\u00e9}{{NAME}\u00e9"
+   },
+   {
+    "template": "{name }",
+    "out": "{name }"
+   },
+   {
+    "template": "{name }}{\u00e9}text {role}{1}{nobody}",
+    "out": "{name }}{\u00e9}text Sales {name}{1}{nobody}"
+   },
+   {
+    "template": "\u212a{{name}{NAME}{NAME}",
+    "out": "\u212a{Zo\u00eb {role}{NAME}{NAME}"
+   },
+   {
+    "template": "{name }{na{1}}{manager}\u00e9",
+    "out": "{name }{na{1}}\u00e9"
+   },
+   {
+    "template": "{name }{_}\n{nobody}{\u00e9}{ name}}}{n\u00e0me}{name}{1}",
+    "out": "{name }{_}\n{nobody}{\u00e9}{ name}}}{n\u00e0me}Zo\u00eb {role}{1}"
+   },
+   {
+    "template": "{manager}\n{name }",
+    "out": "\n{name }"
+   },
+   {
+    "template": "{{}{\u00e9}{_}{name\u0301}{NAME}{\u00e9}{n\u00e0me}",
+    "out": "{{}{\u00e9}{_}{name\u0301}{NAME}{\u00e9}{n\u00e0me}"
+   },
+   {
+    "template": "{manager}{ name}",
+    "out": "{ name}"
+   },
+   {
+    "template": "\u212a{n\u00e0me}",
+    "out": "\u212a{n\u00e0me}"
+   },
+   {
+    "template": "{_}}}{\n{n\u00e0me}}{NAME}}",
+    "out": "{_}}}{\n{n\u00e0me}}{NAME}}"
+   },
+   {
+    "template": "{nobody}{{{{n\u00e0me}{ name}{name }",
+    "out": "{nobody}{{{{n\u00e0me}{ name}{name }"
+   },
+   {
+    "template": "{_}",
+    "out": "{_}"
+   },
+   {
+    "template": "me}text text {name\u0301}\u212a\u00e9{manager}",
+    "out": "me}text text {name\u0301}\u212a\u00e9"
+   },
+   {
+    "template": "{\u00e9}\n",
+    "out": "{\u00e9}\n"
+   },
+   {
+    "template": "text text \u212a{role}{NAME}{",
+    "out": "text text \u212aSales {name}{NAME}{"
+   },
+   {
+    "template": "{email}{_}{name }",
+    "out": "zoe@example.com{_}{name }"
+   },
+   {
+    "template": "{{1}}}{name\u0301}{{{1}{ name}text {NAME}",
+    "out": "{{1}}}{name\u0301}{{{1}{ name}text {NAME}"
+   },
+   {
+    "template": "{name}{NAME}text {name}{_}{\u00e9}",
+    "out": "Zo\u00eb {role}{NAME}text Zo\u00eb {role}{_}{\u00e9}"
+   },
+   {
+    "template": "me}",
+    "out": "me}"
+   },
+   {
+    "template": "}",
+    "out": "}"
+   },
+   {
+    "template": "{ name}{{{_}{email}{role}{name\u0301}{1}{NAME}",
+    "out": "{ name}{{{_}zoe@example.comSales {name}{name\u0301}{1}{NAME}"
+   },
+   {
+    "template": "me}me}{manager}{role}{nobody}{n\u00e0me}{name\u0301}{name}{name\u0301}",
+    "out": "me}me}Sales {name}{nobody}{n\u00e0me}{name\u0301}Zo\u00eb {role}{name\u0301}"
+   },
+   {
+    "template": "{n\u00e0me}{n\u00e0me}{n\u00e0me}{ name}{n\u00e0me}",
+    "out": "{n\u00e0me}{n\u00e0me}{n\u00e0me}{ name}{n\u00e0me}"
+   },
+   {
+    "template": "{role}{name\u0301}{nobody}{name }{_}{ name}",
+    "out": "Sales {name}{name\u0301}{nobody}{name }{_}{ name}"
+   },
+   {
+    "template": "{name }\n\u00e9{1}{name}{email}{na{name }\u00e9",
+    "out": "{name }\n\u00e9{1}Zo\u00eb {role}zoe@example.com{na{name }\u00e9"
+   },
+   {
+    "template": "{name\u0301}{name\u0301}{nobody}{\u00e9}}}{manager}\u00e9{",
+    "out": "{name\u0301}{name\u0301}{nobody}{\u00e9}}}\u00e9{"
+   },
+   {
+    "template": "{1}",
+    "out": "{1}"
+   },
+   {
+    "template": "\u212a{email}{manager}{n\u00e0me}{\u00e9}{nobody}",
+    "out": "\u212azoe@example.com{n\u00e0me}{\u00e9}{nobody}"
+   },
+   {
+    "template": "{1}{nobody}}{name }{n\u00e0me}text me}}}{n\u00e0me}",
+    "out": "{1}{nobody}}{name }{n\u00e0me}text me}}}{n\u00e0me}"
+   },
+   {
+    "template": "\n}}\nme}{_}{nobody}{name}{_}",
+    "out": "\n}}\nme}{_}{nobody}Zo\u00eb {role}{_}"
+   },
+   {
+    "template": "{name }{ name}{name\u0301}{{{NAME}{1}{nobody}{name}",
+    "out": "{name }{ name}{name\u0301}{{{NAME}{1}{nobody}Zo\u00eb {role}"
+   },
+   {
+    "template": "{name\u0301}{_}{\u00e9}",
+    "out": "{name\u0301}{_}{\u00e9}"
+   },
+   {
+    "template": "text {na{{}{\u00e9}}\n{nobody}{nobody}\u00e9",
+    "out": "text {na{{}{\u00e9}}\n{nobody}{nobody}\u00e9"
+   },
+   {
+    "template": "{na\n{n\u00e0me}",
+    "out": "{na\n{n\u00e0me}"
+   },
+   {
+    "template": "{{{{{{{na{\u00e9}{{",
+    "out": "{{{{{{{na{\u00e9}{{"
+   },
+   {
+    "template": "me}",
+    "out": "me}"
+   },
+   {
+    "template": "{_}{nobody}{name}{{1}",
+    "out": "{_}{nobody}Zo\u00eb {role}{{1}"
+   },
+   {
+    "template": "{name}",
+    "out": "Zo\u00eb {role}"
+   },
+   {
+    "template": "}}\u212a{role}{manager}{{{ name}",
+    "out": "}}\u212aSales {name}{{{ name}"
+   },
+   {
+    "template": "{name}{\u00e9}{name\u0301}{nobody}{nobody}{1}{manager}{",
+    "out": "Zo\u00eb {role}{\u00e9}{name\u0301}{nobody}{nobody}{1}{"
+   },
+   {
+    "template": "{role}{manager}{name }}{email}\u212a",
+    "out": "Sales {name}{name }}zoe@example.com\u212a"
+   },
+   {
+    "template": "{{role}text {name\u0301}{\u00e9}{nobody}{manager}me}me}",
+    "out": "{Sales {name}text {name\u0301}{\u00e9}{nobody}me}me}"
+   },
+   {
+    "template": "{email}}text text {_}{nobody}{role}\u212a",
+    "out": "zoe@example.com}text text {_}{nobody}Sales {name}\u212a"
+   },
+   {
+    "template": "{email}{nobody}{name}{manager}{name\u0301}{name }{_}{_}",
+    "out": "zoe@example.com{nobody}Zo\u00eb {role}{name\u0301}{name }{_}{_}"
+   },
+   {
+    "template": "me}\ntext {role}\u00e9{NAME}text ",
+    "out": "me}\ntext Sales {name}\u00e9{NAME}text "
+   },
+   {
+    "template": "{na{ name}",
+    "out": "{na{ name}"
+   },
+   {
+    "template": "{na",
+    "out": "{na"
+   },
+   {
+    "template": "{na{na{n\u00e0me}{nobody}{1}{manager}{ name}}}",
+    "out": "{na{na{n\u00e0me}{nobody}{1}{ name}}}"
+   },
+   {
+    "template": "{\u00e9}\u212a",
+    "out": "{\u00e9}\u212a"
+   },
+   {
+    "template": "{na}}text ",
+    "out": "{na}}text "
+   },
+   {
+    "template": "{name }",
+    "out": "{name }"
+   },
+   {
+    "template": "{natext text {\u00e9}{name }{\u00e9}me}",
+    "out": "{natext text {\u00e9}{name }{\u00e9}me}"
+   },
+   {
+    "template": "{na{name\u0301}",
+    "out": "{na{name\u0301}"
+   },
+   {
+    "template": "\u00e9{email}{\u00e9}{_}{nobody}{na{nobody}\u00e9text {n\u00e0me}",
+    "out": "\u00e9zoe@example.com{\u00e9}{_}{nobody}{na{nobody}\u00e9text {n\u00e0me}"
+   },
+   {
+    "template": "{name\u0301}}\u00e9{role}",
+    "out": "{name\u0301}}\u00e9Sales {name}"
+   },
+   {
+    "template": "{NAME}{email}{na{na",
+    "out": "{NAME}zoe@example.com{na{na"
+   },
+   {
+    "template": "{\u00e9}{role}{NAME}\u212a{name }{ name}{n\u00e0me}{1}",
+    "out": "{\u00e9}Sales {name}{NAME}\u212a{name }{ name}{n\u00e0me}{1}"
+   },
+   {
+    "template": "{email}text {role}{manager}{manager}}}{role}",
+    "out": "zoe@example.comtext Sales {name}}}Sales {name}"
+   },
+   {
+    "template": "{role}",
+    "out": "Sales {name}"
+   },
+   {
+    "template": "{1}{{na",
+    "out": "{1}{{na"
+   },
+   {
+    "template": "{n\u00e0me}{ name}{name}{nobody}text }}me}{manager}",
+    "out": "{n\u00e0me}{ name}Zo\u00eb {role}{nobody}text }}me}"
+   },
+   {
+    "template": "{ name}me}\u00e9{na{role}{{na}}{name }{nobody}",
+    "out": "{ name}me}\u00e9{naSales {name}{{na}}{name }{nobody}"
+   },
+   {
+    "template": "{manager}{manager}}\ntext }}\u00e9{_}\u00e9",
+    "out": "}\ntext }}\u00e9{_}\u00e9"
+   },
+   {
+    "template": "{NAME}text {name}{n\u00e0me}{na{\u00e9}{1}",
+    "out": "{NAME}text Zo\u00eb {role}{n\u00e0me}{na{\u00e9}{1}"
+   },
+   {
+    "template": "}}{manager}{_}",
+    "out": "}}{_}"
+   },
+   {
+    "template": "}}{_}\n{n\u00e0me}",
+    "out": "}}{_}\n{n\u00e0me}"
+   },
+   {
+    "template": "{email}{_}\u00e9text {nobody}",
+    "out": "zoe@example.com{_}\u00e9text {nobody}"
+   },
+   {
+    "template": "{\u00e9}{ name}me}{name }{NAME}}",
+    "out": "{\u00e9}{ name}me}{name }{NAME}}"
+   },
+   {
+    "template": "{name }me}}}{nobody}",
+    "out": "{name }me}}}{nobody}"
+   },
+   {
+    "template": "{name\u0301}\u00e9{name\u0301}",
+    "out": "{name\u0301}\u00e9{name\u0301}"
+   },
+   {
+    "template": "{NAME}{_}{nobody}\u00e9{name\u0301}{{1}",
+    "out": "{NAME}{_}{nobody}\u00e9{name\u0301}{{1}"
+   },
+   {
+    "template": "{ name}\u00e9{role}{manager}{\u00e9}{NAME}text me}{name }",
+    "out": "{ name}\u00e9Sales {name}{\u00e9}{NAME}text me}{name }"
+   },
+   {
+    "template": "\n{na",
+    "out": "\n{na"
+   },
+   {
+    "template": "\u00e9{{",
+    "out": "\u00e9{{"
+   },
+   {
+    "template": "{nobody}{email}{name}me}{_}",
+    "out": "{nobody}zoe@example.comZo\u00eb {role}me}{_}"
+   },
+   {
+    "template": "{n\u00e0me}{na{email}",
+    "out": "{n\u00e0me}{nazoe@example.com"
+   },
+   {
+    "template": "{name}me}{nobody}{name}{na",
+    "out": "Zo\u00eb {role}me}{nobody}Zo\u00eb {role}{na"
+   },
+   {
+    "template": "}{1}\u00e9{email}\u212a{n\u00e0me}",
+    "out": "}{1}\u00e9zoe@example.com\u212a{n\u00e0me}"
+   },
+   {
+    "template": "}}text \u212a{nobody}{name}}}",
+    "out": "}}text \u212a{nobody}Zo\u00eb {role}}}"
+   },
+   {
+    "template": "{manager}{name\u0301}{name}{ name}{_}{email}{1}",
+    "out": "{name\u0301}Zo\u00eb {role}{ name}{_}zoe@example.com{1}"
+   },
+   {
+    "template": "}}",
+    "out": "}}"
+   },
+   {
+    "template": "{nobody}{manager}{email}{n\u00e0me}{name }{email}{na{name }",
+    "out": "{nobody}zoe@example.com{n\u00e0me}{name }zoe@example.com{na{name }"
+   },
+   {
+    "template": "\n{name\u0301}{role}\u00e9\ntext me}{nobody}{email}{manager}",
+    "out": "\n{name\u0301}Sales {name}\u00e9\ntext me}{nobody}zoe@example.com"
+   },
+   {
+    "template": "{{{_}\u00e9{\u00e9",
+    "out": "{{{_}\u00e9{\u00e9"
+   },
+   {
+    "template": "}}{n\u00e0me}{name}{name }{\u00e9}{email}{{email}",
+    "out": "}}{n\u00e0me}Zo\u00eb {role}{name }{\u00e9}zoe@example.com{zoe@example.com"
+   },
+   {
+    "template": "{name}{NAME}{\u00e9}{\u00e9}{role}text \n\u212a}{NAME}",
+    "out": "Zo\u00eb {role}{NAME}{\u00e9}{\u00e9}Sales {name}text \n\u212a}{NAME}"
+   },
+   {
+    "template": "}}{ name}{nobody}{ name}",
+    "out": "}}{ name}{nobody}{ name}"
+   },
+   {
+    "template": "me}me}{name\u0301}{role}",
+    "out": "me}me}{name\u0301}Sales {name}"
+   },
+   {
+    "template": "{\u00e9}{manager}{",
+    "out": "{\u00e9}{"
+   },
+   {
+    "template": "{{me}{role}{_}}}",
+    "out": "{{me}Sales {name}{_}}}"
+   },
+   {
+    "template": "{1}{manager}{NAME}{manager}{email}",
+    "out": "{1}{NAME}zoe@example.com"
+   },
+   {
+    "template": "\u00e9{{{NAME}me}{{{manager}{{{name }{",
+    "out": "\u00e9{{{NAME}me}{{{{{name }{"
+   },
+   {
+    "template": "{n\u00e0me}",
+    "out": "{n\u00e0me}"
+   },
+   {
+    "template": "{role}}\n{name}{name\u0301}}text \n",
+    "out": "Sales {name}}\nZo\u00eb {role}{name\u0301}}text \n"
+   },
+   {
+    "template": "{{_}",
+    "out": "{{_}"
+   },
+   {
+    "template": "text me}{name}\n\n{\u00e9}",
+    "out": "text me}Zo\u00eb {role}\n\n{\u00e9}"
+   },
+   {
+    "template": "{NAME}{name}{n\u00e0me}{1}me}{ name}{name}",
+    "out": "{NAME}Zo\u00eb {role}{n\u00e0me}{1}me}{ name}Zo\u00eb {role}"
+   },
+   {
+    "template": "{role}",
+    "out": "Sales {name}"
+   },
+   {
+    "template": "{name}text me}{n\u00e0me}",
+    "out": "Zo\u00eb {role}text me}{n\u00e0me}"
+   },
+   {
+    "template": "}\u212a",
+    "out": "}\u212a"
+   },
+   {
+    "template": "{_}{na}",
+    "out": "{_}{na}"
+   },
+   {
+    "template": "{name\u0301}{name\u0301}\u212a}{n\u00e0me}{ name}{1}",
+    "out": "{name\u0301}{name\u0301}\u212a}{n\u00e0me}{ name}{1}"
+   },
+   {
+    "template": "{name\u0301}{name }\n{_}}}{_}{\u00e9}{natext ",
+    "out": "{name\u0301}{name }\n{_}}}{_}{\u00e9}{natext "
+   },
+   {
+    "template": "me}{na{n\u00e0me}",
+    "out": "me}{na{n\u00e0me}"
+   },
+   {
+    "template": "me}{{\u00e9}{name}{email}",
+    "out": "me}{{\u00e9}Zo\u00eb {role}zoe@example.com"
+   },
+   {
+    "template": "{name\u0301}}}{me}{{\u212a}}text {name\u0301}",
+    "out": "{name\u0301}}}{me}{{\u212a}}text {name\u0301}"
+   },
+   {
+    "template": "{{{name }{n\u00e0me}text {{\u00e9}{n\u00e0me}{name\u0301}{nobody}{email}",
+    "out": "{{{name }{n\u00e0me}text {{\u00e9}{n\u00e0me}{name\u0301}{nobody}zoe@example.com"
+   },
+   {
+    "template": "{name}\n{role}{name\u0301}me}text {na",
+    "out": "Zo\u00eb {role}\nSales {name}{name\u0301}me}text {na"
+   },
+   {
+    "template": "{NAME}{name }{name}me}{{{{NAME}",
+    "out": "{NAME}{name }Zo\u00eb {role}me}{{{{NAME}"
+   },
+   {
+    "template": "\u212a{ name}{{",
+    "out": "\u212a{ name}{{"
+   },
+   {
+    "template": "me}{name}me}",
+    "out": "me}Zo\u00eb {role}me}"
+   },
+   {
+    "template": "{nobody}{NAME}\u212a{{name }{NAME}{NAME}{nobody}}",
+    "out": "{nobody}{NAME}\u212a{{name }{NAME}{NAME}{nobody}}"
+   },
+   {
+    "template": "\ntext {manager}{{{manager}{name}{role}{manager}{name }",
+    "out": "\ntext {{Zo\u00eb {role}Sales {name}{name }"
+   },
+   {
+    "template": "}{ name}{{1}{1}}}{n\u00e0me}{manager}{\u00e9}text ",
+    "out": "}{ name}{{1}{1}}}{n\u00e0me}{\u00e9}text "
+   },
+   {
+    "template": "\n{\u00e9}{\u00e9}{name\u0301}",
+    "out": "\n{\u00e9}{\u00e9}{name\u0301}"
+   },
+   {
+    "template": "{n\u00e0me}{nobody}{n\u00e0me}{na{NAME}{\u00e9}{NAME}{{_}text ",
+    "out": "{n\u00e0me}{nobody}{n\u00e0me}{na{NAME}{\u00e9}{NAME}{{_}text "
+   },
+   {
+    "template": "\u212a{name\u0301}{name }\u212a{name}{{{ name}text ",
+    "out": "\u212a{name\u0301}{name }\u212aZo\u00eb {role}{{{ name}text "
+   },
+   {
+    "template": "{{\u00e9}}}\n}}}}",
+    "out": "{{\u00e9}}}\n}}}}"
+   },
+   {
+    "template": "{n\u00e0me}",
+    "out": "{n\u00e0me}"
+   },
+   {
+    "template": "{manager}{manager}{email}{name}{ name}{email}{{",
+    "out": "zoe@example.comZo\u00eb {role}{ name}zoe@example.com{{"
+   },
+   {
+    "template": "{ name}{text {n\u00e0me}}}{nobody}\u00e9{role}{name}{n\u00e0me}",
+    "out": "{ name}{text {n\u00e0me}}}{nobody}\u00e9Sales {name}Zo\u00eb {role}{n\u00e0me}"
+   },
+   {
+    "template": "me}{{{{name}{nobody}{manager}\n{n\u00e0me}",
+    "out": "me}{{{Zo\u00eb {role}{nobody}\n{n\u00e0me}"
+   },
+   {
+    "template": "{1}\u00e9\u212a{n\u00e0me}{\u00e9}{na{_}{name\u0301}{role}",
+    "out": "{1}\u00e9\u212a{n\u00e0me}{\u00e9}{na{_}{name\u0301}Sales {name}"
+   },
+   {
+    "template": "{1}\u00e9",
+    "out": "{1}\u00e9"
+   },
+   {
+    "template": "{NAME}{name\u0301}{name}{manager}",
+    "out": "{NAME}{name\u0301}Zo\u00eb {role}"
+   },
+   {
+    "template": "{{{email}{email}{_}{manager}",
+    "out": "{{zoe@example.comzoe@example.com{_}"
+   },
+   {
+    "template": "{manager}{email}{NAME}{email}{NAME}{name}{na{name }",
+    "out": "zoe@example.com{NAME}zoe@example.com{NAME}Zo\u00eb {role}{na{name }"
+   },
+   {
+    "template": "text {_}",
+    "out": "text {_}"
+   },
+   {
+    "template": "}}{role}}\u212a",
+    "out": "}}Sales {name}}\u212a"
+   },
+   {
+    "template": "{name}me}}}me}",
+    "out": "Zo\u00eb {role}me}}}me}"
+   },
+   {
+    "template": "\u00e9{role}{name\u0301}\u00e9{{{name}",
+    "out": "\u00e9Sales {name}{name\u0301}\u00e9{{Zo\u00eb {role}"
+   },
+   {
+    "template": "{role}me}",
+    "out": "Sales {name}me}"
+   },
+   {
+    "template": "{na{role}{name }text {name }",
+    "out": "{naSales {name}{name }text {name }"
+   },
+   {
+    "template": "{manager}}}}}{ name}{{_}",
+    "out": "}}}}{ name}{{_}"
+   },
+   {
+    "template": "}{name }{\u00e9}}}{name}{name}\u00e9",
+    "out": "}{name }{\u00e9}}}Zo\u00eb {role}Zo\u00eb {role}\u00e9"
+   },
+   {
+    "template": "}{n\u00e0me}",
+    "out": "}{n\u00e0me}"
+   },
+   {
+    "template": "\n{NAME}",
+    "out": "\n{NAME}"
+   },
+   {
+    "template": "{{name }}}{{",
+    "out": "{{name }}}{{"
+   },
+   {
+    "template": "text \u212a{1}{name }}\u00e9{NAME}{_}{_}{\u00e9}",
+    "out": "text \u212a{1}{name }}\u00e9{NAME}{_}{_}{\u00e9}"
+   },
+   {
+    "template": "{\u00e9}{email}{nobody}{}}}}",
+    "out": "{\u00e9}zoe@example.com{nobody}{}}}}"
+   },
+   {
+    "template": "{{{\u00e9}{1}{role}}{manager}{n\u00e0me}{name\u0301}{name}{name\u0301}",
+    "out": "{{{\u00e9}{1}Sales {name}}{n\u00e0me}{name\u0301}Zo\u00eb {role}{name\u0301}"
+   },
+   {
+    "template": "{{",
+    "out": "{{"
+   },
+   {
+    "template": "{NAME}{name\u0301}text me}{n\u00e0me}\u212a{email}{name\u0301}",
+    "out": "{NAME}{name\u0301}text me}{n\u00e0me}\u212azoe@example.com{name\u0301}"
+   },
+   {
+    "template": "\u212ame}{ name}{role}{nobody}\n{\u00e9}",
+    "out": "\u212ame}{ name}Sales {name}{nobody}\n{\u00e9}"
+   },
+   {
+    "template": "{email}{1}{email}",
+    "out": "zoe@example.com{1}zoe@example.com"
+   },
+   {
+    "template": "text ",
+    "out": "text "
+   },
+   {
+    "template": "{email}{NAME}",
+    "out": "zoe@example.com{NAME}"
+   },
+   {
+    "template": "\n\u00e9{manager}}\n",
+    "out": "\n\u00e9}\n"
+   },
+   {
+    "template": "\n}}text ",
+    "out": "\n}}text "
+   },
+   {
+    "template": "{{_}\u00e9{{name }{\u00e9}text \u00e9}",
+    "out": "{{_}\u00e9{{name }{\u00e9}text \u00e9}"
+   },
+   {
+    "template": "me}me}{name}\u212atext ",
+    "out": "me}me}Zo\u00eb {role}\u212atext "
+   },
+   {
+    "template": "me}{name\u0301}{name\u0301}me}{_}\n\u00e9{name }",
+    "out": "me}{name\u0301}{name\u0301}me}{_}\n\u00e9{name }"
+   },
+   {
+    "template": "{NAME}\u212a{role}{name }{manager}{{ name}{nobody}",
+    "out": "{NAME}\u212aSales {name}{name }{{ name}{nobody}"
+   },
+   {
+    "template": "{name}\u212a{role}\n{name}",
+    "out": "Zo\u00eb {role}\u212aSales {name}\nZo\u00eb {role}"
+   },
+   {
+    "template": "{name\u0301}\u00e9\u00e9{nobody}{\u00e9}{name\u0301}",
+    "out": "{name\u0301}\u00e9\u00e9{nobody}{\u00e9}{name\u0301}"
+   },
+   {
+    "template": "me}",
+    "out": "me}"
+   },
+   {
+    "template": "{NAME}{_}{\u212a\n",
+    "out": "{NAME}{_}{\u212a\n"
+   },
+   {
+    "template": "{name }}{{{n\u00e0me}{",
+    "out": "{name }}{{{n\u00e0me}{"
+   },
+   {
+    "template": "{{_}me}{ name}{email}{ name}{name\u0301}{name}",
+    "out": "{{_}me}{ name}zoe@example.com{ name}{name\u0301}Zo\u00eb {role}"
+   },
+   {
+    "template": "{name}\u00e9{role}\u212a{name}",
+    "out": "Zo\u00eb {role}\u00e9Sales {name}\u212aZo\u00eb {role}"
+   },
+   {
+    "template": "{name\u0301}\n{name}",
+    "out": "{name\u0301}\nZo\u00eb {role}"
+   },
+   {
+    "template": "{1}{name\u0301}{_}{role}}}",
+    "out": "{1}{name\u0301}{_}Sales {name}}}"
+   },
+   {
+    "template": "{_}\u00e9",
+    "out": "{_}\u00e9"
+   },
+   {
+    "template": "\n{{\u212ame}{NAME}",
+    "out": "\n{{\u212ame}{NAME}"
+   },
+   {
+    "template": "{name}{na{NAME}{{\u212a}}{ name}\u00e9",
+    "out": "Zo\u00eb {role}{na{NAME}{{\u212a}}{ name}\u00e9"
+   },
+   {
+    "template": "{email}{NAME}{n\u00e0me}{name\u0301}",
+    "out": "zoe@example.com{NAME}{n\u00e0me}{name\u0301}"
+   },
+   {
+    "template": "me}}\n",
+    "out": "me}}\n"
+   },
+   {
+    "template": "}}{role}{name }\u212a\u00e9{ name}{name\u0301}{email}{nobody}{ name}",
+    "out": "}}Sales {name}{name }\u212a\u00e9{ name}{name\u0301}zoe@example.com{nobody}{ name}"
+   },
+   {
+    "template": "text \u212atext {manager}{name }{{name }{_}{na",
+    "out": "text \u212atext {name }{{name }{_}{na"
+   },
+   {
+    "template": "{_}{email}",
+    "out": "{_}zoe@example.com"
+   },
+   {
+    "template": "\n{ name}{NAME}",
+    "out": "\n{ name}{NAME}"
+   },
+   {
+    "template": "{\u00e9}{\u00e9}{n\u00e0me}}",
+    "out": "{\u00e9}{\u00e9}{n\u00e0me}}"
+   },
+   {
+    "template": "text {\u00e9}",
+    "out": "text {\u00e9}"
+   },
+   {
+    "template": "{ name}",
+    "out": "{ name}"
+   },
+   {
+    "template": "\n",
+    "out": "\n"
+   },
+   {
+    "template": "\u212a{role}\ntext \u00e9{{na{\u00e9}{NAME}",
+    "out": "\u212aSales {name}\ntext \u00e9{{na{\u00e9}{NAME}"
+   },
+   {
+    "template": "{nobody}{n\u00e0me}",
+    "out": "{nobody}{n\u00e0me}"
+   },
+   {
+    "template": "text ",
+    "out": "text "
+   },
+   {
+    "template": "{n\u00e0me}\u00e9{name }{name }}}",
+    "out": "{n\u00e0me}\u00e9{name }{name }}}"
+   },
+   {
+    "template": "{NAME}{role}{n\u00e0me}",
+    "out": "{NAME}Sales {name}{n\u00e0me}"
+   },
+   {
+    "template": "{name}\u00e9{1}{nobody}{email}{ name}",
+    "out": "Zo\u00eb {role}\u00e9{1}{nobody}zoe@example.com{ name}"
+   },
+   {
+    "template": "{\u00e9}\u00e9{name\u0301}{\u00e9}}{_}{NAME}\n",
+    "out": "{\u00e9}\u00e9{name\u0301}{\u00e9}}{_}{NAME}\n"
+   },
+   {
+    "template": "\u00e9{name}",
+    "out": "\u00e9Zo\u00eb {role}"
+   },
+   {
+    "template": "{email}\u00e9text {{name}{{{1}me}",
+    "out": "zoe@example.com\u00e9text {Zo\u00eb {role}{{{1}me}"
+   },
+   {
+    "template": "{name\u0301}",
+    "out": "{name\u0301}"
+   },
+   {
+    "template": "me}{role}",
+    "out": "me}Sales {name}"
+   },
+   {
+    "template": "{1}{1}{name }{name }{manager}{name}{_}{{\n",
+    "out": "{1}{1}{name }{name }Zo\u00eb {role}{_}{{\n"
+   },
+   {
+    "template": "\n{_}{NAME}{role}\u00e9{n\u00e0me}{nobody}\u212a",
+    "out": "\n{_}{NAME}Sales {name}\u00e9{n\u00e0me}{nobody}\u212a"
+   },
+   {
+    "template": "{na\u00e9{}}{email}{ name}",
+    "out": "{na\u00e9{}}zoe@example.com{ name}"
+   },
+   {
+    "template": "me}{{_}{role}{nobody}{{n\u00e0me}}}",
+    "out": "me}{{_}Sales {name}{nobody}{{n\u00e0me}}}"
+   },
+   {
+    "template": "\u212ame}",
+    "out": "\u212ame}"
+   },
+   {
+    "template": "{{{name }{na{na}",
+    "out": "{{{name }{na{na}"
+   },
+   {
+    "template": "}\u00e9",
+    "out": "}\u00e9"
+   },
+   {
+    "template": "{n\u00e0me}{{",
+    "out": "{n\u00e0me}{{"
+   },
+   {
+    "template": "{manager}\u212a\n{name}{email}text {_}",
+    "out": "\u212a\nZo\u00eb {role}zoe@example.comtext {_}"
+   },
+   {
+    "template": "}}",
+    "out": "}}"
+   },
+   {
+    "template": "text {name }{name\u0301}",
+    "out": "text {name }{name\u0301}"
+   },
+   {
+    "template": "{role}{name}{name\u0301}",
+    "out": "Sales {name}Zo\u00eb {role}{name\u0301}"
+   },
+   {
+    "template": "{",
+    "out": "{"
+   },
+   {
+    "template": "}\u00e9{na{role}{1}{nobody}{nobody}",
+    "out": "}\u00e9{naSales {name}{1}{nobody}{nobody}"
+   },
+   {
+    "template": "{name\u0301}}}{name }{ name}{\u00e9}{1}{name }{",
+    "out": "{name\u0301}}}{name }{ name}{\u00e9}{1}{name }{"
+   },
+   {
+    "template": "me}",
+    "out": "me}"
+   },
+   {
+    "template": "\n{\u00e9}{{{email}{role}{ name}",
+    "out": "\n{\u00e9}{{zoe@example.comSales {name}{ name}"
+   },
+   {
+    "template": "{nobody}",
+    "out": "{nobody}"
+   },
+   {
+    "template": "{1}{role}{n\u00e0me}{NAME}text ",
+    "out": "{1}Sales {name}{n\u00e0me}{NAME}text "
+   },
+   {
+    "template": "{{{role}{1}\u00e9}",
+    "out": "{{Sales {name}{1}\u00e9}"
+   },
+   {
+    "template": "{email}{_}\u00e9{name\u0301}{NAME}",
+    "out": "zoe@example.com{_}\u00e9{name\u0301}{NAME}"
+   },
+   {
+    "template": "text {{}}}{manager}{name\u0301}{email}}}me}",
+    "out": "text {{}}}{name\u0301}zoe@example.com}}me}"
+   },
+   {
+    "template": "{n\u00e0me}",
+    "out": "{n\u00e0me}"
+   },
+   {
+    "template": "{role}{na",
+    "out": "Sales {name}{na"
+   },
+   {
+    "template": "}",
+    "out": "}"
+   },
+   {
+    "template": "text ",
+    "out": "text "
+   },
+   {
+    "template": "{manager}}}{NAME}{n\u00e0me}{{_}",
+    "out": "}}{NAME}{n\u00e0me}{{_}"
+   },
+   {
+    "template": "\u00e9}{name}{1}\n{manager}{role}text ",
+    "out": "\u00e9}Zo\u00eb {role}{1}\nSales {name}text "
+   },
+   {
+    "template": "{\u00e9}{role}text {name }{email}me}{{_}",
+    "out": "{\u00e9}Sales {name}text {name }zoe@example.comme}{{_}"
+   },
+   {
+    "template": "{email}{name }}\n\n{na{name}{name}{ name}",
+    "out": "zoe@example.com{name }}\n\n{naZo\u00eb {role}Zo\u00eb {role}{ name}"
+   },
+   {
+    "template": "\u212a{na{email}",
+    "out": "\u212a{nazoe@example.com"
+   },
+   {
+    "template": "{n\u00e0me}{name }\u212ame}{ name}{nobody}\n\u212a{manager}{1}",
+    "out": "{n\u00e0me}{name }\u212ame}{ name}{nobody}\n\u212a{1}"
+   },
+   {
+    "template": "{_}{name\u0301}{ name}\u212a\u212a{na\u00e9{_}{name\u0301}me}",
+    "out": "{_}{name\u0301}{ name}\u212a\u212a{na\u00e9{_}{name\u0301}me}"
+   },
+   {
+    "template": "}}{1}{role}{manager}\u00e9{manager}{role}",
+    "out": "}}{1}Sales {name}\u00e9Sales {name}"
+   },
+   {
+    "template": "\u00e9{{{1}{NAME}{n\u00e0me}",
+    "out": "\u00e9{{{1}{NAME}{n\u00e0me}"
+   },
+   {
+    "template": "{name}{name }{nobody}{n\u00e0me}}}text ",
+    "out": "Zo\u00eb {role}{name }{nobody}{n\u00e0me}}}text "
+   },
+   {
+    "template": "{role}{n\u00e0me}{na{role}{email}text {1}{na",
+    "out": "Sales {name}{n\u00e0me}{naSales {name}zoe@example.comtext {1}{na"
+   },
+   {
+    "template": "{name\u0301}{n\u00e0me}{email}{{{{_}{manager}\u00e9\n",
+    "out": "{name\u0301}{n\u00e0me}zoe@example.com{{{{_}\u00e9\n"
+   },
+   {
+    "template": "{email}{ name}{1}{name\u0301}{_}\u00e9{_}",
+    "out": "zoe@example.com{ name}{1}{name\u0301}{_}\u00e9{_}"
+   },
+   {
+    "template": "{{{ name}text me}}}{NAME}{n\u00e0me}{NAME}{name }",
+    "out": "{{{ name}text me}}}{NAME}{n\u00e0me}{NAME}{name }"
+   },
+   {
+    "template": "}{ name}{1}{n\u00e0me}{role}{nobody}{ name}",
+    "out": "}{ name}{1}{n\u00e0me}Sales {name}{nobody}{ name}"
+   },
+   {
+    "template": "{{n\u00e0me}{{na\u00e9{_}{n\u00e0me}",
+    "out": "{{n\u00e0me}{{na\u00e9{_}{n\u00e0me}"
+   },
+   {
+    "template": "{name}text {name\u0301}\ntext {nobody}",
+    "out": "Zo\u00eb {role}text {name\u0301}\ntext {nobody}"
+   },
+   {
+    "template": "{name}\n{n\u00e0me}{\u00e9}text {\u00e9}}}",
+    "out": "Zo\u00eb {role}\n{n\u00e0me}{\u00e9}text {\u00e9}}}"
+   },
+   {
+    "template": "{name}{_}",
+    "out": "Zo\u00eb {role}{_}"
+   },
+   {
+    "template": "{_}{_}{_}}}",
+    "out": "{_}{_}{_}}}"
+   },
+   {
+    "template": "{{{{n\u00e0me}{n\u00e0me}{name\u0301}",
+    "out": "{{{{n\u00e0me}{n\u00e0me}{name\u0301}"
+   },
+   {
+    "template": "{\u00e9}{name\u0301}",
+    "out": "{\u00e9}{name\u0301}"
+   },
+   {
+    "template": "{email}{manager}{name\u0301}}}\n{n\u00e0me}{manager}{n\u00e0me}{",
+    "out": "zoe@example.com{name\u0301}}}\n{n\u00e0me}{n\u00e0me}{"
+   }
+  ]
+ },
  "load": [
   {
    "text": "{\"roles\": {\"Sales\": [\"Set up POS\", \"Order a laptop\"]}}",
