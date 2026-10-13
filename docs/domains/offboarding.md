@@ -3,10 +3,10 @@
 **One line:** the ordered "a user is leaving" routine GamGUI runs, reset password, revoke access, turn
 off forwarding, delegate and auto-reply the mailbox, transfer Drive and Calendar, sweep the leaver off
 every active user's primary calendar, and a dated reminder on the manager's calendar, plus the separate,
-later account delete. Built: **Off1, the read-only plan** (2026-10-13): the Offboard screen shows exactly
-what GamGUI's offboarding would run for a leaver and a manager, every step's `gam` line, and has no way
-to run it; **templates** (2026-10-13, native) fill its form with the operator's routine. Next: **Off2** runs
-the plan through ChangeCore, **Off3** the delete (below). GamGUI's runbook
+later account delete. Built (2026-10-13): **Off1**, the plan (exactly what GamGUI's offboarding runs for a
+leaver and a manager, every step's `gam` line); **templates** (native) that fill its form with the
+operator's routine; and **Off2**, the run, through ChangeCore. Its adversarial review comes before the first
+live run (L2). Next: **Off3**, the delete (below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
 (2026-10-07, all eight steps ok) all carry over.
@@ -109,10 +109,7 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 | Reminder | 6470 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
 | Delegates read | 7922 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
 
-## Off1, the read-only plan
-- **Can't write, by construction:** `OffboardChanges` takes no executor and never names `Executor`,
-  `preview(`, `run(`, a runner or a confirmation; `OffboardView` has no Run button and no confirm sheet.
-  `offboardingCantWrite` scans both. Its reads go through `DirectoryStore` and `UserAccess`.
+## Off1, the plan
 - **A plan belongs to its form and its tenant:** the screen shows it only while the form is the one it
   was made from ("The form changed since the last plan"), and a domain switch drops it.
 - **The screen:** a template (below), the leaver and manager completed from the directory
@@ -130,6 +127,35 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   live block reads the loaded directory rather than re-reading a stale one; the directory's age is
   counted from the end of its read (GamGUI's from the start: a read of a minute counts a minute fresher);
   the words say a delete is "a separate step, later" rather than naming GamGUI's user page.
+
+## Off2, the run (2026-10-13)
+- **Held as shown:** the plan's steps are one ChangeCore preview (`confirmStep`), held when the plan is
+  made and dropped when the form changes under it (`formChanged`: the plan stays on screen, only shown), a
+  newer plan replaces it, or the screen clears. The confirm runs that preview, never a rebuild.
+- **The run's rules (ChangeCore's additions, guard-audit.md "Built for offboarding"):** the leaver's
+  primary address typed (D, checked by the executor); only `requires` stops a step (B), so a refused
+  sign-out is a ✗ that stops nothing; the sweep tolerates GamGUI's notices (A); Stop between steps (C).
+- **Checked again at the run (stricter than GamGUI):** the preview's precondition reads `info user` for
+  the leaver and the manager on the plan's domain, fresh, after the write lock: either one's primary
+  address, suspension or admin roles changed since the plan, or the leaver now the connected admin, or a
+  read refused, and nothing runs ("preview again").
+- **One at a time:** no new plan while a run goes on; the executor serializes writes and refuses a target in
+  flight. Quitting mid-run asks (`AppDelegate.interruptible`), and the Mac doesn't idle to sleep under it
+  (`beginActivity`).
+- **The screen:** "Offboard L…" under the plan opens `OffboardConfirmSheet` (who leaves and who takes over,
+  what runs, what stops what, the time and Touch ID note, the address field; Run is destructive and never
+  the default button). The run panel lists each step with a symbol and words ("Done", "Failed", "Not run:
+  stopped") and GAM's line for a failure, "Offboarding… N of M · step", and Stop After This Step (asked).
+  Finished: GamGUI's heading (complete, interrupted, stopped or incomplete, with what failed, didn't run and
+  was left out), "The leaver may still be signed in" when the sign-out didn't finish, what to do next, and
+  **Preview the Rest**, a new plan with exactly the steps that succeeded ticked as done. The directory is
+  read again after the run. VoiceOver hears each step as it ends.
+- **The audit:** every step's record carries `offboard: L`, the transfer's `new_owner`, and the first
+  step's `not_applicable` (GamGUI's `offboard_plan` record) when steps were left out; the sweep's end record
+  `tolerated` and `tolerated_kinds`.
+- **Tests:** `OffboardChangesTests` (the run executes exactly the previewed commands; the typed address; an
+  edited form; a failed delegate stops only the hand-over, end to end, and the rest previews what's left;
+  the accounts unchanged; what was left out), `ExecutorTests` (A-D), `MockOffboardingTests` (the mock).
 
 ## Templates (native: GamGUI has none)
 - **What one holds:** the optional steps it leaves out, the auto-reply's subject and message, the reminder's
@@ -160,9 +186,13 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   with no rows (failure-log 2026-10-13, "Gmail off hid a person's groups": the mock answered it before,
   and the person page hid their groups behind it). Its other refusals exit 1, where GAM's warning exits
   73; checked against the source for `print delegates` only.
-- The routine's run-time triggers carry over from GamGUI's mock for Off2 (`SIGNOUTFAIL`, `FWDFAIL`,
-  `CONFLICT409`, `OWNACL`, `SWEEPFAIL`, `SWEEPBENIGN`, `SWEEPMIXED`, `SWEEPSLOW`, `*missing*`,
-  `*exists*`). Off1 runs none of them.
+- The routine's run-time triggers carry over from GamGUI's mock (`SIGNOUTFAIL`, `FWDFAIL`, `CONFLICT409`,
+  `OWNACL`, `SWEEPFAIL`, `SWEEPBENIGN`, `SWEEPMIXED`, `SWEEPSLOW`, `*missing*`, `*exists*`); the model's
+  tests use real directory people and `GAM_MOCK_STATE` instead (a delegate already there, a transfer in
+  progress), since a trigger address isn't in the directory the checks read.
+- **The mock runs these writes as GAM does** (failure-log 2026-10-13, "offboarding mock lies"): a transfer
+  resolves its owners (same account, non-user and a second transfer refused as GAM refuses them), a
+  suspended user's deprovision exits 51, and the default sweep walks the active directory.
 - **Not proven offline:** anything about a real tenant. The plan's lines are argv-identical to GamGUI's,
   which ran all eight live on 2026-10-07 (GAM 7.48.14); the reminder with an invitee is still unproven
   live there.
@@ -177,11 +207,17 @@ byte for byte: pick **All eight steps** here, or leave the same steps out in Gam
 the transfer and the reminder; `drive,calendar` one element, then `all`; the auto-reply block reads as
 senders should see it; the reminder's date and invitee; each warning dealt with. Nothing runs.
 
+**L2 (the routine, after the adversarial review; the operator's yes in chat for "offboard L with M"):** GamGUI
+not used on L at the same time; stay at the Mac (Touch ID may be asked again after the sweep); don't quit.
+After: the panel says complete; Audit has a begin and an end for each step, the sweep `tolerated: true` with
+its `tolerated_kinds` (record those counts: the first real sweep either app has seen in this form). Then in
+Google, as GamGUI's runbook lists: the old password fails, no app passwords or connected apps, forwarding
+off, the manager's account switcher offers the mailbox, an outside sender gets the auto-reply, the transfer
+`completed`, a colleague's calendar no longer lists L, the reminder on M's calendar (and the invitee's
+email). Mark the README rows confirmed. A failed step: fix the cause, Preview the Rest (a new yes).
+
 ## Next
-- **Off2:** the routine run through ChangeCore: the plan held as a preview, the operator typing the
-  leaver's address to run it, `requires` honoured, the sweep's tolerated failures, Stop between steps,
-  progress, and the audit's `offboard_plan` when a step is left out. Waits on the onboarding branch
-  (ChangeCore progress and discard) and one adversarial review.
+- **The adversarial review of Off2** (the plan's §3.3 list), before L2.
 - **Off3:** the account delete, with GamGUI's pending-transfer warning plus a precondition.
 - More steps a template could offer, each new to both apps (no GamGUI argv to hold it to), so each needs
   the grammar read, a builder, the mock and a live check: remove from all groups, hide from the directory,

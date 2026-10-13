@@ -82,6 +82,9 @@ public struct GamError: Error, Equatable, Sendable {
     /// The kind of every error line; `kind` is the most severe of them. A best-effort caller checks
     /// these, so one real failure among benign per-entity notices is never tolerated.
     public let kinds: Set<Kind>
+    /// How many error lines were of each kind: what a tolerated sweep records (bounded by the kinds, never
+    /// the lines). Empty for a timeout, which printed no line that counts.
+    public let lineCounts: [Kind: Int]
     /// GAM's stderr, with echoed secrets masked: GAM echoes the command line, password included, on a
     /// usage error.
     public let stderr: String
@@ -102,10 +105,12 @@ public struct GamError: Error, Equatable, Sendable {
             let kinds = Set(rawLines.map(\.kind))
             kind = Self.worst(kinds)
             self.kinds = kinds.isEmpty ? [kind] : kinds
+            lineCounts = Dictionary(rawLines.map { ($0.kind, 1) }, uniquingKeysWith: +)
             self.exitCode = exitCode
         } else {
             kind = .timeout
             kinds = [.timeout]
+            lineCounts = [:]
             self.exitCode = nil
         }
         self.stderr = SecretScrub.scrub(stderr)

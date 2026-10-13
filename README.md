@@ -18,12 +18,12 @@ the domain's groups and a group's members, and from a group's page adds people w
 member. Calendars lists the rooms and a person's calendars, shows who has access, and shares one with a
 person or takes access away. Onboard sets up one new hire from a role: the account with a one-time sign-in
 card, their signature, groups, calendars and a task checklist, waiting for Google where it must. Offboard
-shows the plan GamGUI's offboarding would run for a leaver, every step's exact command, from a saved template
-of the steps you run (yours, Hand-over, by default), and can't run it yet.
-Reports lists the people behind each of the directory's counts and reads the storage and mail usage; Audit
-shows this app's audit log, searched, paged and exported to CSV. Sharing a calendar with a group, deleting a
-calendar or an event, a signature for many people at once, editing onboarding roles and running an
-offboarding are still GamGUI's. The plan is in
+runs GamGUI's offboarding for a leaver from a saved template of the steps you run (yours, Hand-over, by
+default): every step's exact command first, then, with the leaver's address typed, each step as it ends, Stop
+between steps, and what's left to finish. Reports lists the people behind each of the directory's counts and
+reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
+Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once,
+editing onboarding roles and deleting a leaver's account are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
@@ -134,6 +134,8 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Task checklist: a task list and its tasks (Onboard) | argv-identical |
 | Subscribe to a calendar (Onboard) | argv-identical |
 | New-account wait: retrying what Google wasn't ready for (Onboard) | never run live (in GamGUI either) |
+| Offboarding: reset password, sign out, forwarding off, delegate, auto-reply, transfer, calendar sweep (Offboard) | argv-identical (GamGUI ran all eight live, 2026-10-07) |
+| Offboarding: the manager's reminder with an invitee (Offboard) | argv-identical; the invitee's email unproven live in either app |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.

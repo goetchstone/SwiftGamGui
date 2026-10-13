@@ -443,3 +443,68 @@ struct OnboardPreviewSheet: View {
         }
     }
 }
+
+/// Offboarding's confirm step (the offboarding plan §5): who leaves and who takes over, what runs, how long it
+/// can take, and the leaver's address typed to run it (ChangeCore D; the executor checks it, not only this
+/// field). Run is the destructive action and never the default button, so Return alone doesn't start it.
+/// Confirming runs exactly the plan's preview, once; its progress is on the Offboard screen.
+struct OffboardConfirmSheet: View {
+    let plan: OffboardChanges.Plan
+    let changes: OffboardChanges
+    let dismiss: () -> Void
+    @State private var typed = ""
+
+    private var leaver: String { plan.leaver.primaryEmail }
+    /// The field matches, as the executor compares it (trimmed, case aside): only then is Run offered.
+    private var matches: Bool {
+        typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == leaver.lowercased()
+    }
+
+    private func confirm() {
+        let plan = plan, changes = changes, typed = typed
+        dismiss()
+        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: [typed])) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Leaving", value: "\(plan.leaver.fullName) (\(leaver))")
+                LabeledContent("Taking over", value: "\(plan.manager.fullName) (\(plan.manager.primaryEmail))")
+                Text(plan.header)
+            } header: {
+                Text("Offboard \(plan.leaver.fullName)").accessibilityAddTraits(.isHeader)
+            }
+            Section("What runs") {
+                ForEach(Array(plan.runningRows.enumerated()), id: \.element.id) { index, row in
+                    Text("\(index + 1). \(row.label)")
+                }
+                Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
+            }
+            Section {
+                Label("The password reset can't be undone, and the leaver is signed out of everything.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+                Label("It can take up to an hour: the calendar step visits every user. Other changes in the app wait until it "
+                      + "ends, and Touch ID may be asked again after the calendar step.", systemImage: "clock")
+                Label("Stop takes effect between steps: the step running finishes first.", systemImage: "info.circle")
+            }
+            Section("Type \(leaver) to run it") {
+                TextField("Leaver's address", text: $typed, prompt: Text(verbatim: leaver))
+                    .autocorrectionDisabled()
+                    .accessibilityLabel("Type the leaver's address, \(leaver), to run the offboarding")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 520)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: dismiss) }
+            // Not the confirmation action: Return in the field mustn't run an offboarding.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Run Offboarding", role: .destructive) { confirm() }
+                    .disabled(!matches)
+                    .help(matches ? "Runs exactly these steps, once" : "Type the leaver's address first")
+            }
+        }
+    }
+}

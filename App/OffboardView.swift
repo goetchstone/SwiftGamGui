@@ -1,18 +1,22 @@
+import ChangeCore
 import Directory
 import GamEngine
 import Setup
 import SwiftUI
 
-/// Offboard (Off1, read-only): the form GamGUI's offboarding takes, filled from a saved template, and the
-/// plan it would run, step by step with each exact `gam` line, its warnings, what a failure stops, and the
-/// auto-reply as senders will read it. This build can't run it: there is no Run button, and the model it
-/// plans with has no executor (`OffboardChangesTests.offboardingCantWrite`). Off2 runs the plan through ChangeCore.
+/// Offboard: the form GamGUI's offboarding takes, filled from a saved template, the plan it runs, step by
+/// step with each exact `gam` line, its warnings, what a failure stops, and the auto-reply as senders will
+/// read it; then the run, confirmed with the leaver's address typed (`OffboardConfirmSheet`), each step's
+/// result as it ends, Stop between steps, and GamGUI's summary with what to do next.
 struct OffboardView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: OffboardChanges
     let templates: OffboardTemplates
+    /// This build has GAM: a plan can run. Without it the plan is only shown.
+    let hasGam: Bool
     @State private var form = OffboardChanges.Form()
+    @State private var confirming: OffboardChanges.Plan?
     /// The template the form was last filled from; nil before one is picked, or when none is saved.
     @State private var chosen: String?
     @State private var restored = false
@@ -21,31 +25,54 @@ struct OffboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ReadOnlyBanner()
+            if !hasGam { NoGamBanner() }
             ScrollViewReader { scroller in
                 Form {
-                    Section {
-                        Text(Offboarding.intro).foregroundStyle(.secondary)
+                    if let run = changes.run {
+                        RunSection(run: run, changes: changes) { rest in
+                            form = rest
+                            changes.dismissRun()
+                            let changes = changes
+                            Task { await changes.plan(rest) }
+                        }
+                        .id(Self.runAnchor)
                     }
-                    TemplateSection(form: $form, chosen: $chosen, templates: templates)
-                    WhoSection(form: $form, directory: directory)
-                    StepsSection(form: $form)
-                    AutoReplySection(form: $form, changes: changes)
-                    ReminderSection(form: $form)
-                    AlreadyDoneSection(form: $form)
-                    checkSection
+                    Group {
+                        Section {
+                            Text(Offboarding.intro).foregroundStyle(.secondary)
+                        }
+                        TemplateSection(form: $form, chosen: $chosen, templates: templates)
+                        WhoSection(form: $form, directory: directory)
+                        StepsSection(form: $form)
+                        AutoReplySection(form: $form, changes: changes)
+                        ReminderSection(form: $form)
+                        AlreadyDoneSection(form: $form)
+                        checkSection
+                    }
+                    // Nothing in the form changes while a run is going on.
+                    .disabled(changes.isRunning)
                     if case .planned(let plan) = changes.state, plan.form == form {
-                        PlanSection(plan: plan).id(Self.planAnchor)
+                        PlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
+                            .id(Self.planAnchor)
                     }
                 }
                 .formStyle(.grouped)
-                // A new plan is what the operator asked to see: brought into view.
+                // A new plan, or a run, is what the operator asked to see: brought into view.
                 .onChange(of: planShown) { _, shown in
                     guard shown else { return }
                     withAnimation { scroller.scrollTo(Self.planAnchor, anchor: .top) }
                 }
+                .onChange(of: changes.run != nil) { _, shown in
+                    guard shown else { return }
+                    withAnimation { scroller.scrollTo(Self.runAnchor, anchor: .top) }
+                }
             }
         }
+        .sheet(item: $confirming) { plan in
+            OffboardConfirmSheet(plan: plan, changes: changes) { confirming = nil }
+        }
+        // An edited form drops the plan's preview: a run is never of a form other than the one shown.
+        .onChange(of: form) { _, edited in changes.formChanged(edited) }
         // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
         .onAppear(perform: restore)
@@ -64,15 +91,24 @@ struct OffboardView: View {
     }
 
     private static let planAnchor = "offboard.plan"
+    private static let runAnchor = "offboard.run"
 
     private var planShown: Bool {
         if case .planned(let plan) = changes.state { return plan.form == form }
         return false
     }
 
-    /// The plan's header when one is made, or why there is none.
+    /// The plan's header when one is made, or why there is none; while a run goes on, each step as it ends.
     private var announcement: String? {
-        switch changes.state {
+        if let run = changes.run {
+            if run.ended { return run.summary }
+            let done = run.results.compactMap { $0 }.count
+            guard done > 0, done <= run.plan.runningRows.count else { return nil }
+            let row = run.plan.runningRows[done - 1]
+            return "\(row.label): \(StepStatus(result: run.results[done - 1]).words)."
+        }
+        if let problem = changes.problem { return problem }
+        return switch changes.state {
         case .planned(let plan) where plan.form == form:
             "\(plan.header). \(plan.warnings.count == 0 ? "No warnings." : "\(plan.warnings.count) warnings.")"
         case .blocked(let blocked) where blocked.form == form: blocked.reason
@@ -95,8 +131,15 @@ struct OffboardView: View {
                 case .planned(let plan) where plan.form != form:
                     Label("The form changed since the last plan. Preview the steps again.", systemImage: "info.circle")
                         .foregroundStyle(.secondary)
+                case .planned(let plan) where plan.preview == nil && hasGam:
+                    Label("This plan was changed after it was made. Preview the steps again to run them.", systemImage: "info.circle")
+                        .foregroundStyle(.secondary)
                 default:
-                    EmptyView()
+                    if let problem = changes.problem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    } else {
+                        EmptyView()
+                    }
                 }
                 Spacer()
                 Button("Preview Steps") {
@@ -138,8 +181,9 @@ struct OffboardView: View {
         chosen = name
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over,
-    /// and `SWIFTGAMGUI_TAB=plan` shows its plan, for the snapshots, once the directory is loaded.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over, and
+    /// `SWIFTGAMGUI_TAB` shows, for the snapshots, once the directory is loaded: its plan (`plan`), the confirm
+    /// sheet over it (`confirm`), or a finished run's panel (`result`, made up: nothing runs).
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -147,18 +191,23 @@ struct OffboardView: View {
         debugApplied = true
         form.leaver = leaver
         form.manager = "alice@example.com"
-        if environment["SWIFTGAMGUI_TAB"] == "plan" {
-            let form = form, changes = changes
-            Task { await changes.plan(form) }
+        guard let tab = environment["SWIFTGAMGUI_TAB"], ["plan", "confirm", "result"].contains(tab) else { return }
+        let form = form, changes = changes
+        Task {
+            await changes.plan(form)
+            guard case .planned(let plan) = changes.state else { return }
+            if tab == "confirm" { confirming = plan }
+            if tab == "result" { changes.showDemoRun() }
         }
         #endif
     }
 }
 
-/// Above the screen, where it can't be missed: nothing here changes anything.
-private struct ReadOnlyBanner: View {
+/// Above the screen, where it can't be missed: without GAM, nothing here runs.
+private struct NoGamBanner: View {
     var body: some View {
-        Label("Read-only preview — this build can't run offboarding yet.", systemImage: "eye")
+        Label("This build has no GAM: the plan is shown, and can't run. Build the app again after running scripts/fetch_gam.sh.",
+              systemImage: "eye")
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
             .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
@@ -499,6 +548,8 @@ private struct TemplateSection: View {
 /// it won't run, with why), what a failure stops, the auto-reply, and when the account may be deleted.
 private struct PlanSection: View {
     let plan: OffboardChanges.Plan
+    let canRun: Bool
+    let run: () -> Void
 
     var body: some View {
         Section {
@@ -517,6 +568,14 @@ private struct PlanSection: View {
             if let reply = plan.autoreply { SendersWillReceive(reply: reply) }
             ForEach(plan.notes, id: \.self) { note in
                 Label(note, systemImage: "info.circle")
+            }
+            if canRun {
+                HStack {
+                    Spacer()
+                    Button("Offboard \(plan.leaver.primaryEmail)…", action: run)
+                        .help("Asks you to type the leaver's address, then runs exactly these steps")
+                        .accessibilityHint("Opens the confirmation: type the leaver's address to run exactly these steps.")
+                }
             }
         } header: {
             Text(plan.header)
@@ -555,5 +614,100 @@ private struct StepRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A step's result in words and a symbol, never color alone.
+struct StepStatus {
+    let words: String
+    let symbol: String
+
+    init(result: RunOutcome.Step?, running: Bool = false) {
+        switch result {
+        case nil: (words, symbol) = running ? ("Running", "arrow.triangle.2.circlepath") : ("Waiting", "circle.dotted")
+        case .succeeded?: (words, symbol) = ("Done", "checkmark.circle.fill")
+        case .failed?: (words, symbol) = ("Failed", "xmark.octagon.fill")
+        case .skipped(let reason)?: (words, symbol) = ("Not run: \(reason.hasPrefix("Not run: ") ? String(reason.dropFirst(9)) : reason)", "minus.circle")
+        case .waiting?: (words, symbol) = ("Waiting", "hourglass")
+        }
+    }
+}
+
+/// The run: "Offboarding… N of M · step", each step as it ends, and Stop between steps; then GamGUI's summary,
+/// what to know (the leaver may still be signed in), what to do next, and Preview the Rest.
+private struct RunSection: View {
+    let run: OffboardChanges.Run
+    let changes: OffboardChanges
+    let previewTheRest: (OffboardChanges.Form) -> Void
+    @State private var askingStop = false
+
+    private var done: Int { run.results.compactMap { $0 }.count }
+
+    var body: some View {
+        Section {
+            ForEach(Array(run.plan.runningRows.enumerated()), id: \.element.id) { index, row in
+                let status = StepStatus(result: run.results[index], running: !run.ended && index == done)
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("\(index + 1). \(row.label)", systemImage: status.symbol)
+                        .symbolRenderingMode(.multicolor)
+                    Text(detail(run.results[index]) ?? status.words).font(.callout).foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Step \(index + 1), \(row.label): \(status.words)")
+            }
+            if run.ended {
+                if let problem = run.auditProblem { Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor) }
+                if run.mayStillBeSignedIn {
+                    Label("The leaver may still be signed in, and their app passwords and connected apps may still work: "
+                          + "“\(Offboarding.Step.revoke.name)” didn't run to completion. Fix what it reports and run it again (it is safe "
+                          + "to repeat).", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                Text(run.next)
+                HStack {
+                    Spacer()
+                    if !run.isComplete {
+                        Button("Preview the Rest") { previewTheRest(run.rest) }
+                            .help("A new plan with the steps that succeeded ticked as already done")
+                    }
+                    Button("Done") { changes.dismissRun() }
+                }
+            } else {
+                HStack {
+                    ProgressView().controlSize(.small)
+                    Text(run.stopping ? "Stopping after this step…" : "Offboarding… \(done) of \(run.plan.runningRows.count)"
+                         + (done < run.plan.runningRows.count ? " · \(run.plan.runningRows[done].label)" : ""))
+                    Spacer()
+                    Button("Stop After This Step…") { askingStop = true }
+                        .disabled(run.stopping)
+                }
+                .accessibilityElement(children: .contain)
+            }
+        } header: {
+            Text(run.ended ? run.summary : "Offboarding \(run.plan.leaver.primaryEmail)")
+                .font(.headline)
+                .textSelection(.enabled)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .confirmationDialog("Stop the offboarding after this step?", isPresented: $askingStop) {
+            Button("Stop After This Step", role: .destructive) {
+                let changes = changes
+                Task { await changes.stop() }
+            }
+            Button("Keep Going", role: .cancel) {}
+        } message: {
+            Text("The step running now finishes; the ones after it don't run. Preview the Rest runs them later.")
+        }
+    }
+
+    /// GAM's words for a failure, or the reason a step didn't run.
+    private func detail(_ result: RunOutcome.Step?) -> String? {
+        switch result {
+        case .failed(let message, _)?: message
+        case .skipped(let reason)?: reason
+        case .succeeded(let output)? where output == Executor.toleratedOutput: output
+        default: nil
+        }
     }
 }

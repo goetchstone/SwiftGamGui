@@ -153,6 +153,25 @@ hold. Each is now a test that failed first and a mutant it kills:
 - `PendingRetry`'s init is internal; the retry's digest comparison is a tripwire for a later rebuild, not a
   defense (the held preview is immutable).
 
+## Built for offboarding (Off2a, 2026-10-13)
+The offboarding plan's four additions, each a test in `ExecutorTests` (one adversarial review covers them
+with Off2b before the first live run):
+- **(A) Tolerated kinds**, GamGUI's `tolerate_kinds`: `WriteStep(…, tolerating:)`. A failure counts as done
+  only when every error line's kind (`GamError.kinds`, not the worst one) is among them; a timeout or an
+  interruption never is. The end record says `tolerated` and `tolerated_kinds`, counts by kind, never the
+  lines (invariant 9). The preview refuses (`badTolerance`) any step but the sweep
+  (`removeAllCalendarACLs`) and anything beyond `Executor.sweepTolerable` (not found, Calendar off, the
+  leaver's own calendar) (`theSweepToleratesOnlyItsNotices`, `thePreviewRefusesAnyOtherTolerance`).
+- **(B) `preview(…, stopsAtAccountWideFailure: false)`**: in the routine only `requires` stops a step, as
+  GamGUI's `run_offboard`; a refused sign-out is a ✗ that stops nothing (`aRefusedSignOutStopsNothingInARoutine`).
+  Everywhere else an account-wide failure still stops the run. A source scan holds that only
+  `OffboardChanges` passes either loosening (`WriteRouteTests.onlyTheRoutineLoosensTheRunsRules`).
+- **(C) `stopAfterCurrentStep(_:)`**, GamGUI's Stop: the step in flight finishes with its end record, and
+  no later step begins ("Not run: stopped."). It never cancels the step running; a stop for another
+  preview, or after the run, is refused (`stopFinishesTheStepInFlightAndBeginsNoOther`).
+- **(D) `preview(…, typedAddress:)`**: the run is refused unless the confirmation carries that address,
+  compared as `Guard.normalized`, checked in the executor, never only the sheet; the address must be one
+  of the preview's targets (`aRoutineRunsOnlyWithItsAddressTyped`). Stricter than GamGUI.
+
 ## Not built yet
-The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
-operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.
+The §8 voice ticket (today the executor takes only an operator's confirmation).

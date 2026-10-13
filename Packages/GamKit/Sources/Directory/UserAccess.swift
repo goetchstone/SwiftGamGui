@@ -147,6 +147,14 @@ public final class UserAccess {
         }
     }
 
+    /// One account as the directory has it now (`info user`), read fresh on `domain`, never another tenant's: an
+    /// alias reads as the account that owns it. Offboarding's run checks with it that the two accounts are still
+    /// what its preview showed.
+    public func account(_ email: String, in domain: Domain) async throws -> GamUser {
+        guard let runner else { throw Problem(summary: "This build has no GAM.") }
+        return GamUser(record: GamOutput.one(try await Self.read(GamCommands.infoUser(email: email), with: runner, as: domain, environment)))
+    }
+
     private static func read(_ read: GamRead, with runner: AuthenticatedRunner, as domain: Domain,
                              _ environment: [String: String]) async throws -> String {
         let result = try await runner.run(read, as: domain, extraEnvironment: environment)

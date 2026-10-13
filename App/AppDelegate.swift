@@ -12,8 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SignInCopy.clearLeftover()   // a sign-in card copied before a crash or a force-quit
     }
 
-    /// What quitting now would cut short (an onboarding run, its wait for Google, or a sign-in card still
-    /// showing), and what that costs, asked at quit.
+    /// What quitting now would cut short (an offboarding or onboarding run, onboarding's wait for Google, or a
+    /// sign-in card still showing), and what that costs, asked at quit.
     static var interruptible: (@MainActor () -> (what: String, consequence: String)?)?
 
     /// Quitting mid-onboarding asks first: the rest wouldn't be applied, the steps still waiting for Google

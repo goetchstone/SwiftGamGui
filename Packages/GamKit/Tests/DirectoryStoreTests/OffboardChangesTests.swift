@@ -24,6 +24,8 @@ final class OffboardChangesTests {
     let changes: OffboardChanges
     let state: URL
     let argvLog: URL
+    let auditURL: URL
+    let executor: Executor
     /// The clock the directory's age and the plan's dates read: 2026-06-23, mid-morning in New York.
     let clock = Clock(Date(timeIntervalSince1970: 1_782_225_000))
 
@@ -41,7 +43,13 @@ final class OffboardChangesTests {
         access.environment = ["GAM_MOCK_STATE": state.path, "GAM_MOCK_ARGV_LOG": argvLog.path]
         var newYork = Calendar(identifier: .gregorian)
         newYork.timeZone = TimeZone(identifier: "America/New_York")!
-        changes = OffboardChanges(setup: setup, directory: directory, access: access, now: { clock.now }, calendar: newYork)
+        auditURL = scratch.appending(path: "audit/audit.jsonl")
+        let tenantSetup = setup
+        executor = Executor(runner: runner, audit: AuditLog(url: auditURL), actor: "admin@example.com",
+                            tenant: { @MainActor [weak tenantSetup] in tenantSetup.flatMap { s in s.active.map { ($0, s.generation) } } },
+                            extraEnvironment: ["GAM_MOCK_STATE": state.path, "GAM_MOCK_ARGV_LOG": argvLog.path])
+        changes = OffboardChanges(executor: executor, setup: setup, directory: directory, access: access, now: { clock.now },
+                                  calendar: newYork)
     }
 
     deinit {
@@ -342,29 +350,131 @@ final class OffboardChangesTests {
         if case .planned = changes.state { Issue.record("a plan made on example.com is shown for \(String(describing: setup.active))") }
     }
 
-    // MARK: Off1 can't write
+    // MARK: the run (Off2; GamGUI's test_users_web.py run cases)
 
-    /// Off1 is read-only by construction: `OffboardChanges` holds no executor and never previews or runs,
-    /// and the screen reaches no write either (no Run button, no confirm sheet). A source scan, as
-    /// `WriteRouteTests` holds the write routes.
-    @Test func offboardingCantWrite() throws {
-        func code(_ path: String) throws -> [String] {
-            try String(contentsOf: Fixtures.repoRoot.appending(path: path), encoding: .utf8)
-                .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+    /// Every argv the mock ran, in order.
+    private func ran() -> [[String]] {
+        guard let data = try? Data(contentsOf: argvLog) else { return [] }
+        var fields = data.split(separator: 0, omittingEmptySubsequences: false).map { String(decoding: $0, as: UTF8.self) }
+        var calls: [[String]] = []
+        while let first = fields.first, let count = Int(first) {
+            calls.append(Array(fields[1...count]))
+            fields.removeFirst(count + 1)
         }
-        let model = try code("Packages/GamKit/Sources/Directory/OffboardChanges.swift")
-        #expect(model.contains { $0.contains("final class OffboardChanges") }, "the scan sees the model")
-        for token in ["Executor", "executor", "preview(", "run(", "HeldPreview", "OperatorConfirmation", "WriteTicket",
-                      "AuthenticatedRunner", "GamRunner("] {
-            #expect(!model.contains { $0.contains(token) }, "OffboardChanges names \(token)")
+        return calls
+    }
+
+    /// What the mock wrote: everything but the reads (`print`, `info`, `show`).
+    private func writes() -> [String] {
+        ran().filter { !["print", "info", "show"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
+            .map { GamCommandLine.text($0, masked: ArgvRedaction.redact($0)) }
+    }
+
+    private func typed(_ addresses: String...) -> OperatorConfirmation {
+        OperatorConfirmation(confirmed: true, typedAddresses: addresses)
+    }
+
+    private var records: [JSONObject] { AuditLog.records(at: auditURL).reversed() }
+
+    /// `test_offboard_run_executes_the_previewed_commands`: the confirm runs the preview's commands, each once, in
+    /// order, and nothing else; the sweep's notices are tolerated and audited so; the directory is read again.
+    @Test func theRunExecutesExactlyThePreviewedCommands() async throws {
+        try await connect()
+        let plan = try await plan(form())
+        #expect(plan.preview != nil)
+        clock.advance(10)
+        await changes.confirm(plan, typed("carol@example.com"))
+        let run = try #require(changes.run)
+        #expect(changes.problem == nil, "\(changes.problem ?? "")")
+        #expect(run.ended && run.isComplete, "\(run.results)")
+        #expect(run.summary == "Offboarding complete — 8 of 8 steps succeeded.")
+        #expect(writes() == lines(plan), "exactly the held commands, once each")
+        let sweep = try #require(records.last { $0["action"]?.string == "removeAllCalendarACLs" })
+        #expect(sweep["ok"]?.bool == true && sweep["extra"]?.object?["tolerated"]?.bool == true)
+        #expect(records.filter { $0["extra"]?.object?["phase"]?.string == "end" }.allSatisfy { $0["extra"]?.object?["offboard"]?.string == "carol@example.com" })
+        #expect(directory.loadedAt == clock.now, "the directory read again after the run")
+        #expect(!run.mayStillBeSignedIn)
+        #expect(run.next.hasPrefix("The manager now has a calendar reminder."))
+        if case .planned = changes.state { Issue.record("the spent plan is still shown") }
+    }
+
+    /// The offboarding plan's D: no write without the leaver's address typed, whatever the screen sends.
+    @Test func aRunNeedsTheLeaversAddressTyped() async throws {
+        try await connect()
+        for confirmation in [OperatorConfirmation(confirmed: true), typed("alice@example.com")] {
+            let plan = try await plan(form())
+            await changes.confirm(plan, confirmation)
+            #expect(changes.problem == "Type carol@example.com to run this.")
+            #expect(changes.run == nil)
         }
-        let view = try code("App/OffboardView.swift")
-        #expect(view.contains { $0.contains("struct OffboardView") }, "the scan sees the screen")
-        for token in ["Executor", "executor", "preview(", ".run(", "HeldPreview", "OperatorConfirmation", "confirmed:",
-                      ".confirm(", "ChangePreviewSheet", "UserChanges", "userChanges"] {
-            #expect(!view.contains { $0.contains(token) }, "OffboardView names \(token)")
+        #expect(writes().isEmpty)
+    }
+
+    /// `test_offboard_run_refuses_an_edited_form`: once the form changes under a plan, its preview is dropped and a
+    /// confirm runs nothing, even after the form is changed back.
+    @Test func anEditedFormDiscardsThePreview() async throws {
+        try await connect()
+        let plan = try await plan(form())
+        let id = try #require(plan.preview?.id)
+        changes.formChanged(form(days: 9))
+        for _ in 0..<100 where await executor.isHeld(id) { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(await executor.isHeld(id) == false)
+        guard case .planned(let shown) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(shown.preview == nil && shown.form == plan.form, "still shown, only shown")
+        await changes.confirm(plan, typed("carol@example.com"))
+        await changes.confirm(shown, typed("carol@example.com"))
+        #expect(writes().isEmpty && changes.run == nil)
+    }
+
+    /// `test_offboard_manager_already_a_delegate…` end to end (:1842): the delegate fails with GAM's line and stops the
+    /// hand-over (auto-reply, transfer, reminder), the sweep still runs; the panel isn't complete, and Preview the
+    /// Rest ticks exactly what succeeded.
+    @Test func aFailedDelegateStopsOnlyTheHandOver() async throws {
+        try await connect()
+        try marker("delegates/carol@example.com", "alice@example.com\n")
+        let plan = try await plan(form())
+        #expect(plan.warnings.contains { $0.contains("already has delegate access") })
+        await changes.confirm(plan, typed("carol@example.com"))
+        let run = try #require(changes.run)
+        let byKey = Dictionary(uniqueKeysWithValues: zip(plan.runningRows.map(\.key), run.results))
+        guard case .failed(let message, _)? = byKey[.delegate] else { Issue.record("\(run.results)"); return }
+        #expect(message.contains("Delegate already exists."))
+        for key in [Offboarding.Step.vacation, .transfer, .reminder] {
+            #expect(byKey[key] == .skipped(reason: "Step 4 didn't succeed."), "\(key)")
         }
+        #expect(byKey[.calacls]??.isSucceeded == true, "the sweep doesn't need the delegate")
+        #expect(!run.isComplete)
+        #expect(run.summary == "Offboarding incomplete — 4 of 8 steps succeeded; failed: Set delegate; not run: Set auto-responder, "
+            + "Transfer Drive & Calendar ownership, 30-day reminder for alice@example.com.")
+        #expect(run.next.contains("Don't delete the account until the Drive & Calendar transfer"))
+        #expect(run.rest.done == [.password, .revoke, .forward, .calacls])
+        // The rest is what's left, as a new preview.
+        let rest = try await self.plan(run.rest)
+        #expect(rest.steps.map(\.action) == [.addDelegate, .setVacation, .createDataTransfer, .addCalendarEvent])
+    }
+
+    /// The run checks again that both accounts are what the preview showed (stricter than GamGUI's list re-check):
+    /// another primary address (an alias, a rename), a suspension or an admin role since then refuses it.
+    @Test func theAccountsMustBeUnchangedSinceThePreview() {
+        func user(_ email: String, suspended: Bool = false, admin: Bool = false) -> GamUser {
+            GamUser(record: ["primaryEmail": .string(email), "suspended": .bool(suspended), "isAdmin": .bool(admin)])
+        }
+        let carol = user("carol@example.com")
+        #expect(OffboardChanges.unchanged(user("Carol@Example.com"), since: carol))
+        #expect(!OffboardChanges.unchanged(user("alice@example.com"), since: carol))
+        #expect(!OffboardChanges.unchanged(user("carol@example.com", suspended: true), since: carol))
+        #expect(!OffboardChanges.unchanged(user("carol@example.com", admin: true), since: carol))
+    }
+
+    /// Steps left out are said in the run's first audit record (GamGUI's `offboard_plan`), and only the sweep tolerates.
+    @Test func theHeldStepsSayWhatWasLeftOut() async throws {
+        try await connect()
+        let plan = try await plan(form(notApplicable: [.calacls, .reminder]))
+        #expect(plan.steps.first?.about["not_applicable"] == "calacls,reminder")
+        #expect(plan.steps.dropFirst().allSatisfy { $0.about["not_applicable"] == nil })
+        let full = try await self.plan(form())
+        #expect(full.steps.filter { !$0.tolerating.isEmpty }.map(\.action) == [.removeAllCalendarACLs])
+        #expect(full.steps.first?.about["not_applicable"] == nil)
     }
 }
 
