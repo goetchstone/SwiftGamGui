@@ -32,8 +32,9 @@ struct SignaturesView: View {
             SignatureResult(changes: changes)
             Form {
                 PersonSection(setup: setup, directory: directory, people: people, personEmail: $personEmail)
-                TemplateSection(template: $template, templates: templates)
+                // What will change comes first, with Review and Replace, then the template that makes it.
                 previewSection(person: person)
+                TemplateSection(template: $template, templates: templates)
                 SavedTemplatesSection(template: $template, templates: templates)
             }
             .formStyle(.grouped)
