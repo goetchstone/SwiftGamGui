@@ -351,6 +351,23 @@ final class ExecutorTests {
         let shown = await executor.run(try await held(executor, [named]), confirmation: confirmed)
         guard case .succeeded(let output) = shown.steps.first else { Issue.record("\(shown.steps)"); return }
         #expect(!output.contains("dana2") && output.contains("***redacted***"), "\(output)")
+        // GamGUI's test_create_user_failure_redacts_password_by_value: a surname that is a sensitive keyword
+        // takes the positional mask meant for the password, and GAM's usage error echoes the command line
+        // (here as the last stderr line, the one the message carries; GamGUI's `echoing_gam`).
+        let echoing = self.executor(gam: try fakeGam("printf 'ERROR: Invalid argument\\nCommand: gam %s\\n' \"$*\" 1>&2\nexit 2\n"))
+        let temporary = "Xk7m-Qp9r-2Tzv"
+        for surname in ["Password", "NotifyPassword"] {
+            let step = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "Ada", lastName: surname,
+                                                        password: temporary, notify: "it@example.com"),
+                                 target: "new@example.com", summary: "Create", secrets: [Secret(Data(temporary.utf8))])
+            #expect(!step.shownArgv.contains { $0.contains(temporary) }, "\(surname)")
+            let outcome = await echoing.run(try await held(echoing, [step]), confirmation: confirmed)
+            guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+            #expect(message.contains("Command: gam create user") && message.contains("***redacted***"), "echoed, then masked: \(message)")
+            #expect(!message.contains(temporary), "\(surname)")
+        }
+        let echoed = try String(contentsOf: auditURL, encoding: .utf8)
+        #expect(echoed.contains("Command: gam create user") && !echoed.contains(temporary))
     }
 
     // MARK: ChangeCore's review (each fails without its fix)
