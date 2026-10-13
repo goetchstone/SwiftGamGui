@@ -16,6 +16,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | Offboarding: the leaver routine, its checks and plan, and (later) the account delete | [offboarding.md](offboarding.md) | phase 3: Off1, the read-only plan, built; L1 live check next, then Off2 (run) and Off3 (delete) |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
+| The Audit and Reports screens: the log paged and exported, the directory reports, the usage report | [audit-reports.md](audit-reports.md) | built; the usage report's live read pending |
 
 Template for a filled runbook: **One line** · **Owns invariant(s)** · **Enforcement home** · Files ·
 How it works · Invariants & failure history · Gotchas / mock-lies traps · Testing / live-verification

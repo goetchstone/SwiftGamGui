@@ -80,6 +80,7 @@ off the main actor.
   Anything else is no date, so the account reads as inactive, as in GamGUI.
 - `DirectoryReportTests` holds the reports to `Tests/Fixtures/reports.json`: GamGUI's `build_reports`
   over the mock's users and 200 seeded variants at a fixed time, with the 90-day boundary to the second.
+- The Reports screen lists each report's people, and the usage report: [audit-reports.md](audit-reports.md).
 
 ## Users (read-only)
 `App/UsersView.swift` is a table of the loaded directory:
