@@ -128,10 +128,13 @@ enum Spikes {
         }
         // A page whose minimum height passes the window's own grows the window, past the screen, and AppKit then
         // draws only part of it (Audit, 2026-10-13: a fixedSize text measured at the zero width the page may take).
-        if let window, window.contentMinSize.height > ColumnWidths.windowMinHeight + 1 {
-            print("snapshot: the page needs the window at least \(Int(window.contentMinSize.height)) tall, past its own "
-                  + "minimum of \(Int(ColumnWidths.windowMinHeight)) (it is \(Int(window.frame.height)) tall): a view's "
-                  + "minimum height, such as text fixed to its height at the page's zero minimum width")
+        // The window's minimum counts its toolbar, which the content runs under; the page's doesn't.
+        let toolbar = content.frame.height - (window?.contentLayoutRect.height ?? content.frame.height)
+        if let window, window.contentMinSize.height - toolbar > ColumnWidths.windowMinHeight + 1 {
+            print("snapshot: the page needs \(Int(window.contentMinSize.height - toolbar)) points of height below the "
+                  + "toolbar, past the window's own minimum of \(Int(ColumnWidths.windowMinHeight)) (the window is "
+                  + "\(Int(window.frame.height)) tall): a view's minimum height, such as text fixed to its height at the "
+                  + "page's zero minimum width")
             fflush(stdout)
             exit(EXIT_FAILURE)
         }
