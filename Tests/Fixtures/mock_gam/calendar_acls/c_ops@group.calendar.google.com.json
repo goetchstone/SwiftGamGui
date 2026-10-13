@@ -1,0 +1,2 @@
+{"id": "user:c_ops@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_ops@group.calendar.google.com"}}
+{"id": "user:carol@example.com", "role": "owner", "scope": {"type": "user", "value": "carol@example.com"}}

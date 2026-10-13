@@ -649,13 +649,32 @@ def output_fixture(mock: Path) -> dict:
 
 # GamGUI's reads whose GAM shape the mock doesn't model (they printed NDJSON, which GAM never prints for
 # them): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_resources", "print_user_calendars", "print_all_calendars",
-                "print_calendar_acls", "print_calendar_acls_cal", "print_events", "get_event"}
-# The `formatjson` reads the mock models: GAM's key column, and the data file holding each record as GAM
-# prints it in the JSON cell.
-GAM_PRINTED = {"print_users": ("primaryEmail", "print_users.json"), "print_groups": ("email", "groups.json"),
-               "print_group_members": ("group", "group_members.json"), "print_domains": ("domainName", "domains.json"),
-               "print_cros": ("deviceId", "cros.json")}
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_events", "get_event"}
+
+
+def _keyed(key: str, name: str):
+    """A read whose one key column is a value in each record: (header, data file, row)."""
+    return lambda argv: ([key, "JSON"], name, lambda record: [record[key]])
+
+
+# The `formatjson` reads the mock models, by builder: GAM's header, the data file holding each record as GAM
+# prints it in the JSON cell, and the key columns GAM writes before it.
+GAM_PRINTED = {
+    "print_users": _keyed("primaryEmail", "print_users.json"), "print_groups": _keyed("email", "groups.json"),
+    "print_group_members": _keyed("group", "group_members.json"), "print_domains": _keyed("domainName", "domains.json"),
+    "print_cros": _keyed("deviceId", "cros.json"),
+    # printShowCalendars (:55800-55818): the person, then the calendar's id.
+    "print_user_calendars": lambda argv: (["primaryEmail", "calendarId", "JSON"], f"user_calendars/{argv[1]}.json",
+                                          lambda record: [argv[1], record["id"]]),
+    # _printShowCalendarACLs (:41869-41884): the person, then `primary` read as the person (:55338-55339).
+    "print_calendar_acls": lambda argv: (["primaryEmail", "calendarId", "JSON"], f"calendar_acls/{argv[1]}.json",
+                                         lambda record: [argv[1], argv[1]]),
+    "print_calendar_acls_cal": lambda argv: (["calendarId", "JSON"], f"calendar_acls/{argv[1]}.json",
+                                             lambda record: [argv[1]]),
+    # doPrintShowResourceCalendars (:41543-41546).
+    "print_resources": lambda argv: (["resourceId", "resourceName", "JSON"], "resources.json",
+                                     lambda record: [record["resourceId"], record["resourceName"]]),
+}
 
 
 def mock_outputs(mock: Path) -> dict:
@@ -670,7 +689,7 @@ def mock_outputs(mock: Path) -> dict:
     from tests.test_mock_gam import READS
 
     data = mock.parent / "mock_gam"
-    for path in sorted(data.glob("*.json")):
+    for path in sorted(data.rglob("*.json")):
         for line in path.read_text(encoding="utf-8").splitlines():
             if line != json.dumps(json.loads(line), ensure_ascii=False, sort_keys=True):
                 raise SystemExit(f"{path.name}: a record not in the form GAM prints it: {line[:80]}")
@@ -692,10 +711,10 @@ def mock_outputs(mock: Path) -> dict:
                 stdout = strip_cfgdir_noise(run.stdout, Path(config))
                 if builder in GAM_PRINTED:   # its bytes after the banner, the last line ending kept
                     printed = "\n".join(line for line in run.stdout.split("\n") if config not in line)
-                    key, name = GAM_PRINTED[builder]
+                    header, name, keys = GAM_PRINTED[builder](argv)
                     records = [line for line in (data / name).read_text(encoding="utf-8").splitlines()
                                if builder != "print_group_members" or json.loads(line)["group"] == argv[3].lower()]
-                    if printed != gam_csv([[key, "JSON"]] + [[json.loads(line)[key], line] for line in records]):
+                    if printed != gam_csv([header] + [keys(json.loads(line)) + [line] for line in records]):
                         raise SystemExit(f"the mock's bytes aren't GAM's for {argv}")
                 outputs.setdefault(builder, []).append(stdout)
     return outputs
@@ -705,7 +724,8 @@ def models_fixture(mock: Path) -> dict:
     """GamGUI's GAMUser, GAMGroup and GroupMember.from_json over the mock's records and seeded variants
     of them: the alternate keys GAM uses across commands, flags as booleans, words or numbers, counts
     as numbers or text, primary entries in Directory lists. String fields hold strings (or nothing):
-    that is how GAM sends them."""
+    that is how GAM sends them. And its calendar models (CalendarACL with who, role_label and
+    scope_token; UserCalendar; ResourceCalendar) over the mock's calendar reads and seeded variants."""
     import dataclasses
     import random
 
@@ -797,6 +817,56 @@ def models_fixture(mock: Path) -> dict:
     groups += [json.loads(text) for text in raw_groups]
     members += [json.loads(text) for text in raw_members]
 
+    # Calendars. Text where GAM sends text, or a scalar (Python's str() of it); never a list or object where
+    # text belongs (GamGUI would print its repr, the port reads it as empty).
+    from gamgui.core.gam.models import CalendarACL, ResourceCalendar, UserCalendar
+
+    acls = records["print_calendar_acls"] + records["print_calendar_acls_cal"]
+    scalars = ["", None, 0, 1.5, True, False, " padded ", "Zo" + chr(0xEB), chr(0x3000) + "x" + chr(0x3000)]
+    scope_types = ["user", "USER", " group ", "domain", "Domain", "default", "custom"] + scalars
+    scope_values = ["bob@example.com", "sales@example.com", "example.com", " bob@example.com "] + scalars
+    rule_ids = ["user:bob@example.com", "group:g@example.com", "domain:example.com", "domain:", "domain", "default",
+                "nocolon@example.com", "a:b:c", " user:x@example.com ", ":lead", "GROUP:G@example.com"] + scalars
+    roles = ["owner", "WRITER", " reader ", "freeBusyReader", "freebusy", "editor", "writerWithoutPrivateAccess",
+             "none", "strange", "own" + chr(0x0435) + "r", chr(0x130), chr(0x1F1)] + scalars
+    for _ in range(160):
+        rule = {}
+        shape = rng.random()
+        if shape < 0.6:
+            scope = {}
+            maybe(scope, "type", scope_types)
+            maybe(scope, "value", scope_values)
+            rule["scope"] = scope
+        elif shape < 0.75:
+            rule["scope"] = rng.choice(["user", None, 7, ["user", "x"]])
+        maybe(rule, rng.choice(["id", "Id"]), rule_ids)
+        maybe(rule, rng.choice(["role", "Role"]), roles)
+        acls.append(rule)
+    calendars = records["print_user_calendars"]
+    for _ in range(150):
+        entry = {}
+        maybe(entry, rng.choice(["id", "calendarId"]), ["c_x@group.calendar.google.com", "a@example.com"] + scalars)
+        maybe(entry, rng.choice(["summary", "Summary"]), ["Team", 'Rota "B" C:' + chr(92) + "x"] + scalars)
+        maybe(entry, rng.choice(["accessRole", "accessrole"]), ["owner", "freeBusyReader", "reader"] + scalars)
+        maybe(entry, "primary", flags + [[1], [], {}])
+        calendars.append(entry)
+    rooms = records["print_resources"]
+    for _ in range(150):
+        room = {}
+        maybe(room, rng.choice(["resourceId", "id", "ResourceID"]), ["1001", 1002] + scalars)
+        maybe(room, rng.choice(["resourceName", "name", "Name"]), ["Aspen", "Birch Huddle, 2nd floor"] + scalars)
+        maybe(room, rng.choice(["resourceEmail", "email", "Email"]), ["aspen@resource.calendar.google.com"] + scalars)
+        maybe(room, rng.choice(["resourceType", "type"]), ["Conference Room", 'Huddle "Pod"'] + scalars)
+        maybe(room, "buildingId", ["id:hq", "hq"] + scalars)
+        rooms.append(room)
+
+    def calendar_fields(model) -> dict:
+        found = dataclasses.asdict(model)
+        found.pop("raw")
+        if isinstance(model, CalendarACL):
+            found |= {"who": model.who, "role_label": model.role_label, "scope_token": model.scope_token}
+        return found
+
     text_fields = {"primary_email", "given_name", "family_name", "org_unit_path", "title", "department", "location",
                    "phone", "recovery_email", "last_login_time", "email", "name", "description", "role",
                    "member_type", "status"}
@@ -827,6 +897,9 @@ def models_fixture(mock: Path) -> dict:
         "users": [entry(r, GAMUser.from_json(r)) for r in users],
         "groups": [entry(r, GAMGroup.from_json(r)) for r in groups],
         "members": [entry(r, GroupMember.from_json(r)) for r in members],
+        "calendar_acls": [{"record": json.dumps(r), "model": calendar_fields(CalendarACL.from_json(r))} for r in acls],
+        "user_calendars": [{"record": json.dumps(r), "model": calendar_fields(UserCalendar.from_json(r))} for r in calendars],
+        "resources": [{"record": json.dumps(r), "model": calendar_fields(ResourceCalendar.from_json(r))} for r in rooms],
     }
 
 
@@ -1529,7 +1602,7 @@ def main() -> int:
     models_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | models_fixture(OUT / "mock_gam.sh")
     (OUT / "gam_models.json").write_text(json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
-    print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members'))} records")
+    print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members', 'calendar_acls', 'user_calendars', 'resources'))} records")
 
     # The destructive-operation guard: what a change set needs, and whether a confirmation is enough.
     guard_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | guard_fixture()

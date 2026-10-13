@@ -1,0 +1,4 @@
+{"accessRole": "owner", "id": "carol@example.com", "primary": true, "summary": "carol@example.com"}
+{"accessRole": "owner", "id": "c_ops@group.calendar.google.com", "summary": "Operations"}
+{"accessRole": "writer", "id": "c_team@group.calendar.google.com", "summary": "Team Calendar"}
+{"accessRole": "owner", "id": "c_rota@group.calendar.google.com", "summary": "Rota \"B\" C:\\Shifts, Zoë"}

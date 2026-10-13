@@ -1,0 +1,2 @@
+{"id": "user:aspen@resource.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "aspen@resource.calendar.google.com"}}
+{"id": "domain:example.com", "role": "freeBusyReader", "scope": {"type": "domain", "value": "example.com"}}

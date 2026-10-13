@@ -1,0 +1,2 @@
+{"accessRole": "owner", "id": "bob@example.com", "primary": true, "summary": "bob@example.com"}
+{"accessRole": "reader", "id": "c_team@group.calendar.google.com", "summary": "Team Calendar"}

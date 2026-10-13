@@ -560,22 +560,178 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "cros" ]; then
   exit 0
 fi
 
+# ---- Calendars (docs/domains/calendars.md; read from the vendored 7.48.22 build, not a tenant) --------------
+# One data set: each directory user's calendar list (mock_gam/user_calendars/<user>.json), each calendar's
+# rules (mock_gam/calendar_acls/<calendar>.json) and the rooms (mock_gam/resources.json), every record in the
+# form GAM prints it. MockCalendarsTests.theCalendarsAgreeWithOneAnother holds them together. With
+# GAM_MOCK_STATE, a calendar whose rules a write changed is read from $GAM_MOCK_STATE/acls/<calendar>, and a
+# GAM_MOCK_STATE/nocalendar/<user> marker is a person with Calendar off.
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+# GAM's printGettingEntityItemForWhom, on stderr before a per-entity print (show_gettings is on by default):
+# "Getting <items> for <whom>". GamError reads it as an unknown line; the app's reads drop it (GettingLines).
+getting() { printf 'Getting %s for %s\n' "$1" "$2" 1>&2; }
+calendar_off() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nocalendar/$1" ]; }
+# userCalServiceNotEnabledWarning (notACalendarUser): SERVICE_NOT_APPLICABLE_RC.
+calendar_service_off() { printf 'User: %s, Calendar Service/App not enabled\n' "$1" 1>&2; exit 73; }
+calendar_key() {  # <calendar id>: as the files name it (Google compares ids case-insensitively); a list or path isn't one
+  case "$1" in *,*|*/*|"") not_modelled "a calendar id like $1" ;; esac
+  lower "$1"
+}
+acl_file() {  # <calendar key>: the file holding its rules, or nothing when there is no such calendar
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/acls/$1" ]; then printf '%s' "$GAM_MOCK_STATE/acls/$1"
+  elif [ -f "$GAM_MOCK_FIXTURES/calendar_acls/$1.json" ]; then printf '%s' "$GAM_MOCK_FIXTURES/calendar_acls/$1.json"; fi
+}
+rows_of() {  # <file> <key value>...: each record in the file after the key columns, as GAM's formatjson row
+  rows_file=$1; shift
+  while IFS= read -r record; do gam_row "$@" "$record"; done < "$rows_file"
+}
+# _printShowCalendarACLs (:41833-41902): the rules, or the header alone and NO_ENTITIES_FOUND_RC (60) for none.
+print_acl_rows() {  # <file> <key value>...
+  [ -s "$1" ] || exit 60
+  rows_of "$@"
+}
+
+# `gam user <u> print calendars fields id,summary,accessrole,primary formatjson` (printShowCalendars, :55691-55840)
+# -> primaryEmail,calendarId,JSON, the person's own calendar list. Each field must be a <CalendarListField>
+# (grammar 6266-6283), matched lowercased as GAM matches it; only the four the app asks for are modelled, and
+# GAM's other options are refused rather than answered in a guessed shape. GAM acts as the person: one who
+# isn't a user fails before anything prints, and one with Calendar off fails after the "Getting" line, exit 73.
+CALENDAR_LIST_FIELDS="accessrole|backgroundcolor|colorid|conferenceproperties|defaultreminders|deleted|description|foregroundcolor|hidden|id|location|notificationsettings|primary|selected|summary|summaryoverride|timezone"
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]; then
+  user=$(lower "$2"); shift 4; fj=""; want=" "
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      fields)
+        need_value $# "CalendarListFieldList"
+        [ -n "$2" ] || empty_arg "CalendarListFieldList"
+        set -f
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          field=$(printf '%s' "$field" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+          case "|$CALENDAR_LIST_FIELDS|" in *"|$field|"*) ;; *) invalid_choice "$field" "$CALENDAR_LIST_FIELDS" ;; esac
+          case "$field" in id|summary|accessrole|primary) want="$want$field " ;; *) not_modelled "print calendars field $field" ;; esac
+        done
+        set +f
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      quotechar|delimiter|permissions|oneitemperrow|primary|noprimary|nogroups|noresources|nosystem|nousers|ownedsecondary|\
+      addcsvdata|minaccessrole|showdeleted|showhidden|showownorganizationonly|allcalendars)
+        not_modelled "print calendars with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print calendars without formatjson"
+  for field in id summary accessrole primary; do
+    case "$want" in *" $field "*) ;; *) not_modelled "print calendars without field $field" ;; esac
+  done
+  known_user "$user" || not_a_user "$user" Print
+  getting Calendars "$user"
+  if calendar_off "$user"; then calendar_service_off "$user"; fi
+  echo "primaryEmail,calendarId,JSON"
+  if [ -f "$GAM_MOCK_FIXTURES/user_calendars/$user.json" ]; then
+    while IFS= read -r record; do
+      gam_row "$user" "$(json_text id "$record")" "$record"
+    done < "$GAM_MOCK_FIXTURES/user_calendars/$user.json"
+  else   # an account `create user` made: its primary calendar only
+    gam_row "$user" "$user" "{\"accessRole\": \"owner\", \"id\": \"$user\", \"primary\": true, \"summary\": \"$user\"}"
+  fi
+  exit 0
+fi
+
+# `gam user <u> print calendaracls primary formatjson` (printShowCalendarACLs, :55972) -> primaryEmail,calendarId,JSON,
+# `primary` read as the person (:55338-55339), each rule's id, role and scope only (:41839). GAM checks the
+# primary calendar before it says it's getting the rules, so Calendar off fails without the "Getting" line.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendaracls" ]; then
+  [ $# -ge 5 ] || missing_arg "UserCalendarEntity"
+  [ "$5" = "primary" ] || not_modelled "print calendaracls of a calendar but primary"
+  user=$(lower "$2"); shift 5; fj=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      formatjson) fj=1; shift ;;
+      quotechar|noselfowner|addcsvdata) not_modelled "print calendaracls with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print calendaracls without formatjson"
+  known_user "$user" || not_a_user "$user" Print
+  if calendar_off "$user"; then calendar_service_off "$user"; fi
+  file=$(acl_file "$user")
+  [ -n "$file" ] || not_modelled "the calendar rules of $user"
+  getting "Calendar ACLs" "$user"
+  echo "primaryEmail,calendarId,JSON"
+  print_acl_rows "$file" "$user" "$user"
+  exit 0
+fi
+
+# `gam calendars <id> print acls|calendaracls formatjson` (doCalendarsPrintShowACLs, :41940) -> calendarId,JSON.
+# GAM acts as the admin for an id ending .calendar.google.com, and as the address otherwise (validateCalendar,
+# :41572-41589); a calendar it can't get fails "Calendar: <id>, Print Failed: Not Found", ACTION_FAILED_RC
+# (50), before the "Getting" line. (Approximate: whether the admin can read a secondary calendar it isn't on,
+# plan Q2; the mock answers for every calendar it holds.)
+if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "calendaracls" ] || [ "${4:-}" = "acls" ]; }; then
+  cal="$2"; key=$(calendar_key "$2"); shift 4; fj=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      formatjson) fj=1; shift ;;
+      quotechar|noselfowner|addcsvdata) not_modelled "print calendaracls with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print calendaracls without formatjson"
+  file=$(acl_file "$key")
+  if [ -z "$file" ]; then printf 'Calendar: %s, Print Failed: Not Found\n' "$cal" 1>&2; exit 50; fi
+  getting "Calendar ACLs" "$cal"
+  echo "calendarId,JSON"
+  print_acl_rows "$file" "$cal"
+  exit 0
+fi
+
+# `gam print resources fields id,name,email,resourcetype,buildingid formatjson` (doPrintShowResourceCalendars,
+# :41423-41548) -> resourceId,resourceName,JSON; buildingId as `id:<id>` beside a looked-up buildingName, which
+# is the raw id for a building GAM can't name (:41515-41517, :40799-40802). Each field must be a
+# <ResourceFieldName> (grammar 4877-4900); only the five the app asks for are modelled. GAM's `query` is a
+# structured filter GamGUI never sends (it filters the list itself), so it is refused, as is every other option.
+RESOURCE_FIELDS="acls|autoacceptinvitations|buildingid|calendar|capacity|category|description|email|featureinstances|features|floor|floorsection|generatedresourcename|id|name|resourcecategory|resourcedescription|resourceemail|resourceid|resourcename|resourcetype|type|uservisibledescription"
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "resources" ]; then
+  shift 2; fj=""; want=" "
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      fields)
+        need_value $# "ResourceFieldNameList"
+        [ -n "$2" ] || empty_arg "ResourceFieldNameList"
+        set -f
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          field=$(printf '%s' "$field" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+          case "|$RESOURCE_FIELDS|" in *"|$field|"*) ;; *) invalid_choice "$field" "$RESOURCE_FIELDS" ;; esac
+          case "$field" in id|name|email|resourcetype|buildingid) want="$want$field " ;; *) not_modelled "print resources field $field" ;; esac
+        done
+        set +f
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      query|allfields|acls|noselfowner|calendar|convertcrnl|quotechar|showitemcountonly) not_modelled "print resources with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print resources without formatjson"
+  for field in id name email resourcetype buildingid; do
+    case "$want" in *" $field "*) ;; *) not_modelled "print resources without field $field" ;; esac
+  done
+  echo "resourceId,resourceName,JSON"
+  while IFS= read -r record; do
+    gam_row "$(json_text resourceId "$record")" "$(json_text resourceName "$record")" "$record"
+  done < "$GAM_MOCK_FIXTURES/resources.json"
+  exit 0
+fi
+
 # Reads whose GAM shape this mock doesn't model, refused rather than answered in a guessed one: they printed
 # NDJSON, which GAM never prints for them. No app screen reads them yet. Their CSV, read at 7.48.22, for
 # whoever models one (in GAM's dialect, gam_row; the data from git history):
 # - `user <u> print filelist … formatjson`: an `Owner` column, then Drive's own (printFileList, :60674).
-# - `print resources … formatjson`: resourceId,resourceName,JSON; in the JSON, buildingId as `id:<id>` and
-#   a looked-up buildingName (:41423, :41513-41545).
-# - `user <u>|all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own
-#   calendars (printShowCalendars, :55691, :55800-55818).
-# - `user <u> print calendaracls <cal> formatjson`: primaryEmail,calendarId,JSON, `primary` read as the user;
-#   `calendars <cal> print calendaracls formatjson`: calendarId,JSON; the JSON holds the rule's id, role and
-#   scope only (:41833-41885, :41904-41925, :55338-55339).
+# - `all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own calendars
+#   (printShowCalendars, :55691, :55800-55818); a person with Calendar off exits 73 (the C3 index).
 # - `calendars <cal> print events … formatjson`: calendarId,id,JSON, only the events the query or event ID
 #   selects (:43147-43165, :43440-43441).
 case "${1:-} ${2:-} ${3:-} ${4:-}" in
-  "user "*" print filelist"|"user "*" print calendars"|"user "*" print calendaracls"|"all users print calendars"|\
-  "calendars "*" print calendaracls"|"calendars "*" print events"|"print resources "*) not_modelled "gam $*" ;;
+  "user "*" print filelist"|"all users print calendars"|"calendars "*" print events") not_modelled "gam $*" ;;
 esac
 
 # `gam <UserTypeEntity> show backupcodes|verificationcodes` (no options) -> text; a Builder sensitive

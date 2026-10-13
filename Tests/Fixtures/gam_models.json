@@ -17624,5 +17624,4795 @@
     "status": ""
    }
   }
+ ],
+ "calendar_acls": [
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"alice@example.com\", \"id\": \"user:alice@example.com\", \"role\": \"owner\", \"scope\": {\"type\": \"user\", \"value\": \"alice@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "alice@example.com",
+    "role": "owner",
+    "who": "alice@example.com",
+    "role_label": "Owner",
+    "scope_token": "alice@example.com"
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"alice@example.com\", \"id\": \"user:assistant@example.com\", \"role\": \"reader\", \"scope\": {\"type\": \"user\", \"value\": \"assistant@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "assistant@example.com",
+    "role": "reader",
+    "who": "assistant@example.com",
+    "role_label": "See all event details",
+    "scope_token": "assistant@example.com"
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"alice@example.com\", \"id\": \"default\", \"role\": \"freeBusyReader\", \"scope\": {\"type\": \"default\"}}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "freebusyreader",
+    "who": "Public (anyone)",
+    "role_label": "See free/busy only",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:c_team@group.calendar.google.com\", \"role\": \"owner\", \"scope\": {\"type\": \"user\", \"value\": \"c_team@group.calendar.google.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "c_team@group.calendar.google.com",
+    "role": "owner",
+    "who": "c_team@group.calendar.google.com",
+    "role_label": "Owner",
+    "scope_token": "c_team@group.calendar.google.com"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:alice@example.com\", \"role\": \"owner\", \"scope\": {\"type\": \"user\", \"value\": \"alice@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "alice@example.com",
+    "role": "owner",
+    "who": "alice@example.com",
+    "role_label": "Owner",
+    "scope_token": "alice@example.com"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:carol@example.com\", \"role\": \"writer\", \"scope\": {\"type\": \"user\", \"value\": \"carol@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "carol@example.com",
+    "role": "writer",
+    "who": "carol@example.com",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "carol@example.com"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:bob@example.com\", \"role\": \"reader\", \"scope\": {\"type\": \"user\", \"value\": \"bob@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "reader",
+    "who": "bob@example.com",
+    "role_label": "See all event details",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"group:sales@example.com\", \"role\": \"reader\", \"scope\": {\"type\": \"group\", \"value\": \"sales@example.com\"}}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "sales@example.com",
+    "role": "reader",
+    "who": "sales@example.com",
+    "role_label": "See all event details",
+    "scope_token": "group:sales@example.com"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"domain:example.com\", \"role\": \"freeBusyReader\", \"scope\": {\"type\": \"domain\", \"value\": \"example.com\"}}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "example.com",
+    "role": "freebusyreader",
+    "who": "Everyone at example.com",
+    "role_label": "See free/busy only",
+    "scope_token": "domain:example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"USER\", \"value\": true}, \"id\": \"user:bob@example.com\", \"Role\": \"writerWithoutPrivateAccess\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "True",
+    "role": "writerwithoutprivateaccess",
+    "who": "True",
+    "role_label": "Make changes (no private events)",
+    "scope_token": "True"
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"id\": \"\", \"Role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "x",
+    "who": "user",
+    "role_label": "x",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": true}, \"id\": \"nocolon@example.com\"}",
+   "model": {
+    "scope_type": "nocolon@example.com",
+    "scope_value": "",
+    "role": "",
+    "who": "nocolon@example.com",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"a:b:c\", \"Role\": \"none\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "none",
+    "who": "b:c",
+    "role_label": "No access",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"default\", \"value\": null}, \"role\": true}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "true",
+    "who": "Public (anyone)",
+    "role_label": "true",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \"bob@example.com\"}, \"id\": true, \"Role\": \"writerWithoutPrivateAccess\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "bob@example.com",
+    "role": "writerwithoutprivateaccess",
+    "who": "Everyone at bob@example.com",
+    "role_label": "Make changes (no private events)",
+    "scope_token": "domain:bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"Role\": \"freeBusyReader\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "freebusyreader",
+    "who": "user",
+    "role_label": "See free/busy only",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": 7}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": \"\\u3000x\\u3000\"}, \"id\": \"nocolon@example.com\", \"role\": false}",
+   "model": {
+    "scope_type": "nocolon@example.com",
+    "scope_value": "",
+    "role": "false",
+    "who": "nocolon@example.com",
+    "role_label": "false",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": \"Zo\\u00eb\"}, \"role\": \"freebusy\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "Zo\u00eb",
+    "role": "freebusy",
+    "who": "Zo\u00eb",
+    "role_label": "See free/busy only",
+    "scope_token": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"scope\": {}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"\"}, \"id\": \"domain\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "",
+    "who": "padded",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 1.5, \"value\": \" padded \"}, \"role\": \"strange\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "padded",
+    "role": "strange",
+    "who": "padded",
+    "role_label": "strange",
+    "scope_token": "padded"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": true}, \"Id\": 0}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "",
+    "who": "true",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"id\": \"domain:\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "",
+    "who": "Entire domain",
+    "role_label": "\u2014",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"Zo\\u00eb\", \"value\": null}}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "",
+    "who": "zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"bob@example.com\"}, \"id\": \"\\u3000x\\u3000\", \"role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "x",
+    "who": "x",
+    "role_label": "x",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Role\": \"own\\u0435r\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "own\u0435r",
+    "who": "user",
+    "role_label": "own\u0435r",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Id\": \" user:x@example.com \", \"role\": \"editor\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "x@example.com",
+    "role": "editor",
+    "who": "x@example.com",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "x@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"bob@example.com\"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": false}, \"Role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "x",
+    "who": "Entire domain",
+    "role_label": "x",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"Id\": \"\\u3000x\\u3000\", \"Role\": \" padded \"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "padded",
+    "who": "x",
+    "role_label": "padded",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \"sales@example.com\"}, \"Id\": null, \"Role\": \"strange\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "sales@example.com",
+    "role": "strange",
+    "who": "Everyone at sales@example.com",
+    "role_label": "strange",
+    "scope_token": "domain:sales@example.com"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Role\": \"owner\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "owner",
+    "who": "zo\u00eb",
+    "role_label": "Owner",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": 0}",
+   "model": {
+    "scope_type": "0",
+    "scope_value": "",
+    "role": "",
+    "who": "0",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \"\\u3000x\\u3000\"}}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "x",
+    "role": "",
+    "who": "Everyone at x",
+    "role_label": "\u2014",
+    "scope_token": "domain:x"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"bob@example.com\"}, \"id\": \"domain\", \"Role\": 0}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "0",
+    "who": "Entire domain",
+    "role_label": "0",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"id\": \"default\", \"Role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "i\u0307",
+    "who": "Public (anyone)",
+    "role_label": "i\u0307",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"bob@example.com\"}, \"Id\": true, \"role\": \"strange\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "strange",
+    "who": "true",
+    "role_label": "strange",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"sales@example.com\"}, \"id\": \" user:x@example.com \", \"role\": \"\\u01f1\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "x@example.com",
+    "role": "\u01f3",
+    "who": "x@example.com",
+    "role_label": "\u01f3",
+    "scope_token": "x@example.com"
+   }
+  },
+  {
+   "record": "{\"Role\": 1.5}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "1.5",
+    "who": "user",
+    "role_label": "1.5",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"\", \"value\": 0}, \"Role\": \"\\u01f1\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "\u01f3",
+    "who": "user",
+    "role_label": "\u01f3",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": false}, \"Id\": \"default\", \"Role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "x",
+    "who": "Public (anyone)",
+    "role_label": "x",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\", \"value\": \"Zo\\u00eb\"}, \"id\": \"domain:\", \"role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "Zo\u00eb",
+    "role": "writer",
+    "who": "Zo\u00eb",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" group \"}, \"Id\": \"GROUP:G@example.com\", \"role\": \"none\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "",
+    "role": "none",
+    "who": "group",
+    "role_label": "No access",
+    "scope_token": "group:"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"\\u3000x\\u3000\", \"value\": true}, \"id\": \"GROUP:G@example.com\", \"role\": \"strange\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "True",
+    "role": "strange",
+    "who": "True",
+    "role_label": "strange",
+    "scope_token": "True"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 1.5, \"value\": \"bob@example.com\"}}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"\\u3000x\\u3000\"}, \"Id\": \"default\", \"role\": \"owner\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "x",
+    "role": "owner",
+    "who": "x",
+    "role_label": "Owner",
+    "scope_token": "x"
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"role\": null}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"id\": \"GROUP:G@example.com\", \"Role\": \"editor\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "G@example.com",
+    "role": "editor",
+    "who": "G@example.com",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "group:G@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\", \"value\": \"example.com\"}, \"role\": 0}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "example.com",
+    "role": "0",
+    "who": "example.com",
+    "role_label": "0",
+    "scope_token": "example.com"
+   }
+  },
+  {
+   "record": "{\"id\": \"GROUP:G@example.com\", \"role\": \"strange\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "G@example.com",
+    "role": "strange",
+    "who": "G@example.com",
+    "role_label": "strange",
+    "scope_token": "group:G@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"USER\", \"value\": \" bob@example.com \"}, \"Id\": \" user:x@example.com \", \"role\": \"\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": true}}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "True",
+    "role": "",
+    "who": "True",
+    "role_label": "\u2014",
+    "scope_token": "True"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"sales@example.com\"}, \"id\": \":lead\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "sales@example.com",
+    "role": "",
+    "who": "sales@example.com",
+    "role_label": "\u2014",
+    "scope_token": "sales@example.com"
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"\"}, \"Id\": \"\", \"role\": \"editor\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "editor",
+    "who": "user",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Role\": \"owner\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "owner",
+    "who": "user",
+    "role_label": "Owner",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"role\": \"editor\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "editor",
+    "who": "user",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {}, \"id\": true, \"Role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "i\u0307",
+    "who": "true",
+    "role_label": "i\u0307",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"Zo\\u00eb\"}, \"id\": true, \"Role\": \"strange\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "Zo\u00eb",
+    "role": "strange",
+    "who": "Zo\u00eb",
+    "role_label": "strange",
+    "scope_token": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"id\": \"a:b:c\", \"role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "writer",
+    "who": "b:c",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"role\": false}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "false",
+    "who": "user",
+    "role_label": "false",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"Id\": false, \"Role\": \"\"}",
+   "model": {
+    "scope_type": "false",
+    "scope_value": "",
+    "role": "",
+    "who": "false",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": null, \"value\": 0}, \"id\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "",
+    "who": "x",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": false, \"value\": \"bob@example.com\"}, \"id\": \"Zo\\u00eb\", \"Role\": \"\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "",
+    "who": "zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"Id\": \"a:b:c\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "",
+    "who": "b:c",
+    "role_label": "\u2014",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"scope\": {}, \"Id\": \"a:b:c\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "",
+    "who": "b:c",
+    "role_label": "\u2014",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"Domain\", \"value\": \"Zo\\u00eb\"}, \"Id\": 1.5, \"Role\": \"owner\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "Zo\u00eb",
+    "role": "owner",
+    "who": "Everyone at Zo\u00eb",
+    "role_label": "Owner",
+    "scope_token": "domain:Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"role\": \"none\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "none",
+    "who": "1.5",
+    "role_label": "No access",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"id\": 1.5}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "",
+    "who": "1.5",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {}, \"id\": \"group:g@example.com\", \"Role\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "g@example.com",
+    "role": "zo\u00eb",
+    "who": "g@example.com",
+    "role_label": "zo\u00eb",
+    "scope_token": "group:g@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 1.5}, \"Role\": \"freebusy\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "freebusy",
+    "who": "1.5",
+    "role_label": "See free/busy only",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"\\u3000x\\u3000\"}}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "x",
+    "role": "",
+    "who": "x",
+    "role_label": "\u2014",
+    "scope_token": "x"
+   }
+  },
+  {
+   "record": "{\"role\": false}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "false",
+    "who": "user",
+    "role_label": "false",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": null, \"value\": \"\"}, \"Id\": true, \"Role\": true}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "true",
+    "who": "true",
+    "role_label": "true",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": \"user\", \"Id\": false, \"Role\": true}",
+   "model": {
+    "scope_type": "false",
+    "scope_value": "",
+    "role": "true",
+    "who": "false",
+    "role_label": "true",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \"\"}, \"Id\": null}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "",
+    "who": "Entire domain",
+    "role_label": "\u2014",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"role\": \"\\u01f1\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "\u01f3",
+    "who": "user",
+    "role_label": "\u01f3",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"\", \"value\": false}, \"Role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "writer",
+    "who": "user",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0}, \"Id\": \"GROUP:G@example.com\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "G@example.com",
+    "role": "",
+    "who": "G@example.com",
+    "role_label": "\u2014",
+    "scope_token": "group:G@example.com"
+   }
+  },
+  {
+   "record": "{\"Id\": 0}",
+   "model": {
+    "scope_type": "0",
+    "scope_value": "",
+    "role": "",
+    "who": "0",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"id\": \" padded \"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "",
+    "who": "padded",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"Zo\\u00eb\", \"value\": \" padded \"}}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "padded",
+    "role": "",
+    "who": "padded",
+    "role_label": "\u2014",
+    "scope_token": "padded"
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"Id\": \"domain:example.com\", \"Role\": true}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "example.com",
+    "role": "true",
+    "who": "Everyone at example.com",
+    "role_label": "true",
+    "scope_token": "domain:example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"USER\", \"value\": \" bob@example.com \"}, \"id\": \" padded \", \"role\": \" reader \"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "reader",
+    "who": "bob@example.com",
+    "role_label": "See all event details",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"id\": \"a:b:c\", \"role\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "zo\u00eb",
+    "who": "b:c",
+    "role_label": "zo\u00eb",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"Id\": \"a:b:c\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "",
+    "who": "b:c",
+    "role_label": "\u2014",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "",
+    "who": "zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"role\": \" reader \"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "reader",
+    "who": "user",
+    "role_label": "See all event details",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \" bob@example.com \"}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \" padded \"}, \"Role\": \"strange\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "padded",
+    "role": "strange",
+    "who": "padded",
+    "role_label": "strange",
+    "scope_token": "padded"
+   }
+  },
+  {
+   "record": "{\"Id\": \"a:b:c\", \"role\": 1.5}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "1.5",
+    "who": "b:c",
+    "role_label": "1.5",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"Id\": \":lead\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "lead",
+    "role": "",
+    "who": "lead",
+    "role_label": "\u2014",
+    "scope_token": "lead"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"role\": \" padded \"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "padded",
+    "who": "x",
+    "role_label": "padded",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\"}, \"Id\": \"user:bob@example.com\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": true, \"value\": \"bob@example.com\"}, \"Id\": \" padded \", \"Role\": \"strange\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "bob@example.com",
+    "role": "strange",
+    "who": "bob@example.com",
+    "role_label": "strange",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": 0}, \"id\": \" padded \", \"Role\": \" padded \"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "padded",
+    "who": "padded",
+    "role_label": "padded",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": 0}, \"role\": \"writerWithoutPrivateAccess\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "writerwithoutprivateaccess",
+    "who": "padded",
+    "role_label": "Make changes (no private events)",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \":lead\", \"role\": 0}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "lead",
+    "role": "0",
+    "who": "lead",
+    "role_label": "0",
+    "scope_token": "lead"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 1.5, \"value\": 1.5}, \"Id\": 0, \"role\": \"freeBusyReader\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "1.5",
+    "role": "freebusyreader",
+    "who": "1.5",
+    "role_label": "See free/busy only",
+    "scope_token": "1.5"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": 0}, \"id\": true, \"role\": \"freebusy\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "freebusy",
+    "who": "true",
+    "role_label": "See free/busy only",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"id\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "",
+    "who": "zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\"}, \"id\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \" user:x@example.com \", \"Role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "x@example.com",
+    "role": "x",
+    "who": "x@example.com",
+    "role_label": "x",
+    "scope_token": "x@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": true}, \"id\": 1.5}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "",
+    "role": "",
+    "who": "true",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"]}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Role\": false}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "false",
+    "who": "user",
+    "role_label": "false",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"Id\": \" padded \", \"Role\": \"freeBusyReader\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "freebusyreader",
+    "who": "padded",
+    "role_label": "See free/busy only",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" padded \", \"value\": \"example.com\"}, \"Id\": \"group:g@example.com\", \"Role\": \"writerWithoutPrivateAccess\"}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "example.com",
+    "role": "writerwithoutprivateaccess",
+    "who": "example.com",
+    "role_label": "Make changes (no private events)",
+    "scope_token": "example.com"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "",
+    "who": "zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Id\": \"group:g@example.com\"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "g@example.com",
+    "role": "",
+    "who": "g@example.com",
+    "role_label": "\u2014",
+    "scope_token": "group:g@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \" bob@example.com \"}, \"Role\": \"freebusy\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "freebusy",
+    "who": "bob@example.com",
+    "role_label": "See free/busy only",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"id\": null}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 1.5}, \"id\": null, \"Role\": \"owner\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "owner",
+    "who": "1.5",
+    "role_label": "Owner",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \":lead\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "lead",
+    "role": "",
+    "who": "lead",
+    "role_label": "\u2014",
+    "scope_token": "lead"
+   }
+  },
+  {
+   "record": "{\"scope\": \"user\", \"role\": \"freebusy\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "freebusy",
+    "who": "user",
+    "role_label": "See free/busy only",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \"Zo\\u00eb\"}, \"Role\": \"editor\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "Zo\u00eb",
+    "role": "editor",
+    "who": "Everyone at Zo\u00eb",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": "domain:Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\", \"value\": \"bob@example.com\"}, \"id\": 1.5, \"role\": \"none\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "none",
+    "who": "bob@example.com",
+    "role_label": "No access",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"USER\", \"value\": null}, \"Id\": 1.5, \"role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "i\u0307",
+    "who": "user",
+    "role_label": "i\u0307",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": false}, \"Role\": false}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "false",
+    "who": "user",
+    "role_label": "false",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"\\u3000x\\u3000\"}, \"id\": 0, \"Role\": \"own\\u0435r\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "own\u0435r",
+    "who": "x",
+    "role_label": "own\u0435r",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": null, \"id\": \"Zo\\u00eb\", \"Role\": \"writerWithoutPrivateAccess\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "writerwithoutprivateaccess",
+    "who": "zo\u00eb",
+    "role_label": "Make changes (no private events)",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"default\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "",
+    "who": "Public (anyone)",
+    "role_label": "\u2014",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"domain\", \"value\": \" bob@example.com \"}, \"Id\": 0}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "Everyone at bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "domain:bob@example.com"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "writer",
+    "who": "x",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Id\": \"domain:example.com\", \"Role\": 0}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "example.com",
+    "role": "0",
+    "who": "Everyone at example.com",
+    "role_label": "0",
+    "scope_token": "domain:example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": 1.5}, \"Id\": \"default\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "",
+    "who": "Public (anyone)",
+    "role_label": "\u2014",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": null}}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"\"}, \"id\": \"default\", \"Role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "i\u0307",
+    "who": "Public (anyone)",
+    "role_label": "i\u0307",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"id\": false, \"Role\": 1.5}",
+   "model": {
+    "scope_type": "false",
+    "scope_value": "",
+    "role": "1.5",
+    "who": "false",
+    "role_label": "1.5",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"Role\": \"strange\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "strange",
+    "who": "user",
+    "role_label": "strange",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"custom\"}, \"id\": 0, \"role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "custom",
+    "scope_value": "",
+    "role": "writer",
+    "who": "custom",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Id\": null}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": false}, \"id\": \"domain\", \"role\": 0}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "0",
+    "who": "Entire domain",
+    "role_label": "0",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \" group \", \"value\": \" padded \"}, \"role\": \" padded \"}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "padded",
+    "role": "padded",
+    "who": "padded",
+    "role_label": "padded",
+    "scope_token": "group:padded"
+   }
+  },
+  {
+   "record": "{\"id\": \"domain:example.com\", \"Role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "example.com",
+    "role": "i\u0307",
+    "who": "Everyone at example.com",
+    "role_label": "i\u0307",
+    "scope_token": "domain:example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": 7, \"Role\": true}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "true",
+    "who": "user",
+    "role_label": "true",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {}, \"id\": 0, \"Role\": \"WRITER\"}",
+   "model": {
+    "scope_type": "0",
+    "scope_value": "",
+    "role": "writer",
+    "who": "0",
+    "role_label": "Make changes & manage sharing",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": 0, \"value\": \" bob@example.com \"}, \"Id\": 1.5}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "",
+    "who": "1.5",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"domain\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "",
+    "who": "Entire domain",
+    "role_label": "\u2014",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"id\": \"domain:example.com\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "example.com",
+    "role": "",
+    "who": "Everyone at example.com",
+    "role_label": "\u2014",
+    "scope_token": "domain:example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\"}, \"Role\": \"\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": true, \"value\": \"bob@example.com\"}, \"Id\": \":lead\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "bob@example.com",
+    "role": "",
+    "who": "bob@example.com",
+    "role_label": "\u2014",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"id\": \":lead\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "lead",
+    "role": "",
+    "who": "lead",
+    "role_label": "\u2014",
+    "scope_token": "lead"
+   }
+  },
+  {
+   "record": "{\"role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "i\u0307",
+    "who": "user",
+    "role_label": "i\u0307",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1.5}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "",
+    "who": "1.5",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\", \"value\": false}, \"Role\": true}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "true",
+    "who": "user",
+    "role_label": "true",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": true, \"value\": \"Zo\\u00eb\"}, \"role\": \"\"}",
+   "model": {
+    "scope_type": "true",
+    "scope_value": "Zo\u00eb",
+    "role": "",
+    "who": "Zo\u00eb",
+    "role_label": "\u2014",
+    "scope_token": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": \"a:b:c\", \"role\": \"Zo\\u00eb\"}",
+   "model": {
+    "scope_type": "a",
+    "scope_value": "b:c",
+    "role": "zo\u00eb",
+    "who": "b:c",
+    "role_label": "zo\u00eb",
+    "scope_token": "b:c"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"role\": \"\\u01f1\"}",
+   "model": {
+    "scope_type": "1.5",
+    "scope_value": "",
+    "role": "\u01f3",
+    "who": "1.5",
+    "role_label": "\u01f3",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"Domain\"}, \"id\": false, \"role\": \"\"}",
+   "model": {
+    "scope_type": "domain",
+    "scope_value": "",
+    "role": "",
+    "who": "Entire domain",
+    "role_label": "\u2014",
+    "scope_token": "domain"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"user\", \"value\": \"example.com\"}, \"id\": \" padded \"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "example.com",
+    "role": "",
+    "who": "example.com",
+    "role_label": "\u2014",
+    "scope_token": "example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": \"bob@example.com\"}, \"Role\": \"none\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "none",
+    "who": "bob@example.com",
+    "role_label": "No access",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {}, \"Id\": \":lead\", \"role\": \"\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "lead",
+    "role": "",
+    "who": "lead",
+    "role_label": "\u2014",
+    "scope_token": "lead"
+   }
+  },
+  {
+   "record": "{\"Id\": \"default\", \"role\": \"owner\"}",
+   "model": {
+    "scope_type": "default",
+    "scope_value": "",
+    "role": "owner",
+    "who": "Public (anyone)",
+    "role_label": "Owner",
+    "scope_token": "default"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"value\": null}, \"id\": \" padded \", \"role\": true}",
+   "model": {
+    "scope_type": "padded",
+    "scope_value": "",
+    "role": "true",
+    "who": "padded",
+    "role_label": "true",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": \"user\", \"id\": \"group:g@example.com\", \"Role\": 0}",
+   "model": {
+    "scope_type": "group",
+    "scope_value": "g@example.com",
+    "role": "0",
+    "who": "g@example.com",
+    "role_label": "0",
+    "scope_token": "group:g@example.com"
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"\\u3000x\\u3000\", \"value\": false}, \"Id\": false, \"role\": \"\"}",
+   "model": {
+    "scope_type": "x",
+    "scope_value": "",
+    "role": "",
+    "who": "x",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": {\"type\": \"USER\", \"value\": \"bob@example.com\"}, \"Id\": \"default\", \"Role\": \"\\u0130\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "bob@example.com",
+    "role": "i\u0307",
+    "who": "bob@example.com",
+    "role_label": "i\u0307",
+    "scope_token": "bob@example.com"
+   }
+  },
+  {
+   "record": "{\"Id\": \"\"}",
+   "model": {
+    "scope_type": "user",
+    "scope_value": "",
+    "role": "",
+    "who": "user",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"id\": \"nocolon@example.com\", \"Role\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "scope_type": "nocolon@example.com",
+    "scope_value": "",
+    "role": "x",
+    "who": "nocolon@example.com",
+    "role_label": "x",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"Id\": \"Zo\\u00eb\", \"role\": \"strange\"}",
+   "model": {
+    "scope_type": "zo\u00eb",
+    "scope_value": "",
+    "role": "strange",
+    "who": "zo\u00eb",
+    "role_label": "strange",
+    "scope_token": ""
+   }
+  },
+  {
+   "record": "{\"scope\": [\"user\", \"x\"], \"id\": false, \"role\": null}",
+   "model": {
+    "scope_type": "false",
+    "scope_value": "",
+    "role": "",
+    "who": "false",
+    "role_label": "\u2014",
+    "scope_token": ""
+   }
+  }
+ ],
+ "user_calendars": [
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"alice@example.com\", \"accessRole\": \"owner\", \"id\": \"alice@example.com\", \"primary\": true, \"summary\": \"alice@example.com\"}",
+   "model": {
+    "id": "alice@example.com",
+    "summary": "alice@example.com",
+    "access_role": "owner",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"c_team@group.calendar.google.com\", \"accessRole\": \"owner\", \"id\": \"c_team@group.calendar.google.com\", \"summary\": \"Team Calendar\"}",
+   "model": {
+    "id": "c_team@group.calendar.google.com",
+    "summary": "Team Calendar",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"en.usa#holiday@group.v.calendar.google.com\", \"accessRole\": \"reader\", \"id\": \"en.usa#holiday@group.v.calendar.google.com\", \"summary\": \"Holidays in United States\", \"summaryOverride\": \"US Holidays\"}",
+   "model": {
+    "id": "en.usa#holiday@group.v.calendar.google.com",
+    "summary": "Holidays in United States",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"aspen@resource.calendar.google.com\", \"accessRole\": \"freeBusyReader\", \"id\": \"aspen@resource.calendar.google.com\", \"summary\": \"Aspen\"}",
+   "model": {
+    "id": "aspen@resource.calendar.google.com",
+    "summary": "Aspen",
+    "access_role": "freeBusyReader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"calendarId\": \"c_rota@group.calendar.google.com\", \"accessRole\": \"writer\", \"id\": \"c_rota@group.calendar.google.com\", \"summary\": \"Rota \\\"B\\\" C:\\\\Shifts, Zo\\u00eb\"}",
+   "model": {
+    "id": "c_rota@group.calendar.google.com",
+    "summary": "Rota \"B\" C:\\Shifts, Zo\u00eb",
+    "access_role": "writer",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"Summary\": true, \"accessRole\": 0, \"primary\": \"off\"}",
+   "model": {
+    "id": "0",
+    "summary": "True",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"Summary\": \" padded \", \"accessrole\": 1.5, \"primary\": \"false\"}",
+   "model": {
+    "id": "False",
+    "summary": " padded ",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessRole\": false}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "False",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"accessRole\": true, \"primary\": 2}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "True",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": false, \"Summary\": 1.5, \"primary\": \"0\"}",
+   "model": {
+    "id": "False",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Team\", \"accessrole\": \"owner\"}",
+   "model": {
+    "id": "",
+    "summary": "Team",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\", \"Summary\": null, \"accessRole\": \"Zo\\u00eb\", \"primary\": 0}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": "Zo\u00eb",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"accessrole\": \"freeBusyReader\"}",
+   "model": {
+    "id": "",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "freeBusyReader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"Summary\": \"\"}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": null, \"accessRole\": \"\", \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"summary\": null, \"accessrole\": \"reader\", \"primary\": false}",
+   "model": {
+    "id": "0",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": 0, \"accessrole\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "0",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"accessRole\": true}",
+   "model": {
+    "id": "1.5",
+    "summary": "",
+    "access_role": "True",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"Summary\": false, \"accessrole\": 1.5, \"primary\": 0}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "False",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_x@group.calendar.google.com\", \"summary\": 1.5, \"accessrole\": 0, \"primary\": 2}",
+   "model": {
+    "id": "c_x@group.calendar.google.com",
+    "summary": "1.5",
+    "access_role": "0",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"a@example.com\", \"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"primary\": \"off\"}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": null, \"accessrole\": \"reader\", \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"a@example.com\", \"summary\": \"\\u3000x\\u3000\", \"primary\": 2}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "\u3000x\u3000",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"Summary\": false, \"primary\": \" yes \"}",
+   "model": {
+    "id": "1.5",
+    "summary": "False",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"Summary\": \"Team\", \"accessRole\": null, \"primary\": 2}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "Team",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"Summary\": false}",
+   "model": {
+    "id": "0",
+    "summary": "False",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"primary\": \"false\"}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"accessRole\": \"reader\", \"primary\": false}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primary\": null}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"a@example.com\", \"Summary\": \"Rota \\\"B\\\" C:\\\\x\", \"primary\": true}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": null, \"summary\": 1.5, \"accessrole\": \"freeBusyReader\", \"primary\": 2}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "freeBusyReader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"summary\": 1.5, \"accessrole\": \"freeBusyReader\", \"primary\": 2}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "freeBusyReader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_x@group.calendar.google.com\", \"accessRole\": \"\\u3000x\\u3000\", \"primary\": \"1\"}",
+   "model": {
+    "id": "c_x@group.calendar.google.com",
+    "summary": "",
+    "access_role": "\u3000x\u3000",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"summary\": null, \"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Zo\\u00eb\", \"accessrole\": null, \"primary\": \"false\"}",
+   "model": {
+    "id": "",
+    "summary": "Zo\u00eb",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": null}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": false, \"accessRole\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "False",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": true, \"primary\": \"TRUE\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "True",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"accessrole\": true}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "True",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"summary\": null, \"accessrole\": 0, \"primary\": 2}",
+   "model": {
+    "id": "0",
+    "summary": "",
+    "access_role": "0",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"Zo\\u00eb\", \"summary\": \"Team\", \"primary\": \"\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "Team",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"\", \"accessRole\": \"owner\", \"primary\": \"0\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\", \"Summary\": false, \"accessrole\": \"reader\"}",
+   "model": {
+    "id": "",
+    "summary": "False",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 0, \"accessRole\": null}",
+   "model": {
+    "id": "0",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"summary\": null, \"accessrole\": \"reader\", \"primary\": \"off\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"accessrole\": 0}",
+   "model": {
+    "id": "1.5",
+    "summary": "",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"a@example.com\", \"Summary\": 0, \"accessrole\": 0}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "0",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"summary\": true, \"primary\": 0}",
+   "model": {
+    "id": "1.5",
+    "summary": "True",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"Zo\\u00eb\", \"Summary\": \"Team\", \"accessrole\": \"reader\", \"primary\": \"TRUE\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "Team",
+    "access_role": "reader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"accessRole\": true, \"primary\": false}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "True",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Zo\\u00eb\", \"primary\": []}",
+   "model": {
+    "id": "",
+    "summary": "Zo\u00eb",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"Summary\": 0}",
+   "model": {
+    "id": "False",
+    "summary": "0",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": \"owner\", \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": null, \"summary\": 0, \"accessrole\": null}",
+   "model": {
+    "id": "",
+    "summary": "0",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"c_x@group.calendar.google.com\", \"summary\": \"Zo\\u00eb\", \"accessRole\": \"\\u3000x\\u3000\", \"primary\": \"1\"}",
+   "model": {
+    "id": "c_x@group.calendar.google.com",
+    "summary": "Zo\u00eb",
+    "access_role": "\u3000x\u3000",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Team\", \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "Team",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"Summary\": \"\", \"accessRole\": 1.5}",
+   "model": {
+    "id": "0",
+    "summary": "",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": 0, \"accessrole\": \"\\u3000x\\u3000\", \"primary\": \"false\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "0",
+    "access_role": "\u3000x\u3000",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"Team\", \"accessRole\": \"reader\"}",
+   "model": {
+    "id": "",
+    "summary": "Team",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\", \"accessrole\": \"reader\", \"primary\": [1]}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "reader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"accessRole\": true}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "True",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessRole\": \"\\u3000x\\u3000\", \"primary\": \"1\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "\u3000x\u3000",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"a@example.com\", \"accessrole\": \"reader\", \"primary\": []}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primary\": \"off\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": false, \"accessrole\": \"owner\", \"primary\": \"false\"}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "",
+    "summary": "Zo\u00eb",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": true, \"primary\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "True",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": \"\", \"accessRole\": \"reader\", \"primary\": \"0\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": false, \"primary\": false}",
+   "model": {
+    "id": " padded ",
+    "summary": "False",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Summary\": 1.5}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"summary\": true, \"accessRole\": \"\\u3000x\\u3000\", \"primary\": \"0\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "True",
+    "access_role": "\u3000x\u3000",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \" padded \", \"accessrole\": \" padded \", \"primary\": []}",
+   "model": {
+    "id": " padded ",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": 1.5, \"accessrole\": \" padded \", \"primary\": true}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": null, \"summary\": null, \"accessRole\": false}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "False",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"primary\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primary\": 1}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"accessrole\": \"\\u3000x\\u3000\", \"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "\u3000x\u3000",
+    "primary": true
+   }
+  },
+  {
+   "record": "{}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": false, \"accessRole\": true, \"primary\": \"1\"}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": "True",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"primary\": null}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"accessRole\": \"\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"accessrole\": 0, \"primary\": []}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\", \"summary\": false, \"accessrole\": \"Zo\\u00eb\", \"primary\": {}}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "False",
+    "access_role": "Zo\u00eb",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": 0, \"accessrole\": null, \"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "0",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": \"Zo\\u00eb\", \"accessRole\": \" padded \", \"primary\": \"1\"}",
+   "model": {
+    "id": "True",
+    "summary": "Zo\u00eb",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"Zo\\u00eb\", \"Summary\": 1.5, \"primary\": 2}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\", \"Summary\": \"\", \"accessrole\": 1.5, \"primary\": false}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"a@example.com\", \"summary\": null, \"accessRole\": \"\", \"primary\": \"off\"}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": null, \"primary\": true}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": null, \"primary\": 1}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"summary\": null, \"accessRole\": \"freeBusyReader\", \"primary\": \"TRUE\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "freeBusyReader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"Summary\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "0",
+    "summary": "\u3000x\u3000",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"accessrole\": null, \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": \"\\u3000x\\u3000\", \"accessrole\": 0, \"primary\": false}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": true, \"accessRole\": \"freeBusyReader\", \"primary\": null}",
+   "model": {
+    "id": "True",
+    "summary": "",
+    "access_role": "freeBusyReader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"accessrole\": \"\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": \"Team\", \"accessRole\": null}",
+   "model": {
+    "id": "",
+    "summary": "Team",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": 1.5, \"accessrole\": false}",
+   "model": {
+    "id": " padded ",
+    "summary": "1.5",
+    "access_role": "False",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": false, \"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"primary\": {}}",
+   "model": {
+    "id": "False",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"Summary\": \" padded \", \"accessRole\": \"owner\", \"primary\": \"0\"}",
+   "model": {
+    "id": " padded ",
+    "summary": " padded ",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": false, \"accessRole\": \"owner\"}",
+   "model": {
+    "id": "True",
+    "summary": "False",
+    "access_role": "owner",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"\\u3000x\\u3000\", \"primary\": {}}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"summary\": 0, \"accessRole\": 0}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "0",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": 1.5, \"accessRole\": 0, \"primary\": true}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "0",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"accessrole\": \" padded \", \"primary\": \"1\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"accessrole\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "0",
+    "summary": "",
+    "access_role": "\u3000x\u3000",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"accessrole\": \"reader\", \"primary\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"accessRole\": null, \"primary\": {}}",
+   "model": {
+    "id": "",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \" padded \", \"summary\": \"\", \"accessrole\": \"\\u3000x\\u3000\", \"primary\": \" yes \"}",
+   "model": {
+    "id": " padded ",
+    "summary": "",
+    "access_role": "\u3000x\u3000",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"primary\": \"TRUE\"}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"accessrole\": \"reader\", \"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "access_role": "reader",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\", \"summary\": \"Team\", \"accessRole\": null, \"primary\": \"false\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "Team",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"accessrole\": 1.5, \"primary\": 2}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "access_role": "1.5",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"summary\": \" padded \", \"primary\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": " padded ",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"a@example.com\", \"accessRole\": \"\"}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"Summary\": true, \"accessRole\": null, \"primary\": 2}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "True",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"accessRole\": \"owner\", \"primary\": \"1\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "owner",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": false}",
+   "model": {
+    "id": " padded ",
+    "summary": "False",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": null, \"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"accessrole\": 1.5, \"primary\": \"false\"}",
+   "model": {
+    "id": "",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": \" padded \", \"accessRole\": \"reader\"}",
+   "model": {
+    "id": "True",
+    "summary": " padded ",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"summary\": 1.5}",
+   "model": {
+    "id": "1.5",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"summary\": \"\\u3000x\\u3000\", \"primary\": \" yes \"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"primary\": \"on\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": false, \"accessRole\": \" padded \", \"primary\": \" yes \"}",
+   "model": {
+    "id": "False",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "",
+    "summary": "Zo\u00eb",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"Summary\": true, \"accessRole\": 1.5, \"primary\": \"1\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "True",
+    "access_role": "1.5",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": 1.5, \"accessrole\": false, \"primary\": {}}",
+   "model": {
+    "id": "True",
+    "summary": "1.5",
+    "access_role": "False",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": true, \"Summary\": \"\\u3000x\\u3000\", \"accessrole\": 1.5}",
+   "model": {
+    "id": "True",
+    "summary": "\u3000x\u3000",
+    "access_role": "1.5",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_x@group.calendar.google.com\", \"Summary\": \"Team\", \"accessRole\": \" padded \", \"primary\": \"off\"}",
+   "model": {
+    "id": "c_x@group.calendar.google.com",
+    "summary": "Team",
+    "access_role": " padded ",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\\u3000x\\u3000\", \"summary\": true}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "True",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"summary\": \"Zo\\u00eb\", \"accessRole\": \"Zo\\u00eb\", \"primary\": true}",
+   "model": {
+    "id": "1.5",
+    "summary": "Zo\u00eb",
+    "access_role": "Zo\u00eb",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"a@example.com\", \"summary\": \"Rota \\\"B\\\" C:\\\\x\"}",
+   "model": {
+    "id": "a@example.com",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"summary\": false, \"accessrole\": \"reader\", \"primary\": 0}",
+   "model": {
+    "id": "0",
+    "summary": "False",
+    "access_role": "reader",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Team\", \"accessrole\": \" padded \", \"primary\": true}",
+   "model": {
+    "id": "",
+    "summary": "Team",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"summary\": \"Team\", \"accessrole\": \"\", \"primary\": [1]}",
+   "model": {
+    "id": "1.5",
+    "summary": "Team",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": true, \"accessRole\": null, \"primary\": []}",
+   "model": {
+    "id": "True",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"\", \"accessrole\": false, \"primary\": 2}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "False",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": \"Zo\\u00eb\", \"accessRole\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "True",
+    "summary": "Zo\u00eb",
+    "access_role": "Zo\u00eb",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"c_x@group.calendar.google.com\", \"summary\": null, \"accessrole\": 0, \"primary\": \"TRUE\"}",
+   "model": {
+    "id": "c_x@group.calendar.google.com",
+    "summary": "",
+    "access_role": "0",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": \" padded \", \"Summary\": \"\\u3000x\\u3000\", \"accessrole\": \"owner\", \"primary\": \"1\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "\u3000x\u3000",
+    "access_role": "owner",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": 1.5, \"Summary\": 1.5, \"accessRole\": \"\", \"primary\": []}",
+   "model": {
+    "id": "1.5",
+    "summary": "1.5",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"primary\": \"TRUE\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"accessrole\": \" padded \", \"primary\": \"on\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"accessrole\": false, \"primary\": \"on\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "",
+    "access_role": "False",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"summary\": \"\", \"primary\": \"TRUE\"}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"accessrole\": 0}",
+   "model": {
+    "id": "",
+    "summary": "",
+    "access_role": "0",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": true, \"summary\": \"Rota \\\"B\\\" C:\\\\x\", \"accessRole\": \"\", \"primary\": \"on\"}",
+   "model": {
+    "id": "True",
+    "summary": "Rota \"B\" C:\\x",
+    "access_role": "",
+    "primary": true
+   }
+  },
+  {
+   "record": "{\"calendarId\": true}",
+   "model": {
+    "id": "True",
+    "summary": "",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"summary\": 0}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "0",
+    "access_role": "",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"accessRole\": \" padded \"}",
+   "model": {
+    "id": "1.5",
+    "summary": "",
+    "access_role": " padded ",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": 1.5, \"accessrole\": \"\\u3000x\\u3000\", \"primary\": \"\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "1.5",
+    "access_role": "\u3000x\u3000",
+    "primary": false
+   }
+  },
+  {
+   "record": "{\"calendarId\": \" padded \", \"accessRole\": true, \"primary\": \"off\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "",
+    "access_role": "True",
+    "primary": false
+   }
+  }
+ ],
+ "resources": [
+  {
+   "record": "{\"resourceId\": \"1001\", \"resourceName\": \"Aspen\", \"buildingId\": \"id:hq\", \"buildingName\": \"HQ\", \"resourceEmail\": \"aspen@resource.calendar.google.com\", \"resourceType\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "Aspen",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "Conference Room",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1002\", \"resourceName\": \"Birch Huddle, 2nd floor\", \"buildingId\": \"id:annex\", \"buildingName\": \"annex\", \"resourceEmail\": \"birch@resource.calendar.google.com\", \"resourceType\": \"Huddle \\\"Pod\\\" \\\\ Small\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "Birch Huddle, 2nd floor",
+    "email": "birch@resource.calendar.google.com",
+    "resource_type": "Huddle \"Pod\" \\ Small",
+    "building_id": "id:annex"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1003\", \"resourceName\": \"Projector\", \"resourceEmail\": \"projector@resource.calendar.google.com\", \"resourceType\": \"Equipment\"}",
+   "model": {
+    "resource_id": "1003",
+    "name": "Projector",
+    "email": "projector@resource.calendar.google.com",
+    "resource_type": "Equipment",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"email\": true, \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "True",
+    "resource_type": "\u3000x\u3000",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"resourceName\": \"\\u3000x\\u3000\", \"Email\": \"\", \"resourceType\": 0}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "0",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"1001\", \"email\": \"\\u3000x\\u3000\", \"resourceType\": 0}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": "0",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": false, \"Name\": \" padded \", \"Email\": 1.5, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "False",
+    "name": " padded ",
+    "email": "1.5",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": 1002, \"Name\": true, \"resourceEmail\": \"\", \"type\": 0, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "True",
+    "email": "",
+    "resource_type": "0",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"resourceName\": \"\\u3000x\\u3000\", \"Email\": true, \"resourceType\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "True",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \" padded \", \"Email\": \" padded \", \"buildingId\": true}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "",
+    "email": " padded ",
+    "resource_type": "",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \" padded \", \"Name\": \"Birch Huddle, 2nd floor\", \"email\": 0, \"type\": \"Zo\\u00eb\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "Birch Huddle, 2nd floor",
+    "email": "0",
+    "resource_type": "Zo\u00eb",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"name\": \"\\u3000x\\u3000\", \"resourceEmail\": null, \"type\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"type\": 1.5, \"buildingId\": false}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"1001\", \"email\": true, \"resourceType\": null, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "True",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Name\": true, \"Email\": \" padded \", \"type\": true, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": " padded ",
+    "resource_type": "True",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"name\": 1.5}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "1.5",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"resourceName\": \"Aspen\", \"resourceEmail\": \"\", \"type\": \"Conference Room\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Aspen",
+    "email": "",
+    "resource_type": "Conference Room",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"Name\": \" padded \", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 0, \"resourceName\": \" padded \", \"Email\": false, \"resourceType\": \"Zo\\u00eb\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "0",
+    "name": " padded ",
+    "email": "False",
+    "resource_type": "Zo\u00eb",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"\", \"Name\": \"\", \"email\": 1.5, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "1.5",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \"Aspen\", \"email\": \"\", \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "Aspen",
+    "email": "",
+    "resource_type": "",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1.5, \"email\": \"aspen@resource.calendar.google.com\", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \"Zo\\u00eb\", \"type\": 1.5, \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"resourceId\": 0, \"Name\": \" padded \", \"email\": 0, \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "0",
+    "name": " padded ",
+    "email": "0",
+    "resource_type": "",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"name\": 1.5, \"type\": \"Huddle \\\"Pod\\\"\"}",
+   "model": {
+    "resource_id": "Zo\u00eb",
+    "name": "1.5",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \" padded \", \"email\": \" padded \", \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": " padded ",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1002, \"resourceName\": 0, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "0",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": 0, \"Name\": true}",
+   "model": {
+    "resource_id": "0",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Name\": \"Zo\\u00eb\", \"resourceType\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "Zo\u00eb",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1.5, \"resourceName\": \"Aspen\", \"email\": true, \"type\": \" padded \"}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "Aspen",
+    "email": "True",
+    "resource_type": " padded ",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1.5, \"name\": true, \"resourceEmail\": \"\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1001\", \"Email\": 1.5, \"resourceType\": 0, \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "1.5",
+    "resource_type": "0",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": null, \"Name\": \" padded \", \"email\": \"Zo\\u00eb\", \"resourceType\": 0, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "Zo\u00eb",
+    "resource_type": "0",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": true, \"Name\": \"\", \"Email\": \"\"}",
+   "model": {
+    "resource_id": "True",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\\u3000x\\u3000\", \"name\": \"Zo\\u00eb\", \"email\": false, \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "Zo\u00eb",
+    "email": "False",
+    "resource_type": "",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"name\": false, \"resourceEmail\": 0, \"type\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "0",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": null, \"name\": false, \"resourceType\": false, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "",
+    "resource_type": "False",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 0, \"name\": 0, \"Email\": \"\\u3000x\\u3000\", \"resourceType\": \"\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "0",
+    "name": "0",
+    "email": "\u3000x\u3000",
+    "resource_type": "",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \" padded \", \"resourceEmail\": true}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "",
+    "email": "True",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1001\", \"resourceName\": \"\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": null, \"name\": \"\\u3000x\\u3000\", \"resourceEmail\": \"aspen@resource.calendar.google.com\", \"resourceType\": \" padded \", \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": " padded ",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"email\": \"\\u3000x\\u3000\", \"type\": \"Conference Room\", \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Email\": 0, \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "0",
+    "resource_type": "\u3000x\u3000",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1002, \"name\": false, \"email\": 1.5, \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "False",
+    "email": "1.5",
+    "resource_type": "\u3000x\u3000",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"Name\": false}",
+   "model": {
+    "resource_id": "False",
+    "name": "False",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Name\": true, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"Name\": \"\", \"type\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"resourceName\": \" padded \", \"type\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "\u3000x\u3000",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"resourceName\": \"\\u3000x\\u3000\", \"email\": false, \"type\": null, \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "False",
+    "resource_type": "",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"Zo\\u00eb\", \"resourceName\": \" padded \", \"email\": true, \"resourceType\": true, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "Zo\u00eb",
+    "name": " padded ",
+    "email": "True",
+    "resource_type": "True",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \" padded \", \"resourceName\": 0, \"Email\": \"aspen@resource.calendar.google.com\", \"type\": \"Zo\\u00eb\", \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "0",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "Zo\u00eb",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": true, \"resourceName\": \"\\u3000x\\u3000\", \"resourceEmail\": \"\", \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "True",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"resourceName\": 1.5, \"resourceEmail\": \"Zo\\u00eb\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "1.5",
+    "email": "Zo\u00eb",
+    "resource_type": "",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"name\": \"\", \"email\": \" padded \", \"type\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": " padded ",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1001\", \"resourceEmail\": \"\\u3000x\\u3000\", \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": false}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"name\": \" padded \", \"type\": 1.5, \"buildingId\": true}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \" padded \", \"email\": 0}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "",
+    "email": "0",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"Email\": 0, \"resourceType\": \" padded \", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "",
+    "email": "0",
+    "resource_type": " padded ",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceName\": \"\", \"Email\": \"\\u3000x\\u3000\", \"resourceType\": \" padded \", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": " padded ",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"name\": \"\\u3000x\\u3000\", \"resourceType\": 0, \"buildingId\": null}",
+   "model": {
+    "resource_id": "False",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "0",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": false, \"Name\": null, \"Email\": \"\\u3000x\\u3000\", \"type\": 1.5}",
+   "model": {
+    "resource_id": "False",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \"\", \"Email\": 0, \"type\": false, \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "0",
+    "resource_type": "False",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"name\": 1.5, \"resourceEmail\": null, \"resourceType\": null, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "1.5",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": null, \"name\": \"Zo\\u00eb\", \"type\": \"\", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \" padded \", \"resourceName\": \"\\u3000x\\u3000\", \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": true}",
+   "model": {
+    "resource_id": " padded ",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "\u3000x\u3000",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"Email\": \"Zo\\u00eb\", \"type\": 0}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "Zo\u00eb",
+    "resource_type": "0",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"Name\": \"\\u3000x\\u3000\", \"Email\": 0, \"type\": false, \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "0",
+    "resource_type": "False",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"resourceName\": true, \"email\": null, \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": 1002, \"name\": true, \"email\": true, \"type\": \"Huddle \\\"Pod\\\"\", \"buildingId\": null}",
+   "model": {
+    "resource_id": "1002",
+    "name": "True",
+    "email": "True",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"resourceName\": true, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"name\": \"\", \"type\": false, \"buildingId\": true}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "False",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Name\": \"\", \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "True",
+    "name": "",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"resourceName\": \"Aspen\", \"email\": \"aspen@resource.calendar.google.com\", \"type\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "Aspen",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": 0, \"email\": null, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "0",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"Name\": true, \"type\": null}",
+   "model": {
+    "resource_id": "0",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": true, \"resourceName\": 0, \"buildingId\": false}",
+   "model": {
+    "resource_id": "True",
+    "name": "0",
+    "email": "",
+    "resource_type": "",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1001\", \"email\": \"\", \"type\": \" padded \", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "",
+    "resource_type": " padded ",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": 1002, \"resourceName\": \"\\u3000x\\u3000\", \"resourceEmail\": true}",
+   "model": {
+    "resource_id": "1002",
+    "name": "\u3000x\u3000",
+    "email": "True",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"resourceName\": \"\", \"resourceEmail\": false, \"type\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "False",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": 0, \"email\": true, \"resourceType\": \"\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "0",
+    "name": "",
+    "email": "True",
+    "resource_type": "",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": false, \"Email\": 1.5, \"type\": false, \"buildingId\": null}",
+   "model": {
+    "resource_id": "False",
+    "name": "",
+    "email": "1.5",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Name\": 0, \"resourceType\": \" padded \"}",
+   "model": {
+    "resource_id": "",
+    "name": "0",
+    "email": "",
+    "resource_type": " padded ",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"\", \"Email\": false, \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "False",
+    "resource_type": "",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"resourceId\": null, \"email\": \"\", \"buildingId\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"name\": false, \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"Name\": \" padded \", \"email\": \"aspen@resource.calendar.google.com\", \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"Name\": false, \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": true}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "",
+    "resource_type": "\u3000x\u3000",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": true, \"name\": true, \"Email\": \"Zo\\u00eb\", \"resourceType\": \"Huddle \\\"Pod\\\"\"}",
+   "model": {
+    "resource_id": "True",
+    "name": "True",
+    "email": "Zo\u00eb",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceName\": 1.5, \"Email\": \"aspen@resource.calendar.google.com\", \"type\": false, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "1.5",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": null, \"resourceEmail\": null, \"resourceType\": 1.5}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"\\u3000x\\u3000\", \"name\": \"Aspen\", \"resourceEmail\": \"\\u3000x\\u3000\", \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "Aspen",
+    "email": "\u3000x\u3000",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \"Zo\\u00eb\", \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": null, \"name\": null, \"email\": true, \"type\": 1.5, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "True",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1002, \"resourceName\": \" padded \", \"buildingId\": true}",
+   "model": {
+    "resource_id": "1002",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"resourceName\": \" padded \", \"resourceType\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"email\": \"\", \"buildingId\": true}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"resourceId\": 0, \"email\": \"\\u3000x\\u3000\", \"type\": \"Conference Room\", \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "0",
+    "name": "",
+    "email": "\u3000x\u3000",
+    "resource_type": "Conference Room",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\\u3000x\\u3000\", \"name\": \"Aspen\", \"email\": 1.5, \"type\": \"Zo\\u00eb\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "Aspen",
+    "email": "1.5",
+    "resource_type": "Zo\u00eb",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"resourceEmail\": \" padded \", \"resourceType\": \"\", \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": " padded ",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"name\": \"Birch Huddle, 2nd floor\", \"Email\": 1.5, \"type\": \"Zo\\u00eb\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Birch Huddle, 2nd floor",
+    "email": "1.5",
+    "resource_type": "Zo\u00eb",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"name\": true, \"resourceEmail\": 0, \"type\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "True",
+    "name": "True",
+    "email": "0",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1002}",
+   "model": {
+    "resource_id": "1002",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": null, \"Email\": \"\", \"type\": null, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Email\": 1.5, \"resourceType\": 1.5}",
+   "model": {
+    "resource_id": "True",
+    "name": "",
+    "email": "1.5",
+    "resource_type": "1.5",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": \"Aspen\", \"email\": \"aspen@resource.calendar.google.com\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Aspen",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\", \"resourceType\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": 1002, \"resourceName\": \" padded \", \"Email\": 1.5, \"type\": true, \"buildingId\": false}",
+   "model": {
+    "resource_id": "1002",
+    "name": " padded ",
+    "email": "1.5",
+    "resource_type": "True",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\\u3000x\\u3000\", \"name\": \" padded \", \"email\": null, \"resourceType\": \" padded \", \"buildingId\": false}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": " padded ",
+    "email": "",
+    "resource_type": " padded ",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Name\": null, \"Email\": \" padded \", \"type\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": " padded ",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": 1002, \"email\": \"Zo\\u00eb\", \"type\": \"Huddle \\\"Pod\\\"\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "",
+    "email": "Zo\u00eb",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"1001\", \"name\": false, \"resourceEmail\": \"\\u3000x\\u3000\", \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "1001",
+    "name": "False",
+    "email": "\u3000x\u3000",
+    "resource_type": "",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"name\": \" padded \", \"Email\": true, \"resourceType\": \"Conference Room\", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": " padded ",
+    "email": "True",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceName\": null, \"resourceEmail\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"1001\", \"Name\": \"Zo\\u00eb\", \"resourceType\": 1.5, \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "1001",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"\\u3000x\\u3000\", \"name\": 0, \"resourceType\": \"Conference Room\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "0",
+    "email": "",
+    "resource_type": "Conference Room",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"1001\", \"resourceEmail\": 1.5, \"resourceType\": false}",
+   "model": {
+    "resource_id": "1001",
+    "name": "",
+    "email": "1.5",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Name\": null, \"email\": false, \"buildingId\": false}",
+   "model": {
+    "resource_id": "Zo\u00eb",
+    "name": "",
+    "email": "False",
+    "resource_type": "",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1.5, \"name\": false, \"Email\": false, \"resourceType\": \" padded \", \"buildingId\": true}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "False",
+    "email": "False",
+    "resource_type": " padded ",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"name\": true, \"Email\": \" padded \", \"resourceType\": true, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": " padded ",
+    "resource_type": "True",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"type\": 0}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "0",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": null, \"resourceName\": \"Aspen\", \"resourceEmail\": 1.5, \"resourceType\": false, \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Aspen",
+    "email": "1.5",
+    "resource_type": "False",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"resourceName\": \"\\u3000x\\u3000\", \"resourceEmail\": false, \"resourceType\": 1.5, \"buildingId\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "False",
+    "resource_type": "1.5",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1002, \"name\": \" padded \", \"email\": null, \"resourceType\": 0, \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "1002",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "0",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"Name\": true, \"Email\": \"aspen@resource.calendar.google.com\", \"buildingId\": \" padded \"}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "",
+    "building_id": " padded "
+   }
+  },
+  {
+   "record": "{\"email\": true, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "True",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1002, \"resourceName\": \"Zo\\u00eb\", \"type\": true, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "Zo\u00eb",
+    "email": "",
+    "resource_type": "True",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"resourceId\": true, \"Name\": null, \"resourceType\": 0, \"buildingId\": 0}",
+   "model": {
+    "resource_id": "True",
+    "name": "",
+    "email": "",
+    "resource_type": "0",
+    "building_id": "0"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": false, \"resourceName\": false, \"type\": false, \"buildingId\": 1.5}",
+   "model": {
+    "resource_id": "False",
+    "name": "False",
+    "email": "",
+    "resource_type": "False",
+    "building_id": "1.5"
+   }
+  },
+  {
+   "record": "{\"Name\": true, \"email\": null, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Name\": \"\", \"resourceEmail\": false, \"type\": 1.5, \"buildingId\": \"id:hq\"}",
+   "model": {
+    "resource_id": "Zo\u00eb",
+    "name": "",
+    "email": "False",
+    "resource_type": "1.5",
+    "building_id": "id:hq"
+   }
+  },
+  {
+   "record": "{\"Name\": \"\\u3000x\\u3000\", \"resourceType\": false, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "",
+    "resource_type": "False",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"resourceName\": \"Birch Huddle, 2nd floor\", \"email\": true, \"resourceType\": \" padded \", \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "Birch Huddle, 2nd floor",
+    "email": "True",
+    "resource_type": " padded ",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": 1002, \"resourceName\": 1.5, \"resourceEmail\": \"aspen@resource.calendar.google.com\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "1.5",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Name\": \"Aspen\", \"email\": 1.5, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "True",
+    "name": "Aspen",
+    "email": "1.5",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"ResourceID\": \"\\u3000x\\u3000\", \"resourceName\": 1.5, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "\u3000x\u3000",
+    "name": "1.5",
+    "email": "",
+    "resource_type": "",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"name\": \"Zo\\u00eb\", \"Email\": false, \"resourceType\": \"Huddle \\\"Pod\\\"\", \"buildingId\": 0}",
+   "model": {
+    "resource_id": "True",
+    "name": "Zo\u00eb",
+    "email": "False",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": "0"
+   }
+  },
+  {
+   "record": "{\"Name\": false, \"type\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceType\": \"Huddle \\\"Pod\\\"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "Huddle \"Pod\"",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Name\": \"\\u3000x\\u3000\", \"email\": \"Zo\\u00eb\", \"resourceType\": \"\\u3000x\\u3000\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": "",
+    "name": "\u3000x\u3000",
+    "email": "Zo\u00eb",
+    "resource_type": "\u3000x\u3000",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"Name\": 0, \"buildingId\": null}",
+   "model": {
+    "resource_id": "",
+    "name": "0",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"Name\": \" padded \", \"type\": \"\", \"buildingId\": \"hq\"}",
+   "model": {
+    "resource_id": " padded ",
+    "name": " padded ",
+    "email": "",
+    "resource_type": "",
+    "building_id": "hq"
+   }
+  },
+  {
+   "record": "{\"resourceId\": \"Zo\\u00eb\", \"Name\": \"Zo\\u00eb\", \"email\": 0}",
+   "model": {
+    "resource_id": "Zo\u00eb",
+    "name": "Zo\u00eb",
+    "email": "0",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"resourceId\": null, \"Name\": 1.5, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "1.5",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"Email\": true, \"resourceType\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "True",
+    "resource_type": "False",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"type\": 1.5, \"buildingId\": \"Zo\\u00eb\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "",
+    "resource_type": "1.5",
+    "building_id": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"resourceEmail\": false, \"type\": \"Conference Room\", \"buildingId\": false}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "False",
+    "resource_type": "Conference Room",
+    "building_id": "False"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"resourceName\": true, \"resourceEmail\": null, \"buildingId\": true}",
+   "model": {
+    "resource_id": "1.5",
+    "name": "True",
+    "email": "",
+    "resource_type": "",
+    "building_id": "True"
+   }
+  },
+  {
+   "record": "{\"resourceName\": false, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "False",
+    "email": "",
+    "resource_type": "",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"name\": 0, \"resourceEmail\": \"aspen@resource.calendar.google.com\", \"type\": 0, \"buildingId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "resource_id": "",
+    "name": "0",
+    "email": "aspen@resource.calendar.google.com",
+    "resource_type": "0",
+    "building_id": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"resourceId\": 1002, \"Name\": \"Aspen\", \"email\": true, \"resourceType\": \"Conference Room\"}",
+   "model": {
+    "resource_id": "1002",
+    "name": "Aspen",
+    "email": "True",
+    "resource_type": "Conference Room",
+    "building_id": ""
+   }
+  },
+  {
+   "record": "{\"ResourceID\": null, \"Name\": \"\", \"email\": \"Zo\\u00eb\", \"resourceType\": null, \"buildingId\": \"\"}",
+   "model": {
+    "resource_id": "",
+    "name": "",
+    "email": "Zo\u00eb",
+    "resource_type": "",
+    "building_id": ""
+   }
+  }
  ]
 }
