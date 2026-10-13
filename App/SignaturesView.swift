@@ -30,13 +30,24 @@ struct SignaturesView: View {
         let person = people.first { $0.primaryEmail == personEmail }
         VStack(spacing: 0) {
             SignatureResult(changes: changes)
-            Form {
-                PersonSection(setup: setup, directory: directory, people: people, personEmail: $personEmail)
-                TemplateSection(template: $template, templates: templates)
-                previewSection(person: person)
-                SavedTemplatesSection(template: $template, templates: templates)
+            ScrollViewReader { scroller in
+                Form {
+                    PersonSection(setup: setup, directory: directory, people: people, personEmail: $personEmail)
+                        .id(Self.top)
+                    // What will change comes first, with Review and Replace, then the template that makes it.
+                    previewSection(person: person)
+                    TemplateSection(template: $template, templates: templates)
+                    SavedTemplatesSection(template: $template, templates: templates)
+                }
+                .formStyle(.grouped)
+                // The editor takes the keyboard when the screen opens, and AppKit scrolls the form down to it,
+                // past the preview. Back to the top once that has settled, and for each person chosen: what
+                // will change is what the screen is for. The editor keeps the keyboard.
+                .task(id: personEmail) {
+                    guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
+                    scroller.scrollTo(Self.top, anchor: .top)
+                }
             }
-            .formStyle(.grouped)
         }
         // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -108,27 +119,35 @@ struct SignaturesView: View {
     private func previewSection(person: GamUser?) -> some View {
         let drawnPerson = person.flatMap { $0.primaryEmail == drawn.person ? $0 : nil }
         let render = drawnPerson.map { Signature.render(drawn.template, for: $0) } ?? ""
+        let current = VStack(alignment: .leading, spacing: 4) {
+            Text("Current").font(.headline)
+            CurrentSignature(person: person, access: access)
+        }
+        let new = VStack(alignment: .leading, spacing: 4) {
+            Text("New").font(.headline)
+            if let drawnPerson, !drawn.template.isBlank {
+                // Rendered: what Gmail will hold (GAM's stored form). HTML: what GAM will be given.
+                SignaturePane(html: render, rendered: Signature.stored(render),
+                              label: "New signature for \(drawnPerson.fullName)",
+                              empty: "This renders empty for \(drawnPerson.fullName).")
+            } else {
+                Text(person == nil ? "Choose a person to preview." : "Write a template, or load a saved one.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: SignaturePane.standardHeight, alignment: .topLeading)
+            }
+        }
         return Section("Preview") {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Current").font(.headline)
-                    CurrentSignature(person: person, access: access)
+            // Side by side while each has room for a signature as wide as Gmail draws most; one above the
+            // other, each the full width, in a narrower window.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) {
+                    current.frame(minWidth: 0, idealWidth: Self.columnWidth, maxWidth: .infinity, alignment: .leading)
+                    new.frame(minWidth: 0, idealWidth: Self.columnWidth, maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("New").font(.headline)
-                    if let drawnPerson, !drawn.template.isBlank {
-                        // Rendered: what Gmail will hold (GAM's stored form). HTML: what GAM will be given.
-                        SignaturePane(html: render, rendered: Signature.stored(render),
-                                      label: "New signature for \(drawnPerson.fullName)",
-                                      empty: "This renders empty for \(drawnPerson.fullName).")
-                    } else {
-                        Text(person == nil ? "Choose a person to preview." : "Write a template, or load a saved one.")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-                    }
+                VStack(alignment: .leading, spacing: 16) {
+                    current.frame(maxWidth: .infinity, alignment: .leading)
+                    new.frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             }
             if let drawnPerson, !drawn.template.isBlank {
                 ForEach(SignatureChanges.warnings(template: drawn.template, render: render, for: drawnPerson), id: \.self) { warning in
@@ -152,6 +171,13 @@ struct SignaturesView: View {
             }
         }
     }
+
+    /// The screen's first section, scrolled to when it opens.
+    private static let top = "signatures.top"
+
+    /// The narrowest a preview stands beside the other: a typical signature (a name, a title, a phone and a
+    /// small logo) is about this wide in Gmail.
+    static let columnWidth: CGFloat = 380
 
     /// Why there's nothing to review yet, in words; nil when Review and Replace can go ahead.
     private func blocked(person: GamUser?) -> String? {
@@ -219,7 +245,7 @@ struct CurrentSignature: View {
                 SignaturePane(html: body, rendered: body, label: "Current signature of \(person.fullName)")
             case .failure(let problem)?:
                 Label(problem.summary, systemImage: "exclamationmark.triangle.fill")
-                    .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: SignaturePane.standardHeight, alignment: .topLeading)
             case nil:
                 Group {
                     if let problem = access.problem(for: person.primaryEmail) {
@@ -231,11 +257,11 @@ struct CurrentSignature: View {
                         Text("Not read.").foregroundStyle(.secondary)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: SignaturePane.standardHeight, alignment: .topLeading)
             }
         } else {
             Text("Choose a person to preview.").foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: SignaturePane.standardHeight, alignment: .topLeading)
         }
     }
 }
@@ -252,7 +278,7 @@ private struct TemplateSection: View {
     var body: some View {
         Section("Template") {
             SignatureEditor(text: $template, label: "Signature template, HTML")
-                .frame(minHeight: 150, idealHeight: 190)
+                .frame(minHeight: 240, idealHeight: 320)
             Text(Signature.variables.map { "\($0.token) \($0.description.lowercasedFirst)" }.joined(separator: " · "))
                 .font(.callout)
                 .foregroundStyle(.secondary)

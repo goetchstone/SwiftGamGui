@@ -588,7 +588,7 @@ private struct SignatureCard: View {
         Section("Gmail signature") {
             switch access.lists(for: user.primaryEmail)?.signature {
             case .success(let body)?:
-                SignaturePane(html: body, rendered: body, label: "Current signature of \(user.fullName)", height: 120)
+                SignaturePane(html: body, rendered: body, label: "Current signature of \(user.fullName)", height: 200)
             case .failure(let problem)?:
                 Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             case nil:
