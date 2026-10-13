@@ -122,6 +122,17 @@ public struct WriteStep: Sendable {
     var change: Change { Change(target: target, summary: rawSummary, risk: risk, argv: write.argv) }
 }
 
+/// A step prints, dumps and reflects as the operator sees it (`shownArgv`), never its raw argv: a held
+/// create carries a temporary password (invariant 4).
+extension WriteStep: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String { "WriteStep(\(action.rawValue), \(target): \(shownArgv.joined(separator: " ")))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["action": action, "target": target, "argv": shownArgv, "requires": requires,
+                                "newAccountFrom": newAccountFrom as Any], displayStyle: .struct)
+    }
+}
+
 extension WriteAction {
     /// The action in words, for the screen and VoiceOver ("Suspend user", not `suspendUser`).
     public var displayName: String {

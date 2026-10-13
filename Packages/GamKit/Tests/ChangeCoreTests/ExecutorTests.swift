@@ -370,6 +370,25 @@ final class ExecutorTests {
         #expect(echoed.contains("Command: gam create user") && !echoed.contains(temporary))
     }
 
+    /// A held step prints, dumps and reflects masked: a preview in a log line, a test failure or a debugger
+    /// never shows the temporary password its argv carries (invariant 4).
+    @Test func aHeldStepNeverPrintsItsSecret() async throws {
+        let executor = executor()
+        let secret = "Xk7m-Qp9r-2Tzv"
+        let step = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "Ada", lastName: "Byte", password: secret),
+                             target: "new@example.com", summary: "Create", secrets: [Secret(Data(secret.utf8))])
+        let preview = try await held(executor, [step])
+        var dumped = ""
+        dump(preview, to: &dumped)
+        var dumpedStep = ""
+        dump(step, to: &dumpedStep)
+        for text in [String(describing: step), String(reflecting: step), "\(step)", dumpedStep,
+                     String(describing: preview), String(reflecting: preview), dumped] {
+            #expect(!text.contains(secret), "\(text)")
+        }
+        #expect(String(describing: step).contains("new@example.com"), "still says what it is")
+    }
+
     // MARK: ChangeCore's review (each fails without its fix)
 
     /// Invariant 10: a model's or Siri's draft needs the operator's Confirm click, even for one LOW write.
