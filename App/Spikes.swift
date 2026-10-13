@@ -117,9 +117,19 @@ enum Spikes {
             fflush(stdout)
             exit(EXIT_FAILURE)
         }
-        // A sheet open over the window holds the quit until it ends (CI's group-sales-add hung, 2026-10-12);
-        // ended here, the app quits as it always does, wiping its runtime folder on the way out.
-        if let window, let attached = window.attachedSheet { window.endSheet(attached) }
+        // A sheet open over the window holds the quit until it ends (CI's group-sales-add hung, 2026-10-12): its
+        // field gives up the keyboard, the sheet ends, and the app quits as it always does, wiping its runtime
+        // folder on the way out. Should the quit still not finish, the run fails in words rather than hang.
+        if let window, let attached = window.attachedSheet {
+            attached.makeFirstResponder(nil)
+            window.endSheet(attached)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(10))
+            print("snapshot: the app didn't quit within 10 s of its picture")
+            fflush(stdout)
+            exit(EXIT_FAILURE)
+        }
         NSApp.terminate(nil)
     }
 
