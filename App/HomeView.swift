@@ -25,6 +25,11 @@ struct HomeView: View {
                     Text("GamGUI stopped while \(unfinished.count == 1 ? "this change was" : "these changes were") running. Check each in Google before running it again.")
                     ForEach(Array(unfinished.enumerated()), id: \.offset) { _, write in
                         Label("\(write.actionName) for \(write.target), started \(write.at)", systemImage: "questionmark.circle")
+                        // Onboarding's create (design D4): its one-time password was never shown.
+                        if write.action == WriteAction.createUser.rawValue {
+                            Text("If the account exists, its temporary password was never shown: set a new one in the Google Admin console.")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Button("Mark as Checked") { Task { await acknowledge() } }
                         .accessibilityHint("Records that you checked these changes in Google, so they stop showing here.")

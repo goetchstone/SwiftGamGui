@@ -2,6 +2,7 @@
 import Darwin
 import Foundation
 import GamEngine
+import TestSupport
 import Testing
 
 /// GamGUI's onboarding roles, read and never written (design doc D5): its own file, by descriptor as
@@ -90,6 +91,13 @@ struct GamGUIRolesTests {
         _ = try GamGUIRoles.read(url)
         #expect(try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date == before)
         #expect(listing() == ["onboarding.json"])
+    }
+
+    /// The demo's roles (the mock's GamGUI-format file, copied to a temporary folder at a demo launch) read.
+    @Test func theDemoRolesRead() throws {
+        let roles = try GamGUIRoles.read(Fixtures.mockGamData.appending(path: "onboarding.json"))
+        #expect(roles.roles.map(\.name) == ["Salesperson", "Warehouse"])
+        #expect(roles.roles[0].signature == "Classic" && roles.roles[1].steps.count == 3)
     }
 
     static var source: URL {

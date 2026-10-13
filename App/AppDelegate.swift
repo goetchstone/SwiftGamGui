@@ -11,6 +11,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// What quitting now would cut short (an onboarding run, or its wait for Google), asked at quit.
+    static var interruptible: (@MainActor () -> String?)?
+
+    /// Quitting mid-onboarding asks first: the rest wouldn't be applied, and the steps still waiting for
+    /// Google are lost (nothing is persisted to replay later).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let what = Self.interruptible?() else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = "\(what) Quit anyway?"
+        alert.informativeText = "The rest won't be applied."
+        alert.addButton(withTitle: "Don't Quit")
+        let quit = alert.addButton(withTitle: "Quit Anyway")
+        quit.hasDestructiveAction = true
+        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         GamRunner.stopAll()          // no gam keeps running against the tenant after we're gone
         EphemeralConfig.wipeAllLive()

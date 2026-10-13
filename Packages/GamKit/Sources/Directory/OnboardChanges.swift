@@ -665,7 +665,39 @@ public final class OnboardChanges {
         return (retry, steps)
     }
 
-    /// Back to the form for another hire. A wait for Google still going on keeps going.
+    #if DEBUG
+    /// Debug builds' screenshots only: a finished run's panel for `hire`, as if the account were made and its
+    /// signature and calendars were waiting for Google: the card with a seeded, made-up password, and the
+    /// wait going on. Nothing is held and no `gam` runs.
+    public func showDemoResult(hire: Hire, role: RoleTemplate, signatureTemplate: String?) {
+        var seeded = DemoGenerator()
+        let password = TemporaryPassword.generate(using: &seeded)
+        let plan = Self.plan(hire: hire, role: role, signatureTemplate: signatureTemplate, password: password).plan
+        let notReady = "GAM failed (unknown, exit=50): User: \(plan.email), User Set Failed: access_denied: Requested client not authorized"
+        let results: [RunOutcome.Step?] = plan.rows.map { row in
+            switch row.kind {
+            case .signature, .calendar: .waiting(message: notReady)
+            case .taskList: .succeeded(output: "MockTasklist_1")
+            default: .succeeded(output: "")
+            }
+        }
+        run = Run(plan: plan, isRetry: false, results: results, auditProblem: nil, notDone: [:], ended: true)
+        heldCard = Card(name: plan.name, email: plan.email, orgUnit: plan.orgUnit, password: password, unsure: false,
+                        signature: plan.signature.map { .waiting($0.template) } ?? .none, shownAt: now())
+        finishing = Finishing(email: plan.email, phase: .waiting, round: 1, rounds: waits.count, nextTryAt: now() + .seconds(40),
+                              waiting: results.count { $0?.isWaiting == true })
+    }
+
+    private struct DemoGenerator: RandomNumberGenerator {
+        var state: UInt64 = 0x5EED
+        mutating func next() -> UInt64 {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return state
+        }
+    }
+    #endif
+
+    /// Back to the form for another hire, once nothing is running or waiting.
     public func startAnother() {
         guard !isBusy else { return }
         discardPending()

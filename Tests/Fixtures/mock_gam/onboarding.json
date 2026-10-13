@@ -1,0 +1,33 @@
+{
+  "roles": {
+    "Salesperson": {
+      "steps": [
+        "Set up the CRM login",
+        "Order a laptop",
+        "Add to the team channel",
+        "Add to the sales group"
+      ],
+      "signature": "Classic",
+      "org_unit": "/Staff",
+      "groups": [
+        "sales@example.com",
+        "staff@example.com"
+      ],
+      "calendars": [
+        "team@group.calendar.google.com"
+      ],
+      "welcome": ""
+    },
+    "Warehouse": [
+      "Issue a badge",
+      "Safety induction",
+      "Locker and uniform"
+    ]
+  },
+  "welcomes": {
+    "Default": {
+      "subject": "Welcome to the team, {name}!",
+      "body": "Hi {name},\n\nWelcome aboard as our new {role}."
+    }
+  }
+}

@@ -30,6 +30,10 @@ struct AppServices {
     let groupMembers: GroupMembers
     /// Adding people to a group and removing a member, through the executor.
     let groupChanges: GroupChanges
+    /// One new hire, through the executor (slice O1).
+    let onboardChanges: OnboardChanges
+    /// The roles Onboard offers: GamGUI's, read only.
+    let onboardRoles: OnboardRoles
     /// Rooms, a person's calendars and who has access, read when a screen needs them.
     let calendarReads: CalendarReads
     /// Sharing a calendar with one person, and taking access away, through the executor.
@@ -53,12 +57,15 @@ struct AppServices {
         }
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
                         setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
-                        templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile))
+                        templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile),
+                        // GamGUI's roles file, built here at run time only (GamGUI's `paths.py`, `onboarding.py:47`).
+                        rolesFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json"))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
-                                 lastDomain: LastDomain = .userDefaults, extraEnvironment: [String: String] = [:]) -> AppServices {
+                                 rolesFile: URL, lastDomain: LastDomain = .userDefaults,
+                                 extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
         // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
@@ -80,6 +87,8 @@ struct AppServices {
                            groups: groups,
                            groupMembers: groupMembers,
                            groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
+                           onboardChanges: OnboardChanges(executor: executor, setup: setup, directory: directory),
+                           onboardRoles: OnboardRoles(file: rolesFile),
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
@@ -120,7 +129,19 @@ struct AppServices {
                         templates: SignatureTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-signatures-\(UUID().uuidString)"),
                             gamGUIFile: nil),
-                        lastDomain: .memory())
+                        rolesFile: demoRoles(beside: mock), lastDomain: .memory())
+    }
+
+    /// The demo's roles: the mock's GamGUI-format `onboarding.json`, copied into a fresh temporary folder
+    /// each launch, so Onboard never reads the operator's GamGUI roles. Without the mock, a file that isn't there.
+    private static func demoRoles(beside mock: URL?) -> URL {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roles-\(UUID().uuidString)")
+        let file = folder.appending(path: "onboarding.json")
+        if let source = mock?.deletingLastPathComponent().appending(path: "mock_gam/onboarding.json") {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try? FileManager.default.copyItem(at: source, to: file)
+        }
+        return file
     }
 
     /// `SWIFTGAMGUI_GAM_BINARY` when it is the mock: named `mock_gam.sh`, a regular file rather than a
