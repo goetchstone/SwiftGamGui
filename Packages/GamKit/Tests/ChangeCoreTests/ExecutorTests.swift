@@ -472,6 +472,27 @@ final class ExecutorTests {
         #expect(password.signatureBody == nil)
     }
 
+    /// What a screen shows of a step is GamGUI's `command_line`: each element quoted so its bounds show, a
+    /// value after a sensitive keyword masked, and GAM's own `password random` as it runs (`shownArgv`
+    /// masks it: it can't tell a keyword from a typed password). A secret is masked by value too. Display
+    /// only: nothing runs it, and it is the held argv, not a copy.
+    @Test func aStepsCommandLineIsGamGUIs() {
+        let reset = WriteStep(GamCommands.resetPassword(email: "a@example.com"), target: "a@example.com", summary: "Reset")
+        #expect(reset.shownArgv[4] == ArgvRedaction.mask)
+        #expect(reset.commandLine == "gam update user a@example.com password random changepassword off")
+        let vacation = WriteStep(GamCommands.setVacation(email: "a@example.com", subject: "Jane has left", message: "It's done"),
+                                 target: "a@example.com", summary: "Auto-reply")
+        #expect(vacation.commandLine == GamCommandLine.text(GamCommands.setVacation(email: "a@example.com", subject: "Jane has left",
+                                                                                      message: "It's done").argv))
+        #expect(vacation.commandLine.contains(" subject 'Jane has left' message \"It's done\" html "))
+        let typed = WriteStep(GamCommands.createUser(email: "n@example.com", firstName: "N", lastName: "U", password: "random",
+                                                     notify: "b@example.com"),
+                              target: "n@example.com", summary: "Create", secrets: [Secret(Data("random".utf8))])
+        #expect(!typed.commandLine.contains("random"), "a typed secret is masked even when it spells a keyword")
+        let sweep = WriteStep(GamCommands.removeAllCalendarACLs(email: "a@example.com"), target: "a@example.com", summary: "Sweep")
+        #expect(sweep.commandLine == "gam all users delete calendaracls primary a@example.com")
+    }
+
     /// GamGUI failure-log 2026-09-25: a preview stamped its tenant only when held, so what a screen read on
     /// one domain could be held for another. A preview names the tenant its reads began on, and one held
     /// after a switch (or a re-import) is refused, never held for the new one.
