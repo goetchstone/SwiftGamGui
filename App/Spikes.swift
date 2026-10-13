@@ -117,12 +117,15 @@ enum Spikes {
             fflush(stdout)
             exit(EXIT_FAILURE)
         }
-        // A sheet open over the window holds the quit until it ends (CI's group-sales-add hung, 2026-10-12): its
-        // field gives up the keyboard, the sheet ends, and the app quits as it always does, wiping its runtime
-        // folder on the way out. Should the quit still not finish, the run fails in words rather than hang.
-        if let window, let attached = window.attachedSheet {
-            attached.makeFirstResponder(nil)
-            window.endSheet(attached)
+        // With a sheet open, AppKit's quit didn't reliably finish, even with the sheet ended first (CI hung on
+        // group-sales-add, then on group-sales-remove, 2026-10-12 and 13). A captured sheet leaves by the quit's
+        // own backstops (AppDelegate.applicationWillTerminate), then exits. Any other quit that hangs fails in
+        // words rather than as a 60 s timeout.
+        if window?.attachedSheet != nil {
+            GamRunner.stopAll()
+            EphemeralConfig.wipeAllLive()
+            fflush(stdout)
+            exit(EXIT_SUCCESS)
         }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(10))
