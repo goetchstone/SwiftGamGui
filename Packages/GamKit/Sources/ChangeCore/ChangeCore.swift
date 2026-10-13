@@ -497,6 +497,9 @@ public actor Executor {
         parkedOrder.removeAll { $0 == handle.id }
     }
 
+    /// Tests: how many runs' waiting steps are held for a retry.
+    var parkedRuns: Int { parked.count }
+
     /// Design doc §6, GamGUI failure-log 2026-09-24: `gam delete user <alias>` deletes the account the alias
     /// belongs to. Each address a step deletes is resolved to its primary just before the run (a read),
     /// and one that resolves elsewhere is refused. No such user: GAM itself will say so.
