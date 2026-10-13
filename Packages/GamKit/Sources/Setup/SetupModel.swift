@@ -58,11 +58,12 @@ public final class SetupModel {
     public private(set) var reconnectFailure: ReconnectFailure?
     /// The launch's reconnect has been started, by whichever window appeared first.
     private var launchReconnectStarted = false
-    /// The admin the connected domain signs in as (its last passing check): who the audit says acted.
-    public var connectedAdmin: String? {
-        guard let active, let lastCheck, lastCheck.domain == active, lastCheck.result.isAuthorized else { return nil }
-        return lastCheck.admin
-    }
+    /// The admin the connected domain signs in as: the one its activating check passed for, kept until the
+    /// domain is forgotten. Who the audit says acted, and whom offboarding refuses as a leaver. A later check of
+    /// another domain, passing or failing, doesn't change it: it once read the last check, so a failed check of
+    /// another domain hid the connected one's admin (Off2's review, 2026-10-13).
+    public var connectedAdmin: String? { active == nil ? nil : activeAdmin }
+    private var activeAdmin: String?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.
@@ -263,7 +264,7 @@ public final class SetupModel {
             let result = try await runner.checkAccess(admin: admin, as: domain)
             lastCheck = CheckRecord(domain: domain, admin: admin, result: result)
             if result.isAuthorized {
-                activate(domain)
+                activate(domain, admin: admin)
                 activity = .done("Connected to \(domain) as \(admin).")
             } else {
                 activity = .problem(Self.summary(of: result))
@@ -327,9 +328,10 @@ public final class SetupModel {
         for observer in tenantObservers { observer() }
     }
 
-    private func activate(_ domain: Domain) {
+    private func activate(_ domain: Domain, admin: String) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
+        activeAdmin = admin
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -356,6 +358,7 @@ public final class SetupModel {
     private func forget(_ domain: Domain) {
         if active == domain {
             active = nil
+            activeAdmin = nil
             generation += 1
             tenantChanged()
         }

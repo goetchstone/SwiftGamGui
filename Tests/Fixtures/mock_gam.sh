@@ -314,11 +314,21 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   # INFOREFUSED: Google refuses the read (a missing scope or a rate limit), not "does not exist":
   # GAM's entityActionFailedWarning, ACTION_FAILED_RC, as signout_refused below.
   case "$3" in *INFOREFUSED*) printf 'User: %s, Show Failed: Not Authorized to access this resource/api\n' "$3" 1>&2; exit 50 ;; esac
-  case "$addr" in
-    alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
-    bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;
-    *) grep -F "\"primaryEmail\": \"$addr\"" "$GAM_MOCK_FIXTURES/print_users.json" || does_not_exist "User" "$3" ;;
-  esac
+  # An account suspended since the directory was read (the Admin console, another admin): with GAM_MOCK_STATE,
+  # $GAM_MOCK_STATE/suspended/<user> makes its record say so.
+  info_record() {
+    case "$1" in
+      alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
+      bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;
+      *) grep -F "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json" ;;
+    esac
+  }
+  record=$(info_record "$addr") || true
+  [ -n "$record" ] || does_not_exist "User" "$3"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/suspended/$addr" ]; then
+    record=$(printf '%s' "$record" | sed 's/"suspended": false/"suspended": true/')
+  fi
+  printf '%s\n' "$record"
   exit 0
 fi
 # `gam print group-members group <addr> formatjson` -> GAM's CSV, a `group` and a `JSON` column per member
@@ -1020,8 +1030,10 @@ fi
 # The stdout wording is GAM's shape from its source conventions, not captured from a tenant, and nothing
 # parses it. Before each part GAM says on stderr what it is getting (gam/__init__.py:74192, :74213, :74232; one
 # user, so no counter). A suspended user's backup codes aren't touched (checkUserSuspended, :74188,
-# :74222-74229): "Not Deprovisioned" with GAM's reason (glmsgs IS_SUSPENDED_NO_BACKUPCODES, read from the
-# build), ACTION_NOT_PERFORMED_RC (51) once the other parts have run.
+# :74220-74229): when they have codes, "Not Deprovisioned" with GAM's reason (glmsgs
+# IS_SUSPENDED_NO_BACKUPCODES, read from the build) and ACTION_NOT_PERFORMED_RC (51) once the other parts have
+# run; without codes nothing is said and it exits 0. Everyone has codes here (`show backupcodes`), except an
+# account marked $GAM_MOCK_STATE/nobackupcodes/<user>.
 if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "deprov" ]; }; then
   user="$2"; signout=""; shift 3
   while [ $# -gt 0 ]; do
@@ -1037,7 +1049,8 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "depr
   echo "User: $user, Application Specific Passwords: 0"
   printf 'Getting Backup Verification Codes for %s\n' "$user" 1>&2
   rc=0
-  if grep -F "\"primaryEmail\": \"$(lower "$user")\"" "$GAM_MOCK_FIXTURES/print_users.json" | grep -qF '"suspended": true'; then
+  if grep -F "\"primaryEmail\": \"$(lower "$user")\"" "$GAM_MOCK_FIXTURES/print_users.json" | grep -qF '"suspended": true' \
+     && ! { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nobackupcodes/$(lower "$user")" ]; }; then
     printf 'User: %s, Backup Verification Codes Not Deprovisioned: User is suspended. You must unsuspend to process backupcodes\n' "$user" 1>&2
     rc=51
   else

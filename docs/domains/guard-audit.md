@@ -173,5 +173,14 @@ with Off2b before the first live run):
   compared as `Guard.normalized`, checked in the executor, never only the sheet; the address must be one
   of the preview's targets (`aRoutineRunsOnlyWithItsAddressTyped`). Stricter than GamGUI.
 
+**Off2's adversarial review (2026-10-13)** found, after #59 merged and before any live run (failure-log
+2026-10-13, "offboarding could offboard its own admin"): a Stop before the first step was dropped (a run is now
+stoppable from the moment it's taken, `aStopAskedBeforeTheFirstStepRunsNothing`); a truncated stderr could be
+tolerated (`aTruncatedSweepIsNeverTolerated`); `kind` and `kinds` were indistinguishable to the tests
+(`aNarrowerToleranceReadsEveryLine`); a quit mid-step read as exit 15 and left nothing to check (`GamRunner.stop`
+now makes it a cancellation, and an interrupted end stays in `Executor.unfinished`: `anInterruptedStepIsStillToCheck`);
+a precondition's own error read as its type's name (`PreconditionFailure`); and the source scan matched only the
+literal `: false` (now any mention).
+
 ## Not built yet
 The §8 voice ticket (today the executor takes only an operator's confirmation).

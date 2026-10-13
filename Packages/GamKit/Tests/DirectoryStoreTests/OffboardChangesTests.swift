@@ -247,6 +247,10 @@ final class OffboardChangesTests {
         try await connect(admin: "carol@example.com")
         let reason = try await blocked(form())
         #expect(reason.contains("GamGUI is connected as carol@example.com"))
+        // Off2's review: a failed check of another domain once made the admin unknown, and this check then passed.
+        try await connect("example.org", admin: "partialdwd@example.org")
+        #expect(setup.active == Domain("example.com"))
+        #expect(try await blocked(form()).contains("GamGUI is connected as carol@example.com"))
     }
 
     /// GamGUI's route refuses these before reading anything: both addresses, a step ticked both ways,
@@ -424,6 +428,7 @@ final class OffboardChangesTests {
         await changes.confirm(plan, typed("carol@example.com"))
         await changes.confirm(shown, typed("carol@example.com"))
         #expect(writes().isEmpty && changes.run == nil)
+        #expect(changes.problem == nil, "a plan no longer shown is never sent to the executor")
     }
 
     /// `test_offboard_manager_already_a_delegate…` end to end (:1842): the delegate fails with GAM's line and stops the
@@ -456,14 +461,64 @@ final class OffboardChangesTests {
     /// The run checks again that both accounts are what the preview showed (stricter than GamGUI's list re-check):
     /// another primary address (an alias, a rename), a suspension or an admin role since then refuses it.
     @Test func theAccountsMustBeUnchangedSinceThePreview() {
-        func user(_ email: String, suspended: Bool = false, admin: Bool = false) -> GamUser {
-            GamUser(record: ["primaryEmail": .string(email), "suspended": .bool(suspended), "isAdmin": .bool(admin)])
+        func user(_ email: String, suspended: Bool = false, admin: Bool = false, delegated: Bool = false) -> GamUser {
+            GamUser(record: ["primaryEmail": .string(email), "suspended": .bool(suspended), "isAdmin": .bool(admin),
+                             "isDelegatedAdmin": .bool(delegated)])
         }
         let carol = user("carol@example.com")
         #expect(OffboardChanges.unchanged(user("Carol@Example.com"), since: carol))
         #expect(!OffboardChanges.unchanged(user("alice@example.com"), since: carol))
         #expect(!OffboardChanges.unchanged(user("carol@example.com", suspended: true), since: carol))
         #expect(!OffboardChanges.unchanged(user("carol@example.com", admin: true), since: carol))
+        #expect(!OffboardChanges.unchanged(user("carol@example.com", delegated: true), since: carol))
+    }
+
+    /// Off2's review: the run reads both accounts again and refuses, with nothing written, when either changed
+    /// since the plan: here suspended elsewhere (the Admin console) between the plan and the confirm.
+    @Test func anAccountChangedSinceThePlanRefusesTheRun() async throws {
+        try await connect()
+        for changed in ["carol@example.com", "alice@example.com"] {
+            let plan = try await plan(form())
+            try marker("suspended/\(changed)")
+            await changes.confirm(plan, typed("carol@example.com"))
+            #expect(changes.problem == "What the preview showed has changed since — preview again.", "\(changed)")
+            #expect(changes.run == nil)
+            try FileManager.default.removeItem(at: state.appending(path: "suspended/\(changed)"))
+        }
+        #expect(writes().isEmpty)
+    }
+
+    /// The preview is the routine's: confirmed with a click and the leaver typed, only `requires` stopping a step.
+    @Test func thePreviewIsTheRoutines() async throws {
+        try await connect()
+        let preview = try #require(try await plan(form()).preview)
+        #expect(!preview.stopsAtAccountWideFailure)
+        #expect(preview.typedAddress == "carol@example.com")
+        #expect(preview.needsConfirmClick)
+    }
+
+    /// Off2's review: the rest of a run can be the manager's reminder alone, which acts on nobody's account but the
+    /// manager's calendar: no address to type, and it runs (GamGUI runs it too).
+    @Test func theReminderAloneRunsWithoutAnAddressToType() async throws {
+        try await connect()
+        let plan = try await plan(form(done: Set(Offboarding.Step.allCases).subtracting([.reminder])))
+        #expect(plan.preview?.typedAddress == nil)
+        await changes.confirm(plan, OperatorConfirmation(confirmed: true))
+        #expect(changes.problem == nil, "\(changes.problem ?? "")")
+        #expect(changes.run?.isComplete == true)
+        #expect(writes() == lines(plan) && writes().count == 1)
+    }
+
+    /// One offboarding at a time: no new plan while a run goes on.
+    @Test func noNewPlanWhileOneRuns() async throws {
+        try await connect()
+        let plan = try await plan(form())
+        let running = Task { await changes.confirm(plan, typed("carol@example.com")) }
+        while !changes.isRunning { await Task.yield() }
+        await changes.plan(form(days: 9))
+        #expect(changes.problem == "An offboarding is running: wait for it to finish, then preview again.")
+        await running.value
+        #expect(changes.run?.isComplete == true)
     }
 
     /// Steps left out are said in the run's first audit record (GamGUI's `offboard_plan`), and only the sweep tolerates.

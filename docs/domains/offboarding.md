@@ -5,8 +5,8 @@ off forwarding, delegate and auto-reply the mailbox, transfer Drive and Calendar
 every active user's primary calendar, and a dated reminder on the manager's calendar, plus the separate,
 later account delete. Built (2026-10-13): **Off1**, the plan (exactly what GamGUI's offboarding runs for a
 leaver and a manager, every step's `gam` line); **templates** (native) that fill its form with the
-operator's routine; and **Off2**, the run, through ChangeCore. Its adversarial review comes before the first
-live run (L2). Next: **Off3**, the delete (below). GamGUI's runbook
+operator's routine; and **Off2**, the run, through ChangeCore, adversarially reviewed and fixed. Next: the live
+checks L1 and L2, then **Off3**, the delete (below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
 (2026-10-07, all eight steps ok) all carry over.
@@ -216,8 +216,14 @@ off, the manager's account switcher offers the mailbox, an outside sender gets t
 `completed`, a colleague's calendar no longer lists L, the reminder on M's calendar (and the invitee's
 email). Mark the README rows confirmed. A failed step: fix the cause, Preview the Rest (a new yes).
 
+**Off2's review (2026-10-13)** found the own-admin check failing open after another domain's failed check, a
+Stop before the first step dropped, a reminder-only rest that couldn't run, and gaps in the tests of the run-time
+re-check; all fixed with tests (failure-log 2026-10-13, "offboarding could offboard its own admin"). The admin
+is now the connected domain's own (`SetupModel`), required to plan and read again at the run; the address to type
+is the leaver's while a step acts on the leaver, none for the reminder alone; the run panel stays, with Stop, if
+the domain changes mid-run.
+
 ## Next
-- **The adversarial review of Off2** (the plan's §3.3 list), before L2.
 - **Off3:** the account delete, with GamGUI's pending-transfer warning plus a precondition.
 - More steps a template could offer, each new to both apps (no GamGUI argv to hold it to), so each needs
   the grammar read, a builder, the mock and a live check: remove from all groups, hide from the directory,

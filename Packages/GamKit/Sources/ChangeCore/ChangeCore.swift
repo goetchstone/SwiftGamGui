@@ -448,6 +448,13 @@ public actor Executor {
         // Taken before any await: two runs of one preview can't both get it.
         guard let taken = held.removeValue(forKey: preview.id) else { return .refused(Self.expired) }
         order.removeAll { $0 == preview.id }
+        // Stoppable from here, not only once its first step begins: a Stop asked during the checks below (the
+        // write lock, the precondition's reads) means none of its steps run (Off2's review, 2026-10-13).
+        executing.insert(taken.id)
+        defer {
+            executing.remove(taken.id)
+            stopRequests.remove(taken.id)
+        }
         guard now() - taken.createdAt <= Self.previewLifetime else { return .refused(Self.expired) }
         // Before anything is read again: nothing of this preview runs on another tenant, not even a read.
         guard await isCurrent(taken) else { return .refused(Self.switched) }
@@ -521,6 +528,11 @@ public actor Executor {
         // Taken before any await: two retries of one handle can't both get it.
         guard let state = parked.removeValue(forKey: handle.id) else { return .refused(Self.retrySpent) }
         parkedOrder.removeAll { $0 == handle.id }
+        executing.insert(state.preview.id)
+        defer {
+            executing.remove(state.preview.id)
+            stopRequests.remove(state.preview.id)
+        }
         guard state.round < Self.newAccountRounds, now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
         guard await isCurrent(state.preview) else { return .refused(Self.switched) }
         let again = state.preview.steps.indices.filter { state.results[$0].isWaiting }.map { state.preview.steps[$0] }
@@ -561,8 +573,9 @@ public actor Executor {
     }
 
     /// GamGUI's Stop: the step running finishes, with its end record, and no later step of `id` begins; they read
-    /// "Not run: stopped." Never cancels the step in flight (a sweep cut off mid-domain is worse than one that
-    /// finishes). False when `id` isn't running, as after it ended.
+    /// "Not run: stopped." Asked before the first step begins (the run is still checking), none runs. Never cancels
+    /// the step in flight (a sweep cut off mid-domain is worse than one that finishes). False when `id` isn't
+    /// running, as after it ended.
     public func stopAfterCurrentStep(_ id: UUID) -> Bool {
         guard executing.contains(id) else { return false }
         stopRequests.insert(id)
@@ -616,11 +629,6 @@ public actor Executor {
                          attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
         -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
-        executing.insert(preview.id)
-        defer {
-            executing.remove(preview.id)
-            stopRequests.remove(preview.id)
-        }
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
@@ -769,8 +777,9 @@ public actor Executor {
                 let message = Self.masked(error.message, secrets: secrets)
                 extra["error"] = .string(message)
                 extra["kind"] = .string(error.kind.rawValue)
-                // Every line tolerable, not just the worst (GamError.kinds): one real failure fails the sweep.
-                let tolerated = !step.tolerating.isEmpty && error.kinds.isSubset(of: step.tolerating)
+                // Every line tolerable, not just the worst (GamError.kinds): one real failure fails the sweep. And
+                // every line read: past the capture's cap a real failure may be among the lines dropped.
+                let tolerated = !step.tolerating.isEmpty && error.kinds.isSubset(of: step.tolerating) && !ran.stderrTruncated
                 if !step.tolerating.isEmpty {
                     extra["tolerated"] = .bool(tolerated)
                     // Counts by kind, never the lines: what the first live sweep tolerated, bounded (invariant 9).
@@ -880,8 +889,8 @@ public actor Executor {
 // MARK: outcome unknown
 
 extension Executor {
-    /// A write that began and never ended: the app quit or crashed mid-call (design doc §6). Shown on the
-    /// next launch as "outcome unknown — check", from the audit log alone.
+    /// A write that began and never ended, or ended cut off: the app quit or crashed mid-call (design doc §6).
+    /// Shown on the next launch as "outcome unknown — check", from the audit log alone.
     public struct Unfinished: Sendable, Equatable {
         public let action: String
         public let target: String
@@ -909,7 +918,9 @@ extension Executor {
             let attempt = extra["attempt"].flatMap { $0.int }
             let key = "\(preview)/\(step)/\(attempt ?? 1)"
             if phase == "end" {
-                ended.insert(key)
+                // An end that says the step was cut off (a quit) leaves its outcome unknown: still to check. One the
+                // operator marked as checked, written after it, closes it.
+                if extra["error"]?.string != interrupted || extra["acknowledged"]?.bool == true { ended.insert(key) }
             } else if phase == "begin", !ended.contains(key) {
                 found.append(Unfinished(action: record["action"]?.string ?? "", target: record["target"]?.string ?? "",
                                         at: record["ts"]?.string ?? "", preview: preview, step: step, attempt: attempt))
@@ -931,6 +942,13 @@ extension Executor {
     }
 }
 
+/// Why a preview's precondition couldn't check what it assumed (a read refused), in words the run's refusal
+/// carries: the precondition's own errors would otherwise read as their type's name.
+public struct PreconditionFailure: Error, Sendable {
+    public let reason: String
+    public init(_ reason: String) { self.reason = reason }
+}
+
 /// An error from below the executor, in words for the operator and the audit: never a secret (the
 /// Vault's and the runner's errors carry none) and never a status code alone.
 enum GamEngineMessage {
@@ -942,6 +960,7 @@ enum GamEngineMessage {
         case GamRunnerError.invalidArgument: "A value can't be passed to GAM."
         case let error as EphemeralConfig.Failure: "The private folder for GAM's credentials couldn't be set up (\(error))."
         case let error as POSIXError: error.localizedDescription
+        case let error as PreconditionFailure: error.reason
         default: "\(type(of: error))"
         }
     }

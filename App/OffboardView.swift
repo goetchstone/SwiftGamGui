@@ -645,6 +645,11 @@ private struct RunSection: View {
 
     var body: some View {
         Section {
+            if let elsewhere = changes.runElsewhere {
+                Label("This offboarding acts on \(elsewhere), not the domain connected now. It stops after the step "
+                      + "running.", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
             ForEach(Array(run.plan.runningRows.enumerated()), id: \.element.id) { index, row in
                 let status = StepStatus(result: run.results[index], running: !run.ended && index == done)
                 VStack(alignment: .leading, spacing: 2) {

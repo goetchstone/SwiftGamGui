@@ -275,18 +275,15 @@ final class CalendarChangesTests {
         #expect(try pending(changes).preview.steps.count == 2)
     }
 
-    /// D7: when the admin isn't known the check is skipped, and Google's own refusal is said in this screen's words,
-    /// not offboarding's ("expected for the departing user's own calendar").
-    @Test func googlesOwnAccessRefusalIsSaidInThisScreensWords() async throws {
-        try await connect()
-        try await connect("example.org", admin: "partialdwd@example.org")
-        #expect(setup.active == Domain("example.com") && setup.connectedAdmin == nil, "the admin isn't known")
-        let changes = changes()
-        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "admin@example.com", role: "reader")
-        await changes.confirm(try pending(changes), confirmed)
-        let problem = try problem(changes)
-        #expect(problem.summary == "Couldn't share the calendar with admin@example.com. \(CalendarSharing.ownAccessRefusal)")
-        #expect(problem.detail?.contains("Cannot change your own access level") == true)
+    /// D7: Google's own refusal (the acting account's own access) is said in this screen's words, not offboarding's
+    /// ("expected for the departing user's own calendar"). The screen's own check catches every case the mock
+    /// models, and the admin is always known while a domain is connected (Off2's review), so the words are held
+    /// here: they're what the operator reads if Google acts as an account the check didn't foresee.
+    @Test func googlesOwnAccessRefusalIsSaidInThisScreensWords() {
+        #expect(CalendarChanges.remediation(.ownACL) == CalendarSharing.ownAccessRefusal)
+        #expect(!CalendarSharing.ownAccessRefusal.contains("departing"))
+        #expect(CalendarChanges.remediation(.notFound) == GamError.Kind.notFound.remediation)
+        #expect(CalendarChanges.remediation(nil).isEmpty)
     }
 
     /// D5: a target who already has a rule is warned what changes; an owner grant is warned what owners can do.

@@ -1304,4 +1304,76 @@ final class ExecutorTests {
         #expect(preview.typedAddress == leaver)
         #expect(await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedAddresses: [" Carol@Example.com\n"])).succeeded)
     }
+    // MARK: Off2's review (2026-10-13)
+
+    /// A Stop asked while the run is still checking (here, in its precondition) means none of its steps run: it was
+    /// once dropped there, and every step ran.
+    @Test func aStopAskedBeforeTheFirstStepRunsNothing() async throws {
+        let executor = executor()
+        let id = Shared<UUID?>(nil), accepted = Shared(false)
+        let preview = try await executor.preview([suspend(), suspend("bob@example.com")], precondition: {
+            guard let held = id.value.withLock({ $0 }) else { return false }
+            let stopped = await executor.stopAfterCurrentStep(held)
+            accepted.value.withLock { $0 = stopped }
+            return true
+        }).get()
+        id.value.withLock { $0 = preview.id }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(accepted.value.withLock { $0 }, "the stop was taken while the run was checking")
+        #expect(outcome.steps == [.skipped(reason: Executor.stopped), .skipped(reason: Executor.stopped)])
+        #expect(ran().isEmpty && records.isEmpty)
+        #expect(await executor.stopAfterCurrentStep(preview.id) == false, "after the run")
+    }
+
+    /// Past the capture's cap a real failure may be among the lines dropped: a truncated stderr is never tolerated,
+    /// however benign the lines read.
+    @Test func aTruncatedSweepIsNeverTolerated() async throws {
+        // 128 bytes a line with its newline, so the cap (a power of two) cuts on a line boundary: what's kept reads
+        // as nothing but benign notices, and only the truncation says a line was dropped.
+        let tail = "@example.com, Calendar ACL: (Scope: user:carol@example.com), Delete Failed: Not Found"
+        let notice = "    Calendar: " + String(repeating: "x", count: 127 - 14 - tail.utf8.count) + tail
+        #expect(notice.utf8.count + 1 == 128 && GamRunner.outputCap % 128 == 0)
+        let lines = GamRunner.outputCap / 128 + 1_000
+        let gam = try fakeGam("yes '\(notice)' | head -n \(lines) 1>&2\necho 'ERROR: 403: Forbidden' 1>&2\nexit 50\n")
+        let executor = executor(gam: gam)
+        let outcome = await executor.run(try await held(executor, [sweep("carol@example.com")]), confirmation: confirmed)
+        guard case .failed = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+        #expect(records.last?["extra"]?.object?["tolerated"]?.bool == false)
+    }
+
+    /// Every line, not the worst one: a narrower tolerance than the sweep's (the preview admits one) fails when any
+    /// line is outside it, though the worst kind is inside it.
+    @Test func aNarrowerToleranceReadsEveryLine() async throws {
+        let gam = try fakeGam("""
+            printf '    Calendar: a@example.com, Calendar ACL: (Scope: user:carol@example.com), Delete Failed: Not Found\\n' 1>&2
+            printf '    Calendar: carol@example.com, Calendar ACL: (Scope: user:carol@example.com), Delete Failed: Cannot change your own access level.\\n' 1>&2
+            exit 50
+            """)
+        let executor = executor(gam: gam)
+        let narrow = WriteStep(GamCommands.removeAllCalendarACLs(email: "carol@example.com"), target: "carol@example.com",
+                               summary: "Sweep", tolerating: [.ownACL])
+        let outcome = await executor.run(try await held(executor, [narrow]), confirmation: confirmed)
+        guard case .failed = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+        let all = await executor.run(try await held(executor, [sweep("carol@example.com")]), confirmation: confirmed)
+        #expect(all.steps == [.succeeded(output: Executor.toleratedOutput)], "both kinds are the sweep's")
+    }
+
+    /// A step cut off mid-call (a quit) has an end record, but its outcome is unknown: Home and Audit list it to check
+    /// on the next launch, until the operator marks it checked.
+    @Test func anInterruptedStepIsStillToCheck() async throws {
+        let gam = try fakeGam("exec /bin/sleep 30\n")
+        let executor = executor(gam: gam)
+        let preview = try await held(executor, [suspend()])
+        let confirmation = confirmed
+        let run = Task { await executor.run(preview, confirmation: confirmation) }
+        while ran().isEmpty { try await Task.sleep(for: .milliseconds(20)) }
+        run.cancel()
+        let outcome = await run.value
+        #expect(outcome.steps == [.failed(message: Executor.interrupted, kind: nil)])
+        #expect(records.compactMap { $0["extra"]?.object?["phase"]?.string } == ["begin", "end"])
+        let open = Executor.unfinished(in: auditURL)
+        #expect(open.map(\.action) == ["suspendUser"])
+        try Executor.acknowledge(open, in: auditURL)
+        #expect(Executor.unfinished(in: auditURL).isEmpty)
+    }
 }
