@@ -43,12 +43,31 @@ A person's page, opened from Users: an Actions menu for what changes the account
 |---|---|---|
 | ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups, each with Remove, and a field to add one](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off, and their mail delegates](docs/screenshots/person-mail.png) |
 
+| Calendar | Security |
+|---|---|
+| ![A person's Calendar tab: who can see their calendar, each with Remove…, an access level and a field to share it](docs/screenshots/person-calendar.png) | ![A person's security: 2-step verification, admin roles and sign-out](docs/screenshots/person-security.png) |
+
 Groups: the domain's groups, and a group's members, owners first, with Add Members… and a Remove… for
 each member.
 
 | Groups | A group's page |
 |---|---|
 | ![Groups: the domain's groups by name and address](docs/screenshots/groups.png) | ![A group's page: its description, Add Members…, and its members, owners first, each with Remove… and a nested group with Show Group](docs/screenshots/group-sales.png) |
+
+Calendars: the rooms, and a person's calendars with who has access to each; a calendar is shared with a
+person, or their access taken away, from its page. Signatures: one person at a time, their current signature
+beside the new one, each rendered or as HTML.
+
+| Calendars | A person's calendars | Signatures |
+|---|---|---|
+| ![Calendars: the rooms, by name, address and kind](docs/screenshots/calendars.png) | ![A person's calendars, and Team Calendar's page: a field to share it, the access level, and who has access, each with Remove…](docs/screenshots/calendars-alice.png) | ![Signatures: the current signature and the new one from a saved template, each Rendered or HTML](docs/screenshots/signatures-alice.png) |
+
+Onboard: one new hire from a role, and the one-time sign-in card. Offboard: a leaver's offboarding from a
+saved template (Hand-over by default), and every step's exact command before it runs.
+
+| Onboard | The sign-in card | Offboard | Its plan |
+|---|---|---|---|
+| ![Onboard: the new hire, their role, its checklist, org unit, signature and groups](docs/screenshots/onboard.png) | ![The sign-in card after the account is made, made-up password, and each step's result](docs/screenshots/onboard-result.png) | ![Offboard: the template, the leaver and manager, and the steps, the lock's three marked Always runs](docs/screenshots/offboard.png) | ![The plan: each step, what it does and its exact gam command](docs/screenshots/offboard-plan.png) |
 
 Reports: the people behind each of the directory's counts, and the storage and mail usage. Audit: this app's
 audit log, searched, paged and exported to CSV.
