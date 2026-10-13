@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        Self.backstops()
+    }
+
+    /// What every way out of the app does last; a debug snapshot that can't quit through AppKit calls it too.
+    static func backstops() {
         GamRunner.stopAll()          // no gam keeps running against the tenant after we're gone
         EphemeralConfig.wipeAllLive()
         SignInCopy.clearLeftover()   // a copied sign-in card, before its two minutes are up

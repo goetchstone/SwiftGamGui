@@ -1804,6 +1804,8 @@ def offboarding_fixture(mock: Path) -> dict:
             "steps": steps, "effective_requires": requires, "fill_autoreply": fill, "command_line": command,
             "users": records, "check_addresses": check, "names": names, "compose_autoreply": compose,
             "delegate_warning": delegate}
+
+
 def onboarding_fixture(gam_error_cases: list) -> dict:
     """GamGUI's onboarding core (core/onboarding.py): the temporary password's alphabet and defaults,
     split_name, what provision_hire does for one hire (the calls it makes, in order, through a recording
