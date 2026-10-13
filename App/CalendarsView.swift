@@ -510,21 +510,22 @@ struct PersonCalendarSection: View {
                         Task { await changes.previewUnshareCalendar(user, rule: rule) }
                     }
                 }
-                // No visible label, as on Calendars' page: the grouped form's label column pushed the field past the
-                // smallest window's inspector (CI's narrow-person-calendar, 2026-10-13). VoiceOver keeps its name.
-                TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
-                    .labelsHidden()
-                    .onSubmit(share)
-                    .accessibilityLabel("Share \(calendarName) with (email)")
-                HStack {
+                // The role on its own row, then the address with Share beside it: the person page's other add fields'
+                // shape (Groups, Mail). A field alone in its row was laid out 452 pt wide, past the inspector in
+                // every window (CI's person-calendar and narrow-person-calendar, 2026-10-13).
+                LabeledContent("Access") {
                     Picker("Access", selection: $role) {
                         ForEach(CalendarSharing.pickerRoles, id: \.role) { choice in
                             Text(choice.label).tag(choice.role.rawValue)
                         }
                     }
-                    .fixedSize()
+                    .labelsHidden()
                     .accessibilityLabel("Access to give")
-                    Spacer()
+                }
+                HStack {
+                    TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
+                        .onSubmit(share)
+                        .accessibilityLabel("Share \(calendarName) with (email)")
                     Button("Share…", action: share)
                         .disabled(target.trimmingCharacters(in: .whitespaces).isEmpty || changes.isBusy)
                         .accessibilityLabel("Share \(calendarName)")

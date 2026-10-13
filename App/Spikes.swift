@@ -165,7 +165,14 @@ enum Spikes {
                   !inTable(control) else { return nil }
             let frame = control.convert(control.bounds, to: content)
             guard frame.width > 0, frame.minX < bounds.minX - 1 || frame.maxX > bounds.maxX + 1 else { return nil }
+            // The containers it sits in and their widths, nearest first, so the one wider than its pane is named.
+            var chain: [String] = [], ancestor = control.superview
+            while let next = ancestor, next !== content, chain.count < 10 {
+                chain.append("\(type(of: next)) \(Int(next.frame.width))")
+                ancestor = next.superview
+            }
             return "\(type(of: control)) from x \(Int(frame.minX)) to \(Int(frame.maxX)), the window \(Int(bounds.width)) wide"
+                + " (in \(chain.joined(separator: " < ")))"
         }
     }
 
