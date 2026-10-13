@@ -127,6 +127,10 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Put a shared calendar in their list (Calendars) | argv-identical |
 | Share their own calendar (Users) | argv-identical |
 | Remove someone's access to a calendar (Calendars, Users) | GamGUI's command, which GamGUI never ran live either |
+| Create an account (Onboard) | argv-identical |
+| Task checklist: a task list and its tasks (Onboard) | argv-identical |
+| Subscribe to a calendar (Onboard) | argv-identical |
+| New-account wait: retrying what Google wasn't ready for (Onboard) | never run live (in GamGUI either) |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.
