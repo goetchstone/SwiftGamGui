@@ -36,7 +36,9 @@ struct AppServices {
     let calendarChanges: CalendarChanges
     /// Offboarding's read-only plan (Off1): no executor, so it can't run anything.
     let offboardChanges: OffboardChanges
-    /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
+    /// The storage and mail usage report, read when Reports first shows it.
+    let usage: UsageStore
+    /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
     let siriDrafts = SiriDrafts()
@@ -84,6 +86,7 @@ struct AppServices {
                            // Its own reader: the leaver's delegates are read live, never from a page's lists.
                            offboardChanges: OffboardChanges(setup: setup, directory: directory,
                                                             access: UserAccess(setup: setup, runner: runner)),
+                           usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }
 
@@ -99,6 +102,9 @@ struct AppServices {
             try? store.write(Data(#"{"client_email": "gam@demo.iam.gserviceaccount.com"}"#.utf8), as: .oauth2Service, for: domain)
             try? store.write(Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8), as: .oauth2, for: domain)
         }
+        let auditURL = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl")
+        // The Audit screen's picture: example records, written fresh in the temporary folder, never the real log.
+        if Screen.initial == .audit { DemoAudit.write(to: auditURL) }
         let mock = mockGam()
         if let mock {
             setenv("GAM_MOCK_FIXTURES", mock.deletingLastPathComponent().appending(path: "mock_gam").path, 0)
@@ -109,7 +115,7 @@ struct AppServices {
         }
         return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
                         setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"),
-                        auditURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl"),
+                        auditURL: auditURL,
                         // A fresh folder each launch, never the operator's templates, and no copy from GamGUI.
                         templates: SignatureTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-signatures-\(UUID().uuidString)"),

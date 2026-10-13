@@ -91,9 +91,24 @@ public final class AuditLog: Sendable {
     // MARK: reading
 
     /// The records newest-first, across every kept generation, skipping blank and malformed lines.
-    /// Every generation is opened before any is read: a roll landing mid-read renames them all, and a
-    /// reader resolving paths lazily would read one twice and skip another.
     public static func records(at url: URL, limit: Int? = nil) -> [JSONObject] {
+        var found: [JSONObject] = []
+        forEachRecord(at: url) { record in
+            found.append(record)
+            return limit.map { found.count < $0 } ?? true
+        }
+        return found
+    }
+
+    /// A line longer than this is skipped unread: neither app writes a record near it (a signature is masked),
+    /// and a log with no line breaks would otherwise be held in memory whole (invariant 9).
+    public static let maximumLineBytes = 1 << 20
+
+    /// Each record, newest-first, across every kept generation, skipping blank, malformed and overlong lines,
+    /// until `body` returns false. Only the line being read is held, so a reader that keeps a page holds a page.
+    /// Every generation is opened before any is read: a roll landing mid-read renames them all, and a reader
+    /// resolving paths lazily would read one twice and skip another.
+    public static func forEachRecord(at url: URL, _ body: (JSONObject) throws -> Bool) rethrows {
         var handles: [Int32] = [], seen: Set<[UInt64]> = []
         defer { handles.forEach { close($0) } }
         for candidate in [url] + (1...retainedGenerations).map({ rolled(url, $0) }) {
@@ -106,15 +121,13 @@ public final class AuditLog: Sendable {
             }
             handles.append(fd)
         }
-        var found: [JSONObject] = []
         for fd in handles {
-            for line in linesBackwards(fd) {
-                guard let record = decode(line) else { continue }
-                found.append(record)
-                if let limit, found.count >= limit { return found }
+            let more = try linesBackwards(fd) { line in
+                guard let record = decode(line) else { return true }
+                return try body(record)
             }
+            if !more { return }
         }
-        return found
     }
 
     /// A record, or nil for a blank or malformed line.
@@ -124,9 +137,10 @@ public final class AuditLog: Sendable {
         return JSONValue.parse(text)?.object
     }
 
-    /// The file's lines, last first, read backwards from the end in chunks: readers want the newest few.
-    static func linesBackwards(_ fd: Int32, chunk: Int = 64 * 1024) -> [String] {
-        var lines: [String] = [], head: [UInt8] = []
+    /// The file's lines, last first, read backwards from the end in chunks (readers want the newest few), until
+    /// `body` returns false; false then. A line past `maximumLineBytes` is dropped as it is read, never assembled.
+    static func linesBackwards(_ fd: Int32, chunk: Int = 64 * 1024, _ body: (String) throws -> Bool) rethrows -> Bool {
+        var head: [UInt8] = [], overlong = false
         var position = Int(lseek(fd, 0, SEEK_END))
         while position > 0 {
             let step = min(chunk, position)
@@ -135,11 +149,23 @@ public final class AuditLog: Sendable {
             let got = buffer.withUnsafeMutableBytes { pread(fd, $0.baseAddress, step, off_t(position)) }
             guard got == step else { break }
             var parts = (buffer + head).split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: false)
+            if overlong {
+                // The chunk's last part is more of the overlong line (its head was dropped): it ends here or goes on.
+                parts.removeLast()
+                if parts.isEmpty { continue }
+                overlong = false
+            }
             head = Array(parts.removeFirst())
-            for part in parts.reversed() { lines.append(String(decoding: part, as: UTF8.self)) }
+            for part in parts.reversed() {
+                if try !body(String(decoding: part, as: UTF8.self)) { return false }
+            }
+            if head.count > maximumLineBytes {
+                head = []
+                overlong = true
+            }
         }
-        if !head.isEmpty { lines.append(String(decoding: head, as: UTF8.self)) }
-        return lines
+        if !head.isEmpty { return try body(String(decoding: head, as: UTF8.self)) }
+        return true
     }
 
     // MARK: Python's forms

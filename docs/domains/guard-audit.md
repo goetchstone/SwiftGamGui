@@ -110,6 +110,10 @@ Two small additions, each a test that failed first (`ExecutorTests`):
   stamped the tenant only at hold time (its failure-log 2026-09-25), and Signatures' "Put Back
   Previous" holds a body read earlier (`aPreviewReadOnAnotherTenantIsRefused`).
 
+## The Audit screen reads the log
+The reader streams (`forEachRecord`) and skips a line past 1 MiB; the Audit screen pages, filters and exports
+the log as GamGUI does, a page held at a time. See [audit-reports.md](audit-reports.md).
+
 ## Not built yet
 The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
 operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.

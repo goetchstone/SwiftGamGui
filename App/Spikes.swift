@@ -41,6 +41,8 @@ enum Spikes {
                     await services.directory.load()
                     if Screen.initial == .groups { await services.groups.load() }
                     if Screen.initial == .calendars { await services.calendarReads.load(.rooms) }
+                    // Reports' usage row (`SWIFTGAMGUI_SELECT=usage`): the mock's report, read before the picture.
+                    if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "usage" { await services.usage.load() }
                 } else {
                     await setup.checkAccess(Domain("example.org")!)
                 }
@@ -121,6 +123,18 @@ enum Spikes {
         let outside = controlsOutsideTheWindow(in: content)
         if !outside.isEmpty {
             print("snapshot: a control reaches past the window's edge, so the page is clipped: \(outside.joined(separator: "; "))")
+            fflush(stdout)
+            exit(EXIT_FAILURE)
+        }
+        // A page whose minimum height passes the window's own grows the window, past the screen, and AppKit then
+        // draws only part of it (Audit, 2026-10-13: a fixedSize text measured at the zero width the page may take).
+        // The window's minimum counts its toolbar, which the content runs under; the page's doesn't.
+        let toolbar = content.frame.height - (window?.contentLayoutRect.height ?? content.frame.height)
+        if let window, window.contentMinSize.height - toolbar > ColumnWidths.windowMinHeight + 1 {
+            print("snapshot: the page needs \(Int(window.contentMinSize.height - toolbar)) points of height below the "
+                  + "toolbar, past the window's own minimum of \(Int(ColumnWidths.windowMinHeight)) (the window is "
+                  + "\(Int(window.frame.height)) tall): a view's minimum height, such as text fixed to its height at the "
+                  + "page's zero minimum width")
             fflush(stdout)
             exit(EXIT_FAILURE)
         }

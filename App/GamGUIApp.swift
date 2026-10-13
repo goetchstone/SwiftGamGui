@@ -36,6 +36,8 @@ enum Screen: String, CaseIterable, Identifiable {
     case calendars = "Calendars"
     case signatures = "Signatures"
     case offboard = "Offboard"
+    case reports = "Reports"
+    case audit = "Audit"
     case setup = "Setup"
 
     var id: Self { self }
@@ -48,6 +50,8 @@ enum Screen: String, CaseIterable, Identifiable {
         case .calendars: "calendar"
         case .signatures: "signature"
         case .offboard: "person.badge.minus"
+        case .reports: "chart.bar.doc.horizontal"
+        case .audit: "list.bullet.clipboard"
         case .setup: "key"
         }
     }
@@ -72,6 +76,9 @@ enum ColumnWidths {
     static let sidebar = (min: 150.0, ideal: 170.0, max: 190.0)
     static let inspector = (min: 320.0, ideal: 360.0, max: 400.0)
     static let windowMin = 920.0
+    /// The window's own minimum height. A page never asks for more (the snapshots hold it): a taller minimum
+    /// grows the window past the screen.
+    static let windowMinHeight = 520.0
 }
 
 struct ContentView: View {
@@ -81,6 +88,8 @@ struct ContentView: View {
     @State private var signaturesPerson: String?
     /// The person Calendars opens on when Users sends it one.
     @State private var calendarsPerson: String?
+    /// The person Users opens on when another screen sends it one (Reports' Show in Users).
+    @State private var usersPerson: String?
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -111,6 +120,7 @@ struct ContentView: View {
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
                           access: services.userAccess, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                          requested: $usersPerson,
                           openSignatures: { email in
                               signaturesPerson = email
                               screen = .signatures
@@ -135,6 +145,15 @@ struct ContentView: View {
             case .offboard:
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges)
                     .navigationTitle("Offboard")
+            case .reports:
+                ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
+                    usersPerson = email
+                    screen = .users
+                }
+                .navigationTitle("Reports")
+            case .audit:
+                AuditView(auditURL: services.auditURL)
+                    .navigationTitle("Audit")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")
@@ -160,7 +179,7 @@ struct ContentView: View {
         .onChange(of: services.directory.problem) { _, problem in
             if let problem { announce("Couldn't load the directory. \(problem.summary)") }
         }
-        .frame(minWidth: ColumnWidths.windowMin, minHeight: 520)
+        .frame(minWidth: ColumnWidths.windowMin, minHeight: ColumnWidths.windowMinHeight)
         .task {
             // Local and credential-free.
             if let gam = services.gam {

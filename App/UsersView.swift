@@ -16,6 +16,8 @@ struct UsersView: View {
     let drafts: SiriDrafts
     /// Who can see a person's primary calendar (the Calendar tab).
     let calendarReads: CalendarReads
+    /// A person another screen asked to open (Reports' Show in Users), cleared once their page is open.
+    @Binding var requested: String?
     /// Opens Signatures for a person (the Mail tab's "Change Signature…").
     let openSignatures: (String) -> Void
     /// Opens Calendars for a person (the Calendar tab's "Show Their Calendars…").
@@ -35,6 +37,7 @@ struct UsersView: View {
     var body: some View {
         content
             .task(id: directory.users?.count ?? 0) { selectForSnapshot() }
+            .task(id: "\(requested ?? "")#\(directory.users?.count ?? -1)") { openRequested() }
             // Waits for the directory: Siri can open the app before it has connected and loaded.
             .task(id: "\(drafts.titleChange?.id.uuidString ?? "")#\(directory.users?.count ?? -1)#\(appearsActive)#\(editorOpen)") {
                 await draftFromSiri()
@@ -127,6 +130,15 @@ struct UsersView: View {
         case .none:
             notify("No one in the directory matches “\(request.person)”.")
         }
+    }
+
+    /// Another screen's person: their page opens, the list cleared if it hid them. Waits for the directory.
+    private func openRequested() {
+        guard let email = requested, let users = directory.users else { return }
+        requested = nil
+        guard let user = users.first(where: { $0.primaryEmail == email }) else { return }
+        if !filter.apply([user]).contains(where: { $0.id == user.id }) { filter = UserFilter() }
+        select(user.id)
     }
 
     /// Shown under the list (or in place of it), and spoken each time, even when it repeats.
