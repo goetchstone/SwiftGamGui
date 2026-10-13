@@ -118,13 +118,13 @@ struct SignaturePreviewSheet: View {
             Section(pending.isPutBack ? "Their previous signature, to set again" : "New") {
                 SignaturePane(html: pending.body, rendered: Signature.stored(pending.body),
                               label: "\(pending.isPutBack ? "Previous" : "New") signature for \(pending.person.fullName)",
-                              empty: "Empty: confirming clears their signature.", height: 170)
+                              empty: "Empty: confirming clears their signature.")
             }
             if !pending.isPutBack {
                 Section("Current") {
                     if let previous = pending.previous {
                         SignaturePane(html: previous.body, rendered: previous.body,
-                                      label: "Current signature of \(pending.person.fullName)", height: 120)
+                                      label: "Current signature of \(pending.person.fullName)", height: 200)
                     } else {
                         Text("Their current signature wasn't read, so it can't be put back afterwards.")
                             .foregroundStyle(.secondary)
@@ -156,7 +156,7 @@ struct SignaturePreviewSheet: View {
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 520, minHeight: 560)
+        .frame(minWidth: 640, idealWidth: 760, minHeight: 680, idealHeight: 820)
         .interactiveDismissDisabled(running)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

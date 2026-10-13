@@ -130,7 +130,9 @@ struct SignaturePane: View {
     let label: String
     /// Said in place of an empty signature.
     var empty = "No signature set."
-    var height: CGFloat = 150
+    var height: CGFloat = SignaturePane.standardHeight
+    /// Tall enough for a signature with a logo and four lines to show whole, as it reads in Gmail.
+    static let standardHeight: CGFloat = 260
     @State private var mode = Mode.rendered
     @State private var failed = false
 
