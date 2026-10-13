@@ -9,7 +9,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   records the full keyword arguments and either the argv or the error.
   Tests/Fixtures/gam_errors.json  GamGUI's classification, message and scrubbing of failed GAM runs
                                   (core/gam/errors.py) over its own and generated stderr, with the
-                                  Unicode tables its regexes use.
+                                  Unicode tables its regexes use. GAM's progress lines are read as GAM
+                                  writes them, which GamGUI's rule isn't (gam_progress); each case it
+                                  reads differently keeps its reading too.
   Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
                                   property tests' JSON/CSV shapes and noise, and the inputs its
                                   failure log names. CSV is read in GAM's dialect, which GamGUI's
@@ -116,6 +118,32 @@ def gam_reader():
         parser.csv = frozen
 
 
+# GAM 7.48.22's progress lines (show_gettings, on by default): every one its printers write starts with
+# Msg.GETTING or Msg.GOT and a count (gam/__init__.py:2681-2722, the page counts :2736-2763), and no error it
+# writes starts with "Getting " (those start "ERROR:", "WARNING:" or an entity's name).
+GAM_PROGRESS = r"(Getting |Got \d+ )"
+
+
+@contextlib.contextmanager
+def gam_progress():
+    """GamGUI's GAMError reading GAM's progress lines as GAM writes them: its errors module's _PROGRESS_LINE
+    swapped, in memory only, for GAM_PROGRESS. Frozen GamGUI knows only "Getting all " and "Got <n> ", so a
+    per-entity line ("Getting Reports for all users", "Getting Group sales@example.com (1/3)") reads as an
+    unknown failure that outranks the real one beside it (failure-log 2026-10-13, "GAM's progress read as an
+    error"). The Swift GamError reads it as progress; gam_errors.json is generated with this and keeps frozen
+    GamGUI's reading beside each case where the two differ."""
+    import re
+
+    from gamgui.core.gam import errors
+
+    frozen = errors._PROGRESS_LINE
+    errors._PROGRESS_LINE = re.compile(GAM_PROGRESS)
+    try:
+        yield frozen
+    finally:
+        errors._PROGRESS_LINE = frozen
+
+
 def gam_dialect_in_build(blob: bytes, code) -> None:
     """Refuse a GAM build that may not write its CSV as GAM_DIALECT says, read from the build the way its
     exit codes are: setDialect's constants (quotes doubled, a backslash escape unless noEscapeChar, then
@@ -219,9 +247,11 @@ def ranges(predicate) -> list:
 
 
 def errors_fixture() -> dict:
-    """GamGUI's GAMError.from_run over GAM's known stderr lines and their case, indent and counter
-    variants, mixed stderrs, progress chatter and instructions, timeouts, missing-scope lines, echoed
-    passwords, Unicode and boundary edges, and seeded random text: what the Swift GamError must say."""
+    """GamGUI's GAMError.from_run, reading GAM's progress lines as GAM writes them (gam_progress), over GAM's
+    known stderr lines and their case, indent and counter variants, mixed stderrs, progress chatter in each
+    shape GAM prints it and instructions, timeouts, missing-scope lines, echoed passwords, Unicode and
+    boundary edges, and seeded random text: what the Swift GamError must say. A case frozen GamGUI reads
+    differently also holds its reading, as `gamgui`: a missed progress line is the only difference."""
     import random
     import re
     import unicodedata
@@ -230,12 +260,26 @@ def errors_fixture() -> dict:
     from gamgui.core.gam.errors import _REMEDIATION, _SEVERITY, ACCOUNT_WIDE_KINDS, GAMError
     from tests.test_props_errors import _KNOWN, _gam_usage_error
 
-    def run(exit_code, stderr, argv=None, stdout=""):
-        err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
-        return {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
-                "kind": err.kind.value, "kinds": sorted(k.value for k in err.kinds), "message": err.message,
-                "scrubbed_stderr": err.stderr, "scrubbed_stdout": err.stdout, "redacted_argv": err.argv,
+    def read(err) -> dict:
+        return {"kind": err.kind.value, "kinds": sorted(k.value for k in err.kinds), "message": err.message,
                 "remediation_suffix": err.remediation[len(_REMEDIATION[err.kind]):]}
+
+    def run(exit_code, stderr, argv=None, stdout=""):
+        frozen = read(GAMError.from_run(exit_code, stderr, argv, stdout=stdout))
+        with gam_progress() as frozen_rule:
+            err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
+            ours = read(err)
+            case = {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
+                    "kind": ours["kind"], "kinds": ours["kinds"], "message": ours["message"],
+                    "scrubbed_stderr": err.stderr, "scrubbed_stdout": err.stdout, "redacted_argv": err.argv,
+                    "remediation_suffix": ours["remediation_suffix"]}
+        if frozen != {k: case[k] for k in frozen}:
+            missed = [line for line in (raw.strip() for raw in stderr.splitlines())
+                      if re.match(GAM_PROGRESS, line) and not frozen_rule.match(line)]
+            if not missed:   # nothing else was swapped: a missed progress line is the only difference
+                raise SystemExit(f"the two progress rules differ without a line GamGUI misses: {stderr[:80]!r}")
+            case["gamgui"] = frozen
+        return case
 
     cases = []
     known = [line for line, _ in _KNOWN]
@@ -257,6 +301,38 @@ def errors_fixture() -> dict:
         cases.append(run(1, extra))
     cases.append(run(1, ""))
     cases.append(run(1, "\n".join(chatter)))
+    # GAM's progress in each shape its printers write (gam/__init__.py:2681-2722), with the per-entity counter
+    # where they print one (currentCountNL), alone and before a real failure, as GAM lays them out (an
+    # "ERROR:" line after a blank one), and in case and position variants GAM never writes, which are errors.
+    # Frozen GamGUI misses every "Getting <item> …" line (gam_progress).
+    progress = [
+        ("Getting all Users, may take some time on a large Google Workspace Account...", False),
+        ("Got 3 Groups", False),
+        ("Getting all Users in the Organizational Unit for /Sales, may take some time on a large "
+         "Organizational Unit...", True),
+        ("Got 12 Users in the Organizational Unit for /Sales", False),
+        ("Getting Group sales@example.com", True),
+        ("Getting Reports for all users", True),
+        ("Getting Access Tokens for alice@example.com", True),
+        ("Getting Calendars for carol@example.com", True),
+        ("Getting Application Specific Password IDs for dave@example.com", True),
+    ]
+    failures = [("User: alice@example.com, Gmail Service/App not enabled", 73),
+                ("User: bob@example.com, Service not applicable/Does not exist", 50),
+                ("ERROR: 404: Resource Not Found: groupKey - notFound", 1),
+                ("ERROR: 403: forbidden - insufficientPermissions", 1),
+                ("ERROR: 403: Request had insufficient authentication scopes", 1),
+                ("ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden", 61)]
+    for line, counted in progress:
+        for counter in (("", " (2/4)") if counted else ("",)):
+            cases.append(run(1, line + counter + "\n"))
+            for lookalike in (str.upper, str.lower, "User: alice@example.com, {}".format):
+                cases.append(run(1, lookalike(line + counter) + "\n"))
+            for failure, code in failures:
+                blank = "\n" if failure.startswith("ERROR:") else ""
+                cases.append(run(code, line + counter + "\n" + blank + failure + "\n"))
+    # A page count as GAM writes it with show_gettings_got_nl off (:5260-5271, :5620-5623).
+    cases.append(run(1, "Getting Reports for all users\n\rGot 3 Reports for all users on 2026-06-16...\r\n"))
     for stderr in ("", known[0], "\n".join(known)):
         cases.append(run(None, stderr, stdout="the table"))
     for code in (0, 2, 10, 16, 50, 73, -9, 255):

@@ -87,7 +87,7 @@ per-call `EphemeralConfig`, then this runner, then the wipe. Details in [secrets
 `GamError.swift` ports GamGUI's `core/gam/errors.py`: a failed run's kind (which drives the remediation
 and whether a bulk loop stops), its kinds per line, the message, and GAM's output and argv with echoed
 secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: GamGUI's own
-`GAMError.from_run` over 1,773 stderrs.
+`GAMError.from_run` over 1,958 stderrs.
 - **The fixture's sources:**
   - GAM's known lines in case, indent and counter variants, and every pair of them
   - progress chatter and GAM's instructions
@@ -103,6 +103,15 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
   classification (2026-09-23), per-user `invalid_grant` before the expired sign-in (2026-09-23), the
   credentials file before not-found (2026-09-23), 403 before not-found and the entity counter
   (2026-09-24), the service-account instructions (2026-10-01).
+- **GAM's progress lines are not errors, and here parity is deliberately broken.** Every line GAM's
+  progress printers write starts "Getting " or "Got <n> " (`gam/__init__.py:2681-2722`, on by default), and
+  no error does. Frozen GamGUI's `_PROGRESS_LINE` knows only "Getting all " and "Got <n> ", so it reads a
+  per-entity line ("Getting Reports for all users", "Getting Group sales@… (1/3)") as an unknown failure
+  that outranks the real one (failure-log 2026-10-13, "GAM's progress read as an error").
+  - `gen_fixtures.py`'s `gam_progress` widens GamGUI's rule in memory to generate the fixture.
+    `gam_errors.json` keeps frozen GamGUI's reading (`gamgui`) beside the 71 cases where it differs, and
+    `GamErrorTests` holds that list to those missed lines.
+  - The mock prints the progress of `report users` and `deprovision` on stderr, as GAM does.
 - `stdout` is kept for a caller that reads it (`check serviceaccount`'s table) and is never in the
   message, the description or a dump.
 - **Fixed in PR #5's review:**

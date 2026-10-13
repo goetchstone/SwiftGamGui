@@ -148,11 +148,18 @@ public struct GamError: Error, Equatable, Sendable {
         Kind.bySeverity.first(where: kinds.contains) ?? .unknown
     }
 
-    /// GAM's progress chatter on stderr (gam.cfg `show_gettings`, on by default): "Getting all Users,
-    /// may take some time…", "Got 150 Users: …". Not an error line.
+    /// GAM's progress chatter on stderr (gam.cfg `show_gettings`, on by default): a line that starts
+    /// "Getting " or "Got <n> ", as each of GAM's printers writes it (`gam/__init__.py:2681-2722`, the page
+    /// counts :2736-2763): "Getting all Users, may take some time…", "Getting Reports for all users",
+    /// "Getting Group sales@example.com (1/3)", "Got 150 Users: …". Not an error line: no error GAM writes
+    /// starts "Getting " (they start "ERROR:", "WARNING:" or an entity's name).
+    /// **Wider than GamGUI's** `_PROGRESS_LINE` ("Getting all " or "Got <n> "), which reads a per-entity
+    /// "Getting …" line as an unknown failure that outranks the real one beside it: a refused report showed
+    /// "Getting Reports for all users" (failure-log 2026-10-13). The fixture keeps GamGUI's reading of each
+    /// case where they differ.
     static func isProgress(_ line: String) -> Bool {
         let scalars = Array(line.unicodeScalars)
-        if scalars.starts(with: "Getting all ".unicodeScalars) { return true }
+        if scalars.starts(with: "Getting ".unicodeScalars) { return true }
         guard scalars.starts(with: "Got ".unicodeScalars) else { return false }
         let digits = scalars.dropFirst(4).prefix(while: PythonText.isDecimal)
         return !digits.isEmpty && scalars.dropFirst(4 + digits.count).first == " "

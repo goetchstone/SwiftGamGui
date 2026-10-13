@@ -4,8 +4,10 @@ import Testing
 import TestSupport
 
 /// GamGUI parity for failed runs (invariant 11): every case in `Tests/Fixtures/gam_errors.json`,
-/// generated from frozen GamGUI's `GAMError.from_run`, gets the same kind, kinds, message, masked
-/// output, masked argv and named scopes. Compared as bytes. The fixture is never edited to pass.
+/// generated from GamGUI's `GAMError.from_run`, gets the same kind, kinds, message, masked output, masked
+/// argv and named scopes. Compared as bytes. The fixture is never edited to pass. It is generated with
+/// GamGUI's progress rule widened to GAM's own progress lines (`gen_fixtures.py`'s `gam_progress`); a case
+/// frozen GamGUI reads differently also holds its reading (`gamgui`), the deviation held narrow below.
 @Suite("GAM errors")
 struct GamErrorTests {
     struct Case: Decodable {
@@ -19,6 +21,15 @@ struct GamErrorTests {
         let scrubbed_stderr: String
         let scrubbed_stdout: String
         let redacted_argv: [String]?
+        let remediation_suffix: String
+        let gamgui: Frozen?
+    }
+
+    /// How frozen GamGUI reads a case, where it differs.
+    struct Frozen: Decodable {
+        let kind: String
+        let kinds: [String]
+        let message: String
         let remediation_suffix: String
     }
 
@@ -57,6 +68,90 @@ struct GamErrorTests {
                     "remediation: \(label)")
         }
         #expect(document.cases.count > 1500)
+    }
+
+    /// GAM's per-entity progress line that frozen GamGUI's `_PROGRESS_LINE` ("Getting all " or "Got <n> ")
+    /// misses: "Getting Reports for all users", "Getting Group sales@… (1/3)".
+    static func gamGUIMisses(_ line: String) -> Bool {
+        line.unicodeScalars.starts(with: "Getting ".unicodeScalars) && !line.unicodeScalars.starts(with: "Getting all ".unicodeScalars)
+    }
+
+    /// The one deliberate difference from frozen GamGUI (failure-log 2026-10-13, "GAM's progress read as an
+    /// error"): it reads GAM's per-entity "Getting …" lines as unknown failures. Each listed case has such a
+    /// line, GamGUI's reading counts it unknown and differs from ours, and the list is a small share.
+    @Test func theDeviationsFromGamGUIAreOnlyItsMissedProgressLines() {
+        var deviations = 0
+        for item in document.cases {
+            guard let frozen = item.gamgui else { continue }
+            deviations += 1
+            let label = item.stderr.debugDescription
+            #expect(PythonText.lines(item.stderr).map { PythonText.strip($0) }.contains(where: Self.gamGUIMisses), "\(label)")
+            #expect(frozen.kinds.contains("unknown"), "GamGUI read the progress line as unknown: \(label)")
+            #expect(frozen.kind != item.kind || frozen.kinds != item.kinds || Self.bytes(frozen.message) != Self.bytes(item.message)
+                    || Self.bytes(frozen.remediation_suffix) != Self.bytes(item.remediation_suffix), "\(label)")
+        }
+        #expect(deviations > 0 && deviations < document.cases.count / 10)
+    }
+
+    /// Each shape GAM's progress printers write (`gam/__init__.py:2681-2722`, the page counts :2736-2763),
+    /// with the per-entity counter where they print one. None is an error line.
+    static let progress = [
+        "Getting all Users, may take some time on a large Google Workspace Account...",
+        "Got 3 Groups",
+        "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)",
+        "Got 12 Users in the Organizational Unit for /Sales",
+        "Getting Group sales@example.com (1/3)",
+        "Getting Reports for all users",
+        "Getting Access Tokens for alice@example.com",
+        "Getting Calendars for carol@example.com (2/4)",
+        "Got 3 Reports for all users on 2026-06-16...",
+        "Got 1 Group: sales@example.com - sales@example.com",
+    ]
+
+    @Test(arguments: progress)
+    func eachProgressShapeIsProgress(line: String) {
+        #expect(GamError.isProgress(line))
+        let error = GamError(exitCode: 1, stderr: line + "\n")
+        #expect(error.kind == .unknown && error.kinds == [.unknown] && Self.bytes(error.message) == Self.bytes("GAM failed (unknown, exit=1)"),
+                "nothing reported: \(error.message)")
+    }
+
+    /// A real failure after a progress line keeps its own kind, remediation and message. Read as frozen
+    /// GamGUI reads it, the progress line was an unknown failure that outranked each of these.
+    @Test(arguments: [
+        ("Getting Calendars for carol@example.com (2/4)\nUser: carol@example.com, Calendar Service/App not enabled (2/4)\n",
+         GamError.Kind.serviceNotEnabled, "User: carol@example.com, Calendar Service/App not enabled (2/4)"),
+        ("Getting Group sales@example.com (1/3)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+         .notFound, "User: bob@example.com, Service not applicable/Does not exist"),
+        ("Getting Reports for all users\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+         .permissionDenied, "ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden"),
+        ("Getting Access Tokens for alice@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+         .serviceNotEnabled, "User: alice@example.com, Gmail Service/App not enabled"),
+    ])
+    func aRealFailureAfterProgressKeepsItsKind(stderr: String, kind: GamError.Kind, line: String) {
+        let error = GamError(exitCode: 50, stderr: stderr)
+        #expect(error.kind == kind)
+        #expect(error.kinds == [kind])
+        #expect(Self.bytes(error.message) == Self.bytes("GAM failed (\(kind.rawValue), exit=50): \(line)"))
+    }
+
+    /// Only GAM's own words at the line's start are progress: an entity line that mentions getting, a
+    /// lowercase or shouted "getting", a count that isn't a number.
+    @Test(arguments: [
+        "User: alice@example.com, Getting Reports for all users",
+        "ERROR: Getting Reports for all users failed",
+        "getting Reports for all users",
+        "GETTING Reports for all users",
+        "Gettings for all users",
+        "Getting",
+        "Got Users",
+        "Got 5Users",
+        "got 5 Users",
+        "Gotten 5 Users",
+    ])
+    func lookalikesAreNotProgress(line: String) {
+        #expect(!GamError.isProgress(line))
+        #expect(Self.bytes(GamError(exitCode: 1, stderr: line).message) == Self.bytes("GAM failed (unknown, exit=1): \(line)"))
     }
 
     @Test func theOrderAndSetsAreGamGUIs() {

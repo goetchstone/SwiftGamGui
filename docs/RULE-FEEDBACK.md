@@ -22,6 +22,24 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-13 — Parity held the error reader to GamGUI's misreading of GAM, a second time
+- **What happened:** `GamError`, held to `gam_errors.json`, read GAM's per-entity progress lines
+  ("Getting Reports for all users") as unknown failures, as frozen GamGUI does, so a refused report
+  showed that line instead of the refusal. Found by reading GAM's source while building the calendar
+  reads (failure-log 2026-10-13, "GAM's progress read as an error").
+- **Invariant in force:** #11 (GamGUI parity is a test), with the "mock lies" rule.
+- **Why it didn't hold:** the same shape as 2026-10-10's CSV escapes (see that entry): the oracle reads
+  GAM wrongly. Every progress line in the fixture was one of the two shapes GamGUI's tests use, and the
+  mock printed the one per-entity line it had on stdout, in words GAM never writes. The fix reused that entry's path unchanged: an in-memory swap in the
+  generator and a `gamgui` field per deviating case, held narrow by a test. The first workaround went into
+  one feature's code (the Calendars branch's `GettingLines`), not the shared reader.
+- **Would a rule have caught it?** only if enforced differently: the generator could build its inputs
+  from GAM's own strings as well as GamGUI's (every `Msg` a progress or error printer writes, read from
+  the vendored build). A second occurrence makes the 2026-10-10 proposal (a line in #11 that a deviation
+  is a documented, tested list) stronger, not different.
+- **Enforcement home if changed:** tripwire test (the deviation list held narrow, as both fixtures now
+  do); for `improve-rules`, the #11 wording 2026-10-10 proposed.
+
 ## 2026-10-10 — The template store departs from GamGUI where GamGUI loses data (D2's quarantine)
 - **What happened:** porting GamGUI's signature store (S1b), its `_load` showed the starters over a
   corrupt or unreadable file, and its next save replaced that file: the operator's templates were gone

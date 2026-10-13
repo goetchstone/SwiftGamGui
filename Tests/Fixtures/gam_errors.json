@@ -23682,6 +23682,2899 @@
    "remediation_suffix": ""
   },
   {
+   "exit_code": 1,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING ALL USERS, MAY TAKE SOME TIME ON A LARGE GOOGLE WORKSPACE ACCOUNT...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING ALL USERS, MAY TAKE SOME TIME ON A LARGE GOOGLE WORKSPACE ACCOUNT...",
+   "scrubbed_stderr": "GETTING ALL USERS, MAY TAKE SOME TIME ON A LARGE GOOGLE WORKSPACE ACCOUNT...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting all users, may take some time on a large google workspace account...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting all users, may take some time on a large google workspace account...",
+   "scrubbed_stderr": "getting all users, may take some time on a large google workspace account...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting all Users, may take some time on a large Google Workspace Account...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting all Users, may take some time on a large Google Workspace Account...",
+   "scrubbed_stderr": "User: alice@example.com, Getting all Users, may take some time on a large Google Workspace Account...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting all Users, may take some time on a large Google Workspace Account...\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 3 Groups\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Got 3 Groups\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GOT 3 GROUPS\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GOT 3 GROUPS",
+   "scrubbed_stderr": "GOT 3 GROUPS\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "got 3 groups\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): got 3 groups",
+   "scrubbed_stderr": "got 3 groups\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Got 3 Groups\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Got 3 Groups",
+   "scrubbed_stderr": "User: alice@example.com, Got 3 Groups\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Got 3 Groups\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Got 3 Groups\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Got 3 Groups\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Got 3 Groups\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 3 Groups\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Got 3 Groups\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 3 Groups\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Got 3 Groups\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 3 Groups\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Got 3 Groups\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Got 3 Groups\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Got 3 Groups\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT...",
+   "scrubbed_stderr": "GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting all users in the organizational unit for /sales, may take some time on a large organizational unit...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting all users in the organizational unit for /sales, may take some time on a large organizational unit...",
+   "scrubbed_stderr": "getting all users in the organizational unit for /sales, may take some time on a large organizational unit...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...",
+   "scrubbed_stderr": "User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit...\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT... (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT... (2/4)",
+   "scrubbed_stderr": "GETTING ALL USERS IN THE ORGANIZATIONAL UNIT FOR /SALES, MAY TAKE SOME TIME ON A LARGE ORGANIZATIONAL UNIT... (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting all users in the organizational unit for /sales, may take some time on a large organizational unit... (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting all users in the organizational unit for /sales, may take some time on a large organizational unit... (2/4)",
+   "scrubbed_stderr": "getting all users in the organizational unit for /sales, may take some time on a large organizational unit... (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting all Users in the Organizational Unit for /Sales, may take some time on a large Organizational Unit... (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GOT 12 USERS IN THE ORGANIZATIONAL UNIT FOR /SALES\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GOT 12 USERS IN THE ORGANIZATIONAL UNIT FOR /SALES",
+   "scrubbed_stderr": "GOT 12 USERS IN THE ORGANIZATIONAL UNIT FOR /SALES\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "got 12 users in the organizational unit for /sales\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): got 12 users in the organizational unit for /sales",
+   "scrubbed_stderr": "got 12 users in the organizational unit for /sales\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Got 12 Users in the Organizational Unit for /Sales\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Got 12 Users in the Organizational Unit for /Sales",
+   "scrubbed_stderr": "User: alice@example.com, Got 12 Users in the Organizational Unit for /Sales\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Got 12 Users in the Organizational Unit for /Sales\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Group sales@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING GROUP SALES@EXAMPLE.COM\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING GROUP SALES@EXAMPLE.COM",
+   "scrubbed_stderr": "GETTING GROUP SALES@EXAMPLE.COM\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting group sales@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting group sales@example.com",
+   "scrubbed_stderr": "getting group sales@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Group sales@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Group sales@example.com",
+   "scrubbed_stderr": "User: alice@example.com, Getting Group sales@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Group sales@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Group sales@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Group sales@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Group sales@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Group sales@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Group sales@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING GROUP SALES@EXAMPLE.COM (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING GROUP SALES@EXAMPLE.COM (2/4)",
+   "scrubbed_stderr": "GETTING GROUP SALES@EXAMPLE.COM (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting group sales@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting group sales@example.com (2/4)",
+   "scrubbed_stderr": "getting group sales@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Group sales@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Group sales@example.com (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting Group sales@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Group sales@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Group sales@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Group sales@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Group sales@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Reports for all users\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING REPORTS FOR ALL USERS\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING REPORTS FOR ALL USERS",
+   "scrubbed_stderr": "GETTING REPORTS FOR ALL USERS\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting reports for all users\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting reports for all users",
+   "scrubbed_stderr": "getting reports for all users\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Reports for all users\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Reports for all users",
+   "scrubbed_stderr": "User: alice@example.com, Getting Reports for all users\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Reports for all users\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Reports for all users\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Reports for all users\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Reports for all users\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Reports for all users\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Reports for all users\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING REPORTS FOR ALL USERS (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING REPORTS FOR ALL USERS (2/4)",
+   "scrubbed_stderr": "GETTING REPORTS FOR ALL USERS (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting reports for all users (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting reports for all users (2/4)",
+   "scrubbed_stderr": "getting reports for all users (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Reports for all users (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Reports for all users (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting Reports for all users (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Reports for all users (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Reports for all users (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Reports for all users (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Reports for all users (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM",
+   "scrubbed_stderr": "GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting access tokens for alice@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting access tokens for alice@example.com",
+   "scrubbed_stderr": "getting access tokens for alice@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Access Tokens for alice@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Access Tokens for alice@example.com",
+   "scrubbed_stderr": "User: alice@example.com, Getting Access Tokens for alice@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Access Tokens for alice@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Access Tokens for alice@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Access Tokens for alice@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Access Tokens for alice@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM (2/4)",
+   "scrubbed_stderr": "GETTING ACCESS TOKENS FOR ALICE@EXAMPLE.COM (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting access tokens for alice@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting access tokens for alice@example.com (2/4)",
+   "scrubbed_stderr": "getting access tokens for alice@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Access Tokens for alice@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Access Tokens for alice@example.com (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting Access Tokens for alice@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Access Tokens for alice@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING CALENDARS FOR CAROL@EXAMPLE.COM\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING CALENDARS FOR CAROL@EXAMPLE.COM",
+   "scrubbed_stderr": "GETTING CALENDARS FOR CAROL@EXAMPLE.COM\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting calendars for carol@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting calendars for carol@example.com",
+   "scrubbed_stderr": "getting calendars for carol@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Calendars for carol@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Calendars for carol@example.com",
+   "scrubbed_stderr": "User: alice@example.com, Getting Calendars for carol@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Calendars for carol@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Calendars for carol@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Calendars for carol@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Calendars for carol@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING CALENDARS FOR CAROL@EXAMPLE.COM (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING CALENDARS FOR CAROL@EXAMPLE.COM (2/4)",
+   "scrubbed_stderr": "GETTING CALENDARS FOR CAROL@EXAMPLE.COM (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting calendars for carol@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting calendars for carol@example.com (2/4)",
+   "scrubbed_stderr": "getting calendars for carol@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Calendars for carol@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Calendars for carol@example.com (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting Calendars for carol@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Calendars for carol@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING APPLICATION SPECIFIC PASSWORD IDS FOR DAVE@EXAMPLE.COM\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING APPLICATION SPECIFIC PASSWORD ***redacted*** FOR DAVE@EXAMPLE.COM",
+   "scrubbed_stderr": "GETTING APPLICATION SPECIFIC PASSWORD ***redacted*** FOR DAVE@EXAMPLE.COM\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting application specific password ids for dave@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting application specific password ***redacted*** for dave@example.com",
+   "scrubbed_stderr": "getting application specific password ***redacted*** for dave@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Application Specific Password IDs for dave@example.com\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Application Specific Password ***redacted*** for dave@example.com",
+   "scrubbed_stderr": "User: alice@example.com, Getting Application Specific Password ***redacted*** for dave@example.com\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Application Specific Password ***redacted*** for dave@example.com",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "GETTING APPLICATION SPECIFIC PASSWORD IDS FOR DAVE@EXAMPLE.COM (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): GETTING APPLICATION SPECIFIC PASSWORD ***redacted*** FOR DAVE@EXAMPLE.COM (2/4)",
+   "scrubbed_stderr": "GETTING APPLICATION SPECIFIC PASSWORD ***redacted*** FOR DAVE@EXAMPLE.COM (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "getting application specific password ids for dave@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): getting application specific password ***redacted*** for dave@example.com (2/4)",
+   "scrubbed_stderr": "getting application specific password ***redacted*** for dave@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 1,
+   "stderr": "User: alice@example.com, Getting Application Specific Password IDs for dave@example.com (2/4)\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1): User: alice@example.com, Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+   "scrubbed_stderr": "User: alice@example.com, Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": ""
+  },
+  {
+   "exit_code": 73,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "service_not_enabled",
+   "kinds": [
+    "service_not_enabled"
+   ],
+   "message": "GAM failed (service_not_enabled, exit=73): User: alice@example.com, Gmail Service/App not enabled",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "service_not_enabled",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=73): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 50,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=50): User: bob@example.com, Service not applicable/Does not exist",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=50): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=1): ERROR: 404: Resource Not Found: groupKey - notFound",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=1): ERROR: 403: forbidden - insufficientPermissions",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "scope_missing",
+   "kinds": [
+    "scope_missing"
+   ],
+   "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "scope_missing",
+    "kinds": [
+     "scope_missing",
+     "unknown"
+    ],
+    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 61,
+   "stderr": "Getting Application Specific Password IDs for dave@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "permission_denied",
+   "kinds": [
+    "permission_denied"
+   ],
+   "message": "GAM failed (permission_denied, exit=61): ERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden",
+   "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "permission_denied",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=61): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 1,
+   "stderr": "Getting Reports for all users\n\rGot 3 Reports for all users on 2026-06-16...\r\n",
+   "argv": null,
+   "stdout": "",
+   "kind": "unknown",
+   "kinds": [
+    "unknown"
+   ],
+   "message": "GAM failed (unknown, exit=1)",
+   "scrubbed_stderr": "Getting Reports for all users\n\rGot 3 Reports for all users on 2026-06-16...\r\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": null,
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
+    "remediation_suffix": ""
+   }
+  },
+  {
    "exit_code": null,
    "stderr": "",
    "argv": null,
