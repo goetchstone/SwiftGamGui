@@ -378,16 +378,25 @@ private struct UserDetail: View {
     /// page reads them again rather than sit at "Not read."
     @State private var readFor: GamUser.ID?
 
+    private var sectionPicker: some View {
+        Picker("Section", selection: $tab) {
+            ForEach(PersonTab.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .labelsHidden()
+        .accessibilityLabel("Section")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if changes.concerns(user.primaryEmail) { ResultBanner(changes: changes) }
-            Picker("Section", selection: $tab) {
-                ForEach(PersonTab.allCases) { Text($0.rawValue).tag($0) }
+            // Segmented while all five fit; a menu in a narrower page. Five segments are wider than the smallest
+            // window's inspector, and the page overflowed and was clipped on both sides (CI's
+            // narrow-person-calendar, 2026-10-13).
+            ViewThatFits(in: .horizontal) {
+                sectionPicker.pickerStyle(.segmented)
+                sectionPicker.pickerStyle(.menu).fixedSize()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Section")
             .padding(.horizontal)
             .padding(.bottom, 8)
             Form { tabContent }
