@@ -32,8 +32,25 @@ public struct WriteStep: Sendable {
     /// by value everywhere, as GamGUI's `secrets=`, beside the positional masks.
     let secrets: [Secret]
 
+    /// A task on a list an earlier step of the same preview creates (`task(…onListFrom:…)`): that step, and
+    /// the builder's inputs, so the run can rebuild the task with the id the list printed. Nil otherwise.
+    let listedTask: ListedTask?
+
+    struct ListedTask: Sendable {
+        let list: Int
+        let assignee: String
+        let title: String
+        let notes: String
+    }
+
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
                 about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout) {
+        self.init(write, target: target, summary: summary, risk: risk, requires: requires, about: about, secrets: secrets,
+                  timeout: timeout, listedTask: nil)
+    }
+
+    private init(_ write: GamWrite, target: String, summary: String, risk: Risk, requires: [Int], about: [String: String],
+                 secrets: [Secret], timeout: Duration, listedTask: ListedTask?) {
         self.write = write
         self.target = target
         rawSummary = summary
@@ -42,6 +59,30 @@ public struct WriteStep: Sendable {
         self.about = about
         self.secrets = secrets
         self.timeout = timeout
+        self.listedTask = listedTask
+    }
+
+    /// A task on the list step `list` of the same preview makes for the same `assignee` (GamGUI's
+    /// `create_onboarding_runbook`): the list's id exists only once that step has run, so the held argv
+    /// carries `listIDPlaceholder(list)` in its place, and `list` is always among `requires`. The run puts in
+    /// the id the list printed, through `GamCommands.createTask` again; this is the one argv element a run
+    /// takes from anywhere but its preview (design doc D3c).
+    public static func task(assignee: String, title: String, notes: String = "", onListFrom list: Int, target: String,
+                            summary: String, requires: [Int] = [], about: [String: String] = [:],
+                            timeout: Duration = GamRunner.defaultTimeout) -> WriteStep {
+        WriteStep(GamCommands.createTask(assignee: assignee, taskListID: listIDPlaceholder(list), title: title, notes: notes),
+                  target: target, summary: summary, risk: .low, requires: requires.contains(list) ? requires : requires + [list],
+                  about: about, secrets: [], timeout: timeout,
+                  listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes))
+    }
+
+    /// What a held task's list id element says until the run knows the id. `list` is the step's index.
+    public static func listIDPlaceholder(_ list: Int) -> String { "\u{2039}task list id from step \(list + 1)\u{203A}" }
+
+    /// The same step, running `write` (a listed task with its list's id put in).
+    func running(_ write: GamWrite) -> WriteStep {
+        WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,
+                  timeout: timeout, listedTask: listedTask)
     }
 
     public var action: WriteAction { write.action }
@@ -208,7 +249,8 @@ public actor Executor {
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
-        for (index, step) in steps.enumerated() where step.requires.contains(where: { $0 < 0 || $0 >= index }) {
+        for (index, step) in steps.enumerated()
+        where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps) {
             return .failure(.badPrerequisite(step: index))
         }
         guard let current = await tenant() else { return .failure(.notConnected) }
@@ -239,6 +281,23 @@ public actor Executor {
             }
         }
     }
+
+    /// A listed task (D3c) is a `createTask` whose list is an earlier `createTaskList` step it requires, made
+    /// for the same assignee, and whose held argv is its builder's with the placeholder for the id: the run
+    /// can then put in nothing but that list's id. Any other step holds trivially.
+    static func listedTaskHolds(_ step: WriteStep, at index: Int, in steps: [WriteStep]) -> Bool {
+        guard let task = step.listedTask else { return true }
+        guard step.action == .createTask, task.list >= 0, task.list < index, step.requires.contains(task.list) else { return false }
+        let list = steps[task.list].write.argv
+        let built = GamCommands.createTask(assignee: task.assignee, taskListID: WriteStep.listIDPlaceholder(task.list),
+                                           title: task.title, notes: task.notes)
+        return steps[task.list].action == .createTaskList && list.count > 1 && same(list[1], task.assignee)
+            && same(built.argv, step.write.argv)
+    }
+
+    /// Byte-for-byte: Swift's `==` on strings compares canonically, so "é" would equal "e\u{301}".
+    static func same(_ a: String, _ b: String) -> Bool { a.utf8.elementsEqual(b.utf8) }
+    static func same(_ a: [String], _ b: [String]) -> Bool { a.count == b.count && zip(a, b).allSatisfy { same($0, $1) } }
 
     /// Previews currently runnable: a screen offers Confirm only for one of these.
     public func isHeld(_ id: UUID) -> Bool {
@@ -336,14 +395,16 @@ public actor Executor {
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
-        for (index, step) in preview.steps.enumerated() {
+        /// What each list step that succeeded printed: its tasks' id (D3c).
+        var listOutputs: [Int: String] = [:]
+        for (index, planned) in preview.steps.enumerated() {
             // Each result as it's decided: for a step that ran, after its end record.
             defer { progress?.yield((index, results[index])) }
             if let stoppedBy {
                 results.append(.skipped(reason: stoppedBy))
                 continue
             }
-            if let needed = step.requires.first(where: { if case .succeeded = results[$0] { false } else { true } }) {
+            if let needed = planned.requires.first(where: { if case .succeeded = results[$0] { false } else { true } }) {
                 results.append(.skipped(reason: "Step \(needed + 1) didn't succeed."))
                 continue
             }
@@ -358,6 +419,16 @@ public actor Executor {
                 stoppedBy = "Stopped: the active domain changed during the run."
                 results.append(.skipped(reason: "Stopped: the active domain changed during the run."))
                 continue
+            }
+            // A listed task runs on the id its list printed, or not at all (D3c).
+            var step = planned
+            if let task = planned.listedTask {
+                guard let write = Self.taskOnItsList(planned, task, listStep: preview.steps[task.list], printed: listOutputs[task.list])
+                else {
+                    results.append(.failed(message: Self.noListID, kind: nil))
+                    continue
+                }
+                step = planned.running(write)
             }
             await beforeEachStep?()
             let base = extra(for: step, of: preview, index: index)
@@ -375,21 +446,66 @@ public actor Executor {
             }
             let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets)
             results.append(ran.result)
+            if step.action == .createTaskList, case .succeeded = ran.result { listOutputs[index] = ran.stdout }
             if let stop = ran.stop { stoppedBy = stop }
             if let problem = ran.auditProblem { auditProblem = problem }
         }
         return RunOutcome(refusal: nil, steps: results, auditProblem: auditProblem)
     }
 
+    /// GamGUI's words when a list's `returnidonly` gave no id (`onboarding.py` `_why(None)`).
+    static let noListID = "No task list id came back."
+
+    /// `task` rebuilt through its builder on the id `listStep` printed: the last non-empty line, stripped
+    /// (GamGUI's `create_onboarding_runbook`), when `usableListID` takes it. Nil unless the rebuilt argv is
+    /// the held one in every element but the id, and the list was made for the task's assignee: so the one
+    /// element a run takes from outside its preview can be nothing but that list's id.
+    static func taskOnItsList(_ held: WriteStep, _ task: WriteStep.ListedTask, listStep: WriteStep,
+                              printed: String?) -> GamWrite? {
+        let lines = PythonText.lines(printed ?? "").map { PythonText.strip($0) }.filter { !$0.isEmpty }
+        guard let id = lines.last, usableListID(id), listStep.write.argv.count > 1 else { return nil }
+        let write = GamCommands.createTask(assignee: listStep.write.argv[1], taskListID: id, title: task.title, notes: task.notes)
+        let heldArgv = held.write.argv, idElement = 4
+        guard write.argv.count == heldArgv.count, heldArgv.count > idElement,
+              same(heldArgv[idElement], WriteStep.listIDPlaceholder(task.list)), same(write.argv[idElement], id),
+              heldArgv.indices.allSatisfy({ $0 == idElement || same(write.argv[$0], heldArgv[$0]) })
+        else { return nil }
+        return write
+    }
+
+    /// GAM's longest task list id is far below this; a longer "id" is output that isn't one.
+    static let listIDLimit = 256
+    /// GAM's entity-list selectors (`Cmd.ENTITY_LIST_SELECTORS`, read from the vendored 7.48.22 build): as the
+    /// whole argument, each reads a file or CSV instead of naming a list.
+    static let listSelectors: Set<String> = ["csv", "csvdata", "csvfile", "csvkmd", "csvsubkey", "file"]
+
+    /// Whether GAM's `create task <TasklistEntity>` reads `id` as exactly that one list id. It reads the
+    /// argument with `getEntityList(…, shlexSplit=True)`: first as a selector word (`getChoice`: stripped,
+    /// lowercased, then without `_` and `-`), then split by POSIX shlex on spaces and commas, where quotes and
+    /// a backslash are syntax and `#` starts a comment; `tltitle:` then picks a list by title (GamCommands.txt
+    /// 649, 803, 1289). So only printable ASCII without those characters, under the length cap, and neither
+    /// a selector nor a title.
+    static func usableListID(_ id: String) -> Bool {
+        let scalars = Array(id.unicodeScalars)
+        guard !scalars.isEmpty, scalars.count <= listIDLimit,
+              scalars.allSatisfy({ (0x21...0x7E).contains($0.value) && !",\"'\\#".unicodeScalars.contains($0) })
+        else { return false }
+        let lowered = PythonText.lower(id)
+        let word = String(String.UnicodeScalarView(lowered.unicodeScalars.filter { $0 != "_" && $0 != "-" }))
+        return !lowered.hasPrefix("tltitle:") && !listSelectors.contains(lowered) && !listSelectors.contains(word)
+    }
+
     /// One step through the runner, with its end record.
     private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
-                     secrets: [String]) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?) {
+                     secrets: [String]) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
+        var stdout: String?
         do {
             let ran = try await runner.run(step.write, as: preview.domain, ticket: WriteTicket(), timeout: step.timeout,
                                            extraEnvironment: extraEnvironment)
             exitCode = ran.exitCode
+            stdout = ran.stdout
             if ran.exitCode == 0 {
                 result = .succeeded(output: Self.masked(ran.stdout, secrets: secrets))
                 stop = nil
@@ -426,10 +542,11 @@ public actor Executor {
         let ok: Bool = if case .succeeded = result { true } else { false }
         do {
             try record(step, phase: "end", extra: extra, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
-            return (result, stop, nil)
+            return (result, stop, nil, stdout)
         } catch {
             AuditFailure.report(error)
-            return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).")
+            return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).",
+                    stdout)
         }
     }
 

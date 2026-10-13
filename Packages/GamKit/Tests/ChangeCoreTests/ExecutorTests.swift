@@ -24,6 +24,7 @@ final class ExecutorTests {
     let auditURL: URL
     let argvLog: URL
     let audit: AuditLog
+    let vault: Vault
     let runner: AuthenticatedRunner
     let tenantState: Shared<(domain: Domain, generation: Int)?>
     let offset = Shared(Duration.zero)
@@ -40,7 +41,8 @@ final class ExecutorTests {
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         argvLog = scratch.appending(path: "argv.log")
         audit = AuditLog(url: auditURL)
-        runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: Vault(store: store), runtimeDirectory: base)
+        vault = Vault(store: store)
+        runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
         tenantState = Shared((example, 1))
     }
 
@@ -48,13 +50,35 @@ final class ExecutorTests {
         try? FileManager.default.removeItem(at: base.deletingLastPathComponent())
     }
 
-    private func executor() -> Executor {
+    /// The executor over the strict mock, or over `gam` (a stand-in written by `fakeGam`). `state` is the
+    /// mock's `GAM_MOCK_STATE`, for a test that needs the accounts `create user` made.
+    private func executor(gam: URL? = nil, state: URL? = nil) -> Executor {
         let tenant = tenantState, offset = offset, start = start
         var environment = Fixtures.mockEnvironment
         environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        if let state { environment["GAM_MOCK_STATE"] = state.path }
+        let runner = gam.map { AuthenticatedRunner(runner: GamRunner(binary: $0), vault: vault, runtimeDirectory: base) } ?? runner
         return Executor(runner: runner, audit: audit, actor: "admin@example.com",
                         tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
                         extraEnvironment: environment)
+    }
+
+    /// A fresh `GAM_MOCK_STATE` directory.
+    private func mockState(lag: Int? = nil) throws -> URL {
+        let state = base.deletingLastPathComponent().appending(path: "state-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        if let lag { try Data("\(lag)\n".utf8).write(to: state.appending(path: "new_account_lag")) }
+        return state
+    }
+
+    /// A stand-in `gam` for output the strict mock models GAM too faithfully to print (GamGUI's
+    /// `echoing_gam`; a list that prints an unusable id). Logs its argv as the mock does, then runs `body`.
+    private func fakeGam(_ body: String) throws -> URL {
+        let url = base.deletingLastPathComponent().appending(path: "fake-gam-\(UUID().uuidString).sh")
+        let script = "#!/bin/sh\nprintf '%s\\0' \"$#\" \"$@\" >> \"$GAM_MOCK_ARGV_LOG\"\n" + body
+        try Data(script.utf8).write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        return url
     }
 
     private func held(_ executor: Executor, _ steps: [WriteStep], origin: Origin = .form,
@@ -568,6 +592,115 @@ final class ExecutorTests {
         #expect(held.domain == example && held.generation == 1)
         #expect(await executor.run(held, confirmation: confirmed).succeeded)
         #expect(ran().count == 1)
+    }
+
+    // MARK: a task list's id (D3c)
+
+    private func list(_ assignee: String = "alice@example.com") -> WriteStep {
+        WriteStep(GamCommands.createTaskList(assignee: assignee, title: "Onboard Jordan Lee — Sales"), target: assignee,
+                  summary: "Create the checklist")
+    }
+
+    /// GamGUI's `create_onboarding_runbook`: the tasks go on the list the run just made, by the id its
+    /// `returnidonly` printed (the last non-empty line). The held argv has a placeholder there; the run
+    /// rebuilds the task through its builder with the id, and audits the argv as run under the held digest.
+    @Test func aTaskTakesTheIdItsListPrinted() async throws {
+        let executor = executor()
+        let first = WriteStep.task(assignee: "alice@example.com", title: "Order a laptop", notes: "Bring a badge",
+                                   onListFrom: 0, target: "alice@example.com", summary: "Order a laptop")
+        let second = WriteStep.task(assignee: "alice@example.com", title: "Set up the CRM login", onListFrom: 0,
+                                    target: "alice@example.com", summary: "Set up the CRM login")
+        let preview = try await held(executor, [list(), first, second])
+        #expect(preview.steps[1].shownArgv == ["user", "alice@example.com", "create", "task", "\u{2039}task list id from step 1\u{203A}",
+                                               "title", "Order a laptop", "notes", "Bring a badge"])
+        #expect(preview.steps[1].requires == [0])
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(outcome.succeeded, "\(outcome.steps)")
+        guard case .succeeded(let printed) = outcome.steps[0] else { return }
+        let id = PythonText.strip(printed)
+        #expect(!id.isEmpty)
+        #expect(ran() == [GamCommands.createTaskList(assignee: "alice@example.com", title: "Onboard Jordan Lee — Sales").argv,
+                          ["user", "alice@example.com", "create", "task", id, "title", "Order a laptop", "notes", "Bring a badge"],
+                          ["user", "alice@example.com", "create", "task", id, "title", "Set up the CRM login"]])
+        let ends = records.filter { $0["extra"]?.object?["phase"]?.string == "end" }
+        #expect(ends.count == 3)
+        #expect(ends[1]["argv"]?.array?.compactMap(\.string) == ran()[1], "the audit has the argv as run")
+        #expect(ends.allSatisfy { $0["extra"]?.object?["digest"]?.string == preview.digest }, "under the held digest")
+    }
+
+    /// A list that printed no id: its tasks don't run (GamGUI's "No task list id came back."), and nothing
+    /// is audited for them, since nothing ran.
+    @Test func aListThatPrintedNoIdRunsNoTask() async throws {
+        let state = try mockState()
+        let gam = try fakeGam("""
+            case "$3 $4" in
+              "create tasklist") cat "$GAM_MOCK_STATE/list_stdout"; exit 0 ;;
+              "create task") echo "User: $2, Tasklist: $5, Task: $7, Created"; exit 0 ;;
+            esac
+            exit 2
+            """)
+        try Data("\n  \n".utf8).write(to: state.appending(path: "list_stdout"))
+        let executor = executor(gam: gam, state: state)
+        let task = WriteStep.task(assignee: "alice@example.com", title: "Order a laptop", onListFrom: 0,
+                                  target: "alice@example.com", summary: "Order a laptop")
+        let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+        #expect(outcome.steps[1] == .failed(message: "No task list id came back.", kind: nil))
+        #expect(ran().count == 1, "only the list ran")
+        #expect(!records.contains { $0["extra"]?.object?["step"]?.int == 1 })
+    }
+
+    /// GAM reads `create task`'s list as a `<TasklistEntity>`: split on commas and spaces with shlex (quotes,
+    /// a backslash and `#` change it), `tltitle:` picks a list by title, and a selector word (`file`,
+    /// `csvfile`…) reads a file (GamCommands.txt 649, 803, 1289; `getEntityList`, `shlexSplitList`). An id
+    /// GAM would read as anything but itself is refused, so a task never lands on another list.
+    @Test func aListIdWithACommaSpaceOrTitleSelectorIsRefused() async throws {
+        let state = try mockState()
+        let gam = try fakeGam("""
+            case "$3 $4" in
+              "create tasklist") cat "$GAM_MOCK_STATE/list_stdout"; exit 0 ;;
+              "create task") echo "User: $2, Tasklist: $5, Task: $7, Created"; exit 0 ;;
+            esac
+            exit 2
+            """)
+        let executor = executor(gam: gam, state: state)
+        let refused = ["a,b", "Tasklist one", "tltitle:Onboard", "TLTitle:Onboard", "file", "CSV_File", "csv-data", "csvkmd",
+                       "x\"y", "x'y", "x\\y", "a#b", "caf\u{E9}", "a\u{A0}b", String(repeating: "x", count: 257)]
+        let accepted = [("Got 1 Tasklist\nMDQ5NDg5ODIx_Mi0x\n\n", "MDQ5NDg5ODIx_Mi0x"), ("  TL-1:a.b=c+d/e@f \r\n", "TL-1:a.b=c+d/e@f"),
+                        (String(repeating: "y", count: 256), String(repeating: "y", count: 256))]
+        for printed in refused {
+            try Data((printed + "\n").utf8).write(to: state.appending(path: "list_stdout"))
+            let before = ran().count
+            let task = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+            let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+            #expect(outcome.steps[1] == .failed(message: "No task list id came back.", kind: nil), "\(printed)")
+            #expect(ran().count == before + 1, "\(printed): no task ran")
+        }
+        for (printed, id) in accepted {
+            try Data(printed.utf8).write(to: state.appending(path: "list_stdout"))
+            let task = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+            let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+            #expect(outcome.succeeded, "\(printed)")
+            #expect(ran().last == ["user", "alice@example.com", "create", "task", id, "title", "T"])
+        }
+    }
+
+    /// A task goes only on a list the same run makes for the same person, from an earlier step it requires:
+    /// anything else is refused before it's held.
+    @Test func aTaskOnAnotherAssigneesListIsRefused() async throws {
+        let executor = executor()
+        let onBobs = WriteStep.task(assignee: "bob@example.com", title: "T", onListFrom: 0, target: "bob@example.com", summary: "T")
+        let bobs = await executor.preview([list(), onBobs])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try bobs.get() }
+        let notAList = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+        let suspended = await executor.preview([suspend(), notAList])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try suspended.get() }
+        let later = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 1, target: "alice@example.com", summary: "T")
+        let backwards = await executor.preview([later, list()])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 0)) { try backwards.get() }
+        let caseOnly = WriteStep.task(assignee: "Alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+        let cased = await executor.preview([list(), caseOnly])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try cased.get() }
+        #expect(ran().isEmpty)
     }
 
     // MARK: outcome unknown
