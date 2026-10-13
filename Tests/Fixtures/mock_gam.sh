@@ -386,7 +386,25 @@ fi
 # after a CR and ended with CR LF while show_gettings_got_nl is off (:5260-5271, :5620-5623). A report Google
 # refuses (a GAM_MOCK_STATE/noreports marker): accessErrorExit after the progress line (:14595-14596), here as
 # when the admin can't read the customer either (:669-701), INVALID_DOMAIN_RC.
+# Only GamGUI's shape (GAMCommands.report_users): `date <Date> parameters <service:parameter,...>`, read before
+# the progress line as doReport reads them (:14363-14381): a field without ":" is GAM's invalid argument, a service
+# outside USER_REPORT_SERVICES (:13582-13590) its invalid choice. Another shape GAM takes isn't modelled. The date's
+# words are need_date's, approximate. A known lie: the CSV holds all four parameters whatever was asked for (GAM
+# prints only those asked for); kept, so the output the fixtures recorded stays the same.
 if [ "${1:-}" = "report" ] && [ "${2:-}" = "users" ]; then
+  [ "${3:-}" = "date" ] && [ "${5:-}" = "parameters" ] && [ $# -le 6 ] || not_modelled "report users without GamGUI's date and parameters"
+  need_date "$4"
+  [ $# -eq 6 ] || missing_arg "String"
+  printf '%s\n' "$6" | tr ', ' '\n\n' | while IFS= read -r field; do
+    [ -n "$field" ] || continue
+    case "$field" in
+      *:*) case "${field%%:*}" in
+             accounts|chat|classroom|docs|drive|gmail|gplus) ;;
+             *) invalid_choice "${field%%:*}" "accounts|chat|classroom|docs|drive|gmail|gplus" ;;
+           esac ;;
+      *) usage_error "Invalid argument: Expected <service:parameter>" ;;
+    esac
+  done || exit $?
   printf 'Getting Reports for all users\n' 1>&2
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/noreports" ]; then
     printf '\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n' 1>&2
