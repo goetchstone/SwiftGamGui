@@ -334,7 +334,7 @@ public struct TemporaryPassword: Sendable, CustomStringConvertible, CustomDebugS
 
     /// GamGUI's create for a new hire: `create_user(…, change_password=True, org_unit=cfg.org_unit or None)`,
     /// through the builder, with this password as its one element.
-    public func createUser(email: String, firstName: String, lastName: String, orgUnit: String) -> GamWrite {
+    package func createUser(email: String, firstName: String, lastName: String, orgUnit: String) -> GamWrite {
         GamCommands.createUser(email: email, firstName: firstName, lastName: lastName, password: text, changePassword: true,
                                orgUnit: orgUnit)
     }

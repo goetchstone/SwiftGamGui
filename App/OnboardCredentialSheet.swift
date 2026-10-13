@@ -81,16 +81,15 @@ struct OnboardCredentialCard: View {
         """
     }
 
-    /// The nspasteboard.org marker for text a clipboard manager shouldn't keep (§9 Q3).
-    static let concealed = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
-
     private static func copy(_ card: OnboardChanges.Card) {
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.declareTypes([.string, concealed], owner: nil)
+        // This Mac only: Universal Clipboard would offer it to the operator's other devices, where no clear
+        // reaches (security review, 2026-10-13).
+        pasteboard.prepareForNewContents(with: .currentHostOnly)
         let text = details(card)
         pasteboard.setString(text, forType: .string)
-        pasteboard.setString(text, forType: concealed)
+        pasteboard.setString(text, forType: SignInCopy.concealed)
+        pasteboard.setString("", forType: SignInCopy.mark)
         let mine = pasteboard.changeCount
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(120))
@@ -126,5 +125,19 @@ struct OnboardCredentialCard: View {
         } else {
             operation.run()
         }
+    }
+}
+
+/// A sign-in card on the clipboard: marked, so the clear that its two minutes would have made also happens at
+/// quit and, after a crash or a force-quit, at the next launch, as long as nothing was copied over it since.
+@MainActor
+enum SignInCopy {
+    /// The nspasteboard.org marker for text a clipboard manager shouldn't keep (§9 Q3).
+    static let concealed = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+    /// This app's own marker on a sign-in copy.
+    static let mark = NSPasteboard.PasteboardType("io.github.goetchstone.swiftgamgui.signin-card")
+
+    static func clearLeftover() {
+        if NSPasteboard.general.types?.contains(mark) == true { NSPasteboard.general.clearContents() }
     }
 }

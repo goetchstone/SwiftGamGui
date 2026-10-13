@@ -9,18 +9,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let base = try? RuntimeDirectory.prepare() {
             EphemeralConfig.sweepStale(in: base)
         }
+        SignInCopy.clearLeftover()   // a sign-in card copied before a crash or a force-quit
     }
 
-    /// What quitting now would cut short (an onboarding run, or its wait for Google), asked at quit.
-    static var interruptible: (@MainActor () -> String?)?
+    /// What quitting now would cut short (an onboarding run, its wait for Google, or a sign-in card still
+    /// showing), and what that costs, asked at quit.
+    static var interruptible: (@MainActor () -> (what: String, consequence: String)?)?
 
-    /// Quitting mid-onboarding asks first: the rest wouldn't be applied, and the steps still waiting for
-    /// Google are lost (nothing is persisted to replay later).
+    /// Quitting mid-onboarding asks first: the rest wouldn't be applied, the steps still waiting for Google
+    /// are lost (nothing is persisted to replay later), and a card's temporary password is shown nowhere else.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard let what = Self.interruptible?() else { return .terminateNow }
+        guard let interrupted = Self.interruptible?() else { return .terminateNow }
         let alert = NSAlert()
-        alert.messageText = "\(what) Quit anyway?"
-        alert.informativeText = "The rest won't be applied."
+        alert.messageText = "\(interrupted.what) Quit anyway?"
+        alert.informativeText = interrupted.consequence
         alert.addButton(withTitle: "Don't Quit")
         let quit = alert.addButton(withTitle: "Quit Anyway")
         quit.hasDestructiveAction = true
@@ -30,5 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         GamRunner.stopAll()          // no gam keeps running against the tenant after we're gone
         EphemeralConfig.wipeAllLive()
+        SignInCopy.clearLeftover()   // a copied sign-in card, before its two minutes are up
     }
 }

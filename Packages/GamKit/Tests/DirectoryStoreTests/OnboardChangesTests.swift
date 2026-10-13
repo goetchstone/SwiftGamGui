@@ -388,11 +388,15 @@ final class OnboardChangesTests {
         #expect(instances(of: TemporaryPassword.self, in: changes) == 1, "the card")
         #expect(instances(of: HeldPreview.self, in: changes) == 0)
         for text in [String(describing: changes.run as Any), String(describing: changes.finishing as Any),
-                     changes.run?.tallies.joined() ?? "", changes.problem ?? "", changes.interruptible ?? ""] {
+                     changes.run?.tallies.joined() ?? "", changes.problem ?? "",
+                     changes.interruptible.map { $0.what + " " + $0.consequence } ?? ""] {
             #expect(!text.contains(password))
         }
+        // Quitting with the card up asks first: its password is shown nowhere else (security review, 2026-10-13).
+        #expect(changes.interruptible != nil)
         changes.doneWithCard()
         #expect(instances(of: TemporaryPassword.self, in: changes) == 0)
+        #expect(changes.interruptible?.what.contains("sign-in card") != true)
     }
 
     /// How many values of `type` the model holds, anywhere in its stored state (its mirror, recursively).
@@ -459,7 +463,7 @@ final class OnboardChangesTests {
                                                               createAccount: true), role: role), confirmed)
         #expect(results(changes).map { $0?.isWaiting } == [false, true, true, false, false])
         #expect(changes.finishing?.email == "jordan@example.com" && changes.finishing?.waiting == 2)
-        #expect(changes.isBusy && changes.interruptible?.contains("waiting for Google") == true)
+        #expect(changes.isBusy && changes.interruptible?.what.contains("waiting for Google") == true)
         await changes.waitForFinishing()
         #expect(changes.finishing?.phase == .done)
         #expect(results(changes).allSatisfy { $0?.isSucceeded == true })

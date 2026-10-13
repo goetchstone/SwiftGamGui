@@ -93,12 +93,21 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
   (`shownOnTheSheet`, only in `App/OnboardCredentialSheet.swift`). The step masks it by value
   (`secrets:`) in the shown argv, the summary, GAM's output and errors and the audit; the positional
   masks are the second layer. GAM hashes it before calling Google. The leftover exposure is GamGUI's:
-  the argv is visible to the same user's processes for the seconds `gam` runs.
+  the argv is visible to the same user's processes for the seconds `gam` runs, and on a managed Mac an
+  endpoint-security agent may log every process's command line, this one included. A printed card leaves
+  a spooled copy that CUPS may keep for a day, readable only by root and `_lp`. Neither is the app's to
+  prevent; both are why the password is single-use (security review, 2026-10-13).
 - **The card** shows the name, address, password, org unit and the signature's status, and how to sign
-  in. Print (`NSPrintOperation`; Save as PDF is the operator's choice), Copy (a concealed pasteboard
-  type, cleared after two minutes if unchanged), Done. It isn't selectable, and VoiceOver spells it out.
+  in. Print (`NSPrintOperation`; Save as PDF is the operator's choice), Copy, Done. It isn't
+  selectable, and VoiceOver spells it out.
+- **Copy** puts the details on this Mac's clipboard only (`.currentHostOnly`: Universal Clipboard would
+  offer them to the operator's other devices, where no clear reaches), as concealed text, with the app's
+  own mark. It's cleared after two minutes if nothing was copied over it, and a marked copy is also
+  cleared at quit and, after a crash or a force-quit, at the next launch (`SignInCopy`; security review,
+  2026-10-13).
 - It lives only in memory: in the pending preview, then the card; dropped at Done, after fifteen minutes,
-  or at quit (quitting mid-run or mid-wait asks first). A new create is refused while an unhanded card is
+  or at quit (quitting mid-run, mid-wait or with the card still up asks first: the card is the only place
+  the password is shown). A new create is refused while an unhanded card is
   held, so a password is never stranded by the next hire. A create that didn't finish still shows the
   card, marked unsure. The executor holds the run's held preview (and so the password) while steps wait
   for Google, at most until the wait ends or fifteen minutes after the run.

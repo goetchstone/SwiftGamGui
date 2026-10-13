@@ -189,10 +189,18 @@ public final class OnboardChanges {
     public var isBusy: Bool { isRunning || finishing?.isLive == true }
 
     /// What quitting now would cut short, for the quit alert; nil when nothing would.
-    public var interruptible: String? {
-        if isRunning, let email = run?.plan.email { return "Onboarding \(email.isEmpty ? "the new hire" : email) is still running." }
+    public var interruptible: (what: String, consequence: String)? {
+        if isRunning, let email = run?.plan.email {
+            return ("Onboarding \(email.isEmpty ? "the new hire" : email) is still running.", "The rest won't be applied.")
+        }
         if let finishing, finishing.isLive {
-            return "Onboarding \(finishing.email) is still waiting for Google to finish the new account."
+            return ("Onboarding \(finishing.email) is still waiting for Google to finish the new account.",
+                    "The rest won't be applied.")
+        }
+        // The one-shot secret is never dropped unasked (plan D4): the card is the only place it is shown.
+        if let card {
+            return ("The sign-in card for \(card.email) is still showing.",
+                    "Its temporary password is shown nowhere else: print or copy it first, or set a new one in the Google Admin console later.")
         }
         return nil
     }
