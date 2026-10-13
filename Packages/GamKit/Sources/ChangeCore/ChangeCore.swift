@@ -259,8 +259,10 @@ public actor Executor {
     static let switched = "The active domain changed after the preview — preview again, so it runs on this one."
 
     /// Runs `preview` once, exactly as held, if every check passes; refused otherwise, with the reason.
-    /// The preview is spent either way: a second run needs a new preview.
-    public func run(_ preview: HeldPreview, confirmation: OperatorConfirmation) async -> RunOutcome {
+    /// The preview is spent either way: a second run needs a new preview. `progress` hears each step's
+    /// result as it ends (after its end record, before the next step begins); the caller finishes it.
+    public func run(_ preview: HeldPreview, confirmation: OperatorConfirmation,
+                    progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation? = nil) async -> RunOutcome {
         // Taken before any await: two runs of one preview can't both get it.
         guard let taken = held.removeValue(forKey: preview.id) else { return .refused(Self.expired) }
         order.removeAll { $0 == preview.id }
@@ -291,7 +293,7 @@ public actor Executor {
         }
         if let why = await aliasRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
-        return await execute(taken)
+        return await execute(taken, progress: progress)
     }
 
     /// Design doc §6, GamGUI failure-log 2026-09-24: `gam delete user <alias>` deletes the account the alias
@@ -329,12 +331,14 @@ public actor Executor {
     /// Targets compare as GamGUI compares addresses: trimmed and lowercased.
     static func key(_ target: String) -> String { Guard.normalized(target) }
 
-    private func execute(_ preview: HeldPreview) async -> RunOutcome {
+    private func execute(_ preview: HeldPreview, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async -> RunOutcome {
         let who = await currentActor?() ?? actor
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
         for (index, step) in preview.steps.enumerated() {
+            // Each result as it's decided: for a step that ran, after its end record.
+            defer { progress?.yield((index, results[index])) }
             if let stoppedBy {
                 results.append(.skipped(reason: stoppedBy))
                 continue

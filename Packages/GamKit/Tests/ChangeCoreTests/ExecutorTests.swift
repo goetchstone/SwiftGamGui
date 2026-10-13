@@ -229,6 +229,49 @@ final class ExecutorTests {
         #expect(throws: Executor.PreviewRefusal.notConnected) { try result.get() }
     }
 
+    /// D3f: each step's result reaches an observer as it ends: after its end record, before the next step
+    /// begins. Onboarding's sign-in card appears the moment the create ends, not when the whole run does.
+    @Test func progressSeesEachStepAsItEnds() async throws {
+        let executor = executor()
+        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true),
+                             target: "missing@example.com", summary: "Suspend")
+        let preview = try await held(executor, [suspend(), gone, suspend("bob@example.com")])
+        let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
+        let (seen, seenGate) = AsyncStream<Void>.makeStream()
+        let calls = Shared(0)
+        await executor.setBeforeEachStep {
+            // The second step waits until the observer has seen the first (bounded: an observer that never
+            // hears fails the test rather than hanging it).
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { for await _ in seen { break } }
+                group.addTask { try? await Task.sleep(for: .seconds(5)) }
+                await group.next()
+                group.cancelAll()
+            }
+        }
+        let auditURL = auditURL
+        let watcher = Task {
+            var got: [(Int, RunOutcome.Step)] = []
+            for await event in events {
+                got.append(event)
+                if event.0 == 0 {
+                    let phases = AuditLog.records(at: auditURL).reversed().compactMap { $0["extra"]?.object?["phase"]?.string }
+                    #expect(phases == ["begin", "end"], "its end record is written; the next step hasn't begun")
+                    seenGate.yield()
+                }
+            }
+            return got
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed, progress: observer)
+        observer.finish()
+        let got = await watcher.value
+        #expect(got.map { $0.0 } == [0, 1, 2])
+        #expect(got.map { $0.1 } == outcome.steps)
+        guard case .failed(_, let kind) = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(kind == .notFound)
+    }
+
     // MARK: failures, plans and secrets
 
     /// An account-wide failure (a missing scope) would fail every later call the same way: the run stops.
