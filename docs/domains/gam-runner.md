@@ -22,6 +22,14 @@ an allowlisted environment, a timeout, and capped output capture.
   builds only); `GAMCFGDIR` and `GAM_NO_UPDATE_CHECK=1` are set by the runner, never inherited.
 - `GamBinary.swift` — the bundled `gam7/gam`; `SWIFTGAMGUI_GAM_BINARY` honoured in debug builds only.
 - `GamVersion.swift` — the pin, rewritten by `scripts/bump_gam.py`.
+- `scripts/gam_oracle.py` — what the vendored build itself does, asked by `gen_fixtures.py`: its exit-code
+  table, its CSV settings and writer, and its signature functions. GAM is frozen with its own Python, and its
+  bytecode loads only there: 7.48.26 is 3.15's, ahead of GamGUI's 3.14 virtualenv, whose dependencies have no
+  3.15 builds yet. So the oracle is standard-library only and runs under `python3.X` for the build's 3.X (on
+  the PATH, or `--gam-python`), answering in JSON, while the rest of the generator stays on GamGUI's Python.
+  Its checks read what the build does, not how a compiler stores it (3.15 loads `True`/`None` without
+  `co_consts`), and every CSV the generator writes must come out byte for byte the same from the build's
+  Python before any fixture is written.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log

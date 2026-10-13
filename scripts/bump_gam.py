@@ -15,7 +15,9 @@ In order:
 Not here, because it needs judgment or a real tenant: reading GamUpdate.txt for breaking changes, and
 the live acceptance pass. GamGUI is frozen but still takes GAM updates: bump it with its own script.
 
-Run with GamGUI's virtualenv Python (steps 6 borrow its frozen parser and builders, read-only):
+Run with GamGUI's virtualenv Python (steps 6 borrow its frozen parser and builders, read-only). The fixture
+step also needs the Python the new build was frozen with (`python3.X` on the PATH; gen_fixtures.py says which),
+for scripts/gam_oracle.py:
 
     ../gamgui/.venv/bin/python -I -B scripts/bump_gam.py vX.Y.Z [--gamgui ../gamgui] [--allow-unattested]
 """
