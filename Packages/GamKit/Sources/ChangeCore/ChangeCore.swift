@@ -48,15 +48,21 @@ public struct WriteStep: Sendable {
     /// `Executor.retry` instead of failing (GamGUI's parked steps, design doc D3b). Nil: never waits.
     public let newAccountFrom: Int?
 
+    /// GamGUI's `tolerate_kinds`: a failure every one of whose error lines is one of these counts as done. Only
+    /// the offboarding sweep may tolerate, and only `Executor.sweepTolerable` (the preview refuses anything
+    /// else): one real failure among the benign per-user notices fails the step.
+    public let tolerating: Set<GamError.Kind>
+
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
                 about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout,
-                newAccountFrom: Int? = nil) {
+                newAccountFrom: Int? = nil, tolerating: Set<GamError.Kind> = []) {
         self.init(write, target: target, summary: summary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: nil)
+                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: nil)
     }
 
     private init(_ write: GamWrite, target: String, summary: String, risk: Risk, requires: [Int], about: [String: String],
-                 secrets: [Secret], timeout: Duration, newAccountFrom: Int?, listedTask: ListedTask?) {
+                 secrets: [Secret], timeout: Duration, newAccountFrom: Int?, tolerating: Set<GamError.Kind>,
+                 listedTask: ListedTask?) {
         self.write = write
         self.target = target
         rawSummary = summary
@@ -66,6 +72,7 @@ public struct WriteStep: Sendable {
         self.secrets = secrets
         self.timeout = timeout
         self.newAccountFrom = newAccountFrom
+        self.tolerating = tolerating
         self.listedTask = listedTask
     }
 
@@ -79,7 +86,7 @@ public struct WriteStep: Sendable {
                             timeout: Duration = GamRunner.defaultTimeout, newAccountFrom: Int? = nil) -> WriteStep {
         WriteStep(GamCommands.createTask(assignee: assignee, taskListID: listIDPlaceholder(list), title: title, notes: notes),
                   target: target, summary: summary, risk: .low, requires: requires.contains(list) ? requires : requires + [list],
-                  about: about, secrets: [], timeout: timeout, newAccountFrom: newAccountFrom,
+                  about: about, secrets: [], timeout: timeout, newAccountFrom: newAccountFrom, tolerating: [],
                   listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes))
     }
 
@@ -89,7 +96,7 @@ public struct WriteStep: Sendable {
     /// The same step, running `write` (a listed task with its list's id put in).
     func running(_ write: GamWrite) -> WriteStep {
         WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: listedTask)
+                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: listedTask)
     }
 
     public var action: WriteAction { write.action }
@@ -174,6 +181,13 @@ public struct HeldPreview: Sendable, Identifiable {
     public let decision: Guard.Decision
     public let confirmStep: Bool
     public let typedCountAbove: Int?
+    /// False for a routine (offboarding) where only `requires` stops a step, as GamGUI's `run_offboard`: a
+    /// refused sign-out is then a failed step that stops nothing. True everywhere else: an account-wide
+    /// failure (a missing scope) would fail every later call the same way.
+    public let stopsAtAccountWideFailure: Bool
+    /// An address the operator must type to run it (offboarding's leaver), checked by the executor, never only
+    /// the sheet. Nil: none.
+    public let typedAddress: String?
     let createdAt: ContinuousClock.Instant
     let precondition: (@Sendable () async throws -> Bool)?
 
@@ -285,6 +299,9 @@ public actor Executor {
     private var waiting: [CheckedContinuation<Void, Never>] = []
     /// Tests only: runs inside the write lock before each step, so a test can hold a write open.
     private var beforeEachStep: (@Sendable () async -> Void)?
+    /// Previews whose steps are running now, and those asked to stop after the step in flight.
+    private var executing: Set<UUID> = []
+    private var stopRequests: Set<UUID> = []
 
     /// `tenant` is the connected domain and its generation (`SetupModel`); `now` and the mock's
     /// environment are for tests.
@@ -311,14 +328,27 @@ public actor Executor {
     /// 2026-09-25). `precondition`, when given, re-reads what the preview assumed (the member is still in
     /// the group, the event still exists) just before the run: false means it changed, and the run is
     /// refused with "preview again", never re-planned silently.
+    /// `stopsAtAccountWideFailure` and `typedAddress` are for a routine (offboarding): see `HeldPreview`.
     public func preview(_ steps: [WriteStep], origin: Origin = .form, confirmStep: Bool = false,
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
+                        stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil,
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated()
         where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
             || !Self.newAccountWaitHolds(step, at: index, in: steps) {
             return .failure(.badPrerequisite(step: index))
+        }
+        // GamGUI's sweep alone tolerates, and only its benign per-user notices: never a 403, a scope or an unknown line.
+        if let index = steps.firstIndex(where: {
+            !$0.tolerating.isEmpty && ($0.action != .removeAllCalendarACLs || !$0.tolerating.isSubset(of: Self.sweepTolerable))
+        }) {
+            return .failure(.badTolerance(step: index))
+        }
+        // The address to type is one the preview acts on: a confirmation can't be asked for something else.
+        if let typedAddress, Guard.normalized(typedAddress).isEmpty
+            || !steps.contains(where: { Self.key($0.target) == Self.key(typedAddress) }) {
+            return .failure(.typedAddressNotATarget)
         }
         guard let current = await tenant() else { return .failure(.notConnected) }
         if let expecting, expecting.domain != current.domain || expecting.generation != current.generation {
@@ -328,7 +358,8 @@ public actor Executor {
             id: UUID(), steps: steps, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
             decision: Guard.evaluate(steps.map(\.change), typedCountAbove: typedCountAbove),
-            confirmStep: confirmStep, typedCountAbove: typedCountAbove, createdAt: now(), precondition: precondition)
+            confirmStep: confirmStep, typedCountAbove: typedCountAbove, stopsAtAccountWideFailure: stopsAtAccountWideFailure,
+            typedAddress: typedAddress, createdAt: now(), precondition: precondition)
         dropExpired()
         while order.count >= Self.previewsKept { held[order.removeFirst()] = nil }
         held[preview.id] = preview
@@ -337,7 +368,7 @@ public actor Executor {
     }
 
     public enum PreviewRefusal: Error, Equatable, Sendable {
-        case nothingToRun, notConnected, tenantChanged, badPrerequisite(step: Int)
+        case nothingToRun, notConnected, tenantChanged, badPrerequisite(step: Int), badTolerance(step: Int), typedAddressNotATarget
 
         public var message: String {
             switch self {
@@ -345,9 +376,20 @@ public actor Executor {
             case .notConnected: "Connect a domain on Setup first."
             case .tenantChanged: "The active domain changed after this was read — preview again on this domain."
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
+            case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
+            case .typedAddressNotATarget: "The address to type isn't one this change acts on."
             }
         }
     }
+
+    /// What the offboarding sweep may tolerate (GamGUI's `SWEEP_TOLERATED`): a user who never shared with the
+    /// leaver, a user without Calendar, and the leaver's own calendar, whose owner rule can't be removed.
+    public static let sweepTolerable: Set<GamError.Kind> = [.notFound, .serviceNotEnabled, .ownACL]
+
+    /// GamGUI's words for a sweep that ended with only those notices.
+    public static let toleratedOutput = "Completed (best-effort — per-user 'not shared', 'no Calendar' and own-calendar "
+        + "notices are expected and were skipped)."
+
 
     /// A listed task (D3c) is a `createTask` whose list is an earlier `createTaskList` step it requires, made
     /// for the same assignee, and whose held argv is its builder's with the placeholder for the id: the run
@@ -412,6 +454,9 @@ public actor Executor {
         if let why = Guard.refusal(taken.changes, confirmation, confirmStep: taken.needsConfirmClick,
                                    typedCountAbove: taken.typedCountAbove) {
             return .refused(why)
+        }
+        if let typed = taken.typedAddress, !confirmation.typedAddresses.contains(where: { Self.key($0) == Self.key(typed) }) {
+            return .refused("Type \(typed) to run this.")
         }
         let targets = Set(taken.steps.map { Self.key($0.target) })
         if let busy = taken.steps.first(where: { inFlight.contains(Self.key($0.target)) }) {
@@ -515,6 +560,17 @@ public actor Executor {
         parkedOrder.removeAll { $0 == handle.id }
     }
 
+    /// GamGUI's Stop: the step running finishes, with its end record, and no later step of `id` begins; they read
+    /// "Not run: stopped." Never cancels the step in flight (a sweep cut off mid-domain is worse than one that
+    /// finishes). False when `id` isn't running, as after it ended.
+    public func stopAfterCurrentStep(_ id: UUID) -> Bool {
+        guard executing.contains(id) else { return false }
+        stopRequests.insert(id)
+        return true
+    }
+
+    static let stopped = "Not run: stopped."
+
     /// Tests: how many runs' waiting steps are held for a retry.
     var parkedRuns: Int { parked.count }
 
@@ -559,6 +615,11 @@ public actor Executor {
                          attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
         -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
+        executing.insert(preview.id)
+        defer {
+            executing.remove(preview.id)
+            stopRequests.remove(preview.id)
+        }
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
@@ -583,6 +644,12 @@ public actor Executor {
             }
             if let needed = unmet.first {
                 results.append(.waiting(message: "Waits for step \(needed + 1)."))
+                continue
+            }
+            // Stop, asked while an earlier step ran: nothing more begins.
+            if stopRequests.contains(preview.id) {
+                stoppedBy = Self.stopped
+                results.append(.skipped(reason: Self.stopped))
                 continue
             }
             // Before the begin record: a run cancelled before gam starts is not "interrupted".
@@ -701,17 +768,33 @@ public actor Executor {
                 let message = Self.masked(error.message, secrets: secrets)
                 extra["error"] = .string(message)
                 extra["kind"] = .string(error.kind.rawValue)
-                if mayWait, error.saysNewAccountNotReady {
+                // Every line tolerable, not just the worst (GamError.kinds): one real failure fails the sweep.
+                let tolerated = !step.tolerating.isEmpty && error.kinds.isSubset(of: step.tolerating)
+                if !step.tolerating.isEmpty {
+                    extra["tolerated"] = .bool(tolerated)
+                    // Counts by kind, never the lines: what the first live sweep tolerated, bounded (invariant 9).
+                    var counts = JSONObject()
+                    for (kind, count) in error.lineCounts.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                        counts[kind.rawValue] = .number(String(count))
+                    }
+                    extra["tolerated_kinds"] = .object(counts)
+                }
+                if tolerated {
+                    result = .succeeded(output: Self.toleratedOutput)
+                    stop = nil
+                } else if mayWait, error.saysNewAccountNotReady {
                     result = .waiting(message: message)
                     stop = nil
                 } else {
                     result = .failed(message: message, kind: error.kind)
-                    // An account-wide failure fails every later call the same way: stop (bulk loops).
-                    stop = error.kind.isAccountWide ? "Stopped: \(error.kind.remediation)" : nil
+                    // An account-wide failure fails every later call the same way: stop (bulk loops), unless the
+                    // preview is a routine whose steps only `requires` stops.
+                    stop = error.kind.isAccountWide && preview.stopsAtAccountWideFailure ? "Stopped: \(error.kind.remediation)" : nil
                 }
             }
         } catch is CancellationError {
             exitCode = nil
+            if !step.tolerating.isEmpty { extra["tolerated"] = .bool(false) }
             extra["error"] = .string(Self.interrupted)
             result = .failed(message: Self.interrupted, kind: nil)
             stop = Self.interrupted
@@ -719,6 +802,7 @@ public actor Executor {
             // GamGUI's GAMError(kind=timeout): this target only, not the connection, so a plan goes on.
             exitCode = nil
             let message = "GAM didn't answer within \(seconds) seconds; it may have done part of the change. Check it in Google."
+            if !step.tolerating.isEmpty { extra["tolerated"] = .bool(false) }
             extra["error"] = .string(message)
             extra["kind"] = .string(GamError.Kind.timeout.rawValue)
             result = .failed(message: message, kind: .timeout)

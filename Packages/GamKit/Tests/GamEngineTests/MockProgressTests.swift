@@ -65,9 +65,10 @@ struct MockProgressTests {
             ["Application Specific Password IDs", "Backup Verification Codes", "Access Tokens"]
                 .map { "Getting \($0) for \(user)\n" }.joined()
         }
-        let done = try await run(GamCommands.deprovisionUser(email: "bob@example.com").argv)
+        // An active user (a suspended one's backup codes aren't touched: MockOffboardingTests).
+        let done = try await run(GamCommands.deprovisionUser(email: "carol@example.com").argv)
         #expect(done.exitCode == 0)
-        #expect(Self.bytes(done.stderr) == Self.bytes(getting("bob@example.com")))
+        #expect(Self.bytes(done.stderr) == Self.bytes(getting("carol@example.com")))
 
         let user = "SIGNOUTFAIL@example.com"
         let refused = try await run(GamCommands.deprovisionUser(email: user).argv)

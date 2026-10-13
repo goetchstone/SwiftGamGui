@@ -1196,4 +1196,109 @@ final class ExecutorTests {
         }
         #expect(await executor.retry(handles[0]).refusal != nil, "oldest evicted")
     }
+    // MARK: offboarding's routine (the offboarding plan's ChangeCore additions A–D)
+
+    private func sweep(_ leaver: String, timeout: Duration = GamRunner.domainWideTimeout) -> WriteStep {
+        WriteStep(GamCommands.removeAllCalendarACLs(email: leaver), target: leaver, summary: "Sweep", timeout: timeout,
+                  tolerating: Executor.sweepTolerable)
+    }
+
+    /// GamGUI's `tolerate_kinds` (test_offboard_safety.py, test_lifecycle.py): the sweep is done when every line GAM
+    /// printed is a benign notice (not shared, no Calendar, the leaver's own calendar), audited `tolerated` with
+    /// counts by kind; one real failure among them, a missing scope or a timeout fails it.
+    @Test func theSweepToleratesOnlyItsNotices() async throws {
+        let executor = executor()
+        for leaver in ["carol@example.com", "OWNACL@example.com", "SWEEPBENIGN@example.com"] {
+            let outcome = await executor.run(try await held(executor, [sweep(leaver)]), confirmation: confirmed)
+            #expect(outcome.steps == [.succeeded(output: Executor.toleratedOutput)], "\(leaver)")
+            let end = try #require(records.last)
+            #expect(end["ok"]?.bool == true, "\(leaver)")
+            #expect(end["extra"]?.object?["tolerated"]?.bool == true, "\(leaver)")
+            let counts = try #require(end["extra"]?.object?["tolerated_kinds"]?.object, "\(leaver)")
+            #expect(Set(counts.keys).isSubset(of: Executor.sweepTolerable.map(\.rawValue)) && counts["own_acl"]?.int == 1, "\(leaver)")
+        }
+        let benign = try #require(records.last?["extra"]?.object?["tolerated_kinds"]?.object)
+        #expect(benign.count > 1, "the benign sweep's notices are of more than one kind: \(benign)")
+        for leaver in ["SWEEPMIXED@example.com", "SWEEPFAIL@example.com"] {
+            let outcome = await executor.run(try await held(executor, [sweep(leaver)]), confirmation: confirmed)
+            guard case .failed = outcome.steps.first else { Issue.record("\(leaver): \(outcome.steps)"); continue }
+            #expect(records.last?["ok"]?.bool == false && records.last?["extra"]?.object?["tolerated"]?.bool == false, "\(leaver)")
+        }
+        let slow = await executor.run(try await held(executor, [sweep("SWEEPSLOW@example.com", timeout: .seconds(1))]), confirmation: confirmed)
+        guard case .failed(_, .timeout?) = slow.steps.first else { Issue.record("\(slow.steps)"); return }
+        #expect(records.last?["extra"]?.object?["tolerated"]?.bool == false)
+    }
+
+    /// A future caller can't widen it: only the sweep tolerates, and only the sweep's notices.
+    @Test func thePreviewRefusesAnyOtherTolerance() async throws {
+        let executor = executor()
+        let leaver = "carol@example.com"
+        let other = WriteStep(GamCommands.forwardOff(email: leaver), target: leaver, summary: "Forward off", tolerating: [.notFound])
+        await #expect(throws: Executor.PreviewRefusal.badTolerance(step: 0)) { try await executor.preview([other]).get() }
+        for kind in [GamError.Kind.permissionDenied, .scopeMissing, .unknown, .timeout] {
+            let wider = WriteStep(GamCommands.removeAllCalendarACLs(email: leaver), target: leaver, summary: "Sweep",
+                                  tolerating: Executor.sweepTolerable.union([kind]))
+            await #expect(throws: Executor.PreviewRefusal.badTolerance(step: 1)) { try await executor.preview([suspend(), wider]).get() }
+        }
+        let narrower = WriteStep(GamCommands.removeAllCalendarACLs(email: leaver), target: leaver, summary: "Sweep", tolerating: [.ownACL])
+        #expect((try? await executor.preview([narrower]).get()) != nil)
+    }
+
+    /// GamGUI's `test_offboard_failed_sign_out_is_a_failed_step_that_stops_nothing`: in the routine only `requires`
+    /// stops a step, so a refused sign-out is a ✗ and the rest still runs. Elsewhere it still stops the run.
+    @Test func aRefusedSignOutStopsNothingInARoutine() async throws {
+        let executor = executor()
+        let signOut = WriteStep(GamCommands.signOutUser(email: "SIGNOUTFAIL@example.com"), target: "SIGNOUTFAIL@example.com",
+                                summary: "Sign out")
+        let next = WriteStep(GamCommands.signOutUser(email: "alice@example.com"), target: "alice@example.com", summary: "Sign out")
+        let routine = try await executor.preview([signOut, next], stopsAtAccountWideFailure: false).get()
+        let outcome = await executor.run(routine, confirmation: confirmed)
+        guard case .failed(_, .scopeMissing?) = outcome.steps[0], case .succeeded = outcome.steps[1] else {
+            Issue.record("\(outcome.steps)"); return
+        }
+        #expect(ran().count == 2)
+        let stops = await executor.run(try await held(executor, [signOut, next]), confirmation: confirmed)
+        guard case .skipped = stops.steps[1] else { Issue.record("\(stops.steps)"); return }
+    }
+
+    /// GamGUI's Stop (test_jobs_tray.py): the step running finishes with its end record, and nothing after it
+    /// begins. A stop for another preview, or after the run, does nothing; a stopped run is never complete.
+    @Test func stopFinishesTheStepInFlightAndBeginsNoOther() async throws {
+        let executor = executor()
+        let preview = try await held(executor, [suspend(), suspend("bob@example.com"), suspend("carol@example.com")])
+        let calls = Shared(0), id = preview.id
+        await executor.setBeforeEachStep {
+            // While step 2 is about to run: a stop for another preview is refused, this one's is taken.
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
+            #expect(await executor.stopAfterCurrentStep(UUID()) == false)
+            #expect(await executor.stopAfterCurrentStep(id))
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        guard case .succeeded = outcome.steps[0], case .succeeded = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.steps[2] == .skipped(reason: Executor.stopped))
+        #expect(!outcome.succeeded)
+        #expect(ran().count == 2, "the step in flight finished; the next never began")
+        #expect(records.compactMap { $0["extra"]?.object?["phase"]?.string } == ["begin", "end", "begin", "end"])
+        #expect(await executor.stopAfterCurrentStep(id) == false, "after the run")
+        await executor.setBeforeEachStep(nil)
+        #expect(await executor.run(try await held(executor, [suspend()]), confirmation: confirmed).succeeded, "a later run isn't stopped")
+    }
+
+    /// The routine runs only with the leaver's address typed (the offboarding plan's D, stricter than GamGUI), checked
+    /// by the executor: missing or another address runs nothing; the same address in another case or spacing runs.
+    @Test func aRoutineRunsOnlyWithItsAddressTyped() async throws {
+        let executor = executor()
+        let leaver = "carol@example.com"
+        await #expect(throws: Executor.PreviewRefusal.typedAddressNotATarget) { try await executor.preview([suspend(leaver)], typedAddress: "alice@example.com").get() }
+        await #expect(throws: Executor.PreviewRefusal.typedAddressNotATarget) { try await executor.preview([suspend(leaver)], typedAddress: " ").get() }
+        for typed in [[], ["alice@example.com"], ["carol@example.co"]] {
+            let preview = try await executor.preview([suspend(leaver)], typedAddress: leaver).get()
+            let outcome = await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedAddresses: typed))
+            #expect(outcome.refusal == "Type \(leaver) to run this.", "\(typed)")
+        }
+        #expect(ran().isEmpty)
+        let preview = try await executor.preview([suspend(leaver)], typedAddress: leaver).get()
+        #expect(preview.typedAddress == leaver)
+        #expect(await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedAddresses: [" Carol@Example.com\n"])).succeeded)
+    }
 }

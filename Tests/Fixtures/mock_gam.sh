@@ -1017,8 +1017,11 @@ fi
 # three words in any order. Per user it deletes the app passwords, invalidates the backup codes and
 # deletes the OAuth tokens, then (options) turns off 2SV, signs out, disables POP/IMAP. A failure is
 # reported against the user and stops that user's remaining parts (deprovisionUser, read statically).
-# The stdout wording is GAM's shape from its source conventions, not captured from a tenant. Before each
-# part GAM says on stderr what it is getting (gam/__init__.py:74192, :74213, :74232; one user, so no counter).
+# The stdout wording is GAM's shape from its source conventions, not captured from a tenant, and nothing
+# parses it. Before each part GAM says on stderr what it is getting (gam/__init__.py:74192, :74213, :74232; one
+# user, so no counter). A suspended user's backup codes aren't touched (checkUserSuspended, :74188,
+# :74222-74229): "Not Deprovisioned" with GAM's reason (glmsgs IS_SUSPENDED_NO_BACKUPCODES, read from the
+# build), ACTION_NOT_PERFORMED_RC (51) once the other parts have run.
 if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "deprov" ]; }; then
   user="$2"; signout=""; shift 3
   while [ $# -gt 0 ]; do
@@ -1033,7 +1036,13 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "depr
   printf 'Getting Application Specific Password IDs for %s\n' "$user" 1>&2
   echo "User: $user, Application Specific Passwords: 0"
   printf 'Getting Backup Verification Codes for %s\n' "$user" 1>&2
-  echo "User: $user, Backup Verification Codes, Invalidated"
+  rc=0
+  if grep -F "\"primaryEmail\": \"$(lower "$user")\"" "$GAM_MOCK_FIXTURES/print_users.json" | grep -qF '"suspended": true'; then
+    printf 'User: %s, Backup Verification Codes Not Deprovisioned: User is suspended. You must unsuspend to process backupcodes\n' "$user" 1>&2
+    rc=51
+  else
+    echo "User: $user, Backup Verification Codes, Invalidated"
+  fi
   printf 'Getting Access Tokens for %s\n' "$user" 1>&2
   echo "User: $user, Access Tokens: 0"
   if [ -n "$signout" ]; then
@@ -1041,7 +1050,7 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "depr
     echo "User: $user, Signed Out"
   fi
   echo "User: $user, Deprovisioned"
-  exit 0
+  exit $rc
 fi
 
 # `gam user <email> signature <String> [html [<Boolean>]] [replyto <addr>] [default] [treatasalias <B>]
@@ -1545,12 +1554,34 @@ if [ "${1:-}" = "all" ] && [ "${2:-}" = "users" ] && [ "${3:-}" = "delete" ] && 
       printf '    Calendar: %s, Calendar ACL: (Scope: user:%s), Delete Failed: Cannot change your own access level.\n' "$scope" "$scope" 1>&2
       exit 50 ;;
   esac
-  # Seen live (2026-10-07, GAM 7.48.14): `all users` includes the leaver, who is still active after the
-  # reset, so every sweep ends on their own primary calendar, which GAM refuses to change — exit 50 with
-  # this line, tolerated as OWN_ACL. A clean exit 0 never happens for an active leaver.
-  printf 'User: alice@example.com, Calendar: alice@example.com, Calendar ACL: (Scope: user:%s), Deleted\n' "$scope"
-  printf '    Calendar: %s, Calendar ACL: (Scope: user:%s), Delete Failed: Cannot change your own access level.\n' "$scope" "$scope" 1>&2
-  exit 50
+  # The default, as GAM walks `all users` (every active user; updateDeleteCalendarACLs, :55925-55935, and
+  # _processCalendarACLs, :41681-41708 at 7.48.22): the progress lines; per user a header (with the count),
+  # then their primary calendar's one rule, deleted where the user had shared with the leaver (the mock's
+  # calendar_acls), "Delete Failed: Not Found" where they hadn't (Google's wording approximate), and, seen live
+  # (2026-10-07, GAM 7.48.14), the leaver's own calendar, whose owner rule GAM can't remove: exit 50, every
+  # line one GamGUI's sweep tolerates. A leaver who isn't active isn't visited, and the sweep exits 0.
+  scope_key=$(lower "$scope")
+  active=$(grep -vF '"suspended": true' "$GAM_MOCK_FIXTURES/print_users.json" | sed -n 's/.*"primaryEmail": "\([^"]*\)".*/\1/p')
+  count=$(printf '%s\n' "$active" | grep -c .)
+  printf 'Getting all Users, may take some time on a large Google Workspace Account...\nGot %s Users: %s - %s\n' \
+    "$count" "$(printf '%s\n' "$active" | head -1)" "$(printf '%s\n' "$active" | tail -1)" 1>&2
+  failed=0; n=0
+  for user in $active; do
+    n=$((n + 1))
+    echo "User: $user, Delete Calendar ACLs from 1 Calendar ($n/$count)"
+    echo "  Calendar: $user, Delete 1 Calendar ACL"
+    if [ "$user" = "$scope_key" ]; then
+      printf '    Calendar: %s, Calendar ACL: (Scope: user:%s), Delete Failed: Cannot change your own access level.\n' "$user" "$scope" 1>&2
+      failed=1
+    elif grep -qF "\"id\": \"user:$scope_key\"" "$(acl_file "$(lower "$user")")" 2>/dev/null; then
+      echo "    Calendar: $user, Calendar ACL: (Scope: user:$scope), Deleted"
+    else
+      printf '    Calendar: %s, Calendar ACL: (Scope: user:%s), Delete Failed: Not Found\n' "$user" "$scope" 1>&2
+      failed=1
+    fi
+  done
+  [ "$failed" = 0 ] || exit 50
+  exit 0
 fi
 
 # `gam user <owner> remove calendars <UserCalendarEntity>` -> PERMANENTLY delete a secondary calendar.
@@ -1756,21 +1787,47 @@ if [ "${1:-}" = "sendemail" ]; then
 fi
 
 # `gam create|add datatransfer|transfer <old> <DataTransferServiceList> <new> [private|shared|all]
-#  [release_resources]` -> succeeds. An <old> containing CONFLICT409 (a second transfer for the same
-# user still in flight) returns the exact "already in progress" error Google emits.
+#  [releaseresources <Boolean>]` (doCreateDataTransfer, gam/__init__.py:17866-17912 at 7.48.22). GAM resolves
+# each owner to a user ID as it reads it (convertEmailAddressToUID, :5997-6013): an address that isn't a user
+# ends the command there, before any transfer (entityDoesNotExistExit: the command line, then "User: x, Does
+# not exist", ENTITY_DOES_NOT_EXIST_RC; the marking of the bad argument is approximate). The same account
+# twice, an alias of the old owner included, is a usage error (:17886-17888). On success GAM prints
+# "Transfer Request Performed", then the transfer's ID, services, From and To (:17907-17912; the services are
+# the Data Transfer API's app names). With GAM_MOCK_STATE a transfer stays in progress for the old owner
+# ($GAM_MOCK_STATE/transfers/<old>), and a second one for them is Google's 409, which GAM's callGAPI doesn't
+# expect: systemErrorExit(HTTP_ERROR_RC, 9). An <old> containing CONFLICT409 does the same without state.
+transfer_owner() {  # <address>: the primary it resolves to, or the command ends as GAM's lookup does
+  owner=$(lower "$1")
+  # CONFLICT409 is a trigger, not an account: a pseudo-user, as *pending* is for print datatransfers.
+  case "$owner" in *conflict409*) printf '%s' "$owner"; return ;; esac
+  if known_user "$owner"; then printf '%s' "$owner"; return; fi
+  held=$(duplicate_of "$owner")
+  case "$held" in
+    "User Alias: "*) printf '%s' "${held##*, User: }"; return ;;
+  esac
+  printf 'Command: gam %s\n\nERROR: User: %s, Does not exist\n' "$ARGS" "$owner" 1>&2
+  exit 56
+}
 if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "datatransfer" ] || [ "${2:-}" = "transfer" ]; }; then
   [ -n "${3:-}" ] || missing_arg "OldOwnerID"
+  old_owner=$(transfer_owner "$3")
   [ -n "${4:-}" ] || missing_arg "DataTransferServiceList"
   services="calendar|datastudio|lookerstudio|data studio|googledrive|gdrive|drive|drive and docs"
+  apps=""
   old_ifs=$IFS; IFS=,
   for svc in $4; do
     case "$svc" in
-      calendar|datastudio|lookerstudio|"data studio"|googledrive|gdrive|drive|"drive and docs") ;;
+      calendar) app="Calendar" ;;
+      datastudio|lookerstudio|"data studio") app="Looker Studio" ;;
+      googledrive|gdrive|drive|"drive and docs") app="Drive and Docs" ;;
       *) IFS=$old_ifs; invalid_choice "$svc" "$services" ;;
     esac
+    apps="${apps:+$apps,}$app"
   done
   IFS=$old_ifs
   [ -n "${5:-}" ] || missing_arg "NewOwnerID"
+  new_owner=$(transfer_owner "$5")
+  [ "$old_owner" != "$new_owner" ] || usage_error "New owner must differ from old owner"
   old="$3"; svcs="$4"; new="$5"; shift 5
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -1782,16 +1839,22 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "datat
           *) usage_error "No data transfer application for key PRIVACY_LEVEL" ;;
         esac
         shift ;;
-      release_resources) shift ;;
+      releaseresources|release_resources) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       *) invalid_arg "$1" ;;
     esac
   done
-  case "$old" in
-    *CONFLICT409*) echo "ERROR: 409: conflict - Data transfer already in progress for the user." 1>&2; exit 9 ;;
-  esac
-  check_exists "User" "$old"
-  check_exists "User" "$new"
-  echo "Requested transfer of $svcs from $old to $new"
+  conflict() { echo "ERROR: 409: conflict - Data transfer already in progress for the user." 1>&2; exit 9; }
+  case "$old" in *CONFLICT409*) conflict ;; esac
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    [ ! -e "$GAM_MOCK_STATE/transfers/$old_owner" ] || conflict
+    mkdir -p "$GAM_MOCK_STATE/transfers"
+    printf '%s\n' "$new_owner" > "$GAM_MOCK_STATE/transfers/$old_owner"
+  fi
+  echo "Transfer Request Performed"
+  echo "  Transfer ID: MockTransfer_$(printf '%s' "$old_owner" | cksum | cut -d' ' -f1)"
+  echo "  Service: $apps"
+  echo "  From: $old"
+  echo "  To: $new"
   exit 0
 fi
 

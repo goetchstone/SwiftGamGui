@@ -111,6 +111,15 @@ struct WriteRouteTests {
         #expect(!writing.contains("App/SiriDrafts.swift"))
     }
 
+    /// Offboarding's routine is the one preview only `requires` stops, and its sweep the one step that counts benign
+    /// failures as done (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.
+    @Test func onlyTheRoutineLoosensTheRunsRules() throws {
+        let loosening = try Self.files(in: "Packages/GamKit/Sources", matching: ["stopsAtAccountWideFailure: false", "tolerating:"])
+        #expect(loosening.isSubset(of: ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift",
+                                        "Packages/GamKit/Sources/Directory/OffboardChanges.swift"]), "\(loosening)")
+        #expect(try Self.files(in: "App", matching: ["stopsAtAccountWideFailure", "tolerating:"]).isEmpty)
+    }
+
     /// Invariant 4, design D4: a temporary password's text is read in one place, the sign-in card. Anywhere
     /// else (a row, a log line, a feed, an announcement) would show or keep it.
     @Test func onlyTheCardShowsATemporaryPassword() throws {
