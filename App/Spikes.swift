@@ -118,6 +118,12 @@ enum Spikes {
             fflush(stdout)
             exit(EXIT_FAILURE)
         }
+        let outside = controlsOutsideTheWindow(in: content)
+        if !outside.isEmpty {
+            print("snapshot: a control reaches past the window's edge, so the page is clipped: \(outside.joined(separator: "; "))")
+            fflush(stdout)
+            exit(EXIT_FAILURE)
+        }
         // With a sheet open, AppKit's quit didn't reliably finish, even with the sheet ended first (CI hung on
         // group-sales-add, then on group-sales-remove, 2026-10-12 and 13). A captured sheet leaves by the quit's
         // own backstops (AppDelegate.applicationWillTerminate), then exits. Any other quit that hangs fails in
@@ -135,6 +141,32 @@ enum Spikes {
             exit(EXIT_FAILURE)
         }
         NSApp.terminate(nil)
+    }
+
+    /// AppKit controls (fields, segmented controls, pop-ups) that reach past the window's left or right edge. A
+    /// page whose content is wider than its pane lays out wider and is clipped on both sides, and the pane's own
+    /// minimum stays 0 (the inspector's layout-loop guard), so `columnsTooNarrow` can't see it: CI passed a person
+    /// page clipped at both edges (narrow-person-calendar, 2026-10-13). A table's cells scroll inside the table
+    /// and are left out.
+    @MainActor
+    static func controlsOutsideTheWindow(in content: NSView) -> [String] {
+        func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
+        func inTable(_ view: NSView) -> Bool {
+            var ancestor = view.superview
+            while let next = ancestor {
+                if next is NSTableView { return true }
+                ancestor = next.superview
+            }
+            return false
+        }
+        let bounds = content.bounds
+        return descendants(content).compactMap { view in
+            guard let control = view as? NSControl, !control.isHiddenOrHasHiddenAncestor, control.alphaValue > 0,
+                  !inTable(control) else { return nil }
+            let frame = control.convert(control.bounds, to: content)
+            guard frame.width > 0, frame.minX < bounds.minX - 1 || frame.maxX > bounds.maxX + 1 else { return nil }
+            return "\(type(of: control)) from x \(Int(frame.minX)) to \(Int(frame.maxX)), the window \(Int(bounds.width)) wide"
+        }
     }
 
     /// `cacheDisplay` leaves a web view blank: WebKit draws it in another process. Each signature preview
