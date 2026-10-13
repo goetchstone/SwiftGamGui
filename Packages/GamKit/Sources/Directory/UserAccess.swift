@@ -117,6 +117,25 @@ public final class UserAccess {
         if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
     }
 
+    /// The person's mail delegates, read now as the connected domain and not kept: offboarding's preview
+    /// decides on them (GamGUI's `list_delegates`, read live by `_delegate_warning`). A failure is GAM's own
+    /// words (`GamError.message`), which that warning quotes.
+    public func delegates(of email: String) async -> Result<[String], Problem> {
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let read = GamCommands.printDelegates(email: email)
+        do {
+            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
+            guard result.exitCode == 0 else {
+                return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+            }
+            return .success(Self.delegates(from: result.stdout))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// A read's outcome as a value, with any error worded for the screen.
     private static func result(_ body: () async throws -> String) async -> Result<String, Problem> {
         do {
