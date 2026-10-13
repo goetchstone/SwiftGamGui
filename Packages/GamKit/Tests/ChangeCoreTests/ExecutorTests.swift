@@ -936,6 +936,27 @@ final class ExecutorTests {
 
     // MARK: outcome unknown
 
+    /// D3e: each attempt at a step is its own begin and end. A retry round whose end was never written (the
+    /// app quit mid-call, or the log refused the end record) is an outcome unknown, though a later round of
+    /// the same step ended. Acknowledging it names the attempt.
+    @Test func anUnendedRetryRoundIsAnOutcomeUnknown() throws {
+        func extra(_ phase: String, attempt: Int? = nil) -> JSONObject {
+            var extra: JSONObject = ["preview": .string("P1"), "step": .number("1"), "phase": .string(phase)]
+            if let attempt { extra["attempt"] = .number(String(attempt)) }
+            return extra
+        }
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin"))
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: false, extra: extra("end"))
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 2))
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 3))
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: true, extra: extra("end", attempt: 3))
+        let unfinished = Executor.unfinished(in: auditURL)
+        #expect(unfinished.map(\.attempt) == [2])
+        try Executor.acknowledge(unfinished, in: auditURL)
+        #expect(Executor.unfinished(in: auditURL).isEmpty)
+        #expect(records.last?["extra"]?.object?["attempt"]?.int == 2)
+    }
+
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {
         try audit.record("suspendUser", target: "bob@example.com", argv: ["update", "user", "bob@example.com", "suspended", "on"],
                          extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])

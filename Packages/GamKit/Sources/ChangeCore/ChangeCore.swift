@@ -758,6 +758,8 @@ extension Executor {
         public var actionName: String { WriteAction(rawValue: action)?.displayName ?? action }
         let preview: String
         let step: Int
+        /// A retry round's attempt (2 and up); nil for the run's own.
+        public let attempt: Int?
     }
 
     /// Records read at launch: unfinished writes are recent, and the log can hold a million records.
@@ -771,12 +773,14 @@ extension Executor {
         for record in AuditLog.records(at: log, limit: limit) {
             guard let extra = record["extra"]?.object, let preview = extra["preview"]?.string,
                   let step = extra["step"].flatMap({ $0.int }), let phase = extra["phase"]?.string else { continue }
-            let key = "\(preview)/\(step)"
+            // Each attempt at a step is its own begin and end: a retry round's end doesn't close another's.
+            let attempt = extra["attempt"].flatMap { $0.int }
+            let key = "\(preview)/\(step)/\(attempt ?? 1)"
             if phase == "end" {
                 ended.insert(key)
             } else if phase == "begin", !ended.contains(key) {
                 found.append(Unfinished(action: record["action"]?.string ?? "", target: record["target"]?.string ?? "",
-                                        at: record["ts"]?.string ?? "", preview: preview, step: step))
+                                        at: record["ts"]?.string ?? "", preview: preview, step: step, attempt: attempt))
             }
         }
         return found
@@ -787,9 +791,10 @@ extension Executor {
     public static func acknowledge(_ unfinished: [Unfinished], in log: URL) throws {
         let audit = AuditLog(url: log)
         for write in unfinished {
-            try audit.record(write.action, target: write.target,
-                             extra: ["preview": .string(write.preview), "step": .number(String(write.step)),
-                                     "phase": .string("end"), "acknowledged": .bool(true)])
+            var extra: JSONObject = ["preview": .string(write.preview), "step": .number(String(write.step)),
+                                     "phase": .string("end"), "acknowledged": .bool(true)]
+            if let attempt = write.attempt { extra["attempt"] = .number(String(attempt)) }
+            try audit.record(write.action, target: write.target, extra: extra)
         }
     }
 }
