@@ -12,7 +12,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | The directory cache and Home | [directory-home.md](directory-home.md) | phase 1: built; first live load pending |
 | The Groups screen: the group list, a group's members, adding and removing them | [groups.md](groups.md) | phase 2: reads built and read live; writes built, live check pending |
 | Signatures: saved templates, render, set for one person | [signatures.md](signatures.md) | phase 2: parity core, template store, screen and write built; live check next |
-| Calendars: rooms, a person's calendars, who has access, sharing with one person | [calendars.md](calendars.md) | phase 2: C1a (models and the mock's reads) built |
+| Calendars: rooms, a person's calendars, who has access, sharing with one person | [calendars.md](calendars.md) | phase 2: reads built (C1a, C1b); live check (C1c) pending |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
 

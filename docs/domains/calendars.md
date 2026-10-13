@@ -3,8 +3,8 @@
 **One line:** find a calendar (a room, or one in a person's calendar list), see who has access, and
 share it with one person or take their access away; and on a person's page, who can see their primary
 calendar. Built in slices from the calendars plan (2026-10-12): C1a, the parity core and the strict
-mock's reads. Next: C1b (the screen and the person tab, read-only), C2a (sharing with one person and
-unsharing, through ChangeCore). Deferred until asked: find by name (C3a, the domain-wide index), delete a
+mock's reads; C1b, the store, the Calendars screen and the person page's Calendar tab (read-only). Next:
+C2a (sharing with one person and unsharing, through ChangeCore). Deferred until asked: find by name (C3a, the domain-wide index), delete a
 secondary calendar (C3b, a ChangeCore addition), share with a group (C4, a background job), events.
 GamGUI's `web/routes/calendars.py` and `users.py:560-604` are the reference.
 
@@ -14,12 +14,17 @@ no argv key is new), the mock's fidelity for the calendar reads and writes, #9 f
 **Enforcement home:** `Tests/GamEngineTests/CalendarTests.swift` (the models, held to
 `gam_models.json`'s `calendar_acls`, `user_calendars` and `resources`; the sharing rules),
 `Tests/GamEngineTests/MockCalendarsTests.swift` (the mock prints GAM's bytes, fails as GAM fails, and its
-calendars agree with one another).
+calendars agree with one another), `Tests/DirectoryStoreTests/CalendarReadsTests.swift` (the store against
+the strict mock with its argv log).
 
 ## Files
 - `Packages/GamKit/Sources/GamEngine/Calendar.swift`: `CalendarACL`, `UserCalendar`, `ResourceCalendar`
   (GamGUI's models), `ResourceCalendar.search` (GamGUI's room filter), `CalendarSharing` (who GAM acts
   as, the share target check, the picker's four roles) and `GettingLines`.
+- `Packages/GamKit/Sources/Directory/CalendarReads.swift`: the four reads (C1b).
+- `App/CalendarsView.swift`: the screen, its calendar page, and the person page's `PersonCalendarSection`;
+  `App/UsersView.swift` (the Calendar tab), `App/GamGUIApp.swift` (the sidebar's Calendars),
+  `App/AppServices.swift`, `App/Spikes.swift` (the demo fill), `scripts/screenshots.sh`.
 - `Tests/Fixtures/mock_gam.sh`'s calendar section, and its data: `mock_gam/user_calendars/<person>.json`,
   `mock_gam/calendar_acls/<calendar>.json`, `mock_gam/resources.json`.
 - `scripts/gen_fixtures.py`: `GAM_PRINTED` (each read's header and key columns, so the generator checks
@@ -70,6 +75,37 @@ calendars agree with one another).
   Calendar off read as "GAM reported an error"). The calendar reads drop it before classifying
   (`GettingLines`); GamError itself is unchanged.
 
+## The reads (C1b): `Directory/CalendarReads.swift`
+- **GroupMembers' reviewed shape:** each read (`.rooms`, `.calendars(of:)`, `.access(calendar:)`,
+  `.primaryAccess(of:)`) is kept for the domain and generation it was read under, keyed as `Guard`
+  compares addresses; `ReadsInFlight` counts reads per key, so one window leaving a page never ends
+  another's read, and an older, slower read never replaces a newer one; only the last sixteen are kept
+  (invariant 9); output the runner cut at its cap is refused. Each is GamGUI's builder with the default
+  timeout, as GamGUI runs it.
+- **Exit 60 is none, for rules only** (Q4): a calendar's rules with exit 60 and no records read as an
+  empty list ("No access rules returned." on the screen, GamGUI's "Only the owner has access." on the
+  tab); a list never exits 60, so there it is a failure.
+- **Failures** are GamError's remediation with GAM's line beneath, after `GettingLines`.
+
+## The screen and the tab
+- **Calendars** (sidebar, after Groups): Rooms | Person. Rooms are read when Rooms is first shown for a
+  tenant, searched by GamGUI's filter (name, address or ID); a person is chosen from the directory
+  (address order, a suspended one said so; nobody at first, as GamGUI's field starts) and their
+  calendars read then. Each row is the name above the ID, each truncating on its own (GamGUI
+  failure-log 2026-09-15), then GamGUI's details (`primary · owner`, a room's type), read by VoiceOver as
+  one sentence. A calendar's page: the name as the heading (header trait), the ID (selectable), and who
+  has access in GAM's order with the role in words, read each time the page opens (a quarter second
+  late, so arrowing down the list reads nothing). ⌘R reads the list again; the outcome is spoken from
+  the window in front.
+- **States, in words:** not connected; connecting; reading; a problem (the remediation, GAM's line
+  selectable, Try Again), Calendar off or a missing scope among them; "No rooms or resources."; "No
+  calendar matches"; "Choose a person to see their calendars."; on the page, "No access rules
+  returned.", a problem in place of the list (GamGUI's error partial), or "Not read." with Read Again.
+- **The person page's Calendar tab:** who can see their primary calendar, read by GamGUI's user form
+  when the tab is shown; "Show Their Calendars…" opens Calendars for them (as the Mail tab opens
+  Signatures). A fifth tab: the page's content clips rather than widen the inspector, and the
+  `narrow-person-calendar` run checks it fits.
+
 ## Gotchas / mock-lies traps
 - **The mock lied about every calendar read** (found planning C1): it refused all four (and before that
   printed NDJSON GAM never prints for them), and failed an unknown calendar as "Does not exist", exit 56,
@@ -91,7 +127,9 @@ calendars agree with one another).
   holds); the holiday calendar's rules (not in the mock: reading them fails as an unknown calendar).
 
 ## Testing / live-verification status
-- Mock-tested. No calendar read or write has run on a tenant from this app. GamGUI's live record: share,
+- Mock-tested. No calendar read or write has run on a tenant from this app. CI renders `calendars`,
+  `calendars-alice` (Team Calendar's page), `narrow-calendars-alice`, `person-calendar` and
+  `narrow-person-calendar`. GamGUI's live record: share,
   subscribe and delete a secondary calendar confirmed; share with a group, unshare and delete an event
   never confirmed (GamGUI `README.md:179-184`).
 - **C1c (the operator, read-only):** rooms; their own calendars; the rules of their primary and of a

@@ -40,6 +40,7 @@ enum Spikes {
                 if Screen.initial != .setup {
                     await services.directory.load()
                     if Screen.initial == .groups { await services.groups.load() }
+                    if Screen.initial == .calendars { await services.calendarReads.load(.rooms) }
                 } else {
                     await setup.checkAccess(Domain("example.org")!)
                 }

@@ -14,8 +14,12 @@ struct UsersView: View {
     let changes: UserChanges
     let access: UserAccess
     let drafts: SiriDrafts
+    /// Who can see a person's primary calendar (the Calendar tab).
+    let calendarReads: CalendarReads
     /// Opens Signatures for a person (the Mail tab's "Change Signature…").
     let openSignatures: (String) -> Void
+    /// Opens Calendars for a person (the Calendar tab's "Show Their Calendars…").
+    let openCalendars: (String) -> Void
     @State private var filter = UserFilter()
     /// What became of Siri's last request, when it couldn't be drafted.
     @State private var siriNotice: String?
@@ -171,7 +175,7 @@ struct UsersView: View {
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen,
-                               openSignatures: openSignatures)
+                               openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars)
                 }
             }
         } else {
@@ -337,6 +341,8 @@ enum PersonTab: String, CaseIterable, Identifiable {
     case groups = "Groups"
     /// The auto-reply, the Gmail signature and who can read the mailbox (Gmail delegates).
     case mail = "Mail"
+    /// Who can see their primary calendar.
+    case calendar = "Calendar"
     case security = "Security"
 
     var id: Self { self }
@@ -361,6 +367,8 @@ private struct UserDetail: View {
     /// Tells the list an editor is open, so Siri doesn't change the person under it.
     @Binding var editorOpen: Bool
     let openSignatures: (String) -> Void
+    let calendarReads: CalendarReads
+    let openCalendars: (String) -> Void
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
@@ -392,6 +400,11 @@ private struct UserDetail: View {
         // Read when the person is selected, and again after a change of theirs lands; a quarter second later,
         // so arrowing down the list starts no gam for the people passed over, and none as the page appears.
         .task(id: "\(user.id)#\(changes.finished)") { await access.load(user.primaryEmail, after: .milliseconds(250)) }
+        // Their calendar's access is read when the Calendar tab is shown (GamGUI's `tab-shown`), and again after a change.
+        .task(id: "\(user.id)#\(tab == .calendar)#\(changes.finished)") {
+            guard tab == .calendar else { return }
+            await calendarReads.load(.primaryAccess(of: user.primaryEmail), after: .milliseconds(250))
+        }
         .onChange(of: access.lists(for: user.primaryEmail) != nil || access.problem(for: user.primaryEmail) != nil,
                   initial: true) { _, has in
             if has {
@@ -507,6 +520,8 @@ private struct UserDetail: View {
             SignatureCard(user: user, access: access, openSignatures: openSignatures)
             AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
                        newAddress: $newDelegate)
+        case .calendar:
+            PersonCalendarSection(user: user, reads: calendarReads, openCalendars: openCalendars)
         case .security:
             Section("Security") {
                 LabeledContent("Administrator", value: user.isAdmin ? "Super admin" : user.isDelegatedAdmin ? "Delegated" : "No")

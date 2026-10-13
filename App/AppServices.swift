@@ -30,6 +30,8 @@ struct AppServices {
     let groupMembers: GroupMembers
     /// Adding people to a group and removing a member, through the executor.
     let groupChanges: GroupChanges
+    /// Rooms, a person's calendars and who has access, read when a screen needs them.
+    let calendarReads: CalendarReads
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -70,7 +72,7 @@ struct AppServices {
                            groups: GroupStore(setup: setup, runner: runner),
                            groupMembers: groupMembers,
                            groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
-                           auditURL: auditURL)
+                           calendarReads: CalendarReads(setup: setup, runner: runner), auditURL: auditURL)
     }
 
     #if DEBUG

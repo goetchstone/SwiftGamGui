@@ -33,6 +33,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case home = "Home"
     case users = "Users"
     case groups = "Groups"
+    case calendars = "Calendars"
     case signatures = "Signatures"
     case setup = "Setup"
 
@@ -43,6 +44,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .home: "house"
         case .users: "person.2"
         case .groups: "person.3"
+        case .calendars: "calendar"
         case .signatures: "signature"
         case .setup: "key"
         }
@@ -75,6 +77,8 @@ struct ContentView: View {
     @State private var screen: Screen? = Screen.initial
     /// The person Signatures opens on when another screen sends it one.
     @State private var signaturesPerson: String?
+    /// The person Calendars opens on when Users sends it one.
+    @State private var calendarsPerson: String?
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -104,15 +108,23 @@ struct ContentView: View {
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess, drafts: services.siriDrafts) { email in
-                    signaturesPerson = email
-                    screen = .signatures
-                }
+                          access: services.userAccess, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                          openSignatures: { email in
+                              signaturesPerson = email
+                              screen = .signatures
+                          }, openCalendars: { email in
+                              calendarsPerson = email
+                              screen = .calendars
+                          })
                 .navigationTitle("Users")
             case .groups:
                 GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
                            members: services.groupMembers, changes: services.groupChanges)
                     .navigationTitle("Groups")
+            case .calendars:
+                CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
+                              requested: $calendarsPerson)
+                    .navigationTitle("Calendars")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
                                access: services.userAccess, templates: services.signatureTemplates,
