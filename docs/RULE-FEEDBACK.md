@@ -40,6 +40,49 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 - **Enforcement home if changed:** tripwire test (the deviation list held narrow, as both fixtures now
   do); for `improve-rules`, the #11 wording 2026-10-10 proposed.
 
+## 2026-10-12 — One argv element, read by GAM as a list: GamGUI's guard was its browser field (calendars F5, D5)
+- **What happened:** porting the calendar share, the target went to GAM as one argv element, as #1
+  asks, yet GAM reads `<CalendarACLScopeEntity>` with `getEntityList` (gam/__init__.py:7338-7342): it
+  splits the element at commas and whitespace into several rules, reads a local file for `file` or
+  `csvfile`, gives a bare name the domain, and takes `group:`, `user:`, `domain` and `default` as other
+  scopes. GamGUI passed the typed text straight through (`calendars.py:365`, `users.py:584-588`); only
+  its browser's `type="email"` field stopped the rest. The native port has no browser, so it checks one
+  address itself (`CalendarSharing.shareTargetProblem`). The plan said `Address.looksLikeEmail` refuses
+  `group:`; it allows a colon in the local part, so the check adds that.
+- **Invariant in force:** #1 (argv-only, every operator value exactly one element) and #11.
+- **Why it didn't hold:** #1 is about the shell and argv boundaries; it says nothing about GAM's own
+  parsing of an element, which can turn one element into many targets or a file read. Parity copied
+  GamGUI's server code, whose guard lived in HTML the port doesn't have.
+- **Would a rule have caught it?** only if enforced differently: #1 could say "one element GAM reads as
+  one value": a builder argument GAM parses as an entity list or a selector gets a native check, listed
+  in its runbook, with a test of the list and keyword shapes (as `aShareTargetMustBeOneAddress`).
+- **Enforcement home if changed:** the `add-builder-command` skill (read the grammar's entity type for
+  each operator value), with the test as the backstop.
+
+## 2026-10-12 — Three places the calendar port reads GAM better than GamGUI did (F7, D6, exit 60, the "Getting" line)
+- **What happened:** reading the vendored build for the calendar plan found where GamGUI's behavior is
+  wrong for the operator, and the port departs, each listed in `docs/domains/calendars.md` and tested:
+  GamGUI labels a writer "Make changes & manage sharing" (Google's writer can't share; its own picker says
+  "Make changes"), and `CalendarTests` lists that one label as different from the fixture; when the
+  group check failed, GamGUI guessed "person" and took an empty group for a person (`calendars.py:79-85`),
+  where the port says it couldn't check, and refuses an empty group as a group; a calendar with no rules
+  exits 60, which GamGUI's runner raised as a failure, and the port reads as none. And GAM prints
+  "Getting Calendar ACLs for …" on stderr before a per-entity print (`show_gettings`, on by default),
+  which GamError (held to GamGUI's `_PROGRESS_LINE`, "Getting all " only) reads as an unknown failure
+  that outranks the real one: a person with Calendar off read as "GAM reported an error". The calendar
+  branch first dropped the line in its own reads (`GettingLines`); GamError learned it for every read on
+  2026-10-13 (the entry above), and that filter was removed.
+- **Invariant in force:** #11 (parity is a test), and the "mock lies" rule (the mock printed no such
+  line, so no test could see it).
+- **Why it didn't hold:** as on 2026-10-10 twice: where the reference reads GAM wrongly, parity copies
+  the defect, and a mock written from the reference's view of GAM shares its blind spot.
+- **Would a rule have caught it?** only if enforced differently: a mock handler is written from the
+  build's code for the command (its stdout, stderr and exit code, the progress lines included), never
+  from the reference's handling of it; and a departure from the reference is a listed, tested deviation.
+- **Enforcement home if changed:** the `pre-commit` skill's "the mock lies" item (stderr too, read from
+  the build), and a GamErrorTests case once GamError itself learns the line (a deviation from
+  `gam_errors.json` to record, as `gam_output.json` records the CSV ones).
+
 ## 2026-10-10 — The template store departs from GamGUI where GamGUI loses data (D2's quarantine)
 - **What happened:** porting GamGUI's signature store (S1b), its `_load` showed the starters over a
   corrupt or unreadable file, and its next save replaced that file: the operator's templates were gone

@@ -1,0 +1,5 @@
+{"accessRole": "owner", "id": "alice@example.com", "primary": true, "summary": "alice@example.com"}
+{"accessRole": "owner", "id": "c_team@group.calendar.google.com", "summary": "Team Calendar"}
+{"accessRole": "reader", "id": "en.usa#holiday@group.v.calendar.google.com", "summary": "Holidays in United States", "summaryOverride": "US Holidays"}
+{"accessRole": "freeBusyReader", "id": "aspen@resource.calendar.google.com", "summary": "Aspen"}
+{"accessRole": "writer", "id": "c_rota@group.calendar.google.com", "summary": "Rota \"B\" C:\\Shifts, Zoë"}

@@ -1,0 +1,2 @@
+{"id": "user:carol@example.com", "role": "owner", "scope": {"type": "user", "value": "carol@example.com"}}
+{"id": "user:helpdesk@example.com", "role": "reader", "scope": {"type": "user", "value": "helpdesk@example.com"}}

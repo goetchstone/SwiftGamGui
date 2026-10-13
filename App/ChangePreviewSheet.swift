@@ -253,3 +253,80 @@ struct GroupPreviewSheet: View {
         }
     }
 }
+
+extension CalendarChanges {
+    /// The preview the sheet shows: held, or running (the sheet stays, its buttons off, until it ends).
+    var sheetPending: Pending? {
+        switch state {
+        case .previewing(let pending), .running(let pending): pending
+        case .idle, .done, .problem: nil
+        }
+    }
+
+    /// The sheet for this calendar's page: a page shows only its own calendar's change.
+    func sheetPending(for calendarID: String) -> Pending? {
+        sheetPending.flatMap { concerns(calendarID) && $0.calendarID == calendarID ? $0 : nil }
+    }
+
+    /// The sheet was closed: drops a preview still waiting, never the result the run left behind.
+    func dismissPreview() {
+        if case .previewing = state { dismiss() }
+    }
+}
+
+/// A calendar change's confirm step (calendars plan D4): each step in words with its command, what to know
+/// first, and how it's undone; then Cancel, or Share or Remove, both off while it runs. Confirming runs exactly
+/// this preview, once.
+struct CalendarPreviewSheet: View {
+    let pending: CalendarChanges.Pending
+    let changes: CalendarChanges
+
+    private var running: Bool { changes.isBusy }
+
+    private func confirm() {
+        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
+    }
+
+    var body: some View {
+        Form {
+            Section(pending.title) {
+                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
+                    Text(step.summary)
+                    DisclosureGroup("Show command") {
+                        Text(step.shownArgv.joined(separator: " "))
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            if !pending.warnings.isEmpty {
+                Section {
+                    ForEach(pending.warnings, id: \.self) { warning in
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    }
+                }
+            }
+            Section {
+                Label(pending.undo, systemImage: "arrow.uturn.backward.circle")
+            }
+            if running {
+                Section {
+                    HStack { ProgressView().controlSize(.small); Text(pending.kind == .share ? "Sharing…" : "Removing…") }
+                        .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 460)
+        .interactiveDismissDisabled(running)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { changes.dismiss() }.disabled(running)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button(pending.confirmLabel) { confirm() }.disabled(running)
+            }
+        }
+    }
+}

@@ -1,0 +1,6 @@
+{"id": "user:c_team@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_team@group.calendar.google.com"}}
+{"id": "user:alice@example.com", "role": "owner", "scope": {"type": "user", "value": "alice@example.com"}}
+{"id": "user:carol@example.com", "role": "writer", "scope": {"type": "user", "value": "carol@example.com"}}
+{"id": "user:bob@example.com", "role": "reader", "scope": {"type": "user", "value": "bob@example.com"}}
+{"id": "group:sales@example.com", "role": "reader", "scope": {"type": "group", "value": "sales@example.com"}}
+{"id": "domain:example.com", "role": "freeBusyReader", "scope": {"type": "domain", "value": "example.com"}}

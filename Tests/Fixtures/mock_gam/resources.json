@@ -1,0 +1,3 @@
+{"buildingId": "id:hq", "buildingName": "HQ", "resourceEmail": "aspen@resource.calendar.google.com", "resourceId": "1001", "resourceName": "Aspen", "resourceType": "Conference Room"}
+{"buildingId": "id:annex", "buildingName": "annex", "resourceEmail": "birch@resource.calendar.google.com", "resourceId": "1002", "resourceName": "Birch Huddle, 2nd floor", "resourceType": "Huddle \"Pod\" \\ Small"}
+{"resourceEmail": "projector@resource.calendar.google.com", "resourceId": "1003", "resourceName": "Projector", "resourceType": "Equipment"}

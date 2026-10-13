@@ -15,7 +15,9 @@ groups, mail delegates, auto-reply, sign-out, and their Gmail signature from a s
 (Signatures, one person at a time). Every change shows what it will run first and runs only when you
 confirm it ([Live verification](#live-verification) lists what has run on a real tenant). Groups lists
 the domain's groups and a group's members, and from a group's page adds people with a role or removes a
-member. Calendars, a signature for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
+member. Calendars lists the rooms and a person's calendars, shows who has access, and shares one with a
+person or takes access away. Sharing a calendar with a group, deleting a calendar or an event, a signature
+for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
@@ -111,6 +113,10 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Add people to a group as members (Groups) | argv-identical |
 | Add people to a group as managers or owners (Groups) | not yet: never run live in either app |
 | Remove a member (Groups) | argv-identical |
+| Share a calendar with a person (Calendars) | argv-identical |
+| Put a shared calendar in their list (Calendars) | argv-identical |
+| Share their own calendar (Users) | argv-identical |
+| Remove someone's access to a calendar (Calendars, Users) | GamGUI's command, which GamGUI never ran live either |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.

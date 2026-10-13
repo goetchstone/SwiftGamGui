@@ -802,6 +802,11 @@
    "upload",
    "use",
    "watch"
+  ],
+  "GRAMMAR_CALENDAR_ACL_ROLES": [
+   "editor|freebusy|freebusyreader|owner|reader|writer|writerwithoutprivateaccess|none",
+   "editor|freebusy|freebusyreader|owner|reader|writer|writerwithoutprivateaccess|none",
+   "editor|freebusy|freebusyreader|owner|reader|writer|writerwithoutprivateaccess|none"
   ]
  },
  "cases": [
