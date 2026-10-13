@@ -140,9 +140,23 @@ not_modelled() { echo "ERROR: mock: $1 isn't modelled" 1>&2; exit 2; }
 # listing them (alice: sales, staff; bob: staff; carol: it; dana: none). allhands' twelve members aren't in
 # the mock's directory, so `print groups member` refuses them. Members cover every role, a nested GROUP (its
 # address only; GAM doesn't expand it without `recursive`), a suspended USER, and the CUSTOMER row (everyone
-# in the organization), which has no address (shapes approximate: not captured from a tenant).
+# in the organization), which has no address (shapes approximate: not captured from a tenant). With
+# GAM_MOCK_STATE, a group a write changed keeps its new list in $GAM_MOCK_STATE/groups/<group>, and every
+# group read (its members, a person's groups, the list's counts) follows it.
 is_group() {  # <address>, already lowercased
   grep -qF "\"email\": \"$1\", " "$GAM_MOCK_FIXTURES/groups.json"
+}
+members_of() {  # <group, lowercased>: its member records, one per line, as a write left them
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/groups/$1" ]; then
+    cat "$GAM_MOCK_STATE/groups/$1"
+  else
+    grep -F "\"group\": \"$1\", " "$GAM_MOCK_FIXTURES/group_members.json" || true
+  fi
+}
+member_record() { members_of "$1" | grep -F "\"email\": \"$2\", " || true; }   # <group> <member>, lowercased
+# The tenant's own domains (mock_gam/domains.json): its primary, a secondary, and a domain alias.
+tenant_domain() {  # <domain, lowercased>
+  grep -qF -e "\"domainName\": \"$1\"" -e "\"domainAliasName\": \"$1\"" "$GAM_MOCK_FIXTURES/domains.json"
 }
 # `todrive <ToDriveAttribute>*` (grammar 655) after a print/report read: only the shape the Builder emits
 # (GAMCommands.todrive_args) — `todrive [tduser <EmailAddress>] [tdtitle <String>]`, each once, in that order,
@@ -326,7 +340,7 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
   addr=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
   is_group "$addr" || does_not_exist "Group" "$4"
   echo "group,JSON"
-  grep -F "\"group\": \"$addr\", " "$GAM_MOCK_FIXTURES/group_members.json" | while IFS= read -r member; do
+  members_of "$addr" | while IFS= read -r member; do
     gam_row "$addr" "$member"
   done
   exit 0
@@ -411,19 +425,20 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "signature" ];
   exit 0
 fi
 
-# `gam print groups member <email>` -> CSV of THAT user's group emails. For an address that isn't a user
-# the Directory API says "Invalid Input: memberKey" and GAM stops (invalidMember -> entityActionFailedExit,
-# ACTION_FAILED_RC; read from the vendored build — wording approximate).
+# `gam print groups member <email>` -> CSV of THAT user's group emails: the groups listing them directly, in
+# GAM's order (alice: sales, staff; bob: staff; carol: it; dana: none, the header alone). For an address
+# that isn't a user the Directory API says "Invalid Input: memberKey" and GAM stops (invalidMember ->
+# entityActionFailedExit, ACTION_FAILED_RC; read from the vendored build — wording approximate).
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ] && [ "${3:-}" = "member" ]; then
   [ -n "${4:-}" ] || missing_arg "EmailItem"
   [ $# -eq 4 ] || invalid_arg "$5"
-  case "$4" in
-    alice@example.com) printf 'email\nsales@example.com\nstaff@example.com\n' ;;
-    bob@example.com)   printf 'email\nstaff@example.com\n' ;;
-    carol@example.com) printf 'email\nit@example.com\n' ;;
-    dana@example.com)  printf 'email\n' ;;   # in no group: GAM still prints the header
-    *) echo "ERROR: Group:, Print Failed: Invalid Input: memberKey" 1>&2; exit 50 ;;
-  esac
+  user=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
+  known_user "$user" || { echo "ERROR: Group:, Print Failed: Invalid Input: memberKey" 1>&2; exit 50; }
+  echo "email"
+  while IFS= read -r record; do
+    group=$(json_text email "$record")
+    if member_record "$group" "$user" | grep -qF '"type": "USER"'; then echo "$group"; fi
+  done < "$GAM_MOCK_FIXTURES/groups.json"
   exit 0
 fi
 
@@ -487,7 +502,16 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
   for field in name description directmemberscount; do
     case "$want" in *" $field "*) ;; *) not_modelled "print groups without field $field" ;; esac
   done
-  print_formatjson email groups.json
+  # print_formatjson's output, each count as the group's members now are once a write changed them.
+  echo "email,JSON"
+  while IFS= read -r record; do
+    group=$(json_text email "$record")
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/groups/$group" ]; then
+      count=$(members_of "$group" | wc -l | tr -d ' ')
+      record=$(printf '%s' "$record" | sed "s/\"directMembersCount\": \"[0-9]*\"/\"directMembersCount\": \"$count\"/")
+    fi
+    gam_row "$group" "$record"
+  done < "$GAM_MOCK_FIXTURES/groups.json"
   exit 0
 fi
 
@@ -1003,25 +1027,100 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && [ "${2:-}" = "group" 
   exit 0
 fi
 
-# `gam update group <group> add|create [<GroupRole>] <member>` / `delete|remove [<GroupRole>] <member>`.
-# Real GAM 404s if the group doesn't exist (a typo'd group address is the common onboarding mistake).
+# `gam update group <group> add|create [<GroupRole>] <member>` / `delete|remove [<GroupRole>] <member>`
+# (grammar 3931, 3937), as doUpdateGroups (gam/__init__.py:35000, read at 7.48.22) runs them. Only the shape
+# the app sends: one group and one member, though GAM reads each as a list (`<GroupEntity>`,
+# `<UserTypeEntity>`), and none of the option words. Anything else is refused, not answered in a guessed
+# shape; so is a group added to itself (Google's cycle refusal isn't modelled).
+#   - checkGroupExists runs first: an address that isn't one of the tenant's groups, a person's included, is
+#     entityUnknownWarning's "Group: <g>, Does not exist" (GAM lowercases it), ENTITY_DOES_NOT_EXIST_RC.
+#   - One member is under GAM's batch_size (50), so it is one API call, and a failure is _showFailure with
+#     Google's words: "Group: g, Member: m, Role: R, Add|Remove Failed: <why>", ACTION_FAILED_RC. The role
+#     shown is the one asked for (MEMBER when none is). The address compares case-insensitively.
+#     Approximate, Google's text not captured from a tenant:
+#       add, already a member in any role: "Member already exists." (its 409 duplicate);
+#       add, an address in one of the tenant's domains that is no user or group: "Does not exist" (a 404 on
+#         memberKey, which GAM maps to memberNotFound and its own words);
+#       add, an address Google can't read: "Invalid Input: memberKey" (one outside a plain address's
+#         characters stands for it);
+#       remove, not a member: "Does not exist".
+#   - An address outside the tenant's domains is added: an admin may add an external member whatever the
+#     group allows (GAM's `verifyallowexternal` exists to find them). GAM shows it with no status.
+#   - Not modelled: an alias (Google adds the account it belongs to), the role's other spellings.
 if [ "${1:-}" = "update" ] && { [ "${2:-}" = "group" ] || [ "${2:-}" = "groups" ]; }; then
-  [ -n "${3:-}" ] || missing_arg "GroupEntity"
-  group="$3"
+  [ $# -ge 3 ] || missing_arg "GroupEntity"
+  [ -n "$3" ] || empty_arg "GroupEntity"
+  case "$3" in *,*) not_modelled "update group with a list of groups" ;; esac
   case "${4:-}" in
-    add|create) verb="added" ;;
-    delete|remove) verb="removed" ;;
-    *) echo "ERROR: mock: unhandled argv: $*" 1>&2; exit 2 ;;
+    add|create) act=Add; done_word=Added ;;
+    delete|remove) act=Remove; done_word=Removed ;;
+    *) not_modelled "update group ${4:-}" ;;
   esac
+  group=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')
   shift 4
-  role="member"
-  case "${1:-}" in owner|manager|member) role="$1"; shift ;; esac
-  [ $# -ge 1 ] || missing_arg "UserItem"
-  [ $# -eq 1 ] || invalid_arg "$2"
-  case "$group" in
-    *missing*|*nonexistent*) echo "ERROR: 404: Resource Not Found: groupKey - notFound" 1>&2; exit 1 ;;
+  role=MEMBER
+  case "$(gam_choice "${1:-}")" in
+    owner) role=OWNER; shift ;;
+    manager) role=MANAGER; shift ;;
+    member) role=MEMBER; shift ;;
   esac
-  echo "Group: $group, $verb $1 as $role"
+  [ $# -ge 1 ] || missing_arg "UserTypeEntity"
+  case "$1" in
+    usersonly|groupsonly|notsuspended|suspended|notarchived|archived|delivery|preview|actioncsv)
+      not_modelled "update group with $1" ;;
+  esac
+  [ $# -eq 1 ] || invalid_arg "$2"
+  [ -n "$1" ] || empty_arg "UserTypeEntity"
+  case "$1" in
+    *,*) not_modelled "update group with a list of members" ;;
+    *@*) ;;
+    *) not_modelled "update group with a member that isn't an address" ;;
+  esac
+  member=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  [ "$member" != "$group" ] || not_modelled "a group added to itself"
+  is_group "$group" || does_not_exist "Group" "$group"
+  member_failed() {  # <why>
+    printf '  Group: %s, Member: %s, Role: %s, %s Failed: %s\n' "$group" "$member" "$role" "$act" "$1" 1>&2
+    exit 50
+  }
+  echo "Group: $group, $act 1 $(printf '%s' "$role" | cut -c1)$(printf '%s' "$role" | cut -c2- | tr '[:upper:]' '[:lower:]')"
+  current=$(member_record "$group" "$member")
+  if [ "$act" = Add ]; then
+    [ -z "$current" ] || member_failed "Member already exists."
+    local_part=${member%%@*}; domain=${member#*@}
+    case "$local_part" in ""|*[!a-z0-9._%+\'-]*) member_failed "Invalid Input: memberKey" ;; esac
+    case "$domain" in ""|*[!a-z0-9.-]*) member_failed "Invalid Input: memberKey" ;; esac
+    if is_group "$member"; then
+      type=GROUP; status=ACTIVE
+    elif known_user "$member"; then
+      type=USER; status=ACTIVE
+      if grep -F "\"primaryEmail\": \"$member\"" "$GAM_MOCK_FIXTURES/print_users.json" | grep -qF '"suspended": true'; then
+        status=SUSPENDED
+      fi
+    elif tenant_domain "$domain"; then
+      member_failed "Does not exist"
+    else
+      type=USER; status=""
+    fi
+    # The member's ID as the data set has it, else one made from the address (the app never reads it).
+    id=$(grep -F "\"email\": \"$member\", " "$GAM_MOCK_FIXTURES/group_members.json" | head -n 1 | sed -n 's/.*"id": "\([^"]*\)".*/\1/p')
+    [ -n "$id" ] || id="mock-$(printf '%s' "$member" | cksum | cut -d ' ' -f 1)"
+    record=$(printf '{"email": "%s", "group": "%s", "id": "%s", "role": "%s", "status": "%s", "type": "%s"}' \
+      "$member" "$group" "$id" "$role" "$status" "$type")
+  else
+    [ -n "$current" ] || member_failed "Does not exist"
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/groups"
+    kept="$GAM_MOCK_STATE/groups/.$group.$$"
+    if [ "$act" = Add ]; then
+      { members_of "$group"; printf '%s\n' "$record"; } > "$kept"
+    else
+      { members_of "$group" | grep -vF "\"email\": \"$member\", " || true; } > "$kept"
+    fi
+    mv "$kept" "$GAM_MOCK_STATE/groups/$group"
+  fi
+  printf '  Group: %s, Member: %s, %s: Role: %s\n' "$group" "$member" "$done_word" "$role"
   exit 0
 fi
 

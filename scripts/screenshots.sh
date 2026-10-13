@@ -16,7 +16,9 @@ mkdir -p "$out"
 
 status=0
 # name:screen[:selected:tab[:window[:template]]] — the person page is captured once per tab, for
-# alice@example.com, and a group's page for sales@example.com. Signatures opens on nobody (the demo admin
+# alice@example.com, and a group's page for sales@example.com, alone and under a sheet (for a group the tab
+# names the sheet: `add`, the Add Members form; `remove`, the preview of removing its first member; the
+# picture is then the sheet). Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. The narrow-*
 # runs open a page in the smallest window with the sidebar and the page dragged to their widest, where
@@ -25,11 +27,12 @@ status=0
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
-            group-sales:groups:sales@example.com \
+            group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
+            group-sales-remove:groups:sales@example.com:remove \
             signatures:signatures signatures-alice:signatures:alice@example.com::1100x940:Classic \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
-            narrow-group-sales:groups:sales@example.com::smallest \
+            narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \
             narrow-signatures:signatures:alice@example.com::smallest:Classic; do
   IFS=: read -r name screen person tab window template <<< "$spec"
   file="$out/$name.png"
