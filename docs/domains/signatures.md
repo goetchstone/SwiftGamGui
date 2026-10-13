@@ -79,9 +79,11 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
   like the rest.
 
 ## The screen (S1c): Signatures, and the Users Mail tab's card
-- **Signatures** (sidebar, SF Symbol `signature`): Person (a menu of active people; type to jump), the
-  Template editor with the variables and the `[[ ]]` rule, Preview (Current and New side by side), and
-  Saved templates. The New view is the render for the chosen person, drawn a moment after typing stops
+- **Signatures** (sidebar, SF Symbol `signature`): Person (a menu of active people; type to jump),
+  Preview (Current and New, 260 pt tall, side by side while each has 380 pt and one above the other in a
+  narrower window; then Review and Replace), the Template editor (240 to 320 pt) with the variables and
+  the `[[ ]]` rule, and Saved templates. What will change comes first (the operator, 2026-10-12: the view
+  was a little small, and the editor had pushed the preview below the window). The New view is the render for the chosen person, drawn a moment after typing stops
   and not held; "Review and Replace…" holds it. Why the button is off is said beside it: no domain, the
   directory loading or failed, nobody chosen, a blank template, a keyword body (refused in words before
   any preview), their current signature still being read (it's what Put Back restores).
