@@ -137,6 +137,22 @@ Onboarding's design D3, each a test that failed first (`ExecutorTests`), one con
 - `WriteRouteTests` is unchanged in its rules: the builders still mint every command, only the executor
   mints a ticket, and only the confirm screen confirms; `onlyTheCardShowsATemporaryPassword` is new.
 
+**The adversarial review of these additions (2026-10-13)** found six things, none reachable from O1 as
+`OnboardChanges` drives the executor, four of them guarantees the doc comments claimed and the code didn't
+hold. Each is now a test that failed first and a mutant it kills:
+- a step marked to wait must act on the account its create makes (`argv[1]` is the create's address, as
+  GamGUI's `assignee.lower() == email.lower()`): an existing person's delegation refusal never reads as
+  waiting (`onlyTheAccountTheCreateMakesWaits`);
+- a step that needs a step that may wait must itself be one that may wait, so a retry runs nothing outside
+  the closed set: no suspend, and no delete without its alias check (`onlyAStepThatMayWaitCanNeedOneThatMay`);
+- a retry reads the preview's precondition again, as a run does (`aRetryReadsThePreconditionAgain`);
+- a parked run (its held create carries the password) is dropped after its lifetime, as a held preview is
+  (`aParkedRunIsDroppedAfterItsLifetime`);
+- a cancelled run or round hands back no retry and parks nothing again; Stop during a round is cancelling
+  the task awaiting `retry` (`aCancelledRunLeavesNoRetry`, `stopDuringARetryRoundParksNothingAgain`);
+- `PendingRetry`'s init is internal; the retry's digest comparison is a tripwire for a later rebuild, not a
+  defense (the held preview is immutable).
+
 ## Not built yet
 The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
 operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.

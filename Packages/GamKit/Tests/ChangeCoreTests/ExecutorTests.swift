@@ -1025,4 +1025,175 @@ final class ExecutorTests {
                          extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("end")])
         #expect(Executor.unfinished(in: auditURL).map(\.target) == ["bob@example.com"])
     }
+
+    // MARK: the adversarial review of O1's ChangeCore (2026-10-13)
+
+    /// the run kept for a retry (its held create carries the password) is dropped by time, as a held preview is.
+    @Test func aParkedRunIsDroppedAfterItsLifetime() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        _ = try #require(first.retry)
+        #expect(await executor.parkedRuns == 1)
+        offset.value.withLock { $0 = .seconds(24 * 3600) }
+        _ = try await held(executor, [suspend("bob@example.com")])
+        _ = await executor.isHeld(UUID())
+        #expect(await executor.parkedRuns == 0, "a day later the run, and the password in its create, is still held")
+    }
+
+    /// A retry runs nothing outside the closed set: a step that needs a step that may wait must itself be one that
+    /// may wait, so a suspend or a delete (whose alias check a retry wouldn't make) never comes back on a retry
+    /// (review of O1, 2026-10-13).
+    @Test func onlyAStepThatMayWaitCanNeedOneThatMay() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let suspend = WriteStep(GamCommands.setSuspended(email: "bob@example.com", suspended: true), target: "bob@example.com",
+                                summary: "Suspend bob", requires: [1])
+        let delete = WriteStep(GamCommands.deleteUser(email: "carol@example.com"), target: "carol@example.com",
+                               summary: "Delete", requires: [1])
+        for dependent in [suspend, delete] {
+            let result = await executor.preview([create("new@example.com"), signature("new@example.com", waitsOn: 0), dependent])
+            guard case .failure(let refusal) = result else { Issue.record("held: \(dependent.summary)"); continue }
+            #expect(refusal == .badPrerequisite(step: 2), "\(dependent.summary)")
+        }
+        #expect(ran().isEmpty)
+    }
+
+    /// A retry reads the preview's precondition again, as a run does, and runs nothing when it says no.
+    @Test func aRetryReadsThePreconditionAgain() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let calls = Shared(0)
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)],
+                                     precondition: { calls.value.withLock { $0 += 1; return $0 } == 1 })
+        let first = await executor.run(preview, confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let before = ran().count
+        let second = await executor.retry(handle)
+        #expect(calls.value.withLock { $0 } == 2, "the retry never read the precondition again")
+        #expect(second.refusal == "What the preview showed has changed since — preview again.", "\(second)")
+        #expect(ran().count == before, "the retry ran though the precondition now says no")
+    }
+
+    /// only the account the create makes waits; a step for another account isn't held as one that may wait.
+    @Test func onlyTheAccountTheCreateMakesWaits() async throws {
+        let gam = try fakeGam("""
+            case "$1 $2" in
+              "create user") echo "User: $3, Added"; exit 0 ;;
+            esac
+            echo "User: $2, User Set Failed: access_denied: Requested client not authorized" >&2; exit 50
+            """)
+        let executor = executor(gam: gam)
+        let ceo = WriteStep(GamCommands.setSignature(email: "ceo@example.com", signature: "<b>CEO</b>"), target: "ceo@example.com",
+                            summary: "Signature", requires: [0], newAccountFrom: 0)
+        let result = await executor.preview([create("new@example.com"), ceo])
+        if let preview = try? result.get() {
+            let outcome = await executor.run(preview, confirmation: confirmed)
+            #expect(!outcome.steps[1].isWaiting,
+                    "an existing account's delegation refusal reads as waiting for Google, retry=\(outcome.retry != nil): \(outcome.steps)")
+        }
+    }
+
+    /// Stop during a round that's under way is cancelling the task awaiting `retry` (`abandon` only stops between
+    /// rounds): the round runs no further step and nothing is parked again under a new handle.
+    @Test func stopDuringARetryRoundCancelsIt() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let before = ran().count
+        let retrying = Task { [executor] in await executor.retry(handle) }
+        for await _ in started { break }
+        retrying.cancel()
+        releaseGate.yield()
+        let outcome = await retrying.value
+        #expect(ran().count == before, "the round ran gam after Stop")
+        let parkedNow = await executor.parkedRuns
+        #expect(outcome.retry == nil && parkedNow == 0, "parked again under a new handle: retry=\(outcome.retry != nil) parked=\(parkedNow)")
+    }
+
+    /// Stop between two steps of a retry round: the first ran and still waits for Google, the second never
+    /// starts, and nothing is parked again for a later round.
+    @Test func stopDuringARetryRoundParksNothingAgain() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let calendar = WriteStep(GamCommands.subscribeCalendar(email: "new@example.com", calendarID: "c_team@group.calendar.google.com"),
+                                 target: "new@example.com", summary: "Subscribe", requires: [0], newAccountFrom: 0)
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0), calendar]),
+                                       confirmation: confirmed)
+        #expect(first.steps[1].isWaiting && first.steps[2].isWaiting, "\(first.steps)")
+        let handle = try #require(first.retry)
+        let calls = Shared(0)
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let retrying = Task { [executor] in await executor.retry(handle) }
+        for await _ in started { break }
+        retrying.cancel()
+        releaseGate.yield()
+        let outcome = await retrying.value
+        #expect(outcome.steps[1].isWaiting, "the round's first step ran and still waits: \(outcome.steps)")
+        #expect(outcome.retry == nil, "a stopped round hands back a retry")
+        #expect(await executor.parkedRuns == 0)
+    }
+
+    /// a run cancelled part-way hands back no retry.
+    @Test func aCancelledRunLeavesNoRetry() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let calls = Shared(0)
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0), suspend("bob@example.com")])
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 3 else { return }
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let confirm = confirmed
+        let running = Task { [executor] in await executor.run(preview, confirmation: confirm) }
+        for await _ in started { break }
+        running.cancel()
+        releaseGate.yield()
+        let outcome = await running.value
+        #expect(outcome.retry == nil, "a cancelled run still hands back a retry: \(outcome.steps)")
+    }
+
+    /// progress never carries the password, even when GAM echoes the command on stdout and stderr.
+    @Test func progressNeverCarriesThePassword() async throws {
+        let gam = try fakeGam("""
+            echo "$*"
+            echo "Command: gam $*" >&2
+            exit 2
+            """)
+        let executor = executor(gam: gam)
+        let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
+        let outcome = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                         confirmation: confirmed, progress: observer)
+        observer.finish()
+        var seen: [String] = []
+        for await (_, step) in events { seen.append("\(step)") }
+        #expect(!seen.isEmpty)
+        #expect(!seen.joined().contains(password), "\(seen)")
+        #expect(!"\(outcome)".contains(password))
+        #expect(!(try String(contentsOf: auditURL, encoding: .utf8)).contains(password))
+    }
+
+    /// the parked-run eviction drops a live retry of another hire.
+    @Test func theRetriesKeptAreEachExecutors() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        var handles: [PendingRetry] = []
+        for n in 0..<(Executor.retriesKept + 1) {
+            let o = await executor.run(try await held(executor, [create("n\(n)@example.com"), signature("n\(n)@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+            handles.append(try #require(o.retry))
+        }
+        #expect(await executor.retry(handles[0]).refusal != nil, "oldest evicted")
+    }
 }

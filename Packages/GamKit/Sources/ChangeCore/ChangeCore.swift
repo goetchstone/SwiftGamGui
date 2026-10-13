@@ -243,7 +243,7 @@ public struct PendingRetry: Sendable, Hashable {
     /// Retry rounds already run: 0 after the run itself.
     public let round: Int
 
-    package init(id: UUID, round: Int) {
+    init(id: UUID, round: Int) {
         self.id = id
         self.round = round
     }
@@ -365,9 +365,15 @@ public actor Executor {
     /// A step that may wait for a new account (D3b) is one of `WriteAction.canWaitForNewAccount`, acting on
     /// the account an earlier `createUser` step makes, which it requires. Any other step holds trivially.
     static func newAccountWaitHolds(_ step: WriteStep, at index: Int, in steps: [WriteStep]) -> Bool {
-        guard let create = step.newAccountFrom else { return true }
+        // Only a step that may wait itself can need one that may: a retry then runs nothing outside the closed set.
+        guard let create = step.newAccountFrom else {
+            return !step.requires.contains { $0 >= 0 && $0 < index && steps[$0].newAccountFrom != nil }
+        }
+        let made = steps.indices.contains(create) ? steps[create].write.argv : [], argv = step.write.argv
         return WriteAction.canWaitForNewAccount.contains(step.action) && create >= 0 && create < index
             && steps[create].action == .createUser && step.requires.contains(create)
+            // The account the create makes, as GAM reads an address (GamGUI's `assignee.lower() == email.lower()`).
+            && made.count > 2 && argv.count > 1 && argv[0] == "user" && Guard.normalized(argv[1]) == Guard.normalized(made[2])
     }
 
     /// Byte-for-byte: Swift's `==` on strings compares canonically, so "é" would equal "e\u{301}".
@@ -428,8 +434,9 @@ public actor Executor {
         if let why = await aliasRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
         let ran = await execute(taken, progress: progress)
+        // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13).
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
+                          retry: Task.isCancelled ? nil : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
     }
 
     // MARK: retrying what waits for a new account (D3d)
@@ -481,17 +488,28 @@ public actor Executor {
         await acquireWriteLock()
         defer { releaseWriteLock() }
         guard now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
-        // What runs is still what the operator confirmed.
+        // What runs is still what the operator confirmed. The held preview is immutable, so this can't fail today: it
+        // is a tripwire for a later change that rebuilds steps, not a defense of its own.
         guard Self.same(HeldPreview.digest(of: state.preview.steps), state.preview.digest) else { return .refused(Self.heldChanged) }
+        // As `run` does: what the preview assumed is read again just before its steps run.
+        if let precondition = state.preview.precondition {
+            do {
+                guard try await precondition() else { return .refused("What the preview showed has changed since — preview again.") }
+            } catch {
+                return .refused("What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again.")
+            }
+        }
         guard await isCurrent(state.preview) else { return .refused(Self.switched) }
         let round = state.round + 1
         let ran = await execute(state.preview, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
                                 progress: progress)
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+                          retry: Task.isCancelled ? nil : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
     }
 
-    /// Stop: the waiting steps are dropped, and the handle runs nothing.
+    /// Stop, between rounds: the waiting steps are dropped, and the handle runs nothing. A round already under
+    /// way took its state when it began; it is stopped by cancelling the task awaiting `retry`, which runs no
+    /// further step and parks nothing again.
     public func abandon(_ handle: PendingRetry) {
         parked[handle.id] = nil
         parkedOrder.removeAll { $0 == handle.id }
@@ -748,6 +766,8 @@ public actor Executor {
 
     private func dropExpired() {
         let now = now()
+        for id in parkedOrder where parked[id].map({ now - $0.ranAt > Self.retryLifetime }) ?? true { parked[id] = nil }
+        parkedOrder.removeAll { parked[$0] == nil }
         for id in order where held[id].map({ now - $0.createdAt > Self.previewLifetime }) ?? true { held[id] = nil }
         order.removeAll { held[$0] == nil }
     }
