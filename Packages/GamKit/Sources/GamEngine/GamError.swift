@@ -140,7 +140,7 @@ public struct GamError: Error, Equatable, Sendable {
     /// failure-log 2026-09-23).
     static func errorLines(_ stderr: String) -> [(kind: Kind, line: String)] {
         PythonText.lines(stderr).map { PythonText.strip($0) }
-            .filter { !$0.isEmpty && !isProgress($0) && !isInstruction($0) }
+            .filter { !$0.isEmpty && !isProgress($0) && !isInstruction($0) && !isCommandEcho($0) }
             .map { (classify($0), $0) }
     }
 
@@ -173,6 +173,15 @@ public struct GamError: Error, Equatable, Sendable {
 
     static func isInstruction(_ line: String) -> Bool {
         instructions.contains { $0.utf8.elementsEqual(line.utf8) }
+    }
+
+    /// GAM's echo of the command it refused (glclargs `CommandLineWithBadArgumentMarked`): "Command: " and the
+    /// arguments, the bad one marked >>>like this<<<, before a usage error or an entity that doesn't exist. It says
+    /// what ran, not what failed: read as an error line, it outranked GAM's "User: x, Does not exist" and became the
+    /// message. A deviation from GamGUI's reader, held to `gam_errors.json` (its `gamgui` readings) by
+    /// `GamErrorTests` (failure-log 2026-10-13, "GAM's command echo read as the failure").
+    static func isCommandEcho(_ line: String) -> Bool {
+        line.unicodeScalars.starts(with: "Command: ".unicodeScalars)
     }
 
     /// One line's kind, first match wins. Order matters: more specific first.

@@ -30458,6 +30458,115 @@
    "remediation_suffix": ""
   },
   {
+   "exit_code": 56,
+   "stderr": "Command: gam create datatransfer >>>nobody@example.com<<< \"drive,calendar\" alice@example.com all\n\nERROR: User: nobody@example.com, Does not exist\n\n",
+   "argv": [
+    "gam",
+    "create",
+    "datatransfer",
+    "nobody@example.com",
+    "drive,calendar",
+    "alice@example.com",
+    "all"
+   ],
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=56): ERROR: User: nobody@example.com, Does not exist",
+   "scrubbed_stderr": "Command: gam create datatransfer >>>nobody@example.com<<< \"drive,calendar\" alice@example.com all\n\nERROR: User: nobody@example.com, Does not exist\n\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": [
+    "gam",
+    "create",
+    "datatransfer",
+    "nobody@example.com",
+    "drive,calendar",
+    "alice@example.com",
+    "all"
+   ],
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=56): Command: gam create datatransfer >>>nobody@example.com<<< \"drive,calendar\" alice@example.com all",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 56,
+   "stderr": "Command: gam create datatransfer carol@example.com \"drive,calendar\" >>>sales@example.com<<< all\n\nERROR: User: sales@example.com, Does not exist\n\n",
+   "argv": [
+    "gam",
+    "create",
+    "datatransfer",
+    "carol@example.com",
+    "drive,calendar",
+    "sales@example.com",
+    "all"
+   ],
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=56): ERROR: User: sales@example.com, Does not exist",
+   "scrubbed_stderr": "Command: gam create datatransfer carol@example.com \"drive,calendar\" >>>sales@example.com<<< all\n\nERROR: User: sales@example.com, Does not exist\n\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": [
+    "gam",
+    "create",
+    "datatransfer",
+    "carol@example.com",
+    "drive,calendar",
+    "sales@example.com",
+    "all"
+   ],
+   "remediation_suffix": "",
+   "gamgui": {
+    "kind": "unknown",
+    "kinds": [
+     "not_found",
+     "unknown"
+    ],
+    "message": "GAM failed (unknown, exit=56): Command: gam create datatransfer carol@example.com \"drive,calendar\" >>>sales@example.com<<< all",
+    "remediation_suffix": ""
+   }
+  },
+  {
+   "exit_code": 56,
+   "stderr": "Command: gam user x@example.com add delegate >>>\"Not Found 404\"<<< \n\nERROR: User: Not Found 404, Does not exist\n\n",
+   "argv": [
+    "gam",
+    "user",
+    "x@example.com",
+    "add",
+    "delegate",
+    "Not Found 404"
+   ],
+   "stdout": "",
+   "kind": "not_found",
+   "kinds": [
+    "not_found"
+   ],
+   "message": "GAM failed (not_found, exit=56): ERROR: User: Not Found 404, Does not exist",
+   "scrubbed_stderr": "Command: gam user x@example.com add delegate >>>\"Not Found 404\"<<< \n\nERROR: User: Not Found 404, Does not exist\n\n",
+   "scrubbed_stdout": "",
+   "redacted_argv": [
+    "gam",
+    "user",
+    "x@example.com",
+    "add",
+    "delegate",
+    "Not Found 404"
+   ],
+   "remediation_suffix": ""
+  },
+  {
    "exit_code": 1,
    "stderr": "ERROR: invalid_grant: To\u212aen has been expired or revoked",
    "argv": null,
