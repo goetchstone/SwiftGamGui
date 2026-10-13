@@ -120,6 +120,14 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
     `gam_errors.json` keeps frozen GamGUI's reading (`gamgui`) beside the 71 cases where it differs, and
     `GamErrorTests` holds that list to those missed lines.
   - The mock prints the progress of `report users` and `deprovision` on stderr, as GAM does.
+- **GAM's command echo is not an error either (the second deliberate break).** Before a usage error or an
+  entity that doesn't exist, GAM echoes the command with the bad argument marked (`Command: gam … >>>x<<< …`,
+  glclargs `CommandLineWithBadArgumentMarked`). Frozen GamGUI reads it as an unknown line, which outranks the
+  real one, so "User: x, Does not exist" read as an unknown failure whose message was the command
+  (failure-log 2026-10-13, "GAM's command echo read as the failure"). `GamError.isCommandEcho` skips it;
+  `gen_fixtures.py`'s `gam_command_echo` widens GamGUI's `_INSTRUCTION_LINE` in memory to match, and
+  `GamErrorTests` holds the `gamgui` deviations to progress and echo lines. An echoed password never reaches
+  the message now; the scrub still masks it in `stderr`.
 - `stdout` is kept for a caller that reads it (`check serviceaccount`'s table) and is never in the
   message, the description or a dump.
 - **Fixed in PR #5's review:**

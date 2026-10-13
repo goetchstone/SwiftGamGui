@@ -39,6 +39,10 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   is a documented, tested list) stronger, not different.
 - **Enforcement home if changed:** tripwire test (the deviation list held narrow, as both fixtures now
   do); for `improve-rules`, the #11 wording 2026-10-10 proposed.
+- **A third time, the same day:** GAM's command echo (`Command: gam … >>>x<<< …`) read as an unknown failure
+  that outranked "User: x, Does not exist" (failure-log 2026-10-13, "GAM's command echo read as the failure").
+  Found by writing the mock's transfer failures from GAM's source, the proposal's own method. Same path:
+  an in-memory swap, `gamgui` readings, the deviation test widened to name both kinds of line.
 
 ## 2026-10-12 — One argv element, read by GAM as a list: GamGUI's guard was its browser field (calendars F5, D5)
 - **What happened:** porting the calendar share, the target went to GAM as one argv element, as #1

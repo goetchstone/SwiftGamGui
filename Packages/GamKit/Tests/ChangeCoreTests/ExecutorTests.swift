@@ -352,9 +352,11 @@ final class ExecutorTests {
         guard case .succeeded(let output) = shown.steps.first else { Issue.record("\(shown.steps)"); return }
         #expect(!output.contains("dana2") && output.contains("***redacted***"), "\(output)")
         // GamGUI's test_create_user_failure_redacts_password_by_value: a surname that is a sensitive keyword
-        // takes the positional mask meant for the password, and GAM's usage error echoes the command line
-        // (here as the last stderr line, the one the message carries; GamGUI's `echoing_gam`).
-        let echoing = self.executor(gam: try fakeGam("printf 'ERROR: Invalid argument\\nCommand: gam %s\\n' \"$*\" 1>&2\nexit 2\n"))
+        // takes the positional mask meant for the password. GAM's usage error echoes the command line first
+        // (GamGUI's `echoing_gam`), context the message never carries; here an error line repeats it too, so the
+        // message does carry the password, masked by value.
+        let echoing = self.executor(gam: try fakeGam(
+            "printf 'Command: gam %s\\n\\nERROR: Invalid argument\\nUser: new@example.com, Create Failed: %s\\n' \"$*\" \"$*\" 1>&2\nexit 2\n"))
         let temporary = "Xk7m-Qp9r-2Tzv"
         for surname in ["Password", "NotifyPassword"] {
             let step = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "Ada", lastName: surname,
@@ -363,11 +365,12 @@ final class ExecutorTests {
             #expect(!step.shownArgv.contains { $0.contains(temporary) }, "\(surname)")
             let outcome = await echoing.run(try await held(echoing, [step]), confirmation: confirmed)
             guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
-            #expect(message.contains("Command: gam create user") && message.contains("***redacted***"), "echoed, then masked: \(message)")
+            #expect(message.contains("Create Failed: create user") && message.contains("***redacted***"), "repeated, then masked: \(message)")
+            #expect(!message.contains("Command: "), "the echo is never the message: \(message)")
             #expect(!message.contains(temporary), "\(surname)")
         }
         let echoed = try String(contentsOf: auditURL, encoding: .utf8)
-        #expect(echoed.contains("Command: gam create user") && !echoed.contains(temporary))
+        #expect(echoed.contains("Create Failed: create user") && !echoed.contains(temporary))
     }
 
     /// A held step prints, dumps and reflects masked: a preview in a log line, a test failure or a debugger

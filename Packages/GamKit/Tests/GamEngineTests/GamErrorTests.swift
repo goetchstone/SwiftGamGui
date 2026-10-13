@@ -76,17 +76,19 @@ struct GamErrorTests {
         line.unicodeScalars.starts(with: "Getting ".unicodeScalars) && !line.unicodeScalars.starts(with: "Getting all ".unicodeScalars)
     }
 
-    /// The one deliberate difference from frozen GamGUI (failure-log 2026-10-13, "GAM's progress read as an
-    /// error"): it reads GAM's per-entity "Getting …" lines as unknown failures. Each listed case has such a
+    /// The two deliberate differences from frozen GamGUI, each a line it reads as an unknown failure: GAM's
+    /// per-entity "Getting …" progress (failure-log 2026-10-13, "GAM's progress read as an error") and GAM's echo of
+    /// the command it refused (same day, "GAM's command echo read as the failure"). Each listed case has such a
     /// line, GamGUI's reading counts it unknown and differs from ours, and the list is a small share.
-    @Test func theDeviationsFromGamGUIAreOnlyItsMissedProgressLines() {
+    @Test func theDeviationsFromGamGUIAreOnlyItsMissedProgressAndEchoLines() {
         var deviations = 0
         for item in document.cases {
             guard let frozen = item.gamgui else { continue }
             deviations += 1
             let label = item.stderr.debugDescription
-            #expect(PythonText.lines(item.stderr).map { PythonText.strip($0) }.contains(where: Self.gamGUIMisses), "\(label)")
-            #expect(frozen.kinds.contains("unknown"), "GamGUI read the progress line as unknown: \(label)")
+            #expect(PythonText.lines(item.stderr).map { PythonText.strip($0) }
+                .contains { Self.gamGUIMisses($0) || GamError.isCommandEcho($0) }, "\(label)")
+            #expect(frozen.kinds.contains("unknown"), "GamGUI read the progress or echo line as unknown: \(label)")
             #expect(frozen.kind != item.kind || frozen.kinds != item.kinds || Self.bytes(frozen.message) != Self.bytes(item.message)
                     || Self.bytes(frozen.remediation_suffix) != Self.bytes(item.remediation_suffix), "\(label)")
         }

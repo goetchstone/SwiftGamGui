@@ -176,6 +176,31 @@ def gam_reader():
 GAM_PROGRESS = r"(Getting |Got \d+ )"
 
 
+# GAM's echo of the command it refused (glclargs CommandLineWithBadArgumentMarked, read from the 7.48.26 build):
+# "Command: " and the arguments, the bad one marked >>>like this<<<, before a usage error or an entity that
+# doesn't exist. It says what ran, not what failed.
+GAM_COMMAND_ECHO = r"Command: .*"
+
+
+@contextlib.contextmanager
+def gam_command_echo():
+    """GamGUI's GAMError reading GAM's command echo as context, not a failure: its errors module's
+    _INSTRUCTION_LINE widened, in memory only, to GAM_COMMAND_ECHO as well. Frozen GamGUI reads the echo as an
+    unknown error line, which outranks the real one after it, so GAM's "User: x, Does not exist" read as an
+    unknown failure whose message was the command (failure-log 2026-10-13, "GAM's command echo read as the
+    failure"). gam_errors.json is generated with this and keeps frozen GamGUI's reading where they differ."""
+    import re
+
+    from gamgui.core.gam import errors
+
+    frozen = errors._INSTRUCTION_LINE
+    errors._INSTRUCTION_LINE = re.compile(f"(?:{frozen.pattern})|{GAM_COMMAND_ECHO}")
+    try:
+        yield frozen
+    finally:
+        errors._INSTRUCTION_LINE = frozen
+
+
 @contextlib.contextmanager
 def gam_progress():
     """GamGUI's GAMError reading GAM's progress lines as GAM writes them: its errors module's _PROGRESS_LINE
@@ -256,7 +281,8 @@ def errors_fixture() -> dict:
     known stderr lines and their case, indent and counter variants, mixed stderrs, progress chatter in each
     shape GAM prints it and instructions, timeouts, missing-scope lines, echoed passwords, Unicode and
     boundary edges, and seeded random text: what the Swift GamError must say. A case frozen GamGUI reads
-    differently also holds its reading, as `gamgui`: a missed progress line is the only difference."""
+    differently also holds its reading, as `gamgui`: a missed progress line or a command echo read as an error is
+    the only difference (gam_progress, gam_command_echo)."""
     import random
     import re
     import unicodedata
@@ -271,7 +297,7 @@ def errors_fixture() -> dict:
 
     def run(exit_code, stderr, argv=None, stdout=""):
         frozen = read(GAMError.from_run(exit_code, stderr, argv, stdout=stdout))
-        with gam_progress() as frozen_rule:
+        with gam_progress() as frozen_rule, gam_command_echo():
             err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
             ours = read(err)
             case = {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
@@ -280,9 +306,9 @@ def errors_fixture() -> dict:
                     "remediation_suffix": ours["remediation_suffix"]}
         if frozen != {k: case[k] for k in frozen}:
             missed = [line for line in (raw.strip() for raw in stderr.splitlines())
-                      if re.match(GAM_PROGRESS, line) and not frozen_rule.match(line)]
-            if not missed:   # nothing else was swapped: a missed progress line is the only difference
-                raise SystemExit(f"the two progress rules differ without a line GamGUI misses: {stderr[:80]!r}")
+                      if (re.match(GAM_PROGRESS, line) and not frozen_rule.match(line)) or re.fullmatch(GAM_COMMAND_ECHO, line)]
+            if not missed:   # nothing else was swapped: a missed progress line or an echo is the only difference
+                raise SystemExit(f"the two readings differ without a line GamGUI misreads: {stderr[:80]!r}")
             case["gamgui"] = frozen
         return case
 
@@ -373,6 +399,16 @@ def errors_fixture() -> dict:
             for at in sorted({1, len(argv) // 2, len(argv) - 1}):
                 stderr = _gam_usage_error(argv, at, form)
                 cases.append(run(2, stderr, argv, stdout=stderr))
+    # GAM's entityDoesNotExistExit (gam/__init__.py:800-805 at 7.48.22): the command echoed with the address that
+    # isn't one marked, then ERROR and the entity, ENTITY_DOES_NOT_EXIST_RC. A transfer to or from a non-user ends
+    # this way (convertEmailAddressToUID, :5997-6013). Frozen GamGUI's message was the echo.
+    from tests.test_props_errors import _quoted
+    for argv, at, entity in (
+            (["gam", "create", "datatransfer", "nobody@example.com", "drive,calendar", "alice@example.com", "all"], 3, "User"),
+            (["gam", "create", "datatransfer", "carol@example.com", "drive,calendar", "sales@example.com", "all"], 5, "User"),
+            (["gam", "user", "x@example.com", "add", "delegate", "Not Found 404"], 5, "User")):
+        echo = f"Command: {_quoted(argv[:at])} >>>{_quoted([argv[at]])}<<< {_quoted(argv[at + 1:])}"
+        cases.append(run(56, f"{echo}\n\nERROR: {entity}: {argv[at]}, Does not exist\n\n", argv))
 
     kelvin, long_s, dotless_i, dotted_i = chr(0x212A), chr(0x17F), chr(0x131), chr(0x130)
     arabic_403 = chr(0x664) + chr(0x660) + chr(0x663)
