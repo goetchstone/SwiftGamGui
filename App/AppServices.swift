@@ -32,6 +32,8 @@ struct AppServices {
     let groupChanges: GroupChanges
     /// Rooms, a person's calendars and who has access, read when a screen needs them.
     let calendarReads: CalendarReads
+    /// Sharing a calendar with one person, and taking access away, through the executor.
+    let calendarChanges: CalendarChanges
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -64,15 +66,20 @@ struct AppServices {
         }
         let directory = DirectoryStore(setup: setup, runner: runner)
         let groupMembers = GroupMembers(setup: setup, runner: runner)
+        let groups = GroupStore(setup: setup, runner: runner)
+        let calendarReads = CalendarReads(setup: setup, runner: runner)
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
                            signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory),
                            signatureTemplates: templates,
-                           groups: GroupStore(setup: setup, runner: runner),
+                           groups: groups,
                            groupMembers: groupMembers,
                            groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
-                           calendarReads: CalendarReads(setup: setup, runner: runner), auditURL: auditURL)
+                           calendarReads: calendarReads,
+                           calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
+                                                            reads: calendarReads, runner: runner),
+                           auditURL: auditURL)
     }
 
     #if DEBUG

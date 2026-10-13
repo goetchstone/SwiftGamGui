@@ -12,10 +12,13 @@ struct MockCalendarsTests {
     static let team = "c_team@group.calendar.google.com"
 
     /// One call of the mock, with GAM's first-run banner (the lines naming the config folder) dropped. `state`,
-    /// when given, is the mock's state folder.
-    private func run(_ argv: [String], state: URL? = nil) async throws -> (exitCode: Int32, stdout: String, stderr: String) {
+    /// when given, is the mock's state folder; `admin`, the account the materialized oauth2.txt signs in as.
+    private func run(_ argv: [String], state: URL? = nil, admin: String? = nil) async throws -> (exitCode: Int32, stdout: String, stderr: String) {
         let config = try Fixtures.placeholderConfigDirectory()
         defer { try? FileManager.default.removeItem(at: config) }
+        if let admin {
+            try Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8).write(to: config.appending(path: "oauth2.txt"))
+        }
         var environment = Fixtures.mockEnvironment
         if let state { environment["GAM_MOCK_STATE"] = state.path }
         let result = try await mock.runRaw(argv, configDirectory: config, extraEnvironment: environment)
@@ -231,5 +234,141 @@ struct MockCalendarsTests {
             if calendar.hasSuffix(".calendar.google.com") { #expect(roles[calendar] == "owner", "\(calendar) owns itself") }
             for (person, role) in listed[calendar] ?? [:] { #expect(roles[person] == role, "\(person)'s \(role) on \(calendar)") }
         }
+    }
+
+    // MARK: writes (C2a)
+
+    /// Every object's keys in sorted order, as `json.dumps(sort_keys=True)` writes them.
+    static func sortedKeys(_ value: JSONValue) -> Bool {
+        guard let object = value.object else { return true }
+        let keys = object.map(\.key)
+        return keys == keys.sorted() && object.allSatisfy { sortedKeys($0.value) }
+    }
+
+    /// The rules of a calendar as the mock prints them now, as (id, role).
+    private func rules(_ calendar: String, state: URL) async throws -> [String] {
+        let read = try await run(GamCommands.printCalendarACLs(calendarID: calendar).argv, state: state)
+        #expect(read.exitCode == 0 || read.exitCode == 60, "\(read.stderr)")
+        return GamOutput.records(read.stdout).map { "\($0["id"]?.string ?? "?")=\($0["role"]?.string ?? "?")" }
+    }
+
+    /// F5/F6: an added rule is kept in GAM's form: the scope as `normalizeRuleId` makes it (a bare name gets the
+    /// domain, `domain` the domain's, an address lowercased) and the role as `CALENDAR_ACL_ROLES_MAP` maps it;
+    /// a scope that already has a rule has it replaced, as Google's insert does.
+    @Test func anAddThenPrintShowsItInGamsForm() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let before = try await rules(Self.team, state: state)
+        let add = try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "Dana@Example.com", role: .editor).argv,
+                                state: state, admin: "admin@example.com")
+        #expect(add.exitCode == 0, "\(add.stderr)")
+        #expect(add.stdout == "Calendar: \(Self.team), Calendar ACL: (Scope: user:dana@example.com, Role: writer), Added\n")
+        #expect(try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "bob@example.com", role: .freeBusy).argv,
+                              state: state).exitCode == 0)
+        #expect(try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "domain", role: .reader).argv,
+                              state: state).exitCode == 0)
+        #expect(try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "erin", role: .writerWithoutPrivateAccess).argv,
+                              state: state).exitCode == 0)
+        let after = try await rules(Self.team, state: state)
+        #expect(after == before.map {
+            $0 == "user:bob@example.com=reader" ? "user:bob@example.com=freeBusyReader"
+                : $0 == "domain:example.com=freeBusyReader" ? "domain:example.com=reader" : $0
+        } + ["user:dana@example.com=writer", "user:erin@example.com=writerWithoutPrivateAccess"])
+        // Every line still in the form GAM prints it.
+        let file = try String(contentsOf: state.appending(path: "acls/\(Self.team)"), encoding: .utf8)
+        for line in file.split(separator: "\n") {
+            let value = try #require(JSONValue.parse(String(line)))
+            #expect(String(line).utf8.elementsEqual(JSONValue.dumps(value).utf8) && Self.sortedKeys(value), "\(line)")
+        }
+        // Another calendar is untouched; a print without the state reads the data file.
+        #expect(try await rules(Self.team, state: try stateFolder()) == before)
+    }
+
+    /// F6: deleting a rule that isn't there fails "Not Found", exit 50; one that is goes.
+    @Test func deletingAMissingRuleFails50() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let missing = try await run(GamCommands.deleteCalendarACL(calendarID: Self.team, scope: "nobody@example.com").argv, state: state)
+        #expect(missing.exitCode == 50)
+        #expect(missing.stderr == "Calendar: \(Self.team), Calendar ACL: (Scope: user:nobody@example.com), Delete Failed: Not Found\n")
+        #expect(GamError(exitCode: missing.exitCode, stderr: missing.stderr).kind == .notFound)
+        for token in ["bob@example.com", "group:sales@example.com", "domain:example.com"] {
+            let gone = try await run(GamCommands.deleteCalendarACL(calendarID: Self.team, scope: token).argv, state: state)
+            #expect(gone.exitCode == 0, "\(token): \(gone.stderr)")
+        }
+        #expect(try await rules(Self.team, state: state)
+                == ["user:\(Self.team)=owner", "user:alice@example.com=owner", "user:carol@example.com=writer"])
+        let again = try await run(GamCommands.deleteCalendarACL(calendarID: Self.team, scope: "bob@example.com").argv, state: state)
+        #expect(again.exitCode == 50, "bob's rule is gone")
+        let defaultRule = try await run(GamCommands.deleteCalendarACL(email: "alice@example.com", scope: "default").argv, state: state)
+        #expect(defaultRule.exitCode == 0 && defaultRule.stdout.contains("(Scope: default), Deleted"), "\(defaultRule.stderr)")
+        let unknown = try await run(GamCommands.deleteCalendarACL(calendarID: "nosuch@group.calendar.google.com", scope: "bob@example.com").argv)
+        #expect(unknown.exitCode == 50 && unknown.stderr == "Calendar: nosuch@group.calendar.google.com, Delete Failed: Not Found\n")
+    }
+
+    /// F4: Google refuses the account GAM acts as a change to its own access: the admin for an ID ending
+    /// `.calendar.google.com`, the address itself otherwise, the person for their own primary calendar.
+    @Test func ownAccessIsRefusedAsGoogleRefusesIt() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let refusals: [[String]] = [
+            GamCommands.addCalendarACL(calendarID: Self.team, scope: "admin@example.com").argv,
+            GamCommands.addCalendarACL(calendarID: "alice@example.com", scope: "alice@example.com").argv,
+            GamCommands.addCalendarACL(email: "alice@example.com", target: "alice@example.com").argv,
+            GamCommands.deleteCalendarACL(email: "alice@example.com", scope: "alice@example.com").argv,
+        ]
+        for argv in refusals {
+            let refused = try await run(argv, state: state, admin: "admin@example.com")
+            #expect(refused.exitCode == 50, "\(argv)")
+            #expect(refused.stderr.hasSuffix("Failed: Cannot change your own access level.\n"), "\(refused.stderr)")
+            #expect(GamError(exitCode: refused.exitCode, stderr: refused.stderr).kind == .ownACL)
+        }
+        #expect(try await rules(Self.team, state: state) == (try await rules(Self.team, state: try stateFolder())), "nothing changed")
+        // The admin acts only for an ID ending .calendar.google.com: on alice's primary they're anyone.
+        let other = try await run(GamCommands.addCalendarACL(calendarID: "alice@example.com", scope: "admin@example.com").argv,
+                                  state: state, admin: "admin@example.com")
+        #expect(other.exitCode == 0, "\(other.stderr)")
+    }
+
+    /// F5: GAM reads the scope as a list: a comma makes two rules; a selector word wants a file.
+    @Test func aCommaListIsTwoRulesAsGamReadsIt() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let two = try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "dana@example.com,erin@example.com").argv, state: state)
+        #expect(two.exitCode == 0, "\(two.stderr)")
+        #expect(two.stdout.split(separator: "\n").count == 2)
+        #expect(try await rules(Self.team, state: state).suffix(2) == ["user:dana@example.com=reader", "user:erin@example.com=reader"])
+        let file = try await run(GamCommands.addCalendarACL(calendarID: Self.team, scope: "file").argv, state: state)
+        #expect(file.exitCode == 2 && file.stderr.contains("Missing argument"), "\(file.stderr)")
+    }
+
+    /// A subscribe acts as the person: one who isn't a user fails as any per-user call fails (exit 50), and a
+    /// calendar already in their list is Google's `duplicate` (exit 50, Q7). Success is GAM's line (F6).
+    @Test func subscribeAsANonUserFails() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let stranger = try await run(GamCommands.subscribeCalendar(email: "nobody@example.com", calendarID: Self.team).argv, state: state)
+        #expect(stranger.exitCode == 50)
+        #expect(GamError(exitCode: stranger.exitCode, stderr: stranger.stderr).kind == .notFound, "\(stranger.stderr)")
+        let added = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: Self.team).argv, state: state)
+        #expect(added.exitCode == 0 && added.stdout == "User: dana@example.com, Calendar: \(Self.team), Added\n", "\(added.stderr)")
+        let twice = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: Self.team).argv, state: state)
+        #expect(twice.exitCode == 50 && twice.stderr.contains("Add Failed"), "\(twice.stderr)")
+        let listed = try await run(GamCommands.subscribeCalendar(email: "bob@example.com", calendarID: Self.team).argv, state: state)
+        #expect(listed.exitCode == 50, "bob lists Team Calendar already")
+        let unknown = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: "nosuch@group.calendar.google.com").argv)
+        #expect(unknown.exitCode == 50 && GamError(exitCode: unknown.exitCode, stderr: unknown.stderr).kind == .notFound)
+    }
+
+    /// A person with Calendar off: GAM's per-user refusal, exit 73, for a subscribe and for their own rules.
+    @Test func subscribeWithCalendarOffExits73() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        try marker("nocalendar/dana@example.com", in: state)
+        let subscribe = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: Self.team).argv, state: state)
+        #expect(subscribe.exitCode == 73)
+        #expect(GamError(exitCode: subscribe.exitCode, stderr: subscribe.stderr).kind == .serviceNotEnabled, "\(subscribe.stderr)")
+        let share = try await run(GamCommands.addCalendarACL(email: "dana@example.com", target: "bob@example.com").argv, state: state)
+        #expect(share.exitCode == 73)
     }
 }

@@ -521,7 +521,7 @@ private struct UserDetail: View {
             AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
                        newAddress: $newDelegate)
         case .calendar:
-            PersonCalendarSection(user: user, reads: calendarReads, openCalendars: openCalendars)
+            PersonCalendarSection(user: user, reads: calendarReads, changes: changes, openCalendars: openCalendars)
         case .security:
             Section("Security") {
                 LabeledContent("Administrator", value: user.isAdmin ? "Super admin" : user.isDelegatedAdmin ? "Delegated" : "No")

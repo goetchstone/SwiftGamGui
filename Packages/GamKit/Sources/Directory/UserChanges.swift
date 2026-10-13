@@ -195,6 +195,68 @@ public final class UserChanges {
         await hold(step, title: "Sign \(user.fullName) out", confirmLabel: "Sign Out", email: user.primaryEmail)
     }
 
+    // MARK: their calendar (GamGUI's `/users/calendar/add` and `/remove`, `users.py:577-604`)
+
+    /// Shares their primary calendar by GamGUI's user form, acting as them, with no subscribe (`users.py:588`).
+    /// LOW. Checked first as the Calendars screen checks a share (D5, D7); `rules` are their calendar's rules as
+    /// read, for the warnings.
+    public func previewShareCalendar(_ user: GamUser, target: String, role: String, rules: [CalendarACL]?) async {
+        let target = PythonText.strip(target)
+        subject = user.primaryEmail
+        guard !target.isEmpty else {
+            state = .problem("Enter an email to share with.")
+            return
+        }
+        if let problem = CalendarSharing.shareTargetProblem(target) {
+            state = .problem(problem)
+            return
+        }
+        let calendarRole: GamCommands.CalendarRole
+        do {
+            calendarRole = try GamCommands.CalendarRole(validating: role)
+        } catch GamCommands.Invalid.argument(let why) {
+            state = .problem("Couldn't share calendar: \(why).")
+            return
+        } catch {
+            state = .problem("Couldn't share calendar.")
+            return
+        }
+        guard Guard.normalized(target) != Guard.normalized(user.primaryEmail) else {
+            state = .problem(CalendarSharing.ownAccessRefusal)
+            return
+        }
+        let warnings = CalendarSharing.warnings(target: target, role: calendarRole, rules: rules)
+        let step = WriteStep(GamCommands.addCalendarACL(email: user.primaryEmail, target: target, role: calendarRole),
+                             target: user.primaryEmail,
+                             summary: "Let \(target) \(CalendarSharing.roleVerb(calendarRole)) on \(user.primaryEmail)'s calendar.",
+                             about: ["scope": target])
+        await hold(step, title: "Share \(user.fullName)'s calendar", confirmLabel: "Share", email: user.primaryEmail,
+                   warning: warnings.isEmpty ? nil : warnings.joined(separator: " "))
+    }
+
+    /// Takes one rule off their primary calendar by its token, from the confirm step. LOW. An owner's rule has
+    /// no Remove (`_calendar.html:6`).
+    public func previewUnshareCalendar(_ user: GamUser, rule: CalendarACL) async {
+        subject = user.primaryEmail
+        if rule.isOwner {
+            state = .problem("\(rule.who) owns this calendar: an owner's access isn't removed here.")
+            return
+        }
+        if let problem = CalendarSharing.unshareProblem(rule) {
+            state = .problem(problem)
+            return
+        }
+        if rule.scopeType == "user", Guard.normalized(rule.scopeValue) == Guard.normalized(user.primaryEmail) {
+            state = .problem(CalendarSharing.ownAccessRefusal)
+            return
+        }
+        let step = WriteStep(GamCommands.deleteCalendarACL(email: user.primaryEmail, scope: rule.scopeToken), target: user.primaryEmail,
+                             summary: "Remove \(rule.who)'s access (\(rule.roleLabel)) to \(user.primaryEmail)'s calendar.",
+                             about: ["scope": rule.scopeToken])
+        await hold(step, title: "Remove \(rule.who)'s access to \(user.fullName)'s calendar", confirmLabel: "Remove",
+                   email: user.primaryEmail, confirmStep: true)
+    }
+
     /// GamGUI's `_check_delegate`, against the cached directory: (error, warning).
     static func checkDelegate(_ delegate: String, for email: String, directory: [GamUser]?) -> (error: String?, warning: String?) {
         if delegate.isEmpty { return ("Enter a delegate email.", nil) }

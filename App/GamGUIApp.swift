@@ -123,7 +123,7 @@ struct ContentView: View {
                     .navigationTitle("Groups")
             case .calendars:
                 CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
-                              requested: $calendarsPerson)
+                              changes: services.calendarChanges, requested: $calendarsPerson)
                     .navigationTitle("Calendars")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,

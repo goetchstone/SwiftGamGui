@@ -57,7 +57,10 @@ public struct CalendarACL: Sendable, Identifiable, CustomReflectable {
 
     /// GamGUI's `role_label`, but a writer is "Make changes to events": Google's writer can't change sharing,
     /// and GamGUI's own share picker says "Make changes" (F7).
-    public var roleLabel: String {
+    public var roleLabel: String { Self.label(forRole: role) }
+
+    /// A role's words, for a rule's role as GAM printed it (any case) or as the grammar names it.
+    public static func label(forRole role: String) -> String {
         switch PythonText.lower(role) {
         case "owner": "Owner"
         case "writer", "editor": "Make changes to events"
@@ -168,6 +171,56 @@ public enum CalendarSharing {
     public static func actingAccount(for calendarID: String, admin: String?) -> String? {
         calendarID.unicodeScalars.reversed().starts(with: ".calendar.google.com".unicodeScalars.reversed())
             ? admin : calendarID
+    }
+
+    /// D7: GAM acts as this account for the calendar, and Google refuses it a change to its own access (F4).
+    public static let ownAccessRefusal = "That's the account GAM acts as for this calendar; Google doesn't let it "
+        + "change its own access."
+
+    /// The role as a phrase for a change's summary ("Let bob@… see all event details on Team Calendar.").
+    public static func roleVerb(_ role: GamCommands.CalendarRole) -> String {
+        switch role {
+        case .owner: "make changes and manage sharing"
+        case .writer, .editor: "make changes to events"
+        case .writerWithoutPrivateAccess: "make changes (no private events)"
+        case .reader: "see all event details"
+        case .freeBusy, .freeBusyReader: "see free/busy only"
+        case .noAccess: "have no access"
+        }
+    }
+
+    /// The role as Google stores it, lowercased as `CalendarACL.role` holds it (`CALENDAR_ACL_ROLES_MAP`).
+    static func storedRole(_ role: GamCommands.CalendarRole) -> String {
+        switch role {
+        case .editor: "writer"
+        case .freeBusy: "freebusyreader"
+        default: role.rawValue
+        }
+    }
+
+    /// What the operator should know before sharing (D5), none of which changes the argv: the person already
+    /// has a rule (sharing replaces it, as Google's insert does), and what an owner can do.
+    public static func warnings(target: String, role: GamCommands.CalendarRole, rules: [CalendarACL]?) -> [String] {
+        var warnings: [String] = []
+        let who = PythonText.lower(PythonText.strip(target))
+        if let existing = rules?.first(where: { $0.scopeType == "user" && PythonText.lower($0.scopeValue) == who }) {
+            if existing.role == storedRole(role) {
+                warnings.append("\(target) already has this access (\(existing.roleLabel)).")
+            } else {
+                warnings.append("\(target) already has access (\(existing.roleLabel)): sharing changes it to "
+                    + "\(CalendarACL.label(forRole: role.rawValue))." + (existing.isOwner ? " This takes away their ownership." : ""))
+            }
+        }
+        if role == .owner { warnings.append("Owners can change sharing and delete the calendar.") }
+        return warnings
+    }
+
+    /// Why a rule's token can't be sent to GAM's delete as one rule, or nil: GAM reads it as a list too (F5).
+    public static func unshareProblem(_ rule: CalendarACL) -> String? {
+        let token = rule.scopeToken
+        guard token.isEmpty || token.unicodeScalars.contains(where: { $0 == "," || PythonText.whitespace.contains($0.value) })
+        else { return nil }
+        return "That rule (“\(rule.who)”) can't be removed here: GAM would read it as something else."
     }
 
     /// Why `target` (already stripped, as GamGUI strips it) isn't one person's address, or nil. GAM reads the

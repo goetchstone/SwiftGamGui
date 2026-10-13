@@ -4,12 +4,14 @@ import Setup
 import SwiftUI
 
 /// Calendars: the tenant's rooms, or one person's calendars, as a list (GamGUI's Calendars screen), with the
-/// chosen calendar's page beside it: who has access and at what role. Rooms are read when the list is first
-/// shown; a person's calendars when they're chosen; a calendar's access each time its page opens.
+/// chosen calendar's page beside it: who has access and at what role, sharing with one person and taking
+/// access away. Rooms are read when the list is first shown; a person's calendars when they're chosen; a
+/// calendar's access each time its page opens and after each change.
 struct CalendarsView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let reads: CalendarReads
+    let changes: CalendarChanges
     /// A person another screen sent (Users' "Show Their Calendars…").
     @Binding var requested: String?
     @State private var source = Source.rooms
@@ -101,7 +103,7 @@ struct CalendarsView: View {
         }
         .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
             if let row = allRows?.first(where: { $0.id == selection }) {
-                CalendarPage(row: row, reads: reads)
+                CalendarPage(row: row, reads: reads, changes: changes)
             }
         }
     }
@@ -279,13 +281,18 @@ private struct CalendarRow: View {
     }
 }
 
-/// One calendar: its name as the heading, its ID, and who has access at what role, read each time the page
-/// opens (GamGUI's detail panel).
+/// One calendar: its name as the heading, its ID, who has access at what role (read each time the page opens,
+/// GamGUI's detail panel), a Remove on each rule that isn't an owner's, and GamGUI's share form. Every change
+/// opens its preview first (`CalendarChanges`).
 private struct CalendarPage: View {
     let row: CalendarsView.Row
     let reads: CalendarReads
+    let changes: CalendarChanges
     /// The calendar this page last had access rules for: if they go (sixteen more reads since), it reads again.
     @State private var readFor: String?
+    @State private var target = ""
+    /// GamGUI's picker starts on "See all details".
+    @State private var role = GamCommands.CalendarRole.reader.rawValue
 
     private var read: CalendarReads.Read { .access(calendar: row.id) }
 
@@ -298,7 +305,12 @@ private struct CalendarPage: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            CalendarAccessList(read: read, reads: reads, empty: "No access rules returned.")
+            if changes.concerns(row.id) { CalendarResultBanner(changes: changes) }
+            if reads.access(read) != nil { shareForm }
+            CalendarAccessList(read: read, reads: reads, empty: "No access rules returned.", calendarName: row.label,
+                               busy: changes.isBusy) { rule in
+                Task { await changes.previewUnshare(calendarID: row.id, name: row.label, rule: rule) }
+            }
         }
         // Long values wrap or clip rather than widen the inspector past its bounds (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -306,6 +318,7 @@ private struct CalendarPage: View {
                               max: ColumnWidths.inspector.max)
         // A quarter second later, so arrowing down the list starts no gam for the calendars passed over.
         .task(id: row.id) { await reads.load(read, after: .milliseconds(250)) }
+        .onChange(of: row.id) { target = "" }
         .onChange(of: reads.access(read) != nil || reads.problem(for: read) != nil, initial: true) { _, has in
             if has {
                 readFor = row.id
@@ -314,23 +327,113 @@ private struct CalendarPage: View {
                 Task { await reads.load(read) }
             }
         }
+        .sheet(item: Binding(get: { changes.sheetPending(for: row.id) }, set: { if $0 == nil { changes.dismissPreview() } })) { pending in
+            CalendarPreviewSheet(pending: pending, changes: changes)
+        }
+    }
+
+    /// GamGUI's share form: one person's address and the access, then a preview.
+    private var shareForm: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(share)
+                .accessibilityLabel("Share \(row.label) with (email)")
+            HStack {
+                Picker("Access", selection: $role) {
+                    ForEach(CalendarSharing.pickerRoles, id: \.role) { choice in
+                        Text(choice.label).tag(choice.role.rawValue)
+                    }
+                }
+                .fixedSize()
+                .accessibilityLabel("Access to give")
+                Spacer()
+                Button("Share…", action: share)
+                    .disabled(target.trimmingCharacters(in: .whitespaces).isEmpty || changes.isBusy)
+                    .accessibilityLabel("Share \(row.label)")
+                    .accessibilityHint("Shows what it changes, before anything runs.")
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+    }
+
+    private func share() {
+        let typed = target
+        Task {
+            await changes.previewShare(calendarID: row.id, name: row.label, target: typed, role: role)
+            if changes.sheetPending(for: row.id) != nil { target = "" }
+        }
     }
 }
 
-/// Who has access to a calendar, in GAM's order: who, then the role in words. A problem replaces the list
-/// (GamGUI's error partial), never a spinner with no read behind it.
+/// The last change's result for this calendar, at the top of its page, and spoken by VoiceOver: done, done but
+/// not added to their list (in words, not only amber), or why not.
+private struct CalendarResultBanner: View {
+    let changes: CalendarChanges
+
+    var body: some View {
+        if let (text, detail, symbol, tint) = content {
+            HStack(alignment: .firstTextBaseline) {
+                if case .running = changes.state {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: symbol).foregroundStyle(tint)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text)
+                    if let detail {
+                        Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if !changes.isBusy {
+                    Button { changes.dismiss() } label: { Image(systemName: "xmark") }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Dismiss")
+                }
+            }
+            .padding(10)
+            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityElement(children: .combine)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .onAppear { AccessibilityNotification.Announcement(text).post() }
+            .onChange(of: text) { _, new in AccessibilityNotification.Announcement(new).post() }
+        }
+    }
+
+    private var content: (String, String?, String, Color)? {
+        switch changes.state {
+        case .done(let done): (done.message, nil, done.partial ? "exclamationmark.circle.fill" : "checkmark.circle.fill",
+                               done.partial ? .orange : .green)
+        case .problem(let problem): (problem.summary, problem.detail, "exclamationmark.triangle.fill", .orange)
+        case .running(let pending): ("\(pending.title)…", nil, "hourglass", .blue)
+        case .idle, .previewing: nil
+        }
+    }
+}
+
+/// Who has access to a calendar, in GAM's order: who, then the role in words, and a Remove on each rule that
+/// isn't an owner's (GamGUI shows none on an owner's). A problem replaces the list (GamGUI's error partial),
+/// never a spinner with no read behind it.
 struct CalendarAccessList: View {
     let read: CalendarReads.Read
     let reads: CalendarReads
     /// What an empty list says (GamGUI's words differ between its two panels).
     let empty: String
+    let calendarName: String
+    let busy: Bool
+    let remove: (CalendarACL) -> Void
 
     var body: some View {
         if let rules = reads.access(read) {
             List {
                 Section("Who has access") {
                     if rules.isEmpty { Text(empty).foregroundStyle(.secondary) }
-                    ForEach(rules) { rule in CalendarRuleRow(rule: rule) }
+                    ForEach(rules) { rule in
+                        CalendarRuleRow(rule: rule, calendarName: calendarName, busy: busy, remove: remove)
+                    }
                 }
             }
         } else {
@@ -359,33 +462,70 @@ struct CalendarAccessList: View {
     }
 }
 
-/// A rule: who, then the role in words; read as one sentence.
+/// A rule: who, then the role in words, read as one sentence; and Remove, named for whose access to what.
 struct CalendarRuleRow: View {
     let rule: CalendarACL
+    let calendarName: String
+    let busy: Bool
+    let remove: (CalendarACL) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(rule.who).lineLimit(1).truncationMode(.middle)
-            Text(rule.roleLabel).font(.callout).foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rule.who).lineLimit(1).truncationMode(.middle)
+                Text(rule.roleLabel).font(.callout).foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            if !rule.isOwner {
+                Button("Remove…") { remove(rule) }
+                    .disabled(busy)
+                    .accessibilityLabel("Remove \(rule.who)'s access to \(calendarName)")
+            }
         }
-        .accessibilityElement(children: .combine)
     }
 }
 
 /// The person page's Calendar tab (GamGUI's `_calendar.html`, `users.py:560-604`): who can see their primary
-/// calendar, read by GamGUI's user form when the tab is shown, and the way to all their calendars on Calendars.
+/// calendar, read by GamGUI's user form when the tab is shown, each rule but an owner's with Remove, GamGUI's
+/// share form (the user form, no subscribe), and the way to all their calendars on Calendars. Every change opens
+/// its preview first (`UserChanges`).
 struct PersonCalendarSection: View {
     let user: GamUser
     let reads: CalendarReads
+    let changes: UserChanges
     let openCalendars: (String) -> Void
+    @State private var target = ""
+    @State private var role = GamCommands.CalendarRole.reader.rawValue
 
     private var read: CalendarReads.Read { .primaryAccess(of: user.primaryEmail) }
+    private var calendarName: String { "\(user.fullName)'s calendar" }
 
     var body: some View {
         Section("Who can see their calendar") {
             if let rules = reads.access(read) {
                 if rules.isEmpty { Text("Only the owner has access.").foregroundStyle(.secondary) }
-                ForEach(rules) { rule in CalendarRuleRow(rule: rule) }
+                ForEach(rules) { rule in
+                    CalendarRuleRow(rule: rule, calendarName: calendarName, busy: changes.isBusy) { rule in
+                        Task { await changes.previewUnshareCalendar(user, rule: rule) }
+                    }
+                }
+                TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
+                    .onSubmit(share)
+                    .accessibilityLabel("Share \(calendarName) with (email)")
+                HStack {
+                    Picker("Access", selection: $role) {
+                        ForEach(CalendarSharing.pickerRoles, id: \.role) { choice in
+                            Text(choice.label).tag(choice.role.rawValue)
+                        }
+                    }
+                    .fixedSize()
+                    .accessibilityLabel("Access to give")
+                    Spacer()
+                    Button("Share…", action: share)
+                        .disabled(target.trimmingCharacters(in: .whitespaces).isEmpty || changes.isBusy)
+                        .accessibilityLabel("Share \(calendarName)")
+                }
             } else if reads.isReading(read) {
                 HStack { ProgressView().controlSize(.small); Text("Reading who can see their calendar…") }
                     .accessibilityElement(children: .combine)
@@ -399,6 +539,7 @@ struct PersonCalendarSection: View {
                 HStack { Text("Not read.").foregroundStyle(.secondary); readAgain }
             }
         }
+        .onChange(of: user.id) { target = "" }
         Section {
             HStack {
                 Text("Their other calendars, and rooms, are on Calendars.").foregroundStyle(.secondary)
@@ -407,6 +548,14 @@ struct PersonCalendarSection: View {
                     .accessibilityLabel("Show \(user.fullName)'s calendars")
                     .accessibilityHint("Opens Calendars for them.")
             }
+        }
+    }
+
+    private func share() {
+        let typed = target, rules = reads.access(read)
+        Task {
+            await changes.previewShareCalendar(user, target: typed, role: role, rules: rules)
+            if changes.previewing(for: user.primaryEmail) != nil { target = "" }
         }
     }
 

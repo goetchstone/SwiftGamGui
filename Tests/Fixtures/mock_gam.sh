@@ -1293,51 +1293,158 @@ if [ "${1:-}" = "update" ] && { [ "${2:-}" = "group" ] || [ "${2:-}" = "groups" 
   exit 0
 fi
 
-# `gam user <email> add|create calendaracls <UserCalendarEntity> <CalendarACLRole> <scope>
-#  [sendnotifications <B>]` / `delete calendaracls <UserCalendarEntity> [<CalendarACLRole>] <scope>`
+# A calendar's rules change as Google changes them, in GAM's words (docs/domains/calendars.md, F4-F6; read from
+# the vendored 7.48.22 build, Google's own refusals approximate). The scope is GAM's <CalendarACLScopeEntity>,
+# read with getEntityList (:7338-7342): split at commas and whitespace into rules, a selector word wanting a
+# file. Each rule ID is normalized as normalizeRuleId does (:40654-40664): a bare address or name is
+# `user:<address>`, lowercased, a bare name given the domain; `domain` is `domain:<domain>`; `user:`/`group:`
+# addresses lowercased; anything else as given. The role is CALENDAR_ACL_ROLES_MAP's (:41596-41605). With
+# GAM_MOCK_STATE the rules are kept in $GAM_MOCK_STATE/acls/<calendar>, seeded from the data file, and
+# every print reads them there; an add of a scope that has a rule replaces it, as Google's insert does.
+# Google refuses the account GAM acts as (calendar_actor) any change to its own access. A failure is said
+# against its rule and the next rule still runs (_createCalendarACLs, _updateDeleteCalendarACLs).
+mock_admin() {  # the account the materialized oauth2.txt signs in as, or nothing
+  sed -n 's/.*"email": *"\([^"]*\)".*/\1/p' "$GAMCFGDIR/oauth2.txt" | head -n 1 | tr '[:upper:]' '[:lower:]'
+}
+mock_domain() { a=$(mock_admin); [ -n "$a" ] && printf '%s' "${a#*@}" || printf 'example.com'; }
+calendar_actor() {  # <calendar key>: who GAM acts as (validateCalendar, :41574-41579)
+  case "$1" in *.calendar.google.com) mock_admin ;; *) printf '%s' "$1" ;; esac
+}
+rule_id() {  # <scope word>: normalizeRuleId
+  case "$1" in
+    default|default:) printf 'default' ;;
+    domain|domain:) printf 'domain:%s' "$(mock_domain)" ;;
+    user:?*|group:?*)
+      who=$(lower "${1#*:}")
+      case "$who" in *@*) ;; *) who="$who@$(mock_domain)" ;; esac
+      printf '%s:%s' "${1%%:*}" "$who" ;;
+    *:*) printf '%s' "$1" ;;
+    *@*) printf 'user:%s' "$(lower "$1")" ;;
+    *) printf 'user:%s@%s' "$(lower "$1")" "$(mock_domain)" ;;
+  esac
+}
+api_role() {  # <CalendarACLRole>: as Google stores it
+  case "$1" in
+    editor) echo writer ;;
+    freebusy|freebusyreader) echo freeBusyReader ;;
+    writerwithoutprivateaccess) echo writerWithoutPrivateAccess ;;
+    *) echo "$1" ;;
+  esac
+}
+rule_json() {  # <rule id> <api role>: the rule as GAM prints it, keys sorted
+  case "$1" in
+    default) printf '{"id": "default", "role": "%s", "scope": {"type": "default"}}' "$2" ;;
+    user:*|group:*|domain:*) printf '{"id": "%s", "role": "%s", "scope": {"type": "%s", "value": "%s"}}' "$1" "$2" "${1%%:*}" "${1#*:}" ;;
+    *) not_modelled "a calendar rule like $1" ;;
+  esac
+}
+# The rule edits for one calendar: <op add|delete> <cal as given> <calendar key> <entity label> <role|-> <scope entity>
+calendar_acl_change() {
+  op=$1; cal=$2; key=$3; label=$4; role=$5; entity=$6
+  case "$(lower "$entity")" in file|csvfile|csvkmd|csvdata|datafile|csvdatafile) missing_arg "FileName" ;; esac
+  case "$entity" in *'"'*|*\\*) not_modelled "a calendar scope holding a quote or a backslash" ;; esac
+  file=$(acl_file "$key")
+  if [ -z "$file" ]; then
+    printf '%s: %s, %s Failed: Not Found\n' "$label" "$cal" "$([ "$op" = add ] && echo Add || echo Delete)" 1>&2
+    exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/acls"
+    [ -f "$GAM_MOCK_STATE/acls/$key" ] || cp "$file" "$GAM_MOCK_STATE/acls/$key"
+    file="$GAM_MOCK_STATE/acls/$key"
+  fi
+  actor=$(calendar_actor "$key")
+  failed=""
+  set -f
+  for word in $(printf '%s' "$entity" | tr ',' ' '); do
+    id=$(rule_id "$word")
+    case "$id" in default|user:?*|group:?*|domain:?*) ;; *) not_modelled "a calendar rule like $id" ;; esac
+    if [ "$op" = add ]; then
+      api=$(api_role "$role"); shown="(Scope: $id, Role: $api)"; act="Add"
+    else
+      shown="(Scope: $id)"; act="Delete"
+      [ "$role" = "-" ] || shown="(Scope: $id, Role: $(api_role "$role"))"
+    fi
+    if [ -n "$actor" ] && [ "$id" = "user:$actor" ]; then
+      printf 'Calendar: %s, Calendar ACL: %s, %s Failed: Cannot change your own access level.\n' "$cal" "$shown" "$act" 1>&2
+      failed=1; continue
+    fi
+    has=""; grep -qF "{\"id\": \"$id\", " "$file" && has=1
+    if [ "$op" = delete ] && [ -z "$has" ]; then
+      printf 'Calendar: %s, Calendar ACL: %s, Delete Failed: Not Found\n' "$cal" "$shown" 1>&2
+      failed=1; continue
+    fi
+    if [ -n "${GAM_MOCK_STATE:-}" ]; then
+      if [ "$op" = add ]; then
+        line=$(rule_json "$id" "$api")
+        if [ -n "$has" ]; then   # replaced where it stands
+          awk -v id="{\"id\": \"$id\", " -v line="$line" 'index($0, id) == 1 { print line; next } { print }' "$file" > "$file.new"
+        else
+          { cat "$file"; printf '%s\n' "$line"; } > "$file.new"
+        fi
+      else
+        grep -vF "{\"id\": \"$id\", " "$file" > "$file.new" || true
+      fi
+      mv "$file.new" "$file"
+    fi
+    printf 'Calendar: %s, Calendar ACL: %s, %sed\n' "$cal" "$shown" "$([ "$op" = add ] && echo Add || echo Delet)"
+  done
+  set +f
+  [ -z "$failed" ] || exit 50
+  exit 0
+}
+
+# `gam user <email> add|create calendaracls primary <CalendarACLRole> <scope> [sendnotifications <B>]` /
+# `delete calendaracls primary [<CalendarACLRole>] <scope>`: the person's own primary calendar, GAM acting as
+# them (createCalendarACLs, updateDeleteCalendarACLs, :55911-55935). Only `primary` is modelled, the calendar
+# the app changes; a person who isn't a user fails as any per-user call does, and Calendar off exits 73.
 if [ "${1:-}" = "user" ] && [ "${4:-}" = "calendaracls" ]; then
-  user="$2"; op="${3:-}"
+  user=$(lower "$2"); op="${3:-}"
   [ -n "${5:-}" ] || missing_arg "UserCalendarEntity"
-  cal="$5"; shift 5
+  [ "$5" = "primary" ] || not_modelled "calendaracls of a calendar but primary"
+  shift 5
   case "$op" in
     add|create)
       need_acl_role "${1:-}"
       [ -n "${2:-}" ] || missing_arg "CalendarACLScopeEntity"
-      scope="$2"; verb="Added"; shift 2
-      acl_notify_tail "$@" ;;
+      role="$1"; scope="$2"; shift 2
+      acl_notify_tail "$@"; op=add ;;
     delete)
-      if [ $# -eq 2 ]; then need_acl_role "$1"; shift; fi
+      role="-"
+      if [ $# -eq 2 ]; then need_acl_role "$1"; role="$1"; shift; fi
       [ $# -ge 1 ] && [ -n "$1" ] || missing_arg "CalendarACLScopeEntity"
       [ $# -eq 1 ] || invalid_arg "$2"
-      scope="$1"; verb="Deleted" ;;
+      scope="$1" ;;
     *) echo "ERROR: mock: unhandled argv: $ARGS" 1>&2; exit 2 ;;
   esac
   check_exists "User" "$user"
-  echo "User: $user, Calendar: $cal, Calendar ACL: (Scope: $scope), $verb"
-  exit 0
+  known_user "$user" || not_a_user "$user" "$([ "$op" = add ] && echo Add || echo Delete)"
+  if calendar_off "$user"; then calendar_service_off "$user"; fi
+  calendar_acl_change "$op" "$user" "$user" Calendar "$role" "$scope"
 fi
 
 # `gam calendars <id> add|create calendaracls <CalendarACLRole> <scope> [sendnotifications <B>]` /
-# `gam calendars <id> delete calendaracls [<CalendarACLRole>] <scope>` — standalone admin share/unshare.
+# `gam calendars <id> delete calendaracls [<CalendarACLRole>] <scope>`: GamGUI's admin form (:41721-41775),
+# GAM acting as calendar_actor. A calendar GAM can't get fails "Calendar: <id>, <Act> Failed: Not Found",
+# exit 50 (validateCalendar, F4), not the old "Does not exist", 56.
 if { [ "${1:-}" = "calendars" ] || [ "${1:-}" = "calendar" ]; } && { [ "${4:-}" = "calendaracls" ] || [ "${4:-}" = "acls" ]; }; then
   [ -n "${2:-}" ] || missing_arg "CalendarEntity"
-  cal="$2"; op="${3:-}"; shift 4
+  cal="$2"; key=$(calendar_key "$2"); op="${3:-}"; shift 4
   case "$op" in
     add|create)
       need_acl_role "${1:-}"
       [ -n "${2:-}" ] || missing_arg "CalendarACLScopeEntity"
-      scope="$2"; verb="Added"; shift 2
-      acl_notify_tail "$@" ;;
+      role="$1"; scope="$2"; shift 2
+      acl_notify_tail "$@"; op=add ;;
     delete)
-      if [ $# -eq 2 ]; then need_acl_role "$1"; shift; fi
+      role="-"
+      if [ $# -eq 2 ]; then need_acl_role "$1"; role="$1"; shift; fi
       [ $# -ge 1 ] && [ -n "$1" ] || missing_arg "CalendarACLScopeEntity"
       [ $# -eq 1 ] || invalid_arg "$2"
-      scope="$1"; verb="Deleted" ;;
+      scope="$1" ;;
     *) echo "ERROR: mock: unhandled argv: $ARGS" 1>&2; exit 2 ;;
   esac
-  check_exists "Calendar" "$cal"
-  echo "Calendar: $cal, Calendar ACL: (Scope: $scope), $verb"
-  exit 0
+  calendar_acl_change "$op" "$cal" "$key" Calendar "$role" "$scope"
 fi
 
 # `gam all users delete calendaracls <UserCalendarEntity> [<CalendarACLRole>] <scope>` -> the offboarding
@@ -1394,14 +1501,19 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "remove" ] && [ "${4:-}" = "calendars" 
   exit 0
 fi
 
-# `gam user <email> add calendars <id> <CalendarAttribute>*` -> subscribe so the calendar appears in the
-# sidebar. A SUBFAIL target simulates GAM refusing to act as that recipient (partial-success path).
+# `gam user <email> add calendars <id> [selected <B>] …` (addCalendars, _processCalendarList, :55465-55499): put
+# the calendar in the person's list, GAM acting as them. Success is `User: <u>, Calendar: <c>, Added`. One who
+# isn't a user fails as any per-user call does; Calendar off, or an account Google is still setting up,
+# exits 73; a calendar GAM can't get, or one already in their list (Google's `duplicate`, plan Q7), fails
+# "User: <u>, Calendar: <c>, Add Failed: <why>", exit 50 (Google's words approximate). With GAM_MOCK_STATE the
+# calendars added are kept in $GAM_MOCK_STATE/subscribed/<user> (`print calendars` doesn't list them yet).
+# SUBFAIL: GamGUI's trigger for a subscribe GAM refuses (the partial-share path).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; then
   [ -n "${5:-}" ] || missing_arg "UserCalendarAddEntity"
   case "$*" in
     *SUBFAIL*) echo "ERROR: 403: Not authorized to act as user" 1>&2; exit 1 ;;
   esac
-  user="$2"; cal="$5"; shift 5
+  user=$(lower "$2"); cal="$5"; key=$(calendar_key "$5"); shift 5
   while [ $# -gt 0 ]; do
     case "$1" in
       selected|hidden) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
@@ -1409,11 +1521,22 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; 
       *) invalid_arg "$1" ;;
     esac
   done
-  if still_provisioning "$user"; then
-    printf 'User: %s, Calendar Service/App not enabled\n' "$user" 1>&2
-    exit 73
+  known_user "$user" || not_a_user "$user" Add
+  if still_provisioning "$user" || calendar_off "$user"; then calendar_service_off "$user"; fi
+  if [ -z "$(acl_file "$key")" ]; then
+    printf 'User: %s, Calendar: %s, Add Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
   fi
-  echo "User $user subscribed to calendar $cal"
+  listed=""
+  if [ -f "$GAM_MOCK_FIXTURES/user_calendars/$user.json" ] && grep -qF "\"id\": \"$key\"" "$GAM_MOCK_FIXTURES/user_calendars/$user.json"; then listed=1; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/subscribed/$user" ] && grep -qxF "$key" "$GAM_MOCK_STATE/subscribed/$user"; then listed=1; fi
+  if [ -n "$listed" ]; then
+    printf 'User: %s, Calendar: %s, Add Failed: Duplicate\n' "$user" "$cal" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/subscribed"
+    printf '%s\n' "$key" >> "$GAM_MOCK_STATE/subscribed/$user"
+  fi
+  printf 'User: %s, Calendar: %s, Added\n' "$user" "$cal"
   exit 0
 fi
 

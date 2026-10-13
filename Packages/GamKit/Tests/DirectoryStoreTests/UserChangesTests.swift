@@ -383,4 +383,75 @@ final class UserChangesTests {
         guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(message.contains("Sign Out Failed"))
     }
+
+    // MARK: their calendar (C2a)
+
+    /// The calendar rule writes the mock ran.
+    private func calendarWrites() -> [[String]] {
+        guard let data = try? Data(contentsOf: argvLog) else { return [] }
+        var fields = data.split(separator: 0, omittingEmptySubsequences: false).map { String(decoding: $0, as: UTF8.self) }
+        var calls: [[String]] = []
+        while let first = fields.first, let count = Int(first) {
+            calls.append(Array(fields[1...count]))
+            fields.removeFirst(count + 1)
+        }
+        return calls.filter { ($0.contains("calendaracls") && !$0.contains("print")) || $0.contains("calendars") }
+    }
+
+    /// GamGUI's `/users/calendar/add` (`users.py:577-592`): their primary calendar, by the user form, and no
+    /// subscribe; `test_calendar_access_add_requires_target`'s words for an empty one.
+    @Test func theirCalendarIsSharedByTheUserFormWithNoSubscribe() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewShareCalendar(alice, target: "  ", role: "reader", rules: nil)
+        guard case .problem(let empty) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(empty == "Enter an email to share with.")
+        await changes.previewShareCalendar(alice, target: " carol@example.com ", role: "freebusyreader", rules: nil)
+        let pending = try pending()
+        #expect(pending.email == "alice@example.com" && pending.confirmLabel == "Share")
+        #expect(pending.preview.steps.map(\.shownArgv)
+                == [GamCommands.addCalendarACL(email: "alice@example.com", target: "carol@example.com", role: .freeBusyReader).argv])
+        #expect(pending.preview.steps.first?.summary == "Let carol@example.com see free/busy only on alice@example.com's calendar.")
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        #expect(calendarWrites() == [["user", "alice@example.com", "add", "calendaracls", "primary", "freebusyreader", "carol@example.com"]])
+        #expect(changes.finished == 1)
+        // A role outside the grammar and a list never reach GAM.
+        await changes.previewShareCalendar(alice, target: "carol@example.com", role: "admin", rules: nil)
+        guard case .problem(let role) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(role.hasPrefix("Couldn't share calendar: invalid calendar role"))
+        await changes.previewShareCalendar(alice, target: "carol@example.com,dana@example.com", role: "reader", rules: nil)
+        guard case .problem(let list) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(list == CalendarSharing.shareTargetProblem("carol@example.com,dana@example.com"))
+        #expect(calendarWrites().count == 1)
+    }
+
+    /// GamGUI's `/users/calendar/remove` (`users.py:595-604`, `test_users_web.py:825-831`): by the rule's token,
+    /// from the confirm step; an owner's rule isn't removed.
+    @Test func andUnsharedByIt() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        let assistant = CalendarACL(record: JSONValue.parse(#"{"id": "user:assistant@example.com", "role": "reader", "scope": {"type": "user", "value": "assistant@example.com"}}"#)!.object!)
+        await changes.previewUnshareCalendar(alice, rule: assistant)
+        let pending = try pending()
+        #expect(pending.preview.needsConfirmClick && pending.confirmLabel == "Remove")
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(calendarWrites().isEmpty)
+        await changes.previewUnshareCalendar(alice, rule: assistant)
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
+        #expect(calendarWrites() == [["user", "alice@example.com", "delete", "calendaracls", "primary", "assistant@example.com"]])
+        let owner = CalendarACL(record: JSONValue.parse(#"{"id": "user:alice@example.com", "role": "owner"}"#)!.object!)
+        await changes.previewUnshareCalendar(alice, rule: owner)
+        guard case .problem = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(calendarWrites().count == 1)
+    }
+
+    /// D7: the user form acts as the person, and Google refuses them a change to their own access.
+    @Test func theirOwnAddressIsRefused() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewShareCalendar(alice, target: "Alice@Example.com", role: "reader", rules: nil)
+        guard case .problem(let refusal) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(refusal == CalendarSharing.ownAccessRefusal)
+        #expect(calendarWrites().isEmpty)
+    }
 }
