@@ -26,7 +26,8 @@ status=0
 # clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they
 # fail when the page has too little room to spare, and on any non-zero exit.
 # Offboard is filled in for carol@example.com leaving and alice@example.com taking over: the form, then (tab
-# `plan`) the read-only plan it would run, scrolled into view.
+# `plan`) the read-only plan it would run, scrolled into view. Reports opens on its first report, then on its
+# usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
@@ -41,7 +42,9 @@ for spec in home:home users:users groups:groups setup:setup \
             narrow-signatures:signatures:alice@example.com::smallest:Classic \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
-            narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com; do
+            narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
+            reports:reports reports-usage:reports:usage audit:audit \
+            narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-audit:audit:::smallest; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

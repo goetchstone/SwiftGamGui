@@ -4,7 +4,7 @@ import GamEngine
 
 /// What the Audit screen narrows the log to: GamGUI's search box and its "Failures only" (`web/routes/audit.py`,
 /// `_keep`). GamGUI offers no other filter. Held to `Tests/Fixtures/audit_screen.json` by `AuditScreenTests`.
-public struct AuditFilter: Sendable, Equatable {
+public struct AuditFilter: Sendable, Hashable {
     /// Searched for in the action, the target, the error, the detail and the command.
     public var text: String
     /// Only records whose `ok` is `false`.
