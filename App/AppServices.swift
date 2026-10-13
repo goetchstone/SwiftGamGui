@@ -28,6 +28,8 @@ struct AppServices {
     let groups: GroupStore
     /// An open group's members, read live.
     let groupMembers: GroupMembers
+    /// Adding people to a group and removing a member, through the executor.
+    let groupChanges: GroupChanges
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -59,13 +61,16 @@ struct AppServices {
             }, extraEnvironment: extraEnvironment)
         }
         let directory = DirectoryStore(setup: setup, runner: runner)
+        let groupMembers = GroupMembers(setup: setup, runner: runner)
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
                            signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory),
                            signatureTemplates: templates,
                            groups: GroupStore(setup: setup, runner: runner),
-                           groupMembers: GroupMembers(setup: setup, runner: runner), auditURL: auditURL)
+                           groupMembers: groupMembers,
+                           groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
+                           auditURL: auditURL)
     }
 
     #if DEBUG

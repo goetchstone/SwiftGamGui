@@ -110,7 +110,8 @@ struct ContentView: View {
                 }
                 .navigationTitle("Users")
             case .groups:
-                GroupsView(setup: services.setup, groups: services.groups, members: services.groupMembers)
+                GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
+                           members: services.groupMembers, changes: services.groupChanges)
                     .navigationTitle("Groups")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,

@@ -72,7 +72,9 @@ enum Spikes {
         // a signature preview compiles its rule list before it draws.
         let selecting = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] != nil
         try? await Task.sleep(for: .seconds(selecting ? 4 : 1.5))
-        guard let content = NSApp.windows.first(where: \.isVisible)?.contentView else {
+        // The window, not a sheet over it (a sheet is a visible window too).
+        let window = NSApp.windows.first { $0.isVisible && $0.sheetParent == nil }
+        guard let content = window?.contentView else {
             print("snapshot: no window")
             NSApp.terminate(nil)
             return
@@ -81,15 +83,19 @@ enum Spikes {
             widenSideColumns(in: content)
             try? await Task.sleep(for: .seconds(1))
         }
-        let view = splitViews(in: content).first?.arrangedSubviews.last ?? content
+        // A sheet open over the screen (a group's page with `SWIFTGAMGUI_TAB`) is the picture, whole.
+        let sheet = window?.attachedSheet?.contentView
+        let view = sheet ?? splitViews(in: content).first?.arrangedSubviews.last ?? content
         // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
         var rect = view.bounds
-        let toolbar = min(view.safeAreaInsets.top, rect.height)
-        let sidebar = min(view.safeAreaInsets.left, rect.width)
-        rect.size.height -= toolbar
-        rect.size.width -= sidebar
-        rect.origin.x += sidebar
-        if view.isFlipped { rect.origin.y += toolbar }
+        if sheet == nil {
+            let toolbar = min(view.safeAreaInsets.top, rect.height)
+            let sidebar = min(view.safeAreaInsets.left, rect.width)
+            rect.size.height -= toolbar
+            rect.size.width -= sidebar
+            rect.origin.x += sidebar
+            if view.isFlipped { rect.origin.y += toolbar }
+        }
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: rect) else {
             print("snapshot: nothing to draw")
             NSApp.terminate(nil)

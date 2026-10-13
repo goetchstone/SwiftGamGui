@@ -168,3 +168,88 @@ struct SignaturePreviewSheet: View {
         }
     }
 }
+
+extension GroupChanges {
+    /// The preview `group`'s page shows in its sheet: held, or running (the sheet stays, its buttons off,
+    /// until it ends). Another group's page never shows it.
+    func sheetPending(for group: String) -> Pending? {
+        switch state {
+        case .previewing(let pending), .running(let pending): concerns(group) ? pending : nil
+        case .idle, .done, .problem: nil
+        }
+    }
+
+    /// The sheet was closed: drops a preview still waiting, never the result the run left behind.
+    func dismissPreview() {
+        if case .previewing = state { dismiss() }
+    }
+}
+
+/// A group change's confirm step: who is added (with which role) or removed, the commands as GAM gets them,
+/// what removing means, the count typed when the guard asks for it, then Cancel or the confirm. Confirming
+/// runs exactly this preview, once.
+struct GroupPreviewSheet: View {
+    let pending: GroupChanges.Pending
+    let changes: GroupChanges
+    @State private var typedCount = ""
+
+    private var running: Bool { changes.isBusy }
+    private var count: Int { pending.preview.steps.count }
+    private var needsCount: Bool { pending.preview.decision.requiresTypedCount }
+
+    private func confirm() {
+        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: typedCount)) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
+                    Text(step.summary)
+                }
+                // The exact commands are there for an admin who wants them, not the first thing to read.
+                DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                    Text(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } header: {
+                Text(pending.title).accessibilityAddTraits(.isHeader)
+            }
+            if !pending.notes.isEmpty || !pending.preview.decision.warnings.isEmpty {
+                Section {
+                    ForEach(pending.notes, id: \.self) { note in Label(note, systemImage: "info.circle") }
+                    ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    }
+                }
+            }
+            if needsCount {
+                Section("This changes \(count) people") {
+                    TextField("Type \(count) to confirm", text: $typedCount)
+                        .accessibilityLabel("Type the number of people, \(count), to confirm")
+                        .disabled(running)
+                }
+            }
+            if running {
+                Section {
+                    HStack { ProgressView().controlSize(.small); Text(pending.isAdding ? "Adding…" : "Removing…") }
+                        .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 480, minHeight: 320)
+        .interactiveDismissDisabled(running)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(pending.isAdding ? "Back" : "Cancel") { changes.dismiss() }.disabled(running)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button(pending.confirmLabel) { confirm() }
+                    .disabled(running || (needsCount && typedCount.trimmingCharacters(in: .whitespaces).isEmpty))
+            }
+        }
+    }
+}

@@ -40,6 +40,8 @@ public final class GroupChanges {
         let adding: GamCommands.GroupRole?
 
         public var id: UUID { preview.id }
+        /// People are added (else a member is removed).
+        public var isAdding: Bool { adding != nil }
     }
 
     /// Why nothing changed, or not everything did: `summary` in words, `detail` GAM's own errors.
