@@ -31,6 +31,8 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/signatures.json  GamGUI's signature render, curly-quote warning and show-signature reader,
                                   and GAM's own handling of a signature argument (the stored form; the
                                   bodies it reads as a file keyword), run from the vendored build.
+  Tests/Fixtures/offboarding.json GamGUI's offboarding routine: each step's command lines and what it
+                                  needs, the address checks, and the preview's names and warnings.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -1420,6 +1422,186 @@ def signature_fixture(mock: Path, code) -> dict:
             "gam": {"file_keywords": sorted(keywords), "stored": stored, "keyword": keyword}}
 
 
+def offboarding_fixture(mock: Path) -> dict:
+    """GamGUI's offboarding routine (core/lifecycle.py) and its preview's helpers (web/routes/lifecycle.py),
+    over curated and seeded inputs: build_offboard_steps (each step's key, label, summary, requires and
+    command lines), effective_requires over every left-out set, fill_autoreply, command_line,
+    check_addresses, the preview's display names (_resolve_name, _manager_contact, _compose_autoreply) and
+    its delegate warning (_delegate_warning). The helpers are handed a stand-in that holds only a directory
+    or a delegate list: never GamGUI's AppState or a connector, which reach its app data and GAM."""
+    import asyncio
+    import itertools as it
+    import random
+    from datetime import date
+
+    from gamgui.core import lifecycle
+    from gamgui.core.gam.errors import GAMError
+    from gamgui.core.gam.models import GAMUser
+    from gamgui.web.routes import lifecycle as route
+
+    keys = list(lifecycle.REQUIRES)
+    optional = list(lifecycle.OPTIONAL_STEPS)
+
+    def subsets(items):
+        return [list(c) for n in range(len(items) + 1) for c in it.combinations(items, n)]
+
+    def outcome(fn, *args, **kwargs):
+        try:
+            return {"out": fn(*args, **kwargs)}
+        except Exception as exc:   # the Swift port must refuse the same inputs
+            return {"error": type(exc).__name__, "message": str(exc)}
+
+    # build_offboard_steps: GamGUI's test inputs, then seeded combinations.
+    def steps_case(user, manager, subject, message, days, today, notify="", employee_name="", manager_contact="",
+                   na=()):
+        args = {"user": user, "manager": manager, "subject": subject, "message": message, "days": days, "today": today,
+                "notify": notify, "employee_name": employee_name, "manager_contact": manager_contact,
+                "not_applicable": sorted(na)}
+        result = outcome(lifecycle.build_offboard_steps, user, manager, subject, message, days,
+                         date.fromisoformat(today), notify=notify, employee_name=employee_name,
+                         manager_contact=manager_contact, not_applicable=frozenset(na))
+        if "out" in result:
+            result = {"steps": [{"key": s.key, "label": s.label, "summary": s.summary, "requires": list(s.requires),
+                                 "commands": s.commands, "command_lines": s.command_lines} for s in result["out"]]}
+        return {"args": args} | result
+
+    pinned = ("leaver@example.com", "mgr@example.com", "{employee} has left", "Line one.\nAsk {manager}", 30, "2026-06-23")
+    pinned_kw = {"notify": "it@example.com", "employee_name": "Lee Ver", "manager_contact": "Mo Gr (mgr@example.com)"}
+    steps = [steps_case("leaver@e.com", "mgr@e.com", "Subj", "Msg", 30, "2026-06-23"), steps_case(*pinned, **pinned_kw),
+             steps_case("leaver@e.com", "mgr@e.com", "s", "m", 30, "2026-06-23", notify="it@e.com"),
+             steps_case("jane@e.com", "bob@e.com", lifecycle.DEFAULT_SUBJECT, lifecycle.DEFAULT_MESSAGE, 30,
+                        "2026-06-23", employee_name="Jane Doe"),
+             steps_case("leaver@e.com", "mgr@e.com", "Subj", "Line one.\r\n\r\nAsk {manager} <IT> & co.\nC:\\new", 30,
+                        "2026-06-23", manager_contact="Mo Gr (mgr@e.com)"),
+             steps_case("a@example.com", "b@example.com", "Jane has left", "It's \"done\"\nbye", 30, "2026-06-23")]
+    steps += [steps_case(*pinned, **pinned_kw, na=na) for na in subsets(optional)]
+    steps += [steps_case(*pinned, **pinned_kw, na=[lock] + extra) for lock in ("password", "revoke", "forward")
+              for extra in ([], ["delegate"])]
+    # The calendar's edges, and the last due date before Python's date runs out (the end is the day after).
+    last, first = date.max.toordinal() - date(2026, 6, 23).toordinal(), date.min.toordinal() - date(2026, 6, 23).toordinal()
+    for today, days in (("2024-02-28", 1), ("2024-02-29", 365), ("2023-12-31", 1), ("2000-02-28", 1), ("1900-02-28", 1),
+                        ("0001-01-01", 0), ("0001-01-01", -1), ("2026-06-23", -30), ("2026-06-23", 0),
+                        ("2026-06-23", 3650), ("2026-06-23", 36500), ("9999-12-29", 1), ("9999-12-30", 1),
+                        ("9999-12-31", 1), ("2026-06-23", last - 1), ("2026-06-23", last), ("2026-06-23", first),
+                        ("2026-06-23", first - 1), ("2026-06-23", 10 ** 12)):
+        steps.append(steps_case("l@example.com", "m@example.com", "s", "m", days, today))
+    addresses = ["leaver@example.com", "carol@example.com", "o'neil@example.com", "zo\u00eb@example.com", "a b@example.com",
+                 "$(x)@example.com", "-x@example.com", "", "line\nbreak@example.com", "tab\t@example.com", "\\@example.com",
+                 "\"q\"@example.com", "\u212aim@example.com", "\U0001F600@example.com", "x" * 80 + "@example.com"]
+    texts = ["", "s", "m", lifecycle.DEFAULT_SUBJECT, lifecycle.DEFAULT_MESSAGE, "{employee}{manager}{contact}",
+             "{Employee} {MANAGER} {contact", "{{employee}}", "{employee}\u0301 left", "a & b < c > d", "C:\\new\\n",
+             "Line one.\r\nLine two\rthree\n", "It's \"done\" `now` $HOME", "\u2028sep\u2029", "tab\there", "\n", " ",
+             "<b>Bold</b> &amp;", "\U0001F600 caf\u00e9", "x" * 300]
+    display = ["", "Lee Ver", "Mo Gr (mgr@example.com)", "{manager}", "{employee}", "O'Neil \"Bo\"", "\u00c9va \u212a",
+               "a\\nb"]
+    notifies = ["", "it@example.com", "it's@example.com", "a b", "\u00e9@example.com"]
+    rng = random.Random(20261013)
+    for _ in range(250):
+        today = date.fromordinal(rng.randint(date(1990, 1, 1).toordinal(), date(2060, 12, 31).toordinal())).isoformat()
+        na = [k for k in optional if rng.random() < 0.3] + (["revoke"] if rng.random() < 0.03 else [])
+        steps.append(steps_case(rng.choice(addresses), rng.choice(addresses), rng.choice(texts), rng.choice(texts),
+                                rng.choice([1, 2, 7, 14, 30, 31, 60, 90, 365, 400, 0, -5]), today,
+                                notify=rng.choice(notifies), employee_name=rng.choice(display),
+                                manager_contact=rng.choice(display), na=na))
+
+    requires = [{"key": k, "not_applicable": na, "requires": list(lifecycle.effective_requires(k, frozenset(na)))}
+                for k in keys for na in subsets(keys)]
+
+    fill = [{"text": t, "employee": e, "manager": m, "out": lifecycle.fill_autoreply(t, e, m)}
+            for t in texts for e, m in (("Lee Ver", "Mo Gr (mgr@example.com)"), ("{manager}", "{employee}"),
+                                         ("", ""), ("{contact}", "x\u0301"))]
+
+    # command_line: GamGUI's test argvs and every step's, then seeded argvs over sensitive keys, GAM's own
+    # password keywords and the characters each quoting style turns on.
+    tokens = ["password", "PASSWORD", "Password", "notifypassword", "signature", "recoveryemail", "recoveryphone",
+              "alternateemail", "random", "RANDOM", "uniquerandom", "blocklogin", "prompt", "uniqueprompt", "Random",
+              "random ", "S3cret pw!", "", " ", "'", "''", "\"", "\\", "$", "`", "!", "#", "*", "~", "a'b", "a\"b",
+              "a$b`c\\d", "it's", "@%+=:,./-_", "abcXYZ019", "\u00e9", "\U0001F600", "\n", "\t", "a b", "{x}", ";", "&",
+              "|", "<", ">", "(", ")", "[", "]", "?", "^", "\u00a0", "\u2028", "\u0661"]
+    argvs = [["update", "user", "a@example.com", "password", "random", "changepassword", "off"],
+             ["create", "user", "n@example.com", "firstname", "N", "lastname", "U", "password", "S3cret pw!",
+              "changepassword", "on", "notify", "b@example.com", "notifypassword", "S3cret pw!"],
+             ["user", "a@example.com", "vacation", "on", "subject", "Jane has left", "message", "It's \"done\"\nbye",
+              "html", "contactsonly", "false", "domainonly", "false", "start", "Started", "end", "NotSpecified"],
+             ["password", "random"], ["x", "password"], ["password", "password", "random"], []]
+    argvs += [argv for case in steps for s in case.get("steps", []) for argv in s["commands"]][:200]
+    argvs += [[rng.choice(tokens) for _ in range(rng.randint(1, 8))] for _ in range(600)]
+    command = [{"argv": a, "line": lifecycle.command_line(a)} for a in argvs]
+
+    # check_addresses: the mock's directory as GAM prints it, then crafted records the checks turn on.
+    with gam_reader() as read:
+        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
+    records += [
+        {"primaryEmail": "Dee@Example.com", "name": {"givenName": "Dee", "familyName": "Dell"}, "isDelegatedAdmin": True},
+        {"primaryEmail": "eve@example.com", "isAdmin": True, "isDelegatedAdmin": True, "suspended": True,
+         "aliases": ["E.Ve@Example.com", "dee@example.com"]},
+        {"primaryEmail": "\u212aim@example.com", "name": {"givenName": "\u212aim", "familyName": ""},
+         "aliases": ["kim@example.org"]},
+        {"primaryEmail": "fay@example.com", "name": {"givenName": "", "familyName": ""}},
+        {"primaryEmail": "gus@example.com", "name": {"givenName": " Gus ", "familyName": "O\u2019Neil\u3000"},
+         "aliases": ["carol@example.com"], "suspended": True, "isDelegatedAdmin": True},
+        {"primaryEmail": "gus@example.com", "name": {"givenName": "Gus", "familyName": "Two"}},
+    ]
+    directory = [GAMUser.from_json(r) for r in records]
+    wanted = ["carol@example.com", " CAROL@example.com ", "Carol@Example.com", "alice@example.com", "a.anders@example.com",
+              "A.Anders@EXAMPLE.com", "bob@example.com", "dana@example.com", "dee@example.com", "DEE@example.com",
+              "e.ve@example.com", "eve@example.com", "kim@example.com", "\u212aim@example.com", "kim@example.org",
+              "fay@example.com", "gus@example.com", "nobody@example.com", "alcie@example.com", "", "\u0130@example.com"]
+    admins = ["", "alice@example.com", "CAROL@example.com", "eve@example.com", "kim@example.com", "nobody@example.com"]
+    check = []
+    for user, manager in it.product(wanted, wanted):
+        for admin in (admins if rng.random() < 0.25 else [""]):
+            c = lifecycle.check_addresses(directory, user, manager, connected_admin=admin)
+            check.append({"user": user, "manager": manager, "connected_admin": admin, "errors": c.errors,
+                          "warnings": c.warnings, "leaver": c.user.primary_email if c.user else None,
+                          "manager_found": c.manager.primary_email if c.manager else None})
+
+    # The preview's helpers, over a stand-in holding the directory (or a delegate list) and nothing else.
+    class Directory:
+        async def users(self, force=False, stale_ok=False):
+            return directory
+
+    class Delegates:
+        def __init__(self, answer):
+            self.answer = answer
+
+        async def list_delegates(self, email):
+            if isinstance(self.answer, GAMError):
+                raise self.answer
+            return self.answer
+
+    st = Directory()
+    lookups = wanted + ["  ", "\u00a0carol@example.com\u3000", "external@partner.com", "[manager]"]
+    names = [{"email": e, "name": asyncio.run(route._resolve_name(st, e)),
+              "contact": asyncio.run(route._manager_contact(st, e))} for e in lookups]
+    compose = []
+    for user, manager in it.product(lookups[::2], lookups[1::2]):
+        for subject, message in (("", ""), ("{employee} has left", "Please contact {manager}."), ("s", "m")):
+            s, m = asyncio.run(route._compose_autoreply(st, user, manager, subject, message))
+            compose.append({"user": user, "manager": manager, "subject_in": subject, "message_in": message,
+                            "subject": s, "message": m})
+    answers = [[], ["Alice@example.com"], ["alice@example.com", "x@example.com"], ["\u212aim@example.com"], ["ALICE@EXAMPLE.COM"],
+               {"exit": 73, "stderr": "Getting all Delegates for carol@example.com\n"
+                                      "User: carol@example.com, Gmail Service/App not enabled\n"},
+               {"exit": 1, "stderr": "ERROR: 400: failedPrecondition - Mail service not enabled\n"},
+               {"exit": 50, "stderr": "User: carol@example.com, User:, Print Failed: invalid_grant: Invalid email or User ID\n"}]
+    delegate = []
+    with gam_progress():   # GAM's progress lines read as the Swift GamError reads them (gam_errors.json)
+        for answer in answers:
+            for manager in ("alice@example.com", "kim@example.com"):
+                given = GAMError.from_run(answer["exit"], answer["stderr"]) if isinstance(answer, dict) else answer
+                delegate.append({"user": "carol@example.com", "manager": manager, "delegates": answer,
+                                 "warning": asyncio.run(route._delegate_warning(Delegates(given), "carol@example.com",
+                                                                                 manager))})
+    return {"constants": {"step_names": lifecycle.STEP_NAMES, "requires": {k: list(v) for k, v in lifecycle.REQUIRES.items()},
+                          "optional_steps": optional, "not_applicable_cost": lifecycle.NOT_APPLICABLE_COST,
+                          "default_subject": lifecycle.DEFAULT_SUBJECT, "default_message": lifecycle.DEFAULT_MESSAGE,
+                          "transfer_services": lifecycle.TRANSFER_SERVICES, "transfer_privacy": lifecycle.TRANSFER_PRIVACY},
+            "steps": steps, "effective_requires": requires, "fill_autoreply": fill, "command_line": command,
+            "users": records, "check_addresses": check, "names": names, "compose_autoreply": compose,
+            "delegate_warning": delegate}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -1644,6 +1826,13 @@ def main() -> int:
                                 "generator": "scripts/gen_fixtures.py"}} | signature_fixture(OUT / "mock_gam.sh", code)
     (OUT / "signatures.json").write_text(json.dumps(signature_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"signatures.json: {len(signature_doc['render'])} renders, {len(signature_doc['parse_signature'])} shown texts")
+
+    # Offboarding: GamGUI's routine and its preview's checks and words.
+    offboarding_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | offboarding_fixture(OUT / "mock_gam.sh")
+    (OUT / "offboarding.json").write_text(json.dumps(offboarding_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"offboarding.json: {len(offboarding_doc['steps'])} routines, {len(offboarding_doc['check_addresses'])} "
+          f"address checks")
     return 0
 
 

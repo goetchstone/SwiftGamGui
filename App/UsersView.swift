@@ -649,9 +649,14 @@ private struct AccessList: View {
 
     var body: some View {
         if let lists = access.lists(for: user.primaryEmail) {
-            switch kind {
-            case .groups: groups(lists.groups)
-            case .delegates: delegates(lists.delegates)
+            switch (kind, lists.delegates) {
+            case (.groups, _): groups(lists.groups)
+            case (.delegates, .success(let delegates)): self.delegates(delegates)
+            // Gmail off for them, say: their groups still show.
+            case (.delegates, .failure(let problem)):
+                Section(heading) {
+                    Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
             }
         } else if let problem = access.problem(for: user.primaryEmail) {
             Section(heading) {

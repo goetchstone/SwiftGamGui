@@ -35,6 +35,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case groups = "Groups"
     case calendars = "Calendars"
     case signatures = "Signatures"
+    case offboard = "Offboard"
     case setup = "Setup"
 
     var id: Self { self }
@@ -46,6 +47,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .groups: "person.3"
         case .calendars: "calendar"
         case .signatures: "signature"
+        case .offboard: "person.badge.minus"
         case .setup: "key"
         }
     }
@@ -130,6 +132,9 @@ struct ContentView: View {
                                access: services.userAccess, templates: services.signatureTemplates,
                                requested: $signaturesPerson)
                     .navigationTitle("Signatures")
+            case .offboard:
+                OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges)
+                    .navigationTitle("Offboard")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")

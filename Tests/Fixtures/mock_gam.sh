@@ -750,9 +750,19 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "forwardingad
 fi
 
 # `gam user <email> print delegates` (no formatjson) -> THAT user's delegates as plain CSV, like real GAM.
+# printShowDelegates (gam/__init__.py:77232-77313) says "Getting all Delegates for <user>" first; Gmail off
+# for the user (a GAM_MOCK_STATE/nogmail/<user> marker) is Gmail's "Mail service not enabled", read as
+# serviceNotAvailable (gamlib/glgapi.py:311) and reported by userGmailServiceNotEnabledWarning (:2533,
+# :2498-2502), exit 73; the CSV header is still written, with no rows.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "delegates" ]; then
   [ $# -eq 4 ] || invalid_arg "$5"
   need_user "$2" Print
+  printf 'Getting all Delegates for %s\n' "$2" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$2" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$2" 1>&2
+    printf 'User,delegateAddress,delegationStatus\n'
+    exit 73
+  fi
   printf 'User,delegateAddress,delegationStatus\n'
   delegates_of "$2" | while IFS= read -r d; do
     if [ -n "$d" ]; then printf '%s,%s,accepted\n' "$2" "$d"; fi

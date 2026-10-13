@@ -187,7 +187,7 @@ final class UserChangesTests {
         await access.load("alice@example.com")
         let lists = try #require(access.lists(for: "alice@example.com"))
         #expect(lists.groups == ["sales@example.com", "staff@example.com"])
-        #expect(lists.delegates == ["assistant@example.com", "backup@example.com"])
+        #expect(try lists.delegates.get() == ["assistant@example.com", "backup@example.com"])
         #expect(access.lists(for: "bob@example.com") == nil, "only the person read")
     }
 
@@ -284,11 +284,11 @@ final class UserChangesTests {
         #expect(pending.warning == nil)
         await changes.confirm(pending, OperatorConfirmation(confirmed: true))
         await access.load("carol@example.com")
-        #expect(access.lists(for: "carol@example.com")?.delegates == ["helpdesk@example.com", "alice@example.com"])
+        #expect(try access.lists(for: "carol@example.com")?.delegates.get() == ["helpdesk@example.com", "alice@example.com"])
         await changes.previewRemoveDelegate(carol, delegate: "alice@example.com")
         await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
         await access.load("carol@example.com")
-        #expect(access.lists(for: "carol@example.com")?.delegates == ["helpdesk@example.com"])
+        #expect(try access.lists(for: "carol@example.com")?.delegates.get() == ["helpdesk@example.com"])
         #expect(writes() == [["user", "carol@example.com", "add", "delegate", "alice@example.com"],
                              ["user", "carol@example.com", "delete", "delegate", "alice@example.com"]])
     }
@@ -322,7 +322,9 @@ final class UserChangesTests {
                 "the form pre-fills the text, not its markup")
     }
 
-    /// GamGUI loads each panel on its own: a failed auto-reply read doesn't hide the groups and delegates.
+    /// GamGUI loads each panel on its own: Gmail off for a person fails their auto-reply and their mail
+    /// delegates (GAM's `print delegates` refuses them too, exit 73), never their groups. The mock once
+    /// listed delegates for a person without Gmail, and every list on their page hid behind that read live.
     @Test func aFailedAutoReplyReadLeavesTheOtherLists() async throws {
         try await connect()
         let state = scratch.appending(path: "mock-state")
@@ -333,6 +335,8 @@ final class UserChangesTests {
         #expect(lists.groups == ["sales@example.com", "staff@example.com"])
         guard case .failure(let problem) = lists.vacation else { Issue.record("\(lists.vacation)"); return }
         #expect(problem.summary.contains("Gmail Service/App not enabled"))
+        guard case .failure(let unread) = lists.delegates else { Issue.record("\(lists.delegates)"); return }
+        #expect(unread.summary.contains("Gmail Service/App not enabled"))
     }
 
     /// Live, 2026-10-09: the operator blanked a reply's message on purpose. Allowed (as in GamGUI), and said.

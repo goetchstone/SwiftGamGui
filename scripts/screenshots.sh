@@ -25,12 +25,16 @@ status=0
 # runs open a page in the smallest window with the sidebar and the page dragged to their widest, where
 # clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they
 # fail when the page has too little room to spare, and on any non-zero exit.
+# Offboard is filled in for carol@example.com leaving and alice@example.com taking over: the form, then (tab
+# `plan`) the read-only plan it would run, scrolled into view.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
             group-sales-remove:groups:sales@example.com:remove \
             signatures:signatures signatures-alice:signatures:alice@example.com::1100x940:Classic \
+            offboard:offboard:carol@example.com offboard-plan:offboard:carol@example.com:plan \
+            narrow-offboard:offboard:carol@example.com:plan:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \

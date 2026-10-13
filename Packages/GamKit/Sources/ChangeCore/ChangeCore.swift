@@ -54,6 +54,13 @@ public struct WriteStep: Sendable {
         ArgvRedaction.redact(write.argv).map { Executor.masked($0, secrets: secretTexts) }
     }
 
+    /// The step as the `gam …` line the operator reads (GamGUI's `command_line`): `shownArgv`, each element
+    /// quoted so its bounds show, with GAM's own `password random` shown as it runs, unless the word is one
+    /// of this step's secrets. Display only: nothing ever runs it through a shell.
+    public var commandLine: String {
+        GamCommandLine.text(write.argv.map { Executor.masked($0, secrets: secretTexts) }, masked: shownArgv)
+    }
+
     var secretTexts: [String] { secrets.map { String(decoding: $0.bytes, as: UTF8.self) } }
 
     /// The signature a `.setSignature` step sends, as held: the argv element itself, so the confirm sheet

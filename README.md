@@ -16,8 +16,9 @@ groups, mail delegates, auto-reply, sign-out, and their Gmail signature from a s
 confirm it ([Live verification](#live-verification) lists what has run on a real tenant). Groups lists
 the domain's groups and a group's members, and from a group's page adds people with a role or removes a
 member. Calendars lists the rooms and a person's calendars, shows who has access, and shares one with a
-person or takes access away. Sharing a calendar with a group, deleting a calendar or an event, a signature
-for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
+person or takes access away. Offboard shows the plan GamGUI's offboarding would run for a leaver, every step's
+exact command, and can't run it yet. Sharing a calendar with a group, deleting a calendar or an event, a
+signature for many people at once, onboarding and running an offboarding are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.

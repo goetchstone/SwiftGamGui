@@ -34,6 +34,8 @@ struct AppServices {
     let calendarReads: CalendarReads
     /// Sharing a calendar with one person, and taking access away, through the executor.
     let calendarChanges: CalendarChanges
+    /// Offboarding's read-only plan (Off1): no executor, so it can't run anything.
+    let offboardChanges: OffboardChanges
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -79,6 +81,9 @@ struct AppServices {
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
+                           // Its own reader: the leaver's delegates are read live, never from a page's lists.
+                           offboardChanges: OffboardChanges(setup: setup, directory: directory,
+                                                            access: UserAccess(setup: setup, runner: runner)),
                            auditURL: auditURL)
     }
 

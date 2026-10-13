@@ -14,8 +14,9 @@ public final class UserAccess {
     public struct Lists: Sendable, Equatable {
         /// Group addresses the person is a member of.
         public let groups: [String]
-        /// Addresses delegated access to the person's mailbox.
-        public let delegates: [String]
+        /// Addresses delegated access to the person's mailbox (`print delegates`), read on its own: Gmail off
+        /// for the person fails this read (GAM exits 73), never their groups.
+        public let delegates: Result<[String], Problem>
         /// Their auto-reply (`show vacation`), read on its own: a person without Gmail still shows their
         /// groups and delegates (GamGUI loads each panel separately).
         public let vacation: Result<Vacation, Problem>
@@ -103,14 +104,9 @@ public final class UserAccess {
         async let signatureRead = Self.result { try await Self.read(GamCommands.showSignature(email: email), with: runner, as: domain, environment) }
         let (groups, delegates, vacation, signature) = await (groupsRead, delegatesRead, vacationRead, signatureRead)
         guard !Task.isCancelled else { return }
-        let result: Result<Lists, Problem>
-        switch (groups, delegates) {
-        case (.success(let groups), .success(let delegates)):
-            result = .success(Lists(groups: Self.groups(from: groups), delegates: Self.delegates(from: delegates),
-                                    vacation: vacation.map(Vacation.init(showText:)),
-                                    signature: signature.map(Signature.parseShown)))
-        case (.failure(let problem), _), (_, .failure(let problem)):
-            result = .failure(problem)
+        let result: Result<Lists, Problem> = groups.map { groups in
+            Lists(groups: Self.groups(from: groups), delegates: delegates.map(Self.delegates(from:)),
+                  vacation: vacation.map(Vacation.init(showText:)), signature: signature.map(Signature.parseShown))
         }
         // A switch while reading: these belong to the old tenant, so they're dropped.
         guard !Task.isCancelled, setup.active == domain, setup.generation == generation,
@@ -119,6 +115,25 @@ public final class UserAccess {
         loaded.removeAll { $0.email == email || $0.domain != domain || $0.generation != generation }
         loaded.insert(Loaded(email: email, domain: domain, generation: generation, serial: serial, result: result), at: 0)
         if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
+    }
+
+    /// The person's mail delegates, read now as the connected domain and not kept: offboarding's preview
+    /// decides on them (GamGUI's `list_delegates`, read live by `_delegate_warning`). A failure is GAM's own
+    /// words (`GamError.message`), which that warning quotes.
+    public func delegates(of email: String) async -> Result<[String], Problem> {
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let read = GamCommands.printDelegates(email: email)
+        do {
+            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
+            guard result.exitCode == 0 else {
+                return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+            }
+            return .success(Self.delegates(from: result.stdout))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
     }
 
     /// A read's outcome as a value, with any error worded for the screen.
