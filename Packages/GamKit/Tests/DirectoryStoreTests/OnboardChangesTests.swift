@@ -118,7 +118,7 @@ final class OnboardChangesTests {
     private var audit: String { (try? String(contentsOf: auditURL, encoding: .utf8)) ?? "" }
 
     private let sales = RoleTemplate(name: "Sales", steps: ["Set up the CRM login", "Order a laptop"], signature: "Classic",
-                                     orgUnit: "/Sales", groups: ["sales@example.com"], calendars: ["team@group.calendar.google.com"])
+                                     orgUnit: "/Sales", groups: ["sales@example.com"], calendars: ["c_allhands@group.calendar.google.com"])
     private var classic: String { Signature.seeds.first { $0.name == "Classic" }!.body }
     private let jordan = Hire(name: "Jordan Lee", email: "jordan@example.com", createAccount: true)
 
@@ -429,7 +429,7 @@ final class OnboardChangesTests {
         try await connect()
         let changes = model()
         let role = RoleTemplate(name: "Sales", steps: ["A"], groups: ["sales@example.com", "missing@example.com"],
-                                calendars: ["team@group.calendar.google.com", "missing@group.calendar.google.com"])
+                                calendars: ["c_allhands@group.calendar.google.com", "missing@group.calendar.google.com"])
         await changes.confirm(try await preview(changes, Hire(name: "Carol Clark", email: "carol@example.com"), role: role), confirmed)
         let run = try #require(changes.run)
         #expect(run.results.map { $0?.isSucceeded } == [true, false, true, false, true, true])
@@ -458,7 +458,7 @@ final class OnboardChangesTests {
         try await connect()
         try lag(3)
         let changes = model()
-        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", calendars: ["team@group.calendar.google.com"])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", calendars: ["c_allhands@group.calendar.google.com"])
         await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
                                                               createAccount: true), role: role), confirmed)
         #expect(results(changes).map { $0?.isWaiting } == [false, true, true, false, false])
@@ -478,7 +478,7 @@ final class OnboardChangesTests {
         try await connect()
         try lag(100)
         let changes = model()
-        let role = RoleTemplate(name: "Sales", steps: ["A"], calendars: ["team@group.calendar.google.com"])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], calendars: ["c_allhands@group.calendar.google.com"])
         await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
                                                               createAccount: true), role: role), confirmed)
         await changes.waitForFinishing()
@@ -497,7 +497,7 @@ final class OnboardChangesTests {
         try FileManager.default.createDirectory(at: state.appending(path: "provisioning"), withIntermediateDirectories: true)
         try Data("5".utf8).write(to: state.appending(path: "provisioning/carol@example.com"))
         let changes = model()
-        let role = RoleTemplate(name: "Sales", steps: ["A"], calendars: ["team@group.calendar.google.com"])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], calendars: ["c_allhands@group.calendar.google.com"])
         await changes.confirm(try await preview(changes, Hire(name: "Carol Clark", email: "carol@example.com"), role: role), confirmed)
         guard case .failed(_, let kind)? = results(changes)[0] else { Issue.record("\(results(changes))"); return }
         #expect(kind == .serviceNotEnabled)

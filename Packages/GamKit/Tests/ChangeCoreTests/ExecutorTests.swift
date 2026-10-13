@@ -776,7 +776,7 @@ final class ExecutorTests {
                   requires: requires, newAccountFrom: create)
     }
 
-    private func calendar(_ email: String, _ id: String = "team@group.calendar.google.com", waitsOn create: Int?) -> WriteStep {
+    private func calendar(_ email: String, _ id: String = "c_allhands@group.calendar.google.com", waitsOn create: Int?) -> WriteStep {
         WriteStep(GamCommands.subscribeCalendar(email: email, calendarID: id), target: email, summary: "Calendar",
                   requires: [0], about: ["calendar": id], newAccountFrom: create)
     }

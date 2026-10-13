@@ -243,7 +243,7 @@ public final class CalendarChanges {
         case (_, .failed(let message, let kind)?, _):
             let what = pending.kind == .share ? "Couldn't share the calendar with \(who)." : "Couldn't remove \(who)'s access."
             state = .problem(Problem("\(what) \(Self.remediation(kind))", detail: message))
-        case (_, .skipped(let reason)?, _):
+        case (_, .skipped(let reason)?, _), (_, .waiting(let reason)?, _):
             state = .problem(Problem(reason))
         case (_, nil, _):
             state = .problem(Problem("Nothing ran."))

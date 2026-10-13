@@ -112,7 +112,7 @@ struct MockOnboardingTests {
     /// M5: every per-user call acts as the user, so for an address that isn't one GAM's token request fails.
     @Test func aTasksCallForANonUserFailsOnItsToken() async throws {
         for write in [list("nobody@example.com"), task("nobody@example.com", on: "x"),
-                      GamCommands.subscribeCalendar(email: "nobody@example.com", calendarID: "team@group.calendar.google.com")] {
+                      GamCommands.subscribeCalendar(email: "nobody@example.com", calendarID: "c_allhands@group.calendar.google.com")] {
             let result = try await run(write)
             #expect(result.exitCode == 50, "\(write.argv)")
             #expect(result.stderr.contains("invalid_grant: Invalid email or User ID"), "\(result.stderr)")
@@ -142,7 +142,7 @@ struct MockOnboardingTests {
             #expect(try await run(GamCommands.sendEmail(to: email, subject: "Hi", body: "Welcome"), state: state).exitCode == 0)
             var lagged: [GamResult] = []
             for write in [GamCommands.setSignature(email: email, signature: "<b>J</b>"),
-                          GamCommands.subscribeCalendar(email: email, calendarID: "team@group.calendar.google.com"),
+                          GamCommands.subscribeCalendar(email: email, calendarID: "c_allhands@group.calendar.google.com"),
                           list(email), task(email, on: "MockTasklist_1")] {
                 lagged.append(try await run(write, state: state))
             }
