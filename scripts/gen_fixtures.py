@@ -40,14 +40,17 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
   Tests/Fixtures/onboarding.json  GamGUI's onboarding core: the temporary password's alphabet, split_name,
                                   the calls provision_hire makes for a hire (title, order, gates), the
                                   new-account wait's words and test, and its role file's load and migration.
-  Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
-                                  the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
-                                  constants that branch on it.
+  Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary,
+                                  plus GamGUI's own constants that branch on it.
 
 Run it with GamGUI's virtualenv Python (it imports GamGUI's package and test modules, read-only;
 nothing is written into GamGUI):
 
-    ../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py [--gamgui ../gamgui]
+    ../gamgui/.venv/bin/python -I -B scripts/gen_fixtures.py [--gamgui ../gamgui] [--gam-python python3.X]
+
+What GAM itself does (its exit codes, its CSV, its signature functions) is asked of scripts/gam_oracle.py,
+run under the build's own Python, the only one its bytecode loads in: `python3.X` on the PATH for the build's
+3.X, or --gam-python. Nothing is written until the build's Python has written every CSV here the same.
 
 Re-run on every GAM bump (scripts/bump_gam.py does).
 """
@@ -57,13 +60,14 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
-import dis
 import functools
+import importlib.util
 import inspect
 import io
 import itertools
 import json
 import re
+import shutil
 import subprocess
 import sys
 import types
@@ -94,19 +98,57 @@ BOUNDARY = ("", " ", "\xa0", "admin", "own\u0435r", "null")
 # Every character Python's str.isspace() is true for (what GamGUI's validators strip): derived, not typed.
 PY_WHITESPACE = "".join(c for c in map(chr, range(0x110000)) if c.isspace())
 
-# How GAM 7.48.22 writes every CSV: setDialect (gam/__init__.py:8830-8839) with csv_output_no_escape_char
-# off, its default (gamlib/glcfg.py:373), lines ending in "\n" on stdout (:8849-8853). CPython 3.14's writer
-# in this dialect doubles each backslash in a value and quotes a value holding a comma, quote, CR or LF.
-# gam_dialect_in_build refuses a build where this moved.
-GAM_DIALECT = {"delimiter": ",", "doublequote": True, "escapechar": "\\", "lineterminator": "\n", "quotechar": '"',
-               "quoting": csv.QUOTE_MINIMAL, "skipinitialspace": False, "strict": False}
+def _load_oracle():
+    """scripts/gam_oracle.py as a module, for what runs under any Python: GAM_DIALECT, build_python, gam_csv."""
+    spec = importlib.util.spec_from_file_location("gam_oracle", ROOT / "scripts" / "gam_oracle.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+ORACLE = _load_oracle()
+# How GAM writes every CSV (one home: scripts/gam_oracle.py, which refuses a build where it moved). CPython's
+# writer in this dialect doubles each backslash in a value and quotes a value holding a comma, quote, CR or LF.
+GAM_DIALECT = ORACLE.GAM_DIALECT
+# Every CSV gam_csv wrote, as (rows, text): before any fixture is written, the build's own Python writes the same
+# rows and must give the same bytes (`csv_as_the_build_writes`).
+CSV_WRITTEN: list = []
 
 
 def gam_csv(rows) -> str:
-    """Rows as GAM prints them."""
-    out = io.StringIO()
-    csv.writer(out, **GAM_DIALECT).writerows(rows)
-    return out.getvalue()
+    """Rows as GAM prints them: this Python's writer in GAM's dialect, checked against the build's at the end."""
+    rows = [list(row) for row in rows]
+    text = ORACLE.gam_csv(rows)
+    CSV_WRITTEN.append((rows, text))
+    return text
+
+
+class GamOracle:
+    """scripts/gam_oracle.py under the build's own Python: what the vendored GAM itself does."""
+
+    def __init__(self, gam: Path, python: str | None):
+        self.gam = gam
+        self.version = ORACLE.build_python(gam.read_bytes())
+        self.python = python or shutil.which(f"python{self.version}")
+        if not self.python:
+            raise SystemExit(f"GAM's build is Python {self.version}'s, and no python{self.version} is on the PATH: "
+                             f"install it, or pass --gam-python")
+
+    def ask(self, request: dict) -> dict:
+        run = subprocess.run([self.python, "-I", "-B", str(ROOT / "scripts" / "gam_oracle.py"), str(self.gam)],
+                             input=json.dumps(request), capture_output=True, text=True)
+        if run.returncode != 0:
+            raise SystemExit(run.stderr.strip() or f"gam_oracle.py exited {run.returncode}")
+        return json.loads(run.stdout)
+
+
+def csv_as_the_build_writes(oracle: GamOracle) -> None:
+    """Refuse fixtures whose CSV the build's own Python writes otherwise: GamGUI's Python wrote them."""
+    written = oracle.ask({"csv": [rows for rows, _ in CSV_WRITTEN]})["csv"]
+    for (rows, text), theirs in zip(CSV_WRITTEN, written, strict=True):
+        if text != theirs:
+            raise SystemExit(f"CPython {oracle.version}'s csv writes {theirs[:80]!r} where this Python's writes "
+                             f"{text[:80]!r}: read the new writer, then update the Swift reader and the mock's gam_cell")
 
 
 @contextlib.contextmanager
@@ -152,53 +194,6 @@ def gam_progress():
         yield frozen
     finally:
         errors._PROGRESS_LINE = frozen
-
-
-def gam_dialect_in_build(blob: bytes, code) -> None:
-    """Refuse a GAM build that may not write its CSV as GAM_DIALECT says, read from the build the way its
-    exit codes are: setDialect's constants (quotes doubled, a backslash escape unless noEscapeChar, then
-    QUOTE_MINIMAL), csv_output_no_escape_char's default (FALSE), and the bundled Python, whose csv module
-    writes the bytes (macOS's 3.9 doesn't double a backslash; 3.14 does). This script's own Python writes
-    the reference bytes, so it must be the same minor version. A bump that trips this: read the source of
-    the new tag, update GAM_DIALECT, the Swift reader and the mock's gam_cell, then regenerate."""
-    from tests.test_gam_exit_codes import _COOKIE, _COOKIE_MAGIC, _TOC_ENTRY
-
-    at = blob.rfind(_COOKIE_MAGIC)
-    _, length, toc_offset, toc_length, pyvers, _ = _COOKIE.unpack_from(blob, at)
-    if pyvers != 314 or sys.version_info[:2] != (3, 14):
-        raise SystemExit(f"GAM's Python is {pyvers}, this script's {sys.version_info[:2]}: GAM_DIALECT is 3.14's")
-
-    def nested(parent):
-        for const in parent.co_consts:
-            if inspect.iscode(const):
-                yield const
-                yield from nested(const)
-
-    dialect = [c for c in nested(code) if c.co_name == "setDialect"]
-    expected = ("delimiter", "doublequote", True, "escapechar", "\\", None, "lineterminator", "quotechar", "quoting",
-                "skipinitialspace", False, "strict")
-    if len(dialect) != 1 or dialect[0].co_consts != expected or "QUOTE_MINIMAL" not in dialect[0].co_names:
-        raise SystemExit("GAM's setDialect changed: read it at the new tag before regenerating")
-    # gamlib.glcfg from the PYZ, found as tests/test_gam_exit_codes.py's _gam_module_code finds `gam`.
-    import marshal
-    import struct
-    import zlib
-
-    start = at + _COOKIE.size - length
-    pos, end, pyz = start + toc_offset, start + toc_offset + toc_length, None
-    while pos < end and pyz is None:
-        size, offset, *_, typecode = _TOC_ENTRY.unpack_from(blob, pos)
-        pyz = start + offset if typecode == b"z" else None
-        pos += size
-    (pyz_toc,) = struct.unpack_from("!i", blob, pyz + 8)
-    # The vendored binary is checksum-pinned and runs as the app's own subprocess: trusted, not input.
-    _, offset, size = dict(marshal.loads(blob[pyz + pyz_toc:]))["gamlib.glcfg"]  # noqa: S302
-    glcfg = marshal.loads(zlib.decompress(blob[pyz + offset:pyz + offset + size]))  # noqa: S302
-    found = [i for i in dis.get_instructions(glcfg) if i.opname != "EXTENDED_ARG"]
-    after = [(b.opname, b.argval) for a, b in zip(found, found[1:])
-             if a.opname == "LOAD_NAME" and a.argval == "CSV_OUTPUT_NO_ESCAPE_CHAR"]
-    if after != [("LOAD_NAME", "FALSE"), ("LOAD_NAME", "VAR_TYPE")]:   # Defaults = {...: FALSE}, then VAR_INFO
-        raise SystemExit("GAM's csv_output_no_escape_char default changed: read gamlib/glcfg.py at the new tag")
 
 
 def variants(value: str) -> list:
@@ -482,7 +477,7 @@ def errors_fixture() -> dict:
     }
 
 
-def output_fixture(mock: Path) -> dict:
+def output_fixture(mock: Path, oracle: GamOracle) -> dict:
     """GamGUI's parse_records, reading CSV in GAM's dialect (gam_reader), over GAM's output shapes: what
     the strict mock prints for every read the app makes; the JSON, CSV and formatjson shapes and the noise
     GamGUI's property tests generate (drawn deterministically, the CSV ones printed by GAM's writer); the
@@ -652,8 +647,9 @@ def output_fixture(mock: Path) -> dict:
             seen.add(key)
             unique.append(case)
     dialect = GAM_DIALECT | {"quoting": "QUOTE_MINIMAL",
-                             "source": "GAM 7.48.22 setDialect (gam/__init__.py:8830-8839), csv_output_no_escape_char "
-                                       "off (gamlib/glcfg.py:373), written by CPython 3.14's csv module"}
+                             "source": "GAM's setDialect with csv_output_no_escape_char off (gam_oracle.py checks the "
+                                       f"build), written by CPython {sys.version_info[0]}.{sys.version_info[1]}'s csv "
+                                       f"module and byte for byte by the build's CPython {oracle.version}'s"}
     return {"dialect": dialect, "cases": unique}
 
 
@@ -1449,42 +1445,11 @@ def vacation_fixture(mock: Path) -> dict:
     return {"show_vacation": show, "autoreply_text": texts_html, "autoreply_html": replies, "unescape": unescapes}
 
 
-def gam_function(code, name: str, **names):
-    """One of the vendored GAM's own functions, by name, to run as the oracle for what GAM does: the
-    build is checksum-pinned and trusted. `names` are the globals it reads; a call that needs any other
-    fails with NameError, so the oracle can't quietly take a path the fixture doesn't model."""
-    import builtins
-
-    found = []
-
-    def walk(parent):
-        for const in parent.co_consts:
-            if inspect.iscode(const):
-                if const.co_name == name:
-                    found.append(const)
-                walk(const)
-
-    walk(code)
-    if len(found) != 1:
-        raise SystemExit(f"GAM's {name} wasn't found once in the build: read it at the new tag")
-    return types.FunctionType(found[0], {"__builtins__": builtins} | names)
-
-
-def gam_constant(code, name: str):
-    """A module-level frozenset GAM builds as `NAME = {\u2026}` (BUILD_SET, its frozenset, SET_UPDATE)."""
-    found = [i for i in dis.get_instructions(code) if i.opname != "EXTENDED_ARG"]
-    values = [found[n - 2].argval for n, i in enumerate(found)
-              if i.opname == "STORE_NAME" and i.argval == name and found[n - 1].opname == "SET_UPDATE"]
-    if len(values) != 1 or not isinstance(values[0], frozenset):
-        raise SystemExit(f"GAM's {name} isn't a set literal in the build: read it at the new tag")
-    return values[0]
-
-
-def signature_fixture(mock: Path, code) -> dict:
+def signature_fixture(mock: Path, oracle: GamOracle) -> dict:
     """GamGUI's signature helpers (core/signatures.py) and its reader of `show signature`
     (gam_connector._parse_signature), and what the vendored GAM does with a signature argument, from its
-    own functions: _processSignature, the stored form, and checkArgumentPresent over SORF_FILE_ARGUMENTS,
-    the bodies it reads as a file or document keyword. Never constructs a SignatureStore, which reads the
+    own functions (scripts/gam_oracle.py): _processSignature, the stored form, and checkArgumentPresent over
+    SORF_FILE_ARGUMENTS, the bodies it reads as a file or document keyword. Never constructs a SignatureStore, which reads the
     operator's GamGUI data by default (failure-log 2026-09-25)."""
     import random
     import subprocess
@@ -1567,41 +1532,16 @@ def signature_fixture(mock: Path, code) -> dict:
     ]
     parse = [{"text": t, "body": _parse_signature(t)} for t in shown]
 
-    # GAM's own handling of the signature argument.
-    process = gam_function(code, "_processSignature")
-    keywords = gam_constant(code, "SORF_FILE_ARGUMENTS")
-
-    class Command:
-        """checkArgumentPresent's view of the command line: one argument left, the body."""
-        def __init__(self, body):
-            self.body, self.taken = body, False
-
-        def ArgumentsRemaining(self):   # noqa: N802 (GAM's names)
-            return True
-
-        def Current(self):   # noqa: N802
-            return self.body
-
-        def Advance(self):   # noqa: N802
-            self.taken = True
-
-    def read_as_keyword(body):
-        command = Command(body)
-        present = gam_function(code, "checkArgumentPresent", Cmd=command)
-        # At run time the name holds a set (BUILD_SET, then SET_UPDATE from the frozenset constant), and
-        # checkArgumentPresent treats anything but a list or a set as one choice. getStringOrFile passes no
-        # `required`: False.
-        return present(set(keywords), False) and command.taken
-
+    # GAM's own handling of the signature argument, from the build.
     bodies = [t["template"] for t in render[:400]] + [r["out"] for r in render[:400]]
     bodies += ["\\n", "a\\nb", "\\\\n", "\\\rn", "a\r\nb\rc\n", "\\N", "\\\n", "<br/>", ""]
-    words = sorted(keywords) + ["File", " file ", "\tHTML_FILE\n", "g_doc", "G_C_S_HTML", "_ file", "file_ ", "html",
-                                "sig", "files", "file.html", "\u00a0gdoc\u3000", "\u212aile", "f\u0130le", "\u017fig",
-                                "GDOC", "gdoc\u200b", "fi le", "\u2028textfile\u2029", "file\x1c", "\x1ffile"]
-    stored = [{"body": b, "stored": process({"tags": {}}, b, True)} for b in bodies]
-    keyword = [{"body": w, "keyword": read_as_keyword(w)} for w in words + bodies[:50]]
-    if not all(read_as_keyword(w) for w in keywords) or read_as_keyword("Best, Al"):
-        raise SystemExit("the keyword oracle doesn't read GAM's own keywords as keywords: check checkArgumentPresent")
+    words = ["File", " file ", "\tHTML_FILE\n", "g_doc", "G_C_S_HTML", "_ file", "file_ ", "html",
+             "sig", "files", "file.html", "\u00a0gdoc\u3000", "\u212aile", "f\u0130le", "\u017fig",
+             "GDOC", "gdoc\u200b", "fi le", "\u2028textfile\u2029", "file\x1c", "\x1ffile"]
+    gam = oracle.ask({"signature": {"bodies": bodies, "words": words + bodies[:50]}})["signature"]
+    keywords = gam["file_arguments"]
+    stored = [{"body": b, "stored": out} for b, out in zip(bodies, gam["stored"], strict=True)]
+    keyword = [{"body": w, "keyword": k} for w, k in zip(keywords + words + bodies[:50], gam["keyword"], strict=True)]
     # The template store's rules, from GamGUI's store pointed at a temporary file (never its default).
     with tempfile.TemporaryDirectory() as folder:
         store = signatures.SignatureStore(Path(folder, "signatures.json"))
@@ -2011,16 +1951,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
     ap.add_argument("--gam-binary", default=str(ROOT / "Vendor" / "gam7" / "gam"))
+    ap.add_argument("--gam-python", help="the Python the GAM build was frozen with (default: python3.X on the PATH)")
     args = ap.parse_args()
+    pending: list = []
+
+    def emit(name: str, text: str) -> None:
+        """A fixture, written once every one is made and the build has written their CSV the same."""
+        pending.append((name, text))
     gamgui = Path(args.gamgui).resolve()
     sys.path.insert(0, str(gamgui))
 
-    # Before anything is written: the build must still write GAM_DIALECT's CSV.
-    from tests.test_gam_exit_codes import _gam_module_code
-
-    blob = Path(args.gam_binary).read_bytes()
-    code = _gam_module_code(blob)
-    gam_dialect_in_build(blob, code)
+    # Before anything is read: the build must answer, under its own Python, and still write GAM_DIALECT's CSV.
+    oracle = GamOracle(Path(args.gam_binary), args.gam_python)
+    build = oracle.ask({})
 
     from gamgui.core.catalog import parser as catalog_parser
     from gamgui.core.gam import commands as commands_mod
@@ -2153,21 +2096,13 @@ def main() -> int:
     if len(argv_doc["constants"]["GRAMMAR_CALENDAR_ACL_ROLES"]) < 3:
         raise SystemExit("the grammar's <CalendarACLRole> definitions weren't found")
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "argv.json").write_text(json.dumps(argv_doc, indent=1, ensure_ascii=False) + "\n")
+    emit("argv.json", json.dumps(argv_doc, indent=1, ensure_ascii=False) + "\n")
     covered = {c["builder"] for c in unique}
     print(f"argv.json: {len(unique)} cases over {len(covered)}/{len(builders)} builders")
 
-    # Exit codes: the build's *_RC table, read like tests/test_gam_exit_codes.py's build_rc fixture.
+    # Exit codes: the build's *_RC table, as the build's own Python reads it (scripts/gam_oracle.py).
     from gamgui.core.setup import CHECK_ANSWER_RCS, OAUTH2SERVICE_JSON_REQUIRED_RC, SCOPES_NOT_AUTHORIZED_RC
-    table, prev = {}, None
-    for ins in dis.get_instructions(code):
-        if ins.opname == "EXTENDED_ARG":
-            continue
-        if ins.opname == "STORE_NAME" and str(ins.argval).endswith("_RC") and isinstance(getattr(prev, "argval", None), int):
-            table[ins.argval] = prev.argval
-        prev = ins
-    if table.get("UNKNOWN_ERROR_RC") != 1 or len(set(table.values())) <= 10:
-        raise SystemExit("the build's RC table did not parse")
+    table = build["rc"]
     rc_doc = {
         "source": {"gam_version": EXPECTED_GAM_VERSION, "gamgui_commit": commit,
                    "generator": "scripts/gen_fixtures.py"},
@@ -2176,85 +2111,89 @@ def main() -> int:
                    "OAUTH2SERVICE_JSON_REQUIRED_RC": OAUTH2SERVICE_JSON_REQUIRED_RC,
                    "CHECK_ANSWER_RCS": list(CHECK_ANSWER_RCS)},
     }
-    (OUT / "exit_codes.json").write_text(json.dumps(rc_doc, indent=1) + "\n")
+    emit("exit_codes.json", json.dumps(rc_doc, indent=1) + "\n")
     print(f"exit_codes.json: {len(table)} *_RC constants")
 
     # GAM's failures, classified and scrubbed as GamGUI does. ASCII-escaped: it holds the invisible
     # characters scripts/check_text.py refuses in a tracked file.
     errors_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | errors_fixture()
-    (OUT / "gam_errors.json").write_text(json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("gam_errors.json", json.dumps(errors_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_errors.json: {len(errors_doc['cases'])} cases")
 
     # GAM's output, read into records as GamGUI reads it (its CSV in GAM's dialect). ASCII-escaped, like
     # gam_errors.json.
     output_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
-        | output_fixture(OUT / "mock_gam.sh")
-    (OUT / "gam_output.json").write_text(json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")
+        | output_fixture(OUT / "mock_gam.sh", oracle)
+    emit("gam_output.json", json.dumps(output_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_output.json: {len(output_doc['cases'])} cases")
 
     # Records read into users, groups and members, as GamGUI's models read them.
     models_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | models_fixture(OUT / "mock_gam.sh")
-    (OUT / "gam_models.json").write_text(json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("gam_models.json", json.dumps(models_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"gam_models.json: {sum(len(models_doc[k]) for k in ('users', 'groups', 'members', 'calendar_acls', 'user_calendars', 'resources'))} records")
 
     # The destructive-operation guard: what a change set needs, and whether a confirmation is enough.
     guard_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | guard_fixture()
-    (OUT / "guard.json").write_text(json.dumps(guard_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("guard.json", json.dumps(guard_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"guard.json: {len(guard_doc['cases'])} cases")
 
     # The audit log: the line each record writes, and the records a reader finds across generations.
     audit_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_fixture()
-    (OUT / "audit.json").write_text(json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("audit.json", json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit.json: {len(audit_doc['written'])} records, {len(audit_doc['records'])} read back")
 
     # The directory's reports over those users, as GamGUI's Home and Reports count them.
     reports_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | reports_fixture(OUT / "mock_gam.sh")
-    (OUT / "reports.json").write_text(json.dumps(reports_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("reports.json", json.dumps(reports_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"reports.json: {len(reports_doc['records'])} users")
 
     # The Audit screen: its filter, pages and CSV export over a log of odd records.
     audit_screen_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_screen_fixture()
-    (OUT / "audit_screen.json").write_text(json.dumps(audit_screen_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("audit_screen.json", json.dumps(audit_screen_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit_screen.json: {audit_screen_doc['read']} records, {len(audit_screen_doc['pages'])} pages")
 
     # The usage report: GAM's CSV after its progress, the rows parsed, and the dates the walk back asks for.
     usage_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | usage_fixture(OUT / "mock_gam.sh")
-    (OUT / "usage_report.json").write_text(json.dumps(usage_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("usage_report.json", json.dumps(usage_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"usage_report.json: {len(usage_doc['walks'])} walks")
 
     # The guided setup: the delegation step's facts and link, and the fresh-setup Terminal commands.
     setup_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | setup_fixture()
-    (OUT / "setup.json").write_text(json.dumps(setup_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("setup.json", json.dumps(setup_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"setup.json: {len(setup_doc['facts'])} facts, {len(setup_doc['setup_commands'])} command sets")
 
     # The auto-reply: show vacation's text, and the HTML body to and from the operator's text.
     vacation_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | vacation_fixture(OUT / "mock_gam.sh")
-    (OUT / "vacation.json").write_text(json.dumps(vacation_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("vacation.json", json.dumps(vacation_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"vacation.json: {len(vacation_doc['autoreply_text'])} bodies, {len(vacation_doc['unescape'])} references")
 
     # Signatures: GamGUI's render, curly-quote check and show-signature reader, and GAM's own handling of
     # the signature argument, run from the build.
     signature_doc = {"source": {"gamgui_commit": commit, "gam_version": EXPECTED_GAM_VERSION,
-                                "generator": "scripts/gen_fixtures.py"}} | signature_fixture(OUT / "mock_gam.sh", code)
-    (OUT / "signatures.json").write_text(json.dumps(signature_doc, indent=1, ensure_ascii=True) + "\n")
+                                "generator": "scripts/gen_fixtures.py"}} | signature_fixture(OUT / "mock_gam.sh", oracle)
+    emit("signatures.json", json.dumps(signature_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"signatures.json: {len(signature_doc['render'])} renders, {len(signature_doc['parse_signature'])} shown texts")
 
     # Offboarding: GamGUI's routine and its preview's checks and words.
     offboarding_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | offboarding_fixture(OUT / "mock_gam.sh")
-    (OUT / "offboarding.json").write_text(json.dumps(offboarding_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("offboarding.json", json.dumps(offboarding_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"offboarding.json: {len(offboarding_doc['steps'])} routines, {len(offboarding_doc['check_addresses'])} "
           f"address checks")
     # Onboarding: GamGUI's core for one hire, the new-account wait's words and test, and its role file's
     # load, never over the operator's own stores.
     onboarding_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
         | onboarding_fixture(errors_doc["cases"])
-    (OUT / "onboarding.json").write_text(json.dumps(onboarding_doc, indent=1, ensure_ascii=True) + "\n")
+    emit("onboarding.json", json.dumps(onboarding_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"onboarding.json: {len(onboarding_doc['provision'])} hires, {len(onboarding_doc['load'])} role files")
+    csv_as_the_build_writes(oracle)
+    for name, text in pending:
+        (OUT / name).write_text(text)
+    print(f"CSV: {len(CSV_WRITTEN)} writes, byte for byte as the build's CPython {oracle.version} writes them")
     return 0
 
 

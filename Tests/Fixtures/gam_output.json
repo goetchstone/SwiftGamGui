@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "834493c",
+  "gamgui_commit": "374aa00",
   "generator": "scripts/gen_fixtures.py"
  },
  "dialect": {
@@ -12,11 +12,11 @@
   "quoting": "QUOTE_MINIMAL",
   "skipinitialspace": false,
   "strict": false,
-  "source": "GAM 7.48.22 setDialect (gam/__init__.py:8830-8839), csv_output_no_escape_char off (gamlib/glcfg.py:373), written by CPython 3.14's csv module"
+  "source": "GAM's setDialect with csv_output_no_escape_char off (gam_oracle.py checks the build), written by CPython 3.14's csv module and byte for byte by the build's CPython 3.15's"
  },
  "cases": [
   {
-   "stdout": "GAM 7.48.22 - mock",
+   "stdout": "GAM 7.48.26 - mock",
    "records": "[]"
   },
   {
