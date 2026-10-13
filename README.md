@@ -14,8 +14,8 @@ directory's counts and reports, browse users, and change a person: title and dep
 groups, mail delegates, auto-reply, sign-out, and their Gmail signature from a saved template
 (Signatures, one person at a time). Every change shows what it will run first and runs only when you
 confirm it ([Live verification](#live-verification) lists what has run on a real tenant). Groups lists
-the domain's groups and a group's members, read-only for now. Changing members from a group,
-calendars, a signature for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
+the domain's groups and a group's members, and from a group's page adds people with a role or removes a
+member. Calendars, a signature for many people at once, onboarding and offboarding are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 Not affiliated with Google or the GAM team.
@@ -35,11 +35,12 @@ A person's page, opened from Users: an Actions menu for what changes the account
 |---|---|---|
 | ![A person's profile: title, department and details](docs/screenshots/person-profile.png) | ![A person's groups, each with Remove, and a field to add one](docs/screenshots/person-groups.png) | ![A person's auto-reply, with Change and Turn Off, and their mail delegates](docs/screenshots/person-mail.png) |
 
-Groups: the domain's groups, and a group's members, owners first (read-only for now).
+Groups: the domain's groups, and a group's members, owners first, with Add Members… and a Remove… for
+each member.
 
 | Groups | A group's page |
 |---|---|
-| ![Groups: the domain's groups by name and address](docs/screenshots/groups.png) | ![A group's page: its description and members, owners first, with Show Group for a nested group](docs/screenshots/group-sales.png) |
+| ![Groups: the domain's groups by name and address](docs/screenshots/groups.png) | ![A group's page: its description, Add Members…, and its members, owners first, each with Remove… and a nested group with Show Group](docs/screenshots/group-sales.png) |
 
 ## Siri
 
@@ -107,6 +108,12 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
 | Set signature (Signatures) | argv-identical |
+| Add people to a group as members (Groups) | argv-identical |
+| Add people to a group as managers or owners (Groups) | not yet: never run live in either app |
+| Remove a member (Groups) | argv-identical |
+
+The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
+operator's own account, never someone's real group without their yes.
 
 ## License
 
