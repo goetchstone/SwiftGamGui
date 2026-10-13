@@ -3,15 +3,18 @@ import GamEngine
 import Setup
 import SwiftUI
 
-/// Offboard (Off1, read-only): the form GamGUI's offboarding takes, and the plan it would run, step by
-/// step with each exact `gam` line, its warnings, what a failure stops, and the auto-reply as senders will
-/// read it. This build can't run it: there is no Run button, and the model it plans with has no executor
-/// (`OffboardChangesTests.offboardingCantWrite`). Off2 runs the plan through ChangeCore.
+/// Offboard (Off1, read-only): the form GamGUI's offboarding takes, filled from a saved template, and the
+/// plan it would run, step by step with each exact `gam` line, its warnings, what a failure stops, and the
+/// auto-reply as senders will read it. This build can't run it: there is no Run button, and the model it
+/// plans with has no executor (`OffboardChangesTests.offboardingCantWrite`). Off2 runs the plan through ChangeCore.
 struct OffboardView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: OffboardChanges
+    let templates: OffboardTemplates
     @State private var form = OffboardChanges.Form()
+    /// The template the form was last filled from; nil before one is picked, or when none is saved.
+    @State private var chosen: String?
     @State private var restored = false
     @State private var debugApplied = false
     @Environment(\.appearsActive) private var appearsActive
@@ -24,10 +27,12 @@ struct OffboardView: View {
                     Section {
                         Text(Offboarding.intro).foregroundStyle(.secondary)
                     }
+                    TemplateSection(form: $form, chosen: $chosen, templates: templates)
                     WhoSection(form: $form, directory: directory)
+                    StepsSection(form: $form)
                     AutoReplySection(form: $form, changes: changes)
                     ReminderSection(form: $form)
-                    StepsSection(form: $form)
+                    AlreadyDoneSection(form: $form)
                     checkSection
                     if case .planned(let plan) = changes.state, plan.form == form {
                         PlanSection(plan: plan).id(Self.planAnchor)
@@ -47,6 +52,8 @@ struct OffboardView: View {
         // Another domain: its people aren't this one's.
         .onChange(of: setup.generation) {
             form = OffboardChanges.Form()
+            chosen = nil
+            fillFromDefault()
             changes.clear()
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }
@@ -108,7 +115,8 @@ struct OffboardView: View {
         }
     }
 
-    /// Back on the screen: the last plan's (or refusal's) form, so the plan shown is the form's.
+    /// Back on the screen: the last plan's (or refusal's) form, so the plan shown is the form's; otherwise a new
+    /// form, filled from the default template.
     private func restore() {
         guard !restored else { return }
         restored = true
@@ -116,8 +124,18 @@ struct OffboardView: View {
         case .planned(let plan): form = plan.form
         case .blocked(let blocked): form = blocked.form
         case .checking(let checking): form = checking
-        case .idle: break
+        case .idle:
+            fillFromDefault()
+            return
         }
+        chosen = templates.name(of: form.template)
+    }
+
+    /// The default template, when one is saved: a new form starts from the operator's own routine.
+    private func fillFromDefault() {
+        guard let name = templates.defaultName, let template = templates.template(name) else { return }
+        form.apply(template)
+        chosen = name
     }
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over,
@@ -256,43 +274,224 @@ private struct ReminderSection: View {
     }
 }
 
-/// "Doesn't apply" for the five steps an offboarding may leave out, and "already done" for each of the
-/// eight, for a run again after a failure. Each box says which step it's for, to VoiceOver too.
+/// The eight steps, each saying whether it runs: the three that lock the account always do; the five a
+/// leaver may not need are switched off here ("doesn't apply"), with what leaving each out means.
 private struct StepsSection: View {
     @Binding var form: OffboardChanges.Form
 
     var body: some View {
         Section {
-            ForEach(Offboarding.optionalSteps, id: \.self) { step in
-                Toggle(step.name, isOn: member(step, of: \.notApplicable))
-                    .accessibilityLabel("Doesn't apply: \(step.name)")
-            }
-            Text("A step left out is not run and never counts as done; the plan says what leaving it out means. "
-                 + "The password reset, the sign-out and turning off forwarding always run.")
-                .font(.callout).foregroundStyle(.secondary)
-        } header: {
-            Text("Doesn't apply to this leaver? Leave a step out")
-        }
-        Section {
             ForEach(Offboarding.Step.allCases, id: \.self) { step in
-                Toggle(step.name, isOn: member(step, of: \.done))
-                    .accessibilityLabel("Already done: \(step.name)")
+                if Offboarding.optionalSteps.contains(step) {
+                    Toggle(isOn: runs(step)) {
+                        Text(step.name)
+                        if form.notApplicable.contains(step), let cost = step.leftOutCost {
+                            Text("Left out: \(cost)")
+                        }
+                    }
+                    .accessibilityLabel("Runs: \(step.name)")
+                    .accessibilityHint(form.notApplicable.contains(step) ? "Left out: \(step.leftOutCost ?? "")" : "")
+                } else {
+                    LabeledContent(step.name) {
+                        Label("Always runs", systemImage: "lock.fill").foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(step.name): always runs")
+                }
             }
-            Text("A ticked step is not run and counts as done. Don't run one again that succeeded: GAM refuses a "
-                 + "delegate that already exists and a second transfer while the first is running, and the reminder "
-                 + "would be added twice.")
-                .font(.callout).foregroundStyle(.secondary)
         } header: {
-            Text("Running again after a failure? Tick the steps that already succeeded")
+            Text("Steps")
+        } footer: {
+            Text("Switch off a step that doesn't apply to this leaver: it is not run and never counts as done, and the "
+                 + "plan says what leaving it out means. The reset, the sign-out and turning off forwarding lock the "
+                 + "account, so they always run.")
         }
     }
 
-    private func member(_ step: Offboarding.Step,
-                        of set: WritableKeyPath<OffboardChanges.Form, Set<Offboarding.Step>>) -> Binding<Bool> {
-        Binding(get: { form[keyPath: set].contains(step) },
+    /// On when the step runs: off is "doesn't apply".
+    private func runs(_ step: Offboarding.Step) -> Binding<Bool> {
+        Binding(get: { !form.notApplicable.contains(step) },
                 set: { on in
-                    if on { form[keyPath: set].insert(step) } else { form[keyPath: set].remove(step) }
+                    if on { form.notApplicable.remove(step) } else { form.notApplicable.insert(step) }
                 })
+    }
+}
+
+/// "Already done" for each of the eight, for a run again after a failure: tucked away until wanted, and open
+/// whenever one is ticked. Each box says which step it's for, to VoiceOver too.
+private struct AlreadyDoneSection: View {
+    @Binding var form: OffboardChanges.Form
+    @State private var expanded = false
+
+    var body: some View {
+        Section {
+            DisclosureGroup("Running again after a failure? Tick the steps that already succeeded",
+                            isExpanded: Binding(get: { expanded || !form.done.isEmpty }, set: { expanded = $0 })) {
+                ForEach(Offboarding.Step.allCases, id: \.self) { step in
+                    Toggle(step.name, isOn: done(step))
+                        .accessibilityLabel("Already done: \(step.name)")
+                }
+                Text("A ticked step is not run and counts as done. Don't run one again that succeeded: GAM refuses a "
+                     + "delegate that already exists and a second transfer while the first is running, and the reminder "
+                     + "would be added twice.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func done(_ step: Offboarding.Step) -> Binding<Bool> {
+        Binding(get: { form.done.contains(step) },
+                set: { on in
+                    if on { form.done.insert(step) } else { form.done.remove(step) }
+                })
+    }
+}
+
+/// The saved templates: pick one to fill the form (which steps run, the auto-reply, the reminder and its
+/// invitee; never the addresses or the ticks), save the form as a new one or over the one picked, make one
+/// the default the screen opens on, or delete one. Replacing and deleting are asked first.
+private struct TemplateSection: View {
+    @Binding var form: OffboardChanges.Form
+    @Binding var chosen: String?
+    let templates: OffboardTemplates
+    @State private var naming = false
+    @State private var newName = ""
+    @State private var replacing: String?
+    @State private var deleting: String?
+    @State private var outcome: (text: String, failed: Bool)?
+    @Environment(\.appearsActive) private var appearsActive
+
+    private var saved: Offboarding.Template? { chosen.flatMap(templates.template) }
+    private var changed: Bool { saved.map { $0 != form.template } ?? false }
+    private var canSave: Bool { templates.openProblem == nil && form.template.problem == nil }
+
+    var body: some View {
+        Section {
+            Picker("Template", selection: pick) {
+                if chosen == nil { Text("None").tag(String?.none) }
+                ForEach(templates.names, id: \.self) { name in
+                    Text(name == templates.defaultName ? "\(name) (default)" : name).tag(Optional(name))
+                }
+            }
+            Text("Runs \(form.template.runs.count) of \(Offboarding.Step.allCases.count) steps: "
+                 + form.template.runs.map(\.name).joined(separator: " → ") + ".")
+                .font(.callout).foregroundStyle(.secondary)
+            if let chosen, changed {
+                Label("Changed from “\(chosen)”: these changes are for this offboarding only, unless you update the template.",
+                      systemImage: "pencil")
+                    .font(.callout)
+            }
+            HStack {
+                Button("Save as New Template…") {
+                    newName = ""
+                    naming = true
+                }
+                .disabled(!canSave)
+                .help("Keep which steps run, the auto-reply, the reminder and its invitee, under a new name")
+                if let chosen, changed {
+                    Button("Update “\(chosen)”") { save(chosen, replacing: true) }
+                        .disabled(!canSave)
+                        .help("Save these settings over the template “\(chosen)”")
+                }
+                Spacer()
+                if let chosen {
+                    Menu("More") {
+                        Button("Open with “\(chosen)” by Default") { makeDefault(chosen) }
+                            .disabled(templates.defaultName == chosen)
+                        Button("Delete “\(chosen)”…", role: .destructive) { deleting = chosen }
+                    }
+                    .fixedSize()
+                    .accessibilityLabel("More template actions")
+                }
+            }
+            if let problem = form.template.problem {
+                Label("Can't be saved as a template: \(problem)", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            }
+            if let outcome {
+                Label(outcome.text, systemImage: outcome.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            }
+            if let problem = templates.openProblem {
+                Label("Templates can't be saved: \(problem)", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            } else if let aside = templates.quarantined {
+                Label("The saved templates couldn't be read, so they were moved aside to \(aside.lastPathComponent) "
+                      + "in the app's folder, untouched. The starters are shown instead.", systemImage: "info.circle")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Template")
+        }
+        .alert("Save as Template", isPresented: $naming) {
+            TextField("Name", text: $newName)
+            Button("Save") { save(newName, replacing: false) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Keeps which steps run, the auto-reply, the reminder and its invitee. Not the two addresses or the ticks.")
+        }
+        .confirmationDialog("Replace the template “\(replacing ?? "")”?", isPresented: present($replacing)) {
+            Button("Replace") { if let name = replacing { save(name, replacing: true) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Its steps, auto-reply, reminder and invitee become this form's. The old ones aren't kept.")
+        }
+        .confirmationDialog("Delete the template “\(deleting ?? "")”?", isPresented: present($deleting)) {
+            Button("Delete", role: .destructive) { if let name = deleting { delete(name) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This form keeps what it was filled with. Templates aren't kept anywhere else.")
+        }
+    }
+
+    /// Picking a template fills the form from it.
+    private var pick: Binding<String?> {
+        Binding(get: { chosen }, set: { name in
+            chosen = name
+            if let name, let template = templates.template(name) { form.apply(template) }
+            outcome = nil
+        })
+    }
+
+    private func present(_ name: Binding<String?>) -> Binding<Bool> {
+        Binding(get: { name.wrappedValue != nil }, set: { if !$0 { name.wrappedValue = nil } })
+    }
+
+    private func save(_ name: String, replacing: Bool) {
+        do {
+            guard let saved = try templates.save(name, form.template, replacing: replacing) else { return }
+            chosen = saved
+            say(replacing ? "Updated “\(saved)”." : "Saved “\(saved)”.", failed: false)
+        } catch .exists(let name) {
+            self.replacing = name
+        } catch {
+            say(error.message, failed: true)
+        }
+    }
+
+    private func makeDefault(_ name: String) {
+        do {
+            try templates.setDefault(name)
+            say("Offboard opens with “\(name)”.", failed: false)
+        } catch {
+            say(error.message, failed: true)
+        }
+    }
+
+    private func delete(_ name: String) {
+        do {
+            try templates.delete(name)
+            if chosen == name { chosen = nil }
+            say("Deleted “\(name)”.", failed: false)
+        } catch {
+            say(error.message, failed: true)
+        }
+    }
+
+    /// Shown under the buttons, and spoken from the window in front.
+    private func say(_ text: String, failed: Bool) {
+        outcome = (text, failed)
+        if appearsActive { AccessibilityNotification.Announcement(text).post() }
     }
 }
 

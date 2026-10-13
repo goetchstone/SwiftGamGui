@@ -295,6 +295,33 @@ final class OffboardChangesTests {
         #expect(plan.steps.first { $0.action == .createDataTransfer }?.risk == .destructive)
     }
 
+    /// A template only fills the form: the operator's Hand-over plans the seven steps of their routine, each
+    /// command the one GamGUI's eight-step plan runs for that step, and the sweep left out with its cost.
+    @Test func aTemplateFillsTheFormAndThePlanIsTheFormsOwn() async throws {
+        try await connect()
+        var fromTemplate = form(subject: "{employee} left", message: "Ask {manager}.", days: 9, done: [.password])
+        let handOver = try #require(Offboarding.starterTemplates.first { $0.name == "Hand-over" }).template
+        fromTemplate.apply(handOver)
+        #expect(fromTemplate.leaver == "carol@example.com" && fromTemplate.manager == "alice@example.com")
+        #expect(fromTemplate.done == [.password], "the ticks are this leaver's, and stay")
+        #expect(fromTemplate.template == handOver)
+        let byHand = form(subject: Offboarding.defaultSubject, message: Offboarding.defaultMessage, days: 30,
+                          done: [.password], notApplicable: [.calacls])
+        #expect(fromTemplate == byHand)
+
+        let handOverPlan = try await plan(form(subject: Offboarding.defaultSubject, message: Offboarding.defaultMessage,
+                                               notApplicable: handOver.leftOut))
+        let everyStep = try await plan(form(subject: Offboarding.defaultSubject, message: Offboarding.defaultMessage))
+        #expect(handOverPlan.header == "Offboarding carol@example.com — 7 of 8 steps (1 left out)")
+        #expect(handOverPlan.steps.map(\.action) == [.resetPassword, .deprovisionUser, .forwardOff, .addDelegate, .setVacation,
+                                                     .createDataTransfer, .addCalendarEvent])
+        let reminder = { (plan: OffboardChanges.Plan) in plan.steps.last!.commandLine }
+        #expect(handOverPlan.steps.dropLast().map(\.commandLine)
+                == everyStep.steps.filter { $0.action != .removeAllCalendarACLs }.dropLast().map(\.commandLine))
+        #expect(reminder(handOverPlan) == reminder(everyStep), "the reminder doesn't need the sweep")
+        #expect(handOverPlan.rows.first { $0.key == .calacls }?.status == .leftOut(cost: Offboarding.Step.calacls.leftOutCost!))
+    }
+
     /// The live "senders will receive" block, from the directory as loaded: no read while typing.
     @Test func theLiveAutoReplyBlockReadsNothing() async throws {
         try await connect()

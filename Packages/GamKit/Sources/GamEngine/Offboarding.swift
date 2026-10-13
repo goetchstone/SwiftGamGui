@@ -339,6 +339,64 @@ public enum Offboarding {
         return nil
     }
 
+    // MARK: templates (native: GamGUI has none)
+
+    /// A saved offboarding: the optional steps it leaves out, and the auto-reply, the reminder and its invitee
+    /// it fills in. Everything but the two addresses and the "already done" ticks, which are one leaver's. A
+    /// template only fills the form: the plan made from it is the plan that form makes, GamGUI's byte for byte.
+    public struct Template: Equatable, Sendable {
+        /// Only `optionalSteps`: the lock (the reset, the sign-out and forwarding off) always runs.
+        public var leftOut: Set<Step>
+        /// As typed: an empty one runs the default text, as the form's does.
+        public var subject: String
+        public var message: String
+        /// The manager's reminder, this many days out.
+        public var days: Int
+        /// Also invited to the reminder (IT or HR); empty for nobody.
+        public var invitee: String
+
+        public init(leftOut: Set<Step> = [], subject: String = Offboarding.defaultSubject,
+                    message: String = Offboarding.defaultMessage, days: Int = 30, invitee: String = "") {
+            self.leftOut = leftOut
+            self.subject = subject
+            self.message = message
+            self.days = days
+            self.invitee = invitee
+        }
+
+        /// The steps it runs, in run order.
+        public var runs: [Step] { Step.allCases.filter { !leftOut.contains($0) } }
+
+        /// Why it can't be saved, in words; nil when it can.
+        public var problem: String? {
+            if let locked = Step.allCases.first(where: { leftOut.contains($0) && !optionalSteps.contains($0) }) {
+                return "“\(locked.name)” always runs: the reset, the sign-out and forwarding off lock the account."
+            }
+            guard Template.days.contains(days) else {
+                return "The reminder is between \(Template.days.lowerBound) and \(Template.days.upperBound.formatted()) days out."
+            }
+            let invitee = PythonText.strip(invitee)
+            guard invitee.isEmpty || Address.looksLikeEmail(invitee) else {
+                return "The invitee “\(invitee)” isn't one email address. Enter one, like it@example.com, or leave it empty."
+            }
+            return nil
+        }
+
+        /// The form's own range for the reminder.
+        public static let days = 1...36_500
+    }
+
+    /// The templates on first use, all the operator's to change or delete. "Hand-over" is the operator's own
+    /// routine (2026-10-13): GamGUI's eight steps without the domain-wide calendar sweep. "All eight steps" is
+    /// GamGUI's routine as it stands; "Lock only" is the lock alone, for a leaver whose hand-over waits.
+    public static let starterTemplates: [(name: String, template: Template)] = [
+        ("Hand-over", Template(leftOut: [.calacls])),
+        ("All eight steps", Template()),
+        ("Lock only", Template(leftOut: Set(optionalSteps))),
+    ]
+    /// The starter the form opens on until the operator picks another default.
+    public static let starterDefault = "Hand-over"
+
     // MARK: the preview's words (_offboard_preview.html, lifecycle.html)
 
     /// The routine in one sentence, its steps named in run order (GamGUI's intro once left out the two that

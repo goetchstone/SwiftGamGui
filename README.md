@@ -18,7 +18,8 @@ the domain's groups and a group's members, and from a group's page adds people w
 member. Calendars lists the rooms and a person's calendars, shows who has access, and shares one with a
 person or takes access away. Onboard sets up one new hire from a role: the account with a one-time sign-in
 card, their signature, groups, calendars and a task checklist, waiting for Google where it must. Offboard
-shows the plan GamGUI's offboarding would run for a leaver, every step's exact command, and can't run it yet.
+shows the plan GamGUI's offboarding would run for a leaver, every step's exact command, from a saved template
+of the steps you run (yours, Hand-over, by default), and can't run it yet.
 Reports lists the people behind each of the directory's counts and reads the storage and mail usage; Audit
 shows this app's audit log, searched, paged and exported to CSV. Sharing a calendar with a group, deleting a
 calendar or an event, a signature for many people at once, editing onboarding roles and running an
