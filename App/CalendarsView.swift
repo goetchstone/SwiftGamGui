@@ -510,7 +510,10 @@ struct PersonCalendarSection: View {
                         Task { await changes.previewUnshareCalendar(user, rule: rule) }
                     }
                 }
+                // No visible label, as on Calendars' page: the grouped form's label column pushed the field past the
+                // smallest window's inspector (CI's narrow-person-calendar, 2026-10-13). VoiceOver keeps its name.
                 TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
+                    .labelsHidden()
                     .onSubmit(share)
                     .accessibilityLabel("Share \(calendarName) with (email)")
                 HStack {
@@ -541,9 +544,9 @@ struct PersonCalendarSection: View {
         }
         .onChange(of: user.id) { target = "" }
         Section {
-            HStack {
+            // The words above the button, not beside it: side by side they were wider than a narrow inspector.
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Their other calendars, and rooms, are on Calendars.").foregroundStyle(.secondary)
-                Spacer()
                 Button("Show Their Calendars…") { openCalendars(user.primaryEmail) }
                     .accessibilityLabel("Show \(user.fullName)'s calendars")
                     .accessibilityHint("Opens Calendars for them.")
