@@ -205,7 +205,8 @@ struct MockCalendarsTests {
             #expect(listed[person]?[person] == "owner", "\(person) owns their primary calendar")
         }
         let acls = try FileManager.default.contentsOfDirectory(atPath: Fixtures.mockGamData.appending(path: "calendar_acls").path)
-        #expect(acls.count == 8)
+        // Eight the Calendars screens read, and All Hands, a company calendar no one lists yet: onboarding subscribes to it.
+        #expect(acls.count == 9)
         for file in acls {
             let calendar = String(file.dropLast(".json".count))
             let rules = try lines("calendar_acls/\(file)").compactMap { JSONValue.parse($0)?.object }
@@ -342,7 +343,8 @@ struct MockCalendarsTests {
     }
 
     /// A subscribe acts as the person: one who isn't a user fails as any per-user call fails (exit 50), and a
-    /// calendar already in their list is Google's `duplicate` (exit 50, Q7). Success is GAM's line (F6).
+    /// calendar already in their list is Google's `duplicate` (exit 50, Q7). Success is GAM's line (F6), one
+    /// level in, as addCalendars prints each calendar's line (Ind.Increment, two spaces).
     @Test func subscribeAsANonUserFails() async throws {
         let state = try stateFolder()
         defer { try? FileManager.default.removeItem(at: state) }
@@ -350,9 +352,9 @@ struct MockCalendarsTests {
         #expect(stranger.exitCode == 50)
         #expect(GamError(exitCode: stranger.exitCode, stderr: stranger.stderr).kind == .notFound, "\(stranger.stderr)")
         let added = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: Self.team).argv, state: state)
-        #expect(added.exitCode == 0 && added.stdout == "User: dana@example.com, Calendar: \(Self.team), Added\n", "\(added.stderr)")
+        #expect(added.exitCode == 0 && added.stdout == "  User: dana@example.com, Calendar: \(Self.team), Added\n", "\(added.stderr)")
         let twice = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: Self.team).argv, state: state)
-        #expect(twice.exitCode == 50 && twice.stderr.contains("Add Failed"), "\(twice.stderr)")
+        #expect(twice.exitCode == 50 && twice.stderr == "  User: dana@example.com, Calendar: \(Self.team), Add Failed: Duplicate\n", "\(twice.stderr)")
         let listed = try await run(GamCommands.subscribeCalendar(email: "bob@example.com", calendarID: Self.team).argv, state: state)
         #expect(listed.exitCode == 50, "bob lists Team Calendar already")
         let unknown = try await run(GamCommands.subscribeCalendar(email: "dana@example.com", calendarID: "nosuch@group.calendar.google.com").argv)

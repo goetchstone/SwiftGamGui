@@ -20,7 +20,8 @@
 #     does a usage error (echo the command, "ERROR: ...", exit 2);
 #   - anything unhandled FAILS. Add a handler for a new command; never make the catch-all succeed.
 # Failure triggers, by argument substring: *missing*/*nonexistent* -> "Does not exist" for the user,
-# group, calendar, event or delegate; *exists* -> 409 on create, and "already exists" on a delegate add;
+# group, calendar, event or delegate (on `create user`'s org unit, GAM's "Invalid Organizational Unit");
+# *exists* -> GAM's "Create Failed: Duplicate" on create, and "already exists" on a delegate add;
 # plus USERLIMIT (no license left for a new account), SENDFAIL, SUBFAIL, CONFLICT409,
 # FAILME, OWNACL, SWEEPFAIL, SWEEPBENIGN, SWEEPMIXED, SWEEPSLOW, SIGNOUTFAIL, FWDFAIL, INFOREFUSED (see each handler). The stderr wording
 # and exit codes are GAM7's shape (2 usage error, 50 action failed, 51 action not performed, 56 does
@@ -179,6 +180,7 @@ need_bool() {
   is_bool "$1" || invalid_choice "$1" "true|on|yes|enabled|1|false|off|no|disabled|0"
 }
 need_value() { [ "$1" -ge 2 ] || missing_arg "$2"; }  # <remaining-arg-count> <what>: a keyword's value
+code_points() { printf '%s' "$1" | LC_ALL=C tr -d '\200-\277' | wc -c | tr -d ' '; }  # Python's len() of UTF-8 text
 need_date() {  # <Date> ::= YYYY-MM-DD | (+|-)N(d|w|y) | never | today
   case "${1:-}" in
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]|[+-][0-9]*[dwy]|never|today) ;;
@@ -889,7 +891,13 @@ check_user_attrs() {
           random|uniquerandom) shift 2; case "${1:-}" in [0-9]*) shift ;; esac ;;
           *) shift 2 ;;
         esac ;;
-      firstname|givenname|lastname|familyname|displayname|recoveryemail|recoveryphone|ou|org|orgunitpath)
+      firstname|givenname|lastname|familyname)
+        # getUserAttributes reads a name with getString(maxLen=60): longer is a usage error, which echoes
+        # the whole command line, password and all (gam/__init__.py:46937-46941, getString 1854-1864).
+        need_value $# "String"
+        [ "$(code_points "$2")" -le 60 ] || invalid_arg "Expected <string length 0<=x<=60 for String>"
+        shift 2 ;;
+      displayname|recoveryemail|recoveryphone|ou|org|orgunitpath)
         need_value $# "String"; shift 2 ;;
       notify|subject|notifypassword|from|mailbox|replyto|message|textmessage|htmlmessage)
         need_value $# "String"; shift 2 ;;
@@ -912,17 +920,42 @@ check_user_attrs() {
   done
 }
 
-# `gam create user <email> <UserAttribute>* [notify ...]` -> new account. Real GAM fails with 409 if the
-# account already exists; an *exists* email mirrors that so onboarding can't silently "succeed" on a
-# duplicate.
+# `gam create user <email> <UserAttribute>* [notify ...]` -> new account. An address already taken fails
+# as doCreateUser's `except GAPI.duplicate` does: duplicateAliasGroupUserWarning names what holds it (a
+# user, a user's alias, a group), exit ENTITY_DUPLICATE_RC (gam/__init__.py:2583-2612, 47315-47322, 356).
+# Taken: a directory user, one of their aliases, a group, an account created earlier in this state, or
+# an *exists* address. An org unit that doesn't exist fails the whole command (entityActionFailedExit,
+# 47325-47326: ERROR_PREFIX, exit 50); GAM makes the path absolute first, which changes nothing here.
+# Both found in GAM's source, not captured from a tenant (failure-log 2026-10-12).
+duplicate_of() {  # <address, lowercased>: what GAM names as holding it, or nothing
+  if in_directory "$1" || case "$1" in *exists*) true ;; *) false ;; esac \
+     || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/created/$1" ]; }; then
+    printf 'User: %s' "$1"; return
+  fi
+  while IFS= read -r record; do
+    case "$(printf '%s' "$record" | sed -n 's/.*"aliases": \[\([^]]*\)\].*/\1/p')" in
+      *"\"$1\""*) printf 'User Alias: %s, User: %s' "$1" "$(json_text primaryEmail "$record")"; return ;;
+    esac
+  done < "$GAM_MOCK_FIXTURES/print_users.json"
+  if is_group "$1"; then printf 'Group: %s' "$1"; fi
+}
 if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && [ "${2:-}" = "user" ]; then
   [ -n "${3:-}" ] || missing_arg "EmailAddress"
-  user="$3"; shift 3
+  user=$(printf '%s' "$3" | LC_ALL=C tr 'A-Z' 'a-z'); shift 3
   check_user_attrs "$@"
+  org=""
+  while [ $# -gt 0 ]; do case "$1" in ou|org|orgunitpath) org="$2"; shift 2 ;; *) shift ;; esac; done
+  held=$(duplicate_of "$user")
+  if [ -n "$held" ]; then
+    printf 'User: %s, Create Failed: Duplicate, %s\n' "$user" "$held" 1>&2
+    exit 57
+  fi
+  case "$(printf '%s' "$org" | LC_ALL=C tr 'A-Z' 'a-z')" in
+    *missing*|*nonexistent*) printf '\nERROR: User: %s, Create Failed: Invalid Organizational Unit\n' "$user" 1>&2; exit 50 ;;
+  esac
   case "$user" in
-    *exists*) echo "ERROR: 409: Entity already exists - duplicate: $user" 1>&2; exit 1 ;;
     # Seen live 2026-09-30, when the subscription had no free license.
-    *USERLIMIT*) echo "ERROR: User: $user, Create Failed: Domain user limit reached. Contact Support." 1>&2; exit 50 ;;
+    *userlimit*) echo "ERROR: User: $user, Create Failed: Domain user limit reached. Contact Support." 1>&2; exit 50 ;;
   esac
   if [ -n "${GAM_MOCK_STATE:-}" ]; then
     mkdir -p "$GAM_MOCK_STATE/created"
@@ -1530,11 +1563,13 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "remove" ] && [ "${4:-}" = "calendars" 
 fi
 
 # `gam user <email> add calendars <id> [selected <B>] …` (addCalendars, _processCalendarList, :55465-55499): put
-# the calendar in the person's list, GAM acting as them. Success is `User: <u>, Calendar: <c>, Added`. One who
-# isn't a user fails as any per-user call does; Calendar off, or an account Google is still setting up,
-# exits 73; a calendar GAM can't get, or one already in their list (Google's `duplicate`, plan Q7), fails
-# "User: <u>, Calendar: <c>, Add Failed: <why>", exit 50 (Google's words approximate). With GAM_MOCK_STATE the
-# calendars added are kept in $GAM_MOCK_STATE/subscribed/<user> (`print calendars` doesn't list them yet).
+# the calendar in the person's list, GAM acting as them. One who isn't a user fails as any per-user call does;
+# Calendar off, or an account Google is still setting up, exits 73 from validateCalendar, before GAM steps in
+# a level, so unindented. Each calendar's line is printed one level in (Ind.Increment, two spaces per level,
+# gamlib/glindent.py): `  User: <u>, Calendar: <c>, Added` on success; a calendar GAM can't get, or one already
+# in their list (Google's `duplicate`, plan Q7), `  User: <u>, Calendar: <c>, Add Failed: <why>`, exit 50
+# (Google's words approximate). With GAM_MOCK_STATE the calendars added are kept in
+# $GAM_MOCK_STATE/subscribed/<user> (`print calendars` doesn't list them yet).
 # SUBFAIL: GamGUI's trigger for a subscribe GAM refuses (the partial-share path).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; then
   [ -n "${5:-}" ] || missing_arg "UserCalendarAddEntity"
@@ -1552,19 +1587,19 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; 
   known_user "$user" || not_a_user "$user" Add
   if still_provisioning "$user" || calendar_off "$user"; then calendar_service_off "$user"; fi
   if [ -z "$(acl_file "$key")" ]; then
-    printf 'User: %s, Calendar: %s, Add Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
+    printf '  User: %s, Calendar: %s, Add Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
   fi
   listed=""
   if [ -f "$GAM_MOCK_FIXTURES/user_calendars/$user.json" ] && grep -qF "\"id\": \"$key\"" "$GAM_MOCK_FIXTURES/user_calendars/$user.json"; then listed=1; fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/subscribed/$user" ] && grep -qxF "$key" "$GAM_MOCK_STATE/subscribed/$user"; then listed=1; fi
   if [ -n "$listed" ]; then
-    printf 'User: %s, Calendar: %s, Add Failed: Duplicate\n' "$user" "$cal" 1>&2; exit 50
+    printf '  User: %s, Calendar: %s, Add Failed: Duplicate\n' "$user" "$cal" 1>&2; exit 50
   fi
   if [ -n "${GAM_MOCK_STATE:-}" ]; then
     mkdir -p "$GAM_MOCK_STATE/subscribed"
     printf '%s\n' "$key" >> "$GAM_MOCK_STATE/subscribed/$user"
   fi
-  printf 'User: %s, Calendar: %s, Added\n' "$user" "$cal"
+  printf '  User: %s, Calendar: %s, Added\n' "$user" "$cal"
   exit 0
 fi
 
@@ -1630,7 +1665,12 @@ if { [ "${1:-}" = "calendars" ] || [ "${1:-}" = "calendar" ]; } && [ "${3:-}" = 
 fi
 
 # `gam user <assignee> create tasklist <TasklistAttribute>* [returnidonly] [formatjson]` -> with
-# returnidonly, GAM prints just the new tasklist id.
+# returnidonly, GAM prints just the new tasklist id. Each list has its own id, and belongs to its user:
+# with GAM_MOCK_STATE the mock mints one per call (`tasklists/<id>` holds the user); without it, one per
+# user. An address that isn't a user fails on its token, as every per-user call does.
+tasklist_owner_id() {  # <user>: the stateless mock's one list id for that user
+  printf 'MockTasklist_u%s' "$(printf '%s' "$1" | cksum | cut -d' ' -f1)"
+}
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "create" ] && [ "${4:-}" = "tasklist" ]; then
   user="$2"; shift 4
   idonly=""
@@ -1642,32 +1682,54 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "create" ] && [ "${4:-}" = "tasklist" ]
       *) invalid_arg "$1" ;;
     esac
   done
-  check_exists "User" "$user"
-  # The token failure is per account, not per API, so the signature's live wording is assumed here.
+  known_user "$user" || not_a_user "$user" "Create"
+  # The token failure is per account, not per API, so the signature's live wording is ASSUMED here until a
+  # live run (onboarding runbook, stage C) shows the task list's.
   if still_provisioning "$user"; then not_ready_token "$user" "Tasklist Create"; fi
-  if [ -n "$idonly" ]; then echo "MockTasklist_abc123"; else echo "User: $user, Tasklist: MockTasklist_abc123, Added"; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/tasklists"
+    id="MockTasklist_$(( $(ls "$GAM_MOCK_STATE/tasklists" | wc -l) + 1 ))"
+    printf '%s' "$user" > "$GAM_MOCK_STATE/tasklists/$id"
+  else
+    id=$(tasklist_owner_id "$user")
+  fi
+  if [ -n "$idonly" ]; then echo "$id"; else echo "User: $user, Tasklist: $id, Added"; fi
   exit 0
 fi
 
 # `gam user <a> create task <TasklistEntity> <TaskAttribute>* [parent <id>] [previous <id>]` -> a task on
-# the list. Real GAM 404s if the tasklist id doesn't exist, so only the id our create-tasklist handler
-# returned succeeds — before this, ANY id passed and "Created N of N" proved nothing (the mock lied).
+# the list. Only a list `create tasklist` made for this same user takes it: GAM reports any other as the
+# insert's failure against the user, list and task (processTasks, gam/__init__.py:80637-80638, exit 50;
+# Google's "Not Found" assumed, not captured). Before, ANY id passed, and then one fixed id passed for
+# everyone, so "Created N of N" proved nothing (the mock lied). The token and the new-account lag are per
+# account, as for every per-user call.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "create" ] && [ "${4:-}" = "task" ]; then
   [ -n "${5:-}" ] || missing_arg "TasklistEntity"
   user="$2"; list="$5"; shift 5
+  title=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      title|notes|due|parent|previous) need_value $# "String"; shift 2 ;;
+      title) need_value $# "String"; title="$2"; shift 2 ;;
+      notes|due|parent|previous) need_value $# "String"; shift 2 ;;
       status)
         case "${2:-}" in needsaction|completed) ;; *) invalid_choice "${2:-}" "needsaction|completed" ;; esac
         shift 2 ;;
       *) invalid_arg "$1" ;;
     esac
   done
-  case "$list" in
-    MockTasklist_abc123) echo "User: $user, Task: MockTask created" ;;
-    *) echo "ERROR: 404: Tasklist not found - notFound" 1>&2; exit 1 ;;
-  esac
+  known_user "$user" || not_a_user "$user" "Create"
+  if still_provisioning "$user"; then not_ready_token "$user" "Task Create"; fi
+  owner=""
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    case "$list" in */*|.*) ;; *) [ -f "$GAM_MOCK_STATE/tasklists/$list" ] && owner=$(cat "$GAM_MOCK_STATE/tasklists/$list") ;; esac
+  elif [ "$list" = "$(tasklist_owner_id "$user")" ]; then
+    owner="$user"
+  fi
+  if [ "$owner" != "$user" ]; then
+    printf '  User: %s, Tasklist: %s, Task: %s, Create Failed: Not Found\n' "$user" "$list" "$title" 1>&2
+    exit 50
+  fi
+  echo "User: $user, Tasklist: $list, Task: MockTask_1, Created"
   exit 0
 fi
 

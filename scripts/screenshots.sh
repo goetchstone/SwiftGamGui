@@ -21,7 +21,8 @@ status=0
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
 # open. Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
-# tall enough to show the current and new signatures side by side. The narrow-*
+# tall enough to show the current and new signatures side by side. Onboard opens on the demo role
+# Salesperson with Create ticked, and onboard-result on a made-up finished run (no gam runs). The narrow-*
 # runs open a page in the smallest window with the sidebar and the page dragged to their widest, where
 # clicking a name once crashed AppKit's layout (failure-log 2026-10-10, person-page layout loop): they
 # fail when the page has too little room to spare, and on any non-zero exit.
@@ -44,7 +45,9 @@ for spec in home:home users:users groups:groups setup:setup \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
             reports:reports reports-usage:reports:usage audit:audit \
-            narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-audit:audit:::smallest; do
+            narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-audit:audit:::smallest \
+            onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
+            narrow-onboard:onboard:Salesperson:create:smallest; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

@@ -1,0 +1,4381 @@
+{
+ "source": {
+  "gamgui_commit": "834493c",
+  "generator": "scripts/gen_fixtures.py"
+ },
+ "password": {
+  "alphabet": "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+  "groups": 3,
+  "size": 4
+ },
+ "split_name": [
+  {
+   "name": "Ada",
+   "first": "",
+   "last": "",
+   "split": [
+    "Ada",
+    ""
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "",
+   "last": "",
+   "split": [
+    "Ada",
+    "Byte"
+   ]
+  },
+  {
+   "name": "Ada  Lovelace Byte",
+   "first": "",
+   "last": "",
+   "split": [
+    "Ada",
+    "Lovelace Byte"
+   ]
+  },
+  {
+   "name": "",
+   "first": "Ada",
+   "last": "Byte",
+   "split": [
+    "Ada",
+    "Byte"
+   ]
+  },
+  {
+   "name": "Jordan Lee",
+   "first": "J",
+   "last": "",
+   "split": [
+    "J",
+    ""
+   ]
+  },
+  {
+   "name": "Jordan Lee",
+   "first": "",
+   "last": "L",
+   "split": [
+    "",
+    "L"
+   ]
+  },
+  {
+   "name": " Ada ",
+   "first": " ",
+   "last": " ",
+   "split": [
+    "Ada",
+    ""
+   ]
+  },
+  {
+   "name": "",
+   "first": "",
+   "last": "",
+   "split": [
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "   ",
+   "first": "",
+   "last": "",
+   "split": [
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+   "first": "",
+   "last": "",
+   "split": [
+    "Zo\u00eb",
+    "\u00c5ngstr\u00f6m"
+   ]
+  },
+  {
+   "name": "Ada\u200bByte",
+   "first": "",
+   "last": "",
+   "split": [
+    "Ada\u200bByte",
+    ""
+   ]
+  },
+  {
+   "name": "{name} [[x]]",
+   "first": "",
+   "last": "",
+   "split": [
+    "{name}",
+    "[[x]]"
+   ]
+  },
+  {
+   "name": "Ada",
+   "first": " Ada ",
+   "last": "",
+   "split": [
+    "Ada",
+    ""
+   ]
+  },
+  {
+   "name": "O'Neil Mc Byte",
+   "first": "",
+   "last": "",
+   "split": [
+    "O'Neil",
+    "Mc Byte"
+   ]
+  },
+  {
+   "name": "\tA\tB\t\tC\t",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\nA\nB\n\nC\n",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u000bA\u000bB\u000b\u000bC\u000b",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\fA\fB\f\fC\f",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\rA\rB\r\rC\r",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u001cA\u001cB\u001c\u001cC\u001c",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u001dA\u001dB\u001d\u001dC\u001d",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u001eA\u001eB\u001e\u001eC\u001e",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u001fA\u001fB\u001f\u001fC\u001f",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": " A B  C ",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u0085A\u0085B\u0085\u0085C\u0085",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u00a0A\u00a0B\u00a0\u00a0C\u00a0",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u1680A\u1680B\u1680\u1680C\u1680",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2000A\u2000B\u2000\u2000C\u2000",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2001A\u2001B\u2001\u2001C\u2001",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2002A\u2002B\u2002\u2002C\u2002",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2003A\u2003B\u2003\u2003C\u2003",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2004A\u2004B\u2004\u2004C\u2004",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2005A\u2005B\u2005\u2005C\u2005",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2006A\u2006B\u2006\u2006C\u2006",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2007A\u2007B\u2007\u2007C\u2007",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2008A\u2008B\u2008\u2008C\u2008",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2009A\u2009B\u2009\u2009C\u2009",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u200aA\u200aB\u200a\u200aC\u200a",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2028A\u2028B\u2028\u2028C\u2028",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u2029A\u2029B\u2029\u2029C\u2029",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u202fA\u202fB\u202f\u202fC\u202f",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u205fA\u205fB\u205f\u205fC\u205f",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "\u3000A\u3000B\u3000\u3000C\u3000",
+   "first": "",
+   "last": "",
+   "split": [
+    "A",
+    "B C"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\tAd\t",
+   "last": "\tBy\t",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\nAd\n",
+   "last": "\nBy\n",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u000bAd\u000b",
+   "last": "\u000bBy\u000b",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\fAd\f",
+   "last": "\fBy\f",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\rAd\r",
+   "last": "\rBy\r",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u001cAd\u001c",
+   "last": "\u001cBy\u001c",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u001dAd\u001d",
+   "last": "\u001dBy\u001d",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u001eAd\u001e",
+   "last": "\u001eBy\u001e",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u001fAd\u001f",
+   "last": "\u001fBy\u001f",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": " Ad ",
+   "last": " By ",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u0085Ad\u0085",
+   "last": "\u0085By\u0085",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u00a0Ad\u00a0",
+   "last": "\u00a0By\u00a0",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u1680Ad\u1680",
+   "last": "\u1680By\u1680",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2000Ad\u2000",
+   "last": "\u2000By\u2000",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2001Ad\u2001",
+   "last": "\u2001By\u2001",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2002Ad\u2002",
+   "last": "\u2002By\u2002",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2003Ad\u2003",
+   "last": "\u2003By\u2003",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2004Ad\u2004",
+   "last": "\u2004By\u2004",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2005Ad\u2005",
+   "last": "\u2005By\u2005",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2006Ad\u2006",
+   "last": "\u2006By\u2006",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2007Ad\u2007",
+   "last": "\u2007By\u2007",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2008Ad\u2008",
+   "last": "\u2008By\u2008",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2009Ad\u2009",
+   "last": "\u2009By\u2009",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u200aAd\u200a",
+   "last": "\u200aBy\u200a",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2028Ad\u2028",
+   "last": "\u2028By\u2028",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u2029Ad\u2029",
+   "last": "\u2029By\u2029",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u202fAd\u202f",
+   "last": "\u202fBy\u202f",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u205fAd\u205f",
+   "last": "\u205fBy\u205f",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  },
+  {
+   "name": "Ada Byte",
+   "first": "\u3000Ad\u3000",
+   "last": "\u3000By\u3000",
+   "split": [
+    "Ad",
+    "By"
+   ]
+  }
+ ],
+ "waits": [
+  20,
+  40,
+  60,
+  120,
+  180
+ ],
+ "not_ready_reason": "Google still hadn't finished setting up the new account. Try again later \u2014 the signature from the person's page, a calendar from Calendars. If it keeps failing, a delegation scope is missing or the service is off for the account's org unit.",
+ "stopped_reason": "Stopped before Google was ready: do it from the person's page or Calendars.",
+ "step_label": [
+  {
+   "step": {
+    "what": "signature",
+    "email": "jordan@example.com",
+    "name": "Classic"
+   },
+   "label": "Signature \u201cClassic\u201d for jordan@example.com"
+  },
+  {
+   "step": {
+    "what": "calendar",
+    "email": "jordan@example.com",
+    "calendar": "team@group.calendar.google.com"
+   },
+   "label": "Calendar team@group.calendar.google.com for jordan@example.com"
+  },
+  {
+   "step": {
+    "what": "tasks",
+    "email": "it@example.com",
+    "title": "Onboard Jordan Lee \u2014 Sales",
+    "steps": [
+     "A"
+    ]
+   },
+   "label": "Task list for it@example.com"
+  },
+  {
+   "step": {
+    "what": "signature",
+    "email": "zo\u00eb@example.com",
+    "name": "\u201cQuoted\u201d"
+   },
+   "label": "Signature \u201c\u201cQuoted\u201d\u201d for zo\u00eb@example.com"
+  },
+  {
+   "step": {
+    "what": "calendar",
+    "email": "x@example.com",
+    "calendar": ""
+   },
+   "label": "Calendar  for x@example.com"
+  }
+ ],
+ "waiting_note": [
+  {
+   "steps": [
+    "signature"
+   ],
+   "note": "waiting for Google: signature"
+  },
+  {
+   "steps": [
+    "calendar"
+   ],
+   "note": "waiting for Google: 1 calendar"
+  },
+  {
+   "steps": [
+    "calendar",
+    "calendar"
+   ],
+   "note": "waiting for Google: 2 calendars"
+  },
+  {
+   "steps": [
+    "signature",
+    "calendar",
+    "tasks"
+   ],
+   "note": "waiting for Google: signature, 1 calendar, task list"
+  },
+  {
+   "steps": [
+    "tasks"
+   ],
+   "note": "waiting for Google: task list"
+  },
+  {
+   "steps": [
+    "calendar",
+    "signature",
+    "calendar",
+    "calendar",
+    "tasks"
+   ],
+   "note": "waiting for Google: signature, 3 calendars, task list"
+  },
+  {
+   "steps": [
+    "tasks",
+    "signature"
+   ],
+   "note": "waiting for Google: signature, task list"
+  },
+  {
+   "steps": [
+    "calendar",
+    "tasks"
+   ],
+   "note": "waiting for Google: 1 calendar, task list"
+  }
+ ],
+ "not_ready": {
+  "gam_error_cases": 1958,
+  "not_ready_indices": [
+   540,
+   541,
+   542,
+   543,
+   544,
+   545,
+   546,
+   547,
+   548,
+   549,
+   550,
+   551,
+   552,
+   553,
+   554,
+   555,
+   556,
+   557,
+   558,
+   559,
+   560,
+   561,
+   562,
+   563,
+   564,
+   565,
+   566,
+   567,
+   568,
+   569,
+   570,
+   571,
+   572,
+   573,
+   574,
+   575,
+   737,
+   756,
+   775,
+   832,
+   851,
+   971,
+   972,
+   973,
+   976,
+   977,
+   984,
+   1051,
+   1062,
+   1073,
+   1084,
+   1095,
+   1106,
+   1117,
+   1128,
+   1138,
+   1148,
+   1158,
+   1168,
+   1178,
+   1188,
+   1198,
+   1208,
+   1218,
+   1228,
+   1238,
+   1248,
+   1258,
+   1268,
+   1278,
+   1546,
+   1759,
+   1881
+  ],
+  "extra": [
+   {
+    "exit_code": 50,
+    "stderr": "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 73,
+    "stderr": "User: new@example.com, Calendar Service/App not enabled\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 50,
+    "stderr": "User: new@example.com, Tasklist Create Failed: access_denied: REQUESTED CLIENT NOT AUTHORIZED\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 50,
+    "stderr": "User: new@example.com, Task Create Failed: reque\u017fted client not author\u0130zed\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 50,
+    "stderr": "User: new@example.com, User Set Failed: access_denied: Requested  client not authorized\n",
+    "not_ready": false
+   },
+   {
+    "exit_code": 1,
+    "stderr": "ERROR: Calendar not enabled. Please run\n",
+    "not_ready": false
+   },
+   {
+    "exit_code": null,
+    "stderr": "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 50,
+    "stderr": "User: new@example.com, Gmail Service/App not enabled\n",
+    "not_ready": true
+   },
+   {
+    "exit_code": 50,
+    "stderr": "User: a@example.com, Calendar: c, Add Failed: Not Found\n",
+    "not_ready": false
+   },
+   {
+    "exit_code": 57,
+    "stderr": "User: a@example.com, Create Failed: Duplicate, User: a@example.com\n",
+    "not_ready": false
+   }
+  ]
+ },
+ "signature_html": [
+  {
+   "template": "Classic",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jordan Lee</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>"
+  },
+  {
+   "template": "Classic",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">ada@example.com</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">ada@example.com</div>\n</div>"
+  },
+  {
+   "template": "Classic",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Zo\u00eb e\u0301</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">zo\u00eb@example.com</div>\n</div>"
+  },
+  {
+   "template": "Classic",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">{phone} [[x]]</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">x@example.com</div>\n</div>"
+  },
+  {
+   "template": "Classic",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Ann</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">y@example.com</div>\n</div>"
+  },
+  {
+   "template": "Classic",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Byte</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">z@example.com</div>\n</div>"
+  },
+  {
+   "template": "Empty",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": null
+  },
+  {
+   "template": "Empty",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "Empty",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": null
+  },
+  {
+   "template": "Empty",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": null
+  },
+  {
+   "template": "Empty",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "Empty",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": null
+  },
+  {
+   "template": "Minimal",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">Jordan Lee \u00b7 Your Company \u00b7 jordan@example.com</div>"
+  },
+  {
+   "template": "Minimal",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">ada@example.com \u00b7 Your Company \u00b7 ada@example.com</div>"
+  },
+  {
+   "template": "Minimal",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">Zo\u00eb e\u0301 \u00b7 Your Company \u00b7 zo\u00eb@example.com</div>"
+  },
+  {
+   "template": "Minimal",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">{phone} [[x]] \u00b7 Your Company \u00b7 x@example.com</div>"
+  },
+  {
+   "template": "Minimal",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">Ann \u00b7 Your Company \u00b7 y@example.com</div>"
+  },
+  {
+   "template": "Minimal",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">Byte \u00b7 Your Company \u00b7 z@example.com</div>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">Jordan Lee</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">jordan@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">ada@example.com</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">ada@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">Zo\u00eb e\u0301</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">zo\u00eb@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">{phone} [[x]]</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">x@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">Ann</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">y@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Modern accent",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": "<table cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\" style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#3f4a5a;\">\n  <tr>\n    <td style=\"border-left:3px solid #52647B;padding:1px 0 1px 12px;line-height:1.5;\">\n      <div style=\"font-weight:600;font-size:14px;color:#1f2733;\">Byte</div>\n      <div style=\"color:#52647B;\">Your Company</div>\n      <div style=\"color:#6b7280;\">z@example.com</div>\n      \n    </td>\n  </tr>\n</table>"
+  },
+  {
+   "template": "Optional",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": ""
+  },
+  {
+   "template": "Optional",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": ""
+  },
+  {
+   "template": "Optional",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": ""
+  },
+  {
+   "template": "Optional",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": ""
+  },
+  {
+   "template": "Optional",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": ""
+  },
+  {
+   "template": "Optional",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": ""
+  },
+  {
+   "template": "Tokens",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": "Jordan|Lee|Jordan Lee|jordan@example.com|/|"
+  },
+  {
+   "template": "Tokens",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": "||ada@example.com|ada@example.com|/|"
+  },
+  {
+   "template": "Tokens",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": "Zo\u00eb|e\u0301|Zo\u00eb e\u0301|zo\u00eb@example.com|/|"
+  },
+  {
+   "template": "Tokens",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": "{phone}|[[x]]|{phone} [[x]]|x@example.com|/|"
+  },
+  {
+   "template": "Tokens",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": "Ann||Ann|y@example.com|/|"
+  },
+  {
+   "template": "Tokens",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": "|Byte|Byte|z@example.com|/|"
+  },
+  {
+   "template": "Missing",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": null
+  },
+  {
+   "template": "Missing",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "Missing",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": null
+  },
+  {
+   "template": "Missing",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": null
+  },
+  {
+   "template": "Missing",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "Missing",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "jordan@example.com",
+   "first": "Jordan",
+   "last": "Lee",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "ada@example.com",
+   "first": "",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "zo\u00eb@example.com",
+   "first": "Zo\u00eb",
+   "last": "e\u0301",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "x@example.com",
+   "first": "{phone}",
+   "last": "[[x]]",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "y@example.com",
+   "first": "Ann",
+   "last": "",
+   "html": null
+  },
+  {
+   "template": "",
+   "email": "z@example.com",
+   "first": "",
+   "last": "Byte",
+   "html": null
+  }
+ ],
+ "provision": [
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jordan Lee</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": "/Sales"
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Jo Lee-Smith</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">jordan@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": "/Sales"
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "",
+    "email": "x@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "x@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "x@example.com"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard x@example.com \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "signature",
+     "<div style=\"font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#3f4a5a;\">\n  <div style=\"font-weight:600;color:#1f2733;\">Zo\u00eb \u00c5ngstr\u00f6m</div>\n  <div>Your Company</div>\n  <div style=\"color:#6b7280;\">zoe@example.com</div>\n</div>",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "sales@example.com",
+     "add",
+     "member",
+     "zoe@example.com"
+    ],
+    [
+     "update",
+     "group",
+     "staff@example.com",
+     "add",
+     "member",
+     "zoe@example.com"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "add",
+     "calendars",
+     "team@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Zo\u00eb  \u00c5ngstr\u00f6m \u2014 Sales",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Set up the CRM login"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Order a laptop"
+    ]
+   ],
+   "credential_org_unit": "/Sales"
+  },
+  {
+   "role": {
+    "name": "Sales",
+    "steps": [
+     "Set up the CRM login",
+     "Order a laptop"
+    ],
+    "signature": "Classic",
+    "org_unit": "/Sales",
+    "groups": [
+     "sales@example.com",
+     "staff@example.com"
+    ],
+    "calendars": [
+     "team@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/Sales"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "x@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard x@example.com \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Zo\u00eb  \u00c5ngstr\u00f6m \u2014 Warehouse",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "Badge"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Warehouse",
+    "steps": [
+     "Badge"
+    ],
+    "signature": "",
+    "org_unit": "",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ],
+    [
+     "update",
+     "group",
+     "wh@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "c1@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "c2@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": "Warehouse/Night"
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ],
+    [
+     "update",
+     "group",
+     "wh@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "c1@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "add",
+     "calendars",
+     "c2@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": "Warehouse/Night"
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "wh@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "add",
+     "calendars",
+     "c1@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "add",
+     "calendars",
+     "c2@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "",
+    "email": "x@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "wh@example.com",
+     "add",
+     "member",
+     "x@example.com"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "add",
+     "calendars",
+     "c1@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "add",
+     "calendars",
+     "c2@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard x@example.com \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ],
+    [
+     "update",
+     "group",
+     "wh@example.com",
+     "add",
+     "member",
+     "zoe@example.com"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "add",
+     "calendars",
+     "c1@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "add",
+     "calendars",
+     "c2@group.calendar.google.com",
+     "selected",
+     "true"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Zo\u00eb  \u00c5ngstr\u00f6m \u2014 Gone",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "B"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "C"
+    ]
+   ],
+   "credential_org_unit": "Warehouse/Night"
+  },
+  {
+   "role": {
+    "name": "Gone",
+    "steps": [
+     "A",
+     "B",
+     "C"
+    ],
+    "signature": "Missing",
+    "org_unit": "Warehouse/Night",
+    "groups": [
+     "wh@example.com"
+    ],
+    "calendars": [
+     "c1@group.calendar.google.com",
+     "c2@group.calendar.google.com"
+    ]
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "Warehouse/Night"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "root"
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "root"
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "x@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard x@example.com \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Zo\u00eb  \u00c5ngstr\u00f6m \u2014 Empty",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "root"
+  },
+  {
+   "role": {
+    "name": "Empty",
+    "steps": [
+     "A"
+    ],
+    "signature": "Empty",
+    "org_unit": "root",
+    "groups": [],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "root"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "g@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jordan",
+     "lastname",
+     "Lee",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ],
+    [
+     "user",
+     "jordan@example.com",
+     "signature",
+     "",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "g@example.com",
+     "add",
+     "member",
+     "jordan@example.com"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Jordan Lee \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Jordan Lee",
+    "email": "jordan@example.com",
+    "assignee": "it@example.com",
+    "create_account": true,
+    "first": "Jo",
+    "last": "Lee-Smith"
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "jordan@example.com",
+     "firstname",
+     "Jo",
+     "lastname",
+     "Lee-Smith",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "Sam Rivers",
+    "email": "sam@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "g@example.com",
+     "add",
+     "member",
+     "sam@example.com"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Sam Rivers \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "sam@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "",
+    "assignee": "it@example.com",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard new hire \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "it@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "",
+    "email": "x@example.com",
+    "assignee": "",
+    "create_account": false,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "update",
+     "group",
+     "g@example.com",
+     "add",
+     "member",
+     "x@example.com"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard x@example.com \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "x@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": null
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": true,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "signature",
+     "",
+     "html"
+    ],
+    [
+     "update",
+     "group",
+     "g@example.com",
+     "add",
+     "member",
+     "zoe@example.com"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "tasklist",
+     "title",
+     "Onboard Zo\u00eb  \u00c5ngstr\u00f6m \u2014 Optional",
+     "returnidonly"
+    ],
+    [
+     "user",
+     "zoe@example.com",
+     "create",
+     "task",
+     "TASKLIST_ID",
+     "title",
+     "A"
+    ]
+   ],
+   "credential_org_unit": "/"
+  },
+  {
+   "role": {
+    "name": "Optional",
+    "steps": [
+     "A"
+    ],
+    "signature": "Optional",
+    "org_unit": "/",
+    "groups": [
+     "g@example.com"
+    ],
+    "calendars": []
+   },
+   "hire": {
+    "name": "  Zo\u00eb  \u00c5ngstr\u00f6m ",
+    "email": "zoe@example.com",
+    "assignee": "",
+    "create_account": true,
+    "first": "",
+    "last": ""
+   },
+   "create_ok": false,
+   "calls": [
+    [
+     "create",
+     "user",
+     "zoe@example.com",
+     "firstname",
+     "Zo\u00eb",
+     "lastname",
+     "\u00c5ngstr\u00f6m",
+     "password",
+     "PASSWORD",
+     "changepassword",
+     "on",
+     "org",
+     "/"
+    ]
+   ],
+   "credential_org_unit": null
+  }
+ ],
+ "load": [
+  {
+   "text": "{\"roles\": {\"Sales\": [\"Set up POS\", \"Order a laptop\"]}}",
+   "roles": [
+    {
+     "name": "Sales",
+     "steps": [
+      "Set up POS",
+      "Order a laptop"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"Sales\": {\"steps\": [\"a\"], \"signature\": \"Classic\"}}, \"welcomes\": {\"Default\": {\"subject\": \"S\", \"body\": \"B\"}}}",
+   "roles": [
+    {
+     "name": "Sales",
+     "steps": [
+      "a"
+     ],
+     "signature": "Classic",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "S",
+     "B"
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"Warehouse\": {\"steps\": [\"Badge\"], \"groups\": \"wh@example.com\\n\\n  staff@example.com \\n\", \"calendars\": null}}, \"welcome\": {\"subject\": \"Hi {name}\", \"body\": \"Welcome\"}}",
+   "roles": [
+    {
+     "name": "Warehouse",
+     "steps": [
+      "Badge"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [
+      "wh@example.com",
+      "staff@example.com"
+     ],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Hi {name}",
+     "Welcome"
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {}, \"welcome\": {\"subject\": \"old\"}, \"welcomes\": {\"Default\": {\"subject\": \"new\", \"body\": \"b\"}}}",
+   "roles": [],
+   "welcomes": [
+    [
+     "Default",
+     "new",
+     "b"
+    ]
+   ]
+  },
+  {
+   "text": "{\"welcome\": \"text\"}",
+   "roles": [],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": 5, \"B\": null, \"C\": \"steps\", \"D\": {\"steps\": \"abc\", \"signature\": 0, \"org_unit\": true, \"groups\": [\"a@x.com\", 7, null, \" \", 2.5], \"calendars\": {\"cal1\": 1, \"cal2\": 2}, \"welcome\": 3.5}}, \"welcomes\": {\"W\": \"x\", \"V\": {\"subject\": null, \"body\": 12}}}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "B",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "C",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "D",
+     "steps": [
+      "a",
+      "b",
+      "c"
+     ],
+     "signature": "",
+     "org_unit": "True",
+     "groups": [
+      "a@x.com",
+      "7",
+      "None",
+      "2.5"
+     ],
+     "calendars": [
+      "cal1",
+      "cal2"
+     ],
+     "welcome": "3.5"
+    }
+   ],
+   "welcomes": [
+    [
+     "W",
+     "",
+     ""
+    ],
+    [
+     "V",
+     "",
+     "12"
+    ],
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"b\": [], \"B\": [], \"\u00e9\": [], \"e\u0301\": [], \"a\": [\"x\"], \"a \": [\"y\"]}}",
+   "roles": [
+    {
+     "name": "B",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "a",
+     "steps": [
+      "x"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "a ",
+     "steps": [
+      "y"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "b",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "e\u0301",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "\u00e9",
+     "steps": [],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": [\"x\"], \"A\": [\"y\"], \"B\": [\"z\"]}}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [
+      "y"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    },
+    {
+     "name": "B",
+     "steps": [
+      "z"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": [1, 2.50, 1E2, true, false, null, \"s\", -0, 1e400]}}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [
+      "1",
+      "2.5",
+      "100.0",
+      "True",
+      "False",
+      "None",
+      "s",
+      "0",
+      "inf"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": [\"x\"]}}, \"welcomes\": []}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [
+      "x"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": [\"x\"], \"groups\": \"a@x.com\\r\\nb@x.com\\u2028c@x.com\"}}, \"version\": 7}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [
+      "x"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [
+      "a@x.com",
+      "b@x.com",
+      "c@x.com"
+     ],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": {\"k1\": 1, \"k2\": 2}, \"calendars\": \"\", \"signature\": \"\", \"welcome\": \"\"}}}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [
+      "k1",
+      "k2"
+     ],
+     "signature": "",
+     "org_unit": "",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": [], \"org_unit\": \"  /Sales  \", \"groups\": [], \"calendars\": []}}}",
+   "roles": [
+    {
+     "name": "A",
+     "steps": [],
+     "signature": "",
+     "org_unit": "  /Sales  ",
+     "groups": [],
+     "calendars": [],
+     "welcome": ""
+    }
+   ],
+   "welcomes": [
+    [
+     "Default",
+     "Welcome to the team, {name}!",
+     "Hi {name},\n\nWelcome aboard as our new {role}. Your account is {email} \u2014 your manager {manager} will help you get set up.\n\nGlad to have you here."
+    ]
+   ]
+  },
+  {
+   "text": "{\"roles\": ",
+   "unreadable": true
+  },
+  {
+   "text": "[]",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": []}",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": null}",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": null}}}",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": [], \"groups\": 5}}}",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": 3}}}",
+   "unreadable": true
+  },
+  {
+   "text": "",
+   "unreadable": true
+  },
+  {
+   "text": "null",
+   "unreadable": true
+  },
+  {
+   "text": "\ufeff{\"roles\": {}}",
+   "unreadable": true
+  },
+  {
+   "text": "{\"roles\": {\"A\": {\"steps\": [], \"calendars\": true}}}",
+   "unreadable": true
+  },
+  {
+   "hex": "7bff7d",
+   "unreadable": true
+  }
+ ]
+}

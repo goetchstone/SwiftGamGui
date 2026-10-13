@@ -24,6 +24,7 @@ final class ExecutorTests {
     let auditURL: URL
     let argvLog: URL
     let audit: AuditLog
+    let vault: Vault
     let runner: AuthenticatedRunner
     let tenantState: Shared<(domain: Domain, generation: Int)?>
     let offset = Shared(Duration.zero)
@@ -40,7 +41,8 @@ final class ExecutorTests {
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         argvLog = scratch.appending(path: "argv.log")
         audit = AuditLog(url: auditURL)
-        runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: Vault(store: store), runtimeDirectory: base)
+        vault = Vault(store: store)
+        runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
         tenantState = Shared((example, 1))
     }
 
@@ -48,13 +50,35 @@ final class ExecutorTests {
         try? FileManager.default.removeItem(at: base.deletingLastPathComponent())
     }
 
-    private func executor() -> Executor {
+    /// The executor over the strict mock, or over `gam` (a stand-in written by `fakeGam`). `state` is the
+    /// mock's `GAM_MOCK_STATE`, for a test that needs the accounts `create user` made.
+    private func executor(gam: URL? = nil, state: URL? = nil) -> Executor {
         let tenant = tenantState, offset = offset, start = start
         var environment = Fixtures.mockEnvironment
         environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        if let state { environment["GAM_MOCK_STATE"] = state.path }
+        let runner = gam.map { AuthenticatedRunner(runner: GamRunner(binary: $0), vault: vault, runtimeDirectory: base) } ?? runner
         return Executor(runner: runner, audit: audit, actor: "admin@example.com",
                         tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
                         extraEnvironment: environment)
+    }
+
+    /// A fresh `GAM_MOCK_STATE` directory.
+    private func mockState(lag: Int? = nil) throws -> URL {
+        let state = base.deletingLastPathComponent().appending(path: "state-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        if let lag { try Data("\(lag)\n".utf8).write(to: state.appending(path: "new_account_lag")) }
+        return state
+    }
+
+    /// A stand-in `gam` for output the strict mock models GAM too faithfully to print (GamGUI's
+    /// `echoing_gam`; a list that prints an unusable id). Logs its argv as the mock does, then runs `body`.
+    private func fakeGam(_ body: String) throws -> URL {
+        let url = base.deletingLastPathComponent().appending(path: "fake-gam-\(UUID().uuidString).sh")
+        let script = "#!/bin/sh\nprintf '%s\\0' \"$#\" \"$@\" >> \"$GAM_MOCK_ARGV_LOG\"\n" + body
+        try Data(script.utf8).write(to: url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        return url
     }
 
     private func held(_ executor: Executor, _ steps: [WriteStep], origin: Origin = .form,
@@ -207,10 +231,69 @@ final class ExecutorTests {
         #expect(await executor.isHeld(oldest.id) == false)
     }
 
+    /// D3g: Cancel, or a new preview, drops the held one at once, so a temporary password in its argv doesn't
+    /// sit in the executor for its fifteen minutes.
+    @Test func discardDropsAHeldPreview() async throws {
+        let executor = executor()
+        let kept = try await held(executor, [suspend("bob@example.com")])
+        let preview = try await held(executor, [suspend()])
+        await executor.discard(preview.id)
+        #expect(await executor.isHeld(preview.id) == false)
+        #expect(await executor.isHeld(kept.id), "only that one")
+        #expect(await executor.run(preview, confirmation: confirmed).refusal
+                == "That preview has expired or was already run — preview again.")
+        #expect(ran().isEmpty)
+        await executor.discard(UUID())
+        #expect(await executor.run(kept, confirmation: confirmed).succeeded)
+    }
+
     @Test func noPreviewWithoutAConnectedDomain() async {
         tenantState.value.withLock { $0 = nil }
         let result = await executor().preview([suspend()])
         #expect(throws: Executor.PreviewRefusal.notConnected) { try result.get() }
+    }
+
+    /// D3f: each step's result reaches an observer as it ends: after its end record, before the next step
+    /// begins. Onboarding's sign-in card appears the moment the create ends, not when the whole run does.
+    @Test func progressSeesEachStepAsItEnds() async throws {
+        let executor = executor()
+        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true),
+                             target: "missing@example.com", summary: "Suspend")
+        let preview = try await held(executor, [suspend(), gone, suspend("bob@example.com")])
+        let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
+        let (seen, seenGate) = AsyncStream<Void>.makeStream()
+        let calls = Shared(0)
+        await executor.setBeforeEachStep {
+            // The second step waits until the observer has seen the first (bounded: an observer that never
+            // hears fails the test rather than hanging it).
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { for await _ in seen { break } }
+                group.addTask { try? await Task.sleep(for: .seconds(5)) }
+                await group.next()
+                group.cancelAll()
+            }
+        }
+        let auditURL = auditURL
+        let watcher = Task {
+            var got: [(Int, RunOutcome.Step)] = []
+            for await event in events {
+                got.append(event)
+                if event.0 == 0 {
+                    let phases = AuditLog.records(at: auditURL).reversed().compactMap { $0["extra"]?.object?["phase"]?.string }
+                    #expect(phases == ["begin", "end"], "its end record is written; the next step hasn't begun")
+                    seenGate.yield()
+                }
+            }
+            return got
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed, progress: observer)
+        observer.finish()
+        let got = await watcher.value
+        #expect(got.map { $0.0 } == [0, 1, 2])
+        #expect(got.map { $0.1 } == outcome.steps)
+        guard case .failed(_, let kind) = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(kind == .notFound)
     }
 
     // MARK: failures, plans and secrets
@@ -268,6 +351,42 @@ final class ExecutorTests {
         let shown = await executor.run(try await held(executor, [named]), confirmation: confirmed)
         guard case .succeeded(let output) = shown.steps.first else { Issue.record("\(shown.steps)"); return }
         #expect(!output.contains("dana2") && output.contains("***redacted***"), "\(output)")
+        // GamGUI's test_create_user_failure_redacts_password_by_value: a surname that is a sensitive keyword
+        // takes the positional mask meant for the password, and GAM's usage error echoes the command line
+        // (here as the last stderr line, the one the message carries; GamGUI's `echoing_gam`).
+        let echoing = self.executor(gam: try fakeGam("printf 'ERROR: Invalid argument\\nCommand: gam %s\\n' \"$*\" 1>&2\nexit 2\n"))
+        let temporary = "Xk7m-Qp9r-2Tzv"
+        for surname in ["Password", "NotifyPassword"] {
+            let step = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "Ada", lastName: surname,
+                                                        password: temporary, notify: "it@example.com"),
+                                 target: "new@example.com", summary: "Create", secrets: [Secret(Data(temporary.utf8))])
+            #expect(!step.shownArgv.contains { $0.contains(temporary) }, "\(surname)")
+            let outcome = await echoing.run(try await held(echoing, [step]), confirmation: confirmed)
+            guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+            #expect(message.contains("Command: gam create user") && message.contains("***redacted***"), "echoed, then masked: \(message)")
+            #expect(!message.contains(temporary), "\(surname)")
+        }
+        let echoed = try String(contentsOf: auditURL, encoding: .utf8)
+        #expect(echoed.contains("Command: gam create user") && !echoed.contains(temporary))
+    }
+
+    /// A held step prints, dumps and reflects masked: a preview in a log line, a test failure or a debugger
+    /// never shows the temporary password its argv carries (invariant 4).
+    @Test func aHeldStepNeverPrintsItsSecret() async throws {
+        let executor = executor()
+        let secret = "Xk7m-Qp9r-2Tzv"
+        let step = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "Ada", lastName: "Byte", password: secret),
+                             target: "new@example.com", summary: "Create", secrets: [Secret(Data(secret.utf8))])
+        let preview = try await held(executor, [step])
+        var dumped = ""
+        dump(preview, to: &dumped)
+        var dumpedStep = ""
+        dump(step, to: &dumpedStep)
+        for text in [String(describing: step), String(reflecting: step), "\(step)", dumpedStep,
+                     String(describing: preview), String(reflecting: preview), dumped] {
+            #expect(!text.contains(secret), "\(text)")
+        }
+        #expect(String(describing: step).contains("new@example.com"), "still says what it is")
     }
 
     // MARK: ChangeCore's review (each fails without its fix)
@@ -511,7 +630,391 @@ final class ExecutorTests {
         #expect(ran().count == 1)
     }
 
+    // MARK: a task list's id (D3c)
+
+    private func list(_ assignee: String = "alice@example.com") -> WriteStep {
+        WriteStep(GamCommands.createTaskList(assignee: assignee, title: "Onboard Jordan Lee — Sales"), target: assignee,
+                  summary: "Create the checklist")
+    }
+
+    /// GamGUI's `create_onboarding_runbook`: the tasks go on the list the run just made, by the id its
+    /// `returnidonly` printed (the last non-empty line). The held argv has a placeholder there; the run
+    /// rebuilds the task through its builder with the id, and audits the argv as run under the held digest.
+    @Test func aTaskTakesTheIdItsListPrinted() async throws {
+        let executor = executor()
+        let first = WriteStep.task(assignee: "alice@example.com", title: "Order a laptop", notes: "Bring a badge",
+                                   onListFrom: 0, target: "alice@example.com", summary: "Order a laptop")
+        let second = WriteStep.task(assignee: "alice@example.com", title: "Set up the CRM login", onListFrom: 0,
+                                    target: "alice@example.com", summary: "Set up the CRM login")
+        let preview = try await held(executor, [list(), first, second])
+        #expect(preview.steps[1].shownArgv == ["user", "alice@example.com", "create", "task", "\u{2039}task list id from step 1\u{203A}",
+                                               "title", "Order a laptop", "notes", "Bring a badge"])
+        #expect(preview.steps[1].requires == [0])
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(outcome.succeeded, "\(outcome.steps)")
+        guard case .succeeded(let printed) = outcome.steps[0] else { return }
+        let id = PythonText.strip(printed)
+        #expect(!id.isEmpty)
+        #expect(ran() == [GamCommands.createTaskList(assignee: "alice@example.com", title: "Onboard Jordan Lee — Sales").argv,
+                          ["user", "alice@example.com", "create", "task", id, "title", "Order a laptop", "notes", "Bring a badge"],
+                          ["user", "alice@example.com", "create", "task", id, "title", "Set up the CRM login"]])
+        let ends = records.filter { $0["extra"]?.object?["phase"]?.string == "end" }
+        #expect(ends.count == 3)
+        #expect(ends[1]["argv"]?.array?.compactMap(\.string) == ran()[1], "the audit has the argv as run")
+        #expect(ends.allSatisfy { $0["extra"]?.object?["digest"]?.string == preview.digest }, "under the held digest")
+    }
+
+    /// A list that printed no id: its tasks don't run (GamGUI's "No task list id came back."), and nothing
+    /// is audited for them, since nothing ran.
+    @Test func aListThatPrintedNoIdRunsNoTask() async throws {
+        let state = try mockState()
+        let gam = try fakeGam("""
+            case "$3 $4" in
+              "create tasklist") cat "$GAM_MOCK_STATE/list_stdout"; exit 0 ;;
+              "create task") echo "User: $2, Tasklist: $5, Task: $7, Created"; exit 0 ;;
+            esac
+            exit 2
+            """)
+        try Data("\n  \n".utf8).write(to: state.appending(path: "list_stdout"))
+        let executor = executor(gam: gam, state: state)
+        let task = WriteStep.task(assignee: "alice@example.com", title: "Order a laptop", onListFrom: 0,
+                                  target: "alice@example.com", summary: "Order a laptop")
+        let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+        #expect(outcome.steps[1] == .failed(message: "No task list id came back.", kind: nil))
+        #expect(ran().count == 1, "only the list ran")
+        #expect(!records.contains { $0["extra"]?.object?["step"]?.int == 1 })
+    }
+
+    /// GAM reads `create task`'s list as a `<TasklistEntity>`: split on commas and spaces with shlex (quotes,
+    /// a backslash and `#` change it), `tltitle:` picks a list by title, and a selector word (`file`,
+    /// `csvfile`…) reads a file (GamCommands.txt 649, 803, 1289; `getEntityList`, `shlexSplitList`). An id
+    /// GAM would read as anything but itself is refused, so a task never lands on another list.
+    @Test func aListIdWithACommaSpaceOrTitleSelectorIsRefused() async throws {
+        let state = try mockState()
+        let gam = try fakeGam("""
+            case "$3 $4" in
+              "create tasklist") cat "$GAM_MOCK_STATE/list_stdout"; exit 0 ;;
+              "create task") echo "User: $2, Tasklist: $5, Task: $7, Created"; exit 0 ;;
+            esac
+            exit 2
+            """)
+        let executor = executor(gam: gam, state: state)
+        let refused = ["a,b", "Tasklist one", "tltitle:Onboard", "TLTitle:Onboard", "file", "CSV_File", "csv-data", "csvkmd",
+                       "x\"y", "x'y", "x\\y", "a#b", "caf\u{E9}", "a\u{A0}b", String(repeating: "x", count: 257)]
+        let accepted = [("Got 1 Tasklist\nMDQ5NDg5ODIx_Mi0x\n\n", "MDQ5NDg5ODIx_Mi0x"), ("  TL-1:a.b=c+d/e@f \r\n", "TL-1:a.b=c+d/e@f"),
+                        (String(repeating: "y", count: 256), String(repeating: "y", count: 256))]
+        for printed in refused {
+            try Data((printed + "\n").utf8).write(to: state.appending(path: "list_stdout"))
+            let before = ran().count
+            let task = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+            let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+            #expect(outcome.steps[1] == .failed(message: "No task list id came back.", kind: nil), "\(printed)")
+            #expect(ran().count == before + 1, "\(printed): no task ran")
+        }
+        for (printed, id) in accepted {
+            try Data(printed.utf8).write(to: state.appending(path: "list_stdout"))
+            let task = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+            let outcome = await executor.run(try await held(executor, [list(), task]), confirmation: confirmed)
+            #expect(outcome.succeeded, "\(printed)")
+            #expect(ran().last == ["user", "alice@example.com", "create", "task", id, "title", "T"])
+        }
+    }
+
+    /// A task goes only on a list the same run makes for the same person, from an earlier step it requires:
+    /// anything else is refused before it's held.
+    @Test func aTaskOnAnotherAssigneesListIsRefused() async throws {
+        let executor = executor()
+        let onBobs = WriteStep.task(assignee: "bob@example.com", title: "T", onListFrom: 0, target: "bob@example.com", summary: "T")
+        let bobs = await executor.preview([list(), onBobs])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try bobs.get() }
+        let notAList = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+        let suspended = await executor.preview([suspend(), notAList])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try suspended.get() }
+        let later = WriteStep.task(assignee: "alice@example.com", title: "T", onListFrom: 1, target: "alice@example.com", summary: "T")
+        let backwards = await executor.preview([later, list()])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 0)) { try backwards.get() }
+        let caseOnly = WriteStep.task(assignee: "Alice@example.com", title: "T", onListFrom: 0, target: "alice@example.com", summary: "T")
+        let cased = await executor.preview([list(), caseOnly])
+        #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: 1)) { try cased.get() }
+        #expect(ran().isEmpty)
+    }
+
+    /// The rule a run uses for a list's id, for a caller holding the list's output (a retry preview of the
+    /// tasks that failed, on the list that exists).
+    @Test func theListIdRuleIsTheRunsOwn() {
+        #expect(Executor.taskListID(printed: "Got 1 Tasklist\nMDQ5_Mi0x\n\n") == "MDQ5_Mi0x")
+        #expect(Executor.taskListID(printed: "a,b\n") == nil)
+        #expect(Executor.taskListID(printed: "tltitle:Onboard") == nil)
+        #expect(Executor.taskListID(printed: "  \n") == nil)
+    }
+
+    /// A step whose `gam` didn't finish (it timed out, or the app stopped it) may have made its change:
+    /// onboarding still shows a create's one-time password then, marked unsure.
+    @Test func aStepThatDidntFinishMayHaveChanged() async throws {
+        let executor = executor()
+        let slow = WriteStep(GamCommands.setSuspended(email: "alice@example.com", suspended: true), target: "alice@example.com",
+                             summary: "", timeout: .nanoseconds(1))
+        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true), target: "missing@example.com",
+                             summary: "")
+        let outcome = await executor.run(try await held(executor, [slow, gone, suspend("bob@example.com")]), confirmation: confirmed)
+        #expect(outcome.steps.map(\.mayHaveChanged) == [true, false, false])
+        #expect(RunOutcome.Step.failed(message: Executor.interrupted, kind: nil).mayHaveChanged)
+        #expect(!RunOutcome.Step.skipped(reason: "Cancelled before it ran.").mayHaveChanged)
+    }
+
+    // MARK: a new account's wait (D3a, D3b)
+
+    private let password = "Xk7m-Qp9r-2Tzv"
+
+    private func create(_ email: String) -> WriteStep {
+        WriteStep(GamCommands.createUser(email: email, firstName: "Jordan", lastName: "Lee", password: password),
+                  target: email, summary: "Create \(email)", secrets: [Secret(Data(password.utf8))])
+    }
+
+    private func signature(_ email: String, waitsOn create: Int?, requires: [Int] = [0]) -> WriteStep {
+        WriteStep(GamCommands.setSignature(email: email, signature: "<b>Jordan</b>"), target: email, summary: "Signature",
+                  requires: requires, newAccountFrom: create)
+    }
+
+    private func calendar(_ email: String, _ id: String = "c_allhands@group.calendar.google.com", waitsOn create: Int?) -> WriteStep {
+        WriteStep(GamCommands.subscribeCalendar(email: email, calendarID: id), target: email, summary: "Calendar",
+                  requires: [0], about: ["calendar": id], newAccountFrom: create)
+    }
+
+    private func notReady(_ email: String) -> String {
+        "GAM failed (unknown, exit=50): User: \(email), User Set Failed: access_denied: Requested client not authorized"
+    }
+
+    /// Only a signature, a calendar subscribe, a task list or a task waits for Google (GamGUI parks just
+    /// these), and only on the account an earlier `create user` step of the same preview makes, which the
+    /// step requires. Anything else is refused before it's held.
+    @Test func onlyTheClosedSetCanWaitAndOnlyOnAnEarlierCreate() async throws {
+        let executor = executor()
+        let email = "new@example.com"
+        #expect(WriteAction.canWaitForNewAccount == [.setSignature, .subscribeCalendar, .createTaskList, .createTask])
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0], newAccountFrom: 0)
+        let refusals: [([WriteStep], Int)] = [
+            ([create(email), group], 1),                                   // not in the closed set
+            ([suspend(email), signature(email, waitsOn: 0)], 1),           // not on a create
+            ([create(email), signature(email, waitsOn: 0, requires: [])], 1), // the create isn't required
+            ([signature(email, waitsOn: 0, requires: []), create(email)], 0), // itself, not an earlier step
+            ([signature(email, waitsOn: 1, requires: []), create(email)], 0), // a later step
+        ]
+        for (steps, step) in refusals {
+            let result = await executor.preview(steps)
+            #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: step)) { try result.get() }
+        }
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 3, target: email, summary: "T", requires: [0],
+                                  newAccountFrom: 0)
+        _ = try await held(executor, [create(email), signature(email, waitsOn: 0), calendar(email, waitsOn: 0), list, task])
+        #expect(ran().isEmpty)
+    }
+
+    /// GamGUI's `fresh`: Google's "not ready yet" refusal (live 2026-09-30) parks a step only on an account
+    /// this run created. The same words elsewhere are a failure: on an existing user they mean a missing
+    /// delegation scope or a service turned off. Any other failure of a step that may wait is a failure too.
+    @Test func aStepWaitsOnlyWhenThisRunCreatedTheAccount() async throws {
+        let executor = executor(state: try mockState(lag: 5))
+        let parked = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                        confirmation: confirmed)
+        #expect(parked.steps[1] == .waiting(message: notReady("new@example.com")))
+        #expect(!parked.succeeded)
+        let end = try #require(records.last)
+        #expect(end["ok"]?.bool == false, "the attempt is audited as it went")
+        #expect(end["extra"]?.object?["error"]?.string == notReady("new@example.com"))
+
+        let unmarked = await executor.run(try await held(executor, [create("new2@example.com"), signature("new2@example.com", waitsOn: nil)]),
+                                          confirmation: confirmed)
+        #expect(unmarked.steps[1] == .failed(message: notReady("new2@example.com"), kind: .unknown))
+
+        let duplicate = await executor.run(try await held(executor, [create("exists@example.com"), signature("exists@example.com", waitsOn: 0)]),
+                                           confirmation: confirmed)
+        #expect(duplicate.steps[1] == .skipped(reason: "Step 1 didn't succeed."))
+
+        let refused = await executor.run(try await held(executor, [create("new3@example.com"),
+                                                                    calendar("new3@example.com", "SUBFAIL@group.calendar.google.com", waitsOn: 0)]),
+                                         confirmation: confirmed)
+        guard case .failed(_, let kind) = refused.steps[1] else { Issue.record("\(refused.steps)"); return }
+        #expect(kind == .permissionDenied)
+        // Google's calendar refusal for a new account, exit 73, waits too.
+        let calendarParked = await executor.run(try await held(executor, [create("new4@example.com"), calendar("new4@example.com", waitsOn: 0)]),
+                                                confirmation: confirmed)
+        #expect(calendarParked.steps[1] == .waiting(message: "GAM failed (service_not_enabled, exit=73): User: new4@example.com, Calendar Service/App not enabled"))
+    }
+
+    /// A step that needs a waiting step waits too ("Waits for step N."), unrun and unaudited; one that also
+    /// needs a failed step is skipped. Steps that don't need it run.
+    @Test func aWaitingStepsDependentsWaitUnrun() async throws {
+        let executor = executor(state: try mockState(lag: 5))
+        let email = "new@example.com"
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 1, target: email, summary: "T", requires: [0], newAccountFrom: 0)
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0])
+        let missing = WriteStep(GamCommands.addGroupMember(group: "missing@example.com", member: email), target: email,
+                                summary: "Group", requires: [0])
+        let blocked = WriteStep.task(assignee: email, title: "U", onListFrom: 1, target: email, summary: "U", requires: [0, 4],
+                                     newAccountFrom: 0)
+        let outcome = await executor.run(try await held(executor, [create(email), list, task, group, missing, blocked]),
+                                         confirmation: confirmed)
+        guard case .waiting = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.steps[2] == .waiting(message: "Waits for step 2."))
+        guard case .succeeded = outcome.steps[3], case .failed = outcome.steps[4] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.steps[5] == .skipped(reason: "Step 5 didn't succeed."))
+        #expect(ran().count == 4 && !ran().contains { $0.count > 3 && $0[3] == "task" }, "no task ran: \(ran())")
+        #expect(!records.contains { [2, 5].contains($0["extra"]?.object?["step"]?.int) })
+    }
+
+    // MARK: retrying what waits (D3d)
+
+    /// The confirmed run, continued: a retry runs again exactly the held argv of the steps still waiting,
+    /// and the steps that waited on them, never a step that succeeded or failed. A task waiting on its list
+    /// takes the id the list printed when it finally ran.
+    @Test func aRetryRunsOnlyTheHeldArgvOfWaitingSteps() async throws {
+        let executor = executor(state: try mockState(lag: 4))
+        let email = "new@example.com"
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0])
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 4, target: email, summary: "T", requires: [0], newAccountFrom: 0)
+        let missing = WriteStep(GamCommands.addGroupMember(group: "missing@example.com", member: email), target: email,
+                                summary: "Group", requires: [0])
+        let preview = try await held(executor, [create(email), signature(email, waitsOn: 0), group, calendar(email, waitsOn: 0),
+                                                list, task, missing])
+        let first = await executor.run(preview, confirmation: confirmed)
+        #expect(first.steps.map(\.isWaiting) == [false, true, false, true, true, true, false])
+        let handle = try #require(first.retry)
+        #expect(handle.round == 0)
+        #expect(ran().count == 6)
+
+        let second = await executor.retry(handle)
+        #expect(second.refusal == nil)
+        guard case .succeeded(let printed) = second.steps[4] else { Issue.record("\(second.steps)"); return }
+        #expect(Array(ran()[6...]) == [preview.steps[1].write.argv, preview.steps[3].write.argv, preview.steps[4].write.argv,
+                                       ["user", email, "create", "task", PythonText.strip(printed), "title", "T"]])
+        #expect(second.steps.map(\.isWaiting) == [false, true, false, false, false, false, false])
+        #expect(second.steps[0] == first.steps[0] && second.steps[2] == first.steps[2] && second.steps[6] == first.steps[6])
+        let next = try #require(second.retry)
+        #expect(next.round == 1)
+
+        let third = await executor.retry(next)
+        #expect(Array(ran()[10...]) == [preview.steps[1].write.argv], "only the signature, still waiting")
+        #expect(third.steps.allSatisfy { !$0.isWaiting })
+        #expect(third.retry == nil, "nothing left to wait for")
+    }
+
+    @Test func aRetryHandleIsSingleUse() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        #expect(await executor.retry(handle).refusal == nil)
+        let count = ran().count
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.")
+        #expect(ran().count == count)
+    }
+
+    @Test func aRetryAfterATenantSwitchRunsNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let count = ran().count
+        tenantState.value.withLock { $0 = (other, 2) }
+        #expect(await executor.retry(handle).refusal
+                == "The active domain changed after the preview — preview again, so it runs on this one.")
+        tenantState.value.withLock { $0 = (example, 1) }
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.",
+                "spent by the refusal")
+        #expect(ran().count == count)
+    }
+
+    /// GamGUI's five waits, and never past fifteen minutes after the run (time asleep counts).
+    @Test func aRetryStopsAfterFiveRoundsOrItsDeadline() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let steps = [create("new@example.com"), signature("new@example.com", waitsOn: 0)]
+        var outcome = await executor.run(try await held(executor, steps), confirmation: confirmed)
+        var rounds = 0
+        while let handle = outcome.retry {
+            outcome = await executor.retry(handle)
+            rounds += 1
+            #expect(outcome.refusal == nil)
+        }
+        #expect(rounds == Executor.newAccountRounds && rounds == 5)
+        #expect(outcome.steps[1] == .waiting(message: notReady("new@example.com")), "still waiting, given up")
+        #expect(ran().count == 2 + 5)
+
+        let late = await executor.run(try await held(executor, [create("new2@example.com"), signature("new2@example.com", waitsOn: 0)]),
+                                      confirmation: confirmed)
+        let handle = try #require(late.retry)
+        offset.value.withLock { $0 = Executor.retryLifetime + .seconds(1) }
+        let count = ran().count
+        #expect(await executor.retry(handle).refusal == "The wait for Google is over — preview what's left again.")
+        #expect(ran().count == count)
+    }
+
+    /// Each attempt is audited begin and end, under the run's preview, digest and step, with its attempt.
+    @Test func aRetryIsAuditedWithItsAttempt() async throws {
+        let executor = executor(state: try mockState(lag: 2))
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)])
+        let first = await executor.run(preview, confirmation: confirmed)
+        let second = await executor.retry(try #require(first.retry))
+        let third = await executor.retry(try #require(second.retry))
+        #expect(third.succeeded)
+        let signature = records.filter { $0["extra"]?.object?["step"]?.int == 1 }.compactMap { $0["extra"]?.object }
+        #expect(signature.map { $0["phase"]?.string } == ["begin", "end", "begin", "end", "begin", "end"])
+        #expect(signature.map { $0["attempt"]?.int } == [nil, nil, 2, 2, 3, 3])
+        #expect(signature.allSatisfy { $0["preview"]?.string == preview.id.uuidString && $0["digest"]?.string == preview.digest })
+    }
+
+    /// Stop: the retry is dropped, and a later call runs nothing.
+    @Test func anAbandonedRetryRunsNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let count = ran().count
+        await executor.abandon(handle)
+        #expect(await executor.retry(handle).refusal == "Those steps were already retried, or the retry was stopped.")
+        #expect(ran().count == count)
+    }
+
+    /// A run with nothing waiting leaves nothing to retry.
+    @Test func aRunWithNothingWaitingHasNoRetry() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let outcome = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: nil)]),
+                                         confirmation: confirmed)
+        guard case .failed = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.retry == nil)
+    }
+
     // MARK: outcome unknown
+
+    /// D3e: each attempt at a step is its own begin and end. A retry round whose end was never written (the
+    /// app quit mid-call, or the log refused the end record) is an outcome unknown, though a later round of
+    /// the same step ended. Acknowledging it names the attempt.
+    @Test func anUnendedRetryRoundIsAnOutcomeUnknown() throws {
+        func extra(_ phase: String, attempt: Int? = nil) -> JSONObject {
+            var extra: JSONObject = ["preview": .string("P1"), "step": .number("1"), "phase": .string(phase)]
+            if let attempt { extra["attempt"] = .number(String(attempt)) }
+            return extra
+        }
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin"))
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: false, extra: extra("end"))
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 2))
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 3))
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: true, extra: extra("end", attempt: 3))
+        let unfinished = Executor.unfinished(in: auditURL)
+        #expect(unfinished.map(\.attempt) == [2])
+        try Executor.acknowledge(unfinished, in: auditURL)
+        #expect(Executor.unfinished(in: auditURL).isEmpty)
+        #expect(records.last?["extra"]?.object?["attempt"]?.int == 2)
+    }
 
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {
         try audit.record("suspendUser", target: "bob@example.com", argv: ["update", "user", "bob@example.com", "suspended", "on"],
@@ -521,5 +1024,176 @@ final class ExecutorTests {
         try audit.record("suspendUser", target: "alice@example.com", argv: [], ok: true,
                          extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("end")])
         #expect(Executor.unfinished(in: auditURL).map(\.target) == ["bob@example.com"])
+    }
+
+    // MARK: the adversarial review of O1's ChangeCore (2026-10-13)
+
+    /// the run kept for a retry (its held create carries the password) is dropped by time, as a held preview is.
+    @Test func aParkedRunIsDroppedAfterItsLifetime() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        _ = try #require(first.retry)
+        #expect(await executor.parkedRuns == 1)
+        offset.value.withLock { $0 = .seconds(24 * 3600) }
+        _ = try await held(executor, [suspend("bob@example.com")])
+        _ = await executor.isHeld(UUID())
+        #expect(await executor.parkedRuns == 0, "a day later the run, and the password in its create, is still held")
+    }
+
+    /// A retry runs nothing outside the closed set: a step that needs a step that may wait must itself be one that
+    /// may wait, so a suspend or a delete (whose alias check a retry wouldn't make) never comes back on a retry
+    /// (review of O1, 2026-10-13).
+    @Test func onlyAStepThatMayWaitCanNeedOneThatMay() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let suspend = WriteStep(GamCommands.setSuspended(email: "bob@example.com", suspended: true), target: "bob@example.com",
+                                summary: "Suspend bob", requires: [1])
+        let delete = WriteStep(GamCommands.deleteUser(email: "carol@example.com"), target: "carol@example.com",
+                               summary: "Delete", requires: [1])
+        for dependent in [suspend, delete] {
+            let result = await executor.preview([create("new@example.com"), signature("new@example.com", waitsOn: 0), dependent])
+            guard case .failure(let refusal) = result else { Issue.record("held: \(dependent.summary)"); continue }
+            #expect(refusal == .badPrerequisite(step: 2), "\(dependent.summary)")
+        }
+        #expect(ran().isEmpty)
+    }
+
+    /// A retry reads the preview's precondition again, as a run does, and runs nothing when it says no.
+    @Test func aRetryReadsThePreconditionAgain() async throws {
+        let executor = executor(state: try mockState(lag: 1))
+        let calls = Shared(0)
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)],
+                                     precondition: { calls.value.withLock { $0 += 1; return $0 } == 1 })
+        let first = await executor.run(preview, confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let before = ran().count
+        let second = await executor.retry(handle)
+        #expect(calls.value.withLock { $0 } == 2, "the retry never read the precondition again")
+        #expect(second.refusal == "What the preview showed has changed since — preview again.", "\(second)")
+        #expect(ran().count == before, "the retry ran though the precondition now says no")
+    }
+
+    /// only the account the create makes waits; a step for another account isn't held as one that may wait.
+    @Test func onlyTheAccountTheCreateMakesWaits() async throws {
+        let gam = try fakeGam("""
+            case "$1 $2" in
+              "create user") echo "User: $3, Added"; exit 0 ;;
+            esac
+            echo "User: $2, User Set Failed: access_denied: Requested client not authorized" >&2; exit 50
+            """)
+        let executor = executor(gam: gam)
+        let ceo = WriteStep(GamCommands.setSignature(email: "ceo@example.com", signature: "<b>CEO</b>"), target: "ceo@example.com",
+                            summary: "Signature", requires: [0], newAccountFrom: 0)
+        let result = await executor.preview([create("new@example.com"), ceo])
+        if let preview = try? result.get() {
+            let outcome = await executor.run(preview, confirmation: confirmed)
+            #expect(!outcome.steps[1].isWaiting,
+                    "an existing account's delegation refusal reads as waiting for Google, retry=\(outcome.retry != nil): \(outcome.steps)")
+        }
+    }
+
+    /// Stop during a round that's under way is cancelling the task awaiting `retry` (`abandon` only stops between
+    /// rounds): the round runs no further step and nothing is parked again under a new handle.
+    @Test func stopDuringARetryRoundCancelsIt() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let before = ran().count
+        let retrying = Task { [executor] in await executor.retry(handle) }
+        for await _ in started { break }
+        retrying.cancel()
+        releaseGate.yield()
+        let outcome = await retrying.value
+        #expect(ran().count == before, "the round ran gam after Stop")
+        let parkedNow = await executor.parkedRuns
+        #expect(outcome.retry == nil && parkedNow == 0, "parked again under a new handle: retry=\(outcome.retry != nil) parked=\(parkedNow)")
+    }
+
+    /// Stop between two steps of a retry round: the first ran and still waits for Google, the second never
+    /// starts, and nothing is parked again for a later round.
+    @Test func stopDuringARetryRoundParksNothingAgain() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let calendar = WriteStep(GamCommands.subscribeCalendar(email: "new@example.com", calendarID: "c_team@group.calendar.google.com"),
+                                 target: "new@example.com", summary: "Subscribe", requires: [0], newAccountFrom: 0)
+        let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0), calendar]),
+                                       confirmation: confirmed)
+        #expect(first.steps[1].isWaiting && first.steps[2].isWaiting, "\(first.steps)")
+        let handle = try #require(first.retry)
+        let calls = Shared(0)
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let retrying = Task { [executor] in await executor.retry(handle) }
+        for await _ in started { break }
+        retrying.cancel()
+        releaseGate.yield()
+        let outcome = await retrying.value
+        #expect(outcome.steps[1].isWaiting, "the round's first step ran and still waits: \(outcome.steps)")
+        #expect(outcome.retry == nil, "a stopped round hands back a retry")
+        #expect(await executor.parkedRuns == 0)
+    }
+
+    /// a run cancelled part-way hands back no retry.
+    @Test func aCancelledRunLeavesNoRetry() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let calls = Shared(0)
+        let preview = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0), suspend("bob@example.com")])
+        let (started, startedGate) = AsyncStream<Void>.makeStream()
+        let (release, releaseGate) = AsyncStream<Void>.makeStream()
+        await executor.setBeforeEachStep {
+            guard calls.value.withLock({ $0 += 1; return $0 }) == 3 else { return }
+            startedGate.yield()
+            for await _ in release { break }
+        }
+        let confirm = confirmed
+        let running = Task { [executor] in await executor.run(preview, confirmation: confirm) }
+        for await _ in started { break }
+        running.cancel()
+        releaseGate.yield()
+        let outcome = await running.value
+        #expect(outcome.retry == nil, "a cancelled run still hands back a retry: \(outcome.steps)")
+    }
+
+    /// progress never carries the password, even when GAM echoes the command on stdout and stderr.
+    @Test func progressNeverCarriesThePassword() async throws {
+        let gam = try fakeGam("""
+            echo "$*"
+            echo "Command: gam $*" >&2
+            exit 2
+            """)
+        let executor = executor(gam: gam)
+        let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
+        let outcome = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                         confirmation: confirmed, progress: observer)
+        observer.finish()
+        var seen: [String] = []
+        for await (_, step) in events { seen.append("\(step)") }
+        #expect(!seen.isEmpty)
+        #expect(!seen.joined().contains(password), "\(seen)")
+        #expect(!"\(outcome)".contains(password))
+        #expect(!(try String(contentsOf: auditURL, encoding: .utf8)).contains(password))
+    }
+
+    /// the parked-run eviction drops a live retry of another hire.
+    @Test func theRetriesKeptAreEachExecutors() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        var handles: [PendingRetry] = []
+        for n in 0..<(Executor.retriesKept + 1) {
+            let o = await executor.run(try await held(executor, [create("n\(n)@example.com"), signature("n\(n)@example.com", waitsOn: 0)]),
+                                       confirmation: confirmed)
+            handles.append(try #require(o.retry))
+        }
+        #expect(await executor.retry(handles[0]).refusal != nil, "oldest evicted")
     }
 }

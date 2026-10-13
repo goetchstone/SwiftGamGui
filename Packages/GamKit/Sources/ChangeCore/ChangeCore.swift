@@ -32,8 +32,31 @@ public struct WriteStep: Sendable {
     /// by value everywhere, as GamGUI's `secrets=`, beside the positional masks.
     let secrets: [Secret]
 
+    /// A task on a list an earlier step of the same preview creates (`task(…onListFrom:…)`): that step, and
+    /// the builder's inputs, so the run can rebuild the task with the id the list printed. Nil otherwise.
+    let listedTask: ListedTask?
+
+    struct ListedTask: Sendable {
+        let list: Int
+        let assignee: String
+        let title: String
+        let notes: String
+    }
+
+    /// The `.createUser` step whose account this step acts on, when this run may have just made it: a
+    /// refusal Google gives an account it hasn't finished setting up then waits (`.waiting`) for
+    /// `Executor.retry` instead of failing (GamGUI's parked steps, design doc D3b). Nil: never waits.
+    public let newAccountFrom: Int?
+
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
-                about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout) {
+                about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout,
+                newAccountFrom: Int? = nil) {
+        self.init(write, target: target, summary: summary, risk: risk, requires: requires, about: about, secrets: secrets,
+                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: nil)
+    }
+
+    private init(_ write: GamWrite, target: String, summary: String, risk: Risk, requires: [Int], about: [String: String],
+                 secrets: [Secret], timeout: Duration, newAccountFrom: Int?, listedTask: ListedTask?) {
         self.write = write
         self.target = target
         rawSummary = summary
@@ -42,6 +65,31 @@ public struct WriteStep: Sendable {
         self.about = about
         self.secrets = secrets
         self.timeout = timeout
+        self.newAccountFrom = newAccountFrom
+        self.listedTask = listedTask
+    }
+
+    /// A task on the list step `list` of the same preview makes for the same `assignee` (GamGUI's
+    /// `create_onboarding_runbook`): the list's id exists only once that step has run, so the held argv
+    /// carries `listIDPlaceholder(list)` in its place, and `list` is always among `requires`. The run puts in
+    /// the id the list printed, through `GamCommands.createTask` again; this is the one argv element a run
+    /// takes from anywhere but its preview (design doc D3c).
+    public static func task(assignee: String, title: String, notes: String = "", onListFrom list: Int, target: String,
+                            summary: String, requires: [Int] = [], about: [String: String] = [:],
+                            timeout: Duration = GamRunner.defaultTimeout, newAccountFrom: Int? = nil) -> WriteStep {
+        WriteStep(GamCommands.createTask(assignee: assignee, taskListID: listIDPlaceholder(list), title: title, notes: notes),
+                  target: target, summary: summary, risk: .low, requires: requires.contains(list) ? requires : requires + [list],
+                  about: about, secrets: [], timeout: timeout, newAccountFrom: newAccountFrom,
+                  listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes))
+    }
+
+    /// What a held task's list id element says until the run knows the id. `list` is the step's index.
+    public static func listIDPlaceholder(_ list: Int) -> String { "\u{2039}task list id from step \(list + 1)\u{203A}" }
+
+    /// The same step, running `write` (a listed task with its list's id put in).
+    func running(_ write: GamWrite) -> WriteStep {
+        WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,
+                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: listedTask)
     }
 
     public var action: WriteAction { write.action }
@@ -74,6 +122,17 @@ public struct WriteStep: Sendable {
     var change: Change { Change(target: target, summary: rawSummary, risk: risk, argv: write.argv) }
 }
 
+/// A step prints, dumps and reflects as the operator sees it (`shownArgv`), never its raw argv: a held
+/// create carries a temporary password (invariant 4).
+extension WriteStep: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String { "WriteStep(\(action.rawValue), \(target): \(shownArgv.joined(separator: " ")))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["action": action, "target": target, "argv": shownArgv, "requires": requires,
+                                "newAccountFrom": newAccountFrom as Any], displayStyle: .struct)
+    }
+}
+
 extension WriteAction {
     /// The action in words, for the screen and VoiceOver ("Suspend user", not `suspendUser`).
     public var displayName: String {
@@ -94,6 +153,11 @@ extension WriteAction {
             .low
         }
     }
+
+    /// The writes that may wait for Google to finish a just-created account: the ones GamGUI parks
+    /// (`provision_hire`: the signature, a calendar, the task list with its tasks). Not a group add: live
+    /// 2026-09-30, those worked on the fresh account at once.
+    public static let canWaitForNewAccount: Set<WriteAction> = [.setSignature, .subscribeCalendar, .createTaskList, .createTask]
 }
 
 /// A preview the executor holds: exactly what a confirm will run, bound to the tenant it was made on.
@@ -138,6 +202,17 @@ public struct RunOutcome: Sendable {
         /// The message is masked; `kind` drives the remediation.
         case failed(message: String, kind: GamError.Kind?)
         case skipped(reason: String)
+        /// A step Google wasn't ready to do on an account this run just created (the message is GAM's,
+        /// masked), or one that needs such a step ("Waits for step N."): `Executor.retry` runs it again.
+        case waiting(message: String)
+
+        public var isSucceeded: Bool { if case .succeeded = self { true } else { false } }
+        public var isWaiting: Bool { if case .waiting = self { true } else { false } }
+        /// A step whose `gam` didn't finish (a timeout, or an interruption): it may have made its change.
+        public var mayHaveChanged: Bool {
+            guard case .failed(let message, let kind) = self else { return false }
+            return kind == .timeout || message == Executor.interrupted
+        }
     }
 
     /// Why nothing ran, in the operator's words; nil when the preview ran.
@@ -146,9 +221,32 @@ public struct RunOutcome: Sendable {
     /// Set when an end record couldn't be written: the change ran, but the audit is missing its result.
     public let auditProblem: String?
 
+    /// Steps still waiting for a new account, when they can be retried: pass it to `Executor.retry`.
+    public let retry: PendingRetry?
+
     public var succeeded: Bool { refusal == nil && steps.allSatisfy { if case .succeeded = $0 { true } else { false } } }
 
+    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil) {
+        self.refusal = refusal
+        self.steps = steps
+        self.auditProblem = auditProblem
+        self.retry = retry
+    }
+
     static func refused(_ why: String) -> RunOutcome { RunOutcome(refusal: why, steps: [], auditProblem: nil) }
+}
+
+/// A confirmed run's steps still waiting for Google to finish a new account (D3d). Opaque: only the
+/// executor makes one, and each is good for one `Executor.retry` or `abandon`.
+public struct PendingRetry: Sendable, Hashable {
+    let id: UUID
+    /// Retry rounds already run: 0 after the run itself.
+    public let round: Int
+
+    init(id: UUID, round: Int) {
+        self.id = id
+        self.round = round
+    }
 }
 
 /// The only path to a write. An actor, with writes serialized beyond that (GamGUI's `_write_lock`): a
@@ -159,6 +257,12 @@ public actor Executor {
     public static let previewLifetime: Duration = .seconds(15 * 60)
     /// Held previews kept; the oldest goes first (invariant 9).
     public static let previewsKept = 8
+    /// Retry rounds after a run: GamGUI's `NEW_ACCOUNT_WAITS` has five.
+    public static let newAccountRounds = 5
+    /// A run's waiting steps can be retried this long after it ended.
+    public static let retryLifetime: Duration = .seconds(15 * 60)
+    /// Runs with steps waiting kept; the oldest goes first (invariant 9).
+    public static let retriesKept = 8
 
     public typealias Tenant = @Sendable () async -> (domain: Domain, generation: Int)?
 
@@ -173,6 +277,9 @@ public actor Executor {
 
     private var held: [UUID: HeldPreview] = [:]
     private var order: [UUID] = []
+    /// Confirmed runs with steps waiting for a new account, by `PendingRetry.id`: what `retry` continues.
+    private var parked: [UUID: Parked] = [:]
+    private var parkedOrder: [UUID] = []
     private var inFlight: Set<String> = []
     private var writing = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
@@ -208,7 +315,9 @@ public actor Executor {
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
-        for (index, step) in steps.enumerated() where step.requires.contains(where: { $0 < 0 || $0 >= index }) {
+        for (index, step) in steps.enumerated()
+        where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
+            || !Self.newAccountWaitHolds(step, at: index, in: steps) {
             return .failure(.badPrerequisite(step: index))
         }
         guard let current = await tenant() else { return .failure(.notConnected) }
@@ -240,10 +349,48 @@ public actor Executor {
         }
     }
 
+    /// A listed task (D3c) is a `createTask` whose list is an earlier `createTaskList` step it requires, made
+    /// for the same assignee, and whose held argv is its builder's with the placeholder for the id: the run
+    /// can then put in nothing but that list's id. Any other step holds trivially.
+    static func listedTaskHolds(_ step: WriteStep, at index: Int, in steps: [WriteStep]) -> Bool {
+        guard let task = step.listedTask else { return true }
+        guard step.action == .createTask, task.list >= 0, task.list < index, step.requires.contains(task.list) else { return false }
+        let list = steps[task.list].write.argv
+        let built = GamCommands.createTask(assignee: task.assignee, taskListID: WriteStep.listIDPlaceholder(task.list),
+                                           title: task.title, notes: task.notes)
+        return steps[task.list].action == .createTaskList && list.count > 1 && same(list[1], task.assignee)
+            && same(built.argv, step.write.argv)
+    }
+
+    /// A step that may wait for a new account (D3b) is one of `WriteAction.canWaitForNewAccount`, acting on
+    /// the account an earlier `createUser` step makes, which it requires. Any other step holds trivially.
+    static func newAccountWaitHolds(_ step: WriteStep, at index: Int, in steps: [WriteStep]) -> Bool {
+        // Only a step that may wait itself can need one that may: a retry then runs nothing outside the closed set.
+        guard let create = step.newAccountFrom else {
+            return !step.requires.contains { $0 >= 0 && $0 < index && steps[$0].newAccountFrom != nil }
+        }
+        let made = steps.indices.contains(create) ? steps[create].write.argv : [], argv = step.write.argv
+        return WriteAction.canWaitForNewAccount.contains(step.action) && create >= 0 && create < index
+            && steps[create].action == .createUser && step.requires.contains(create)
+            // The account the create makes, as GAM reads an address (GamGUI's `assignee.lower() == email.lower()`).
+            && made.count > 2 && argv.count > 1 && argv[0] == "user" && Guard.normalized(argv[1]) == Guard.normalized(made[2])
+    }
+
+    /// Byte-for-byte: Swift's `==` on strings compares canonically, so "é" would equal "e\u{301}".
+    static func same(_ a: String, _ b: String) -> Bool { a.utf8.elementsEqual(b.utf8) }
+    static func same(_ a: [String], _ b: [String]) -> Bool { a.count == b.count && zip(a, b).allSatisfy { same($0, $1) } }
+
     /// Previews currently runnable: a screen offers Confirm only for one of these.
     public func isHeld(_ id: UUID) -> Bool {
         dropExpired()
         return held[id] != nil
+    }
+
+    /// Drops a held preview the operator cancelled or replaced, so what its argv carries (a temporary
+    /// password) doesn't stay here for `previewLifetime`. An unknown id is ignored.
+    public func discard(_ id: UUID) {
+        held[id] = nil
+        order.removeAll { $0 == id }
     }
 
     // MARK: running
@@ -252,8 +399,10 @@ public actor Executor {
     static let switched = "The active domain changed after the preview — preview again, so it runs on this one."
 
     /// Runs `preview` once, exactly as held, if every check passes; refused otherwise, with the reason.
-    /// The preview is spent either way: a second run needs a new preview.
-    public func run(_ preview: HeldPreview, confirmation: OperatorConfirmation) async -> RunOutcome {
+    /// The preview is spent either way: a second run needs a new preview. `progress` hears each step's
+    /// result as it ends (after its end record, before the next step begins); the caller finishes it.
+    public func run(_ preview: HeldPreview, confirmation: OperatorConfirmation,
+                    progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation? = nil) async -> RunOutcome {
         // Taken before any await: two runs of one preview can't both get it.
         guard let taken = held.removeValue(forKey: preview.id) else { return .refused(Self.expired) }
         order.removeAll { $0 == preview.id }
@@ -284,8 +433,90 @@ public actor Executor {
         }
         if let why = await aliasRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
-        return await execute(taken)
+        let ran = await execute(taken, progress: progress)
+        // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13).
+        return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
+                          retry: Task.isCancelled ? nil : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
     }
+
+    // MARK: retrying what waits for a new account (D3d)
+
+    /// A run whose steps wait: the held preview (so a retry runs its argv, under its digest), the results
+    /// so far and the lists' output (a waiting task's id), the rounds run and when the run ended.
+    private struct Parked {
+        let preview: HeldPreview
+        let results: [RunOutcome.Step]
+        let listOutputs: [Int: String]
+        let round: Int
+        let ranAt: ContinuousClock.Instant
+    }
+
+    static let retrySpent = "Those steps were already retried, or the retry was stopped."
+    static let retryOver = "The wait for Google is over — preview what's left again."
+    static let heldChanged = "What the preview held has changed since — preview again."
+
+    /// Keeps `results` for a retry when a step waits and a round is left; nil otherwise.
+    private func park(_ preview: HeldPreview, _ results: [RunOutcome.Step], _ listOutputs: [Int: String], round: Int,
+                      ranAt: ContinuousClock.Instant) -> PendingRetry? {
+        guard results.contains(where: \.isWaiting), round < Self.newAccountRounds, now() - ranAt <= Self.retryLifetime
+        else { return nil }
+        let handle = PendingRetry(id: UUID(), round: round)
+        while parkedOrder.count >= Self.retriesKept { parked[parkedOrder.removeFirst()] = nil }
+        parked[handle.id] = Parked(preview: preview, results: results, listOutputs: listOutputs, round: round, ranAt: ranAt)
+        parkedOrder.append(handle.id)
+        return handle
+    }
+
+    /// The confirmed run, continued (GamGUI's `finish_new_accounts`, one round): runs again only the steps
+    /// still waiting, and those waiting on them, exactly as held, through the same checks as `run` but the
+    /// confirmation, which the run already had. Single use: the outcome carries the next handle while a
+    /// step still waits and a round is left. Refused after `newAccountRounds` rounds, `retryLifetime`
+    /// after the run, on another tenant, or while a target is in flight. The caller does the waiting.
+    public func retry(_ handle: PendingRetry, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation? = nil) async -> RunOutcome {
+        // Taken before any await: two retries of one handle can't both get it.
+        guard let state = parked.removeValue(forKey: handle.id) else { return .refused(Self.retrySpent) }
+        parkedOrder.removeAll { $0 == handle.id }
+        guard state.round < Self.newAccountRounds, now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
+        guard await isCurrent(state.preview) else { return .refused(Self.switched) }
+        let again = state.preview.steps.indices.filter { state.results[$0].isWaiting }.map { state.preview.steps[$0] }
+        let targets = Set(again.map { Self.key($0.target) })
+        if let busy = again.first(where: { inFlight.contains(Self.key($0.target)) }) {
+            return .refused("A change to \(busy.target) is already running — wait for it to finish, then preview again.")
+        }
+        inFlight.formUnion(targets)
+        defer { inFlight.subtract(targets) }
+        await acquireWriteLock()
+        defer { releaseWriteLock() }
+        guard now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
+        // What runs is still what the operator confirmed. The held preview is immutable, so this can't fail today: it
+        // is a tripwire for a later change that rebuilds steps, not a defense of its own.
+        guard Self.same(HeldPreview.digest(of: state.preview.steps), state.preview.digest) else { return .refused(Self.heldChanged) }
+        // As `run` does: what the preview assumed is read again just before its steps run.
+        if let precondition = state.preview.precondition {
+            do {
+                guard try await precondition() else { return .refused("What the preview showed has changed since — preview again.") }
+            } catch {
+                return .refused("What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again.")
+            }
+        }
+        guard await isCurrent(state.preview) else { return .refused(Self.switched) }
+        let round = state.round + 1
+        let ran = await execute(state.preview, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
+                                progress: progress)
+        return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
+                          retry: Task.isCancelled ? nil : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+    }
+
+    /// Stop, between rounds: the waiting steps are dropped, and the handle runs nothing. A round already under
+    /// way took its state when it began; it is stopped by cancelling the task awaiting `retry`, which runs no
+    /// further step and parks nothing again.
+    public func abandon(_ handle: PendingRetry) {
+        parked[handle.id] = nil
+        parkedOrder.removeAll { $0 == handle.id }
+    }
+
+    /// Tests: how many runs' waiting steps are held for a retry.
+    var parkedRuns: Int { parked.count }
 
     /// Design doc §6, GamGUI failure-log 2026-09-24: `gam delete user <alias>` deletes the account the alias
     /// belongs to. Each address a step deletes is resolved to its primary just before the run (a read),
@@ -322,18 +553,36 @@ public actor Executor {
     /// Targets compare as GamGUI compares addresses: trimmed and lowercased.
     static func key(_ target: String) -> String { Guard.normalized(target) }
 
-    private func execute(_ preview: HeldPreview) async -> RunOutcome {
+    /// Runs the preview's steps in order. `resuming` a retry: a step whose prior result isn't `.waiting`
+    /// keeps it, unrun; `attempt` numbers the retry's audit records.
+    private func execute(_ preview: HeldPreview, resuming prior: [RunOutcome.Step]? = nil, listOutputs priorOutputs: [Int: String] = [:],
+                         attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
+        -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
-        for (index, step) in preview.steps.enumerated() {
+        /// What each list step that succeeded printed: its tasks' id (D3c).
+        var listOutputs = priorOutputs
+        for (index, planned) in preview.steps.enumerated() {
+            if let prior, !prior[index].isWaiting {
+                results.append(prior[index])
+                continue
+            }
+            // Each result as it's decided: for a step that ran, after its end record.
+            defer { progress?.yield((index, results[index])) }
             if let stoppedBy {
                 results.append(.skipped(reason: stoppedBy))
                 continue
             }
-            if let needed = step.requires.first(where: { if case .succeeded = results[$0] { false } else { true } }) {
+            // A step needing one that failed is skipped; one needing only steps that wait, waits unrun.
+            let unmet = planned.requires.filter { !results[$0].isSucceeded }
+            if let needed = unmet.first(where: { !results[$0].isWaiting }) {
                 results.append(.skipped(reason: "Step \(needed + 1) didn't succeed."))
+                continue
+            }
+            if let needed = unmet.first {
+                results.append(.waiting(message: "Waits for step \(needed + 1)."))
                 continue
             }
             // Before the begin record: a run cancelled before gam starts is not "interrupted".
@@ -348,8 +597,18 @@ public actor Executor {
                 results.append(.skipped(reason: "Stopped: the active domain changed during the run."))
                 continue
             }
+            // A listed task runs on the id its list printed, or not at all (D3c).
+            var step = planned
+            if let task = planned.listedTask {
+                guard let write = Self.taskOnItsList(planned, task, listStep: preview.steps[task.list], printed: listOutputs[task.list])
+                else {
+                    results.append(.failed(message: Self.noListID, kind: nil))
+                    continue
+                }
+                step = planned.running(write)
+            }
             await beforeEachStep?()
-            let base = extra(for: step, of: preview, index: index)
+            let base = extra(for: step, of: preview, index: index, attempt: attempt)
             let secrets = step.secretTexts
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
@@ -362,23 +621,78 @@ public actor Executor {
                                        kind: nil))
                 continue
             }
-            let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets)
+            // GamGUI's `fresh`: only an account this run created waits for Google.
+            let mayWait = planned.newAccountFrom.map { results[$0].isSucceeded } ?? false
+            let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets, mayWait: mayWait)
             results.append(ran.result)
+            if step.action == .createTaskList, case .succeeded = ran.result { listOutputs[index] = ran.stdout }
             if let stop = ran.stop { stoppedBy = stop }
             if let problem = ran.auditProblem { auditProblem = problem }
         }
-        return RunOutcome(refusal: nil, steps: results, auditProblem: auditProblem)
+        return (results, listOutputs, auditProblem)
     }
 
-    /// One step through the runner, with its end record.
+    /// GamGUI's words when a list's `returnidonly` gave no id (`onboarding.py` `_why(None)`).
+    static let noListID = "No task list id came back."
+
+    /// `task` rebuilt through its builder on the id `listStep` printed: the last non-empty line, stripped
+    /// (GamGUI's `create_onboarding_runbook`), when `usableListID` takes it. Nil unless the rebuilt argv is
+    /// the held one in every element but the id, and the list was made for the task's assignee: so the one
+    /// element a run takes from outside its preview can be nothing but that list's id.
+    static func taskOnItsList(_ held: WriteStep, _ task: WriteStep.ListedTask, listStep: WriteStep,
+                              printed: String?) -> GamWrite? {
+        guard let id = taskListID(printed: printed ?? ""), listStep.write.argv.count > 1 else { return nil }
+        let write = GamCommands.createTask(assignee: listStep.write.argv[1], taskListID: id, title: task.title, notes: task.notes)
+        let heldArgv = held.write.argv, idElement = 4
+        guard write.argv.count == heldArgv.count, heldArgv.count > idElement,
+              same(heldArgv[idElement], WriteStep.listIDPlaceholder(task.list)), same(write.argv[idElement], id),
+              heldArgv.indices.allSatisfy({ $0 == idElement || same(write.argv[$0], heldArgv[$0]) })
+        else { return nil }
+        return write
+    }
+
+    /// The id a list step's `returnidonly` printed: its last non-empty line, stripped (GamGUI's
+    /// `create_onboarding_runbook`), when `usableListID` takes it; nil otherwise.
+    public static func taskListID(printed: String) -> String? {
+        let lines = PythonText.lines(printed).map { PythonText.strip($0) }.filter { !$0.isEmpty }
+        guard let id = lines.last, usableListID(id) else { return nil }
+        return id
+    }
+
+    /// GAM's longest task list id is far below this; a longer "id" is output that isn't one.
+    static let listIDLimit = 256
+    /// GAM's entity-list selectors (`Cmd.ENTITY_LIST_SELECTORS`, read from the vendored 7.48.22 build): as the
+    /// whole argument, each reads a file or CSV instead of naming a list.
+    static let listSelectors: Set<String> = ["csv", "csvdata", "csvfile", "csvkmd", "csvsubkey", "file"]
+
+    /// Whether GAM's `create task <TasklistEntity>` reads `id` as exactly that one list id. It reads the
+    /// argument with `getEntityList(…, shlexSplit=True)`: first as a selector word (`getChoice`: stripped,
+    /// lowercased, then without `_` and `-`), then split by POSIX shlex on spaces and commas, where quotes and
+    /// a backslash are syntax and `#` starts a comment; `tltitle:` then picks a list by title (GamCommands.txt
+    /// 649, 803, 1289). So only printable ASCII without those characters, under the length cap, and neither
+    /// a selector nor a title.
+    static func usableListID(_ id: String) -> Bool {
+        let scalars = Array(id.unicodeScalars)
+        guard !scalars.isEmpty, scalars.count <= listIDLimit,
+              scalars.allSatisfy({ (0x21...0x7E).contains($0.value) && !",\"'\\#".unicodeScalars.contains($0) })
+        else { return false }
+        let lowered = PythonText.lower(id)
+        let word = String(String.UnicodeScalarView(lowered.unicodeScalars.filter { $0 != "_" && $0 != "-" }))
+        return !lowered.hasPrefix("tltitle:") && !listSelectors.contains(lowered) && !listSelectors.contains(word)
+    }
+
+    /// One step through the runner, with its end record. `mayWait`: a refusal Google gives an account it
+    /// hasn't finished setting up becomes `.waiting` rather than a failure.
     private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
-                     secrets: [String]) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?) {
+                     secrets: [String], mayWait: Bool) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
+        var stdout: String?
         do {
             let ran = try await runner.run(step.write, as: preview.domain, ticket: WriteTicket(), timeout: step.timeout,
                                            extraEnvironment: extraEnvironment)
             exitCode = ran.exitCode
+            stdout = ran.stdout
             if ran.exitCode == 0 {
                 result = .succeeded(output: Self.masked(ran.stdout, secrets: secrets))
                 stop = nil
@@ -387,9 +701,14 @@ public actor Executor {
                 let message = Self.masked(error.message, secrets: secrets)
                 extra["error"] = .string(message)
                 extra["kind"] = .string(error.kind.rawValue)
-                result = .failed(message: message, kind: error.kind)
-                // An account-wide failure fails every later call the same way: stop (bulk loops).
-                stop = error.kind.isAccountWide ? "Stopped: \(error.kind.remediation)" : nil
+                if mayWait, error.saysNewAccountNotReady {
+                    result = .waiting(message: message)
+                    stop = nil
+                } else {
+                    result = .failed(message: message, kind: error.kind)
+                    // An account-wide failure fails every later call the same way: stop (bulk loops).
+                    stop = error.kind.isAccountWide ? "Stopped: \(error.kind.remediation)" : nil
+                }
             }
         } catch is CancellationError {
             exitCode = nil
@@ -415,22 +734,25 @@ public actor Executor {
         let ok: Bool = if case .succeeded = result { true } else { false }
         do {
             try record(step, phase: "end", extra: extra, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
-            return (result, stop, nil)
+            return (result, stop, nil, stdout)
         } catch {
             AuditFailure.report(error)
-            return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).")
+            return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).",
+                    stdout)
         }
     }
 
     static let interrupted = "Interrupted before GAM finished: check the result in Google before running it again."
 
-    private func extra(for step: WriteStep, of preview: HeldPreview, index: Int) -> JSONObject {
+    private func extra(for step: WriteStep, of preview: HeldPreview, index: Int, attempt: Int?) -> JSONObject {
         var extra: JSONObject = [:]
         for key in step.about.keys.sorted() where !(step.about[key] ?? "").isEmpty { extra[key] = .string(step.about[key]!) }
         extra["preview"] = .string(preview.id.uuidString)
         extra["digest"] = .string(preview.digest)
         extra["origin"] = .string(preview.origin.rawValue)
         extra["step"] = .number(String(index))
+        // A retry's records: the run's own are attempt 1, unnumbered.
+        if let attempt { extra["attempt"] = .number(String(attempt)) }
         return extra
     }
 
@@ -444,6 +766,8 @@ public actor Executor {
 
     private func dropExpired() {
         let now = now()
+        for id in parkedOrder where parked[id].map({ now - $0.ranAt > Self.retryLifetime }) ?? true { parked[id] = nil }
+        parkedOrder.removeAll { parked[$0] == nil }
         for id in order where held[id].map({ now - $0.createdAt > Self.previewLifetime }) ?? true { held[id] = nil }
         order.removeAll { held[$0] == nil }
     }
@@ -480,6 +804,8 @@ extension Executor {
         public var actionName: String { WriteAction(rawValue: action)?.displayName ?? action }
         let preview: String
         let step: Int
+        /// A retry round's attempt (2 and up); nil for the run's own.
+        public let attempt: Int?
     }
 
     /// Records read at launch: unfinished writes are recent, and the log can hold a million records.
@@ -493,12 +819,14 @@ extension Executor {
         for record in AuditLog.records(at: log, limit: limit) {
             guard let extra = record["extra"]?.object, let preview = extra["preview"]?.string,
                   let step = extra["step"].flatMap({ $0.int }), let phase = extra["phase"]?.string else { continue }
-            let key = "\(preview)/\(step)"
+            // Each attempt at a step is its own begin and end: a retry round's end doesn't close another's.
+            let attempt = extra["attempt"].flatMap { $0.int }
+            let key = "\(preview)/\(step)/\(attempt ?? 1)"
             if phase == "end" {
                 ended.insert(key)
             } else if phase == "begin", !ended.contains(key) {
                 found.append(Unfinished(action: record["action"]?.string ?? "", target: record["target"]?.string ?? "",
-                                        at: record["ts"]?.string ?? "", preview: preview, step: step))
+                                        at: record["ts"]?.string ?? "", preview: preview, step: step, attempt: attempt))
             }
         }
         return found
@@ -509,9 +837,10 @@ extension Executor {
     public static func acknowledge(_ unfinished: [Unfinished], in log: URL) throws {
         let audit = AuditLog(url: log)
         for write in unfinished {
-            try audit.record(write.action, target: write.target,
-                             extra: ["preview": .string(write.preview), "step": .number(String(write.step)),
-                                     "phase": .string("end"), "acknowledged": .bool(true)])
+            var extra: JSONObject = ["preview": .string(write.preview), "step": .number(String(write.step)),
+                                     "phase": .string("end"), "acknowledged": .bool(true)]
+            if let attempt = write.attempt { extra["attempt"] = .number(String(attempt)) }
+            try audit.record(write.action, target: write.target, extra: extra)
         }
     }
 }

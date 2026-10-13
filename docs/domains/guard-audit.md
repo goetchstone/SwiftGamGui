@@ -114,6 +114,45 @@ Two small additions, each a test that failed first (`ExecutorTests`):
 The reader streams (`forEachRecord`) and skips a line past 1 MiB; the Audit screen pages, filters and exports
 the log as GamGUI does, a page held at a time. See [audit-reports.md](audit-reports.md).
 
+## Built for Onboarding (O1, 2026-10-12)
+Onboarding's design D3, each a test that failed first (`ExecutorTests`), one concern per commit:
+- **`discard(_:)`** (g): Cancel or a new preview drops the held one at once, its temporary password with it.
+- **`run(…progress:)`** (f): each step's result as it ends, after its end record and before the next step
+  begins (`progressSeesEachStepAsItEnds`): the sign-in card appears the moment the create ends.
+- **The derived task-list id** (c): `WriteStep.task(…onListFrom:)` holds a placeholder in the one id
+  element; the run puts in the id the same run's list step printed, only when GAM would read it as
+  exactly one list id, rebuilt through the builder and equal to the held argv in every other element,
+  for the same assignee; audited as run, under the held digest. The one place a run sends an element its
+  preview didn't hold: `docs/RULE-FEEDBACK.md` (2026-10-12) says why it's the narrowest design.
+- **`.waiting` and `newAccountFrom`** (a, b): a closed set of steps (`WriteAction.canWaitForNewAccount`) on
+  an earlier create they require; they wait only when that create succeeded in this run and GAM says
+  the account isn't ready (GamGUI's `not_ready_yet`). Existing accounts never wait.
+- **`retry`/`abandon`** (d): the confirmed run, continued, with no second confirm and no ticket outside
+  ChangeCore: single-use handles, five rounds, fifteen minutes after the run, the tenant, the targets in
+  flight and the held digest checked each round, every attempt audited with its `attempt`.
+- **Outcome unknown keyed by attempt** (e), `RunOutcome.Step.mayHaveChanged`, `Executor.taskListID`, and a
+  held `WriteStep` that prints, dumps and reflects masked (`aHeldStepNeverPrintsItsSecret`).
+- `aSecretNeverReachesTheAuditOrTheScreen` now runs GamGUI's echoing gam against the surnames `Password`
+  and `NotifyPassword`.
+- `WriteRouteTests` is unchanged in its rules: the builders still mint every command, only the executor
+  mints a ticket, and only the confirm screen confirms; `onlyTheCardShowsATemporaryPassword` is new.
+
+**The adversarial review of these additions (2026-10-13)** found six things, none reachable from O1 as
+`OnboardChanges` drives the executor, four of them guarantees the doc comments claimed and the code didn't
+hold. Each is now a test that failed first and a mutant it kills:
+- a step marked to wait must act on the account its create makes (`argv[1]` is the create's address, as
+  GamGUI's `assignee.lower() == email.lower()`): an existing person's delegation refusal never reads as
+  waiting (`onlyTheAccountTheCreateMakesWaits`);
+- a step that needs a step that may wait must itself be one that may wait, so a retry runs nothing outside
+  the closed set: no suspend, and no delete without its alias check (`onlyAStepThatMayWaitCanNeedOneThatMay`);
+- a retry reads the preview's precondition again, as a run does (`aRetryReadsThePreconditionAgain`);
+- a parked run (its held create carries the password) is dropped after its lifetime, as a held preview is
+  (`aParkedRunIsDroppedAfterItsLifetime`);
+- a cancelled run or round hands back no retry and parks nothing again; Stop during a round is cancelling
+  the task awaiting `retry` (`aCancelledRunLeavesNoRetry`, `stopDuringARetryRoundParksNothingAgain`);
+- `PendingRetry`'s init is internal; the retry's digest comparison is a tripwire for a later rebuild, not a
+  defense (the held preview is immutable).
+
 ## Not built yet
 The confirm UI and the first curated writes (Users), the §8 voice ticket (today the executor takes only an
 operator's confirmation), and GamGUI's tolerated-kinds sweep (`tolerate_kinds`) for best-effort bulk steps.

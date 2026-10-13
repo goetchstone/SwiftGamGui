@@ -330,3 +330,116 @@ struct CalendarPreviewSheet: View {
         }
     }
 }
+
+/// One hire's confirm step (slice O1): every step the run will take, by kind, with its command, what to know
+/// first, and what it costs. Confirming runs exactly this preview, once; Cancel drops it at once, its
+/// temporary password with it. The sheet says "One new hire: N steps" itself: the guard counts steps as
+/// targets, and every step here is one person's.
+struct OnboardPreviewSheet: View {
+    let pending: OnboardChanges.Pending
+    let changes: OnboardChanges
+
+    private var plan: OnboardChanges.Plan { pending.plan }
+
+    private func confirm() {
+        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
+    }
+
+    private func rows(_ match: (OnboardChanges.Row.Kind) -> Bool) -> [OnboardChanges.Row] {
+        plan.rows.filter { match($0.kind) }
+    }
+
+    var body: some View {
+        Form {
+            Section(pending.isRetry ? "Retry for \(plan.email.isEmpty ? plan.assignee : plan.email)"
+                                    : "Onboard \(plan.name) \u{2014} \(plan.role.name)") {
+                Text(pending.summary)
+            }
+            let account = rows { $0 == .account }
+            if !account.isEmpty {
+                Section("Account") {
+                    Text("Creates \(plan.email): \(plan.first) \(plan.last) in \(plan.orgUnit).")
+                    Text("The temporary password is shown once, after the account is created; they must change it at first sign-in.")
+                    commands(account)
+                }
+            }
+            let signature = rows { if case .signature = $0 { true } else { false } }
+            if let held = plan.signature, !signature.isEmpty {
+                Section("Signature") {
+                    Text("Sets the \u{201C}\(held.template)\u{201D} signature, made out for \(plan.name).")
+                    DisclosureGroup("Rendered") {
+                        // The argv element itself, as held: what the run sends.
+                        SignaturePane(html: held.body, rendered: Signature.stored(held.body),
+                                      label: "New signature for \(plan.name)", empty: "Empty: confirming clears their signature.",
+                                      height: 140)
+                    }
+                    commands(signature)
+                }
+            }
+            let groups = rows { if case .group = $0 { true } else { false } }
+            if !groups.isEmpty {
+                Section("Groups") {
+                    Text("Adds \(plan.email) to \(groups.count) group\(groups.count == 1 ? "" : "s"), as a member.")
+                    commands(groups)
+                }
+            }
+            let calendars = rows { if case .calendar = $0 { true } else { false } }
+            if !calendars.isEmpty {
+                Section("Calendars") {
+                    Text("Subscribes them to \(calendars.count) shared calendar\(calendars.count == 1 ? "" : "s").")
+                    commands(calendars)
+                }
+            }
+            let checklist = rows {
+                switch $0 {
+                case .taskList, .task: true
+                default: false
+                }
+            }
+            if !checklist.isEmpty {
+                Section("Checklist") {
+                    let tasks = checklist.count { if case .task = $0.kind { true } else { false } }
+                    Text("\(tasks) task\(tasks == 1 ? "" : "s") \u{2192} \(plan.assignee)'s Google Tasks, \u{201C}\(plan.title)\u{201D}")
+                    commands(checklist)
+                }
+            }
+            if !plan.warnings.isEmpty {
+                Section {
+                    ForEach(plan.warnings, id: \.self) { warning in
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    }
+                }
+            }
+            Section {
+                if plan.creates {
+                    Label("Creates a Google account, which uses a license.", systemImage: "person.crop.circle.badge.plus")
+                }
+                Label("Runs exactly this preview. Change the form and you'll need to preview again.", systemImage: "info.circle")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 520)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.cancelPreview() } }
+            // Creating an account isn't confirmed by Return alone: it has to be chosen (clicked, or Tab and Space).
+            if plan.creates {
+                ToolbarItem(placement: .primaryAction) { Button(pending.confirmLabel) { confirm() } }
+            } else {
+                ToolbarItem(placement: .confirmationAction) { Button(pending.confirmLabel) { confirm() } }
+            }
+        }
+    }
+
+    /// Each step in words, its command (the password masked) behind a disclosure.
+    private func commands(_ rows: [OnboardChanges.Row]) -> some View {
+        ForEach(rows) { row in
+            DisclosureGroup(row.label) {
+                Text(row.shownArgv.joined(separator: " "))
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityHint("Shows the command")
+        }
+    }
+}

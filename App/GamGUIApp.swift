@@ -14,6 +14,9 @@ struct GamGUIApp: App {
         _services = State(initialValue: services)
         // Siri's intents reach the drafts only (invariant 10).
         SiriIntents.register(services.siriDrafts)
+        // Quitting mid-onboarding asks first.
+        let onboarding = services.onboardChanges
+        AppDelegate.interruptible = { onboarding.interruptible }
     }
 
     var body: some Scene {
@@ -35,6 +38,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case groups = "Groups"
     case calendars = "Calendars"
     case signatures = "Signatures"
+    case onboard = "Onboard"
     case offboard = "Offboard"
     case reports = "Reports"
     case audit = "Audit"
@@ -49,6 +53,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .groups: "person.3"
         case .calendars: "calendar"
         case .signatures: "signature"
+        case .onboard: "person.badge.plus"
         case .offboard: "person.badge.minus"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
@@ -142,6 +147,10 @@ struct ContentView: View {
                                access: services.userAccess, templates: services.signatureTemplates,
                                requested: $signaturesPerson)
                     .navigationTitle("Signatures")
+            case .onboard:
+                OnboardView(setup: services.setup, directory: services.directory, changes: services.onboardChanges,
+                            roles: services.onboardRoles, templates: services.signatureTemplates, hasGam: services.executor != nil)
+                    .navigationTitle("Onboard")
             case .offboard:
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges)
                     .navigationTitle("Offboard")

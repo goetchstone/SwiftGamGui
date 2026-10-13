@@ -37,6 +37,9 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   bodies it reads as a file keyword), run from the vendored build.
   Tests/Fixtures/offboarding.json GamGUI's offboarding routine: each step's command lines and what it
                                   needs, the address checks, and the preview's names and warnings.
+  Tests/Fixtures/onboarding.json  GamGUI's onboarding core: the temporary password's alphabet, split_name,
+                                  the calls provision_hire makes for a hire (title, order, gates), the
+                                  new-account wait's words and test, and its role file's load and migration.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary
                                   the way GamGUI's tests/test_gam_exit_codes.py does, plus GamGUI's own
                                   constants that branch on it.
@@ -1803,6 +1806,207 @@ def offboarding_fixture(mock: Path) -> dict:
             "delegate_warning": delegate}
 
 
+def onboarding_fixture(gam_error_cases: list) -> dict:
+    """GamGUI's onboarding core (core/onboarding.py): the temporary password's alphabet and defaults,
+    split_name, what provision_hire does for one hire (the calls it makes, in order, through a recording
+    connector that runs nothing: the checklist title, the gates), the new-account waits and their words,
+    step_label and waiting_note, not_ready_yet over GAM's stderr corpus (gam_errors.json's cases, by
+    index) and the live lines, _signature_html, and RunbookStore's load over crafted files. Never
+    constructs a default RunbookStore() or SignatureStore(), which read the operator's GamGUI data
+    (failure-log 2026-09-25): each store is given a file in a temporary folder."""
+    import asyncio
+    import tempfile
+    from types import SimpleNamespace
+
+    from gamgui.core import onboarding
+    from gamgui.core.gam.commands import GAMCommands
+    from gamgui.core.gam.errors import GAMError, GAMErrorKind
+    from gamgui.core.signatures import _DEFAULT_TEMPLATES, SignatureStore
+
+    out: dict = {}
+    defaults = inspect.signature(onboarding.generate_temp_password).parameters
+    out["password"] = {"alphabet": onboarding._PW_ALPHABET, "groups": defaults["groups"].default,
+                       "size": defaults["size"].default}
+
+    # split_name: curated, then every character str.isspace() holds as a separator, edge and inside.
+    spaces = [chr(c) for c in range(0x110000) if chr(c).isspace()]
+    triples = [("Ada", "", ""), ("Ada Byte", "", ""), ("Ada  Lovelace Byte", "", ""), ("", "Ada", "Byte"),
+               ("Jordan Lee", "J", ""), ("Jordan Lee", "", "L"), (" Ada ", " ", " "), ("", "", ""), ("   ", "", ""),
+               ("Zo\u00eb \u00c5ngstr\u00f6m", "", ""), ("Ada\u200bByte", "", ""), ("{name} [[x]]", "", ""),
+               ("Ada", " Ada ", ""), ("O'Neil Mc Byte", "", "")]
+    triples += [(f"{w}A{w}B{w}{w}C{w}", "", "") for w in spaces]
+    triples += [("Ada Byte", f"{w}Ad{w}", f"{w}By{w}") for w in spaces]
+    out["split_name"] = [{"name": n, "first": f, "last": l, "split": list(onboarding.split_name(n, f, l))}
+                         for n, f, l in triples]
+
+    out["waits"] = list(onboarding.NEW_ACCOUNT_WAITS)
+    out["not_ready_reason"] = onboarding.NOT_READY_REASON
+    out["stopped_reason"] = onboarding.STOPPED_REASON
+
+    parked = [{"what": "signature", "email": "jordan@example.com", "name": "Classic"},
+              {"what": "calendar", "email": "jordan@example.com", "calendar": "team@group.calendar.google.com"},
+              {"what": "tasks", "email": "it@example.com", "title": "Onboard Jordan Lee \u2014 Sales", "steps": ["A"]},
+              {"what": "signature", "email": "zo\u00eb@example.com", "name": "\u201cQuoted\u201d"},
+              {"what": "calendar", "email": "x@example.com", "calendar": ""}]
+    out["step_label"] = [{"step": step, "label": onboarding.step_label(step)} for step in parked]
+    sig, cal, tasks = parked[0], parked[1], parked[2]
+    lists = [[sig], [cal], [cal, cal], [sig, cal, tasks], [tasks], [cal, sig, cal, cal, tasks], [tasks, sig], [cal, tasks]]
+    out["waiting_note"] = [{"steps": [s["what"] for s in steps], "note": onboarding.waiting_note(steps)} for steps in lists]
+
+    # not_ready_yet over the classifier's own corpus (by index into gam_errors.json), then the live lines
+    # and their case and fold variants, read with GAM's progress lines as progress, as gam_errors.json is
+    # (gam_progress; failure-log 2026-10-13): frozen GamGUI's misreading would make a not-ready refusal behind a
+    # "Getting …" line look like an unknown failure here too.
+    with gam_progress():
+        flags = [onboarding.not_ready_yet(GAMError.from_run(c["exit_code"], c["stderr"])) for c in gam_error_cases]
+    extra = [(50, "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n"),
+             (73, "User: new@example.com, Calendar Service/App not enabled\n"),
+             (50, "User: new@example.com, Tasklist Create Failed: access_denied: REQUESTED CLIENT NOT AUTHORIZED\n"),
+             (50, "User: new@example.com, Task Create Failed: reque\u017fted client not author\u0130zed\n"),
+             (50, "User: new@example.com, User Set Failed: access_denied: Requested  client not authorized\n"),
+             (1, "ERROR: Calendar not enabled. Please run\n"),
+             (None, "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n"),
+             (50, "User: new@example.com, Gmail Service/App not enabled\n"),
+             (50, "User: a@example.com, Calendar: c, Add Failed: Not Found\n"),
+             (57, "User: a@example.com, Create Failed: Duplicate, User: a@example.com\n")]
+    out["not_ready"] = {"gam_error_cases": len(gam_error_cases),
+                        "not_ready_indices": [i for i, flag in enumerate(flags) if flag],
+                        "extra": [{"exit_code": code, "stderr": text,
+                                   "not_ready": onboarding.not_ready_yet(GAMError.from_run(code, text))} for code, text in extra]}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        templates = dict(_DEFAULT_TEMPLATES)
+        templates.update({"Empty": "", "Optional": "[[{title}]]", "Tokens": "{first}|{last}|{name}|{email}|{ou}|{phone}"})
+        (root / "signatures.json").write_text(json.dumps({"templates": templates}))
+        signatures = SignatureStore(root / "signatures.json")
+        assert signatures.names() == sorted(templates), "the temporary signature store didn't load"
+
+        people = [("jordan@example.com", "Jordan", "Lee"), ("ada@example.com", "", ""), ("zo\u00eb@example.com", "Zo\u00eb", "e\u0301"),
+                  ("x@example.com", "{phone}", "[[x]]"), ("y@example.com", "Ann", ""), ("z@example.com", "", "Byte")]
+        out["signature_html"] = []
+        for name in sorted(templates) + ["Missing", ""]:
+            cfg = onboarding.RoleTemplate("Sales", ["A"], signature=name)
+            for email, first, last in people:
+                out["signature_html"].append({"template": name, "email": email, "first": first, "last": last,
+                                              "html": onboarding._signature_html(signatures, cfg, email, first, last)})
+
+        # What provision_hire does for one hire: each call in order, as the argv GamGUI's builder makes.
+        class Recorder:
+            def __init__(self, create_ok: bool = True):
+                self.calls, self.create_ok = [], create_ok
+
+            def _ok(self, ok: bool = True):
+                kind = None if ok else GAMErrorKind.UNKNOWN
+                return SimpleNamespace(ok=ok, kind=kind, detail="" if ok else "GAM failed", remediation="")
+
+            async def create_user(self, email, first, last, password, change_password=True, org_unit=None, notify=None):
+                self.calls.append(GAMCommands.create_user(email, first, last, password, change_password, org_unit, notify))
+                return self._ok(self.create_ok)
+
+            async def set_signature(self, email, signature, html=True):
+                self.calls.append(GAMCommands.set_signature(email, signature, html=html))
+                return self._ok()
+
+            async def add_group_member(self, group, member, role="member"):
+                self.calls.append(GAMCommands.add_group_member(group, member, role=role))
+                return self._ok()
+
+            async def subscribe_calendar_for(self, email, calendar_id):
+                self.calls.append(GAMCommands.subscribe_calendar(email, calendar_id))
+                return self._ok()
+
+            async def create_onboarding_runbook(self, assignee, title, steps):
+                self.calls.append(GAMCommands.create_tasklist(assignee, title))
+                self.calls += [GAMCommands.create_task(assignee, "TASKLIST_ID", step) for step in steps]
+                return {"tasklist_id": "TASKLIST_ID", "created": len(steps), "failed": [], "total": len(steps)}
+
+        roles = {
+            "Sales": {"steps": ["Set up the CRM login", "Order a laptop"], "signature": "Classic", "org_unit": "/Sales",
+                      "groups": ["sales@example.com", "staff@example.com"], "calendars": ["team@group.calendar.google.com"]},
+            "Warehouse": {"steps": ["Badge"], "signature": "", "org_unit": "", "groups": [], "calendars": []},
+            "Gone": {"steps": ["A", "B", "C"], "signature": "Missing", "org_unit": "Warehouse/Night",
+                     "groups": ["wh@example.com"], "calendars": ["c1@group.calendar.google.com", "c2@group.calendar.google.com"]},
+            "Empty": {"steps": ["A"], "signature": "Empty", "org_unit": "root", "groups": [], "calendars": []},
+            "Optional": {"steps": ["A"], "signature": "Optional", "org_unit": "/", "groups": ["g@example.com"], "calendars": []},
+        }
+        hires = [
+            {"name": "Jordan Lee", "email": "jordan@example.com", "assignee": "", "create_account": True, "first": "", "last": ""},
+            {"name": "Jordan Lee", "email": "jordan@example.com", "assignee": "it@example.com", "create_account": True,
+             "first": "Jo", "last": "Lee-Smith"},
+            {"name": "Sam Rivers", "email": "sam@example.com", "assignee": "", "create_account": False, "first": "", "last": ""},
+            {"name": "", "email": "", "assignee": "it@example.com", "create_account": False, "first": "", "last": ""},
+            {"name": "", "email": "x@example.com", "assignee": "", "create_account": False, "first": "", "last": ""},
+            {"name": "  Zo\u00eb  \u00c5ngstr\u00f6m ", "email": "zoe@example.com", "assignee": "", "create_account": True,
+             "first": "", "last": ""},
+        ]
+        store = onboarding.RunbookStore(root / "onboarding.json")
+        real = onboarding.generate_temp_password
+        onboarding.generate_temp_password = lambda groups=3, size=4: "PASSWORD"
+        try:
+            out["provision"] = []
+            for role_name, role in roles.items():
+                cfg = onboarding.RoleTemplate(role_name, role["steps"], role["signature"], role["org_unit"], role["groups"],
+                                              role["calendars"])
+                for hire in hires:
+                    for create_ok in ([True, False] if hire["create_account"] else [True]):
+                        conn = Recorder(create_ok)
+                        row = {**hire, "role": role_name, "manager": "", "send_welcome": False, "notify": ""}
+                        res = asyncio.run(onboarding.provision_hire(conn, signatures, store, cfg, row))
+                        out["provision"].append({"role": {"name": role_name, **role}, "hire": hire, "create_ok": create_ok,
+                                                 "calls": conn.calls,
+                                                 "credential_org_unit": (res["credential"] or {}).get("org_unit")})
+        finally:
+            onboarding.generate_temp_password = real
+        assert not (root / "onboarding.json").exists(), "provision_hire wrote the temporary role store"
+
+        # RunbookStore's load over crafted files: what it migrates, and which it can't read (it falls back
+        # to its seed then, which the native reader reports instead). The seed is swapped for a marked copy
+        # while loading, so a fallback is told from a file that happens to equal it.
+        files = [
+            '{"roles": {"Sales": ["Set up POS", "Order a laptop"]}}',
+            '{"roles": {"Sales": {"steps": ["a"], "signature": "Classic"}}, "welcomes": {"Default": {"subject": "S", "body": "B"}}}',
+            '{"roles": {"Warehouse": {"steps": ["Badge"], "groups": "wh@example.com\\n\\n  staff@example.com \\n", "calendars": null}},'
+            ' "welcome": {"subject": "Hi {name}", "body": "Welcome"}}',
+            '{"roles": {}, "welcome": {"subject": "old"}, "welcomes": {"Default": {"subject": "new", "body": "b"}}}',
+            '{"welcome": "text"}',
+            '{"roles": {"A": 5, "B": null, "C": "steps", "D": {"steps": "abc", "signature": 0, "org_unit": true,'
+            ' "groups": ["a@x.com", 7, null, " ", 2.5], "calendars": {"cal1": 1, "cal2": 2}, "welcome": 3.5}},'
+            ' "welcomes": {"W": "x", "V": {"subject": null, "body": 12}}}',
+            '{"roles": {"b": [], "B": [], "\u00e9": [], "e\u0301": [], "a": ["x"], "a ": ["y"]}}',
+            '{"roles": {"A": ["x"], "A": ["y"], "B": ["z"]}}',
+            '{"roles": {"A": [1, 2.50, 1E2, true, false, null, "s", -0, 1e400]}}',
+            '{"roles": {"A": {"steps": ["x"]}}, "welcomes": []}',
+            '{"roles": {"A": {"steps": ["x"], "groups": "a@x.com\\r\\nb@x.com\\u2028c@x.com"}}, "version": 7}',
+            '{"roles": {"A": {"steps": {"k1": 1, "k2": 2}, "calendars": "", "signature": "", "welcome": ""}}}',
+            '{"roles": {"A": {"steps": [], "org_unit": "  /Sales  ", "groups": [], "calendars": []}}}',
+            # GamGUI can't read these: it falls back to its seed.
+            '{"roles": ', '[]', '{"roles": []}', '{"roles": null}', '{"roles": {"A": {"steps": null}}}',
+            '{"roles": {"A": {"steps": [], "groups": 5}}}', '{"roles": {"A": {"steps": 3}}}', '', 'null',
+            '\ufeff{"roles": {}}', '{"roles": {"A": {"steps": [], "calendars": true}}}',
+        ]
+        out["load"] = []
+        seed = onboarding._DEFAULT
+        for text in files + [bytes([0x7B, 0xFF, 0x7D])]:
+            path = root / "load.json"
+            path.write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
+            onboarding._DEFAULT = {**json.loads(json.dumps(seed)), "__seed__": True}
+            try:
+                loaded = onboarding.RunbookStore(path)
+            finally:
+                onboarding._DEFAULT = seed
+            case = {"hex": text.hex()} if isinstance(text, bytes) else {"text": text}
+            if "__seed__" in loaded._data:
+                case["unreadable"] = True
+            else:
+                case["roles"] = [{"name": r.name, "steps": r.steps, "signature": r.signature, "org_unit": r.org_unit,
+                                  "groups": r.groups, "calendars": r.calendars, "welcome": r.welcome} for r in loaded.roles()]
+                case["welcomes"] = [[name, w["subject"], w["body"]] for name, w in loaded._data["welcomes"].items()]
+            out["load"].append(case)
+            path.unlink()
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -2045,6 +2249,12 @@ def main() -> int:
     (OUT / "offboarding.json").write_text(json.dumps(offboarding_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"offboarding.json: {len(offboarding_doc['steps'])} routines, {len(offboarding_doc['check_addresses'])} "
           f"address checks")
+    # Onboarding: GamGUI's core for one hire, the new-account wait's words and test, and its role file's
+    # load, never over the operator's own stores.
+    onboarding_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | onboarding_fixture(errors_doc["cases"])
+    (OUT / "onboarding.json").write_text(json.dumps(onboarding_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"onboarding.json: {len(onboarding_doc['provision'])} hires, {len(onboarding_doc['load'])} role files")
     return 0
 
 

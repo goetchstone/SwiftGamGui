@@ -139,12 +139,14 @@ enum Spikes {
             exit(EXIT_FAILURE)
         }
         // With a sheet open, AppKit's quit didn't reliably finish, even with the sheet ended first (CI hung on
-        // group-sales-add, then on group-sales-remove, 2026-10-12 and 13). A captured sheet leaves by the quit's
-        // own backstops (AppDelegate.applicationWillTerminate), then exits. Any other quit that hangs fails in
-        // words rather than as a 60 s timeout.
-        if window?.attachedSheet != nil {
-            GamRunner.stopAll()
-            EphemeralConfig.wipeAllLive()
+        // group-sales-add, then on group-sales-remove, 2026-10-12 and 13). And a quit with an onboarding run or
+        // its sign-in card up asks first, in a modal no one answers here, which blocks the main actor and so the
+        // watchdog below (CI hung on onboard-result, 2026-10-13). Either leaves by the quit's own backstops,
+        // then exits. Any other quit that hangs fails in words rather than as a 60 s timeout.
+        let asks = AppDelegate.interruptible?()
+        if let asks { print("snapshot: quitting now would ask first: \(asks.what)") }
+        if window?.attachedSheet != nil || asks != nil {
+            AppDelegate.backstops()
             fflush(stdout)
             exit(EXIT_SUCCESS)
         }

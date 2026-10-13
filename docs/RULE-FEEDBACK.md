@@ -83,6 +83,33 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   the build), and a GamErrorTests case once GamError itself learns the line (a deviation from
   `gam_errors.json` to record, as `gam_output.json` records the CSV ones).
 
+## 2026-10-12 — A task list's id is the one argv element a run takes from outside its preview
+- **What happened:** onboarding (O1, design D3c) puts a hire's checklist on a Google Tasks list the same
+  run creates. Each task's `gam user <a> create task <list id> …` needs the list's id, which exists only
+  after `create tasklist … returnidonly` has run. So the preview can't hold the whole argv: it holds a
+  placeholder (`‹task list id from step N›`), and the run puts in the id the list printed.
+- **Invariant in force:** #2, "a confirm runs what its preview held, never a rebuild". This is a rebuild.
+- **Why it didn't hold:** a gap in the wording, not a break. Invariant 2 assumes every argv is known when
+  the operator previews; one GAM write's input is another write's output. GamGUI never met the rule: it
+  ran the tasks outside its preview, unpreviewed and audited as one record (`create_onboarding_runbook`).
+- **Why this is the narrowest correct design:**
+  - one element only (index 4, the id), and only in a step made by `WriteStep.task(…onListFrom:)`;
+  - from one place only: the last non-empty stdout line of that same run's list step, which the task must
+    require and which must be an earlier `createTaskList` for the same assignee (checked at preview);
+  - only an id GAM reads as exactly one list id (printable ASCII without shlex syntax, not `tltitle:`, not
+    a selector word, at most 256 characters), else the task doesn't run ("No task list id came back.");
+  - through the builder (`GamCommands.createTask`), compared with the held argv in every other element;
+  - audited as run, under the held digest.
+
+  The alternatives were each worse: two previews (a second confirm, and a list made before the tasks are
+  even shown), `tltitle:` selectors (not GamGUI's argv, and titles aren't unique), a general
+  output-to-argv binding (speculative; one use), or GamGUI's way (a second write path).
+- **Would a rule have caught it?** yes but unworded: the invariant could name this exception, or say
+  "every element a run sends is held, or derived by ChangeCore from the same run under a test".
+- **Enforcement home if changed:** tripwire test (`ExecutorTests`: `aTaskTakesTheIdItsListPrinted`,
+  `aListIdWithACommaSpaceOrTitleSelectorIsRefused`, `aTaskOnAnotherAssigneesListIsRefused`,
+  `aListThatPrintedNoIdRunsNoTask`; `WriteRouteTests.onlyTheBuildersMintCommands` still holds).
+
 ## 2026-10-10 — The template store departs from GamGUI where GamGUI loses data (D2's quarantine)
 - **What happened:** porting GamGUI's signature store (S1b), its `_load` showed the starters over a
   corrupt or unreadable file, and its next save replaced that file: the operator's templates were gone

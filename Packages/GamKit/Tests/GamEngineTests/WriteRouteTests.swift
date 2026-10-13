@@ -99,7 +99,8 @@ struct WriteRouteTests {
     /// confirms; the executor then demands the Confirm click for it.
     @Test func noIntentReachesAWrite() throws {
         let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
-        let writing = try Self.files(in: "App", matching: ["UserChanges", "userChanges", "Executor", "executor", ".confirm(",
+        let writing = try Self.files(in: "App", matching: ["UserChanges", "userChanges", "OnboardChanges", "onboardChanges",
+                                                           "Executor", "executor", ".confirm(",
                                                            "confirmed:", "WriteStep", "GamWrite", "AuthenticatedRunner",
                                                            "previewOrganization", "AppServices", "HeldPreview", "Origin",
                                                            ".run("], orWord: "OperatorConfirmation")
@@ -108,6 +109,14 @@ struct WriteRouteTests {
         // What the intents are given is the drafts, and only there; the drafts themselves reach no write.
         #expect(try Self.files(in: "App", matching: ["AppDependencyManager", "@Dependency"]) == ["App/SiriIntents.swift"])
         #expect(!writing.contains("App/SiriDrafts.swift"))
+    }
+
+    /// Invariant 4, design D4: a temporary password's text is read in one place, the sign-in card. Anywhere
+    /// else (a row, a log line, a feed, an announcement) would show or keep it.
+    @Test func onlyTheCardShowsATemporaryPassword() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["shownOnTheSheet"])
+                == ["Packages/GamKit/Sources/GamEngine/Onboarding.swift"], "only its definition")
+        #expect(try Self.files(in: "App", matching: ["shownOnTheSheet"]) == ["App/OnboardCredentialSheet.swift"])
     }
 
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.
