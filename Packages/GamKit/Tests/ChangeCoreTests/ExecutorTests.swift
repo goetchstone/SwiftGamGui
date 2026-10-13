@@ -703,6 +703,113 @@ final class ExecutorTests {
         #expect(ran().isEmpty)
     }
 
+    // MARK: a new account's wait (D3a, D3b)
+
+    private let password = "Xk7m-Qp9r-2Tzv"
+
+    private func create(_ email: String) -> WriteStep {
+        WriteStep(GamCommands.createUser(email: email, firstName: "Jordan", lastName: "Lee", password: password),
+                  target: email, summary: "Create \(email)", secrets: [Secret(Data(password.utf8))])
+    }
+
+    private func signature(_ email: String, waitsOn create: Int?, requires: [Int] = [0]) -> WriteStep {
+        WriteStep(GamCommands.setSignature(email: email, signature: "<b>Jordan</b>"), target: email, summary: "Signature",
+                  requires: requires, newAccountFrom: create)
+    }
+
+    private func calendar(_ email: String, _ id: String = "team@group.calendar.google.com", waitsOn create: Int?) -> WriteStep {
+        WriteStep(GamCommands.subscribeCalendar(email: email, calendarID: id), target: email, summary: "Calendar",
+                  requires: [0], about: ["calendar": id], newAccountFrom: create)
+    }
+
+    private func notReady(_ email: String) -> String {
+        "GAM failed (unknown, exit=50): User: \(email), User Set Failed: access_denied: Requested client not authorized"
+    }
+
+    /// Only a signature, a calendar subscribe, a task list or a task waits for Google (GamGUI parks just
+    /// these), and only on the account an earlier `create user` step of the same preview makes, which the
+    /// step requires. Anything else is refused before it's held.
+    @Test func onlyTheClosedSetCanWaitAndOnlyOnAnEarlierCreate() async throws {
+        let executor = executor()
+        let email = "new@example.com"
+        #expect(WriteAction.canWaitForNewAccount == [.setSignature, .subscribeCalendar, .createTaskList, .createTask])
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0], newAccountFrom: 0)
+        let refusals: [([WriteStep], Int)] = [
+            ([create(email), group], 1),                                   // not in the closed set
+            ([suspend(email), signature(email, waitsOn: 0)], 1),           // not on a create
+            ([create(email), signature(email, waitsOn: 0, requires: [])], 1), // the create isn't required
+            ([signature(email, waitsOn: 0, requires: []), create(email)], 0), // itself, not an earlier step
+            ([signature(email, waitsOn: 1, requires: []), create(email)], 0), // a later step
+        ]
+        for (steps, step) in refusals {
+            let result = await executor.preview(steps)
+            #expect(throws: Executor.PreviewRefusal.badPrerequisite(step: step)) { try result.get() }
+        }
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 3, target: email, summary: "T", requires: [0],
+                                  newAccountFrom: 0)
+        _ = try await held(executor, [create(email), signature(email, waitsOn: 0), calendar(email, waitsOn: 0), list, task])
+        #expect(ran().isEmpty)
+    }
+
+    /// GamGUI's `fresh`: Google's "not ready yet" refusal (live 2026-09-30) parks a step only on an account
+    /// this run created. The same words elsewhere are a failure: on an existing user they mean a missing
+    /// delegation scope or a service turned off. Any other failure of a step that may wait is a failure too.
+    @Test func aStepWaitsOnlyWhenThisRunCreatedTheAccount() async throws {
+        let executor = executor(state: try mockState(lag: 5))
+        let parked = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
+                                        confirmation: confirmed)
+        #expect(parked.steps[1] == .waiting(message: notReady("new@example.com")))
+        #expect(!parked.succeeded)
+        let end = try #require(records.last)
+        #expect(end["ok"]?.bool == false, "the attempt is audited as it went")
+        #expect(end["extra"]?.object?["error"]?.string == notReady("new@example.com"))
+
+        let unmarked = await executor.run(try await held(executor, [create("new2@example.com"), signature("new2@example.com", waitsOn: nil)]),
+                                          confirmation: confirmed)
+        #expect(unmarked.steps[1] == .failed(message: notReady("new2@example.com"), kind: .unknown))
+
+        let duplicate = await executor.run(try await held(executor, [create("exists@example.com"), signature("exists@example.com", waitsOn: 0)]),
+                                           confirmation: confirmed)
+        #expect(duplicate.steps[1] == .skipped(reason: "Step 1 didn't succeed."))
+
+        let refused = await executor.run(try await held(executor, [create("new3@example.com"),
+                                                                    calendar("new3@example.com", "SUBFAIL@group.calendar.google.com", waitsOn: 0)]),
+                                         confirmation: confirmed)
+        guard case .failed(_, let kind) = refused.steps[1] else { Issue.record("\(refused.steps)"); return }
+        #expect(kind == .permissionDenied)
+        // Google's calendar refusal for a new account, exit 73, waits too.
+        let calendarParked = await executor.run(try await held(executor, [create("new4@example.com"), calendar("new4@example.com", waitsOn: 0)]),
+                                                confirmation: confirmed)
+        #expect(calendarParked.steps[1] == .waiting(message: "GAM failed (service_not_enabled, exit=73): User: new4@example.com, Calendar Service/App not enabled"))
+    }
+
+    /// A step that needs a waiting step waits too ("Waits for step N."), unrun and unaudited; one that also
+    /// needs a failed step is skipped. Steps that don't need it run.
+    @Test func aWaitingStepsDependentsWaitUnrun() async throws {
+        let executor = executor(state: try mockState(lag: 5))
+        let email = "new@example.com"
+        let list = WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List",
+                             requires: [0], newAccountFrom: 0)
+        let task = WriteStep.task(assignee: email, title: "T", onListFrom: 1, target: email, summary: "T", requires: [0], newAccountFrom: 0)
+        let group = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: email), target: email,
+                              summary: "Group", requires: [0])
+        let missing = WriteStep(GamCommands.addGroupMember(group: "missing@example.com", member: email), target: email,
+                                summary: "Group", requires: [0])
+        let blocked = WriteStep.task(assignee: email, title: "U", onListFrom: 1, target: email, summary: "U", requires: [0, 4],
+                                     newAccountFrom: 0)
+        let outcome = await executor.run(try await held(executor, [create(email), list, task, group, missing, blocked]),
+                                         confirmation: confirmed)
+        guard case .waiting = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.steps[2] == .waiting(message: "Waits for step 2."))
+        guard case .succeeded = outcome.steps[3], case .failed = outcome.steps[4] else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.steps[5] == .skipped(reason: "Step 5 didn't succeed."))
+        #expect(ran().count == 4 && !ran().contains { $0.count > 3 && $0[3] == "task" }, "no task ran: \(ran())")
+        #expect(!records.contains { [2, 5].contains($0["extra"]?.object?["step"]?.int) })
+    }
+
     // MARK: outcome unknown
 
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {

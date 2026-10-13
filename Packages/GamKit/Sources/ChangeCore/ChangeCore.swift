@@ -43,14 +43,20 @@ public struct WriteStep: Sendable {
         let notes: String
     }
 
+    /// The `.createUser` step whose account this step acts on, when this run may have just made it: a
+    /// refusal Google gives an account it hasn't finished setting up then waits (`.waiting`) for
+    /// `Executor.retry` instead of failing (GamGUI's parked steps, design doc D3b). Nil: never waits.
+    public let newAccountFrom: Int?
+
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
-                about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout) {
+                about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout,
+                newAccountFrom: Int? = nil) {
         self.init(write, target: target, summary: summary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, listedTask: nil)
+                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: nil)
     }
 
     private init(_ write: GamWrite, target: String, summary: String, risk: Risk, requires: [Int], about: [String: String],
-                 secrets: [Secret], timeout: Duration, listedTask: ListedTask?) {
+                 secrets: [Secret], timeout: Duration, newAccountFrom: Int?, listedTask: ListedTask?) {
         self.write = write
         self.target = target
         rawSummary = summary
@@ -59,6 +65,7 @@ public struct WriteStep: Sendable {
         self.about = about
         self.secrets = secrets
         self.timeout = timeout
+        self.newAccountFrom = newAccountFrom
         self.listedTask = listedTask
     }
 
@@ -69,10 +76,10 @@ public struct WriteStep: Sendable {
     /// takes from anywhere but its preview (design doc D3c).
     public static func task(assignee: String, title: String, notes: String = "", onListFrom list: Int, target: String,
                             summary: String, requires: [Int] = [], about: [String: String] = [:],
-                            timeout: Duration = GamRunner.defaultTimeout) -> WriteStep {
+                            timeout: Duration = GamRunner.defaultTimeout, newAccountFrom: Int? = nil) -> WriteStep {
         WriteStep(GamCommands.createTask(assignee: assignee, taskListID: listIDPlaceholder(list), title: title, notes: notes),
                   target: target, summary: summary, risk: .low, requires: requires.contains(list) ? requires : requires + [list],
-                  about: about, secrets: [], timeout: timeout,
+                  about: about, secrets: [], timeout: timeout, newAccountFrom: newAccountFrom,
                   listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes))
     }
 
@@ -82,7 +89,7 @@ public struct WriteStep: Sendable {
     /// The same step, running `write` (a listed task with its list's id put in).
     func running(_ write: GamWrite) -> WriteStep {
         WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, listedTask: listedTask)
+                  timeout: timeout, newAccountFrom: newAccountFrom, listedTask: listedTask)
     }
 
     public var action: WriteAction { write.action }
@@ -135,6 +142,11 @@ extension WriteAction {
             .low
         }
     }
+
+    /// The writes that may wait for Google to finish a just-created account: the ones GamGUI parks
+    /// (`provision_hire`: the signature, a calendar, the task list with its tasks). Not a group add: live
+    /// 2026-09-30, those worked on the fresh account at once.
+    public static let canWaitForNewAccount: Set<WriteAction> = [.setSignature, .subscribeCalendar, .createTaskList, .createTask]
 }
 
 /// A preview the executor holds: exactly what a confirm will run, bound to the tenant it was made on.
@@ -179,6 +191,12 @@ public struct RunOutcome: Sendable {
         /// The message is masked; `kind` drives the remediation.
         case failed(message: String, kind: GamError.Kind?)
         case skipped(reason: String)
+        /// A step Google wasn't ready to do on an account this run just created (the message is GAM's,
+        /// masked), or one that needs such a step ("Waits for step N."): `Executor.retry` runs it again.
+        case waiting(message: String)
+
+        public var isSucceeded: Bool { if case .succeeded = self { true } else { false } }
+        public var isWaiting: Bool { if case .waiting = self { true } else { false } }
     }
 
     /// Why nothing ran, in the operator's words; nil when the preview ran.
@@ -250,7 +268,8 @@ public actor Executor {
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated()
-        where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps) {
+        where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
+            || !Self.newAccountWaitHolds(step, at: index, in: steps) {
             return .failure(.badPrerequisite(step: index))
         }
         guard let current = await tenant() else { return .failure(.notConnected) }
@@ -293,6 +312,14 @@ public actor Executor {
                                            title: task.title, notes: task.notes)
         return steps[task.list].action == .createTaskList && list.count > 1 && same(list[1], task.assignee)
             && same(built.argv, step.write.argv)
+    }
+
+    /// A step that may wait for a new account (D3b) is one of `WriteAction.canWaitForNewAccount`, acting on
+    /// the account an earlier `createUser` step makes, which it requires. Any other step holds trivially.
+    static func newAccountWaitHolds(_ step: WriteStep, at index: Int, in steps: [WriteStep]) -> Bool {
+        guard let create = step.newAccountFrom else { return true }
+        return WriteAction.canWaitForNewAccount.contains(step.action) && create >= 0 && create < index
+            && steps[create].action == .createUser && step.requires.contains(create)
     }
 
     /// Byte-for-byte: Swift's `==` on strings compares canonically, so "é" would equal "e\u{301}".
@@ -404,8 +431,14 @@ public actor Executor {
                 results.append(.skipped(reason: stoppedBy))
                 continue
             }
-            if let needed = planned.requires.first(where: { if case .succeeded = results[$0] { false } else { true } }) {
+            // A step needing one that failed is skipped; one needing only steps that wait, waits unrun.
+            let unmet = planned.requires.filter { !results[$0].isSucceeded }
+            if let needed = unmet.first(where: { !results[$0].isWaiting }) {
                 results.append(.skipped(reason: "Step \(needed + 1) didn't succeed."))
+                continue
+            }
+            if let needed = unmet.first {
+                results.append(.waiting(message: "Waits for step \(needed + 1)."))
                 continue
             }
             // Before the begin record: a run cancelled before gam starts is not "interrupted".
@@ -444,7 +477,9 @@ public actor Executor {
                                        kind: nil))
                 continue
             }
-            let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets)
+            // GamGUI's `fresh`: only an account this run created waits for Google.
+            let mayWait = planned.newAccountFrom.map { results[$0].isSucceeded } ?? false
+            let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets, mayWait: mayWait)
             results.append(ran.result)
             if step.action == .createTaskList, case .succeeded = ran.result { listOutputs[index] = ran.stdout }
             if let stop = ran.stop { stoppedBy = stop }
@@ -495,9 +530,10 @@ public actor Executor {
         return !lowered.hasPrefix("tltitle:") && !listSelectors.contains(lowered) && !listSelectors.contains(word)
     }
 
-    /// One step through the runner, with its end record.
+    /// One step through the runner, with its end record. `mayWait`: a refusal Google gives an account it
+    /// hasn't finished setting up becomes `.waiting` rather than a failure.
     private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
-                     secrets: [String]) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?) {
+                     secrets: [String], mayWait: Bool) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
         var stdout: String?
@@ -514,9 +550,14 @@ public actor Executor {
                 let message = Self.masked(error.message, secrets: secrets)
                 extra["error"] = .string(message)
                 extra["kind"] = .string(error.kind.rawValue)
-                result = .failed(message: message, kind: error.kind)
-                // An account-wide failure fails every later call the same way: stop (bulk loops).
-                stop = error.kind.isAccountWide ? "Stopped: \(error.kind.remediation)" : nil
+                if mayWait, error.saysNewAccountNotReady {
+                    result = .waiting(message: message)
+                    stop = nil
+                } else {
+                    result = .failed(message: message, kind: error.kind)
+                    // An account-wide failure fails every later call the same way: stop (bulk loops).
+                    stop = error.kind.isAccountWide ? "Stopped: \(error.kind.remediation)" : nil
+                }
             }
         } catch is CancellationError {
             exitCode = nil

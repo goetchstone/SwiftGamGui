@@ -319,7 +319,7 @@ public final class UserChanges {
             state = .done("Done: \(pending.preview.steps.first?.summary ?? pending.title)\(note)")
         case .failed(let message, let kind):
             state = .problem([message, kind?.remediation].compactMap { $0 }.joined(separator: " "))
-        case .skipped(let reason):
+        case .skipped(let reason), .waiting(let reason):
             state = .problem(reason)
         case nil:
             state = .problem("Nothing ran.")

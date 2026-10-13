@@ -180,7 +180,7 @@ public final class SignatureChanges {
         case .failed(let message, let kind):
             let why = Self.remediation(message, kind: kind, for: pending.person)
             state = .problem(Problem("Couldn't set the signature. \(why)", detail: kind == nil ? nil : message))
-        case .skipped(let reason):
+        case .skipped(let reason), .waiting(let reason):
             state = .problem(Problem("Couldn't set the signature. \(reason)"))
         case nil:
             state = .problem(Problem("Nothing ran."))
