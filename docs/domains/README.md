@@ -13,6 +13,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | The Groups screen: the group list, a group's members, adding and removing them | [groups.md](groups.md) | phase 2: reads built and read live; writes built, live check pending |
 | Signatures: saved templates, render, set for one person | [signatures.md](signatures.md) | phase 2: parity core, template store, screen and write built; live check next |
 | Calendars: rooms, a person's calendars, who has access, sharing with one person | [calendars.md](calendars.md) | phase 2: reads and sharing with one person built (C1a, C1b, C2a); live checks (C1c, C2b) pending |
+| Offboarding: the leaver routine, its checks and plan, and (later) the account delete | [offboarding.md](offboarding.md) | phase 3: Off1, the read-only plan, built; L1 live check next, then Off2 (run) and Off3 (delete) |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
 

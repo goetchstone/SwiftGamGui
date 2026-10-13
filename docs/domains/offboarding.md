@@ -1,0 +1,160 @@
+# Offboarding
+
+**One line:** the ordered "a user is leaving" routine GamGUI runs, reset password, revoke access, turn
+off forwarding, delegate and auto-reply the mailbox, transfer Drive and Calendar, sweep the leaver off
+every active user's primary calendar, and a dated reminder on the manager's calendar, plus the separate,
+later account delete. Built: **Off1, the read-only plan** (2026-10-13): the Offboard screen shows exactly
+what GamGUI's offboarding would run for a leaver and a manager, every step's `gam` line, and has no way
+to run it. Next: **Off2** runs the plan through ChangeCore, **Off3** the delete (below). GamGUI's runbook
+of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
+its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
+(2026-10-07, all eight steps ok) all carry over.
+
+**Owns invariants:** #1 (each step's argv is GamGUI's, `drive,calendar` one element), #2 (Off1 can't
+write at all), #9 (the sweep is the only domain-wide call and alone gets the long timeout), #11 (the
+routine, the checks and the words are held to GamGUI by a fixture).
+
+**Enforcement home:** `Packages/GamKit/Tests/GamEngineTests/OffboardingTests.swift` (the pure core, held to
+`Tests/Fixtures/offboarding.json`, `scripts/gen_fixtures.py`'s `offboarding_fixture`),
+`Packages/GamKit/Tests/DirectoryStoreTests/OffboardChangesTests.swift` (the reads, the checks and the plan
+against the strict mock, and `offboardingCantWrite`, the source scan), `MockDelegatesTests.swift`, and
+ChangeCore's `ExecutorTests.aStepsCommandLineIsGamGUIs`.
+
+## Files
+- `Packages/GamKit/Sources/GamEngine/Offboarding.swift`: the pure core. `Step` (GamGUI's keys and
+  `STEP_NAMES`, `leftOutCost`), `optionalSteps`, `requires`/`effectiveRequires`, `fillAutoreply`,
+  `checkAddresses`, `steps(...)` (GamGUI's `build_offboard_steps`, each `Planned` one `GamWrite` from
+  `GamCommands`), the preview's helpers (`displayName`, `managerContact`, `composeAutoreply`,
+  `delegateWarning`, `tickProblem`) and words (`intro`, `header`, `whatStopsWhat`, `notes`), and `Day`
+  (Python's `date`: proleptic Gregorian, years 1 to 9999).
+- `Packages/GamKit/Sources/GamEngine/GamCommandLine.swift`: GamGUI's `command_line`, the `gam …` line
+  shown for an argv. `WriteStep.commandLine` (ChangeCore) is it, over the step's masked argv.
+- `Packages/GamKit/Sources/Directory/OffboardChanges.swift`: the model. No executor.
+  `UserAccess.delegates(of:)` is the leaver's delegates, read live.
+- `App/OffboardView.swift`: the screen (sidebar "Offboard").
+
+## What GamGUI's offboarding does
+Two parts: the eight-step routine, and a separate, later account delete (GamGUI's user page; here Off3).
+**No suspend and no group removal**: the leaver keeps a live mailbox so the delegate, the auto-reply and
+the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
+
+### Reads and checks before the plan (GamGUI `routes/lifecycle.py:163-209`)
+1. **The form's own refusals, before any read:** both addresses entered; a step ticked both as already
+   done and as doesn't apply ("pick one"); every step ticked or left out ("nothing to run"). Off1 also
+   refuses an invitee that isn't one address (`Address.looksLikeEmail`); GamGUI sends whatever was typed.
+2. **Both addresses against the directory** (`checkAddresses`), never an old list: one older than five
+   minutes is read again first (`DirectoryStore.load`), and a failed read blocks ("Couldn't read the
+   directory to check the addresses — …"); the old list is not a fallback (GamGUI plan U12b).
+   - **Blocks:** an unknown address; an alias (the message names the primary); the same account twice;
+     the connected admin as the leaver (revoking would delete the app's own token mid-run).
+   - **Warns:** a super-admin or delegated-admin leaver (offboarding doesn't remove the role); an
+     already-suspended leaver; a suspended manager.
+   - The steps act on the directory's primary addresses, whatever case or spaces were typed.
+3. **The leaver's delegates** (`print delegates`, GamGUI's `_delegate_warning`), unless the delegate step
+   is ticked or left out: the manager already a delegate warns (GAM fails a second add, "Delegate already
+   exists", exit 50, and a failed delegate stops the hand-over); a read that fails warns, quoting GAM,
+   because the delegate step uses the same Gmail access and would fail after the irreversible reset.
+4. **Display names** for the auto-reply's text: the leaver's full name, the manager as "Name (address)".
+5. **Not read:** groups, calendars, forwarding state, Drive ownership. Forwarding is always turned off.
+
+### The steps (`Offboarding.steps`, GamGUI's `build_offboard_steps`)
+
+| # | Step | argv | Builder | `requires` | If it fails |
+|---|---|---|---|---|---|
+| 1 | Reset password | `update user L password random changepassword off` | `resetPassword` | — | nothing after it runs |
+| 2 | Revoke access & sign out | `user L deprovision signout` | `deprovisionUser` | password | reported; stops nothing |
+| 3 | Turn off forwarding | `user L forward off` | `forwardOff` | password | reported; stops nothing |
+| 4 | Set delegate | `user L add delegate M` | `addDelegate` | password | the auto-reply, transfer and reminder don't run; the sweep does |
+| 5 | Set auto-responder | `user L vacation on subject S message <html> html contactsonly false domainonly false start Started end NotSpecified` | `setVacation` (message through `HTMLText.autoreplyHTML`) | password, delegate | reported |
+| 6 | Transfer Drive & Calendar ownership | `create datatransfer L drive,calendar M all` | `createDataTransfer(privacy: .all)` | password, delegate | the reminder doesn't run |
+| 7 | Remove from everyone's calendars | `all users delete calendaracls primary L` | `removeAllCalendarACLs` | password | reported |
+| 8 | N-day reminder for M | `user M add event primary summary … start allday D end allday D+1 description … [attendee I sendupdates all]` | `addCalendarEvent` | password, delegate, transfer | (last) |
+
+- The argv is `argv.json`'s for each builder (`reset_password`, `deprovision_user`, `forward_off`,
+  `add_delegate`, `set_vacation`, `create_datatransfer`, `remove_all_calendar_acls`, `add_calendar_event`)
+  and `offboarding.json`'s for the routine; `drive,calendar` is one element (a second same-user transfer
+  409s while the first runs).
+- Risk floors (`WriteAction.minimumRisk`): the reset, the revoke, the transfer and the sweep are
+  destructive; the rest low.
+- Only the sweep runs under `GamRunner.domainWideTimeout` (an hour): one call that visits every user.
+- **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
+  `effectiveRequires` routes the others around it (no delegate: the auto-reply and the transfer need only
+  the reset). The reminder says "nothing transferred" when the transfer is left out.
+- **Already done** (any of the eight, for a run again after a failure): not run, counts as succeeded.
+- The plan's `WriteStep`s are the steps that run, each about the leaver (`about["offboard"]`, the
+  transfer also `new_owner`), the reminder targeting the manager, `requires` as indices of the earlier
+  steps that run (a ticked step needs nothing).
+
+### What stops what
+Worked out from `effectiveRequires` for the steps that run (`whatStopsWhat`), not written beside it.
+GamGUI's template sentence went stale twice: it still says a failed delegate stops the routine (the sweep
+stopped needing the delegate on 2026-09-24) and never names forwarding. A deliberate deviation in words;
+the commands are unchanged.
+
+## Grammar check (GAM 7.48.22, `Vendor/gam7/GamCommands.txt`)
+Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
+
+| Step | Grammar line |
+|---|---|
+| Reset password | 5942 `update user <UserItem> [ignorenullpassword] <UserAttribute>*`; 5838 `(password (random …`; 5825 `changepassword` |
+| Revoke | 7901 `<UserTypeEntity> deprovision\|deprov [popimap] [signout] [turnoff2sv]` |
+| Forwarding | 8000 `<UserTypeEntity> forward <FalseValues>` |
+| Delegate | 7912 `<UserTypeEntity> create\|add delegate\|delegates [convertalias] <UserEntity>` |
+| Auto-reply | 8285 `<UserTypeEntity> vacation [<Boolean>] [subject <String>] …` |
+| Transfer | 3598 `create\|add datatransfer\|transfer <OldOwnerID> <DataTransferServiceList> <NewOwnerID>`; 3593 the list is one comma-joined element |
+| Sweep | 6328 `<UserTypeEntity> delete calendaracls <UserCalendarEntity> <CalendarACLRole>] <CalendarACLScopeEntity>` (the lost `[`: the role is optional) |
+| Reminder | 6470 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
+| Delegates read | 7922 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
+
+## Off1, the read-only plan
+- **Can't write, by construction:** `OffboardChanges` takes no executor and never names `Executor`,
+  `preview(`, `run(`, a runner or a confirmation; `OffboardView` has no Run button and no confirm sheet.
+  `offboardingCantWrite` scans both. Its reads go through `DirectoryStore` and `UserAccess`.
+- **A plan belongs to its form and its tenant:** the screen shows it only while the form is the one it
+  was made from ("The form changed since the last plan"), and a domain switch drops it.
+- **The screen:** the leaver and manager completed from the directory (`textInputSuggestions`), subject
+  and message with GamGUI's defaults and a live "Senders will receive" block from the directory as loaded
+  (no read while typing), days (at least one), an optional invitee, five "Doesn't apply" and eight
+  "Already done" toggles (VoiceOver hears "Doesn't apply: Set delegate", "Already done: Reset password"),
+  then the plan: GamGUI's header ("Offboarding L — 8 steps", or "N of 8 steps (k ticked as already done,
+  j left out)"), warnings with a symbol and words, each step with its summary and its `gam` line in
+  selectable monospace (struck through, with why, when it won't run), what stops what, the auto-reply,
+  and the notes (the account stays active; don't delete until the transfer finishes). A banner says
+  "Read-only preview — this build can't run offboarding yet."
+- **Deviations from GamGUI, each deliberate:** the derived "what stops what"; the invitee checked; the
+  live block reads the loaded directory rather than re-reading a stale one; the directory's age is
+  counted from the end of its read (GamGUI's from the start: a read of a minute counts a minute fresher);
+  the words say a delete is "a separate step, later" rather than naming GamGUI's user page.
+
+## Gotchas / mock-lies traps
+- **The mock's per-user reads answer for that user** (`print delegates`: Alice has assistant@ and
+  backup@, Carol has helpdesk@, Bob none), and an address that isn't a user fails as GAM does.
+- **`nogmail/<user>`** (a `GAM_MOCK_STATE` marker) now refuses `print delegates` as GAM 7.48.22 does:
+  "Getting all Delegates for x", then "User: x, Gmail Service/App not enabled", exit 73, the CSV header
+  with no rows (failure-log 2026-10-13, "Gmail off hid a person's groups": the mock answered it before,
+  and the person page hid their groups behind it). Its other refusals exit 1, where GAM's warning exits
+  73; checked against the source for `print delegates` only.
+- The routine's run-time triggers carry over from GamGUI's mock for Off2 (`SIGNOUTFAIL`, `FWDFAIL`,
+  `CONFLICT409`, `OWNACL`, `SWEEPFAIL`, `SWEEPBENIGN`, `SWEEPMIXED`, `SWEEPSLOW`, `*missing*`,
+  `*exists*`). Off1 runs none of them.
+- **Not proven offline:** anything about a real tenant. The plan's lines are argv-identical to GamGUI's,
+  which ran all eight live on 2026-10-07 (GAM 7.48.14); the reminder with an invitee is still unproven
+  live there.
+
+## Testing / live verification
+`swift test --package-path Packages/GamKit --filter "Offboarding|OffboardChanges|MockDelegates"`.
+
+**L1 (read-only, the operator's go):** for the next real leaver L and manager M, enter both in GamGUI's
+Lifecycle page (its preview is read-only) and in Offboard here, then Preview. Every `gam` line must match
+byte for byte. Check: the header says "8 steps"; the leaver in every step and the manager in the delegate,
+the transfer and the reminder; `drive,calendar` one element, then `all`; the auto-reply block reads as
+senders should see it; the reminder's date and invitee; each warning dealt with. Nothing runs.
+
+## Next
+- **Off2:** the routine run through ChangeCore: the plan held as a preview, the operator typing the
+  leaver's address to run it, `requires` honoured, the sweep's tolerated failures, Stop between steps,
+  progress, and the audit's `offboard_plan` when a step is left out. Waits on the onboarding branch
+  (ChangeCore progress and discard) and one adversarial review.
+- **Off3:** the account delete, with GamGUI's pending-transfer warning plus a precondition.
+- Extra read-only warnings, to decide: a transfer already running for L, and the sign-out scope missing
+  from the token.
