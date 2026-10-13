@@ -526,8 +526,8 @@ struct OffboardingTests {
         #expect(Offboarding.vaultHoldsWarning(user: user, holds: .failure(.init("Forbidden")), transferRuns: true)
                 == "Couldn't check carol@example.com for Vault holds (Forbidden). A hold stops the Drive & Calendar transfer and the "
                 + "account's deletion: check in Google Vault.")
-        let row = GamOutput.records("User,holdId,matterId,matterName,name,orgUnitId,orgUnitPath\n"
-                                    + "carol@example.com,h1,m1,Audit,Sales OU,ou1,/Sales\n")
+        let row = GamOutput.records("User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath\n"
+                                    + "carol@example.com,m1,Audit,h1,Sales OU,ou1,/Sales\n")
         #expect(row.map(Offboarding.VaultHold.init(record:)) == [holds[1]])
     }
 

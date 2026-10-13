@@ -43,6 +43,8 @@ public final class OffboardChanges {
         public mutating func apply(_ template: Offboarding.Template) {
             notApplicable = template.leftOut
             added = template.added
+            // A tick on a step this routine no longer has would come back with it, unseen.
+            done.subtract(Set(Offboarding.Step.addable).subtracting(added))
             subject = template.subject
             message = template.message
             days = template.days

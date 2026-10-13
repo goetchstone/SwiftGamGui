@@ -505,8 +505,9 @@ struct OffboardConfirmSheet: View {
                 Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
             }
             Section {
-                if plan.runningRows.contains(where: { $0.key == .password || $0.key == .revoke }) {
-                    Label("The password reset and the sign-out can't be undone.", systemImage: "exclamationmark.triangle.fill")
+                let final = plan.runningRows.filter { [.password, .clearRecovery, .revoke].contains($0.key) }.map { "“\($0.label)”" }
+                if !final.isEmpty {
+                    Label("\(ListFormatter.localizedString(byJoining: final)) can't be undone.", systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
                 }
                 if plan.runningRows.contains(where: { $0.key == .calacls }) {

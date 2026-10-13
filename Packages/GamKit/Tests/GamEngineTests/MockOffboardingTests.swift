@@ -25,6 +25,14 @@ struct MockOffboardingTests {
         return try await mock.runRaw(write.argv, configDirectory: config, extraEnvironment: environment)
     }
 
+    private func read(_ read: GamRead, state: URL? = nil) async throws -> GamResult {
+        let config = try Fixtures.placeholderConfigDirectory()
+        defer { try? FileManager.default.removeItem(at: config) }
+        var environment = Fixtures.mockEnvironment
+        if let state { environment["GAM_MOCK_STATE"] = state.path }
+        return try await mock.runRaw(read.argv, configDirectory: config, extraEnvironment: environment)
+    }
+
     private func transfer(_ old: String, to new: String) -> GamWrite {
         GamCommands.createDataTransfer(oldOwner: old, service: Offboarding.transferServices, newOwner: new,
                                        privacy: Offboarding.transferPrivacy)
@@ -126,5 +134,44 @@ struct MockOffboardingTests {
         #expect(error.lineCounts == [.notFound: 2, .ownACL: 1])
         let suspended = try await run(GamCommands.removeAllCalendarACLs(email: "bob@example.com"))
         #expect(GamError(exitCode: suspended.exitCode, stderr: suspended.stderr).kinds == [.notFound])
+    }
+
+    // MARK: the added steps' commands and reads (docs/plans/2026-10-13-offboarding-options.md)
+
+    /// `update user … gal [<Boolean>]` and empty recovery values: GAM's optional Boolean and its empty strings.
+    @Test func theAddedStepsAreGamsUserAttributes() async throws {
+        #expect(try await run(GamCommands.hideFromDirectory(email: "carol@example.com")).exitCode == 0)
+        #expect(try await run(GamCommands.clearRecovery(email: "carol@example.com")).exitCode == 0)
+    }
+
+    /// printShowUserVaultHolds: its titles in their given order, the header alone for none, a Vault refusal before
+    /// anything prints (exit 50), and a person who isn't a user as the Directory says so (exit 56, with the echo).
+    @Test func vaultHoldsAreGamsShape() async throws {
+        let held = try await read(GamCommands.printVaultHolds(email: "dana@example.com"))
+        #expect(held.exitCode == 0)
+        #expect(lines(held.stdout) == ["User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath",
+                                       "dana@example.com,m_audit,Contract audit,h_mail,Mail and Drive,,"])
+        #expect(lines(try await read(GamCommands.printVaultHolds(email: "carol@example.com")).stdout)
+                == ["User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath"])
+        let nobody = try await read(GamCommands.printVaultHolds(email: "nobody@example.com"))
+        #expect(nobody.exitCode == 56 && nobody.stderr.hasSuffix("ERROR: User: nobody@example.com, Does not exist\n"))
+        try await withState { state in
+            try Data().write(to: state.appending(path: "novault"))
+            let refused = try await read(GamCommands.printVaultHolds(email: "dana@example.com"), state: state)
+            #expect(refused.exitCode == 50 && refused.stderr.hasPrefix("Vault Hold Print Failed: ") && lines(refused.stdout).isEmpty)
+        }
+    }
+
+    /// `ownedsecondary` keeps the calendars the person owns; hidden ones only with `showhidden`, as calendarList.list.
+    @Test func ownedSecondaryCalendarsIncludeHiddenOnlyWhenAsked() async throws {
+        func labels(_ read: GamRead) async throws -> [String] {
+            let result = try await self.read(read)
+            #expect(result.exitCode == 0, "\(result.stderr)")
+            return GamOutput.records(lines(result.stdout).joined(separator: "\n")).map(UserCalendar.init(record:)).map(\.label)
+        }
+        #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "carol@example.com")) == ["Operations", "Old projects"])
+        #expect(try await labels(GamRead(["user", "carol@example.com", "print", "calendars", "ownedsecondary", "fields", "id,summary",
+                                          "formatjson"])) == ["Operations"])
+        #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "alice@example.com")).isEmpty)
     }
 }

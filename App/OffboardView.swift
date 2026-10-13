@@ -372,11 +372,16 @@ private struct StepsSection: View {
         }
     }
 
-    /// On when the step is added.
+    /// On when the step is added. Switched off, its "already done" tick goes too: it would come back with it, unseen.
     private func added(_ step: Offboarding.Step) -> Binding<Bool> {
         Binding(get: { form.added.contains(step) },
                 set: { on in
-                    if on { form.added.insert(step) } else { form.added.remove(step) }
+                    if on {
+                        form.added.insert(step)
+                    } else {
+                        form.added.remove(step)
+                        form.done.remove(step)
+                    }
                 })
     }
 

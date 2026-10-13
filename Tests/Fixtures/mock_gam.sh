@@ -906,20 +906,26 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "datatransfers" ]; then
 fi
 
 # `gam user <u> print vaultholds|holds` (printShowUserVaultHolds, :45612-45690) -> CSV, no formatjson: every
-# open matter's holds that name the person or an org unit above them, `User,holdId,matterId,matterName,name,
-# orgUnitId,orgUnitPath` (sortall), the header alone for none. `vault_holds.csv` holds the rows. A Vault refusal
-# fails the matters' list before anything prints, entityActionFailedWarning, ACTION_FAILED_RC (50): modelled by
-# `$GAM_MOCK_STATE/novault` (approximate wording: GAM prints the API's reason).
+# open matter's holds that name the person or an org unit above them, `User,matterId,matterName,holdId,name,
+# orgUnitId,orgUnitPath` (its titles in their given order: `sortall` re-inserts each as given), the header alone
+# for none. `vault_holds.csv` holds the rows. GAM acts as the admin throughout: it lists the open matters and their
+# holds first, so a Vault refusal fails before anything prints, entityActionFailedWarning "Vault Hold Print Failed:
+# <reason>", ACTION_FAILED_RC (50), modelled by `$GAM_MOCK_STATE/novault` (the reason is the API's; a token
+# whose file names no Vault scope exits 15 earlier); then it reads each person's org units with the Directory, and
+# one who isn't a user ends it: the command echo, "ERROR: User: <u>, Does not exist", ENTITY_DOES_NOT_EXIST_RC
+# (getAllParentOrgUnitsForUser -> entityDoesNotExistExit, :1762-1768, :800-805).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "vaultholds" ] || [ "${4:-}" = "holds" ]; }; then
   user=$(lower "$2"); shift 4
   if [ $# -gt 0 ]; then
     case "$1" in todrive) not_modelled "print vaultholds todrive" ;; *) invalid_arg "$1" ;; esac
   fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/novault" ]; then
-    echo "Vault Hold: , Print Failed: Request had insufficient authentication scopes." 1>&2; exit 50
+    echo "Vault Hold Print Failed: Request had insufficient authentication scopes." 1>&2; exit 50
   fi
-  known_user "$user" || not_a_user "$user" Print
-  echo "User,holdId,matterId,matterName,name,orgUnitId,orgUnitPath"
+  if ! known_user "$user"; then
+    printf 'Command: gam %s\n\nERROR: User: %s, Does not exist\n' "$ARGS" "$user" 1>&2; exit 56
+  fi
+  echo "User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath"
   grep -i "^$user," "$GAM_MOCK_FIXTURES/vault_holds.csv" || true
   exit 0
 fi
