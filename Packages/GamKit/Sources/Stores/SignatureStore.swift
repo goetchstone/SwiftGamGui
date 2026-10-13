@@ -109,28 +109,9 @@ public struct SignatureStore: Sendable {
     /// can't be read or moved aside: a store that opened anyway would save over it.
     public init(root: URL, now: Date = Date()) throws {
         self.root = root
-        let dir = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
-        guard dir >= 0 else {
-            let code = errno
-            guard code == ENOENT else { throw Problem.unreadable(code) }
-            templates = Self.seeded
-            return
-        }
-        defer { close(dir) }
-        do {
-            guard let bytes = try Self.read(Self.fileName, in: dir) else {
-                templates = Self.seeded
-                return
-            }
-            if let saved = Self.templates(in: bytes) {
-                templates = saved
-                return
-            }
-        } catch .failed(let code) {
-            throw Problem.unreadable(code)
-        } catch {}
-        quarantined = try Self.moveAside(in: dir, of: root, now: now)
-        templates = Self.seeded
+        let loaded = try Self.load(Self.fileName, from: root, now: now, parse: Self.templates(in:))
+        templates = loaded.value ?? Self.seeded
+        quarantined = loaded.quarantined
     }
 
     /// The names in GamGUI's order: Python's `sorted`, code point by code point.
@@ -228,7 +209,29 @@ public struct SignatureStore: Sendable {
         return templates
     }
 
-    // MARK: files
+    // MARK: files (the app's own stores share these: offboarding templates too, and GamGUI's roles read with `read`)
+
+    /// What `parse` makes of the file `name` in `root`. Nil, nothing moved, when there's no folder or no file.
+    /// A file `parse` refuses, or one `read` won't read (a link, not a regular file, past `sizeCap`), is moved
+    /// aside and its new place returned. Throws, moving nothing, when the folder or the file can't be read:
+    /// a store that opened anyway would save over it.
+    static func load<T>(_ name: String, from root: URL, now: Date,
+                        parse: ([UInt8]) -> T?) throws(Problem) -> (value: T?, quarantined: URL?) {
+        let dir = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        guard dir >= 0 else {
+            let code = errno
+            guard code == ENOENT else { throw .unreadable(code) }
+            return (nil, nil)
+        }
+        defer { close(dir) }
+        do {
+            guard let bytes = try read(name, in: dir) else { return (nil, nil) }
+            if let value = parse(bytes) { return (value, nil) }
+        } catch .failed(let code) {
+            throw .unreadable(code)
+        } catch {}
+        return (nil, try moveAside(name, in: dir, of: root, now: now))
+    }
 
     /// The file `name` in the open folder `dir`, by descriptor: opened without following a link or
     /// blocking on a FIFO, a regular file under `sizeCap`, read from that same descriptor. Nil when
@@ -263,9 +266,9 @@ public struct SignatureStore: Sendable {
         }
     }
 
-    /// Renames the unreadable file to `signatures.json.unreadable-<UTC time>`, adding `-2`, `-3`… when
-    /// that name is taken: never over another file.
-    static func moveAside(in dir: Int32, of root: URL, now: Date) throws(Problem) -> URL {
+    /// Renames the unreadable file `name` to `<name>.unreadable-<UTC time>`, adding `-2`, `-3`… when that
+    /// name is taken: never over another file.
+    static func moveAside(_ name: String, in dir: Int32, of root: URL, now: Date) throws(Problem) -> URL {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .gmt
         let at = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: now)
@@ -275,23 +278,29 @@ public struct SignatureStore: Sendable {
         }
         let stamp = "\(pad(at.year, 4))-\(pad(at.month))-\(pad(at.day))T\(pad(at.hour))\(pad(at.minute))\(pad(at.second))Z"
         for attempt in 1...100 {
-            let name = "\(fileName).unreadable-\(stamp)" + (attempt == 1 ? "" : "-\(attempt)")
-            if renameatx_np(dir, fileName, dir, name, UInt32(RENAME_EXCL)) == 0 { return root.appending(path: name) }
+            let aside = "\(name).unreadable-\(stamp)" + (attempt == 1 ? "" : "-\(attempt)")
+            if renameatx_np(dir, name, dir, aside, UInt32(RENAME_EXCL)) == 0 { return root.appending(path: aside) }
             guard errno == EEXIST else { throw .notMovedAside(errno) }
         }
         throw .notMovedAside(EEXIST)
     }
 
-    /// Writes `templates` as the whole file, atomically: a new file in the folder, created `0600` after
-    /// the folder is made `0700`, filled and flushed, then renamed over the old one. A failure anywhere
-    /// leaves the old file as it was and removes the new one.
+    /// Writes `templates` as the whole file (`writeFile`).
     private func write(_ templates: JSONObject) throws {
         let file = JSONValue.object(["version": .number(String(Self.format)), "templates": .object(templates)])
-        let bytes = Array((JSONValue.dumps(file) + "\n").utf8)
-        guard bytes.count <= Self.sizeCap else { throw Problem.tooLarge }
-        let dir = try Self.privateFolder(root)
+        try Self.writeFile(Array((JSONValue.dumps(file) + "\n").utf8), named: Self.fileName, in: root, interrupt: interrupt)
+    }
+
+    /// Writes `bytes` as the whole of the file `name` in `root`, atomically: a new file in the folder, created
+    /// `0600` after the folder is made `0700`, filled and flushed, then renamed over the old one. A failure
+    /// anywhere leaves the old file as it was and removes the new one. `interrupt` (tests only) is called with
+    /// the new file when half of it is written; a throw is a failed write.
+    static func writeFile(_ bytes: [UInt8], named name: String, in root: URL,
+                          interrupt: (@Sendable (URL) throws -> Void)?) throws {
+        guard bytes.count <= sizeCap else { throw Problem.tooLarge }
+        let dir = try privateFolder(root)
         defer { close(dir) }
-        let temporary = ".\(Self.fileName).\(UUID().uuidString)"
+        let temporary = ".\(name).\(UUID().uuidString)"
         let fd = openat(dir, temporary, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw Problem.notSaved(errno) }
         var renamed = false
@@ -301,12 +310,12 @@ public struct SignatureStore: Sendable {
             // Exactly 0600 whatever the umask: it can only have narrowed the mode `openat` was given.
             guard fchmod(fd, 0o600) == 0 else { throw Problem.notSaved(errno) }
             let half = bytes.count / 2
-            try Self.writeAll(fd, bytes[..<half])
+            try writeAll(fd, bytes[..<half])
             try interrupt?(root.appending(path: temporary))
-            try Self.writeAll(fd, bytes[half...])
+            try writeAll(fd, bytes[half...])
             guard fcntl(fd, F_FULLFSYNC) == 0 || fsync(fd) == 0 else { throw Problem.notSaved(errno) }
         }
-        guard renameat(dir, temporary, dir, Self.fileName) == 0 else { throw Problem.notSaved(errno) }
+        guard renameat(dir, temporary, dir, name) == 0 else { throw Problem.notSaved(errno) }
         renamed = true
     }
 
