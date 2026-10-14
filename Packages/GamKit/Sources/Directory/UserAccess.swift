@@ -130,6 +130,12 @@ public final class UserAccess {
         await readNow(GamCommands.printOwnedSecondaryCalendars(email: email)) { GamOutput.records($0).map(UserCalendar.init(record:)) }
     }
 
+    /// The person's Gmail filters, read now and not kept: offboarding's "Remove filters that forward" deletes those
+    /// that forward. A failure is GAM's own words (Gmail off for the person, say).
+    public func mailFilters(of email: String) async -> Result<[Offboarding.MailFilter], Problem> {
+        await readNow(GamCommands.printFilters(email: email)) { GamOutput.records($0).map(Offboarding.MailFilter.init(record:)) }
+    }
+
     /// The Vault holds that cover the person, read now and not kept: offboarding's preview warns that a hold stops
     /// the transfer and the delete. A failure is GAM's own words (an admin without Vault access, say).
     public func vaultHolds(of email: String) async -> Result<[Offboarding.VaultHold], Problem> {

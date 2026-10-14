@@ -341,6 +341,9 @@ public final class OffboardChanges {
         async let delegateRead = readsDelegates ? access.delegates(of: user) : nil
         async let calendarRead = access.ownedSecondaryCalendars(of: user)
         async let holdRead = access.vaultHolds(of: user)
+        // Read only when the step would run: it's the step's list, not a warning.
+        let readsFilters = form.added.contains(.forwardingFilters) && !form.done.contains(.forwardingFilters)
+        async let filterRead = readsFilters ? access.mailFilters(of: user) : nil
         if let delegates = await delegateRead?.mapError({ Offboarding.Unread($0.summary) }),
            let warning = Offboarding.delegateWarning(user: user, manager: boss, delegates: delegates) {
             warnings.append(warning)
@@ -351,14 +354,21 @@ public final class OffboardChanges {
                                                       transferRuns: transferRuns) {
             warnings.append(warning)
         }
-        // "Hand over secondary calendars" runs over what this read found: with none, or a failed read, it isn't planned
-        // (the warning says why), and planned, it replaces the warning.
+        // The added steps that work over a list read here run only with something on it: ticked as done, none found or
+        // a failed read, and the step isn't planned. A failed read is said; so is a calendar still owned when its step
+        // won't run (the delete would lose it).
         let owned = await calendarRead.mapError { Offboarding.Unread($0.summary) }
+        var forwarding: [Offboarding.MailFilter] = []
+        switch await filterRead {
+        case .success(let filters)?: forwarding = filters.filter { !$0.forward.isEmpty }
+        case .failure(let problem)?:
+            warnings.append("Couldn't read \(user)'s mail filters (\(problem.summary)): filters that forward mail weren't checked or removed.")
+        case nil: break
+        }
         var adding = form.added
-        if adding.contains(.secondaryCalendars), (try? owned.get())?.isEmpty != false { adding.remove(.secondaryCalendars) }
-        // Hidden only when the step will run: ticked as done while calendars are still owned, it's said.
-        let handsOver = adding.contains(.secondaryCalendars) && !form.done.contains(.secondaryCalendars)
-        if !handsOver, let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
+        if form.done.contains(.secondaryCalendars) || ((try? owned.get()) ?? []).isEmpty { adding.remove(.secondaryCalendars) }
+        if form.done.contains(.forwardingFilters) || forwarding.isEmpty { adding.remove(.forwardingFilters) }
+        if !adding.contains(.secondaryCalendars), let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
             warnings.append(warning)
         }
         if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: adding) {
@@ -375,7 +385,7 @@ public final class OffboardChanges {
                 today: Offboarding.Day(now(), in: calendar), notify: invitee,
                 employeeName: Offboarding.displayName(of: user, in: users),
                 managerContact: Offboarding.managerContact(boss, in: users), notApplicable: form.notApplicable,
-                adding: adding, ownedCalendars: (try? owned.get()) ?? [])
+                adding: adding, ownedCalendars: (try? owned.get()) ?? [], forwardingFilters: forwarding)
         } catch Offboarding.Invalid.outOfRange {
             return refuse("The reminder would fall after the year 9999. Enter fewer days.")
         } catch GamCommands.Invalid.argument(let why) {

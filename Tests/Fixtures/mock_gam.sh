@@ -869,6 +869,61 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "delegates" ]
   exit 0
 fi
 
+# `gam user <u> print filters labelidsonly formatjson` (printShowFilters, :77655-77712) -> CSV, each filter's
+# flattened columns (in GAM's sort order) then its JSON. `user_filters/<u>.csv` is that output as GAM would print it;
+# with GAM_MOCK_STATE, a filter `delete filters` removed is left out (the header stays the fixture's, where GAM keeps
+# only the columns of rows written: the app reads the JSON). None: GAM's titles alone, `User,id`. As the person:
+# "Getting Filters for <u>" first; Gmail off is userGmailServiceNotEnabledWarning, exit 73, then the titles.
+deleted_filter() { [ -n "${GAM_MOCK_STATE:-}" ] && grep -qxF "$2" "$GAM_MOCK_STATE/filters_deleted/$1" 2>/dev/null; }
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "filters" ]; then
+  user=$(lower "$2"); shift 4
+  [ "$*" = "labelidsonly formatjson" ] || not_modelled "print filters with $*"
+  need_user "$user" Print
+  printf 'Getting Filters for %s\n' "$user" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; printf 'User,id\n'; exit 73
+  fi
+  file="$GAM_MOCK_FIXTURES/user_filters/$user.csv"; rows=""
+  if [ -f "$file" ]; then
+    while IFS= read -r row; do
+      id=$(printf '%s' "$row" | cut -d, -f2)
+      deleted_filter "$user" "$id" || rows="$rows$row
+"
+    done <<EOF_ROWS
+$(tail -n +2 "$file")
+EOF_ROWS
+  fi
+  if [ -n "$rows" ]; then head -n 1 "$file"; printf '%s' "$rows"; else printf 'User,id\n'; fi
+  exit 0
+fi
+
+# `gam user <u> delete filters <FilterIDEntity>` (deleteFilters, :77581-77604): "User: <u>, Delete <n> Filter(s)",
+# then each in turn, indented, "User: <u>, Filter: <id>, Deleted (j/n)"; one Gmail doesn't have fails "Delete Failed:
+# Not Found" (the API's words, approximate) and the rest are still deleted, exit 50 at the end.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "filters" ]; then
+  user=$(lower "$2")
+  [ $# -ge 5 ] || missing_arg "FilterIDEntity"
+  [ $# -eq 5 ] || invalid_arg "$6"
+  need_user "$user" Delete
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
+  set -f; ids=$(printf '%s' "$5" | tr ',' ' '); set +f
+  n=$(printf '%s\n' $ids | grep -c . || true); i=0; failed=""
+  if [ "$n" -eq 1 ]; then noun=Filter; else noun=Filters; fi
+  printf 'User: %s, Delete %s %s\n' "$user" "$n" "$noun"
+  for id in $ids; do
+    i=$((i + 1)); of=""; [ "$n" -gt 1 ] && of=" ($i/$n)"
+    if deleted_filter "$user" "$id" || ! grep -q "^[^,]*,$id," "$GAM_MOCK_FIXTURES/user_filters/$user.csv" 2>/dev/null; then
+      printf '  User: %s, Filter: %s, Delete Failed: Not Found%s\n' "$user" "$id" "$of" 1>&2; failed=1; continue
+    fi
+    if [ -n "${GAM_MOCK_STATE:-}" ]; then mkdir -p "$GAM_MOCK_STATE/filters_deleted"; printf '%s\n' "$id" >> "$GAM_MOCK_STATE/filters_deleted/$user"; fi
+    printf '  User: %s, Filter: %s, Deleted%s\n' "$user" "$id" "$of"
+  done
+  [ -z "$failed" ] || exit 50
+  exit 0
+fi
+
 # `gam user <admin> check serviceaccount (scope|scopes <APIScopeURLList>)*`, as the vendored 7.48.11
 # build's checkServiceAccount prints it: `{label:73} PASS`, then each scope checked, sorted, as
 # `  {scope:73} PASS (j/n)`. A scope asked for must be a SERVICE-ACCOUNT scope (lowercased, commas or

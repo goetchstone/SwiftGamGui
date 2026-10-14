@@ -180,6 +180,29 @@ struct MockOffboardingTests {
         #expect(bare.exitCode == 2 && bare.stderr.contains("Invalid choice (alice@example.com): Expected <ownership>"))
     }
 
+    /// printShowFilters and deleteFilters: each filter's JSON; a delete goes through the list, one Gmail doesn't have
+    /// failing with the rest still deleted (exit 50); a deleted filter leaves the next read; Gmail off is exit 73.
+    @Test func filtersAreReadAndDeletedAsGamDoes() async throws {
+        try await withState { state in
+            func forwarding() async throws -> [String] {
+                let result = try await read(GamCommands.printFilters(email: "carol@example.com"), state: state)
+                #expect(result.exitCode == 0, "\(result.stderr)")
+                return GamOutput.records(lines(result.stdout).joined(separator: "\n")).map(Offboarding.MailFilter.init(record:))
+                    .filter { !$0.forward.isEmpty }.map(\.id)
+            }
+            #expect(try await forwarding() == ["ANe1Bmj001", "ANe1Bmj003"])
+            let deleted = try await run(try GamCommands.deleteFilters(email: "carol@example.com", filterIDs: ["ANe1Bmj001", "ANe1Bmjzzz"]),
+                                        state: state)
+            #expect(deleted.exitCode == 50)
+            #expect(lines(deleted.stdout) == ["User: carol@example.com, Delete 2 Filters",
+                                              "  User: carol@example.com, Filter: ANe1Bmj001, Deleted (1/2)"])
+            #expect(try await forwarding() == ["ANe1Bmj003"])
+            try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+            try Data().write(to: state.appending(path: "nogmail/carol@example.com"))
+            #expect(try await read(GamCommands.printFilters(email: "carol@example.com"), state: state).exitCode == 73)
+        }
+    }
+
     /// `ownedsecondary` keeps the calendars the person owns; hidden ones only with `showhidden`, as calendarList.list.
     @Test func ownedSecondaryCalendarsIncludeHiddenOnlyWhenAsked() async throws {
         func labels(_ read: GamRead) async throws -> [String] {
