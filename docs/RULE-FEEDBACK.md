@@ -22,6 +22,18 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-14 — Research fan-out inflated a plan past what was asked
+- **What happened:** asked for four optional offboarding steps and "anything else useful", a 7-agent research
+  workflow and a 12-agent review (about 3M tokens) produced a fifteen-step plan with a new per-item row model. The
+  operator asked for KISS from micro to macro; the plan was cut to what was asked for or prevents a loss, and every
+  step became one GAM command over a list (docs/plans/2026-10-13-offboarding-options.md).
+- **Invariant in force:** the constitution's "KISS" and "Working here economically" sections.
+- **Why it didn't hold:** a session-wide instruction to orchestrate by default outweighed them; breadth of research
+  read as scope.
+- **Would a rule have caught it?** Only if enforced differently: research answers "what could we do", and the plan
+  keeps only what the operator asked for or what prevents a loss, the rest named "not planned unless asked".
+- **Enforcement home if changed:** skill (start-session: scope check before a plan is written).
+
 ## 2026-10-13 — A live-proven routine went stale under a Google policy change
 - **What happened:** GamGUI's delete was confirmed live on 2026-10-08, after its offboarding transferred Drive and
   Calendar. From 2026-10-05 Google deletes a Workspace user's secondary calendars with the account, and the

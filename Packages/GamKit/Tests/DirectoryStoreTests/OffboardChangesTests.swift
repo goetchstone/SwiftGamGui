@@ -362,12 +362,14 @@ final class OffboardChangesTests {
 
     /// A template only fills the form: the operator's Hand-over plans the seven steps of their routine, each
     /// command the one GamGUI's eight-step plan runs for that step, and the sweep left out with its cost.
-    /// A template that doesn't add a step drops its "already done" tick: it would come back with the step, unseen.
-    @Test func applyingATemplateDropsTicksForStepsItDoesntAdd() {
+    /// A step taken off, by its switch or by a template, drops its "already done" tick: it would come back with the
+    /// step, unseen.
+    @Test func takingAnAddedStepOffDropsItsTick() {
         var form = OffboardChanges.Form()
-        (form.added, form.done) = ([.clearRecovery, .hideFromDirectory], [.password, .clearRecovery, .hideFromDirectory])
-        form.apply(Offboarding.Template(added: [.hideFromDirectory]))
-        #expect(form.added == [.hideFromDirectory] && form.done == [.password, .hideFromDirectory])
+        form.added = [.clearRecovery, .hideFromDirectory]
+        form.done = [.password, .clearRecovery, .hideFromDirectory]
+        form.added.remove(.clearRecovery)
+        #expect(form.done == [.password, .hideFromDirectory])
         form.apply(Offboarding.Template())
         #expect(form.added.isEmpty && form.done == [.password])
     }
