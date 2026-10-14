@@ -254,9 +254,9 @@ is the leaver's while a step acts on the leaver, none for the reminder alone; th
 the domain changes mid-run.
 
 ## Next
-- The options plan's next slices (docs/plans/2026-10-13-offboarding-options.md): secondary calendars handed to the
-  manager (`calendars <id> transfer ownership M`: the grammar line 1685 lacks `ownership`, GAM's source needs it),
-  forwarding filters, POP/IMAP, other delegates, forward to the manager, admin roles, transfer options.
+- The options plan's next slices (docs/plans/2026-10-13-offboarding-options.md), each one GAM command over the list
+  the preview read: secondary calendars handed to the manager (`calendars <ids> transfer ownership M`: the grammar
+  line 1685 lacks `ownership`, GAM's source needs it), forwarding filters, then IMAP and POP off.
 - **Close Out** (the operator, 2026-10-13): groups, org unit, suspend, aliases and archive, after the transfer
   finishes, with **Off3**, the account delete (GamGUI's pending-transfer warning plus a precondition; refused
   under a Vault hold or while secondary calendars remain).

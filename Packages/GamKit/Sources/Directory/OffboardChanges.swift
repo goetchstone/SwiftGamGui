@@ -33,8 +33,11 @@ public final class OffboardChanges {
         public var done: Set<Offboarding.Step> = []
         /// Steps left out ("doesn't apply"): not run, and never counted as succeeded. Only the optional ones.
         public var notApplicable: Set<Offboarding.Step> = []
-        /// Native steps added to GamGUI's eight (`Offboarding.Step.addable`).
-        public var added: Set<Offboarding.Step> = []
+        /// Native steps added to GamGUI's eight (`Offboarding.Step.addable`). A step taken off loses its "already
+        /// done" tick: it would come back with the step, unseen.
+        public var added: Set<Offboarding.Step> = [] {
+            didSet { done.subtract(oldValue.subtracting(added)) }
+        }
 
         public init() {}
 
@@ -43,8 +46,6 @@ public final class OffboardChanges {
         public mutating func apply(_ template: Offboarding.Template) {
             notApplicable = template.leftOut
             added = template.added
-            // A tick on a step this routine no longer has would come back with it, unseen.
-            done.subtract(Set(Offboarding.Step.addable).subtracting(added))
             subject = template.subject
             message = template.message
             days = template.days
