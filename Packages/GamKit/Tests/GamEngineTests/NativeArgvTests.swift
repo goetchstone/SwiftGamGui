@@ -59,7 +59,7 @@ struct NativeArgvTests {
     }
 
     @Test func eachFilterDeletedIsOneID() {
-        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["file"] + ["x y"]] {
+        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"]] {
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteFilters(email: "c@example.com", filterIDs: bad) }
         }
     }

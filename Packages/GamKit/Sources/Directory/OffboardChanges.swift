@@ -371,8 +371,9 @@ public final class OffboardChanges {
         if !adding.contains(.secondaryCalendars), let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
             warnings.append(warning)
         }
+        // Said with the warnings: a failed read can be what left nothing to run (review 2026-10-14).
         if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: adding) {
-            return refuse(problem)
+            return refuse(([problem] + warnings).joined(separator: " "))
         }
         // An emptied field runs the default text, as the auto-reply block shows it.
         let subject = form.subject.isEmpty ? Offboarding.defaultSubject : form.subject

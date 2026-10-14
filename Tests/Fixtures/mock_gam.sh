@@ -899,19 +899,21 @@ fi
 
 # `gam user <u> delete filters <FilterIDEntity>` (deleteFilters, :77581-77604): "User: <u>, Delete <n> Filter(s)",
 # then each in turn, indented, "User: <u>, Filter: <id>, Deleted (j/n)"; one Gmail doesn't have fails "Delete Failed:
-# Not Found" (the API's words, approximate) and the rest are still deleted, exit 50 at the end.
+# Not Found" (the API's words, approximate) and the rest are still deleted, exit 50 at the end. An empty list is
+# NO_ENTITIES_FOUND_RC (60) after the count line; Gmail off, the count line, then the indented warning, exit 73.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "filters" ]; then
   user=$(lower "$2")
   [ $# -ge 5 ] || missing_arg "FilterIDEntity"
   [ $# -eq 5 ] || invalid_arg "$6"
   need_user "$user" Delete
-  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
-    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
-  fi
   set -f; ids=$(printf '%s' "$5" | tr ',' ' '); set +f
   n=$(printf '%s\n' $ids | grep -c . || true); i=0; failed=""
   if [ "$n" -eq 1 ]; then noun=Filter; else noun=Filters; fi
   printf 'User: %s, Delete %s %s\n' "$user" "$n" "$noun"
+  [ "$n" -gt 0 ] || exit 60
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf '  User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
   for id in $ids; do
     i=$((i + 1)); of=""; [ "$n" -gt 1 ] && of=" ($i/$n)"
     if deleted_filter "$user" "$id" || ! grep -q "^[^,]*,$id," "$GAM_MOCK_FIXTURES/user_filters/$user.csv" 2>/dev/null; then

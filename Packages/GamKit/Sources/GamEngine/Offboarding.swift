@@ -308,7 +308,7 @@ public enum Offboarding {
                 + "forward mail are not changed",
              GamCommands.forwardOff(email: user)),
             (.forwardingFilters, Step.forwardingFilters.name,
-             "Delete \(user)'s \(forwardingFilters.count) Gmail filter\(forwardingFilters.count == 1 ? "" : "s") that forward mail (to "
+             "Delete \(user)'s \(forwardingFilters.count) Gmail filter\(forwardingFilters.count == 1 ? " that forwards" : "s that forward") mail (to "
                 + "\(targets.joined(separator: ", "))). The whole filter goes, with any other actions it has",
              filterDelete),
             (.delegate, "Set delegate", "Give \(manager) delegate access to \(user)'s mailbox",

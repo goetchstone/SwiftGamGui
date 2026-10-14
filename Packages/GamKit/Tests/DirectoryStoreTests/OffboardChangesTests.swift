@@ -317,6 +317,11 @@ final class OffboardChangesTests {
         let unread = try await self.plan(dana)
         #expect(!unread.rows.contains { $0.key == .forwardingFilters }
                 && unread.warnings.contains { $0.hasPrefix("Couldn't read dana@example.com's mail filters (") })
+        // The only step left, its read failing: refused, and why is said, not just "nothing to run".
+        dana.done = Set(Offboarding.Step.gamgui)
+        let why = try await blocked(dana)
+        #expect(why.hasPrefix("Every step is ticked as already done or left out — there is nothing to run.")
+                && why.contains("Couldn't read dana@example.com's mail filters ("), "\(why)")
     }
 
     /// GAM gets each calendar with the admin's own access first: one the admin can't see fails "Not Found", the rest
@@ -337,7 +342,7 @@ final class OffboardChangesTests {
         var ticked = run.rest
         ticked.done.insert(.secondaryCalendars)
         let blocked = try await blocked(ticked)
-        #expect(blocked == "Every step is ticked as already done or left out — there is nothing to run.")
+        #expect(blocked == "Every step is ticked as already done or left out — there is nothing to run.", "every tick is the operator's")
         ticked.done.remove(.reminder)
         #expect(try await self.plan(ticked).warnings.contains { $0.hasPrefix("carol@example.com owns 1 secondary calendar: “Old projects”") })
     }
