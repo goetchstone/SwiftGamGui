@@ -288,6 +288,7 @@ final class OffboardChangesTests {
         #expect(!again.rows.contains { $0.key == .secondaryCalendars } && !again.warnings.contains { $0.contains("secondary calendar") },
                 "carol owns none now: read again, nothing to hand over")
         // Someone who owns none: not planned, nothing said; a failed read: not planned, said.
+        // (Then the admin-can't-see case, and the tick: `aCalendarTheAdminCantSeeFailsAndTheRestPlansIt`.)
         var dana = self.form("dana@example.com")
         dana.added = [.secondaryCalendars]
         #expect(!(try await self.plan(dana)).rows.contains { $0.key == .secondaryCalendars })
@@ -295,6 +296,29 @@ final class OffboardChangesTests {
         let unread = try await self.plan(dana)
         #expect(!unread.rows.contains { $0.key == .secondaryCalendars }
                 && unread.warnings.contains { $0.hasPrefix("Couldn't check whether dana@example.com owns secondary calendars") })
+    }
+
+    /// GAM gets each calendar with the admin's own access first: one the admin can't see fails "Not Found", the rest
+    /// are handed over, and Preview the Rest reads again and plans only that one. Ticked as done while it's still
+    /// owned, the warning comes back.
+    @Test func aCalendarTheAdminCantSeeFailsAndTheRestPlansIt() async throws {
+        try await connect()
+        try marker("adminhidden/c_archive@group.calendar.google.com")
+        var form = form(notApplicable: [.calacls])
+        form.added = [.secondaryCalendars]
+        let plan = try await plan(form)
+        clock.advance(10)
+        await changes.confirm(plan, typed("carol@example.com"))
+        let run = try #require(changes.run)
+        #expect(!run.isComplete && run.summary.contains("failed: Hand over secondary calendars"), "\(run.summary)")
+        let rest = try await self.plan(run.rest)
+        #expect(lines(rest) == ["gam calendars c_archive@group.calendar.google.com transfer ownership alice@example.com"])
+        var ticked = run.rest
+        ticked.done.insert(.secondaryCalendars)
+        let blocked = try await blocked(ticked)
+        #expect(blocked == "Every step is ticked as already done or left out — there is nothing to run.")
+        ticked.done.remove(.reminder)
+        #expect(try await self.plan(ticked).warnings.contains { $0.hasPrefix("carol@example.com owns 1 secondary calendar: “Old projects”") })
     }
 
     /// Added steps run in their places and the first step's audit names them; a routine of ten or more steps with a

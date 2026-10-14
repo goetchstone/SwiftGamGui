@@ -739,10 +739,12 @@ if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "transfer" ]; then
   [ $# -eq 5 ] || invalid_arg "$6"
   to=$(lower "$5"); failed=""
   set -f; ids=$(printf '%s' "$2" | tr ',' ' '); set +f
-  n=$(printf '%s\n' $ids | grep -c .); i=0
+  n=$(printf '%s\n' $ids | grep -c . || true); i=0
   for id in $ids; do
     i=$((i + 1)); of=""; [ "$n" -gt 1 ] && of=" ($i/$n)"
     owner=$(calendar_owner "$id")
+    # `$GAM_MOCK_STATE/adminhidden/<id>`: a calendar the admin can't see, which validateCalendar's get can't find.
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/adminhidden/$(lower "$id")" ]; then owner=""; fi
     if [ -z "$owner" ]; then
       printf 'Calendar: %s, Transfer Ownership Failed: Not Found%s\n' "$id" "$of" 1>&2; failed=1; continue
     fi

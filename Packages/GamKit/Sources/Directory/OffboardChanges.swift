@@ -356,7 +356,9 @@ public final class OffboardChanges {
         let owned = await calendarRead.mapError { Offboarding.Unread($0.summary) }
         var adding = form.added
         if adding.contains(.secondaryCalendars), (try? owned.get())?.isEmpty != false { adding.remove(.secondaryCalendars) }
-        if !adding.contains(.secondaryCalendars), let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
+        // Hidden only when the step will run: ticked as done while calendars are still owned, it's said.
+        let handsOver = adding.contains(.secondaryCalendars) && !form.done.contains(.secondaryCalendars)
+        if !handsOver, let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
             warnings.append(warning)
         }
         if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: adding) {
@@ -376,6 +378,8 @@ public final class OffboardChanges {
                 adding: adding, ownedCalendars: (try? owned.get()) ?? [])
         } catch Offboarding.Invalid.outOfRange {
             return refuse("The reminder would fall after the year 9999. Enter fewer days.")
+        } catch GamCommands.Invalid.argument(let why) {
+            return refuse("Couldn't plan this offboarding: \(why).")
         } catch {
             return refuse("\(error)")
         }
