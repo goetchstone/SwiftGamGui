@@ -162,6 +162,24 @@ struct MockOffboardingTests {
         }
     }
 
+    /// doCalendarsTransferOwnership: `transfer ownership` only; each calendar in turn, one the admin can't see "Not Found"
+    /// with the rest still done (exit 50); a calendar handed over is no longer the old owner's.
+    @Test func calendarOwnershipIsHandedOverAsGamDoes() async throws {
+        try await withState { state in
+            let write = try GamCommands.transferCalendarOwnership(
+                calendarIDs: ["c_ops@group.calendar.google.com", "c_unknown@group.calendar.google.com"], to: "alice@example.com")
+            let result = try await run(write, state: state)
+            #expect(result.exitCode == 50)
+            #expect(lines(result.stdout) == ["Calendar: c_ops@group.calendar.google.com, Ownership Transferred to: alice@example.com (1/2)"])
+            #expect(result.stderr == "Calendar: c_unknown@group.calendar.google.com, Transfer Ownership Failed: Not Found (2/2)\n")
+            let owned = try await read(GamCommands.printOwnedSecondaryCalendars(email: "carol@example.com"), state: state)
+            #expect(GamOutput.records(lines(owned.stdout).joined(separator: "\n")).map(UserCalendar.init(record:)).map(\.label)
+                    == ["Old projects"])
+        }
+        let bare = try await read(GamRead(["calendars", "c_ops@group.calendar.google.com", "transfer", "alice@example.com"]))
+        #expect(bare.exitCode == 2 && bare.stderr.contains("Invalid choice (alice@example.com): Expected <ownership>"))
+    }
+
     /// `ownedsecondary` keeps the calendars the person owns; hidden ones only with `showhidden`, as calendarList.list.
     @Test func ownedSecondaryCalendarsIncludeHiddenOnlyWhenAsked() async throws {
         func labels(_ read: GamRead) async throws -> [String] {

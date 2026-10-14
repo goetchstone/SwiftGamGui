@@ -13,13 +13,15 @@ public enum Offboarding {
     public enum Step: String, CaseIterable, Sendable {
         case password
         case clearRecovery = "clear_recovery"
-        case revoke, forward, delegate, vacation, transfer, calacls, reminder
+        case revoke, forward, delegate, vacation, transfer
+        case secondaryCalendars = "secondary_calendars"
+        case calacls, reminder
         case hideFromDirectory = "hide_from_directory"
 
         /// GamGUI's eight, in its run order: every routine its fixture holds.
         public static let gamgui: [Step] = [.password, .revoke, .forward, .delegate, .vacation, .transfer, .calacls, .reminder]
         /// The native steps a template may add, in run order. Each runs only when added.
-        public static let addable: [Step] = [.clearRecovery, .hideFromDirectory]
+        public static let addable: [Step] = [.clearRecovery, .secondaryCalendars, .hideFromDirectory]
 
         /// GamGUI's `STEP_NAMES` (and the added steps' own): the step as the form's boxes and the run log name it.
         public var name: String {
@@ -33,6 +35,7 @@ public enum Offboarding {
             case .transfer: "Transfer Drive & Calendar"
             case .calacls: "Remove from everyone's calendars"
             case .reminder: "Manager reminder"
+            case .secondaryCalendars: "Hand over secondary calendars"
             case .hideFromDirectory: "Hide from the directory"
             }
         }
@@ -42,6 +45,8 @@ public enum Offboarding {
             switch self {
             case .clearRecovery: "So “Forgot password?” can't send a code to their own phone or address and undo the reset. "
                 + "The old values aren't kept."
+            case .secondaryCalendars: "Makes the manager the owner of each secondary calendar they own: Google deletes "
+                + "those with the account, and the transfer doesn't move them."
             case .hideFromDirectory: "Colleagues stop being offered their address; mail to it still arrives. Google can "
                 + "take up to a day."
             default: nil
@@ -57,7 +62,7 @@ public enum Offboarding {
             case .transfer: "Drive files and calendars are not transferred: deleting the account loses them."
             case .calacls: "Colleagues' calendars stay shared with the leaver's address."
             case .reminder: "No reminder: nothing prompts the account's deletion later."
-            case .password, .revoke, .forward, .clearRecovery, .hideFromDirectory: nil
+            case .password, .revoke, .forward, .clearRecovery, .secondaryCalendars, .hideFromDirectory: nil
             }
         }
     }
@@ -106,7 +111,7 @@ public enum Offboarding {
     public static func requires(_ step: Step) -> [Step] {
         switch step {
         case .password: []
-        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .hideFromDirectory: [.password]
+        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .secondaryCalendars, .hideFromDirectory: [.password]
         case .vacation, .transfer: [.password, .delegate]
         case .reminder: [.password, .delegate, .transfer]
         }
@@ -241,10 +246,12 @@ public enum Offboarding {
     /// show) with the steps left out (`notApplicable`, only `optionalSteps`) routed around, and the native steps
     /// `adding` names in their places. The caller runs only the steps not left out. `employeeName` and
     /// `managerContact` are the directory's display forms, used only in the auto-reply's text; `manager` is what
-    /// the delegate, the transfer and the reminder act on. With nothing added the steps are GamGUI's, byte for byte.
+    /// the delegate, the transfer and the reminder act on. `ownedCalendars` are what "Hand over secondary calendars"
+    /// hands to the manager: added, it needs at least one. With nothing added the steps are GamGUI's, byte for byte.
     public static func steps(user: String, manager: String, subject: String, message: String, days: Int, today: Day,
                              notify: String = "", employeeName: String = "", managerContact: String = "",
-                             notApplicable: Set<Step> = [], adding: Set<Step> = []) throws -> [Planned] {
+                             notApplicable: Set<Step> = [], adding: Set<Step> = [],
+                             ownedCalendars: [UserCalendar] = []) throws -> [Planned] {
         guard notApplicable.isSubset(of: optionalSteps) else {
             throw Invalid.notOptional("only \(optionalSteps.map(\.rawValue).joined(separator: ", ")) can be left out; "
                 + "the reset, the sign-out and forwarding off always run")
@@ -252,6 +259,12 @@ public enum Offboarding {
         guard adding.isSubset(of: Step.addable) else {
             throw Invalid.notAddable("only \(Step.addable.map(\.rawValue).joined(separator: ", ")) can be added")
         }
+        guard !adding.contains(.secondaryCalendars) || !ownedCalendars.isEmpty else {
+            throw Invalid.notAddable("secondary_calendars needs the calendars to hand over")
+        }
+        // Built only when added: it needs the calendars, and refuses an empty list.
+        let handOver = adding.contains(.secondaryCalendars)
+            ? try GamCommands.transferCalendarOwnership(calendarIDs: ownedCalendars.map(\.calendarID), to: manager) : nil
         let employee = employeeName.isEmpty ? user : employeeName
         let contact = managerContact.isEmpty ? manager : managerContact
         let subject = fillAutoreply(subject, employee: employee, manager: contact)
@@ -263,7 +276,7 @@ public enum Offboarding {
         let reminderDescription = "\(user) was offboarded on \(today.iso) (password reset; \(moved)). When you're sure it's "
             + "safe, tell IT to delete the account."
         let sweepMinutes = minutes(GamRunner.domainWideTimeout)
-        let steps: [(Step, String, String, GamWrite)] = [
+        let steps: [(Step, String, String, GamWrite?)] = [
             (.password, "Reset password",
              "Set \(user)'s password to a random one nobody is shown, so the old password stops working (the mailbox stays live)",
              GamCommands.resetPassword(email: user)),
@@ -288,6 +301,11 @@ public enum Offboarding {
             (.transfer, "Transfer Drive & Calendar ownership",
              "Transfer \(user)'s Drive/Docs (private and shared files) and calendars to \(manager)",
              GamCommands.createDataTransfer(oldOwner: user, service: transferServices, newOwner: manager, privacy: transferPrivacy)),
+            (.secondaryCalendars, Step.secondaryCalendars.name,
+             "Make \(manager) the owner of \(user)'s secondary calendars (\(ownedCalendars.map { "“\($0.label)”" }.joined(separator: ", "))), "
+                + "so deleting the account doesn't delete them. GAM checks each with the admin's own access first: one the admin "
+                + "can't see fails “Not Found” and is handed over in the Admin console",
+             handOver),
             (.calacls, "Remove from everyone's calendars",
              "Remove \(user)'s access to every active user's primary calendar — one domain-wide call that visits every "
                 + "user, so it can take many minutes (stopped and reported failed after \(sweepMinutes) min). Secondary "
@@ -305,10 +323,11 @@ public enum Offboarding {
              GamCommands.hideFromDirectory(email: user)),
         ]
         let routine = routine(adding: adding)
-        return steps.filter { routine.contains($0.0) }.map { key, label, summary, write in
-            Planned(key: key, label: label, summary: summary, write: write,
-                    requires: effectiveRequires(key, notApplicable: notApplicable),
-                    timeout: key == .calacls ? GamRunner.domainWideTimeout : GamRunner.defaultTimeout)
+        return steps.compactMap { key, label, summary, write in
+            guard routine.contains(key), let write else { return nil }
+            return Planned(key: key, label: label, summary: summary, write: write,
+                           requires: effectiveRequires(key, notApplicable: notApplicable),
+                           timeout: key == .calacls ? GamRunner.domainWideTimeout : GamRunner.defaultTimeout)
         }
     }
 
@@ -380,7 +399,8 @@ public enum Offboarding {
                 + (owned.count > 5 ? " and \(owned.count - 5) more" : "")
             return "\(user) owns \(owned.count) secondary calendar\(owned.count == 1 ? "" : "s"): \(named). The Drive & Calendar "
                 + "transfer doesn't move \(owned.count == 1 ? "it" : "them"), and Google deletes \(owned.count == 1 ? "it" : "them") "
-                + "with the account: hand \(owned.count == 1 ? "it" : "each") to someone before the account is deleted."
+                + "with the account: add “\(Step.secondaryCalendars.name)”, or hand \(owned.count == 1 ? "it" : "each") over "
+                + "before the account is deleted."
         }
     }
 

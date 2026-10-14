@@ -611,6 +611,16 @@ acl_file() {  # <calendar key>: the file holding its rules, or nothing when ther
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/acls/$1" ]; then printf '%s' "$GAM_MOCK_STATE/acls/$1"
   elif [ -f "$GAM_MOCK_FIXTURES/calendar_acls/$1.json" ]; then printf '%s' "$GAM_MOCK_FIXTURES/calendar_acls/$1.json"; fi
 }
+# A secondary calendar's owner: the user whose `user_owned_calendars` file lists it, or whoever it was handed to
+# while the mock keeps state; nothing for a calendar the fixtures don't hold.
+calendar_owner() {  # <calendar id>
+  key=$(lower "$1")
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/calendar_owner/$key" ]; then cat "$GAM_MOCK_STATE/calendar_owner/$key"; return; fi
+  file=$(grep -ilF "\"id\": \"$key\"" "$GAM_MOCK_FIXTURES"/user_owned_calendars/*.json 2>/dev/null | head -n 1)
+  [ -n "$file" ] || return 0
+  file=${file##*/}; file=${file%.json}; printf '%s' "${file%.hidden}"
+}
+
 rows_of() {  # <file> <key value>...: each record in the file after the key columns, as GAM's formatjson row
   rows_file=$1; shift
   while IFS= read -r record; do gam_row "$@" "$record"; done < "$rows_file"
@@ -664,7 +674,11 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]
     echo "primaryEmail,calendarId,JSON"
     for file in "$GAM_MOCK_FIXTURES/user_owned_calendars/$user.json" ${hidden:+"$GAM_MOCK_FIXTURES/user_owned_calendars/$user.hidden.json"}; do
       [ -f "$file" ] || continue
-      while IFS= read -r record; do gam_row "$user" "$(json_text id "$record")" "$record"; done < "$file"
+      while IFS= read -r record; do
+        id=$(json_text id "$record")
+        [ "$(calendar_owner "$id")" = "$user" ] || continue   # handed over since (`calendars … transfer ownership`)
+        gam_row "$user" "$id" "$record"
+      done < "$file"
     done
     exit 0
   fi
@@ -708,6 +722,40 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendaracls
   getting "Calendar ACLs" "$user"
   echo "primaryEmail,calendarId,JSON"
   print_acl_rows "$file" "$user" "$user"
+  exit 0
+fi
+
+# `gam calendars <list> transfer ownership <user>` (doCalendarsTransferOwnership, :55992-56014; GamUpdate 7.46.04;
+# the grammar's 1685 lacks `ownership`, which getChoice requires: anything else is an invalid choice). Each calendar
+# in the comma list in turn, "(i/n)" after each line when there's more than one: validateCalendar gets it with the
+# admin's own access first, so one the admin can't see (here: one the fixtures don't hold) fails "Not Found" before
+# any transfer; then transferOwnership as the admin: "Calendar: <id>, Ownership Transferred to: <user>" on stdout.
+# A failure leaves the rest done, ACTION_FAILED_RC (50) at the end. (The new owner's refusal wording is
+# approximate: the API's reason.)
+if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "transfer" ]; then
+  [ $# -ge 4 ] || missing_arg "ownership"
+  [ "$4" = "ownership" ] || invalid_choice "$4" "ownership"
+  [ $# -ge 5 ] || missing_arg "EmailAddress"
+  [ $# -eq 5 ] || invalid_arg "$6"
+  to=$(lower "$5"); failed=""
+  set -f; ids=$(printf '%s' "$2" | tr ',' ' '); set +f
+  n=$(printf '%s\n' $ids | grep -c .); i=0
+  for id in $ids; do
+    i=$((i + 1)); of=""; [ "$n" -gt 1 ] && of=" ($i/$n)"
+    owner=$(calendar_owner "$id")
+    if [ -z "$owner" ]; then
+      printf 'Calendar: %s, Transfer Ownership Failed: Not Found%s\n' "$id" "$of" 1>&2; failed=1; continue
+    fi
+    if ! known_user "$to"; then
+      printf 'Calendar: %s, Transfer Ownership to: %s, Transfer Ownership Failed: Invalid Value%s\n' "$id" "$to" "$of" 1>&2
+      failed=1; continue
+    fi
+    if [ -n "${GAM_MOCK_STATE:-}" ]; then
+      mkdir -p "$GAM_MOCK_STATE/calendar_owner"; printf '%s' "$to" > "$GAM_MOCK_STATE/calendar_owner/$(lower "$id")"
+    fi
+    printf 'Calendar: %s, Ownership Transferred to: %s%s\n' "$id" "$to" "$of"
+  done
+  [ -z "$failed" ] || exit 50
   exit 0
 fi
 

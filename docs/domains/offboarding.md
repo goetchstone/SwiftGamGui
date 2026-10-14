@@ -95,9 +95,15 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   reset): **Clear recovery email & phone** after the reset, `update user L recoveryemail '' recoveryphone ''`
   (`clearRecovery`, destructive: the old values aren't kept; shown and audited masked, as GamGUI masks those
   keywords, so its words say what it does); **Hide from the directory** last, `update user L gal off`
-  (`hideFromDirectory`, low; always the explicit `off`, since a bare `gal` means on). No GamGUI builder:
+  (`hideFromDirectory`, low; always the explicit `off`, since a bare `gal` means on); **Hand over secondary
+  calendars** after the transfer, `calendars <ids> transfer ownership M` (`transferCalendarOwnership`, destructive),
+  one command over the calendars the preview read: GAM hands over each in turn and a failure leaves the rest done;
+  with none owned, or a failed read, it isn't planned and the warning stays; planned, it replaces the warning. The
+  grammar's line 1685 lacks `ownership`; GAM's source (and GamUpdate 7.46.04) requires it. GAM first gets each
+  calendar with the admin's own access, so one the admin can't see fails "Not Found" before any transfer: that one
+  is handed over in the Admin console. No GamGUI builder:
   `NativeArgvTests` holds each exact argv, checked against the grammar (5831, 5842-5843, 5942) and GAM's
-  source. With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
+  source (the calendar handover against the source, not 1685). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
   audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
   `effectiveRequires` routes the others around it (no delegate: the auto-reply and the transfer need only
@@ -220,6 +226,9 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 - **The mock runs these writes as GAM does** (failure-log 2026-10-13, "offboarding mock lies"): a transfer
   resolves its owners (same account, non-user and a second transfer refused as GAM refuses them), a
   suspended user's deprovision exits 51, and the default sweep walks the active directory.
+- **The mock's calendar handover:** `calendars <list> transfer ownership <user>` goes through the list, a calendar
+  the fixtures don't hold failing "Not Found" (the admin can't see it), the rest done, exit 50; with state, a handed-
+  over calendar leaves the old owner's `ownedsecondary` read. A bare `transfer <user>` is GAM's invalid choice.
 - **The mock's native reads:** `user_owned_calendars/<u>.json` (and `<u>.hidden.json`, only with `showhidden`),
   `vault_holds.csv` (dana@ is held), and `GAM_MOCK_STATE/novault` for a Vault refusal (exit 50; GAM's wording
   approximate). `update user … gal [<Boolean>]` is GAM's optional Boolean.
@@ -255,8 +264,7 @@ the domain changes mid-run.
 
 ## Next
 - The options plan's next slices (docs/plans/2026-10-13-offboarding-options.md), each one GAM command over the list
-  the preview read: secondary calendars handed to the manager (`calendars <ids> transfer ownership M`: the grammar
-  line 1685 lacks `ownership`, GAM's source needs it), forwarding filters, then IMAP and POP off.
+  the preview read: forwarding filters, then IMAP and POP off.
 - **Close Out** (the operator, 2026-10-13): groups, org unit, suspend, aliases and archive, after the transfer
   finishes, with **Off3**, the account delete (GamGUI's pending-transfer warning plus a precondition; refused
   under a Vault hold or while secondary calendars remain).

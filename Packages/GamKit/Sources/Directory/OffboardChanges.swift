@@ -351,9 +351,16 @@ public final class OffboardChanges {
                                                       transferRuns: transferRuns) {
             warnings.append(warning)
         }
-        if let warning = Offboarding.secondaryCalendarsWarning(user: user,
-                                                               calendars: await calendarRead.mapError { Offboarding.Unread($0.summary) }) {
+        // "Hand over secondary calendars" runs over what this read found: with none, or a failed read, it isn't planned
+        // (the warning says why), and planned, it replaces the warning.
+        let owned = await calendarRead.mapError { Offboarding.Unread($0.summary) }
+        var adding = form.added
+        if adding.contains(.secondaryCalendars), (try? owned.get())?.isEmpty != false { adding.remove(.secondaryCalendars) }
+        if !adding.contains(.secondaryCalendars), let warning = Offboarding.secondaryCalendarsWarning(user: user, calendars: owned) {
             warnings.append(warning)
+        }
+        if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: adding) {
+            return refuse(problem)
         }
         // An emptied field runs the default text, as the auto-reply block shows it.
         let subject = form.subject.isEmpty ? Offboarding.defaultSubject : form.subject
@@ -366,7 +373,7 @@ public final class OffboardChanges {
                 today: Offboarding.Day(now(), in: calendar), notify: invitee,
                 employeeName: Offboarding.displayName(of: user, in: users),
                 managerContact: Offboarding.managerContact(boss, in: users), notApplicable: form.notApplicable,
-                adding: form.added)
+                adding: adding, ownedCalendars: (try? owned.get()) ?? [])
         } catch Offboarding.Invalid.outOfRange {
             return refuse("The reminder would fall after the year 9999. Enter fewer days.")
         } catch {
@@ -374,7 +381,7 @@ public final class OffboardChanges {
         }
         let block = Offboarding.composeAutoreply(user: user, manager: boss, subject: subject, message: message, directory: users)
         let steps = Self.writeSteps(planned, leaver: user, manager: boss, done: form.done, notApplicable: form.notApplicable,
-                                    added: form.added)
+                                    added: adding)
         // Held as shown: the leaver's address to type, only `requires` stopping a step, and both accounts read
         // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list).
         var preview: HeldPreview?
@@ -415,9 +422,9 @@ public final class OffboardChanges {
         }
         finish(.planned(Plan(
             form: form, leaver: leaving, manager: takingOver,
-            header: Offboarding.header(user: user, done: form.done, notApplicable: form.notApplicable, adding: form.added),
+            header: Offboarding.header(user: user, done: form.done, notApplicable: form.notApplicable, adding: adding),
             warnings: warnings, rows: rows,
-            whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable, adding: form.added),
+            whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable, adding: adding),
             autoreply: form.notApplicable.contains(.vacation) ? nil : Autoreply(subject: block.subject, message: block.message),
             notes: Offboarding.notes(days: days, notApplicable: form.notApplicable), steps: steps, preview: preview)))
         // A plan that arrived after a newer one, or on another tenant, is dropped with its preview.
@@ -537,7 +544,7 @@ public final class OffboardChanges {
         let adds = Offboarding.Step.allCases.filter(added.contains).map(\.rawValue).joined(separator: ",")
         return running.enumerated().map { index, step in
             var about = ["offboard": leaver]
-            if step.key == .transfer { about["new_owner"] = manager }
+            if step.key == .transfer || step.key == .secondaryCalendars { about["new_owner"] = manager }
             if index == 0, !leftOut.isEmpty { about["not_applicable"] = leftOut }
             if index == 0, !adds.isEmpty { about["added"] = adds }
             return WriteStep(step.write, target: step.key == .reminder ? manager : leaver, summary: step.summary,

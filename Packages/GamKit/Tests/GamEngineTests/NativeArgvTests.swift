@@ -18,6 +18,11 @@ struct NativeArgvTests {
         // <CalendarSelectProperty> the same parser loop takes (printShowCalendars), without which hidden ones are missed.
         ("print_owned_secondary_calendars", GamCommands.printOwnedSecondaryCalendars(email: "<email>"),
          ["user", "<email>", "print", "calendars", "ownedsecondary", "showhidden", "fields", "id,summary", "formatjson"]),
+        // 1685 omits `ownership`; GAM's source (CALENDARS_SUBCOMMANDS_WITH_OBJECTS) takes only `transfer ownership`.
+        ("transfer_calendar_ownership",
+         try! GamCommands.transferCalendarOwnership(calendarIDs: ["<id1>@group.calendar.google.com", "<id2>@group.calendar.google.com"],
+                                                    to: "<email>"),
+         ["calendars", "<id1>@group.calendar.google.com,<id2>@group.calendar.google.com", "transfer", "ownership", "<email>"]),
         // 5704 `gam <UserTypeEntity> print vaultholds|holds`: no formatjson; CSV.
         ("print_vault_holds", GamCommands.printVaultHolds(email: "<email>"), ["user", "<email>", "print", "vaultholds"]),
     ]
@@ -33,6 +38,16 @@ struct NativeArgvTests {
         let odd = "a b,c@example.com"
         #expect(GamCommands.clearRecovery(email: odd).argv[2] == odd && GamCommands.clearRecovery(email: odd).argv.count == 7)
         #expect(GamCommands.printVaultHolds(email: odd).argv == ["user", odd, "print", "vaultholds"])
+    }
+
+    /// The list is one element GAM splits on commas: an ID that would split, or isn't a calendar ID, is refused.
+    @Test func eachCalendarHandedOverIsOneID() throws {
+        for bad in [[], ["a@group.calendar.google.com,b@group.calendar.google.com"], ["team"], ["a @group.calendar.google.com"],
+                    ["file"]] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.transferCalendarOwnership(calendarIDs: bad, to: "m@example.com") }
+        }
+        #expect(try GamCommands.transferCalendarOwnership(calendarIDs: ["c@group.calendar.google.com"], to: "m@example.com").action
+                == .transferCalendarOwnership)
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

@@ -71,10 +71,14 @@ struct OffboardingTests {
     private func plan(_ user: String = "leaver@e.com", _ manager: String = "mgr@e.com", subject: String = "s",
                       message: String = "m", days: Int = 30, notify: String = "", employeeName: String = "",
                       managerContact: String = "", notApplicable: Set<Offboarding.Step> = [],
-                      adding: Set<Offboarding.Step> = []) throws -> [Offboarding.Planned] {
+                      adding: Set<Offboarding.Step> = [], ownedCalendars: [UserCalendar] = []) throws -> [Offboarding.Planned] {
         try Offboarding.steps(user: user, manager: manager, subject: subject, message: message, days: days, today: Self.today,
                               notify: notify, employeeName: employeeName, managerContact: managerContact,
-                              notApplicable: notApplicable, adding: adding)
+                              notApplicable: notApplicable, adding: adding, ownedCalendars: ownedCalendars)
+    }
+
+    private func calendar(_ id: String, _ summary: String) -> UserCalendar {
+        UserCalendar(record: ["id": .string(id), "summary": .string(summary)])
     }
 
     // MARK: held to the fixture
@@ -444,9 +448,14 @@ struct OffboardingTests {
 
     /// An added step runs in its place, needs only the reset, and leaves GamGUI's eight exactly as they are.
     @Test func addedStepsRunInTheirPlacesAndChangeNothingElse() throws {
-        let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable))
-        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer, .calacls,
-                                     .reminder, .hideFromDirectory])
+        let owned = [calendar("c_ops@group.calendar.google.com", "Operations"), calendar("c_old@group.calendar.google.com", "Old")]
+        let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable), ownedCalendars: owned)
+        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer,
+                                     .secondaryCalendars, .calacls, .reminder, .hideFromDirectory])
+        let handOver = try #require(added.first { $0.key == .secondaryCalendars })
+        #expect(handOver.write.argv == ["calendars", "c_ops@group.calendar.google.com,c_old@group.calendar.google.com", "transfer",
+                                        "ownership", "alice@example.com"])
+        #expect(handOver.summary.hasPrefix("Make alice@example.com the owner of carol@example.com's secondary calendars (“Operations”, “Old”)"))
         let recovery = try #require(added.first { $0.key == .clearRecovery })
         #expect(recovery.write.argv == ["update", "user", "carol@example.com", "recoveryemail", "", "recoveryphone", ""])
         #expect(recovery.summary.contains("recovery email and recovery phone") && recovery.label == "Clear recovery email & phone")
@@ -463,8 +472,11 @@ struct OffboardingTests {
         }
         // Left-out steps route around as before; an added step can't be left out, nor a GamGUI step added.
         #expect(try plan(notApplicable: [.delegate], adding: [.clearRecovery]).first { $0.key == .vacation }?.requires == [.password])
-        #expect(throws: Offboarding.Invalid.notAddable("only clear_recovery, hide_from_directory can be added")) {
+        #expect(throws: Offboarding.Invalid.notAddable("only clear_recovery, secondary_calendars, hide_from_directory can be added")) {
             try plan(adding: [.calacls])
+        }
+        #expect(throws: Offboarding.Invalid.notAddable("secondary_calendars needs the calendars to hand over")) {
+            try plan(adding: [.secondaryCalendars])
         }
         #expect(throws: Offboarding.Invalid.self) { try plan(notApplicable: [.clearRecovery]) }
     }
@@ -505,7 +517,7 @@ struct OffboardingTests {
         let one = UserCalendar(record: ["id": .string("c_team@group.calendar.google.com"), "summary": .string("Team")])
         #expect(Offboarding.secondaryCalendarsWarning(user: user, calendars: .success([one]))
                 == "carol@example.com owns 1 secondary calendar: “Team”. The Drive & Calendar transfer doesn't move it, and Google "
-                + "deletes it with the account: hand it to someone before the account is deleted.")
+                + "deletes it with the account: add “Hand over secondary calendars”, or hand it over before the account is deleted.")
         let seven = (1...7).map { UserCalendar(record: ["id": .string("c\($0)@group.calendar.google.com"), "summary": .string("")]) }
         let many = Offboarding.secondaryCalendarsWarning(user: user, calendars: .success(seven)) ?? ""
         #expect(many.contains("owns 7 secondary calendars: “c1@group.calendar.google.com”") && many.contains("and 2 more")

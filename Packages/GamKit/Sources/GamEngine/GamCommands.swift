@@ -100,6 +100,18 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "gal", "off"], action: .hideFromDirectory)
     }
 
+    /// Each calendar's owner made `newOwner`, in one command: GAM goes through the list and reports each, a failure
+    /// leaving the rest done (doCalendarsTransferOwnership). `transfer ownership`, not the grammar's bare `transfer`
+    /// (1685 lacks the word; GAM's source and GamUpdate 7.46.04 need it). The list is one <CalendarEntity> element,
+    /// split on commas, so each ID must be one address-shaped calendar ID.
+    public static func transferCalendarOwnership(calendarIDs: [String], to newOwner: String) throws -> GamWrite {
+        guard !calendarIDs.isEmpty,
+              calendarIDs.allSatisfy({ $0.contains("@") && !$0.contains(",") && !$0.contains(where: \.isWhitespace) })
+        else { throw Invalid.argument("each calendar to hand over is one calendar ID") }
+        return GamWrite(["calendars", calendarIDs.joined(separator: ","), "transfer", "ownership", newOwner],
+                        action: .transferCalendarOwnership)
+    }
+
     /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own
     /// calendar list, which leaves hidden entries out unless asked (grammar 6287-6288; printShowCalendars).
     /// Rows `primaryEmail,calendarId,JSON`, the JSON with `id`, `summary` and `dataOwner`.
