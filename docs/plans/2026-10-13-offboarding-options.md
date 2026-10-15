@@ -1,10 +1,10 @@
 # Offboarding options: more steps for templates
 
-**Status (2026-10-14): slices 0 and 1 built (#66); trimmed to KISS.** The operator asked for optional steps in
+**Status (2026-10-14): slices 0-2 built (#66; slice 2, the secondary calendars handed over); trimmed to KISS.** The operator asked for optional steps in
 offboarding templates, approved four (remove from groups, hide from the directory, a former-staff org unit, POP/IMAP
 and 2SV off), then asked what else would be useful. The research's answer grew to fifteen steps and a per-item row
 model; on 2026-10-14 the operator asked for KISS from micro to macro, so this plan keeps what was asked for or
-prevents a real loss, and lists the rest as not planned unless asked. Next: slice 2.
+prevents a real loss, and lists the rest as not planned unless asked. Next: slice 3.
 
 Placeholders: L the leaver, M the manager. Grammar lines are `Vendor/gam7/GamCommands.txt` (GAM 7.48.26).
 
