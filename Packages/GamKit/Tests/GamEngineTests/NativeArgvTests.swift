@@ -23,6 +23,10 @@ struct NativeArgvTests {
          try! GamCommands.transferCalendarOwnership(calendarIDs: ["id1@group.calendar.google.com", "id2@group.calendar.google.com"],
                                                     to: "<email>"),
          ["calendars", "id1@group.calendar.google.com,id2@group.calendar.google.com", "transfer", "ownership", "<email>"]),
+        // 7961-7962 `print filters [labelidsonly] … [formatjson]`; 7957 `delete filters <FilterIDEntity>`.
+        ("print_filters", GamCommands.printFilters(email: "<email>"), ["user", "<email>", "print", "filters", "labelidsonly", "formatjson"]),
+        ("delete_filters", try! GamCommands.deleteFilters(email: "<email>", filterIDs: ["ANe1Bmj1", "ANe1Bmj2"]),
+         ["user", "<email>", "delete", "filters", "ANe1Bmj1,ANe1Bmj2"]),
         // 5704 `gam <UserTypeEntity> print vaultholds|holds`: no formatjson; CSV.
         ("print_vault_holds", GamCommands.printVaultHolds(email: "<email>"), ["user", "<email>", "print", "vaultholds"]),
     ]
@@ -52,6 +56,12 @@ struct NativeArgvTests {
         }
         #expect(try GamCommands.transferCalendarOwnership(calendarIDs: ["c@group.calendar.google.com"], to: "m@example.com").action
                 == .transferCalendarOwnership)
+    }
+
+    @Test func eachFilterDeletedIsOneID() {
+        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"]] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteFilters(email: "c@example.com", filterIDs: bad) }
+        }
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

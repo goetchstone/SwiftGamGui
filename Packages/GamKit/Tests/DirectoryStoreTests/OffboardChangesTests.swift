@@ -298,6 +298,32 @@ final class OffboardChangesTests {
                 && unread.warnings.contains { $0.hasPrefix("Couldn't check whether dana@example.com owns secondary calendars") })
     }
 
+    /// "Remove filters that forward": one command over the filters that forward (not the one that only labels), read
+    /// only when added; run, the next plan finds none and doesn't plan it; Gmail off: not planned, and said.
+    @Test func filtersThatForwardAreRemovedInOneCommand() async throws {
+        try await connect()
+        var form = form(notApplicable: [.calacls])
+        form.added = [.forwardingFilters]
+        let plan = try await plan(form)
+        #expect(plan.rows.map(\.key).prefix(5) == [.password, .revoke, .forward, .forwardingFilters, .delegate])
+        #expect(lines(plan).contains("gam user carol@example.com delete filters ANe1Bmj001,ANe1Bmj003"), "\(lines(plan))")
+        clock.advance(10)
+        await changes.confirm(plan, typed("carol@example.com"))
+        #expect(try #require(changes.run).isComplete)
+        #expect(!(try await self.plan(form)).rows.contains { $0.key == .forwardingFilters }, "none forward now")
+        try marker("nogmail/dana@example.com")
+        var dana = self.form("dana@example.com")
+        dana.added = [.forwardingFilters]
+        let unread = try await self.plan(dana)
+        #expect(!unread.rows.contains { $0.key == .forwardingFilters }
+                && unread.warnings.contains { $0.hasPrefix("Couldn't read dana@example.com's mail filters (") })
+        // The only step left, its read failing: refused, and why is said, not just "nothing to run".
+        dana.done = Set(Offboarding.Step.gamgui)
+        let why = try await blocked(dana)
+        #expect(why.hasPrefix("Every step is ticked as already done or left out — there is nothing to run.")
+                && why.contains("Couldn't read dana@example.com's mail filters ("), "\(why)")
+    }
+
     /// GAM gets each calendar with the admin's own access first: one the admin can't see fails "Not Found", the rest
     /// are handed over, and Preview the Rest reads again and plans only that one. Ticked as done while it's still
     /// owned, the warning comes back.
@@ -316,7 +342,7 @@ final class OffboardChangesTests {
         var ticked = run.rest
         ticked.done.insert(.secondaryCalendars)
         let blocked = try await blocked(ticked)
-        #expect(blocked == "Every step is ticked as already done or left out — there is nothing to run.")
+        #expect(blocked == "Every step is ticked as already done or left out — there is nothing to run.", "every tick is the operator's")
         ticked.done.remove(.reminder)
         #expect(try await self.plan(ticked).warnings.contains { $0.hasPrefix("carol@example.com owns 1 secondary calendar: “Old projects”") })
     }

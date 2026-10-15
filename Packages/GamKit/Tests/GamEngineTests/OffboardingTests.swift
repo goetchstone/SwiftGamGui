@@ -71,10 +71,12 @@ struct OffboardingTests {
     private func plan(_ user: String = "leaver@e.com", _ manager: String = "mgr@e.com", subject: String = "s",
                       message: String = "m", days: Int = 30, notify: String = "", employeeName: String = "",
                       managerContact: String = "", notApplicable: Set<Offboarding.Step> = [],
-                      adding: Set<Offboarding.Step> = [], ownedCalendars: [UserCalendar] = []) throws -> [Offboarding.Planned] {
+                      adding: Set<Offboarding.Step> = [], ownedCalendars: [UserCalendar] = [],
+                      forwardingFilters: [Offboarding.MailFilter] = []) throws -> [Offboarding.Planned] {
         try Offboarding.steps(user: user, manager: manager, subject: subject, message: message, days: days, today: Self.today,
                               notify: notify, employeeName: employeeName, managerContact: managerContact,
-                              notApplicable: notApplicable, adding: adding, ownedCalendars: ownedCalendars)
+                              notApplicable: notApplicable, adding: adding, ownedCalendars: ownedCalendars,
+                              forwardingFilters: forwardingFilters)
     }
 
     private func calendar(_ id: String, _ summary: String) -> UserCalendar {
@@ -449,9 +451,16 @@ struct OffboardingTests {
     /// An added step runs in its place, needs only the reset, and leaves GamGUI's eight exactly as they are.
     @Test func addedStepsRunInTheirPlacesAndChangeNothingElse() throws {
         let owned = [calendar("c_ops@group.calendar.google.com", "Operations"), calendar("c_old@group.calendar.google.com", "Old")]
-        let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable), ownedCalendars: owned)
-        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer,
+        let filters = [Offboarding.MailFilter(id: "F1", forward: "home@example.org"), Offboarding.MailFilter(id: "F2", forward: "home@example.org"),
+                       Offboarding.MailFilter(id: "F3", forward: "accounts@example.com")]
+        let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable), ownedCalendars: owned,
+                             forwardingFilters: filters)
+        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .forwardingFilters, .delegate, .vacation, .transfer,
                                      .secondaryCalendars, .calacls, .reminder, .hideFromDirectory])
+        let filterStep = try #require(added.first { $0.key == .forwardingFilters })
+        #expect(filterStep.write.argv == ["user", "carol@example.com", "delete", "filters", "F1,F2,F3"])
+        #expect(filterStep.summary.hasPrefix("Delete carol@example.com's 3 Gmail filters that forward mail (to home@example.org, "
+                                             + "accounts@example.com)."))
         let handOver = try #require(added.first { $0.key == .secondaryCalendars })
         #expect(handOver.write.argv == ["calendars", "c_ops@group.calendar.google.com,c_old@group.calendar.google.com", "transfer",
                                         "ownership", "alice@example.com"])
@@ -472,12 +481,18 @@ struct OffboardingTests {
         }
         // Left-out steps route around as before; an added step can't be left out, nor a GamGUI step added.
         #expect(try plan(notApplicable: [.delegate], adding: [.clearRecovery]).first { $0.key == .vacation }?.requires == [.password])
-        #expect(throws: Offboarding.Invalid.notAddable("only clear_recovery, secondary_calendars, hide_from_directory can be added")) {
+        #expect(throws: Offboarding.Invalid.notAddable(
+            "only clear_recovery, forwarding_filters, secondary_calendars, hide_from_directory can be added")) {
             try plan(adding: [.calacls])
         }
         #expect(throws: Offboarding.Invalid.notAddable("secondary_calendars needs the calendars to hand over")) {
             try plan(adding: [.secondaryCalendars])
         }
+        #expect(throws: Offboarding.Invalid.notAddable("forwarding_filters needs the filters to remove")) {
+            try plan(adding: [.forwardingFilters])
+        }
+        let record = GamOutput.records(#"User,id,JSON"# + "\n" + #"c@example.com,F9,"{""id"": ""F9"", ""action"": {""forward"": ""x@example.org""}}""#)
+        #expect(record.map(Offboarding.MailFilter.init(record:)) == [Offboarding.MailFilter(id: "F9", forward: "x@example.org")])
         #expect(throws: Offboarding.Invalid.self) { try plan(notApplicable: [.clearRecovery]) }
     }
 

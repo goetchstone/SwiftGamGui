@@ -13,7 +13,9 @@ public enum Offboarding {
     public enum Step: String, CaseIterable, Sendable {
         case password
         case clearRecovery = "clear_recovery"
-        case revoke, forward, delegate, vacation, transfer
+        case revoke, forward
+        case forwardingFilters = "forwarding_filters"
+        case delegate, vacation, transfer
         case secondaryCalendars = "secondary_calendars"
         case calacls, reminder
         case hideFromDirectory = "hide_from_directory"
@@ -21,7 +23,7 @@ public enum Offboarding {
         /// GamGUI's eight, in its run order: every routine its fixture holds.
         public static let gamgui: [Step] = [.password, .revoke, .forward, .delegate, .vacation, .transfer, .calacls, .reminder]
         /// The native steps a template may add, in run order. Each runs only when added.
-        public static let addable: [Step] = [.clearRecovery, .secondaryCalendars, .hideFromDirectory]
+        public static let addable: [Step] = [.clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory]
 
         /// GamGUI's `STEP_NAMES` (and the added steps' own): the step as the form's boxes and the run log name it.
         public var name: String {
@@ -30,6 +32,7 @@ public enum Offboarding {
             case .clearRecovery: "Clear recovery email & phone"
             case .revoke: "Revoke access & sign out"
             case .forward: "Turn off forwarding"
+            case .forwardingFilters: "Remove filters that forward"
             case .delegate: "Set delegate"
             case .vacation: "Auto-reply"
             case .transfer: "Transfer Drive & Calendar"
@@ -45,6 +48,8 @@ public enum Offboarding {
             switch self {
             case .clearRecovery: "So “Forgot password?” can't send a code to their own phone or address and undo the reset. "
                 + "The old values aren't kept."
+            case .forwardingFilters: "Deletes each Gmail filter that forwards their mail: turning forwarding off doesn't stop "
+                + "those. The whole filter goes, with its other actions."
             case .secondaryCalendars: "Makes the manager the owner of each secondary calendar they own: Google deletes "
                 + "those with the account, and the transfer doesn't move them."
             case .hideFromDirectory: "Colleagues stop being offered their address; mail to it still arrives. Google can "
@@ -62,7 +67,7 @@ public enum Offboarding {
             case .transfer: "Drive files and calendars are not transferred: deleting the account loses them."
             case .calacls: "Colleagues' calendars stay shared with the leaver's address."
             case .reminder: "No reminder: nothing prompts the account's deletion later."
-            case .password, .revoke, .forward, .clearRecovery, .secondaryCalendars, .hideFromDirectory: nil
+            case .password, .revoke, .forward, .clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory: nil
             }
         }
     }
@@ -111,7 +116,8 @@ public enum Offboarding {
     public static func requires(_ step: Step) -> [Step] {
         switch step {
         case .password: []
-        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .secondaryCalendars, .hideFromDirectory: [.password]
+        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory:
+            [.password]
         case .vacation, .transfer: [.password, .delegate]
         case .reminder: [.password, .delegate, .transfer]
         }
@@ -247,11 +253,12 @@ public enum Offboarding {
     /// `adding` names in their places. The caller runs only the steps not left out. `employeeName` and
     /// `managerContact` are the directory's display forms, used only in the auto-reply's text; `manager` is what
     /// the delegate, the transfer and the reminder act on. `ownedCalendars` are what "Hand over secondary calendars"
-    /// hands to the manager: added, it needs at least one. With nothing added the steps are GamGUI's, byte for byte.
+    /// hands to the manager, and `forwardingFilters` what "Remove filters that forward" deletes: added, each needs at
+    /// least one. With nothing added the steps are GamGUI's, byte for byte.
     public static func steps(user: String, manager: String, subject: String, message: String, days: Int, today: Day,
                              notify: String = "", employeeName: String = "", managerContact: String = "",
                              notApplicable: Set<Step> = [], adding: Set<Step> = [],
-                             ownedCalendars: [UserCalendar] = []) throws -> [Planned] {
+                             ownedCalendars: [UserCalendar] = [], forwardingFilters: [MailFilter] = []) throws -> [Planned] {
         guard notApplicable.isSubset(of: optionalSteps) else {
             throw Invalid.notOptional("only \(optionalSteps.map(\.rawValue).joined(separator: ", ")) can be left out; "
                 + "the reset, the sign-out and forwarding off always run")
@@ -262,6 +269,12 @@ public enum Offboarding {
         guard !adding.contains(.secondaryCalendars) || !ownedCalendars.isEmpty else {
             throw Invalid.notAddable("secondary_calendars needs the calendars to hand over")
         }
+        guard !adding.contains(.forwardingFilters) || !forwardingFilters.isEmpty else {
+            throw Invalid.notAddable("forwarding_filters needs the filters to remove")
+        }
+        let filterDelete = adding.contains(.forwardingFilters)
+            ? try GamCommands.deleteFilters(email: user, filterIDs: forwardingFilters.map(\.id)) : nil
+        let targets = forwardingFilters.map(\.forward).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         // Built only when added: it needs the calendars, and refuses an empty list.
         let handOver = adding.contains(.secondaryCalendars)
             ? try GamCommands.transferCalendarOwnership(calendarIDs: ownedCalendars.map(\.calendarID), to: manager) : nil
@@ -294,6 +307,10 @@ public enum Offboarding {
              "Turn off automatic forwarding of \(user)'s incoming mail (harmless if it's already off). Gmail filters that "
                 + "forward mail are not changed",
              GamCommands.forwardOff(email: user)),
+            (.forwardingFilters, Step.forwardingFilters.name,
+             "Delete \(user)'s \(forwardingFilters.count) Gmail filter\(forwardingFilters.count == 1 ? " that forwards" : "s that forward") mail (to "
+                + "\(targets.joined(separator: ", "))). The whole filter goes, with any other actions it has",
+             filterDelete),
             (.delegate, "Set delegate", "Give \(manager) delegate access to \(user)'s mailbox",
              GamCommands.addDelegate(email: user, delegate: manager)),
             (.vacation, "Set auto-responder", "Auto-reply — “\(subject)”: \(message)",
@@ -566,6 +583,23 @@ public enum Offboarding {
                 + "account until they finish, or the data not yet transferred is lost.")
         }
         return notes
+    }
+
+    // MARK: Gmail filters
+
+    /// One Gmail filter as `print filters … formatjson` gives it: its ID, and where it forwards mail ("" for none).
+    public struct MailFilter: Sendable, Equatable {
+        public let id: String
+        public let forward: String
+
+        public init(id: String, forward: String = "") {
+            self.id = id
+            self.forward = forward
+        }
+
+        public init(record: GamOutput.Record) {
+            self.init(id: Fields.text(Fields.first(record, "id")), forward: record["action"]?.object?["forward"]?.string ?? "")
+        }
     }
 
     // MARK: Vault

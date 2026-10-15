@@ -116,6 +116,21 @@ public enum GamCommands {
                         action: .transferCalendarOwnership)
     }
 
+    /// The person's Gmail filters, each one's JSON with its `action.forward` (grammar 7961-7962; printShowFilters).
+    /// `labelidsonly` skips the label-name lookup this has no use for.
+    public static func printFilters(email: String) -> GamRead {
+        GamRead(["user", email, "print", "filters", "labelidsonly", "formatjson"])
+    }
+
+    /// The filters deleted in one command: GAM goes through the list, a failure leaving the rest done (grammar 7957;
+    /// deleteFilters). The list is one <FilterIDEntity> element split on commas: each ID is ASCII letters, digits, `-_`.
+    public static func deleteFilters(email: String, filterIDs: [String]) throws -> GamWrite {
+        guard !filterIDs.isEmpty, filterIDs.allSatisfy({ id in
+            !id.isEmpty && id.unicodeScalars.allSatisfy { $0.isASCII && ($0.properties.isAlphabetic || ("0"..."9").contains($0) || $0 == "-" || $0 == "_") }
+        }) else { throw Invalid.argument("each filter to delete is one filter ID") }
+        return GamWrite(["user", email, "delete", "filters", filterIDs.joined(separator: ",")], action: .deleteFilters)
+    }
+
     /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own
     /// calendar list, which leaves hidden entries out unless asked (grammar 6287-6288; printShowCalendars).
     /// Rows `primaryEmail,calendarId,JSON`, the JSON with `id`, `summary` and `dataOwner`.
