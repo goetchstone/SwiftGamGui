@@ -901,10 +901,15 @@ fi
 # then each in turn, indented, "User: <u>, Filter: <id>, Deleted (j/n)"; one Gmail doesn't have fails "Delete Failed:
 # Not Found" (the API's words, approximate) and the rest are still deleted, exit 50 at the end. An empty list is
 # NO_ENTITIES_FOUND_RC (60) after the count line; Gmail off, the count line, then the indented warning, exit 73.
+# Not modelled, so never answered more kindly than GAM: whitespace (Python's split takes more than sh's, and getChoice
+# strips it first) or anything but ASCII letters, digits, `_`, `-` and commas; and a list selector word (file, csv,
+# csvfile, csvkmd, csvsubkey, csvdata, ignoring case, `_` and `-`), which GAM reads a file from (getEntityList).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "filters" ]; then
   user=$(lower "$2")
   [ $# -ge 5 ] || missing_arg "FilterIDEntity"
   [ $# -eq 5 ] || invalid_arg "$6"
+  case "$5" in *[!A-Za-z0-9_,-]*) not_modelled "a filter ID list like $5" ;; esac
+  case "$(lower "$5" | tr -d '_-')" in csvkmd|csvsubkey|csv|csvfile|file|csvdata) not_modelled "delete filters from $5" ;; esac
   need_user "$user" Delete
   set -f; ids=$(printf '%s' "$5" | tr ',' ' '); set +f
   n=$(printf '%s\n' $ids | grep -c . || true); i=0; failed=""

@@ -104,7 +104,11 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   is handed over in the Admin console; **Remove filters that forward** after forwarding off, `user L delete filters
   <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7961) shows
   forwarding (`action.forward`), read only when the step is added: `forward off` doesn't stop them. The whole filter
-  goes, with its other actions (a label, archive); the preview names where each forwarded. An added step that works
+  goes, with its other actions (a label, archive); the preview names where each forwarded. The run reads them again
+  with the two accounts, on the plan's domain, and refuses ("preview again") when they differ from those held: the
+  leaver is signed in until the sign-out and could make another. The ID list is one element, so the builder refuses
+  any ID but ASCII letters, digits, `-` and `_`, and a lone GAM list selector (`file`, `csv`…), which GAM would read a
+  file from. An added step that works
   over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). No GamGUI builder:
   `NativeArgvTests` holds each exact argv, checked against the grammar (5831, 5842-5843, 5942) and GAM's
   source (the calendar handover against the source, not 1685). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
@@ -236,6 +240,7 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 - **The mock's filters:** `user_filters/<u>.csv` is `print filters labelidsonly formatjson` as GAM prints it (carol@
   has two that forward and one that labels); `delete filters` goes through its list, one Gmail doesn't have failing
   "Not Found" with the rest deleted (exit 50), and with state a deleted filter leaves the read; `nogmail/<u>` is exit 73.
+  A list GAM would read differently from sh (whitespace Python splits on, a selector word) isn't modelled.
 - **The mock's native reads:** `user_owned_calendars/<u>.json` (and `<u>.hidden.json`, only with `showhidden`),
   `vault_holds.csv` (dana@ is held), and `GAM_MOCK_STATE/novault` for a Vault refusal (exit 50; GAM's wording
   approximate). `update user … gal [<Boolean>]` is GAM's optional Boolean.

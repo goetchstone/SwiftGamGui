@@ -203,6 +203,15 @@ struct MockOffboardingTests {
         }
     }
 
+    /// A list GAM would read differently from sh is never answered: a selector word reads a file (stripped of whitespace
+    /// first), and Python splits on whitespace sh doesn't (U+001F here).
+    @Test func aFilterListGamWouldReadDifferentlyIsntModelled() async throws {
+        for list in ["csvfile", " file", "FILE\t", "ANe1Bmj001\u{1F}ANe1Bmj003", "a b", "ANe1Bmj001,ANe1Bmj\u{0600}"] {
+            let result = try await read(GamRead(["user", "carol@example.com", "delete", "filters", list]))
+            #expect(result.exitCode == 2 && result.stderr.contains("isn't modelled"), "\(list)")
+        }
+    }
+
     /// `ownedsecondary` keeps the calendars the person owns; hidden ones only with `showhidden`, as calendarList.list.
     @Test func ownedSecondaryCalendarsIncludeHiddenOnlyWhenAsked() async throws {
         func labels(_ read: GamRead) async throws -> [String] {

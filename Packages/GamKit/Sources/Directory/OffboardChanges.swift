@@ -398,10 +398,13 @@ public final class OffboardChanges {
         let steps = Self.writeSteps(planned, leaver: user, manager: boss, done: form.done, notApplicable: form.notApplicable,
                                     added: adding)
         // Held as shown: the leaver's address to type, only `requires` stopping a step, and both accounts read
-        // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list).
+        // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list). So are the
+        // filters that forward when they're deleted: the leaver, signed in until the sign-out, may have made another.
         var preview: HeldPreview?
         if let executor, let domain = tenant.domain {
             let setup = setup
+            let deletesFilters = steps.contains { $0.action == .deleteFilters }
+            let heldFilters = Set(forwarding.map(\.id))
             let precondition: @Sendable () async throws -> Bool = { [access] in
                 let nowLeaving: GamUser, nowTakingOver: GamUser
                 do {
@@ -409,6 +412,12 @@ public final class OffboardChanges {
                     nowTakingOver = try await access.account(boss, in: domain)
                 } catch let problem as UserAccess.Problem {
                     throw PreconditionFailure(problem.summary)
+                }
+                if deletesFilters {
+                    switch await access.mailFilters(of: user, in: domain) {
+                    case .failure(let problem): throw PreconditionFailure(problem.summary)
+                    case .success(let now): guard Set(now.filter { !$0.forward.isEmpty }.map(\.id)) == heldFilters else { return false }
+                    }
                 }
                 // The admin as connected now, not as when the plan was made; unknown refuses.
                 guard let admin = await setup.connectedAdmin, !admin.isEmpty else { return false }
