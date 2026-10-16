@@ -20,8 +20,8 @@ person or takes access away. Onboard sets up one new hire from a role you create
 with a one-time sign-in card, their signature, groups, calendars, a task checklist and a welcome email,
 waiting for Google where it must. Offboard
 runs GamGUI's offboarding for a leaver from a saved template of the steps you run (yours, Hand-over, by
-default), with steps of its own to add (clear their recovery info, remove mail filters that forward, hand their secondary
-calendars to the manager, hide them from the directory) and warnings
+default), with steps of its own to add (clear their recovery info, remove mail filters that forward, turn off IMAP and
+POP, hand their secondary calendars to the manager, hide them from the directory) and warnings
 for what the later delete would lose (their secondary calendars) or a Vault hold would stop: every step's exact
 command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
 left to finish. Reports lists the people behind each of the directory's counts and
@@ -164,6 +164,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Offboarding: clear recovery email & phone, hide from the directory (Offboard, added steps) | not yet: new to both apps |
 | Offboarding: hand over secondary calendars (Offboard, added step) | not yet: new to both apps |
 | Offboarding: remove filters that forward (Offboard, added step) | not yet: new to both apps |
+| Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.

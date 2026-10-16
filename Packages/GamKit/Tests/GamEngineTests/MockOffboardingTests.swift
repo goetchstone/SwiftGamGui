@@ -181,6 +181,43 @@ struct MockOffboardingTests {
         #expect(try await run(GamCommands.clearRecovery(email: "carol@example.com")).exitCode == 0)
     }
 
+    /// setImap and setPop (7.48.26): getBoolean's words for a missing or odd value (usage, exit 2), a person who isn't a
+    /// user refused at the token ("Set Failed", exit 50), Gmail off exit 73; printed as _showImap and _showPop print.
+    @Test func imapAndPopOffAreGamsShape() async throws {
+        let imap = try await run(GamCommands.imapOff(email: "carol@example.com"))
+        #expect(imap.exitCode == 0 && lines(imap.stdout)
+                == ["User: carol@example.com, IMAP Enabled: False, autoExpunge: True, expungeBehavior: archive, maxFolderSize: 0"])
+        let pop = try await run(GamCommands.popOff(email: "carol@example.com"))
+        #expect(pop.exitCode == 0 && lines(pop.stdout) == ["User: carol@example.com, POP Enabled: False"])
+        let bare = try await run(GamWrite(["user", "carol@example.com", "imap"], action: .imapOff))
+        #expect(bare.exitCode == 2 && bare.stderr.hasSuffix("ERROR: Missing argument: Expected <true|false>\n"))
+        let odd = try await run(GamWrite(["user", "carol@example.com", "pop", "of"], action: .popOff))
+        #expect(odd.exitCode == 2 && odd.stderr.hasSuffix("ERROR: Invalid choice (of): Expected <true|false>\n"))
+        let extra = try await run(GamWrite(["user", "carol@example.com", "imap", "off", "for", "allmail"], action: .imapOff))
+        #expect(extra.exitCode == 2 && extra.stderr.contains("ERROR: Invalid argument"), "`for` is POP's")
+        // Review 2026-10-16: an option is matched whole, each setting takes only its own, and the options are read before
+        // the person (a usage error beats the token's).
+        for argv in [["user", "carol@example.com", "imap", "off", "x:noautoexpunge"], ["user", "carol@example.com", "pop", "off", "zz:confirm"],
+                     ["user", "carol@example.com", "pop", "off", "noautoexpunge"], ["user", "nobody@example.com", "pop", "off", "bogus"]] {
+            let refused = try await run(GamWrite(argv, action: .popOff))
+            #expect(refused.exitCode == 2 && refused.stderr.contains("ERROR: Invalid argument"), "\(argv)")
+        }
+        // setPop: `for` overwrites _popDefaults' `disabled`, so this turns POP on.
+        let on = try await run(GamWrite(["user", "carol@example.com", "pop", "off", "for", "allmail"], action: .popOff))
+        #expect(on.exitCode == 0 && lines(on.stdout) == ["User: carol@example.com, POP Enabled: True, For: allMail, Action: leaveInInbox"])
+        let nobody = try await run(GamCommands.popOff(email: "nobody@example.com"))
+        #expect(nobody.exitCode == 50
+                && nobody.stderr == "User: nobody@example.com, User:, Set Failed: invalid_grant: Invalid email or User ID\n")
+        try await withState { state in
+            try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+            try Data().write(to: state.appending(path: "nogmail/carol@example.com"))
+            for write in [GamCommands.imapOff(email: "carol@example.com"), GamCommands.popOff(email: "carol@example.com")] {
+                let off = try await run(write, state: state)
+                #expect(off.exitCode == 73 && off.stderr == "User: carol@example.com, Gmail Service/App not enabled\n")
+            }
+        }
+    }
+
     /// printShowUserVaultHolds: its titles in their given order, the header alone for none, a Vault refusal before
     /// anything prints (exit 50), and a person who isn't a user as the Directory says so (exit 56, with the echo).
     @Test func vaultHoldsAreGamsShape() async throws {

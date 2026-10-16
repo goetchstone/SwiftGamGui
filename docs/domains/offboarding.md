@@ -108,9 +108,14 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   with the two accounts, on the plan's domain, and refuses ("preview again") when they differ from those held: the
   leaver is signed in until the sign-out and could make another. The ID list is one element, so the builder refuses
   any ID but ASCII letters, digits, `-` and `_`, and a lone GAM list selector (`file`, `csv`…), which GAM would read a
-  file from. An added step that works
+  file from. **Turn off IMAP** and
+  **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8372, 8378),
+  two steps with no read. GAM sends its defaults with each (`_imapDefaults`; `_popDefaults`' `leaveInInbox`, so no
+  mail is moved or deleted), and each sets that setting's other values back to Gmail's defaults. Belt and braces (the
+  operator's ask): the reset and the sign-out already cut off the mail apps the leaver had, these stop only IMAP and
+  POP (not the Gmail app), and anyone who can still sign in can turn them back on. An added step that works
   over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). No GamGUI builder:
-  `NativeArgvTests` holds each exact argv, checked against the grammar (5831, 5842-5843, 5942) and GAM's
+  `NativeArgvTests` holds each exact argv, checked against the grammar (5831, 5842-5843, 5942, 8372, 8378) and GAM's
   source (the calendar handover against the source, not 1685). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
   audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
@@ -246,6 +251,13 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   has two that forward and one that labels); `delete filters` goes through its list, one Gmail doesn't have failing
   "Not Found" with the rest deleted (exit 50), and with state a deleted filter leaves the read; `nogmail/<u>` is exit 73.
   A list GAM would read differently from sh (whitespace Python splits on, a selector word) isn't modelled.
+- **The mock's IMAP and POP** (GAM 7.48.26's `setImap`, `setPop`): `user <u> imap|imap4|pop|pop3 <Boolean> …` reads its
+  options first, in `getBoolean`'s words (`Expected <true|false>`), then a person who isn't a user fails at the token
+  ("Set Failed", exit 50) and `nogmail/<u>` is exit 73; printed as `_showImap` and `_showPop` print. Not modeled, for
+  the live check to tell: whether Gmail refuses a person's change when the Admin console already turns IMAP or POP
+  off for their org unit (GAM reports `permissionDenied` as a failure, exit 50).
+  Its options are matched whole (`case "$kind:$1"`, exact patterns): a glob there (`imap*:noautoexpunge`) let
+  `x:noautoexpunge` through, and `pop off for allmail` turns POP on in GAM, as the mock now says (review 2026-10-16).
 - **The mock's native reads:** `user_owned_calendars/<u>.json` (and `<u>.hidden.json`, only with `showhidden`),
   `vault_holds.csv` (dana@ is held), and `GAM_MOCK_STATE/novault` for a Vault refusal (exit 50; GAM's wording
   approximate). `update user … gal [<Boolean>]` is GAM's optional Boolean.
@@ -280,8 +292,6 @@ is the leaver's while a step acts on the leaver, none for the reminder alone; th
 the domain changes mid-run.
 
 ## Next
-- The options plan's next slices (docs/plans/2026-10-13-offboarding-options.md), each one GAM command over the list
-  the preview read: IMAP and POP off.
 - **Close Out** (the operator, 2026-10-13): groups, org unit, suspend, aliases and archive, after the transfer
   finishes, with **Off3**, the account delete (GamGUI's pending-transfer warning plus a precondition; refused
   under a Vault hold or while secondary calendars remain).

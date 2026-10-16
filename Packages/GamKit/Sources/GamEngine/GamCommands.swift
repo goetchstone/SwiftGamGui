@@ -100,6 +100,18 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "gal", "off"], action: .hideFromDirectory)
     }
 
+    /// IMAP off (grammar 8372 `<UserTypeEntity> imap|imap4 <Boolean>`). GAM sends its defaults with it (`_imapDefaults`:
+    /// auto-expunge, archive, no folder limit), which matter only while IMAP is on.
+    public static func imapOff(email: String) -> GamWrite {
+        GamWrite(["user", email, "imap", "off"], action: .imapOff)
+    }
+
+    /// POP off (8378 `<UserTypeEntity> pop|pop3 <Boolean>`). GAM sends `leaveInInbox` with it (`_popDefaults`), so no
+    /// mail is moved or deleted.
+    public static func popOff(email: String) -> GamWrite {
+        GamWrite(["user", email, "pop", "off"], action: .popOff)
+    }
+
     /// Each calendar's owner made `newOwner`, in one command: GAM goes through the list and reports each, a failure
     /// leaving the rest done (doCalendarsTransferOwnership). `transfer ownership`, not the grammar's bare `transfer`
     /// (1685 lacks the word; GAM's source and GamUpdate 7.46.04 need it). The list is one <CalendarEntity> element

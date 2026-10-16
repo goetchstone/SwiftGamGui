@@ -14,6 +14,9 @@ struct NativeArgvTests {
          ["update", "user", "<email>", "recoveryemail", "", "recoveryphone", ""]),
         // 5831 `gal|includeinglobaladdresslist [<Boolean>]`: optional, true when bare, so `off` always.
         ("hide_from_directory", GamCommands.hideFromDirectory(email: "<email>"), ["update", "user", "<email>", "gal", "off"]),
+        // 8372 `<UserTypeEntity> imap|imap4 <Boolean>`, 8378 `pop|pop3 <Boolean>`: required; `off` is getBoolean's.
+        ("imap_off", GamCommands.imapOff(email: "<email>"), ["user", "<email>", "imap", "off"]),
+        ("pop_off", GamCommands.popOff(email: "<email>"), ["user", "<email>", "pop", "off"]),
         // 6287-6288: `ownedsecondary` keeps the calendars the person is dataOwner of; `showhidden` is a
         // <CalendarSelectProperty> the same parser loop takes (printShowCalendars), without which hidden ones are missed.
         ("print_owned_secondary_calendars", GamCommands.printOwnedSecondaryCalendars(email: "<email>"),

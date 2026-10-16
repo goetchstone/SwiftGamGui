@@ -15,6 +15,8 @@ public enum Offboarding {
         case clearRecovery = "clear_recovery"
         case revoke, forward
         case forwardingFilters = "forwarding_filters"
+        case imapOff = "imap_off"
+        case popOff = "pop_off"
         case delegate, vacation, transfer
         case secondaryCalendars = "secondary_calendars"
         case calacls, reminder
@@ -23,7 +25,8 @@ public enum Offboarding {
         /// GamGUI's eight, in its run order: every routine its fixture holds.
         public static let gamgui: [Step] = [.password, .revoke, .forward, .delegate, .vacation, .transfer, .calacls, .reminder]
         /// The native steps a template may add, in run order. Each runs only when added.
-        public static let addable: [Step] = [.clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory]
+        public static let addable: [Step] = [.clearRecovery, .forwardingFilters, .imapOff, .popOff, .secondaryCalendars,
+                                             .hideFromDirectory]
 
         /// GamGUI's `STEP_NAMES` (and the added steps' own): the step as the form's boxes and the run log name it.
         public var name: String {
@@ -33,6 +36,8 @@ public enum Offboarding {
             case .revoke: "Revoke access & sign out"
             case .forward: "Turn off forwarding"
             case .forwardingFilters: "Remove filters that forward"
+            case .imapOff: "Turn off IMAP"
+            case .popOff: "Turn off POP"
             case .delegate: "Set delegate"
             case .vacation: "Auto-reply"
             case .transfer: "Transfer Drive & Calendar"
@@ -50,6 +55,10 @@ public enum Offboarding {
                 + "The old values aren't kept."
             case .forwardingFilters: "Deletes each Gmail filter that forwards their mail: turning forwarding off doesn't stop "
                 + "those. The whole filter goes, with its other actions."
+            case .imapOff: "Belt and braces: the reset and the sign-out already cut off the mail apps they had. With IMAP off, "
+                + "none can download their mail over IMAP."
+            case .popOff: "Belt and braces, as IMAP: no mail app can download their mail over POP. Mail already downloaded "
+                + "stays where it is; nothing in Gmail is deleted."
             case .secondaryCalendars: "Makes the manager the owner of each secondary calendar they own: Google deletes "
                 + "those with the account, and the transfer doesn't move them."
             case .hideFromDirectory: "Colleagues stop being offered their address; mail to it still arrives. Google can "
@@ -67,7 +76,8 @@ public enum Offboarding {
             case .transfer: "Drive files and calendars are not transferred: deleting the account loses them."
             case .calacls: "Colleagues' calendars stay shared with the leaver's address."
             case .reminder: "No reminder: nothing prompts the account's deletion later."
-            case .password, .revoke, .forward, .clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory: nil
+            case .password, .revoke, .forward, .clearRecovery, .forwardingFilters, .imapOff, .popOff, .secondaryCalendars,
+                 .hideFromDirectory: nil
             }
         }
     }
@@ -116,7 +126,8 @@ public enum Offboarding {
     public static func requires(_ step: Step) -> [Step] {
         switch step {
         case .password: []
-        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .forwardingFilters, .secondaryCalendars, .hideFromDirectory:
+        case .revoke, .forward, .delegate, .calacls, .clearRecovery, .forwardingFilters, .imapOff, .popOff, .secondaryCalendars,
+             .hideFromDirectory:
             [.password]
         case .vacation, .transfer: [.password, .delegate]
         case .reminder: [.password, .delegate, .transfer]
@@ -311,6 +322,14 @@ public enum Offboarding {
              "Delete \(user)'s \(forwardingFilters.count) Gmail filter\(forwardingFilters.count == 1 ? " that forwards" : "s that forward") mail (to "
                 + "\(targets.joined(separator: ", "))). The whole filter goes, with any other actions it has",
              filterDelete),
+            (.imapOff, Step.imapOff.name,
+             "Turn off IMAP for \(user): no mail app can download their mail over IMAP (the reset and the sign-out already "
+                + "cut off the ones they had). Their other IMAP settings go back to Gmail's defaults; their mail is unchanged",
+             GamCommands.imapOff(email: user)),
+            (.popOff, Step.popOff.name,
+             "Turn off POP for \(user): no mail app can download their mail over POP. Their POP settings go back to Gmail's "
+                + "defaults; mail already downloaded isn't affected, and nothing in Gmail is deleted",
+             GamCommands.popOff(email: user)),
             (.delegate, "Set delegate", "Give \(manager) delegate access to \(user)'s mailbox",
              GamCommands.addDelegate(email: user, delegate: manager)),
             (.vacation, "Set auto-responder", "Auto-reply — “\(subject)”: \(message)",
