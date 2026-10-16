@@ -115,7 +115,44 @@ struct MockOffboardingTests {
         }
     }
 
-    /// M8: the default sweep is GAM's walk of every active user: the progress lines, each user's header and rule,
+    /// setForward (7.48.26): getBoolean's words for a missing or odd value (usage, exit 2), read before the person; a
+    /// person who isn't a user refused at the token ("Set Failed", exit 50), Gmail off exit 73; printed as _showForward.
+    /// The mock passed `forward off` for anyone before, so the always-run step looked done for a non-user.
+    @Test func forwardIsGamsShape() async throws {
+        let off = try await run(GamCommands.forwardOff(email: "carol@example.com"))
+        #expect(off.exitCode == 0 && lines(off.stdout) == ["User: carol@example.com, Forward Enabled: False"], "\(off.stderr)")
+        let on = try await run(GamCommands.setForward(email: "carol@example.com", address: "x@example.org", action: .delete))
+        #expect(on.exitCode == 0 && lines(on.stdout)
+                == ["User: carol@example.com, Forward Enabled: True, Forwarding Address: x@example.org, Action: trash"])
+        let upper = try await run(GamWrite(["user", "carol@example.com", "forward", "OFF"], action: .forwardOff))
+        #expect(upper.exitCode == 0, "getBoolean lowercases: \(upper.stderr)")
+        let bare = try await run(GamWrite(["user", "carol@example.com", "forward"], action: .forwardOff))
+        #expect(bare.exitCode == 2 && bare.stderr.hasSuffix("ERROR: Missing argument: Expected <true|false>\n"))
+        for argv in [["user", "carol@example.com", "forward", "OF"], ["user", "nobody@example.com", "forward", "of"]] {
+            let odd = try await run(GamWrite(argv, action: .forwardOff))
+            #expect(odd.exitCode == 2 && odd.stderr.hasSuffix("ERROR: Invalid choice (of): Expected <true|false>\n"), "\(argv)")
+        }
+        let noAction = try await run(GamWrite(["user", "carol@example.com", "forward", "on"], action: .setForward))
+        #expect(noAction.exitCode == 2
+                && noAction.stderr.hasSuffix("ERROR: Missing argument: Expected <archive|delete|keep|leaveininbox|markread|trash>\n"))
+        for write in [GamCommands.forwardOff(email: "nobody@example.com"),
+                      GamCommands.setForward(email: "nobody@example.com", address: "x@example.org")] {
+            let nobody = try await run(write)
+            #expect(nobody.exitCode == 50
+                    && nobody.stderr == "User: nobody@example.com, User:, Set Failed: invalid_grant: Invalid email or User ID\n")
+        }
+        try await withState { state in
+            try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+            try Data().write(to: state.appending(path: "nogmail/carol@example.com"))
+            for write in [GamCommands.forwardOff(email: "carol@example.com"),
+                          GamCommands.setForward(email: "carol@example.com", address: "x@example.org")] {
+                let gmailOff = try await run(write, state: state)
+                #expect(gmailOff.exitCode == 73 && gmailOff.stderr == "User: carol@example.com, Gmail Service/App not enabled\n")
+            }
+        }
+    }
+
+    /// M8:the default sweep is GAM's walk of every active user: the progress lines, each user's header and rule,
     /// "Not Found" where they never shared with the leaver and the leaver's own calendar refused, exit 50, every
     /// error line one the sweep tolerates. A leaver who isn't active isn't visited.
     @Test func mockTheDefaultSweepIsGamsShape() async throws {

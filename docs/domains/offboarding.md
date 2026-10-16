@@ -223,10 +223,15 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   with no rows (failure-log 2026-10-13, "Gmail off hid a person's groups": the mock answered it before,
   and the person page hid their groups behind it). Its other refusals exit 1, where GAM's warning exits
   73; checked against the source for `print delegates` only.
-- The routine's run-time triggers carry over from GamGUI's mock (`SIGNOUTFAIL`, `FWDFAIL`, `CONFLICT409`,
+- The routine's run-time triggers carry over from GamGUI's mock (`SIGNOUTFAIL`, `CONFLICT409`,
   `OWNACL`, `SWEEPFAIL`, `SWEEPBENIGN`, `SWEEPMIXED`, `SWEEPSLOW`, `*missing*`, `*exists*`); the model's
   tests use real directory people and `GAM_MOCK_STATE` instead (a delegate already there, a transfer in
   progress), since a trigger address isn't in the directory the checks read.
+- **The mock's `forward`** (GAM 7.48.26's `setForward`): `getBoolean`'s words (`Expected <true|false>`), read before
+  the person; a person who isn't a user fails at the token ("Set Failed", exit 50) and `nogmail/<u>` is exit 73
+  (replacing the unused `FWDFAIL` trigger); printed as `_showForward` prints. Until 2026-10-16 it passed `forward off`
+  for anyone. Stricter than GAM, never looser: GAM ignores a word after `off` and takes `on`'s action and address in
+  any order and case.
 - **The mock runs these writes as GAM does** (failure-log 2026-10-13, "offboarding mock lies"): a transfer
   resolves its owners (same account, non-user and a second transfer refused as GAM refuses them), a
   suspended user's deprovision exits 51, and the default sweep walks the active directory.
