@@ -116,13 +116,25 @@ struct SignatureTests {
         let user = users[0]
         let brackets = String(repeating: "[[{title}", count: 16_000)
         let tags = String(repeating: "<\u{201C}", count: 32_000)
-        let clock = ContinuousClock()
-        let elapsed = clock.measure {
+        let elapsed = Self.threadCPUTime {
             _ = Signature.render(brackets, for: user)
             _ = Signature.smartQuoteWarning(tags)
             _ = Signature.smartQuoteWarning(String(repeating: "<a>", count: 32_000))
         }
         // About 0.1 s in a debug build here; a walk that rescans from each `[[` or `<` takes minutes.
-        #expect(elapsed < .seconds(1), "\(elapsed)")
+        #expect(elapsed > .zero && elapsed < .seconds(1), "\(elapsed)")
+    }
+
+    /// The CPU time this thread spends in `body`: a busy CI runner's other work, which once stretched this 0.1 s to
+    /// 9 s of wall-clock time, doesn't count (failure-log 2026-10-16).
+    private static func threadCPUTime(_ body: () -> Void) -> Duration {
+        func now() -> Duration {
+            var time = timespec()
+            clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time)
+            return .seconds(time.tv_sec) + .nanoseconds(time.tv_nsec)
+        }
+        let start = now()
+        body()
+        return now() - start
     }
 }
