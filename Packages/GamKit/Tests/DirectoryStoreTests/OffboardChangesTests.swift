@@ -324,6 +324,22 @@ final class OffboardChangesTests {
                 && why.contains("Couldn't read dana@example.com's mail filters ("), "\(why)")
     }
 
+    /// The leaver is signed in until the sign-out, so the run reads the filters that forward again before anything runs,
+    /// and refuses with nothing written when they differ from those held (here one is gone; a new one is the same
+    /// comparison). The next plan holds what's there now.
+    @Test func filtersChangedSinceThePlanRefuseTheRun() async throws {
+        try await connect()
+        var form = form(notApplicable: [.calacls])
+        form.added = [.forwardingFilters]
+        let plan = try await plan(form)
+        try marker("filters_deleted/carol@example.com", "ANe1Bmj003\n")
+        clock.advance(10)
+        await changes.confirm(plan, typed("carol@example.com"))
+        #expect(changes.problem == "What the preview showed has changed since — preview again." && changes.run == nil)
+        #expect(writes().isEmpty)
+        #expect(lines(try await self.plan(form)).contains("gam user carol@example.com delete filters ANe1Bmj001"))
+    }
+
     /// GAM gets each calendar with the admin's own access first: one the admin can't see fails "Not Found", the rest
     /// are handed over, and Preview the Rest reads again and plans only that one. Ticked as done while it's still
     /// owned, the warning comes back.
