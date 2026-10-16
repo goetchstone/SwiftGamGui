@@ -33,8 +33,13 @@ an allowlisted environment, a timeout, and capped output capture.
 - **Bump to 7.48.28 (2026-10-16):** its `GamCommands.txt` is byte for byte 7.48.26's, so every cited line holds
   (diff the grammar on each bump: the docs and tests cite its line numbers). The build moved to Python 3.15.0, and
   this Mac's 3.15.0rc2 read its bytecode (the CSV check passed). 7.48.29 was skipped: GAM published it under the tag
-  `20261015.233203` with no `v7.48.29`, which `bump_gam.py` and `fetch_gam.sh`'s `vX.Y.Z` TAG don't take. Wait for
-  GAM's tag rather than loosen the pin.
+  `20261015.233203` with no `v7.48.29` (GAM's build tags each draft by date and the rename was missed), which
+  `bump_gam.py` and `fetch_gam.sh`'s `vX.Y.Z` TAG don't take. GAM's own update check reads that tag too, so its
+  `version checkrc` lost the Version Check section (GAM issue #2010). Wait for GAM's tag rather than loosen the pin.
+- **The pin follows GamGUI's:** `FixtureTests` holds the fixtures' `gam_version` (GamGUI's `EXPECTED_GAM_VERSION`) to
+  `GamVersion.expected`, so this repo bumps to a version only once GamGUI's own bump has merged. `../gamgui` is shared
+  and moves under other work (7.48.28's first run read it mid-bump, stamped with a commit that pinned 7.48.26): run
+  `bump_gam.py` and `gen_fixtures.py` with `--gamgui` set to a clone checked out at GamGUI's merged bump.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
