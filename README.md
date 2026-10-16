@@ -159,12 +159,12 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Subscribe to a calendar (Onboard) | argv-identical |
 | New-account wait: retrying what Google wasn't ready for (Onboard) | never run live (in GamGUI either) |
 | Welcome email (Onboard) | GamGUI's command (sent live 2026-09-30), but the body keeps its line breaks: never run live |
-| Offboarding: reset password, sign out, forwarding off, delegate, auto-reply, transfer, calendar sweep (Offboard) | argv-identical (GamGUI ran all eight live, 2026-10-07) |
-| Offboarding: the manager's reminder with an invitee (Offboard) | argv-identical; the invitee's email unproven live in either app |
-| Offboarding: clear recovery email & phone, hide from the directory (Offboard, added steps) | not yet: new to both apps |
+| Offboarding: reset password, sign out, forwarding off, delegate, auto-reply, transfer, calendar sweep (Offboard) | **confirmed** (2026-10-16; GamGUI ran all eight live, 2026-10-07) |
+| Offboarding: the manager's reminder with an invitee (Offboard) | **confirmed** (2026-10-16): the invitee got the email |
+| Offboarding: clear recovery email & phone, hide from the directory (Offboard, added steps) | **confirmed** (2026-10-16) |
 | Offboarding: hand over secondary calendars (Offboard, added step) | not yet: new to both apps |
 | Offboarding: remove filters that forward (Offboard, added step) | not yet: new to both apps |
-| Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | not yet: new to both apps |
+| Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | **confirmed** (2026-10-16) |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.

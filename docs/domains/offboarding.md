@@ -284,6 +284,12 @@ off, the manager's account switcher offers the mailbox, an outside sender gets t
 `completed`, a colleague's calendar no longer lists L, the reminder on M's calendar (and the invitee's
 email). Mark the README rows confirmed. A failed step: fix the cause, Preview the Rest (a new yes).
 
+**L2 ran on 2026-10-16**, from the app on the operator's tenant: GamGUI's eight plus clear recovery, IMAP and POP off and
+hide from the directory, twelve steps in 66 s, every one succeeded. The sweep took 50 s and exited 50 on the leaver's
+own primary calendar ("Cannot change your own access level"), tolerated as `own_acl`; its `tolerated_kinds` counts
+are in the Audit screen's record, not the CSV export, which keeps GamGUI's columns. Every Google-side check above
+passed, and the reminder's invitee got its email. Not run: the secondary-calendar handover and the filter removal.
+
 **Off2's review (2026-10-13)** found the own-admin check failing open after another domain's failed check, a
 Stop before the first step dropped, a reminder-only rest that couldn't run, and gaps in the tests of the run-time
 re-check; all fixed with tests (failure-log 2026-10-13, "offboarding could offboard its own admin"). The admin
