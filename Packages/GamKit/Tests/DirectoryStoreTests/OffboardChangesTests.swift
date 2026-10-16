@@ -352,16 +352,17 @@ final class OffboardChangesTests {
     @Test func addedStepsRunAndALongRoutineNeedsConfirmTyped() async throws {
         try await connect()
         var form = form()
-        form.added = [.clearRecovery, .hideFromDirectory]
+        form.added = [.clearRecovery, .imapOff, .popOff, .hideFromDirectory]
         let plan = try await plan(form)
-        #expect(plan.header == "Offboarding carol@example.com — 10 steps")
-        #expect(plan.rows.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .delegate, .vacation, .transfer, .calacls,
-                                         .reminder, .hideFromDirectory])
+        #expect(plan.header == "Offboarding carol@example.com — 12 steps")
+        #expect(plan.rows.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .imapOff, .popOff, .delegate, .vacation, .transfer,
+                                         .calacls, .reminder, .hideFromDirectory])
         // Masked, as GamGUI masks these keywords' values, though they're empty: the step's words say what it does.
         #expect(lines(plan)[1] == "gam update user carol@example.com recoveryemail '***redacted***' recoveryphone '***redacted***'")
+        #expect(lines(plan)[4] == "gam user carol@example.com imap off" && lines(plan)[5] == "gam user carol@example.com pop off")
         #expect(lines(plan).last?.hasSuffix("update user carol@example.com gal off") == true)
-        #expect(plan.steps[1].requires == [0] && plan.steps.last?.requires == [0])
-        #expect(plan.steps[0].about["added"] == "clear_recovery,hide_from_directory" && plan.steps[1].about["added"] == nil)
+        #expect([1, 4, 5, 11].allSatisfy { plan.steps[$0].requires == [0] })
+        #expect(plan.steps[0].about["added"] == "clear_recovery,imap_off,pop_off,hide_from_directory" && plan.steps[1].about["added"] == nil)
         #expect(plan.preview?.decision.requiresTypedConfirmation == true)
         await changes.confirm(plan, typed("carol@example.com"))
         #expect(changes.problem == "Type confirm to run this destructive bulk change." && changes.run == nil && writes().isEmpty)

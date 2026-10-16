@@ -1390,6 +1390,64 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "forward" ]; then
   exit 0
 fi
 
+# `gam user <email> imap|imap4 <Boolean> [noautoexpunge] [expungebehavior archive|deleteforever|trash]
+#  [maxfoldersize 0|1000|2000|5000|10000]` (8372) / `pop|pop3 <Boolean> [for allmail|newmail|mailfromnowon|fromnowon]
+#  [action keep|leaveininbox|archive|delete|trash|markread]` (8378). GAM's setImap and setPop (7.48.26): the options
+# first, then per user a token (not_a_user, "Set Failed") and one Gmail settings call, Gmail off its
+# userGmailServiceNotEnabledWarning (exit 73); printed as _showImap and _showPop print the settings Gmail returns.
+if [ "${1:-}" = "user" ] && case "${3:-}" in imap|imap4|pop|pop3) true ;; *) false ;; esac; then
+  user=$2; setting=$3
+  [ $# -ge 4 ] || missing_arg "true|false"
+  boolean=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
+  case "$boolean" in
+    true|on|yes|enabled|1) enabled=True ;;
+    false|off|no|disabled|0) enabled=False ;;
+    *) invalid_choice "$boolean" "true|false" ;;
+  esac
+  # _popDefaults: `disabled` when off; `for` overwrites it, so `pop off for allmail` turns POP on, as in GAM.
+  expunge=True; behavior=archive; size=0; disposition=leaveInInbox
+  if [ "$enabled" = True ]; then window=allMail; else window=disabled; fi
+  case "$setting" in imap*) kind=imap ;; *) kind=pop ;; esac
+  shift 4
+  while [ $# -gt 0 ]; do
+    # Exact patterns: a glob here would let `x:noautoexpunge` through.
+    case "$kind:$1" in
+      imap:noautoexpunge) expunge=False; shift ;;
+      imap:expungebehavior)
+        [ $# -ge 2 ] || missing_arg "archive|deleteforever|trash"
+        case "$2" in archive|trash) behavior=$2 ;; deleteforever) behavior=deleteForever ;;
+          *) invalid_choice "$2" "archive|deleteforever|trash" ;; esac
+        shift 2 ;;
+      imap:maxfoldersize)
+        [ $# -ge 2 ] || missing_arg "0|1000|2000|5000|10000"
+        case "$2" in 0|1000|2000|5000|10000) size=$2 ;; *) invalid_choice "$2" "0|1000|2000|5000|10000" ;; esac
+        shift 2 ;;
+      pop:for)
+        [ $# -ge 2 ] || missing_arg "allmail|fromnowon|mailfromnowon|newmail"
+        case "$2" in allmail) window=allMail ;; fromnowon|mailfromnowon|newmail) window=fromNowOn ;;
+          *) invalid_choice "$2" "allmail|fromnowon|mailfromnowon|newmail" ;; esac
+        shift 2 ;;
+      pop:action)
+        [ $# -ge 2 ] || missing_arg "archive|delete|keep|leaveininbox|markread|trash"
+        case "$2" in archive) disposition=archive ;; delete|trash) disposition=trash ;; keep|leaveininbox) disposition=leaveInInbox ;;
+          markread) disposition=markRead ;; *) invalid_choice "$2" "archive|delete|keep|leaveininbox|markread|trash" ;; esac
+        shift 2 ;;
+      pop:confirm) shift ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  known_user "$user" || not_a_user "$user" Set
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
+  case "$kind" in
+    imap) echo "User: $user, IMAP Enabled: $enabled, autoExpunge: $expunge, expungeBehavior: $behavior, maxFolderSize: $size" ;;
+    *) if [ "$window" != disabled ]; then echo "User: $user, POP Enabled: True, For: $window, Action: $disposition"
+       else echo "User: $user, POP Enabled: False"; fi ;;
+  esac
+  exit 0
+fi
+
 # `gam create|add alias|aliases <EmailAddressEntity> user|group|target <UniqueID>|<EmailAddress>
 #  [verifynotinvitable]` / `gam delete alias|aliases [user|group|target] <EmailAddressEntity>`
 if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "alias" ] || [ "${2:-}" = "aliases" ]; }; then

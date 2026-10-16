@@ -455,8 +455,8 @@ struct OffboardingTests {
                        Offboarding.MailFilter(id: "F3", forward: "accounts@example.com")]
         let added = try plan("carol@example.com", "alice@example.com", adding: Set(Offboarding.Step.addable), ownedCalendars: owned,
                              forwardingFilters: filters)
-        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .forwardingFilters, .delegate, .vacation, .transfer,
-                                     .secondaryCalendars, .calacls, .reminder, .hideFromDirectory])
+        #expect(added.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .forwardingFilters, .imapOff, .popOff, .delegate,
+                                     .vacation, .transfer, .secondaryCalendars, .calacls, .reminder, .hideFromDirectory])
         let filterStep = try #require(added.first { $0.key == .forwardingFilters })
         #expect(filterStep.write.argv == ["user", "carol@example.com", "delete", "filters", "F1,F2,F3"])
         #expect(filterStep.summary.hasPrefix("Delete carol@example.com's 3 Gmail filters that forward mail (to home@example.org, "
@@ -470,6 +470,10 @@ struct OffboardingTests {
         #expect(recovery.summary.contains("recovery email and recovery phone") && recovery.label == "Clear recovery email & phone")
         let hide = try #require(added.first { $0.key == .hideFromDirectory })
         #expect(hide.write.argv == ["update", "user", "carol@example.com", "gal", "off"] && hide.label == "Hide from the directory")
+        let imap = try #require(added.first { $0.key == .imapOff }), pop = try #require(added.first { $0.key == .popOff })
+        #expect(imap.write.argv == ["user", "carol@example.com", "imap", "off"] && imap.label == "Turn off IMAP")
+        #expect(pop.write.argv == ["user", "carol@example.com", "pop", "off"] && pop.label == "Turn off POP")
+        #expect(imap.summary.hasPrefix("Turn off IMAP for carol@example.com: no mail app") && pop.summary.contains("nothing in Gmail is deleted"))
         for step in added where Offboarding.Step.addable.contains(step.key) {
             #expect(step.requires == [.password] && step.timeout == GamRunner.defaultTimeout, "\(step.key)")
         }
@@ -482,7 +486,7 @@ struct OffboardingTests {
         // Left-out steps route around as before; an added step can't be left out, nor a GamGUI step added.
         #expect(try plan(notApplicable: [.delegate], adding: [.clearRecovery]).first { $0.key == .vacation }?.requires == [.password])
         #expect(throws: Offboarding.Invalid.notAddable(
-            "only clear_recovery, forwarding_filters, secondary_calendars, hide_from_directory can be added")) {
+            "only clear_recovery, forwarding_filters, imap_off, pop_off, secondary_calendars, hide_from_directory can be added")) {
             try plan(adding: [.calacls])
         }
         #expect(throws: Offboarding.Invalid.notAddable("secondary_calendars needs the calendars to hand over")) {
