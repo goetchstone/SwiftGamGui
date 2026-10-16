@@ -131,9 +131,10 @@ public final class UserAccess {
     }
 
     /// The person's Gmail filters, read now and not kept: offboarding's "Remove filters that forward" deletes those
-    /// that forward. A failure is GAM's own words (Gmail off for the person, say).
-    public func mailFilters(of email: String) async -> Result<[Offboarding.MailFilter], Problem> {
-        await readNow(GamCommands.printFilters(email: email)) { GamOutput.records($0).map(Offboarding.MailFilter.init(record:)) }
+    /// that forward, and its run reads them again on the plan's `domain` first. A failure is GAM's own words (Gmail off
+    /// for the person, say).
+    public func mailFilters(of email: String, in domain: Domain? = nil) async -> Result<[Offboarding.MailFilter], Problem> {
+        await readNow(GamCommands.printFilters(email: email), in: domain) { GamOutput.records($0).map(Offboarding.MailFilter.init(record:)) }
     }
 
     /// The Vault holds that cover the person, read now and not kept: offboarding's preview warns that a hold stops
@@ -142,9 +143,9 @@ public final class UserAccess {
         await readNow(GamCommands.printVaultHolds(email: email)) { GamOutput.records($0).map(Offboarding.VaultHold.init(record:)) }
     }
 
-    /// `read` run now as the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
-    private func readNow<T>(_ read: GamRead, parse: (String) -> T) async -> Result<T, Problem> {
-        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+    /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
+    private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, parse: (String) -> T) async -> Result<T, Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
         do {
             let result = try await runner.run(read, as: domain, extraEnvironment: environment)
             guard result.exitCode == 0 else {

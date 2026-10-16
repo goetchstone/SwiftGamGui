@@ -23,7 +23,7 @@
 # group, calendar, event or delegate (on `create user`'s org unit, GAM's "Invalid Organizational Unit");
 # *exists* -> GAM's "Create Failed: Duplicate" on create, and "already exists" on a delegate add;
 # plus USERLIMIT (no license left for a new account), SENDFAIL, SUBFAIL, CONFLICT409,
-# FAILME, OWNACL, SWEEPFAIL, SWEEPBENIGN, SWEEPMIXED, SWEEPSLOW, SIGNOUTFAIL, FWDFAIL, INFOREFUSED (see each handler). The stderr wording
+# FAILME, OWNACL, SWEEPFAIL, SWEEPBENIGN, SWEEPMIXED, SWEEPSLOW, SIGNOUTFAIL, INFOREFUSED (see each handler). The stderr wording
 # and exit codes are GAM7's shape (2 usage error, 50 action failed, 51 action not performed, 56 does
 # not exist) written from its source conventions, not captured from a tenant — only a live capture
 # (plan Phase 8) proves them.
@@ -901,10 +901,15 @@ fi
 # then each in turn, indented, "User: <u>, Filter: <id>, Deleted (j/n)"; one Gmail doesn't have fails "Delete Failed:
 # Not Found" (the API's words, approximate) and the rest are still deleted, exit 50 at the end. An empty list is
 # NO_ENTITIES_FOUND_RC (60) after the count line; Gmail off, the count line, then the indented warning, exit 73.
+# Not modelled, so never answered more kindly than GAM: whitespace (Python's split takes more than sh's, and getChoice
+# strips it first) or anything but ASCII letters, digits, `_`, `-` and commas; and a list selector word (file, csv,
+# csvfile, csvkmd, csvsubkey, csvdata, ignoring case, `_` and `-`), which GAM reads a file from (getEntityList).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "filters" ]; then
   user=$(lower "$2")
   [ $# -ge 5 ] || missing_arg "FilterIDEntity"
   [ $# -eq 5 ] || invalid_arg "$6"
+  case "$5" in *[!A-Za-z0-9_,-]*) not_modelled "a filter ID list like $5" ;; esac
+  case "$(lower "$5" | tr -d '_-')" in csvkmd|csvsubkey|csv|csvfile|file|csvdata) not_modelled "delete filters from $5" ;; esac
   need_user "$user" Delete
   set -f; ids=$(printf '%s' "$5" | tr ',' ' '); set +f
   n=$(printf '%s\n' $ids | grep -c . || true); i=0; failed=""
@@ -1367,26 +1372,37 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "add" ] || [ "${3:-}" = "create" ]; }
   exit 0
 fi
 
-# `gam user <email> forward <FalseValues>` / `forward <TrueValues> <action> <EmailAddress>`
+# `gam user <email> forward <FalseValues>` / `forward <TrueValues> <action> <EmailAddress>` (8000-8001). GAM's
+# setForward (7.48.26): getBoolean first, then per user a token (not_a_user, "Set Failed") and one Gmail settings
+# call, Gmail off its userGmailServiceNotEnabledWarning (exit 73); printed as _showForward prints what Gmail returns.
+# Stricter than GAM, never looser: GAM strips the Boolean, ignores a word after `off`, and takes `on`'s action and address in any order
+# and case (so a bad action is the mock's own invalid choice; GAM reads a lone word as the address).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "forward" ]; then
-  [ -n "${4:-}" ] || missing_arg "Boolean"
-  case "$4" in
-    false|off|no|disabled|0) [ $# -eq 4 ] || invalid_arg "$5" ;;
+  user=$2
+  [ $# -ge 4 ] || missing_arg "true|false"
+  boolean=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
+  case "$boolean" in
+    false|off|no|disabled|0) [ $# -eq 4 ] || invalid_arg "$5"; shown="Forward Enabled: False" ;;
     true|on|yes|enabled|1)
-      actions="keep|leaveininbox|archive|delete|trash|markread"
+      actions="archive|delete|keep|leaveininbox|markread|trash"  # formatChoiceList sorts more than five
       case "${5:-}" in
-        keep|leaveininbox|archive|delete|trash|markread) ;;
+        keep|leaveininbox) disposition=leaveInInbox ;;
+        archive) disposition=archive ;;
+        delete|trash) disposition=trash ;;
+        markread) disposition=markRead ;;
         "") missing_arg "$actions" ;;
         *) invalid_choice "$5" "$actions" ;;
       esac
       [ -n "${6:-}" ] || missing_arg "EmailAddress"
-      [ $# -eq 6 ] || invalid_arg "$7" ;;
-    *) invalid_choice "$4" "true|on|yes|enabled|1|false|off|no|disabled|0" ;;
+      [ $# -eq 6 ] || invalid_arg "$7"
+      shown="Forward Enabled: True, Forwarding Address: $6, Action: $disposition" ;;
+    *) invalid_choice "$boolean" "true|false" ;;
   esac
-  check_exists "User" "$2"
-  # FWDFAIL: a user without Gmail — GAM's userServiceNotEnabledWarning, SERVICE_NOT_APPLICABLE_RC (73).
-  case "$2" in *FWDFAIL*) printf 'User: %s, Gmail Service/App not enabled\n' "$2" 1>&2; exit 73 ;; esac
-  echo "User: $2, Forward: Updated"
+  known_user "$user" || not_a_user "$user" Set
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
+  echo "User: $user, $shown"
   exit 0
 fi
 

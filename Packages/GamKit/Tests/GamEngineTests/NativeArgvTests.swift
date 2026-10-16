@@ -61,10 +61,13 @@ struct NativeArgvTests {
                 == .transferCalendarOwnership)
     }
 
-    @Test func eachFilterDeletedIsOneID() {
-        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"]] {
+    @Test func eachFilterDeletedIsOneID() throws {
+        // The last four alone are GAM's list selectors (getChoice ignores case, `_` and `-`): it would read a file.
+        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"], ["file"], ["CSV_File"], ["csv-kmd"], ["csvdata"]] {
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteFilters(email: "c@example.com", filterIDs: bad) }
         }
+        // A selector word is one only as the whole element: beside another ID it's just an ID.
+        #expect(try GamCommands.deleteFilters(email: "c@example.com", filterIDs: ["file", "ANe1Bmj2"]).argv.last == "file,ANe1Bmj2")
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

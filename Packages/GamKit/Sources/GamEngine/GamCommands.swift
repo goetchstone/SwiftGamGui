@@ -135,12 +135,16 @@ public enum GamCommands {
     }
 
     /// The filters deleted in one command: GAM goes through the list, a failure leaving the rest done (grammar 7957;
-    /// deleteFilters). The list is one <FilterIDEntity> element split on commas: each ID is ASCII letters, digits, `-_`.
+    /// deleteFilters). The list is one <FilterIDEntity> element split on commas: each ID is ASCII letters, digits, `-_`,
+    /// and the element mustn't be a list selector GAM reads a file from instead (getChoice, ignoring case, `_` and `-`).
     public static func deleteFilters(email: String, filterIDs: [String]) throws -> GamWrite {
+        let list = filterIDs.joined(separator: ",")
+        let selectors: Set = ["csvkmd", "csvsubkey", "csv", "csvfile", "file", "csvdata"]   // ENTITY_LIST_SELECTORS
         guard !filterIDs.isEmpty, filterIDs.allSatisfy({ id in
             !id.isEmpty && id.unicodeScalars.allSatisfy { $0.isASCII && ($0.properties.isAlphabetic || ("0"..."9").contains($0) || $0 == "-" || $0 == "_") }
-        }) else { throw Invalid.argument("each filter to delete is one filter ID") }
-        return GamWrite(["user", email, "delete", "filters", filterIDs.joined(separator: ",")], action: .deleteFilters)
+        }), !selectors.contains(list.lowercased().filter { $0 != "_" && $0 != "-" })
+        else { throw Invalid.argument("each filter to delete is one filter ID") }
+        return GamWrite(["user", email, "delete", "filters", list], action: .deleteFilters)
     }
 
     /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own

@@ -104,7 +104,11 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   is handed over in the Admin console; **Remove filters that forward** after forwarding off, `user L delete filters
   <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7961) shows
   forwarding (`action.forward`), read only when the step is added: `forward off` doesn't stop them. The whole filter
-  goes, with its other actions (a label, archive); the preview names where each forwarded; **Turn off IMAP** and
+  goes, with its other actions (a label, archive); the preview names where each forwarded. The run reads them again
+  with the two accounts, on the plan's domain, and refuses ("preview again") when they differ from those held: the
+  leaver is signed in until the sign-out and could make another. The ID list is one element, so the builder refuses
+  any ID but ASCII letters, digits, `-` and `_`, and a lone GAM list selector (`file`, `csv`…), which GAM would read a
+  file from. **Turn off IMAP** and
   **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8372, 8378),
   two steps with no read. GAM sends its defaults with each (`_imapDefaults`; `_popDefaults`' `leaveInInbox`, so no
   mail is moved or deleted), and each sets that setting's other values back to Gmail's defaults. Belt and braces (the
@@ -228,10 +232,15 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
   with no rows (failure-log 2026-10-13, "Gmail off hid a person's groups": the mock answered it before,
   and the person page hid their groups behind it). Its other refusals exit 1, where GAM's warning exits
   73; checked against the source for `print delegates` only.
-- The routine's run-time triggers carry over from GamGUI's mock (`SIGNOUTFAIL`, `FWDFAIL`, `CONFLICT409`,
+- The routine's run-time triggers carry over from GamGUI's mock (`SIGNOUTFAIL`, `CONFLICT409`,
   `OWNACL`, `SWEEPFAIL`, `SWEEPBENIGN`, `SWEEPMIXED`, `SWEEPSLOW`, `*missing*`, `*exists*`); the model's
   tests use real directory people and `GAM_MOCK_STATE` instead (a delegate already there, a transfer in
   progress), since a trigger address isn't in the directory the checks read.
+- **The mock's `forward`** (GAM 7.48.26's `setForward`): `getBoolean`'s words (`Expected <true|false>`), read before
+  the person; a person who isn't a user fails at the token ("Set Failed", exit 50) and `nogmail/<u>` is exit 73
+  (replacing the unused `FWDFAIL` trigger); printed as `_showForward` prints. Until 2026-10-16 it passed `forward off`
+  for anyone. Stricter than GAM, never looser: GAM ignores a word after `off` and takes `on`'s action and address in
+  any order and case.
 - **The mock runs these writes as GAM does** (failure-log 2026-10-13, "offboarding mock lies"): a transfer
   resolves its owners (same account, non-user and a second transfer refused as GAM refuses them), a
   suspended user's deprovision exits 51, and the default sweep walks the active directory.
@@ -241,6 +250,7 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 - **The mock's filters:** `user_filters/<u>.csv` is `print filters labelidsonly formatjson` as GAM prints it (carol@
   has two that forward and one that labels); `delete filters` goes through its list, one Gmail doesn't have failing
   "Not Found" with the rest deleted (exit 50), and with state a deleted filter leaves the read; `nogmail/<u>` is exit 73.
+  A list GAM would read differently from sh (whitespace Python splits on, a selector word) isn't modelled.
 - **The mock's IMAP and POP** (GAM 7.48.26's `setImap`, `setPop`): `user <u> imap|imap4|pop|pop3 <Boolean> …` reads its
   options first, in `getBoolean`'s words (`Expected <true|false>`), then a person who isn't a user fails at the token
   ("Set Failed", exit 50) and `nogmail/<u>` is exit 73; printed as `_showImap` and `_showPop` print. Not modeled, for
