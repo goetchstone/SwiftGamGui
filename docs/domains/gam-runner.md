@@ -30,6 +30,11 @@ an allowlisted environment, a timeout, and capped output capture.
   Its checks read what the build does, not how a compiler stores it (3.15 loads `True`/`None` without
   `co_consts`), and every CSV the generator writes must come out byte for byte the same from the build's
   Python before any fixture is written.
+- **Bump to 7.48.28 (2026-10-16):** its `GamCommands.txt` is byte for byte 7.48.26's, so every cited line holds
+  (diff the grammar on each bump: the docs and tests cite its line numbers). The build moved to Python 3.15.0, and
+  this Mac's 3.15.0rc2 read its bytecode (the CSV check passed). 7.48.29 was skipped: GAM published it under the tag
+  `20261015.233203` with no `v7.48.29`, which `bump_gam.py` and `fetch_gam.sh`'s `vX.Y.Z` TAG don't take. Wait for
+  GAM's tag rather than loosen the pin.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
