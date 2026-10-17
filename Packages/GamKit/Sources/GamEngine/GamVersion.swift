@@ -4,7 +4,7 @@ import Foundation
 /// with `fetch_gam.sh`'s TAG, the mock's `gam version` and the regenerated fixtures; a test fails when
 /// any of them disagree.
 public enum GamVersion {
-    public static let expected = "7.48.28"
+    public static let expected = "7.48.30"
 
     /// The version the bundled `gam` reports, or nil when it can't say. `gam version` needs no
     /// credentials, but it runs in an empty private config directory all the same: without one, GAM
