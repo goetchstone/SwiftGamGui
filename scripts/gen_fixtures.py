@@ -2084,10 +2084,14 @@ def main() -> int:
     # Before anything is read: the build must answer, under its own Python, and still write GAM_DIALECT's CSV.
     oracle = GamOracle(Path(args.gam_binary), args.gam_python)
     build = oracle.ask({})
+    # The fixtures are stamped with the build the oracle ran (its VERSION, as build_command_catalog.py stamps the
+    # catalog), never GamGUI's own GAM pin: GamGUI doesn't hold back this repo's GAM (operator, 2026-10-17). GamGUI
+    # is still the source of the builders, named by its commit.
+    gam_version = Path(args.gam_binary).with_name("VERSION").read_text(encoding="utf-8").strip().lstrip("v")
 
     from gamgui.core.catalog import parser as catalog_parser
     from gamgui.core.gam import commands as commands_mod
-    from gamgui.core.gam.commands import EXPECTED_GAM_VERSION, GAMCommands
+    from gamgui.core.gam.commands import GAMCommands
 
     builders = sorted(n for n, v in vars(GAMCommands).items() if isinstance(v, staticmethod))
     originals = {n: getattr(GAMCommands, n) for n in builders}
@@ -2192,7 +2196,7 @@ def main() -> int:
     commit = subprocess.run(["git", "-C", str(gamgui), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True, check=True).stdout.strip()
     argv_doc = {
-        "source": {"gamgui_commit": commit, "gam_version": EXPECTED_GAM_VERSION,
+        "source": {"gamgui_commit": commit, "gam_version": gam_version,
                    "generator": "scripts/gen_fixtures.py"},
         "builders": builders,
         "signatures": signatures,
@@ -2224,7 +2228,7 @@ def main() -> int:
     from gamgui.core.setup import CHECK_ANSWER_RCS, OAUTH2SERVICE_JSON_REQUIRED_RC, SCOPES_NOT_AUTHORIZED_RC
     table = build["rc"]
     rc_doc = {
-        "source": {"gam_version": EXPECTED_GAM_VERSION, "gamgui_commit": commit,
+        "source": {"gam_version": gam_version, "gamgui_commit": commit,
                    "generator": "scripts/gen_fixtures.py"},
         "build_rc": dict(sorted(table.items())),
         "gamgui": {"SCOPES_NOT_AUTHORIZED_RC": SCOPES_NOT_AUTHORIZED_RC,
@@ -2293,7 +2297,7 @@ def main() -> int:
 
     # Signatures: GamGUI's render, curly-quote check and show-signature reader, and GAM's own handling of
     # the signature argument, run from the build.
-    signature_doc = {"source": {"gamgui_commit": commit, "gam_version": EXPECTED_GAM_VERSION,
+    signature_doc = {"source": {"gamgui_commit": commit, "gam_version": gam_version,
                                 "generator": "scripts/gen_fixtures.py"}} | signature_fixture(OUT / "mock_gam.sh", oracle)
     emit("signatures.json", json.dumps(signature_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"signatures.json: {len(signature_doc['render'])} renders, {len(signature_doc['parse_signature'])} shown texts")
