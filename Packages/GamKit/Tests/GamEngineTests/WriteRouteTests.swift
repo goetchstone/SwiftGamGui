@@ -100,6 +100,7 @@ struct WriteRouteTests {
     @Test func noIntentReachesAWrite() throws {
         let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
         let writing = try Self.files(in: "App", matching: ["UserChanges", "userChanges", "OnboardChanges", "onboardChanges",
+                                                           "OffboardChanges", "offboardChanges", "CompromisedChanges", "compromisedChanges",
                                                            "Executor", "executor", ".confirm(",
                                                            "confirmed:", "WriteStep", "GamWrite", "AuthenticatedRunner",
                                                            "previewOrganization", "AppServices", "HeldPreview", "Origin",
@@ -111,13 +112,24 @@ struct WriteRouteTests {
         #expect(!writing.contains("App/SiriDrafts.swift"))
     }
 
-    /// Offboarding's routine is the one preview only `requires` stops, and its sweep the one step that counts benign
-    /// failures as done (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.
+    /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
+    /// "Secure Account…" hands over an address, never a preview.
+    @Test func onlyItsScreenReachesTheCompromisedModel() throws {
+        let reaching = try Self.files(in: "App", matching: ["CompromisedChanges", "compromisedChanges"])
+        #expect(reaching == ["App/AppServices.swift", "App/ChangePreviewSheet.swift", "App/CompromisedView.swift", "App/GamGUIApp.swift"],
+                "\(reaching)")
+    }
+
+    /// Offboarding's routine and the compromised-account lock are the previews only `requires` stops (a refused sign-out
+    /// mustn't stop forwarding off), and the offboarding sweep the one step that counts benign failures as done
+    /// (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.
     @Test func onlyTheRoutineLoosensTheRunsRules() throws {
         // Any mention, not only `: false` spelled out: a variable passed as the argument loosens it just the same.
-        let loosening = try Self.files(in: "Packages/GamKit/Sources", matching: ["stopsAtAccountWideFailure", "tolerating:"])
-        #expect(loosening.isSubset(of: ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift",
-                                        "Packages/GamKit/Sources/Directory/OffboardChanges.swift"]), "\(loosening)")
+        let core = "Packages/GamKit/Sources/ChangeCore/ChangeCore.swift", offboard = "Packages/GamKit/Sources/Directory/OffboardChanges.swift"
+        let requiresOnly = try Self.files(in: "Packages/GamKit/Sources", matching: ["stopsAtAccountWideFailure"])
+        #expect(requiresOnly.isSubset(of: [core, offboard, "Packages/GamKit/Sources/Directory/CompromisedChanges.swift"]), "\(requiresOnly)")
+        let tolerating = try Self.files(in: "Packages/GamKit/Sources", matching: ["tolerating:"])
+        #expect(tolerating.isSubset(of: [core, offboard]), "\(tolerating)")
         #expect(try Self.files(in: "App", matching: ["stopsAtAccountWideFailure", "tolerating:"]).isEmpty)
     }
 

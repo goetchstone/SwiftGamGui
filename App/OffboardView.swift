@@ -210,7 +210,7 @@ struct OffboardView: View {
 }
 
 /// Above the screen, where it can't be missed: without GAM, nothing here runs.
-private struct NoGamBanner: View {
+struct NoGamBanner: View {
     var body: some View {
         Label("This build has no GAM: the plan is shown, and can't run. Build the app again after running scripts/fetch_gam.sh.",
               systemImage: "eye")
@@ -242,7 +242,7 @@ private struct WhoSection: View {
 }
 
 /// An address, with the directory's people who match it offered as completions (a name or an address).
-private struct AddressField: View {
+struct AddressField: View {
     let title: String
     let prompt: String
     @Binding var text: String

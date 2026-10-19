@@ -32,6 +32,14 @@ struct NativeArgvTests {
          ["user", "<email>", "delete", "filters", "ANe1Bmj1,ANe1Bmj2"]),
         // 5704 `gam <UserTypeEntity> print vaultholds|holds`: no formatjson; CSV.
         ("print_vault_holds", GamCommands.printVaultHolds(email: "<email>"), ["user", "<email>", "print", "vaultholds"]),
+        // The compromised-account check (GAM 7.48.30): 8003 `print forward|forwards [enabledonly]`; 8297 `print sendas
+        // [compact] [primary|default] [verifyonly]`; 1579-1582 `print admins [user|group <EmailAddress>|<UniqueID>]`.
+        ("print_forward", GamCommands.printForward(email: "<email>"), ["user", "<email>", "print", "forward"]),
+        ("print_sendas", GamCommands.printSendAs(email: "<email>"), ["user", "<email>", "print", "sendas", "verifyonly"]),
+        ("print_admins", GamCommands.printAdmins(user: "<email>"), ["print", "admins", "user", "<email>"]),
+        // 8293 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
+        ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
+         ["user", "<email>", "delete", "sendas", "a@example.net"]),
     ]
 
     @Test func eachIsExactlyItsArgv() {
@@ -68,6 +76,17 @@ struct NativeArgvTests {
         }
         // A selector word is one only as the whole element: beside another ID it's just an ID.
         #expect(try GamCommands.deleteFilters(email: "c@example.com", filterIDs: ["file", "ANe1Bmj2"]).argv.last == "file,ANe1Bmj2")
+    }
+
+    /// The address is one <EmailAddressEntity> element GAM splits on commas and Python's whitespace, and reads a file for
+    /// when it's a list selector: only one plain address is sent.
+    @Test func eachSendAsRemovedIsOneAddress() throws {
+        for bad in ["", "a@example.net,b@example.net", "a b@example.net", "file", "csvfile", " a@example.net", "a@example.net\u{3000}",
+                    "a\u{1F}b@example.net", "noat.example.net", "<a@example.net>", "Name <a@example.net>", "id:a@example.net"] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteSendAs(email: "c@example.com", address: bad) }
+        }
+        let write = try GamCommands.deleteSendAs(email: "c@example.com", address: "billing.desk@example.net")
+        #expect(write.action == .deleteSendAs)
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

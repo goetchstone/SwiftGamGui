@@ -42,6 +42,8 @@ struct AppServices {
     let offboardChanges: OffboardChanges
     /// The saved offboarding templates the Offboard form is filled from.
     let offboardTemplates: OffboardTemplates
+    /// A taken-over account: the check, the lock and the picks, held through the executor, and its run.
+    let compromisedChanges: CompromisedChanges
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -101,6 +103,9 @@ struct AppServices {
                            offboardChanges: OffboardChanges(executor: executor, setup: setup, directory: directory,
                                                             access: UserAccess(setup: setup, runner: runner)),
                            offboardTemplates: offboardTemplates,
+                           // Its own reader too: every read is the check's, live, never a page's lists.
+                           compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
+                                                                  access: UserAccess(setup: setup, runner: runner)),
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }

@@ -24,7 +24,10 @@ default), with steps of its own to add (clear their recovery info, remove mail f
 POP, hand their secondary calendars to the manager, hide them from the directory) and warnings
 for what the later delete would lose (their secondary calendars) or a Vault hold would stop: every step's exact
 command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
-left to finish. Reports lists the people behind each of the directory's counts and
+left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
+attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
+admin roles), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
+send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…). Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
@@ -165,6 +168,10 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Offboarding: hand over secondary calendars (Offboard, added step) | not yet: new to both apps |
 | Offboarding: remove filters that forward (Offboard, added step) | not yet: new to both apps |
 | Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | **confirmed** (2026-10-16) |
+| Compromised account: reset, sign out, forwarding off, IMAP and POP off, clear recovery (Compromised) | not yet from this screen: Offboard's commands, confirmed there (2026-10-16) |
+| Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
+| Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
+| Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.
