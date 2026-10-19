@@ -35,65 +35,75 @@ struct PhishingView: View {
         Binding(get: { changes.pending }, set: { if $0 == nil { changes.cancelPreview() } })
     }
 
+    private static let recipientsAnchor = "phishing.recipients"
+
     var body: some View {
-        Form {
-            if let run = changes.run {
-                PhishingRunSection(run: run, changes: changes) { message in
-                    pasted = message
-                    find()
+        ScrollViewReader { scroller in
+            Form {
+                if let run = changes.run {
+                    PhishingRunSection(run: run, changes: changes) { message in
+                        pasted = message
+                        find()
+                    }
                 }
-            }
-            Section {
-                Text("For an email that reached many mailboxes, such as phishing sent from a compromised account. Find Copies "
-                     + "lists every active user who has it and changes nothing; Trash then moves those copies to each person's "
-                     + "Trash, where they stay for 30 days and can be put back.")
-                    .foregroundStyle(.secondary)
-                TextField("Message-ID", text: $pasted, prompt: Text(verbatim: "<…@mail.example.com>"))
-                    .autocorrectionDisabled()
-                    .onSubmit { if canFind { find() } }
-                    .accessibilityHint("The email's Message-ID header. Press Return to find its copies.")
-                Text("In Gmail, open the email, choose More › Show original, and copy the Message-ID line. The sender's own "
-                     + "Sent copy is kept as evidence. Copies already in Spam, and suspended users' mailboxes, aren't searched.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Spacer()
-                    Button("Find Copies", action: find)
-                        .disabled(!canFind)
-                        .help(hasGam ? "Searches every active user's mailbox; changes nothing" : "This build has no GAM")
-                }
-            } header: {
-                Text("Remove an email from every mailbox").accessibilityAddTraits(.isHeader)
-            }
-            .disabled(changes.isRunning)
-            if !hasGam {
                 Section {
-                    Label("This build has no GAM, so nothing can be searched. Build the app again after running scripts/fetch_gam.sh.",
-                          systemImage: "eye")
+                    Text("For an email that reached many mailboxes, such as phishing sent from a compromised account. Find Copies "
+                         + "lists every active user who has it and changes nothing; Trash then moves those copies to each person's "
+                         + "Trash, where they stay for 30 days and can be put back.")
+                        .foregroundStyle(.secondary)
+                    TextField("Message-ID", text: $pasted, prompt: Text(verbatim: "<…@mail.example.com>"))
+                        .autocorrectionDisabled()
+                        .onSubmit { if canFind { find() } }
+                        .accessibilityHint("The email's Message-ID header. Press Return to find its copies.")
+                    Text("In Gmail, open the email, choose More › Show original, and copy the Message-ID line. The sender's own "
+                         + "Sent copy is kept as evidence. Copies already in Spam, and suspended users' mailboxes, aren't searched.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Spacer()
+                        Button("Find Copies", action: find)
+                            .disabled(!canFind)
+                            .help(hasGam ? "Searches every active user's mailbox; changes nothing" : "This build has no GAM")
+                    }
+                } header: {
+                    Text("Remove an email from every mailbox").accessibilityAddTraits(.isHeader)
                 }
-            }
-            results
-            Section {
-                Text("The sender's own copy lists who it was addressed to. Sent from Gmail itself, it keeps its Bcc; from a mail "
-                     + "client or a script, the Bcc is usually left off. Enter the address that sent it, such as the compromised account.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                TextField("Sender", text: $sender, prompt: Text(verbatim: "name@example.com"))
-                    .autocorrectionDisabled()
-                    .onSubmit { if canList { listRecipients() } }
-                    .accessibilityHint("The address that sent the email. Press Return to list who it went to.")
-                HStack {
-                    Spacer()
-                    Button("List Recipients", action: listRecipients)
-                        .disabled(!canList)
-                        .help("Reads the sender's copy of the email with this Message-ID; changes nothing")
+                .disabled(changes.isRunning)
+                if !hasGam {
+                    Section {
+                        Label("This build has no GAM, so nothing can be searched. Build the app again after running scripts/fetch_gam.sh.",
+                              systemImage: "eye")
+                    }
                 }
-            } header: {
-                Text("Who it was sent to").accessibilityAddTraits(.isHeader)
+                results
+                Section {
+                    Text("The sender's own copy lists who it was addressed to. Sent from Gmail itself, it keeps its Bcc; from a mail "
+                         + "client or a script, the Bcc is usually left off. Enter the address that sent it, such as the compromised account.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    TextField("Sender", text: $sender, prompt: Text(verbatim: "name@example.com"))
+                        .autocorrectionDisabled()
+                        .onSubmit { if canList { listRecipients() } }
+                        .accessibilityHint("The address that sent the email. Press Return to list who it went to.")
+                    HStack {
+                        Spacer()
+                        Button("List Recipients", action: listRecipients)
+                            .disabled(!canList)
+                            .help("Reads the sender's copy of the email with this Message-ID; changes nothing")
+                    }
+                } header: {
+                    Text("Who it was sent to").accessibilityAddTraits(.isHeader)
+                }
+                recipientsResult
+                    .id(Self.recipientsAnchor)
             }
-            recipientsResult
+            .formStyle(.grouped)
+            // A read the operator asked for, below the search: brought into view when it lands.
+            .onChange(of: recipientsAnnouncement) { _, text in
+                guard text != nil else { return }
+                withAnimation { scroller.scrollTo(Self.recipientsAnchor, anchor: .top) }
+            }
         }
-        .formStyle(.grouped)
         // Long text wraps rather than widen the screen past the smallest window (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
         .sheet(item: confirming) { pending in
