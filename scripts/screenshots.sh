@@ -37,6 +37,8 @@ status=0
 # her flagged sign-in; users-secure, carol's page in Users taking Actions → Secure Account…, which opens Compromised
 # and checks her. Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
+# Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
+# sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs).
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
@@ -65,7 +67,12 @@ for spec in home:home users:users groups:groups setup:setup \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \
             onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \
-            onboard-welcome:onboard:Salesperson:welcome; do
+            onboard-welcome:onboard:Salesperson:welcome \
+            phishing:phishing phishing-found:phishing:CAPh1sh+Invite=0001@mail.example.com \
+            phishing-recipients:phishing:CAPh1sh+Invite=0001@mail.example.com:recipients:1100x1100 \
+            phishing-confirm:phishing:CAPh1sh+Invite=0001@mail.example.com:confirm \
+            phishing-result:phishing:CAPh1sh+Invite=0001@mail.example.com:result \
+            narrow-phishing:phishing:CAPh1sh+Invite=0001@mail.example.com::smallest; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

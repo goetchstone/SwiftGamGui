@@ -93,6 +93,73 @@ extension GamCommands {
         }
     }
 
+    /// One email's Message-ID, pasted from its headers, as the Phishing screen searches for it: the email is then
+    /// `rfc822msgid:<id>` in one Gmail query, a single argv element (`query`), so the ID is checked as one and can't
+    /// carry another Gmail operator. RFC 5322 §3.6.4 `msg-id` is `"<" id-left "@" id-right ">"`; this takes each side as
+    /// its `dot-atom-text` (atoms of `atext` joined by single dots), which has no space, quote, parenthesis, colon,
+    /// comma or backslash, so nothing in it can end the term or start another operator. Gmail's search syntax keeps
+    /// `{ }` (its OR group) of what's left, so those are refused too, and `*`, in case a search reads it as a wildcard
+    /// (unverified, and rare in a Message-ID; review of 2026-10-19), and so are the obsolete and bracketed-literal
+    /// forms no current mailer sends. ASCII only, at most the RFC's 998-character line.
+    public struct MessageID: Sendable, Equatable {
+        /// `id-left@id-right`, without the angle brackets: Gmail's `rfc822msgid:` takes it bare.
+        public let id: String
+
+        /// RFC 5322's `atext`, less Gmail's `{` and `}`, and `*`.
+        static let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'+-/=?^_`|~".unicodeScalars)
+        static let lineLimit = 998
+
+        /// What an operator copies: the bare ID, `<id>`, the whole `Message-ID: <id>` header line, or a search they
+        /// already wrote as `rfc822msgid:id`. Anything else is refused with what's wrong, never repaired.
+        public init(validating text: String) throws {
+            var value = PythonText.strip(text)
+            for label in ["message-id:", "rfc822msgid:"] where Self.hasPrefix(value, label) {
+                value = PythonText.strip(String(String.UnicodeScalarView(value.unicodeScalars.dropFirst(label.unicodeScalars.count))))
+            }
+            if value.unicodeScalars.first == "<", value.unicodeScalars.last == ">", value.unicodeScalars.count > 1 {
+                value = String(String.UnicodeScalarView(value.unicodeScalars.dropFirst().dropLast()))
+            }
+            let scalars = Array(value.unicodeScalars)
+            guard !scalars.isEmpty else {
+                throw Invalid.argument("Paste the email's Message-ID, from its headers (in Gmail, More › Show original).")
+            }
+            guard scalars.count <= Self.lineLimit else {
+                throw Invalid.argument("That's longer than any Message-ID can be (\(Self.lineLimit) characters).")
+            }
+            if scalars.contains(where: { $0.properties.isWhitespace }) {
+                throw Invalid.argument("A Message-ID has no spaces: paste only its value, like <…@mail.example.com>.")
+            }
+            if scalars.contains("{") || scalars.contains("}") {
+                throw Invalid.argument("This Message-ID has { or }, which Gmail's search reads as its own syntax, so it can't be searched for exactly.")
+            }
+            // By scalar, before anything is split: a combining mark can't then hide an @ or a dot inside a character.
+            if let odd = scalars.first(where: { $0 != "@" && $0 != "." && !Self.allowed.contains($0) }) {
+                let hex = String(odd.value, radix: 16, uppercase: true)
+                let shown = (0x21...0x7E).contains(odd.value) ? "“\(odd)”" : "U+" + String(repeating: "0", count: max(0, 4 - hex.count)) + hex
+                throw Invalid.argument("A Message-ID can't contain \(shown): paste it exactly as the header has it.")
+            }
+            let sides = scalars.split(separator: "@", omittingEmptySubsequences: false)
+            guard sides.count == 2 else {
+                throw Invalid.argument("A Message-ID has exactly one @, like <…@mail.example.com>.")
+            }
+            guard sides.allSatisfy({ $0.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { !$0.isEmpty } })
+            else { throw Invalid.argument("Each side of a Message-ID's @ is words joined by single dots, with none at either end.") }
+            id = value
+        }
+
+        /// Every copy but the sender's own: `-in:sent` keeps the Sent copy in the account that sent it, as evidence.
+        public var query: String { "rfc822msgid:\(id) -in:sent" }
+
+        /// Every copy in one mailbox, Sent included: the sender's own is the only one that keeps the Bcc header.
+        public var anyCopyQuery: String { "rfc822msgid:\(id)" }
+
+        /// `text` begins with `label`, ASCII letters in any case.
+        static func hasPrefix(_ text: String, _ label: String) -> Bool {
+            let head = text.unicodeScalars.prefix(label.unicodeScalars.count)
+            return PythonText.lower(String(String.UnicodeScalarView(head))).unicodeScalars.elementsEqual(label.unicodeScalars)
+        }
+    }
+
     /// Python's `text.strip().lower()`, as GamGUI's validators normalize.
     static func stripLower(_ text: String) -> String {
         PythonText.lower(PythonText.strip(text))

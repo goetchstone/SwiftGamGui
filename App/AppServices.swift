@@ -46,6 +46,8 @@ struct AppServices {
     let compromisedChanges: CompromisedChanges
     /// Its incident logs: the activity reports an incident needs, pulled together.
     let incidentLogs: IncidentLogs
+    /// One email out of every mailbox: GAM's dry run to find the copies, then the trash through the executor.
+    let phishingChanges: PhishingChanges
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -109,6 +111,7 @@ struct AppServices {
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
                                                                   access: UserAccess(setup: setup, runner: runner)),
                            incidentLogs: IncidentLogs(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           phishingChanges: PhishingChanges(setup: setup, runner: runner, executor: executor),
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }

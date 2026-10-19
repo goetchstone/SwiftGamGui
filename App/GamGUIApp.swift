@@ -14,9 +14,12 @@ struct GamGUIApp: App {
         _services = State(initialValue: services)
         // Siri's intents reach the drafts only (invariant 10).
         SiriIntents.register(services.siriDrafts)
-        // Quitting mid-onboarding or mid-offboarding asks first.
-        let onboarding = services.onboardChanges, offboarding = services.offboardChanges, compromised = services.compromisedChanges
-        AppDelegate.interruptible = { offboarding.interruptible ?? compromised.interruptible ?? onboarding.interruptible }
+        // Quitting mid-onboarding, mid-offboarding, mid-lock or mid-trash asks first.
+        let onboarding = services.onboardChanges, offboarding = services.offboardChanges
+        let compromised = services.compromisedChanges, phishing = services.phishingChanges
+        AppDelegate.interruptible = {
+            offboarding.interruptible ?? compromised.interruptible ?? onboarding.interruptible ?? phishing.interruptible
+        }
     }
 
     var body: some Scene {
@@ -41,6 +44,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case onboard = "Onboard"
     case offboard = "Offboard"
     case compromised = "Compromised"
+    case phishing = "Phishing"
     case reports = "Reports"
     case audit = "Audit"
     case setup = "Setup"
@@ -57,6 +61,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .onboard: "person.badge.plus"
         case .offboard: "person.badge.minus"
         case .compromised: "exclamationmark.shield"
+        case .phishing: "envelope.badge.shield.half.filled"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
         case .setup: "key"
@@ -167,6 +172,9 @@ struct ContentView: View {
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
                                 logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson)
                     .navigationTitle("Compromised Account")
+            case .phishing:
+                PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil)
+                    .navigationTitle("Phishing")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
                     usersPerson = email

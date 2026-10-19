@@ -1,0 +1,209 @@
+# Phishing
+
+**One line:** take one email out of every mailbox that has it, by its Message-ID, for a phishing email sent from a
+compromised account. On 2026-10-19 a user's account was compromised and sent an Evite-style lure to Bcc'd
+recipients. The operator signed her out and reset her password in this app, then had to go to Terminal to trash
+the email everywhere. Find lists who has a copy, using GAM's own dry run, which is a read. Trash moves those copies
+to each person's Trash, where they stay for 30 days. It runs one ChangeCore step per mailbox and keeps the
+sender's Sent copy as evidence. Who it was addressed to, outside the domain first, is read from the sender's own copy
+(its Bcc only when it was written in Gmail).
+This is native: GamGUI has no builder for it; the recipients read is GamGUI's `search_messages`.
+
+**Owns invariants:**
+- #1: the Message-ID is validated as one value inside the one `query` element.
+- #2: each mailbox's trash goes through ChangeCore. ChangeCore's only change is `.trashMessage`'s destructive
+  floor.
+- #3: the dry run is the one reviewed read with a destructive verb, and no read may carry `doit`.
+- The strict mock's fidelity for `trash messages`.
+
+**Enforcement home:**
+- `NativeArgvTests`: both argvs, the Message-ID's rule, and the cap of at least 1.
+- `CommandKindTests`: `reviewedDryRuns` and `noReadCarriesDoit`.
+- `MockPhishingTests`: the mock prints GAM's lines and fails as GAM fails.
+- `MessageCopiesTests`: the lines are read and a partial list is refused.
+- `PhishingChangesTests`: end to end through the executor.
+- `WriteRouteTests`: only `ChangePreviewSheet.swift` confirms.
+
+## Files
+- `Packages/GamKit/Sources/GamEngine/GamChoices.swift`: `GamCommands.MessageID`, which validates the Message-ID
+  and builds the query.
+- `Packages/GamKit/Sources/GamEngine/GamCommands.swift`: `findMessageCopies` (the dry run, a `GamRead`) and
+  `trashMessage` (one mailbox, a `GamWrite`, `.trashMessage`).
+- `Packages/GamKit/Sources/GamEngine/MessageCopies.swift`: reads the dry run's lines into mailboxes.
+- `Packages/GamKit/Sources/GamEngine/MessageRecipients.swift`: the sender's copy's To, Cc and Bcc
+  (`MessageRecipients`), and the tenant's domains and aliases (`TenantDomains`) for inside and outside.
+- `Packages/GamKit/Sources/Directory/PhishingChanges.swift`: the model (find, preview, run, stop).
+- `App/PhishingView.swift`: the screen.
+- `App/ChangePreviewSheet.swift`: `PhishingConfirmSheet`.
+- Wiring: `App/GamGUIApp.swift` (the sidebar's Phishing, and the quit guard) and `App/AppServices.swift`.
+- `Tests/Fixtures/mock_gam.sh`'s "One email out of every mailbox" handler, its recipients read (the
+  `rfc822msgid:` branch of `print messages`), `mock_gam/messages.csv` and `mock_gam/message_headers/<id>`.
+- `scripts/screenshots.sh`: the `phishing*` specs.
+
+## What GAM 7.48.30 does
+This is read from its source (`_processMessagesThreads`, its printers and `glmsgs`), not a tenant.
+- **P1, without `doit` nothing changes.** GAM checks the arguments first. Then, for each user, it gets a token
+  and lists matches (`messages.list`). It prints a count and `continue`s before any trash call. The max check
+  comes before the `doit` check, so the dry run also reports a mailbox over the cap.
+- **P2, a domain's exit code is the last user's.** `setSysExitRC` overwrites rather than keeps the worst. Each
+  user sets one:
+  - 60, no match (`NO_ENTITIES_FOUND_RC`);
+  - 51, a count without `doit`, or over the cap;
+  - 73, Gmail off;
+  - 50, a failure.
+
+  So an `all users` run is never 0 in a real domain, whatever happened. The dry run is read from its lines, and
+  the trash runs one mailbox at a time, where 0 means trashed.
+- **P3, `quick` caps the listing.** `quick` is the default, and with it `maxItems = max_to_trash`: Gmail is
+  asked for at most that many. "Count N exceeds maximum" then can't happen, and a mailbox holding two copies
+  under `max_to_trash 1` would quietly lose one and keep one. Only `notquick` counts every match.
+- **P4, `max_to_trash 0` is no limit.** The default is 1.
+- **P5, who `all users` is.** `isSuspended=False isGuest=False`, in address order. Suspended users aren't
+  searched; archived users are.
+- **P6, Spam and Trash aren't searched.** `includeSpamTrash` is set only for delete, modify and untrash.
+- **P7, Gmail off.** GAM prints "User: x, Gmail Service/App not enabled", because Gmail's "Mail service not
+  enabled" maps to `serviceNotAvailable`. A service account without the Gmail scope says the same for every
+  user (`handleOAuthTokenError` → `userServiceNotEnabledWarning`).
+- **P8, the words.** All of these go to stderr, with ` (i/n)` added when there is more than one user:
+  - `User: x, Message: 1, Not Trashed: Use the "doit" argument to perform action` (the quotes are GAM's);
+  - `Messages: 0, Not Trashed: No Messages matched`;
+  - `Messages: 2, Not Trashed: Count 2 exceeds maximum to Trash 1`.
+
+  With `doit`, stdout gets `User: x, Trash 1 Message`, then `  User: x, Message: <id>, Trashed`. A token
+  refused for a non-user prints `User: x, User:, Trash Failed: invalid_grant: Invalid email or User ID`
+  (live wording, GamGUI failure-log 2026-09-23).
+- **P9, how GAM reads arguments.** Keywords are lowercased with `_` dropped (`getArgument`). The query is
+  wrapped as `(Q)`. `max_to_trash` takes an integer ≥ 0.
+
+- **P10, the sender's copy (`print messages … headers all showlabels showdate`).** This is
+  `printShowMessagesThreads` / `_printMessage`. The CSV columns are `User,threadId,id`, GAM's default headers, and
+  `LabelsCount,Labels`, then every other header name sorted (`SortTitles`). Each header is under its own name as
+  the message has it ("Cc" or "CC"), a repeat as "To 1", decoded (`_decodeHeader`). `showdate` overwrites `Date`
+  with the message's own time. `includespamtrash` finds a copy in Spam or Trash. No match sets exit 60, and the
+  header line is printed anyway (also after a token or Gmail-off failure). With `showlabels` the labels are
+  fetched first, so Gmail off fails there (73) before any list. Only the sender's copy can hold a Bcc header,
+  and only when the message was written in Gmail: a mail client or a script sending over SMTP leaves Bcc off what
+  it submits. `showdate` is in GAM's timezone, UTC on the app's fresh config.
+
+## How it works (decided 2026-10-19)
+- **D1, a Message-ID only.** Paste it bare, as `<id>`, as the `Message-ID:` header line, or as `rfc822msgid:id`.
+  It is checked as RFC 5322 `id-left@id-right`, each side `dot-atom-text`. That form has no space, quote,
+  parenthesis, colon, comma or backslash, so it can't end the Gmail term or start another operator. Gmail's
+  `{ }` OR syntax is refused as well, and so are bracketed literals, non-ASCII and anything over 998
+  characters. A free-form Gmail query is a broader tool and isn't built (see the end of this runbook).
+- **D2, the query is `rfc822msgid:<id> -in:sent`.** The compromised sender's Sent copy (also an Inbox copy
+  if she Bcc'd herself, since it's one message) is left as evidence. Replies and forwards have their own
+  Message-IDs and aren't touched.
+- **D3, the dry run is a reviewed `GamRead`, not a held write.**
+  - It changes nothing (P1).
+  - Its per-user lines are the result, and ChangeCore reduces a non-zero step to one message (P2).
+  - A held write would need a confirm just to look, and would audit a look as a change.
+  - `CommandKindTests.reviewedDryRuns` holds it: the verb is destructive and the argv has no `doit` element.
+    `noReadCarriesDoit` holds every read.
+- **D4, the run is one ChangeCore step per mailbox Find showed copies in, not `all users … doit`.** The brief
+  asked for the domain-wide command. It would always report "failed" (P2) and lose the per-user lines. Its
+  held preview would name "all users" instead of the mailboxes, and it would search again at run time. Per
+  mailbox:
+  - the preview lists exactly who is trashed;
+  - the audit has one begin and one end record per mailbox;
+  - Stop works between mailboxes;
+  - an account-wide failure stops the rest;
+  - ChangeCore needs no new path.
+
+  The cost is one `gam` per mailbox, about a second or two each.
+- **D5, `notquick max_to_trash <copies found>`.** Without `notquick`, P3 applies. The cap is that mailbox's
+  count from Find, so a run never trashes more than its preview showed: a mailbox holding more by then fails
+  with GAM's "exceeds maximum". `trashMessage` refuses a count below 1 (P4).
+- **D6, the confirm.**
+  - The number of mailboxes is typed (`typedCountAbove: 0`).
+  - From ten mailboxes, the guard's destructive-bulk rule asks for the word `confirm` too.
+  - Over 200, the guard's hard-cap warning shows.
+
+  The executor checks all of these, not only the sheet.
+- **D7, trash, not delete.** Each copy is recoverable from the person's Trash for 30 days. Nothing in the app
+  untrashes yet (see "To undo").
+- **D8, after a run the search is dropped.** Its counts are from before the run. Find Again shows what's left.
+- **D9, who it was sent to.** This is added from the incident: the operator needed the outside recipients to
+  warn them.
+  - It reads the sender's copy (GamGUI's `search_messages`, detail Headers, `max_to_print 50`) with
+    `rfc822msgid:<id>`, Sent included, and then `print domains` to sort the addresses.
+  - The tenant's domains and their aliases count as inside; the rest is outside. Outside comes first, with a
+    Copy button.
+  - Every To, Cc and Bcc address is read as RFC 5322 `address-list`. A display name, a comment and a group's name
+    are never taken for the address, and a piece with an `@` but no address is shown under "check by hand",
+    never dropped.
+  - A copy the sender received rather than sent (no SENT label) is said to be one: it has no Bcc.
+  - It never claims to be everyone. A sent copy without a Bcc header says that a mail client or a script leaves Bcc
+    off. Mailboxes Find saw a copy in that the headers don't name are listed: they prove the list is incomplete
+    (a Bcc not kept, or a group). Google's own record (Admin console › Reporting › Email Log Search) is always
+    named, and no check mark is ever shown for "nobody outside".
+  - No copy left is said in words, with the same pointer to Google's record.
+  - Both are reads.
+
+## Gotchas / mock-lies traps
+- The mock models only the query the app sends, matching the ID exactly. Whether Gmail's `rfc822msgid:`
+  matches case-insensitively or by part isn't modelled. The live check must show it finds the one email
+  (D5's cap limits what a broader match could trash).
+- The mock's "Got N Users" progress line is approximate. A reader skips every progress line anyway.
+- A suspended user as a run target isn't modelled: Google's wording is unknown. Find never lists one (P5).
+- The mock's recipients read answers only the screen's exact search (Headers detail and an `rfc822msgid:` query)
+  and only for messages whose headers it has (alice's, carol's). Any other shape is "not modelled", and other
+  `print messages` reads keep the older canned answer.
+- `MessageCopies` refuses a list that isn't whole: an exit code no per-user line sets, an account-wide failure
+  line, output past the 8 MiB cap, or a ` (i/n)` count that doesn't cover 1…n once each. An unknown line is
+  shown under "GAM also said", never guessed at.
+
+## Review (2026-10-19, gam-command-reviewer, before merge)
+No injection, chokepoint, credential or cap break was found. Fixed before merge:
+- **F1, Find failed open.** A per-user line in words the parser didn't know was set aside, so an empty list read
+  as "no copies". Now an unknown user's line is that mailbox `.failed` (unsearched), never clear. The reader
+  checks GAM's own count of users (`Got N Users...`), refuses a search that reports nobody, and the headline
+  says how many mailboxes couldn't be searched (F6).
+- **F2, the token refusal's wording.** GAM 7.48.30 prints `User: x, User Trash Failed: …` (`formatKeyValueList`
+  with a `None` value; the live onboarding capture agrees), not the shared helper's `User:, Trash Failed`. Both
+  readers take both forms; this screen's mock branches print GAM's (`token_refused`). The shared helper is a
+  follow-up.
+- **F3, one user's `invalid_grant` read as the admin's expired sign-in.** Account-wide is now judged only from
+  lines that aren't a user's. The admin's expired sign-in fails the listing of users itself.
+- **F5, nothing showed what the ID matched.** Find now reads one copy (From, Subject, Date) and shows it, and the
+  confirm sheet repeats it. A mailbox with more than two copies is flagged. `*` is refused in an ID.
+- **F8, the review is tied to a version.** `CommandKindTests.reviewedDryRuns` names the GAM version, so a bump
+  fails until GAM's source is read again.
+- **F9, a race.** A held trash that finishes after a newer Find began is discarded.
+
+Second pass, on the fixes and the recipients read (all fixed before merge):
+- **R1, the list claimed to be complete.** A message sent over SMTP (an app password, a script) keeps no Bcc
+  header in its Sent copy, so "everyone it went to is listed here" and a check mark for "nobody outside" could hide
+  every outside recipient. Now nothing claims completeness (D9).
+- **R2, the address reader dropped addresses.** A piece naming two addresses (`a@x b@y`, `<a@x> <b@y>`) kept only
+  the last. A semicolon now ends an address too, and a piece naming more than one distinct address is kept whole
+  as unreadable.
+- **R3, an all-clear despite unreadable addresses.** Withheld.
+- **R4, unverified domains counted as inside.** Only verified domains and aliases count.
+- **R5, one heading.** Every distinct From and Subject among the copies is kept, and more than one is flagged.
+- **R6:** exit 0 with no row isn't "no copy" (only GAM's 60 is). The fixtures' times are UTC, as GAM prints them
+  on a fresh config.
+
+Left as follow-ups: the shared mock helpers' older wording (`not_a_user`, `invalid_arg`, the sweep's "Got N Users:
+a - b"), which other suites and GamGUI's `gam_errors.json` rely on.
+
+## Testing / live-verification status
+**Not yet** (README). The live check, each write with the operator's own yes for that action
+(`live-verify`):
+1. The operator sends a test email from one of their own test accounts to two others.
+2. Find, by its Message-ID, and List Recipients for the sender. Both are reads, run once the operator says go.
+   Also Find with the ID one character short: it must find nothing, which shows `rfc822msgid:` matches exactly.
+3. Trash, from those test mailboxes only.
+4. Find Again: no copy is left, and the sender's Sent copy stays.
+5. Put one copy back from Trash in Gmail.
+
+Never a real person's mailbox without their yes.
+
+## To undo
+In Gmail: Trash › Move to Inbox. With GAM: `gam user <email> untrash messages query "rfc822msgid:<id>" doit`
+(untrash searches Trash, P6). An Untrash for the same mailboxes is a natural next slice if the operator wants it.
+
+## To do common tasks here
+- **A Gmail search instead of a Message-ID** (`from:`, `subject:`), for an attack that sent many different
+  emails: that needs its own validated type, and a mock that models those operators' meaning. Keep each
+  mailbox's cap at what Find showed.

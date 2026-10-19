@@ -108,6 +108,19 @@ func choices(_ text: String) {
     }
     _ = try? GamCommands.TransferPrivacy(validating: text)
     _ = GamCommands.MessageDetail(label: text)
+    // A Message-ID taken is one Gmail term: printable ASCII with nothing that ends a term, groups or starts an
+    // operator, one @, and the query exactly its two terms (the Phishing screen's search).
+    if let message = try? GamCommands.MessageID(validating: text) {
+        let scalars = Array(message.id.unicodeScalars)
+        require(!scalars.isEmpty && scalars.count <= 998, "MessageID length \(scalars.count)")
+        require(scalars.allSatisfy { (0x21...0x7E).contains($0.value) && !"{}()\"\\,:;<>[]".unicodeScalars.contains($0) },
+                "MessageID characters \(message.id.debugDescription)")
+        require(scalars.filter { $0 == "@" }.count == 1, "MessageID has one @")
+        require(message.query.utf8.elementsEqual(("rfc822msgid:" + message.id + " -in:sent").utf8), "MessageID query")
+        let trash = try? GamCommands.trashMessage(email: "a@example.com", message, copies: 1)
+        require(trash?.argv.count == 10 && trash?.argv[5] == message.query && trash?.argv.last == "doit", "trashMessage")
+        require(!GamCommands.findMessageCopies(message).argv.contains("doit"), "the dry run never carries doit")
+    }
 }
 
 /// Every value after a sensitive keyword is masked, and nothing else changes.
