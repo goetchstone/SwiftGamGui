@@ -42,6 +42,8 @@ struct AppServices {
     let offboardChanges: OffboardChanges
     /// The saved offboarding templates the Offboard form is filled from.
     let offboardTemplates: OffboardTemplates
+    /// One email out of every mailbox: GAM's dry run to find the copies, then the trash through the executor.
+    let phishingChanges: PhishingChanges
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -101,6 +103,7 @@ struct AppServices {
                            offboardChanges: OffboardChanges(executor: executor, setup: setup, directory: directory,
                                                             access: UserAccess(setup: setup, runner: runner)),
                            offboardTemplates: offboardTemplates,
+                           phishingChanges: PhishingChanges(setup: setup, runner: runner, executor: executor),
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }

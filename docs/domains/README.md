@@ -15,6 +15,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | Calendars: rooms, a person's calendars, who has access, sharing with one person | [calendars.md](calendars.md) | phase 2: reads and sharing with one person built (C1a, C1b, C2a); live checks (C1c, C2b) pending |
 | Offboarding: the leaver routine, its checks and plan, and (later) the account delete | [offboarding.md](offboarding.md) | phase 3: Off1 (the plan), templates and Off2 (the run) built; Off2's review, then L1 and L2 live; Off3 (delete) next |
 | Onboarding: one hire through one preview, the sign-in card, the wait for Google, the roles | [onboarding.md](onboarding.md) | O1 and O2 (the roles) built; W (welcome email) and live stages B and C next |
+| Phishing: one email out of every mailbox, by its Message-ID (GAM's dry run, then a trash per mailbox) | [phishing.md](phishing.md) | built; live check not yet |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
 | The Audit and Reports screens: the log paged and exported, the directory reports, the usage report | [audit-reports.md](audit-reports.md) | built; the usage report's live read pending |

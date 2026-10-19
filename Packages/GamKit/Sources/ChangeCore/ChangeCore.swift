@@ -154,7 +154,8 @@ extension WriteAction {
     public var minimumRisk: Risk {
         switch self {
         case .deleteUser, .suspendUser, .removeCalendar, .deleteEvent, .createDataTransfer, .deprovisionUser,
-             .resetPassword, .removeAllCalendarACLs, .deleteAlias, .clearRecovery, .transferCalendarOwnership, .deleteFilters:
+             .resetPassword, .removeAllCalendarACLs, .deleteAlias, .clearRecovery, .transferCalendarOwnership, .deleteFilters,
+             .trashMessage:
             .destructive
         default:
             .low

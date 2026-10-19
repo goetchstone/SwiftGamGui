@@ -160,6 +160,27 @@ public enum GamCommands {
         GamRead(["user", email, "print", "vaultholds"])
     }
 
+    /// Who has a copy of one email: GAM's own dry run of the trash below, over every active user (`all users` is
+    /// `isSuspended=False isGuest=False`). Without `doit`, `_processMessagesThreads` (7.48.30) lists each user's matches
+    /// (Gmail's `messages.list`, Spam and Trash left out) and prints a count per user, every line on stderr, and
+    /// returns before any trash call; it never exits 0 across a domain, since each user sets the code (60 for no
+    /// copy, 51 for a count) and the last one stands. Grammar 8186-8190. `notquick`, so a count is every match: with
+    /// GAM's default `quick` it asks Gmail for at most `max_to_trash` and no count could exceed it. Reviewed in
+    /// `CommandKindTests`: `trash` is a destructive verb, and only the absent `doit` makes this a read.
+    public static func findMessageCopies(_ message: MessageID) -> GamRead {
+        GamRead(["all", "users", "trash", "messages", "query", message.query, "notquick", "max_to_trash", "1"])
+    }
+
+    /// One mailbox's copies of the email moved to its Trash (Gmail empties it after 30 days; until then
+    /// `untrash messages` puts them back). At most `copies`, the count the dry run showed for this mailbox, so a run
+    /// never trashes more than its preview did: a mailbox holding more by then is left alone with GAM's "Count N
+    /// exceeds maximum to Trash M" (exit 51). GAM reads `max_to_trash 0` as no limit, so a count below 1 is refused.
+    public static func trashMessage(email: String, _ message: MessageID, copies: Int) throws -> GamWrite {
+        guard copies >= 1 else { throw Invalid.argument("a mailbox to trash from holds at least one copy") }
+        return GamWrite(["user", email, "trash", "messages", "query", message.query, "notquick", "max_to_trash", String(copies), "doit"],
+                        action: .trashMessage)
+    }
+
     // MARK: calendar access, as the calendar's user
 
     public static func printCalendarACLs(email: String, calendar: String = "primary") -> GamRead {

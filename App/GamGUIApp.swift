@@ -14,9 +14,9 @@ struct GamGUIApp: App {
         _services = State(initialValue: services)
         // Siri's intents reach the drafts only (invariant 10).
         SiriIntents.register(services.siriDrafts)
-        // Quitting mid-onboarding or mid-offboarding asks first.
-        let onboarding = services.onboardChanges, offboarding = services.offboardChanges
-        AppDelegate.interruptible = { offboarding.interruptible ?? onboarding.interruptible }
+        // Quitting mid-onboarding, mid-offboarding or mid-trash asks first.
+        let onboarding = services.onboardChanges, offboarding = services.offboardChanges, phishing = services.phishingChanges
+        AppDelegate.interruptible = { offboarding.interruptible ?? onboarding.interruptible ?? phishing.interruptible }
     }
 
     var body: some Scene {
@@ -40,6 +40,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case signatures = "Signatures"
     case onboard = "Onboard"
     case offboard = "Offboard"
+    case phishing = "Phishing"
     case reports = "Reports"
     case audit = "Audit"
     case setup = "Setup"
@@ -55,6 +56,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .signatures: "signature"
         case .onboard: "person.badge.plus"
         case .offboard: "person.badge.minus"
+        case .phishing: "envelope.badge.shield.half.filled"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
         case .setup: "key"
@@ -156,6 +158,9 @@ struct ContentView: View {
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
                              templates: services.offboardTemplates, hasGam: services.executor != nil)
                     .navigationTitle("Offboard")
+            case .phishing:
+                PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil)
+                    .navigationTitle("Phishing")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
                     usersPerson = email

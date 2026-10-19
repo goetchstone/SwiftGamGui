@@ -142,6 +142,11 @@ secrets masked. `GamErrorTests` holds it to `Tests/Fixtures/gam_errors.json`: Ga
   the message now; the scrub still masks it in `stderr`.
 - `stdout` is kept for a caller that reads it (`check serviceaccount`'s table) and is never in the
   message, the description or a dump.
+- **An `all users` command's exit code is the last user's.** GAM's `setSysExitRC` overwrites rather than keeps
+  the worst, and its per-user notices set codes too (60 no match, 51 not performed, 73 a service off). So a
+  domain-wide run is non-zero in the normal case and says nothing about the others. Read its per-user lines
+  (Phishing's `MessageCopies`), or run one target per call where 0 means done ([phishing.md](phishing.md) P2,
+  2026-10-19).
 - **Fixed in PR #5's review:**
   - **Unicode version.** Swift has Unicode 17 and GamGUI's Python has 16, so a character added in 17
     is unassigned to Python. Read as a letter, it let an echoed password past the scrub.
