@@ -15,8 +15,8 @@ struct GamGUIApp: App {
         // Siri's intents reach the drafts only (invariant 10).
         SiriIntents.register(services.siriDrafts)
         // Quitting mid-onboarding or mid-offboarding asks first.
-        let onboarding = services.onboardChanges, offboarding = services.offboardChanges
-        AppDelegate.interruptible = { offboarding.interruptible ?? onboarding.interruptible }
+        let onboarding = services.onboardChanges, offboarding = services.offboardChanges, compromised = services.compromisedChanges
+        AppDelegate.interruptible = { offboarding.interruptible ?? compromised.interruptible ?? onboarding.interruptible }
     }
 
     var body: some Scene {
@@ -40,6 +40,7 @@ enum Screen: String, CaseIterable, Identifiable {
     case signatures = "Signatures"
     case onboard = "Onboard"
     case offboard = "Offboard"
+    case compromised = "Compromised"
     case reports = "Reports"
     case audit = "Audit"
     case setup = "Setup"
@@ -55,6 +56,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .signatures: "signature"
         case .onboard: "person.badge.plus"
         case .offboard: "person.badge.minus"
+        case .compromised: "exclamationmark.shield"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
         case .setup: "key"
@@ -156,6 +158,10 @@ struct ContentView: View {
                 OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
                              templates: services.offboardTemplates, hasGam: services.executor != nil)
                     .navigationTitle("Offboard")
+            case .compromised:
+                CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
+                                hasGam: services.executor != nil)
+                    .navigationTitle("Compromised Account")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
                     usersPerson = email

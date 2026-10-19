@@ -160,6 +160,41 @@ public enum GamCommands {
         GamRead(["user", email, "print", "vaultholds"])
     }
 
+    /// Auto-forwarding as Gmail has it now (8003; printShowForward): CSV `User,forwardEnabled,forwardTo,disposition`, the
+    /// address and what happens to the kept copy only while it's on.
+    public static func printForward(email: String) -> GamRead {
+        GamRead(["user", email, "print", "forward"])
+    }
+
+    /// The person's send-as addresses, the primary among them (8297; printShowSendAs), CSV. `verifyonly` makes each
+    /// signature a yes or no rather than its HTML.
+    public static func printSendAs(email: String) -> GamRead {
+        GamRead(["user", email, "print", "sendas", "verifyonly"])
+    }
+
+    /// One send-as address taken off the person's "Send mail as" list (8293; deleteInfoSendAs). The address is one
+    /// <EmailAddressEntity> element GAM splits on commas and Python's whitespace, or reads a file from when it's a list
+    /// selector, so it must be one plain address (`isOneAddress`).
+    public static func deleteSendAs(email: String, address: String) throws -> GamWrite {
+        guard isOneAddress(address) else { throw Invalid.argument("each send-as address to remove is one email address") }
+        return GamWrite(["user", email, "delete", "sendas", address], action: .deleteSendAs)
+    }
+
+    /// An address GAM acts on as given, in an <EmailAddressEntity> or <UserEntity>: no comma or whitespace to split on, an
+    /// `@` (so never a list selector), nothing around it to strip, and no form GAM rewrites to another address
+    /// (normalizeEmailAddressOrUID takes `Name <a@b>` as `a@b`; convertUIDtoEmailAddress reads `id:` and `uid:`).
+    static func isOneAddress(_ address: String) -> Bool {
+        let lowered = address.lowercased()
+        return Address.looksLikeEmail(address) && PythonText.strip(address) == address
+            && !address.unicodeScalars.contains { $0 == "<" || $0 == ">" } && !lowered.hasPrefix("id:") && !lowered.hasPrefix("uid:")
+    }
+
+    /// The admin role assignments `user` holds directly (1579-1582; doPrintShowAdmins), CSV with `role` and `scopeType`.
+    /// Without `recursive`, a role held through a group isn't listed.
+    public static func printAdmins(user: String) -> GamRead {
+        GamRead(["print", "admins", "user", user])
+    }
+
     // MARK: calendar access, as the calendar's user
 
     public static func printCalendarACLs(email: String, calendar: String = "primary") -> GamRead {

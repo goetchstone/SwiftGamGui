@@ -31,7 +31,9 @@ status=0
 # Offboard is filled in for carol@example.com leaving and alice@example.com taking over: the form, then (tab
 # `plan`) the plan it runs, scrolled into view; `confirm`, the confirm sheet over it; `result`, a finished
 # run's panel (made up: nothing runs); `-added`, with this app's own steps added (ten steps: the sheet asks for
-# `confirm` too). Reports opens on its first report, then on its
+# `confirm` too). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
+# every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
+# sheet; `result`, a made-up finished run. Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
@@ -43,6 +45,9 @@ for spec in home:home users:users groups:groups setup:setup \
             offboard-confirm:offboard:carol@example.com:confirm offboard-result:offboard:carol@example.com:result \
             narrow-offboard:offboard:carol@example.com:plan:smallest \
             offboard-added:offboard:carol@example.com:plan-added offboard-confirm-added:offboard:carol@example.com:confirm-added \
+            compromised:compromised:carol@example.com compromised-plan:compromised:carol@example.com:plan \
+            compromised-confirm:compromised:carol@example.com:confirm compromised-result:compromised:carol@example.com:result \
+            narrow-compromised:compromised:carol@example.com:plan:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \
