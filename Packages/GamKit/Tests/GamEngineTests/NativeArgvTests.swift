@@ -40,7 +40,17 @@ struct NativeArgvTests {
         // 8293 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
         ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
          ["user", "<email>", "delete", "sendas", "a@example.net"]),
+        // 8186-8190 `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]`.
+        // The dry run has no `doit` (GAM 7.48.30's _processMessagesThreads then trashes nothing); the run is one mailbox's.
+        ("find_message_copies", GamCommands.findMessageCopies(phish),
+         ["all", "users", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent",
+          "notquick", "max_to_trash", "1"]),
+        ("trash_message", try! GamCommands.trashMessage(email: "<email>", phish, copies: 2),
+         ["user", "<email>", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent",
+          "notquick", "max_to_trash", "2", "doit"]),
     ]
+
+    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Invite=0001@mail.example.com>")
 
     @Test func eachIsExactlyItsArgv() {
         for item in Self.cases {
@@ -87,6 +97,49 @@ struct NativeArgvTests {
         }
         let write = try GamCommands.deleteSendAs(email: "c@example.com", address: "billing.desk@example.net")
         #expect(write.action == .deleteSendAs)
+    }
+
+    /// What an operator pastes from the headers, each to the same bare ID: Gmail's `rfc822msgid:` takes it without
+    /// the brackets.
+    @Test func aMessageIDIsTakenAsPasted() throws {
+        for pasted in ["<CAPh1sh+Invite=0001@mail.example.com>", "CAPh1sh+Invite=0001@mail.example.com",
+                       "  Message-ID: <CAPh1sh+Invite=0001@mail.example.com>\n", "message-id:<CAPh1sh+Invite=0001@mail.example.com>",
+                       "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com", "RFC822MSGID:<CAPh1sh+Invite=0001@mail.example.com>"] {
+            #expect(try GamCommands.MessageID(validating: pasted) == Self.phish, "\(pasted)")
+        }
+        // Every other character of RFC 5322's atext, as mailers use them (but `*`).
+        let odd = "a!#$%&'+-/=?^_`|~.b@x-y.example"
+        #expect(try GamCommands.MessageID(validating: "<\(odd)>").id == odd)
+        #expect(Self.phish.query == "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent")
+    }
+
+    /// The ID is one Gmail term: nothing that would end it, start another operator, group or OR it, or split on a
+    /// combining mark, and never a dotted or empty side.
+    @Test func aMessageIDCarriesNoOtherSearch() {
+        for bad in ["", "  ", "<>", "a@b in:inbox", "a@b\tin:inbox", "a@b OR in:inbox", "a@b\u{3000}x", "{a@b c@d}", "a{@b", "a@b}",
+                    "a@b,c@d", "\"a\"@b", "a(b)@c", "a@b:c", "in:inbox", "ab", "a@b@c", "@b", "a@", "a..b@c", ".a@c", "a.@c",
+                    "a@b.", "a@[127.0.0.1]", "a\\b@c", "a@b\u{301}", "a\u{301}@b", "é@example.com", "a@b\u{0}", "a<b@c",
+                    "<a@b", "a@b>", "<<a@b>>", "a;b@c", "*@*", "a*@b", String(repeating: "a", count: 995) + "@b.c"] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.MessageID(validating: bad) }
+        }
+        #expect(throws: Never.self) { try GamCommands.MessageID(validating: String(repeating: "a", count: 994) + "@b.c") }
+        // An invisible character is named by its code, a visible one as it is.
+        #expect(throws: GamCommands.Invalid.argument("A Message-ID can't contain U+0007: paste it exactly as the header has it.")) {
+            try GamCommands.MessageID(validating: "a\u{7}@b")
+        }
+        #expect(throws: GamCommands.Invalid.argument("A Message-ID can't contain “:”: paste it exactly as the header has it.")) {
+            try GamCommands.MessageID(validating: "in:inbox@b")
+        }
+    }
+
+    /// GAM reads `max_to_trash 0` as no limit: a run that could trash every match is refused, so is a negative count.
+    @Test func aMailboxIsTrashedOfAtMostItsCopies() throws {
+        for copies in [0, -1, Int.min] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.trashMessage(email: "a@example.com", Self.phish, copies: copies) }
+        }
+        let write = try GamCommands.trashMessage(email: "a b,c@example.com", Self.phish, copies: 1)
+        #expect(write.action == .trashMessage && write.argv[1] == "a b,c@example.com" && write.argv.count == 10)
+        #expect(Array(write.argv.suffix(3)) == ["max_to_trash", "1", "doit"])
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

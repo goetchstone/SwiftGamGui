@@ -1,0 +1,7 @@
+alice@example.com,19a0c0ffee000001,CAPh1sh+Invite=0001@mail.example.com,INBOX UNREAD
+alice@example.com,19a0c0ffee000002,CAPh1sh+Invite=0001@mail.example.com,SPAM
+alice@example.com,19a0c0ffee000007,CAOther+Note=0002@mail.example.com,INBOX
+bob@example.com,19a0c0ffee000006,CAPh1sh+Invite=0001@mail.example.com,INBOX UNREAD
+carol@example.com,19a0c0ffee000003,CAPh1sh+Invite=0001@mail.example.com,SENT
+dana@example.com,19a0c0ffee000004,CAPh1sh+Invite=0001@mail.example.com,INBOX
+dana@example.com,19a0c0ffee000005,CAPh1sh+Invite=0001@mail.example.com,INBOX UNREAD

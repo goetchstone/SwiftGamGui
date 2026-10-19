@@ -629,3 +629,94 @@ struct CompromisedConfirmSheet: View {
         }
     }
 }
+
+/// Phishing's confirm step: the email by its Message-ID, every mailbox it is trashed from with its count, the
+/// commands as GAM gets them, what trashing means, and the number of mailboxes typed to run it (from ten, the word
+/// `confirm` too); the executor checks both, not only these fields. Trash is the destructive action and never the
+/// default button, so Return alone doesn't start it. Confirming runs exactly this preview, once; Cancel drops it.
+struct PhishingConfirmSheet: View {
+    let pending: PhishingChanges.Pending
+    let changes: PhishingChanges
+    @State private var typedCount = ""
+    @State private var word = ""
+
+    private var count: Int { pending.mailboxes.count }
+    private var countMatches: Bool { typedCount.trimmingCharacters(in: .whitespacesAndNewlines) == pending.typedCount }
+    private var wordMatches: Bool {
+        !pending.needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord
+    }
+    private var mailboxes: String { "\(count) mailbox\(count == 1 ? "" : "es")" }
+
+    private func confirm() {
+        let pending = pending, changes = changes, confirmation = OperatorConfirmation(
+            confirmed: true, typedWord: pending.needsWord ? word : "", typedCount: typedCount)
+        Task { await changes.confirm(pending, confirmation) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Message-ID") {
+                    Text(pending.search.message.id).textSelection(.enabled)
+                }
+                if let sample = pending.search.sample {
+                    LabeledContent("From") { Text(sample.copy.from).textSelection(.enabled) }
+                    LabeledContent("Subject") { Text(sample.copy.subject).textSelection(.enabled) }
+                }
+                ForEach(pending.mailboxes.filter { $0.copies > 2 }) { mailbox in
+                    Label("\(mailbox.email) has \(mailbox.copies) copies: one email rarely arrives more than twice.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                ForEach(pending.preview.steps, id: \.target) { step in
+                    Text(step.summary)
+                }
+                DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                    Text(pending.preview.steps.map(\.commandLine).joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } header: {
+                Text("Trash this email from \(mailboxes)").accessibilityAddTraits(.isHeader)
+            }
+            Section {
+                Label("Each person stops seeing it at once. It stays in their Trash for 30 days, where it can be put back.",
+                      systemImage: "trash")
+                Label("Only the copies found: a mailbox that holds more by now is left as it is and shown as failed.",
+                      systemImage: "info.circle")
+                Label("Stop takes effect between mailboxes: the one in progress finishes first.", systemImage: "info.circle")
+                ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                    Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                }
+            }
+            Section("Type \(count) to run it") {
+                TextField("Number of mailboxes", text: $typedCount, prompt: Text(verbatim: pending.typedCount))
+                    .autocorrectionDisabled()
+                    .accessibilityLabel("Type the number of mailboxes, \(count), to trash the email from them")
+            }
+            if pending.needsWord {
+                Section {
+                    TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the word confirm to trash the email from \(mailboxes)")
+                } header: {
+                    Text("Type \(Guard.typedWord) too")
+                } footer: {
+                    Text("Ten mailboxes or more: a change this wide is confirmed in words as well.")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 480)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.cancelPreview() } }
+            // Not the confirmation action: Return in a field mustn't trash anything.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Trash from \(mailboxes)", role: .destructive) { confirm() }
+                    .disabled(!countMatches || !wordMatches)
+                    .help(!countMatches ? "Type \(count) first" : !wordMatches ? "Type confirm first" : "Runs exactly these steps, once")
+            }
+        }
+    }
+}

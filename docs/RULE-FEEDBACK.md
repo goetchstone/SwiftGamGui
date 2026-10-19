@@ -22,6 +22,27 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-19 — A domain-wide read's parser failed open, and a mock helper's wording was older than GAM's
+- **What happened:**
+  - The Phishing screen's Find reads GAM's dry run of `trash messages` line by line. It counted only the lines
+    it recognised, so an unknown per-user line (a token refused in GAM 7.48.30's `User x, User Trash Failed`
+    form, or a reworded line after a bump) was set aside, and an empty list read as "No mailbox has a copy".
+  - The mock's shared `not_a_user` prints the older `User:, X Failed` form. GAM 7.48.30 prints `User X Failed`,
+    and the live onboarding capture (`onboarding.json`, 2026-09-30) agrees.
+  - The adversarial review proved both before merge (docs/domains/phishing.md, "Review").
+- **Invariant in force:** "the mock lies" (fail the way real GAM fails), and #9's spirit (a partial list never
+  passes for the whole).
+- **Why it didn't hold:**
+  - The rule says to check the mock against the grammar, but wording comes from GAM's printers, not the grammar.
+  - Two live captures of the same refusal disagree, and the helper kept the older one.
+  - No rule says a parser of per-entity output must fail closed on a line it doesn't know.
+- **Would a rule have caught it?** Only if enforced differently: a reader of an `all users` command must account
+  for every user GAM listed ("Got N Users" and each `(i/n)`), and treat an unknown per-user line as unread, not
+  absent. The mock's wording should be checked against the pinned source's printers, not only against an older
+  capture.
+- **Enforcement home if changed:** the `add-builder-command` skill (a step for domain-wide reads), and a tripwire
+  that the shared helpers' wording matches the pinned version's printers.
+
 ## 2026-10-14 — Research fan-out inflated a plan past what was asked
 - **What happened:** asked for four optional offboarding steps and "anything else useful", a 7-agent research
   workflow and a 12-agent review (about 3M tokens) produced a fifteen-step plan with a new per-item row model. The

@@ -54,3 +54,8 @@
 "JSON"
 "\"\""
 "\x00"
+"rfc822msgid:"
+"Message-ID: <"
+"@mail.example.com>"
+" -in:sent"
+"{"

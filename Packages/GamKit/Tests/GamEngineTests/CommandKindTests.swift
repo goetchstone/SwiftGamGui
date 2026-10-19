@@ -24,6 +24,19 @@ struct CommandKindTests {
         "check_svcacct": "verifies domain-wide delegation; changes nothing",
     ]
 
+    /// GAM's dry runs: a destructive verb that, without `doit`, GAM's source runs as a read (it lists and counts, and
+    /// returns before any change). Each reviewed against the pinned version's source; nothing else may be added
+    /// without the same.
+    static let reviewedDryRuns: [String: (gam: String, why: String)] = [
+        "find_message_copies": ("7.48.30", "trash messages without doit: _processMessagesThreads lists and counts, then "
+            + "continues past every user before a trash call"),
+    ]
+
+    /// An element GAM reads as the `doit` keyword (getArgument: lowercased, underscores dropped).
+    static func isDoit(_ element: String) -> Bool {
+        PythonText.lower(element).unicodeScalars.filter { $0 != "_" }.elementsEqual("doit".unicodeScalars)
+    }
+
     /// Arguments drawn from a closed set: they keep the fixture's valid value.
     static let closedArguments: Set = ["role", "privacy", "action", "detail"]
 
@@ -62,10 +75,25 @@ struct CommandKindTests {
                 #expect(Self.verb(command.argv) == nil, "\(name) now has a known verb: drop its review")
                 continue
             }
+            if let review = Self.reviewedDryRuns[name] {
+                // A GAM bump re-reads the source: the dry run is a read only as long as GAM's `doit` check stands.
+                #expect(review.gam == GamVersion.expected, "\(name) was reviewed at GAM \(review.gam): read GAM's source again")
+                #expect(Self.verb(command.argv).map(Self.verbSets.destructive.contains) == true, "\(name) isn't a dry run: drop its review")
+                #expect(!command.argv.contains(where: Self.isDoit), "\(name) carries doit: it would change the tenant")
+                continue
+            }
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 30)
+        #expect(reads == 31)
+    }
+
+    /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
+    @Test func noReadCarriesDoit() throws {
+        for (name, command) in try commands() where command is GamRead {
+            #expect(!command.argv.contains(where: Self.isDoit), "\(name) carries doit")
+        }
+        #expect(Self.isDoit("DO_IT") && Self.isDoit("doit") && !Self.isDoit("doit:") && !Self.isDoit("rfc822msgid:doit"))
     }
 
     @Test func noWriteHasAReadVerb() throws {
@@ -75,7 +103,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 41)
+        #expect(writes == 42)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -102,7 +130,7 @@ struct CommandKindTests {
         "create_group": .createGroup, "add_group_member": .addGroupMember, "remove_group_member": .removeGroupMember,
         "clear_recovery": .clearRecovery, "hide_from_directory": .hideFromDirectory,
         "transfer_calendar_ownership": .transferCalendarOwnership, "delete_filters": .deleteFilters,
-        "imap_off": .imapOff, "pop_off": .popOff, "delete_sendas": .deleteSendAs,
+        "imap_off": .imapOff, "pop_off": .popOff, "delete_sendas": .deleteSendAs, "trash_message": .trashMessage,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -126,7 +154,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 30 && writes == 41, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 31 && writes == 42, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }

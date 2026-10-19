@@ -29,6 +29,10 @@ attacker commonly changes (filters, forwarding, delegates, send-as addresses, re
 admin roles), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
 send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…). Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
+Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
+which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
+(its Bcc too when it was sent from Gmail; Google's Email Log Search has the full record); then, with the number of mailboxes typed, it moves each copy to that person's Trash, keeping the
+sender's Sent copy.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
@@ -82,6 +86,14 @@ audit log, searched, paged and exported to CSV.
 | Reports | Usage | Audit |
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](docs/screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](docs/screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words, and a page at a time](docs/screenshots/audit.png) |
+
+Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
+List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move
+a copy from, and runs with their number typed.
+
+| Phishing | Who it was sent to | Its confirm |
+|---|---|---|
+| ![Phishing: the Message-ID, and the mailboxes that have a copy, each with its count](docs/screenshots/phishing-found.png) | ![Who it was sent to: the addresses outside the domain, with Copy, and those inside](docs/screenshots/phishing-recipients.png) | ![The confirm sheet: each mailbox, the commands, and the number of mailboxes to type](docs/screenshots/phishing-confirm.png) |
 
 ## Siri
 
@@ -172,6 +184,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
 | Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
+| Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
 operator's own account, never someone's real group without their yes.
