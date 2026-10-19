@@ -433,6 +433,85 @@ EOF
   exit 0
 fi
 
+# `gam report <application> (user <u>|all)|(select users <list>) start -<N>h|-<N>d end now [ip <IP>] [events <names>]
+# maxactivities <N>` (doReport's activity form, GAM 7.48.30 :14084-14960), for the applications the app reads: "Getting all
+# Activities for <u>" (or "all users"), then a CSV row per event, newest first (SortRows on id.time), from
+# report_<application>.csv: the accounts' rows, or all; `ip` keeps that address's (actorIpAddress); `events` those names;
+# `maxactivities` the newest N per account; an account listed twice is read once (GAM's entity list drops repeats). No
+# fixture is the titles alone ("name"): no events. An account that isn't a user is the API's badRequest,
+# entityUnknownWarning: "User: <u>, Does not exist", exit 56, after the others' rows; outside the domain (example.com)
+# it is "Service not applicable", exit 73. The admin log's accounts are the actor only with `userisactor` (without it GAM
+# filters USER_EMAIL==<u>: the events affecting them). Gmail over 30 days is the API's bad request (doReport's own
+# comment: no more than 30 days apart): exit 56 for a named account, "ERROR: Bad Request" exit 53 for all. With
+# GAM_MOCK_STATE/nolog/<application>, the edition doesn't keep that log: systemErrorExit(GOOGLE_API_ERROR_RC), exit 4
+# (Google's words approximate). A known lie: every fixture event is answered whatever the window (the dates are fixed).
+# The start is only the app's form, `-<N>h` or `-<N>d`. Only the app's shape.
+if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices) true ;; *) false ;; esac; then
+  case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; *) app=$2 ;; esac
+  shift 2; who=""; start=""; end=""; ip=""; max=""; events=""; actor=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      user) need_value $# "EmailAddress"; who=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift 2 ;;
+      select) [ "${2:-}" = users ] || not_modelled "report select ${2:-}"; need_value $(($# - 1)) "UserList"
+              who=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]'); shift 3 ;;
+      start|starttime) need_value $# "Time"; start="$2"; shift 2 ;;
+      end|endtime) need_value $# "Time"; end="$2"; shift 2 ;;
+      ip) need_value $# "String"; ip="$2"; shift 2 ;;
+      maxactivities) need_value $# "Number"; max="$2"; shift 2 ;;
+      event|events) need_value $# "EventNameList"; events=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift 2 ;;
+      userisactor) actor=1; shift ;;
+      *) not_modelled "report $app with $1" ;;
+    esac
+  done
+  [ -n "$who" ] && [ -n "$start" ] && [ -n "$max" ] || not_modelled "report $app without user, start and maxactivities"
+  span=${start#-}; unit=${span#"${span%?}"}; count=${span%?}
+  case "$start" in -*) ;; *) not_modelled "report start $start" ;; esac
+  case "$unit:$count" in [hHdD]:[0-9]*) case "$count" in *[!0-9]*) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac ;;
+    *) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac
+  case "$unit" in [dD]) hours=$((count * 24)) ;; *) hours=$count ;; esac
+  [ -z "$actor" ] || [ "$app" = admin ] || not_modelled "report $app userisactor"
+  case "$end" in ""|now|NOW) ;; *) not_modelled "report end $end" ;; esac
+  case "$max" in ""|*[!0-9]*) usage_error "Invalid argument: Expected <Number>" ;; esac
+  case "$who" in *[[:space:]]*) not_modelled "an account list like $who" ;; esac
+  if [ "$who" = all ]; then printf 'Getting all Activities for all users\n' 1>&2; fi
+  if [ "$app" = gmail ] && [ "$hours" -gt 720 ]; then
+    if [ "$who" = all ]; then printf '\nERROR: Bad Request\n' 1>&2; exit 53; fi
+    printf 'name\n'
+    for account in $(printf '%s' "$who" | tr ',' ' '); do printf 'User: %s, Does not exist\n' "$account" 1>&2; done
+    exit 56
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nolog/$app" ]; then
+    printf "\nERROR: 400: This application's log isn't available for this customer - invalid\n" 1>&2; exit 4
+  fi
+  file="$GAM_MOCK_FIXTURES/report_$app.csv"
+  if [ -f "$file" ]; then head -n 1 "$file"; else printf 'name\n'; fi
+  missing=""; rc=56; seen=" "
+  # The admin log without userisactor reads the events that affected the account (USER_EMAIL), not what it did.
+  if [ "$app" = admin ] && [ -z "$actor" ]; then by=USER_EMAIL; else by=actor.email; fi
+  for account in $(printf '%s' "$who" | tr ',' ' '); do
+    case "$seen" in *" $account "*) continue ;; esac
+    seen="$seen$account "
+    if [ "$account" != all ]; then
+      printf 'Getting all Activities for %s\n' "$account" 1>&2
+      if ! in_directory "$account"; then
+        case "$account" in
+          *@example.com) printf 'User: %s, Does not exist\n' "$account" 1>&2; rc=56 ;;   # setSysExitRC: the last one wins
+          *) printf 'User: %s, Service not applicable\n' "$account" 1>&2; rc=73 ;;
+        esac
+        missing=1; continue
+      fi
+    fi
+    [ -f "$file" ] || continue
+    tail -n +2 "$file" | awk -F, -v who="$account" -v ip="$ip" -v events="$events" -v by="$by" -v header="$(head -n 1 "$file")" '
+      BEGIN { n = split(header, h, ","); for (i = 1; i <= n; i++) col[h[i]] = i
+              m = split(events, e, ","); for (i = 1; i <= m; i++) want[e[i]] = 1 }
+      (who == "all" || ((by in col) && $col[by] == who)) && (ip == "" || $col["ipAddress"] == ip) && (m == 0 || ($1 in want))' \
+      | head -n "$max"
+  done
+  [ -z "$missing" ] || exit "$rc"
+  exit 0
+fi
+
 # `gam user <email> show signature` (no formatjson) -> THAT address's signature, as text. Without
 # `primary` or `default`, printShowSignature gets the one send-as named by the address given, not the
 # list (gam/__init__.py:78862-78865), and _showSendAs prints it (78560-78591): `SendAs Address: <addr>`

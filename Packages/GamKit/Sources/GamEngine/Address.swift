@@ -15,4 +15,15 @@ public enum Address {
         let labels = scalars[(at + 1)...].split(separator: ".", omittingEmptySubsequences: false)
         return labels.count >= 2 && labels.allSatisfy { plain($0, allowingDot: false) }
     }
+
+    /// An IP address as GAM's `ip` filter takes it, one argv element: IPv4's digits and dots, or IPv6's hex digits and
+    /// colons (and the dots of an embedded IPv4), nothing else.
+    public static func isIP(_ text: String) -> Bool {
+        let scalars = text.unicodeScalars
+        guard !scalars.isEmpty, scalars.count <= 45, scalars.allSatisfy({ $0.isASCII && ($0.properties.isASCIIHexDigit || $0 == "." || $0 == ":") })
+        else { return false }
+        if text.contains(":") { return text.filter { $0 == ":" }.count >= 2 }
+        let parts = text.split(separator: ".", omittingEmptySubsequences: false)
+        return parts.count == 4 && parts.allSatisfy { part in part.count <= 3 && part.allSatisfy(\.isNumber) && (Int(part) ?? 256) <= 255 }
+    }
 }

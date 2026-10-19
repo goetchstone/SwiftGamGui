@@ -65,7 +65,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 30)
+        #expect(reads == 31)
     }
 
     @Test func noWriteHasAReadVerb() throws {
@@ -126,7 +126,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 30 && writes == 41, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 31 && writes == 41, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }

@@ -33,8 +33,9 @@ status=0
 # run's panel (made up: nothing runs); `-added`, with this app's own steps added (ten steps: the sheet asks for
 # `confirm` too). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
 # every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
-# sheet; `result`, a made-up finished run; users-secure, carol's page in Users taking Actions → Secure Account…, which
-# opens Compromised and checks her. Reports opens on its first report, then on its
+# sheet; `result`, a made-up finished run; `reports`, Pull Incident Logs for her, then every account's by the address on
+# her flagged sign-in; users-secure, carol's page in Users taking Actions → Secure Account…, which opens Compromised
+# and checks her. Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
@@ -50,6 +51,8 @@ for spec in home:home users:users groups:groups setup:setup \
             compromised-confirm:compromised:carol@example.com:confirm compromised-result:compromised:carol@example.com:result \
             narrow-compromised:compromised:carol@example.com:plan:smallest \
             users-secure:users:carol@example.com:secure \
+            compromised-reports:compromised:carol@example.com:reports \
+            narrow-compromised-reports:compromised:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \

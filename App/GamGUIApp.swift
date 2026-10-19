@@ -165,7 +165,7 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                hasGam: services.executor != nil, requested: $compromisedPerson)
+                                logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson)
                     .navigationTitle("Compromised Account")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
