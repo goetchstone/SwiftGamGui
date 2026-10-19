@@ -25,6 +25,10 @@ let only `requires` stop a step; it may not tolerate failures).
   every confirmation is made (`WriteRouteTests`).
 
 ## How it works
+0. **From a person's page** (the operator, 2026-10-19: "a button to do that for anyone"): Users → Actions → **Secure
+   Account…** hands the address to this screen (`ContentView.compromisedPerson`), which starts a new form for it
+   (`Form(person:)`: nothing ticked, not even the reset) and checks it. Users holds no reference to this model
+   (`WriteRouteTests.onlyItsScreenReachesTheCompromisedModel`).
 1. **Check Account:** `info user P fields <Compromised.accountFields> formatjson` first (an alias reads as its owner; a
    failure stops the check, in GAM's words), then at once: `print filters labelidsonly formatjson`, `print forward`,
    `print forwardingaddresses`, `print delegates`, `print sendas verifyonly`, `print admins user P`. Each failure is said

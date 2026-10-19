@@ -27,7 +27,7 @@ command first, then, with the leaver's address typed, each step as it ends, Stop
 left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
 admin roles), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
-send-as addresses you tick removed. Reports lists the people behind each of the directory's counts and
+send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…). Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in

@@ -97,6 +97,8 @@ struct ContentView: View {
     @State private var calendarsPerson: String?
     /// The person Users opens on when another screen sends it one (Reports' Show in Users).
     @State private var usersPerson: String?
+    /// The person Compromised Account checks when Users sends it one (Actions → Secure Account…).
+    @State private var compromisedPerson: String?
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -134,6 +136,9 @@ struct ContentView: View {
                           }, openCalendars: { email in
                               calendarsPerson = email
                               screen = .calendars
+                          }, openCompromised: { email in
+                              compromisedPerson = email
+                              screen = .compromised
                           })
                 .navigationTitle("Users")
             case .groups:
@@ -160,7 +165,7 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                hasGam: services.executor != nil)
+                                hasGam: services.executor != nil, requested: $compromisedPerson)
                     .navigationTitle("Compromised Account")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in

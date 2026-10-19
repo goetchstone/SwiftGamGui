@@ -33,6 +33,12 @@ public final class CompromisedChanges {
 
         public init() {}
 
+        /// A new form for `person`, as another screen's "Secure Account…" starts one: nothing ticked as done or picked,
+        /// IMAP and POP off on.
+        public init(person: String) {
+            self.person = person
+        }
+
         /// The picks of what `check` no longer lists dropped: a check again after a run lists what's left.
         public mutating func keepPicks(in check: Check) {
             filters.formIntersection(((try? check.filters.get()) ?? []).map(\.id))

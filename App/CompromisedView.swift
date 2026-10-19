@@ -14,6 +14,9 @@ struct CompromisedView: View {
     let changes: CompromisedChanges
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
+    /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
+    /// nothing ticked (the operator says whether the password was already reset). Cleared once taken.
+    @Binding var requested: String?
     @State private var form = CompromisedChanges.Form()
     @State private var confirming: CompromisedChanges.Plan?
     @State private var debugApplied = false
@@ -89,7 +92,15 @@ struct CompromisedView: View {
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .onAppear {
-            if let check = changes.check, form.person.isEmpty { form.person = check.asked }
+            if let check = changes.check, form.person.isEmpty, requested == nil { form.person = check.asked }
+        }
+        .onChange(of: requested, initial: true) { _, email in
+            guard let email else { return }
+            requested = nil
+            // Mid-run the form stays as it is: the check says why it can't start.
+            if !changes.isRunning { form = CompromisedChanges.Form(person: email) }
+            let changes = changes
+            Task { await changes.check(email) }
         }
         .onChange(of: setup.generation) {
             form = CompromisedChanges.Form()

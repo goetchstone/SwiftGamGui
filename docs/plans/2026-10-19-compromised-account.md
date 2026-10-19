@@ -18,6 +18,8 @@ names), `UserAccess`'s reads, ChangeCore's held preview, typed address and Stop,
 rows. Nothing in offboarding changes.
 
 ## The flow
+0. **From anyone's page** (asked 2026-10-19, after a second account needed it): Users → Actions → **Secure Account…**
+   opens this screen for that person and checks them. "Password already reset" stays for the operator to tick.
 1. **Check Account** (read-only, nothing runs): P's account (`info user`), every Gmail filter with what it does,
    auto-forwarding and the forwarding addresses, mail delegates, send-as addresses, and admin role assignments. Each
    read that fails is said in GAM's words, never taken as "none".

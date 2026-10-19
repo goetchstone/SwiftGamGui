@@ -186,6 +186,19 @@ final class CompromisedChangesTests {
         #expect(try await self.plan(dana).steps.first?.commandLine == "gam user dana@example.com deprovision signout")
     }
 
+    /// Users' "Secure Account…" hands over only an address: the screen starts a new form for it and checks it, nothing
+    /// ticked, and the plan is the screen's own, the reset first and the address to type (no second write path).
+    @Test func secureAccountFromAPersonsPageIsTheScreensOwnFlow() async throws {
+        try await connect()
+        let form = CompromisedChanges.Form(person: "dana@example.com")
+        #expect(form.done.isEmpty && form.restOf.isEmpty && form.switchedOn == Compromised.Step.onByDefault)
+        #expect(form.filters.isEmpty && form.delegates.isEmpty && form.sendAs.isEmpty)
+        _ = try await checked("dana@example.com")
+        let plan = try await plan(form)
+        #expect(plan.steps.first?.commandLine == "gam update user dana@example.com password random changepassword off")
+        #expect(plan.preview?.typedAddress == "dana@example.com" && writes().isEmpty)
+    }
+
     /// The reset, when it runs, gates every other step; a typed address that isn't the person's runs nothing.
     @Test func theResetGatesTheRestAndTheAddressMustBeTyped() async throws {
         try await connect()

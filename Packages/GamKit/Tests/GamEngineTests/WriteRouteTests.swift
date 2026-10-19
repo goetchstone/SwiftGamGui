@@ -112,6 +112,14 @@ struct WriteRouteTests {
         #expect(!writing.contains("App/SiriDrafts.swift"))
     }
 
+    /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
+    /// "Secure Account…" hands over an address, never a preview.
+    @Test func onlyItsScreenReachesTheCompromisedModel() throws {
+        let reaching = try Self.files(in: "App", matching: ["CompromisedChanges", "compromisedChanges"])
+        #expect(reaching == ["App/AppServices.swift", "App/ChangePreviewSheet.swift", "App/CompromisedView.swift", "App/GamGUIApp.swift"],
+                "\(reaching)")
+    }
+
     /// Offboarding's routine and the compromised-account lock are the previews only `requires` stops (a refused sign-out
     /// mustn't stop forwarding off), and the offboarding sweep the one step that counts benign failures as done
     /// (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.

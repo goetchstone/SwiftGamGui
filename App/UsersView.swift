@@ -22,6 +22,9 @@ struct UsersView: View {
     let openSignatures: (String) -> Void
     /// Opens Calendars for a person (the Calendar tab's "Show Their Calendars…").
     let openCalendars: (String) -> Void
+    /// Opens Compromised Account for a person and checks it (Actions → "Secure Account…"): only the address goes;
+    /// everything that changes the account is that screen's.
+    let openCompromised: (String) -> Void
     @State private var filter = UserFilter()
     /// What became of Siri's last request, when it couldn't be drafted.
     @State private var siriNotice: String?
@@ -187,7 +190,8 @@ struct UsersView: View {
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen,
-                               openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars)
+                               openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
+                               openCompromised: openCompromised)
                 }
             }
         } else {
@@ -381,6 +385,7 @@ private struct UserDetail: View {
     let openSignatures: (String) -> Void
     let calendarReads: CalendarReads
     let openCalendars: (String) -> Void
+    let openCompromised: (String) -> Void
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
@@ -444,6 +449,12 @@ private struct UserDetail: View {
         }
         .onChange(of: editingRole || editingAutoReply, initial: true) { _, open in editorOpen = open }
         .onDisappear { editorOpen = false }
+        #if DEBUG
+        // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would.
+        .task(id: user.id) {
+            if ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "secure" { openCompromised(user.primaryEmail) }
+        }
+        #endif
         // Another person chosen while an editor is open (nothing should, but if it does): the editor
         // closes, so what was typed for the last person can't become a preview for this one.
         .onChange(of: user.id) {
@@ -475,6 +486,10 @@ private struct UserDetail: View {
                 Button(user.suspended ? "Unsuspend…" : "Suspend…", role: user.suspended ? nil : .destructive) {
                     Task { await changes.previewSuspend(user, suspend: !user.suspended) }
                 }
+                Divider()
+                Button("Secure Account…") { openCompromised(user.primaryEmail) }
+                    .accessibilityLabel("Secure \(user.fullName)'s account")
+                    .accessibilityHint("Opens Compromised Account and checks it. Nothing changes until you preview and confirm there.")
             } label: {
                 Label("Actions", systemImage: "ellipsis.circle")
             }
