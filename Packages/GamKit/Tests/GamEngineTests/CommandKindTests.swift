@@ -85,7 +85,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 28)
+        #expect(reads == 31)
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -103,7 +103,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 41)
+        #expect(writes == 42)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -130,7 +130,7 @@ struct CommandKindTests {
         "create_group": .createGroup, "add_group_member": .addGroupMember, "remove_group_member": .removeGroupMember,
         "clear_recovery": .clearRecovery, "hide_from_directory": .hideFromDirectory,
         "transfer_calendar_ownership": .transferCalendarOwnership, "delete_filters": .deleteFilters,
-        "imap_off": .imapOff, "pop_off": .popOff, "trash_message": .trashMessage,
+        "imap_off": .imapOff, "pop_off": .popOff, "delete_sendas": .deleteSendAs, "trash_message": .trashMessage,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -154,7 +154,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 28 && writes == 41, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 31 && writes == 42, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }

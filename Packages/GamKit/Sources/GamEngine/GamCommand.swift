@@ -43,7 +43,7 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case createUserAlias, deleteAlias
     case createGroup, addGroupMember, removeGroupMember
     // Native: no GamGUI builder (`GamCommands`' native section).
-    case clearRecovery, hideFromDirectory, transferCalendarOwnership, deleteFilters, imapOff, popOff
+    case clearRecovery, hideFromDirectory, transferCalendarOwnership, deleteFilters, imapOff, popOff, deleteSendAs
     case trashMessage
 }
 

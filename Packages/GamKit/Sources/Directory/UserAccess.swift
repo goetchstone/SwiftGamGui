@@ -143,6 +143,39 @@ public final class UserAccess {
         await readNow(GamCommands.printVaultHolds(email: email)) { GamOutput.records($0).map(Offboarding.VaultHold.init(record:)) }
     }
 
+    // MARK: Check Account (the compromised-account response): each read now, not kept, GAM's own words when it fails
+
+    /// The account with its 2-Step Verification and recovery details (`Compromised.accountFields`): an alias reads as the
+    /// account that owns it, as `account(_:in:)` does.
+    public func compromisedAccount(_ email: String) async -> Result<GamUser, Problem> {
+        await readNow(GamCommands.infoUser(email: email, fields: Compromised.accountFields)) { GamUser(record: GamOutput.one($0)) }
+    }
+
+    /// Every Gmail filter, with what it matches and does: offboarding's read, read for all of them.
+    public func filters(of email: String) async -> Result<[Compromised.Filter], Problem> {
+        await readNow(GamCommands.printFilters(email: email)) { GamOutput.records($0).map(Compromised.Filter.init(record:)) }
+    }
+
+    /// Auto-forwarding as Gmail has it; nil when GAM printed no row for the person.
+    public func forwarding(of email: String) async -> Result<Compromised.Forwarding?, Problem> {
+        await readNow(GamCommands.printForward(email: email)) { Compromised.Forwarding(records: GamOutput.records($0)) }
+    }
+
+    public func forwardingAddresses(of email: String) async -> Result<[Compromised.ForwardingAddress], Problem> {
+        await readNow(GamCommands.printForwardingAddresses(email: email)) {
+            GamOutput.records($0).map(Compromised.ForwardingAddress.init(record:))
+        }
+    }
+
+    public func sendAs(of email: String) async -> Result<[Compromised.SendAs], Problem> {
+        await readNow(GamCommands.printSendAs(email: email)) { GamOutput.records($0).map(Compromised.SendAs.init(record:)) }
+    }
+
+    /// The admin roles assigned to the person directly (not through a group).
+    public func adminRoles(of email: String) async -> Result<[Compromised.AdminRole], Problem> {
+        await readNow(GamCommands.printAdmins(user: email)) { GamOutput.records($0).map(Compromised.AdminRole.init(record:)) }
+    }
+
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
     private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, parse: (String) -> T) async -> Result<T, Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
@@ -173,9 +206,10 @@ public final class UserAccess {
     /// One account as the directory has it now (`info user`), read fresh on `domain`, never another tenant's: an
     /// alias reads as the account that owns it. Offboarding's run checks with it that the two accounts are still
     /// what its preview showed.
-    public func account(_ email: String, in domain: Domain) async throws -> GamUser {
+    public func account(_ email: String, in domain: Domain, fields: [String] = []) async throws -> GamUser {
         guard let runner else { throw Problem(summary: "This build has no GAM.") }
-        return GamUser(record: GamOutput.one(try await Self.read(GamCommands.infoUser(email: email), with: runner, as: domain, environment)))
+        return GamUser(record: GamOutput.one(try await Self.read(GamCommands.infoUser(email: email, fields: fields), with: runner,
+                                                                 as: domain, environment)))
     }
 
     private static func read(_ read: GamRead, with runner: AuthenticatedRunner, as domain: Domain,

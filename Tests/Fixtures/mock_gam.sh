@@ -327,6 +327,7 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
     case "$1" in
       alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
       bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;
+      carol@example.com) cat "$GAM_MOCK_FIXTURES/info_user_carol.json" ;;   # her recovery details (the compromised check)
       *) grep -F "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json" ;;
     esac
   }
@@ -1077,9 +1078,105 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && { [ "${4:-}" = "backupcodes
   exit 0
 fi
 
-# `gam user <email> print forwardingaddresses` -> plain CSV (forwardingEmail + verification).
+# Gmail settings reads the compromised-account check makes (GAM 7.48.30). Each acts as the person: one who isn't a user
+# fails at the token (need_user), and Gmail off for them (GAM_MOCK_STATE/nogmail/<u>) is serviceNotAvailable,
+# userGmailServiceNotEnabledWarning, exit 73, after GAM's "Getting <items> for <u>" and with the CSV titles alone (GAM
+# writes the file at the end). Each takes only the arguments the app sends; anything else isn't modelled.
+gmail_off() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$1" ]; }
+gmail_read() {  # <user> <items> <titles>: the token, the "Getting" line, and Gmail off
+  need_user "$1" Print
+  getting "$2" "$1"
+  if gmail_off "$1"; then printf 'User: %s, Gmail Service/App not enabled\n' "$1" 1>&2; printf '%s\n' "$3"; exit 73; fi
+}
+
+# `gam user <u> print forwardingaddresses` (printShowForwardingAddresses, :78708-78760): `User,forwardingEmail,
+# verificationStatus`, one row per address Gmail has, none for none. carol@ has her own (accepted) and one pending.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "forwardingaddresses" ]; then
-  printf 'User,forwardingEmail,verificationStatus\n%s,fwd@example.com,accepted\n' "${2:-}"
+  user=$(lower "$2")
+  [ $# -eq 4 ] || not_modelled "print forwardingaddresses with $5"
+  titles='User,forwardingEmail,verificationStatus'
+  gmail_read "$user" "Forwarding Addresses" "$titles"
+  printf '%s\n' "$titles"
+  case "$user" in
+    carol@example.com) printf '%s,carol.home@example.org,accepted\n%s,mailbox.backup@example.net,pending\n' "$user" "$user" ;;
+  esac
+  exit 0
+fi
+
+# `gam user <u> print forward` (printShowForward, :78577-78629): `User,forwardEnabled,forwardTo,disposition`, the address
+# and disposition only while on. carol@ forwards to her own address; with GAM_MOCK_STATE, `forward` below keeps what it set.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "forward" ]; then
+  user=$(lower "$2")
+  [ $# -eq 4 ] || not_modelled "print forward with $5"
+  titles='User,forwardEnabled,forwardTo,disposition'
+  gmail_read "$user" "Forward Enabled" "$titles"
+  printf '%s\n' "$titles"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/forward/$user" ]; then
+    printf '%s,%s\n' "$user" "$(cat "$GAM_MOCK_STATE/forward/$user")"
+  else
+    case "$user" in
+      carol@example.com) printf '%s,True,carol.home@example.org,leaveInInbox\n' "$user" ;;
+      *) printf '%s,False,,\n' "$user" ;;
+    esac
+  fi
+  exit 0
+fi
+
+# `gam user <u> print sendas verifyonly` (printShowSendAs, :79158-79213): a row per address Gmail lists, the primary
+# first, each signature a True/False (verifyonly). Column order approximate (`sortall`); the app reads by name. carol@
+# can also send as an outside address; with GAM_MOCK_STATE, one `delete sendas` removed is left out.
+sendas_deleted() { [ -n "${GAM_MOCK_STATE:-}" ] && grep -qixF -- "$2" "$GAM_MOCK_STATE/sendas_deleted/$1" 2>/dev/null; }
+sendas_of() {  # <user>: each address the user can send as, beyond the primary, one per line
+  case "$1" in carol@example.com) printf 'billing.desk@example.net\n' ;; esac
+}
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "sendas" ]; then
+  user=$(lower "$2")
+  [ "$#" -eq 5 ] && [ "$5" = "verifyonly" ] || not_modelled "print sendas with ${5:-no options}"
+  titles='User,displayName,isDefault,isPrimary,replyToAddress,sendAsEmail,signature,treatAsAlias,verificationStatus'
+  gmail_read "$user" "SendAs Addresses" "$titles"
+  printf '%s\n%s,,True,True,,%s,False,,\n' "$titles" "$user" "$user"
+  sendas_of "$user" | while IFS= read -r address; do
+    sendas_deleted "$user" "$address" || printf '%s,Billing Desk,False,False,,%s,False,False,accepted\n' "$user" "$address"
+  done
+  exit 0
+fi
+
+# `gam user <u> delete sendas <EmailAddressEntity>` (deleteInfoSendAs, :79126-79156): "User: <u>, Delete 1 SendAs Address",
+# then the address indented, "Deleted"; one Gmail doesn't list fails notFound, the primary cannotDeletePrimarySendAs
+# (entityActionFailedWarning, exit 50; the API's words approximate). Only one plain address is modelled: GAM splits on
+# commas and whitespace, and reads a file for a list selector.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "sendas" ]; then
+  user=$(lower "$2")
+  [ $# -ge 5 ] || missing_arg "EmailAddressEntity"
+  [ $# -eq 5 ] || invalid_arg "$6"
+  case "$5" in *@*) ;; *) not_modelled "delete sendas $5" ;; esac
+  case "$5" in *[,[:space:]]*) not_modelled "a send-as list like $5" ;; esac
+  address=$(lower "$5")
+  need_user "$user" Delete
+  printf 'User: %s, Delete 1 SendAs Address\n' "$user"
+  if gmail_off "$user"; then printf '  User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73; fi
+  if [ "$address" = "$user" ]; then
+    printf '  User: %s, SendAs Address: %s, Delete Failed: Cannot delete the primary send-as address\n' "$user" "$address" 1>&2; exit 50
+  fi
+  if sendas_deleted "$user" "$address" || ! sendas_of "$user" | grep -qixF -- "$address"; then
+    printf '  User: %s, SendAs Address: %s, Delete Failed: Not Found\n' "$user" "$address" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then mkdir -p "$GAM_MOCK_STATE/sendas_deleted"; printf '%s\n' "$address" >> "$GAM_MOCK_STATE/sendas_deleted/$user"; fi
+  printf '  User: %s, SendAs Address: %s, Deleted\n' "$user" "$address"
+  exit 0
+fi
+
+# `gam print admins user <u>` (doPrintShowAdmins, :17653-17846): "Getting all Admin Role Assignments" then
+# PRINT_ADMIN_TITLES and a row per role assigned to the person directly. alice@ is the super admin (_SEED_ADMIN_ROLE is
+# that role's name); others hold none. An address that isn't a user is userNotFound: entityUnknownWarning, exit 56.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "admins" ]; then
+  [ "${3:-}" = "user" ] && [ $# -eq 4 ] || not_modelled "print admins ${3:-} ${5:-}"
+  user=$(lower "$4")
+  printf 'Getting all Admin Role Assignments\n' 1>&2
+  in_directory "$user" || does_not_exist "Administrator" "$4"
+  printf 'roleAssignmentId,roleId,role,assignedTo,assignedToUser,assignedToGroup,assignedToServiceAccount,assignedToUnknown,'
+  printf 'scopeType,orgUnitId,orgUnit,expirationDetails.expireTime\n'
+  case "$user" in alice@example.com) printf '9170001,9170000,_SEED_ADMIN_ROLE,1001,alice@example.com,,,False,CUSTOMER,,,\n' ;; esac
   exit 0
 fi
 
@@ -1538,6 +1635,11 @@ if [ "${1:-}" = "user" ] && { [ "${4:-}" = "delegate" ] || [ "${4:-}" = "delegat
     *missing*|*nonexistent*)
       printf 'User: %s, Delegate: %s, %s Failed: Does not exist\n' "$2" "$delegate" "$verb" 1>&2; exit 50 ;;
   esac
+  # A delegate the user doesn't have: Gmail's delete is notFound, reported against the pair (processDelegates,
+  # entityActionFailedWarning, ACTION_FAILED_RC; the API's words approximate). Until 2026-10-19 any removal passed.
+  if [ "$verb" = "Delete" ] && ! has_delegate "$2" "$delegate"; then
+    printf 'User: %s, Delegate: %s, Delete Failed: Not Found\n' "$2" "$delegate" 1>&2; exit 50
+  fi
   # A delegate the user already has: GAM's processDelegates catches Gmail's alreadyExists and reports it
   # against the pair (entityActionFailedWarning, ACTION_FAILED_RC; read from the vendored build; Google's
   # wording approximate). *exists* is the trigger; a delegate the user has (delegates_of) fails the same way.
@@ -1636,6 +1738,10 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "forward" ]; then
   known_user "$user" || not_a_user "$user" Set
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
     printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then   # what `print forward` reads next
+    mkdir -p "$GAM_MOCK_STATE/forward"
+    case "$shown" in *True*) printf 'True,%s,%s' "$6" "$disposition" ;; *) printf 'False,,' ;; esac > "$GAM_MOCK_STATE/forward/$(lower "$user")"
   fi
   echo "User: $user, $shown"
   exit 0

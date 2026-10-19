@@ -550,6 +550,86 @@ struct OffboardConfirmSheet: View {
     }
 }
 
+/// The compromised-account confirm step (docs/plans/2026-10-19-compromised-account.md): whose account, what runs, what can't be undone, and the person's address typed to run it (the
+/// executor checks it, not only this field). Run is destructive and never the default button.
+struct CompromisedConfirmSheet: View {
+    let plan: CompromisedChanges.Plan
+    let changes: CompromisedChanges
+    let dismiss: () -> Void
+    @State private var typed = ""
+    @State private var word = ""
+
+    private var person: String { plan.person.primaryEmail }
+    private var needsWord: Bool { plan.preview?.decision.requiresTypedConfirmation == true }
+    private var wordMatches: Bool { !needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord }
+    private var toType: String? { plan.preview?.typedAddress }
+    private var matches: Bool {
+        guard let toType else { return true }
+        return typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == toType.lowercased()
+    }
+
+    private func confirm() {
+        let plan = plan, changes = changes, typed = toType == nil ? [] : [typed], word = needsWord ? word : ""
+        dismiss()
+        Task { await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedWord: word, typedAddresses: typed)) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Account", value: "\(plan.person.fullName) (\(person))")
+                Text(plan.header)
+            } header: {
+                Text("Secure \(plan.person.fullName)").accessibilityAddTraits(.isHeader)
+            }
+            Section("What runs") {
+                ForEach(Array(plan.runningRows.enumerated()), id: \.element.id) { index, row in
+                    Text("\(index + 1). \(row.label)")
+                }
+                Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
+            }
+            Section {
+                let final = plan.runningRows.filter { [.password, .clearRecovery, .revoke, .filters, .sendAs].contains($0.key) }
+                    .map { "“\($0.label)”" }
+                if !final.isEmpty {
+                    Label("\(ListFormatter.localizedString(byJoining: final)) can't be undone.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                Label("Stop takes effect between steps: the step running finishes first.", systemImage: "info.circle")
+            }
+            if let toType {
+                Section("Type \(toType) to run it") {
+                    TextField("The person's address", text: $typed, prompt: Text(verbatim: toType))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the person's address, \(toType), to run the steps")
+                }
+            }
+            if needsWord {
+                Section {
+                    TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the word confirm to run all \(plan.runningRows.count) steps")
+                } header: {
+                    Text("Type \(Guard.typedWord) too")
+                } footer: {
+                    Text("\(plan.runningRows.count) steps, some that can't be undone: a run this long is confirmed in words as well.")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 480)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: dismiss) }
+            // Not the confirmation action: Return in the field mustn't run it.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Run Steps", role: .destructive) { confirm() }
+                    .disabled(!matches || !wordMatches || plan.preview == nil)
+                    .help(!matches ? "Type the person's address first" : !wordMatches ? "Type confirm first" : "Runs exactly these steps, once")
+            }
+        }
+    }
+}
+
 /// Phishing's confirm step: the email by its Message-ID, every mailbox it is trashed from with its count, the
 /// commands as GAM gets them, what trashing means, and the number of mailboxes typed to run it (from ten, the word
 /// `confirm` too); the executor checks both, not only these fields. Trash is the destructive action and never the
