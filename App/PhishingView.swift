@@ -185,7 +185,7 @@ struct PhishingView: View {
     }
 
     /// A list saved as the Audit screen saves its log: a save panel with a dated name, then the file written private
-    /// (0600) and whole, off the main actor (`CSVFile`).
+    /// (0600) and whole, off the main actor, by the one private writer the Audit export uses (`AuditExport`).
     private func export(_ name: String, _ header: [String], _ rows: [[String]]) {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = name
@@ -201,7 +201,9 @@ struct PhishingView: View {
 
     private func write(_ header: [String], _ rows: [[String]], to destination: URL) async {
         do {
-            try await Task.detached(priority: .userInitiated) { try CSVFile.write(header: header, rows: rows, to: destination) }.value
+            try await Task.detached(priority: .userInitiated) {
+                try AuditExport.writePrivately(AuditExport.csv([header] + rows), to: destination)
+            }.value
             say("Saved \(rows.count) row\(rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).", failed: false)
         } catch {
             say("Couldn't save \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)

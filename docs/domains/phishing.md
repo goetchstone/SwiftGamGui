@@ -128,8 +128,8 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   unreadable pieces as they are). The rows are built in the model from what the screen shows
   (`PhishingChanges.copiesRows`, `recipientsRows`), and tests hold them to it. They are written as the Audit
   export writes: a save panel with a dated name, Python's `excel` dialect, `csv_safe`'s quote before a formula
-  lead, and a hidden 0600 file beside the destination renamed over it once whole (`CSVFile`, shared with
-  `AuditExport`).
+  lead, and a hidden 0600 file beside the destination renamed over it once whole: the one private writer,
+  `AuditExport.csv` and `writePrivately`, which the Audit export and the incident logs use too.
 - **D9, who it was sent to.** This is added from the incident: the operator needed the outside recipients to
   warn them.
   - It reads the sender's copy (GamGUI's `search_messages`, detail Headers, `max_to_print 50`) with

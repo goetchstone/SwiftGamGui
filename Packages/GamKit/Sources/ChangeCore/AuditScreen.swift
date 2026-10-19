@@ -266,7 +266,7 @@ public enum AuditExport {
     public static func write(from url: URL, filter: AuditFilter, to destination: URL) throws -> Int {
         let needle = filter.needle
         var written = 0
-        try CSVFile.writeAtomically(to: destination) { emit in
+        try writePrivately(to: destination) { emit in
             try emit(row(columns))
             try AuditLog.forEachRecord(at: url) { record in
                 if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
@@ -288,72 +288,14 @@ public enum AuditExport {
 
     /// Writes `text` to `destination` as the audit export is written: a private (0600) file, whole or not at all.
     public static func writePrivately(_ text: String, to destination: URL) throws {
-        let partial = destination.deletingLastPathComponent()
-            .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
-        let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
-        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-        var finished = false
-        defer {
-            close(fd)
-            if !finished { unlink(partial.path) }
-        }
-        let bytes = Array(text.utf8)
-        var offset = 0
-        while offset < bytes.count {
-            let wrote = bytes[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
-            guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-            offset += wrote
-        }
-        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-        finished = true
+        try writePrivately(to: destination) { try $0(text) }
     }
 
-    /// GamGUI's `csv_safe`: nothing for a missing or null value, else its text, with a `'` before a lead a
-    /// spreadsheet would read as a formula (`=`, `+`, `-`, `@`, tab, CR).
-    static func safe(_ value: JSONValue?) -> String {
-        guard let value, value != .null else { return "" }
-        return CSVFile.safe(value.pythonText)
-    }
-
-    /// One row in Python's `excel` dialect, scalar by scalar (Foundation's search would take a quote and the
-    /// combining mark after it as one character).
-    static func row(_ cells: [String]) -> String {
-        cells.map { cell in
-            guard cell.unicodeScalars.contains(where: { $0 == "," || $0 == "\"" || $0 == "\r" || $0 == "\n" }) else { return cell }
-            var quoted = String.UnicodeScalarView()
-            quoted.append("\"")
-            for scalar in cell.unicodeScalars {
-                if scalar == "\"" { quoted.append("\"") }
-                quoted.append(scalar)
-            }
-            quoted.append("\"")
-            return String(quoted)
-        }.joined(separator: ",") + "\r\n"
-    }
-}
-
-/// A CSV the operator saves, written as the audit export is: Python's `excel` dialect (`AuditExport.row`), each cell
-/// inert for a spreadsheet as `csv_safe` makes it, UTF-8, to a hidden file beside `destination` (0600, created
-/// exclusively and never through a link: these list people), synced and renamed over it once whole. A failure leaves
-/// no partial file.
-public enum CSVFile {
-    /// One header row, then `rows`, each cell made inert. Call it off the main actor.
-    public static func write(header: [String], rows: [[String]], to destination: URL) throws {
-        try writeAtomically(to: destination) { emit in
-            try emit(AuditExport.row(header))
-            for cells in rows { try emit(AuditExport.row(cells.map(safe))) }
-        }
-    }
-
-    /// GamGUI's `csv_safe` for text: a `'` before a lead a spreadsheet would read as a formula (`=`, `+`, `-`, `@`,
-    /// tab, CR).
-    public static func safe(_ text: String) -> String {
-        guard let first = text.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return text }
-        return "'" + text
-    }
-
-    /// The hidden file, `body`'s text appended in 64 KiB writes, then the rename.
-    static func writeAtomically(to destination: URL, _ body: (_ emit: (String) throws -> Void) throws -> Void) throws {
+    /// The one private writer (the audit export, `IncidentLogs`, the Phishing lists): `body`'s text, appended in 64 KiB
+    /// writes to a hidden file beside `destination` (0600, created exclusively and never through a link: these list
+    /// people), synced and renamed over it once whole. A failure leaves no partial file. Streamed, so a log of a
+    /// million records is never held whole.
+    static func writePrivately(to destination: URL, _ body: (_ emit: (String) throws -> Void) throws -> Void) throws {
         let partial = destination.deletingLastPathComponent()
             .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
         let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
@@ -382,6 +324,31 @@ public enum CSVFile {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
         finished = true
+    }
+
+    /// GamGUI's `csv_safe`: nothing for a missing or null value, else its text, with a `'` before a lead a
+    /// spreadsheet would read as a formula (`=`, `+`, `-`, `@`, tab, CR).
+    static func safe(_ value: JSONValue?) -> String {
+        guard let value, value != .null else { return "" }
+        let text = value.pythonText
+        guard let first = text.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return text }
+        return "'" + text
+    }
+
+    /// One row in Python's `excel` dialect, scalar by scalar (Foundation's search would take a quote and the
+    /// combining mark after it as one character).
+    static func row(_ cells: [String]) -> String {
+        cells.map { cell in
+            guard cell.unicodeScalars.contains(where: { $0 == "," || $0 == "\"" || $0 == "\r" || $0 == "\n" }) else { return cell }
+            var quoted = String.UnicodeScalarView()
+            quoted.append("\"")
+            for scalar in cell.unicodeScalars {
+                if scalar == "\"" { quoted.append("\"") }
+                quoted.append(scalar)
+            }
+            quoted.append("\"")
+            return String(quoted)
+        }.joined(separator: ",") + "\r\n"
     }
 }
 
