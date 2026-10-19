@@ -42,6 +42,13 @@ struct NativeArgvTests {
         // `now` TODAY_NOW's; `select users a,b` the grammar's `users <UserList>`.
         ("report_activity", try! GamCommands.reportActivity(.login, users: ["p@example.com"], hours: 72, ip: "198.51.100.23", maxActivities: 1000),
          ["report", "login", "user", "p@example.com", "start", "-72h", "end", "now", "ip", "198.51.100.23", "maxactivities", "1000"]),
+        // 8232-8240 `print messages … query <QueryGmail> … [max_to_print <Number>] … [headers all|<SMTPHeaderList>] …
+        // [showlabels] … [showdate]`; 8170-8174 `delete messages … (ids <MessageIDEntity>)`.
+        ("list_messages", GamCommands.listMessages(email: "<email>", query: "in:drafts", max: 5000),
+         ["user", "<email>", "print", "messages", "query", "in:drafts", "max_to_print", "5000", "headers", "subject",
+          "showlabels", "showdate"]),
+        ("delete_messages", try! GamCommands.deleteMessages(email: "<email>", ids: ["19a0c0ffee000011", "19a0c0ffee000012"]),
+         ["user", "<email>", "delete", "messages", "ids", "19a0c0ffee000011,19a0c0ffee000012"]),
         // 8293 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
         ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
          ["user", "<email>", "delete", "sendas", "a@example.net"]),
@@ -175,6 +182,15 @@ struct NativeArgvTests {
         let write = try GamCommands.trashMessage(email: "a b,c@example.com", Self.phish, copies: 1)
         #expect(write.action == .trashMessage && write.argv[1] == "a b,c@example.com" && write.argv.count == 10)
         #expect(Array(write.argv.suffix(3)) == ["max_to_trash", "1", "doit"])
+    }
+
+    /// The message IDs are one element GAM splits on commas: any ID that would split or isn't ASCII, and a lone list selector
+    /// word (GAM would read a file), are refused, as deleteFilters' are.
+    @Test func eachMessageDeletedIsOneID() throws {
+        for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"], ["file"], ["CSV_File"], ["csv-kmd"], ["csvdata"]] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteMessages(email: "c@example.com", ids: bad) }
+        }
+        #expect(try GamCommands.deleteMessages(email: "c@example.com", ids: ["19a0c0ffee000011"]).action == .deleteMessages)
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {

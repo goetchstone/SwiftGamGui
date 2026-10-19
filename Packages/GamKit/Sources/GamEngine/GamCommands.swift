@@ -138,13 +138,39 @@ public enum GamCommands {
     /// deleteFilters). The list is one <FilterIDEntity> element split on commas: each ID is ASCII letters, digits, `-_`,
     /// and the element mustn't be a list selector GAM reads a file from instead (getChoice, ignoring case, `_` and `-`).
     public static func deleteFilters(email: String, filterIDs: [String]) throws -> GamWrite {
-        let list = filterIDs.joined(separator: ",")
+        guard let list = idList(filterIDs) else { throw Invalid.argument("each filter to delete is one filter ID") }
+        return GamWrite(["user", email, "delete", "filters", list], action: .deleteFilters)
+    }
+
+    /// `ids` as one entity-list element GAM splits on commas, or nil: each ID ASCII letters, digits, `-` and `_`, and the
+    /// element never a list selector GAM reads a file from instead (getChoice, ignoring case, `_` and `-`).
+    static func idList(_ ids: [String]) -> String? {
+        let list = ids.joined(separator: ",")
         let selectors: Set = ["csvkmd", "csvsubkey", "csv", "csvfile", "file", "csvdata"]   // ENTITY_LIST_SELECTORS
-        guard !filterIDs.isEmpty, filterIDs.allSatisfy({ id in
+        guard !ids.isEmpty, ids.allSatisfy({ id in
             !id.isEmpty && id.unicodeScalars.allSatisfy { $0.isASCII && ($0.properties.isAlphabetic || ("0"..."9").contains($0) || $0 == "-" || $0 == "_") }
         }), !selectors.contains(list.lowercased().filter { $0 != "_" && $0 != "-" })
-        else { throw Invalid.argument("each filter to delete is one filter ID") }
-        return GamWrite(["user", email, "delete", "filters", list], action: .deleteFilters)
+        else { return nil }
+        return list
+    }
+
+    /// A short listing of the messages a Gmail search finds: the newest `max` (8235 `max_to_print`), each with only its
+    /// Subject (8237 `headers <SMTPHeaderList>`; GAM names the column by SMTP_HEADERS_MAP), its labels and Gmail's own time
+    /// (8238-8239). Only the subject: a phishing draft's Bcc list can run to hundreds of addresses, and thousands of those
+    /// would pass the runner's cap (review 2026-10-19). Spam and Trash aren't searched.
+    public static func listMessages(email: String, query: String, max: Int) -> GamRead {
+        GamRead(["user", email, "print", "messages", "query", query, "max_to_print", String(max), "headers", "subject",
+                 "showlabels", "showdate"])
+    }
+
+    /// The messages `ids` deleted for good (8170-8174 `delete messages … (ids <MessageIDEntity>)`; _processMessagesThreads:
+    /// with ids no `doit` is needed and no count is checked): Gmail's batchDelete, `message_batch_size` (50) at a time, as
+    /// Gmail's own Discard deletes a draft. A batch holding an ID Gmail refuses fails whole ("Invalid message id(s)"), the
+    /// other batches done. Not Trash: a trashed draft may still be a draft, and sendable (review 2026-10-19). The list is
+    /// one element GAM splits on commas (`idList`).
+    public static func deleteMessages(email: String, ids: [String]) throws -> GamWrite {
+        guard let list = idList(ids) else { throw Invalid.argument("each message to delete is one message ID") }
+        return GamWrite(["user", email, "delete", "messages", "ids", list], action: .deleteMessages)
     }
 
     /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own

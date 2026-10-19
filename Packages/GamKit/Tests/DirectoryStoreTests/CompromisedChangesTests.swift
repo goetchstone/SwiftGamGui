@@ -239,6 +239,36 @@ final class CompromisedChangesTests {
         #expect((try? UserAccess.outcome(whole, argv: [], parse: { ActivityLogs.rows($0, application: .login) }).get())?.isEmpty == true)
     }
 
+    /// The check lists the drafts; those whose subject matches are deleted in one step through the executor, exactly as
+    /// held, and the check again lists what's left. All of them is the same step over every listed ID; a subject that
+    /// matches nothing plans nothing.
+    @Test func draftsByTheirSubjectAreDeletedAndTheCheckAgainShowsWhatsLeft() async throws {
+        try await connect()
+        let check = try await checked()
+        let drafts = try check.drafts.get()
+        #expect(drafts.count == 3 && check.findings.contains { $0.hasPrefix("carol@example.com has 3 drafts") })
+        var form = form()
+        form.done = [.password]
+        form.discardDrafts = .all
+        let all = try await plan(form)
+        #expect(all.steps.contains { $0.commandLine == "gam user carol@example.com delete messages ids "
+                                     + "19a0c0ffee000011,19a0c0ffee000012,19a0c0ffee000013" })
+        form.discardDrafts = .subjectContaining("nothing like it")
+        #expect(await blocked(form)?.hasPrefix("No draft's subject contains “nothing like it”") == true)
+        form.discardDrafts = .subjectContaining(" FALL party")
+        let plan = try await plan(form)
+        let step = try #require(plan.steps.first { $0.action == .deleteMessages })
+        #expect(step.commandLine == "gam user carol@example.com delete messages ids 19a0c0ffee000011,19a0c0ffee000012")
+        #expect(step.risk == .destructive && step.requires.isEmpty && plan.preview?.typedAddress == "carol@example.com")
+        #expect(step.timeout == Compromised.Draft.timeout)
+        await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        #expect(changes.run?.isComplete == true, "\(String(describing: changes.run?.results))")
+        #expect(writes().contains(step.commandLine))
+        let again = try #require(changes.check)
+        #expect(try again.drafts.get().map(\.id) == ["19a0c0ffee000013"])
+        #expect(changes.run?.rest.discardDrafts == CompromisedChanges.Form.Discard.none)
+    }
+
     /// The reset, when it runs, gates every other step; a typed address that isn't the person's runs nothing.
     @Test func theResetGatesTheRestAndTheAddressMustBeTyped() async throws {
         try await connect()

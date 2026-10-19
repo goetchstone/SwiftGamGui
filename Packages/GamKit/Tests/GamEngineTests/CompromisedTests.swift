@@ -192,3 +192,75 @@ struct MockCompromisedTests {
         #expect(!account.enrolledIn2SV && !account.enforcedIn2SV && !account.isAdmin)
     }
 }
+
+/// Leftover drafts (the operator, 2026-10-19: an attacker's Gmail session left thousands of draft events, and blocked
+/// phishing batches leave drafts anyone signed in can still send): listed by the check, all of them or those matching a
+/// subject deleted in one step, against the strict mock.
+@Suite("Compromised drafts")
+struct CompromisedDraftsTests {
+    let mock = GamRunner(binary: Fixtures.mockGam)
+
+    private func run(_ argv: [String], state: URL? = nil) async throws -> GamResult {
+        let config = try Fixtures.placeholderConfigDirectory()
+        defer { try? FileManager.default.removeItem(at: config) }
+        var environment = Fixtures.mockEnvironment
+        if let state { environment["GAM_MOCK_STATE"] = state.path }
+        let result = try await mock.runRaw(argv, configDirectory: config, extraEnvironment: environment)
+        let stdout = result.stdout.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            .filter { !$0.hasPrefix("Created: ") && !$0.hasPrefix("Config File: ") }.joined(separator: "\n")
+        return GamResult(exitCode: result.exitCode, stdout: stdout, stderr: result.stderr, stdoutTruncated: result.stdoutTruncated,
+                         stderrTruncated: result.stderrTruncated)
+    }
+
+    private func drafts(_ email: String, state: URL? = nil, max: Int = Compromised.Draft.cap) async throws -> [Compromised.Draft] {
+        let read = GamCommands.listMessages(email: email, query: "in:drafts", max: max)
+        return try Compromised.Draft.list(try await run(read.argv, state: state), argv: read.argv)
+    }
+
+    @Test func theDraftsAreListedNewestFirst() async throws {
+        let listed = try await drafts("carol@example.com")
+        #expect(listed.map(\.id) == ["19a0c0ffee000011", "19a0c0ffee000012", "19a0c0ffee000013"])
+        #expect(listed[0].subject == "You're invited: Fall party" && listed[0].labels == ["DRAFT"] && listed[0].when != nil)
+        #expect(Compromised.drafts(listed, subjectMatching: " fall PARTY ").map(\.id) == ["19a0c0ffee000011", "19a0c0ffee000012"])
+        #expect(Compromised.drafts(listed, subjectMatching: "  ").isEmpty)
+        #expect(try await drafts("carol@example.com", max: 1).count == 1)
+        #expect(try await drafts("carol@example.com", max: 0).count == 3, "GAM's 0 is no limit")
+        #expect(try await drafts("alice@example.com").isEmpty, "none: GAM's exit 60, read as no drafts")
+        let other = GamCommands.listMessages(email: "carol@example.com", query: "in:inbox", max: 5)
+        #expect(try await run(other.argv).exitCode == 2, "only the drafts listing is modelled")
+    }
+
+    /// delete messages ids: GAM's batches of 50, a batch with an ID the mailbox lacks failing whole (exit 50); a deleted draft
+    /// leaves the listing.
+    @Test func draftsAreDeletedInGamsBatches() async throws {
+        let state = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-drafts-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: state) }
+        let delete = try GamCommands.deleteMessages(email: "carol@example.com", ids: ["19a0c0ffee000011"])
+        let result = try await run(delete.argv, state: state)
+        #expect(result.exitCode == 0, "\(result.stderr)")
+        #expect(result.stdout.contains("User: carol@example.com, Delete 1 Message")
+                && result.stdout.contains("  User: carol@example.com, Message: 19a0c0ffee000011, Deleted"))
+        #expect(try await drafts("carol@example.com", state: state).map(\.id) == ["19a0c0ffee000012", "19a0c0ffee000013"])
+        let bad = try await run(try GamCommands.deleteMessages(email: "carol@example.com", ids: ["19a0c0ffee000012", "19a0c0ffeezzzzzz"]).argv,
+                                state: state)
+        #expect(bad.exitCode == 50 && bad.stderr.contains("Delete Failed: Invalid message id(s) (1-2/2)"))
+        #expect(try await drafts("carol@example.com", state: state).count == 2, "the failed batch deleted nothing")
+        #expect(try await run(["user", "carol@example.com", "delete", "messages", "ids", "file"]).exitCode == 2, "a selector reads a file")
+        #expect(try await run(["user", "stranger@example.com", "delete", "messages", "ids", "19a0c0ffee000011"]).exitCode == 50)
+    }
+
+    @Test func theStepSaysWhatItDeletesAndTheFindingsSayHowMany() throws {
+        let listed = [Compromised.Draft(record: ["id": .string("D1"), "Subject": .string("You're invited")]),
+                      Compromised.Draft(record: ["id": .string("D2"), "Subject": .string("You're invited")])]
+        let steps = try Compromised.steps(user: "carol@example.com", switchedOn: [], drafts: listed)
+        let step = try #require(steps.first { $0.key == .drafts })
+        #expect(step.write.argv == ["user", "carol@example.com", "delete", "messages", "ids", "D1,D2"])
+        #expect(step.label == "Delete 2 drafts" && step.summary.contains("“You're invited”") && step.summary.contains("can't be restored"))
+        let account = Compromised.Account(GamUser(record: ["primaryEmail": .string("carol@example.com"), "isEnrolledIn2Sv": .bool(true)]))
+        let said = Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,
+                                        drafts: listed)
+        #expect(said == ["carol@example.com has 2 drafts: an attacker's leftover drafts can still be sent by anyone signed in. Delete "
+                         + "them, all or by subject."])
+    }
+}

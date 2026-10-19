@@ -94,6 +94,11 @@ from that IP showed who had typed their password into the fake page.
 GamGUI's "Search a mailbox" (`GamCommands.searchMessages`, read-only, capped at 50) gets a screen, so the person's
 Sent mail can be checked for other phishing waves (`in:sent newer_than:3d`), with headers including Bcc.
 
+## Slice 4: leftover drafts
+From the operator (2026-10-19): "add removing leftover phishing drafts", then "I just need to clear the drafts on their own".
+The check lists the drafts (newest 5,000); all of them, or those whose subject matches, are deleted in one held step, as
+Gmail's Discard does (a trashed draft may still be sendable: review 2026-10-19). Scheduled sends are left out. Runbook: docs/domains/compromised-account.md, "Leftover drafts".
+
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen
 accessible (VoiceOver labels, words not colour, keyboard, Dynamic Type); CI screenshots; the runbook

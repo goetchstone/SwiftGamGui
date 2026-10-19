@@ -26,8 +26,8 @@ for what the later delete would lose (their secondary calendars) or a Vault hold
 command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
 left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
-admin roles), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
-send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…). Pull
+admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
+send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them (Actions → Secure Account…). Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes and
 more) for some accounts or all, filtered by an attacker's address, each a table with a CSV export. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
@@ -186,6 +186,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
 | Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
+| Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 

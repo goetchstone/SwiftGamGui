@@ -58,8 +58,9 @@ struct CompromisedView: View {
                             FiltersSection(check: check, picked: $form.filters)
                             DelegatesSection(check: check, picked: $form.delegates)
                             SendAsSection(check: check, picked: $form.sendAs)
+                            DraftsSection(check: check, discard: $form.discardDrafts)
                             AdminRolesSection(check: check)
-                            StepsSection(form: $form)
+                            StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
                             previewSection
                         }
                     }
@@ -95,6 +96,7 @@ struct CompromisedView: View {
         .onChange(of: form.person) { old, new in
             guard old.trimmingCharacters(in: .whitespaces).lowercased() != new.trimmingCharacters(in: .whitespaces).lowercased() else { return }
             (form.done, form.restOf, form.filters, form.delegates, form.sendAs) = ([], "", [], [], [])
+            form.discardDrafts = .none
         }
         // A check again (after a run): the ticks on what's gone are dropped.
         .onChange(of: changes.check?.id) {
@@ -248,6 +250,8 @@ struct CompromisedView: View {
             form.filters = Set(((try? check.filters.get()) ?? []).filter(\.hidesOrForwards).map(\.id))
             form.delegates = Set((try? check.delegates.get()) ?? [])
             form.sendAs = Set(((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary }.map(\.address))
+            // The drafts that share the newest one's subject: an attacker's batch.
+            if let subject = (try? check.drafts.get())?.first?.subject { form.discardDrafts = .subjectContaining(subject) }
             await changes.plan(form)
             guard case .planned(let plan) = changes.planState else { return }
             if tab == "confirm" { confirming = plan }
@@ -438,6 +442,80 @@ private struct SendAsSection: View {
     }
 }
 
+/// The person's drafts, newest first, and what to do with them: keep them, delete every one, or only those whose subject
+/// holds some text (a phishing batch's subject). Keeping them is the start.
+private struct DraftsSection: View {
+    let check: CompromisedChanges.Check
+    @Binding var discard: CompromisedChanges.Form.Discard
+    @State private var subject = ""
+    private let shown = 50
+
+    private enum Choice: Hashable { case keep, all, matching }
+
+    private var choice: Binding<Choice> {
+        Binding(get: {
+            switch discard {
+            case .none: .keep
+            case .all: .all
+            case .subjectContaining: .matching
+            }
+        }, set: { picked in
+            switch picked {
+            case .keep: discard = .none
+            case .all: discard = .all
+            case .matching: discard = .subjectContaining(subject)
+            }
+        })
+    }
+
+    var body: some View {
+        Section {
+            switch check.drafts {
+            case .success(let drafts) where drafts.isEmpty:
+                Text("No drafts.").foregroundStyle(.secondary)
+            case .success(let drafts):
+                let chosen = check.drafts(discard).count
+                Text(drafts.count >= Compromised.Draft.cap ? "The newest \(Compromised.Draft.cap) drafts, newest first."
+                     : "\(drafts.count) draft\(drafts.count == 1 ? "" : "s"), newest first.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Picker("Drafts", selection: choice) {
+                    Text("Keep them").tag(Choice.keep)
+                    Text("Delete all \(drafts.count)").tag(Choice.all)
+                    Text("Delete those whose subject contains…").tag(Choice.matching)
+                }
+                .pickerStyle(.radioGroup)
+                if case .subjectContaining = discard {
+                    TextField("Subject contains", text: $subject, prompt: Text(verbatim: drafts.first?.subject ?? ""))
+                        .autocorrectionDisabled()
+                        .onChange(of: subject) { _, text in discard = .subjectContaining(text) }
+                        .accessibilityLabel("Delete the drafts whose subject contains")
+                }
+                if discard != .none {
+                    Text("\(chosen) draft\(chosen == 1 ? "" : "s") will be deleted, for good.").fontWeight(.semibold)
+                }
+                ForEach(drafts.prefix(shown)) { draft in
+                    let when = draft.when?.formatted(date: .abbreviated, time: .shortened) ?? draft.date
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(draft.subject.isEmpty ? "(no subject)" : draft.subject)
+                        Text(when).font(.callout).foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if drafts.count > shown {
+                    Text("Showing the newest \(shown) of \(drafts.count).").font(.callout)
+                }
+            case .failure(let problem): Unread(what: "the drafts", problem: problem)
+            }
+        } header: {
+            Text("Drafts")
+        } footer: {
+            Text("Anyone signed in to the account can send a draft. Deleting is for good, as Gmail's Discard: Gmail's log keeps "
+                 + "the record of them.")
+        }
+        .onAppear { if case .subjectContaining(let text) = discard { subject = text } }
+    }
+}
+
 private struct AdminRolesSection: View {
     let check: CompromisedChanges.Check
 
@@ -463,6 +541,8 @@ private struct AdminRolesSection: View {
 /// The lock: the reset (often already done), the two steps that always run, and the three switches.
 private struct StepsSection: View {
     @Binding var form: CompromisedChanges.Form
+    /// How many drafts the form's choice moves to Trash.
+    let draftsChosen: Int
 
     var body: some View {
         Section {
@@ -504,7 +584,8 @@ private struct StepsSection: View {
                 }
             }
             let picks = [(form.filters.count, "filter", "delete"), (form.delegates.count, "delegate", "remove"),
-                         (form.sendAs.count, "send-as address", "remove")].filter { $0.0 > 0 }
+                         (form.sendAs.count, "send-as address", "remove"), (draftsChosen, "draft", "delete")]
+                .filter { $0.0 > 0 }
             Text(picks.isEmpty ? "Nothing ticked to undo above: only the lock runs."
                  : "Also: " + picks.map { "\($0.2) \($0.0) \($0.1)\($0.0 == 1 ? "" : ($0.1.hasSuffix("s") ? "es" : "s"))" }
                     .joined(separator: ", ") + ".")
@@ -542,7 +623,9 @@ private struct CompromisedPlanSection: View {
             ForEach(Array(plan.rows.enumerated()), id: \.element.id) { index, row in
                 VStack(alignment: .leading, spacing: 4) {
                     switch row.status {
-                    case .runs(let commandLine):
+                    case .runs(let full):
+                        // Thousands of draft IDs would be a page of text, and spoken one by one: the start, then how much.
+                        let commandLine = full.count > 400 ? String(full.prefix(400)) + "… (\(full.count.formatted()) characters in all)" : full
                         Text("\(index + 1). \(row.label)").fontWeight(.semibold)
                         Text(row.summary).foregroundStyle(.secondary)
                         Text(commandLine)

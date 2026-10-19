@@ -641,6 +641,93 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ]; then
   exit 0
 fi
 
+# `<user> print messages query in:drafts max_to_print <n> headers subject showlabels showdate`: the compromised-
+# account check's listing of drafts, GamCommands.listMessages, strict,
+# as GAM 7.48.30's printShowMessagesThreads runs it, from mock_gam/messages.csv (the DRAFT label) and each
+# message's mock_gam/message_headers/<id>. As GAM does: a token for the user (token_refused); showlabels reads the labels
+# first, so Gmail off is userGmailServiceNotEnabledWarning (73); "Getting all Messages…" on stderr; Spam and Trash aren't
+# listed without includespamtrash, so a message in $GAM_MOCK_STATE/trashed/<id> is left out; none is NO_ENTITIES_FOUND_RC
+# (60) with the header line alone; at most max_to_print (0 is no limit, as GAM's maxToProcess). The Subject under its
+# SMTP_HEADERS_MAP name; Date is Gmail's own time (showdate). Column order approximate; the app reads by name. Only that one
+# label term and that one header.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "query" ] \
+   && [ "${7:-}" = "max_to_print" ] && [ "${9:-}" = "headers" ] && [ "${10:-}" = "subject" ]; then
+  user=$2; query=$6; max=$8
+  [ "$#" -eq 12 ] && [ "${11}" = showlabels ] && [ "${12}" = showdate ] || not_modelled "a listing other than the check's"
+  case "$query" in in:drafts) want=DRAFT ;; *) not_modelled "a listing of $query" ;; esac
+  case "$max" in ''|*[!0-9]*) usage_error "Invalid argument: Expected <integer x>=0>" ;; esac
+  columns="User threadId id Subject Date LabelsCount Labels"
+  if ! known_user "$user"; then gam_row $columns; token_refused "$user" Print; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; gam_row $columns; exit 73
+  fi
+  printf 'Getting all Messages that match query ((%s)) for %s\n' "$query" "$user" 1>&2
+  gam_row $columns
+  n=0
+  while IFS=, read -r owner id message tags; do
+    [ "$owner" = "$user" ] || continue
+    case " $tags " in *" $want "*) ;; *) continue ;; esac
+    if [ -n "${GAM_MOCK_STATE:-}" ] && { [ -e "$GAM_MOCK_STATE/trashed/$id" ] || [ -e "$GAM_MOCK_STATE/deleted/$id" ]; }; then continue; fi
+    [ "$max" -eq 0 ] || [ "$n" -lt "$max" ] || break
+    data="$GAM_MOCK_FIXTURES/message_headers/$id"
+    [ -f "$data" ] || not_modelled "message $id's headers"
+    field() { sed -n "s/^$1: //p" "$data" | head -n 1; }
+    set -- $tags
+    gam_row "$user" "$(field Gmail-ThreadId)" "$id" "$(field Subject)" "$(field Gmail-InternalDate)" "$#" "$tags"
+    n=$((n + 1))
+  done < "$GAM_MOCK_FIXTURES/messages.csv"
+  if [ "$n" -eq 0 ]; then printf '\rGot 0 Messages that matched query ((%s)) for %s...\r\n' "$query" "$user" 1>&2; exit 60; fi
+  exit 0
+fi
+
+# `<user> delete messages ids <MessageIDEntity>` (8170-8174; _processMessagesThreads with ids: no doit, no count check):
+# the compromised-account step that deletes the chosen drafts for good. As GAM 7.48.30 does: a token for the user;
+# getProfile, so Gmail off is userGmailServiceNotEnabledWarning (73); "User: <u>, Delete N Messages"; then Gmail's
+# batchDelete, message_batch_size (50) at a time: each "  User: <u>, Message: <id>, Deleted (j/N)", or a batch holding an ID
+# the mailbox doesn't have (messages.csv, not already deleted) failing whole, "  User: <u>, Message: <the first five>,...,
+# Delete Failed: Invalid message id(s) (a-b/N)" on stderr (entityActionFailedWarning, exit 50), the other batches done.
+# Gmail's word for a valid-looking but missing ID is approximate. With GAM_MOCK_STATE a deleted message is
+# $GAM_MOCK_STATE/deleted/<id>. Only a list of ASCII letters, digits, `-`, `_` and commas is modelled: GAM splits on
+# whitespace too, and reads a file for a list selector.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "ids" ]; then
+  user=$2
+  [ $# -ge 6 ] || missing_arg "MessageIDEntity"
+  [ $# -eq 6 ] || invalid_arg "$7"
+  case "$6" in *[!A-Za-z0-9_,-]*) not_modelled "a message ID list like $6" ;; esac
+  case "$(printf '%s' "$6" | tr '[:upper:]' '[:lower:]' | tr -d '_-')" in csvkmd|csvsubkey|csv|csvfile|file|csvdata) not_modelled "delete messages ids from $6" ;; esac
+  known_user "$user" || token_refused "$user" Delete
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+    printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73
+  fi
+  set -f; ids=$(printf '%s' "$6" | tr ',' ' '); set +f
+  n=$(printf '%s\n' $ids | grep -c . || true); failed=""
+  if [ "$n" -eq 0 ]; then printf 'User: %s, Messages: 0, Not Deleted: No Messages matched\n' "$user" 1>&2; exit 60; fi
+  if [ "$n" -eq 1 ]; then noun=Message; else noun=Messages; fi
+  printf 'User: %s, Delete %s %s\n' "$user" "$n" "$noun"
+  have() { grep -q "^$user,$1," "$GAM_MOCK_FIXTURES/messages.csv" && ! { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/deleted/$1" ]; }; }
+  done_count=0
+  set -- $ids
+  while [ $# -gt 0 ]; do
+    batch=""; k=0
+    while [ $# -gt 0 ] && [ "$k" -lt 50 ]; do batch="$batch $1"; k=$((k + 1)); shift; done
+    bad=""
+    for id in $batch; do have "$id" || bad=1; done
+    if [ -n "$bad" ]; then
+      shown=$(printf '%s\n' $batch | head -n 5 | paste -sd, -); [ "$k" -gt 5 ] && shown="$shown,..."
+      printf '  User: %s, Message: %s, Delete Failed: Invalid message id(s) (%s-%s/%s)\n' "$user" "$shown" "$((done_count + 1))" \
+        "$((done_count + k))" "$n" 1>&2
+      failed=1; done_count=$((done_count + k)); continue
+    fi
+    for id in $batch; do
+      done_count=$((done_count + 1)); of=""; [ "$n" -gt 1 ] && of=" ($done_count/$n)"
+      if [ -n "${GAM_MOCK_STATE:-}" ]; then mkdir -p "$GAM_MOCK_STATE/deleted"; : > "$GAM_MOCK_STATE/deleted/$id"; fi
+      printf '  User: %s, Message: %s, Deleted%s\n' "$user" "$id" "$of"
+    done
+  done
+  [ -z "$failed" ] || exit 50
+  exit 0
+fi
+
 # `<user> print messages query rfc822msgid:<id> includespamtrash max_to_print <n> headers all showlabels showdate`: the
 # Phishing screen's recipients read (GamCommands.searchMessages, detail .headers), strict, as GAM 7.48.30's
 # printShowMessagesThreads runs it, from the mailboxes in mock_gam/messages.csv and each message's headers in

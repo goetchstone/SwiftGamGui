@@ -171,6 +171,27 @@ public final class UserAccess {
         await readNow(GamCommands.printSendAs(email: email)) { GamOutput.records($0).map(Compromised.SendAs.init(record:)) }
     }
 
+    /// The person's drafts, the newest `Compromised.Draft.cap`: an attacker's session can leave thousands. None is no drafts.
+    public func drafts(of email: String) async -> Result<[Compromised.Draft], Problem> {
+        await listed(GamCommands.listMessages(email: email, query: "in:drafts", max: Compromised.Draft.cap))
+    }
+
+    private func listed(_ read: GamRead) async -> Result<[Compromised.Draft], Problem> {
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        do {
+            return .success(try Compromised.Draft.list(try await runner.run(read, as: domain, timeout: Compromised.Draft.timeout,
+                                                                          extraEnvironment: environment), argv: read.argv))
+        } catch let error as GamError {
+            return .failure(Problem(summary: error.message))
+        } catch let incomplete as MessageCopies.Incomplete {
+            return .failure(Problem(summary: incomplete.reason))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// The admin roles assigned to the person directly (not through a group).
     public func adminRoles(of email: String) async -> Result<[Compromised.AdminRole], Problem> {
         await readNow(GamCommands.printAdmins(user: email)) { GamOutput.records($0).map(Compromised.AdminRole.init(record:)) }
