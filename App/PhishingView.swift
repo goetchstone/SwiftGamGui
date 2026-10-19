@@ -4,6 +4,7 @@ import Directory
 import GamEngine
 import Setup
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Phishing: one email taken out of every mailbox (docs/domains/phishing.md). The operator pastes the email's
 /// Message-ID; Find Copies runs GAM's own dry run over every active user, which changes nothing, and lists who has a
@@ -16,6 +17,8 @@ struct PhishingView: View {
     let hasGam: Bool
     @State private var pasted = ""
     @State private var sender = ""
+    /// The last save's result, shown at the top and spoken.
+    @State private var notice: (text: String, failed: Bool)?
     @State private var debugApplied = false
     @Environment(\.appearsActive) private var appearsActive
 
@@ -40,8 +43,15 @@ struct PhishingView: View {
     var body: some View {
         ScrollViewReader { scroller in
             Form {
+                if let notice {
+                    Section {
+                        Label(notice.text, systemImage: notice.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .symbolRenderingMode(.multicolor)
+                            .textSelection(.enabled)
+                    }
+                }
                 if let run = changes.run {
-                    PhishingRunSection(run: run, changes: changes) { message in
+                    PhishingRunSection(run: run, changes: changes, export: export) { message in
                         pasted = message
                         find()
                     }
@@ -141,7 +151,7 @@ struct PhishingView: View {
                 Text("Couldn't search").accessibilityAddTraits(.isHeader)
             }
         case .found(let search):
-            FoundSection(search: search, changes: changes, canTrash: hasGam && !changes.isRunning)
+            FoundSection(search: search, changes: changes, canTrash: hasGam && !changes.isRunning, export: export)
         }
     }
 
@@ -168,8 +178,37 @@ struct PhishingView: View {
             }
         case .read(let recipients):
             let unnamed: [String] = if case .found(let search) = changes.state { recipients.unnamed(in: search) } else { [] }
-            RecipientsSection(recipients: recipients, unnamed: unnamed)
+            RecipientsSection(recipients: recipients, unnamed: unnamed, export: export)
         }
+    }
+
+    /// A list saved as the Audit screen saves its log: a save panel with a dated name, then the file written private
+    /// (0600) and whole, off the main actor (`CSVFile`).
+    private func export(_ name: String, _ header: [String], _ rows: [[String]]) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = name
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.message = "It lists people's addresses, some outside the company: keep the file private."
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task { await write(header, rows, to: destination) }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    private func write(_ header: [String], _ rows: [[String]], to destination: URL) async {
+        do {
+            try await Task.detached(priority: .userInitiated) { try CSVFile.write(header: header, rows: rows, to: destination) }.value
+            say("Saved \(rows.count) row\(rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).", failed: false)
+        } catch {
+            say("Couldn't save \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+        }
+    }
+
+    private func say(_ text: String, failed: Bool) {
+        notice = (text, failed)
+        if appearsActive { AccessibilityNotification.Announcement(text).post() }
     }
 
     private func listRecipients() {
@@ -250,6 +289,7 @@ private struct FoundSection: View {
     let search: PhishingChanges.Search
     let changes: PhishingChanges
     let canTrash: Bool
+    let export: (String, [String], [[String]]) -> Void
 
     private var copies: MessageCopies { search.copies }
     private var withCopies: [MessageCopies.Mailbox] { copies.withCopies }
@@ -341,6 +381,14 @@ private struct FoundSection: View {
             if let refusal = changes.refusal {
                 Label(refusal, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
             }
+            HStack {
+                Spacer()
+                Button("Export CSV…") {
+                    export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns, PhishingChanges.copiesRows(search, run: nil))
+                }
+                .accessibilityLabel("Export the \(copies.mailboxes.count) mailboxes searched as a CSV file")
+                .help("Each mailbox, what was found and how many copies")
+            }
             if !withCopies.isEmpty {
                 HStack {
                     Spacer()
@@ -365,6 +413,7 @@ private struct RecipientsSection: View {
     let recipients: PhishingChanges.Recipients
     /// Mailboxes Find saw a copy in that the headers don't name: proof the list isn't everyone.
     let unnamed: [String]
+    let export: (String, [String], [[String]]) -> Void
 
     static let logSearch = "Google's own record of every recipient is in the Admin console: Reporting › Email Log Search."
 
@@ -438,6 +487,15 @@ private struct RecipientsSection: View {
                     .accessibilityElement(children: .combine)
                 }
                 Label("Not necessarily everyone. " + Self.logSearch, systemImage: "info.circle")
+                HStack {
+                    Spacer()
+                    Button("Export CSV…") {
+                        export(PhishingChanges.exportName("recipients"), PhishingChanges.recipientsColumns,
+                               PhishingChanges.recipientsRows(recipients))
+                    }
+                    .accessibilityLabel("Export who it was sent to as a CSV file")
+                    .help("Each address, outside or inside your domains, and its header")
+                }
             } else {
                 Label("No copy of this email is left in \(recipients.sender)'s mailbox: deleted and emptied from Trash, or never "
                       + "there. So who it went to can't be read here. " + Self.logSearch, systemImage: "questionmark.circle")
@@ -457,6 +515,7 @@ private struct RecipientsSection: View {
 private struct PhishingRunSection: View {
     let run: PhishingChanges.Run
     let changes: PhishingChanges
+    let export: (String, [String], [[String]]) -> Void
     let findAgain: (String) -> Void
     @State private var askingStop = false
 
@@ -484,6 +543,11 @@ private struct PhishingRunSection: View {
                     .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
+                    Button("Export CSV…") {
+                        export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns,
+                               PhishingChanges.copiesRows(run.pending.search, run: run))
+                    }
+                    .accessibilityLabel("Export each mailbox searched and what the trash did as a CSV file")
                     Button("Find Again") { findAgain(run.pending.search.message.id) }
                     Button("Done") { changes.dismissRun() }
                 }

@@ -264,42 +264,20 @@ public enum AuditExport {
     /// how many. Call it off the main actor; it throws `CancellationError` when the task is cancelled.
     @discardableResult
     public static func write(from url: URL, filter: AuditFilter, to destination: URL) throws -> Int {
-        let partial = destination.deletingLastPathComponent()
-            .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
-        let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
-        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-        var finished = false
-        defer {
-            close(fd)
-            if !finished { unlink(partial.path) }
-        }
-        var pending = Array(row(columns).utf8)
-        func flush() throws {
-            var offset = 0
-            while offset < pending.count {
-                let wrote = pending[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
-                guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-                offset += wrote
-            }
-            pending.removeAll(keepingCapacity: true)
-        }
         let needle = filter.needle
         var written = 0
-        try AuditLog.forEachRecord(at: url) { record in
-            if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
-            guard filter.keeps(record, needle: needle) else { return true }
-            let extra = record["extra"]?.object ?? [:]
-            pending += row([record["ts"], record["action"], record["target"], record["ok"], record["exit_code"],
-                            extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"]].map(safe)).utf8
-            written += 1
-            if pending.count >= 64 * 1_024 { try flush() }
-            return true
+        try CSVFile.writeAtomically(to: destination) { emit in
+            try emit(row(columns))
+            try AuditLog.forEachRecord(at: url) { record in
+                if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
+                guard filter.keeps(record, needle: needle) else { return true }
+                let extra = record["extra"]?.object ?? [:]
+                try emit(row([record["ts"], record["action"], record["target"], record["ok"], record["exit_code"],
+                              extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"]].map(safe)))
+                written += 1
+                return true
+            }
         }
-        try flush()
-        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        finished = true
         return written
     }
 
@@ -307,9 +285,7 @@ public enum AuditExport {
     /// spreadsheet would read as a formula (`=`, `+`, `-`, `@`, tab, CR).
     static func safe(_ value: JSONValue?) -> String {
         guard let value, value != .null else { return "" }
-        let text = value.pythonText
-        guard let first = text.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return text }
-        return "'" + text
+        return CSVFile.safe(value.pythonText)
     }
 
     /// One row in Python's `excel` dialect, scalar by scalar (Foundation's search would take a quote and the
@@ -326,6 +302,59 @@ public enum AuditExport {
             quoted.append("\"")
             return String(quoted)
         }.joined(separator: ",") + "\r\n"
+    }
+}
+
+/// A CSV the operator saves, written as the audit export is: Python's `excel` dialect (`AuditExport.row`), each cell
+/// inert for a spreadsheet as `csv_safe` makes it, UTF-8, to a hidden file beside `destination` (0600, created
+/// exclusively and never through a link: these list people), synced and renamed over it once whole. A failure leaves
+/// no partial file.
+public enum CSVFile {
+    /// One header row, then `rows`, each cell made inert. Call it off the main actor.
+    public static func write(header: [String], rows: [[String]], to destination: URL) throws {
+        try writeAtomically(to: destination) { emit in
+            try emit(AuditExport.row(header))
+            for cells in rows { try emit(AuditExport.row(cells.map(safe))) }
+        }
+    }
+
+    /// GamGUI's `csv_safe` for text: a `'` before a lead a spreadsheet would read as a formula (`=`, `+`, `-`, `@`,
+    /// tab, CR).
+    public static func safe(_ text: String) -> String {
+        guard let first = text.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) else { return text }
+        return "'" + text
+    }
+
+    /// The hidden file, `body`'s text appended in 64 KiB writes, then the rename.
+    static func writeAtomically(to destination: URL, _ body: (_ emit: (String) throws -> Void) throws -> Void) throws {
+        let partial = destination.deletingLastPathComponent()
+            .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
+        let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        var finished = false
+        defer {
+            close(fd)
+            if !finished { unlink(partial.path) }
+        }
+        var pending: [UInt8] = []
+        func flush() throws {
+            var offset = 0
+            while offset < pending.count {
+                let wrote = pending[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
+                guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+                offset += wrote
+            }
+            pending.removeAll(keepingCapacity: true)
+        }
+        try body { text in
+            pending += text.utf8
+            if pending.count >= 64 * 1_024 { try flush() }
+        }
+        try flush()
+        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        finished = true
     }
 }
 

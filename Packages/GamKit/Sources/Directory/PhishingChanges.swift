@@ -289,6 +289,59 @@ public final class PhishingChanges {
         show(state, domain)
     }
 
+    // MARK: export
+
+    public nonisolated static let recipientsColumns = ["address", "where", "header"]
+
+    /// The recipients as the screen lists them, one row per address: outside the tenant's domains, then inside, each
+    /// with the header it was first in; then each piece that couldn't be read as an address, as it is (never dropped).
+    public nonisolated static func recipientsRows(_ recipients: Recipients) -> [[String]] {
+        guard let copy = recipients.copy else { return [] }
+        var header: [String: String] = [:]
+        for recipient in copy.recipients where header[PythonText.lower(recipient.address)] == nil {
+            header[PythonText.lower(recipient.address)] = recipient.header
+        }
+        func rows(_ addresses: [String], _ place: String) -> [[String]] {
+            addresses.map { [$0, place, header[PythonText.lower($0)] ?? ""] }
+        }
+        return rows(recipients.outside, "outside") + rows(recipients.inside, "inside")
+            + copy.unreadableRecipients.map { [$0.address, "unreadable: check by hand", $0.header] }
+    }
+
+    public nonisolated static let copiesColumns = ["mailbox", "found", "copies", "trash"]
+
+    /// Every mailbox the search read, in its order, with what it found and, when `run` trashed from this search, the
+    /// outcome for each mailbox it reached.
+    public nonisolated static func copiesRows(_ search: Search, run: Run?) -> [[String]] {
+        var outcomes: [String: String] = [:]
+        if let run, run.pending.search.message == search.message, run.pending.search.copies == search.copies {
+            for (mailbox, result) in zip(run.pending.mailboxes, run.results) {
+                outcomes[PythonText.lower(mailbox.email)] = switch result {
+                case nil: run.ended ? "not run" : "waiting"
+                case .succeeded?: "trashed"
+                case .failed(let message, _)?: "failed: \(message)"
+                case .skipped(let reason)?: reason.hasPrefix("Not run") ? reason : "not run: \(reason)"
+                case .waiting(let message)?: "waiting: \(message)"
+                }
+            }
+        }
+        return search.copies.mailboxes.map { mailbox in
+            let found: String, copies: String
+            switch mailbox.finding {
+            case .copies(let count): (found, copies) = ("copies", String(count))
+            case .none: (found, copies) = ("none", "0")
+            case .gmailOff: (found, copies) = ("not searched: Gmail is off", "")
+            case .failed(let why): (found, copies) = ("not searched: \(why)", "")
+            }
+            return [mailbox.email, found, copies, outcomes[PythonText.lower(mailbox.email)] ?? ""]
+        }
+    }
+
+    /// A dated name for a saved list: "phishing-recipients-2026-10-19.csv".
+    public nonisolated static func exportName(_ list: String, on day: Date = Date()) -> String {
+        "phishing-\(list)-\(UserChanges.day(day)).csv"
+    }
+
     // MARK: previewing
 
     /// Holds the trash for every mailbox the search shown found copies in: one step each, at most the copies found
