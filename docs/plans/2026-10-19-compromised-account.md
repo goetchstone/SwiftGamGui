@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-19): slice 1 built (the check, the lock and the picks); slice 2 (reports) next.** On 2026-10-19 a user's account was taken over and sent a phishing email
+**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 built (Pull Incident Logs); slice 3 (search a mailbox) next.** On 2026-10-19 a user's account was taken over and sent a phishing email
 from Gmail (SPF, DKIM and DMARC passed: it came from her account). The operator signed her out and reset her
 password, then found the rest needed the Admin console or GAM in Terminal, and asked for all of it in GAM GUI, now.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
@@ -67,10 +67,32 @@ rows. Nothing in offboarding changes.
 User labels show as their IDs (`labelidsonly`, offboarding's read): system labels (Inbox, Trash, Spam, Unread) are
 what an attacker's filter uses, and those are named.
 
-## Slice 2: sign-ins and app grants
-`report login user P start -Nd` and `report token user P start -Nd events authorize` (4730), as tables: time, event,
-IP address, and for tokens the app and its scopes. N is 7, 30 or 180 days (30 by default); `maxactivities` bounds
-each (invariant 9). Needs the admin token's Reports scope.
+## Slice 2: Pull Incident Logs
+The operator, 2026-10-19: "we need to be able to just grab these logs via gam when something like this happens". That
+day they exported the Gmail, OAuth, Access, Chat and sign-in logs from the Admin console by hand, and reading them
+together found every compromised account: the sign-in log mattered most (success, failure, the challenge, "is
+suspicious", Google's warnings), and filtering every log by the attacker's IP was the most useful view. Failed sign-ins
+from that IP showed who had typed their password into the fake page.
+
+- **One read per log:** `report <application> (user <u>|user all|select users <list>) start -<hours>h end now [ip X]
+  maxactivities 1000` (4730-4744), for login, token, gmail, accessevaluation, chat, useraccounts, drive, takeout, admin
+  and mobile. The first six are on by default (the logs read that day, and account changes). The Admin console's
+  "Access" log is the Reports API's `access_evaluation` (cookie validation and access-token requests; Google's appendix).
+- **The window:** a day, 3 days (the default), a week, a month or six months. `end now` is named so the Gmail log's
+  30-day rule (doReport) doesn't move it. **The accounts:** empty for every account, else up to 20 (the field starts
+  with the checked person). **The IP:** typed, or picked from the last pull's sign-in addresses, flagged ones first.
+- **One row shape** for every log (`ActivityLogs.Row`: when, who, the event, the IP, the parameters by name, Gmail's
+  nested ones by their chain), which the on-device log reader (docs/plans/2026-10-19-on-device-log-reader.md) reads too.
+  Each log is a table, at most 300 rows drawn, with "Only what Google flagged" and **Export CSV…** in that shape (cells
+  made safe for a spreadsheet as the audit export's are; the file 0600).
+- **Gmail** reads at most its 30 days (the API's limit) and says so; the **admin** log is read for what the accounts did
+  (`userisactor`). A read past the runner's 8 MiB cap fails in words rather than pass its newest rows as all.
+- **An edition without a log:** GAM's words are shown for that log (an API refusal is GAM's systemErrorExit), the
+  others still read. Which editions lack which log isn't known offline; the live check tells.
+
+## Slice 3: search a mailbox (the person's page)
+GamGUI's "Search a mailbox" (`GamCommands.searchMessages`, read-only, capped at 50) gets a screen, so the person's
+Sent mail can be checked for other phishing waves (`in:sent newer_than:3d`), with headers including Bcc.
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen

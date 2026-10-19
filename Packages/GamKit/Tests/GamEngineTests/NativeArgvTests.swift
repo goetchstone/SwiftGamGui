@@ -37,6 +37,11 @@ struct NativeArgvTests {
         ("print_forward", GamCommands.printForward(email: "<email>"), ["user", "<email>", "print", "forward"]),
         ("print_sendas", GamCommands.printSendAs(email: "<email>"), ["user", "<email>", "print", "sendas", "verifyonly"]),
         ("print_admins", GamCommands.printAdmins(user: "<email>"), ["print", "admins", "user", "<email>"]),
+        // 4730-4744 `report <ActivityApplicationName> … [(user all|<UserItem>)|(select <UserTypeEntity>)] … [start <Time>]
+        // [end <Time>] … [event|events <EventNameList>] [ip <String>] … [maxactivities <Number>]`; `-72h` is getDeltaTime's,
+        // `now` TODAY_NOW's; `select users a,b` the grammar's `users <UserList>`.
+        ("report_activity", try! GamCommands.reportActivity(.login, users: ["p@example.com"], hours: 72, ip: "198.51.100.23", maxActivities: 1000),
+         ["report", "login", "user", "p@example.com", "start", "-72h", "end", "now", "ip", "198.51.100.23", "maxactivities", "1000"]),
         // 8293 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
         ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
          ["user", "<email>", "delete", "sendas", "a@example.net"]),
@@ -92,11 +97,41 @@ struct NativeArgvTests {
     /// when it's a list selector: only one plain address is sent.
     @Test func eachSendAsRemovedIsOneAddress() throws {
         for bad in ["", "a@example.net,b@example.net", "a b@example.net", "file", "csvfile", " a@example.net", "a@example.net\u{3000}",
-                    "a\u{1F}b@example.net", "noat.example.net", "<a@example.net>", "Name <a@example.net>", "id:a@example.net"] {
+                    "a\u{1F}b@example.net", "noat.example.net", "<a@example.net>", "Name <a@example.net>", "id:a@example.net",
+                    "\u{131}d:a@example.net"] {
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteSendAs(email: "c@example.com", address: bad) }
         }
         let write = try GamCommands.deleteSendAs(email: "c@example.com", address: "billing.desk@example.net")
         #expect(write.action == .deleteSendAs)
+    }
+
+    /// The window is 1 hour to the Reports API's six months; every account is one address and at most 20; `ip` is one IP
+    /// address or nothing (no `ip` word then); none is `user all`.
+    @Test func anActivityReportIsBounded() throws {
+        #expect(try GamCommands.reportActivity(.gmail, hours: 72, maxActivities: 1000).argv
+                == ["report", "gmail", "user", "all", "start", "-72h", "end", "now", "maxactivities", "1000"])
+        #expect(try GamCommands.reportActivity(.accessEvaluation, users: ["a@example.com", "b@example.com"], hours: 24,
+                                               events: ["allow_token_request"], maxActivities: 10).argv
+                == ["report", "accessevaluation", "select", "users", "a@example.com,b@example.com", "start", "-24h", "end", "now",
+                    "events", "allow_token_request", "maxactivities", "10"])
+        for hours in [0, -1, 4_321] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.reportActivity(.login, hours: hours, maxActivities: 1) }
+        }
+        for ip in ["198.51.100", "198.51.100.256", "1.2.3.4 ", "1.2.3.4,5.6.7.8", "x", "2001:db8::1 ", "-30d"] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.reportActivity(.login, hours: 3, ip: ip, maxActivities: 1) }
+        }
+        for users in [["a@example.com,b@example.com"], ["a b@example.com"], ["all"], ["file"], Array(repeating: "a@example.com", count: 21)] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.reportActivity(.login, users: users, hours: 3, maxActivities: 1) }
+        }
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.reportActivity(.login, hours: 3, events: ["a,b"], maxActivities: 1) }
+        // The Reports API reads Gmail at most 30 days back (doReport's comment); the others, six months.
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.reportActivity(.gmail, hours: 721, maxActivities: 1) }
+        #expect(try GamCommands.reportActivity(.gmail, hours: 720, maxActivities: 1).argv.contains("-720h"))
+        // The admin log reads what the accounts did, not what was done to them (doReport maps a user to USER_EMAIL).
+        #expect(try GamCommands.reportActivity(.admin, users: ["p@example.com"], hours: 3, maxActivities: 1).argv
+                == ["report", "admin", "user", "p@example.com", "userisactor", "start", "-3h", "end", "now", "maxactivities", "1"])
+        #expect(!(try GamCommands.reportActivity(.admin, hours: 3, maxActivities: 1).argv.contains("userisactor")))
+        #expect(try GamCommands.reportActivity(.login, hours: 3, ip: "2001:db8::1", maxActivities: 1).argv.contains("2001:db8::1"))
     }
 
     /// What an operator pastes from the headers, each to the same bare ID: Gmail's `rfc822msgid:` takes it without

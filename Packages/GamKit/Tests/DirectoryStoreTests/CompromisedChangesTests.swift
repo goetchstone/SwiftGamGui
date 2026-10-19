@@ -91,7 +91,7 @@ final class CompromisedChangesTests {
     }
 
     private func writes() -> [String] {
-        ran().filter { !["print", "info", "show"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
+        ran().filter { !["print", "info", "show", "report"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
             .map { GamCommandLine.text($0, masked: ArgvRedaction.redact($0)) }
     }
 
@@ -197,6 +197,46 @@ final class CompromisedChangesTests {
         let plan = try await plan(form)
         #expect(plan.steps.first?.commandLine == "gam update user dana@example.com password random changepassword off")
         #expect(plan.preview?.typedAddress == "dana@example.com" && writes().isEmpty)
+    }
+
+    /// Pull Incident Logs reads and changes nothing: the person's logs, then every account's by the address on their
+    /// flagged sign-in, where another account signed in from it too; each log in the query's order, and as a CSV. An
+    /// address that isn't one is refused in words, in every log.
+    @Test func incidentLogsFindTheSameAttackerElsewhere() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: ["carol@example.com"], hours: 72, ip: ""))
+        let person = try #require(logs.pull)
+        #expect(person.ended && person.logs.map(\.application) == ActivityLogs.incidentDefault)
+        #expect(try person.logs[0].rows.get().count == 5 && !person.logs[0].capped)
+        let address = try #require(person.addresses.first)
+        await logs.pull(IncidentLogs.Query(applications: [.login, .userAccounts], users: [], hours: 72, ip: address))
+        let domain = try #require(logs.pull)
+        #expect(Set(try domain.logs[0].rows.get().map(\.who)) == ["carol@example.com", "dana@example.com"])
+        #expect(try domain.logs[1].rows.get().map(\.event) == ["recovery_phone_edit"])
+        #expect(writes().isEmpty)
+        let csv = IncidentLogs.csv(domain.logs[0])
+        #expect(csv.hasPrefix("log,time,actor,event,ip_address,flagged,parameters\r\nlogin,") && csv.contains("198.51.100.23"))
+        await logs.pull(IncidentLogs.Query(applications: [.login], users: [], hours: 72, ip: "198.51.100"))
+        guard case .failure(let problem)? = logs.pull?.logs.first?.rows else { Issue.record("not refused"); return }
+        #expect(problem.summary.contains("isn't one IP address"))
+        #expect(IncidentLogs.Query.accounts(" carol@example.com, dana@example.com\nalice@example.com CAROL@example.com")
+                == ["carol@example.com", "dana@example.com", "alice@example.com"])
+        // Six months asked: Gmail reads its 30 days, and says so; the others the whole window.
+        await logs.pull(IncidentLogs.Query(applications: [.login, .gmail], users: ["carol@example.com"], hours: 4_320, ip: ""))
+        let long = try #require(logs.pull)
+        #expect(long.logs.map(\.hours) == [4_320, 720] && (try? long.logs[1].rows.get()) != nil)
+    }
+
+    /// A read cut off at the runner's cap is a failure in words, never rows that pass as all there is (review 2026-10-19).
+    @Test func aCutOffReadIsNeverTakenAsWhole() {
+        let cut = GamResult(exitCode: 0, stdout: "name,actor.email\nlogin_success,dana@exa", stderr: "", stdoutTruncated: true,
+                            stderrTruncated: false)
+        guard case .failure(let problem) = UserAccess.outcome(cut, argv: ["report", "login"], parse: { ActivityLogs.rows($0, application: .login) })
+        else { Issue.record("a cut-off read passed"); return }
+        #expect(problem.summary.hasPrefix("GAM printed more than 8 MiB"))
+        let whole = GamResult(exitCode: 0, stdout: "name\n", stderr: "", stdoutTruncated: false, stderrTruncated: false)
+        #expect((try? UserAccess.outcome(whole, argv: [], parse: { ActivityLogs.rows($0, application: .login) }).get())?.isEmpty == true)
     }
 
     /// The reset, when it runs, gates every other step; a typed address that isn't the person's runs nothing.

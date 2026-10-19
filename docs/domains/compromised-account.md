@@ -2,8 +2,8 @@
 
 **One line:** for a person who stays employed but whose account was taken over: Check Account reads what an attacker
 commonly changes (and changes nothing), the operator ticks what to undo, and the lock plus the picks run as one
-ChangeCore preview, the person's address typed. Built 2026-10-19 (slice 1); the sign-in and app-grant reports are
-slice 2. The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
+ChangeCore preview, the person's address typed. Built 2026-10-19: slice 1, then slice 2, Pull Incident Logs (every
+activity log an incident needs, by account and attacker IP, with CSV export). The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
 
 **Owns invariants:** #1 (each pick one argv element: a delegate or send-as address must be one plain address, a filter
 ID list offboarding's checked one), #2 (one held preview, the precondition at the run), #10 (nothing from Siri or a
@@ -77,12 +77,43 @@ let only `requires` stop a step; it may not tolerate failures).
 `swift test --package-path Packages/GamKit --filter "Compromised|NativeArgv"`.
 
 **L1 (read-only, the operator's go):** Check Account on the real taken-over account: every list matches what the Admin
-console and Gmail's settings show (filters, forwarding, delegates, send-as, recovery, 2SV, roles). Nothing runs.
+console and Gmail's settings show (filters, forwarding, delegates, send-as, recovery, 2SV, roles). Pull Incident Logs
+for the person, then for every account by the attacker's address: each log's rows match the Admin console's Reporting →
+Audit and investigation export of the same log (user log, OAuth, Gmail, Access evaluation, Chat, user accounts), and a
+log the edition lacks says so in GAM's words. Nothing runs.
 
 **L2 (the operator's yes in chat for "secure P"):** tick the reset as done if it was; tick what the attacker made; run.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
 send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
 
+## Pull Incident Logs (slice 2)
+- `ActivityLogs` (GamEngine): `Row` from a `report <application>` row in the one shape (`id.time`, `actor.email`,
+  `name`, `ipAddress`, then every other column by name; a nested parameter, Gmail's, named by its chain from the
+  `parameters.N….name` columns), its words, its details (the sign-in's type, challenge and outcome; the app and its
+  access; else its first parameters), whether Google flagged it; `addresses(in:)` (flagged first); `table` (the CSV's
+  shape). `GamCommands.ActivityApplication` is the application list, in GamCommands.swift so the Linux fuzz build has it.
+- `IncidentLogs` (Directory): one pull, each log read (three at once) and kept in the query's order; a newer pull
+  replaces one still reading; `csv(_:)` through `AuditExport.csv` (spreadsheet-safe cells) and
+  `AuditExport.writePrivately` (0600, whole or not at all). `UserAccess.activity(...)` is the read.
+- The builder: `reportActivity(_:users:hours:ip:events:maxActivities:)`. 1 hour to 180 days; at most 20 accounts, each
+  `isOneAddress`, joined for `select users`; `ip` is `Address.isIP` (in Address.swift, which the fuzz build compiles).
+- **The mock's logs** (`report_<application>.csv`): carol@'s sign-ins include a flagged one from 198.51.100.23, dana@
+  signed in from it too, and the same address granted an app, sent the phish (Gmail), was denied a cookie validation
+  (access evaluation) and changed carol@'s recovery phone (account changes). A log without a fixture prints the titles
+  alone. `nolog/<application>` is an edition without it (exit 4). Gmail over 30 days is exit 56 (an account) or 53
+  (all); an address outside example.com is 73; the admin log's accounts are the actor only with `userisactor`. A known
+  lie: every fixture event is answered whatever the window.
+- **Not modelled, for the live check to tell:** the parameter names each log carries today, whether every log has the
+  actor's IP (the `ip` filter is server-side), Google's words for an edition without a log, and a refusal when the
+  admin token lacks the Reports audit scope.
+- **Ways a log could miss events silently, each closed** (review 2026-10-19): a read past the runner's 8 MiB cap failed
+  only its oldest rows (newest first: when the compromise began) and parsed a half-written last one, so
+  `UserAccess.outcome` now refuses any truncated read; the cap note hid behind the 300-row note and counted all accounts
+  together, so it stands alone and counts per account; Gmail over 30 days is the API's refusal, so Gmail reads at most
+  30 days and says so; the admin log for an account reads what was done to it unless `userisactor`, so it's sent; one
+  address that isn't a user fails the whole log in GAM, so the screen checks the accounts against the directory first.
+  Each read is pinned to the tenant the pull began on and may take ten minutes (GAM reads one account after another).
+
 ## Next
-- Slice 2: `report login user P` and `report token user P events authorize` as tables (time, event, IP; app and scopes).
+- Slice 3: search a mailbox on the person's page.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

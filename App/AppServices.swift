@@ -44,6 +44,8 @@ struct AppServices {
     let offboardTemplates: OffboardTemplates
     /// A taken-over account: the check, the lock and the picks, held through the executor, and its run.
     let compromisedChanges: CompromisedChanges
+    /// Its incident logs: the activity reports an incident needs, pulled together.
+    let incidentLogs: IncidentLogs
     /// One email out of every mailbox: GAM's dry run to find the copies, then the trash through the executor.
     let phishingChanges: PhishingChanges
     /// The storage and mail usage report, read when Reports first shows it.
@@ -108,6 +110,7 @@ struct AppServices {
                            // Its own reader too: every read is the check's, live, never a page's lists.
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
                                                                   access: UserAccess(setup: setup, runner: runner)),
+                           incidentLogs: IncidentLogs(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            phishingChanges: PhishingChanges(setup: setup, runner: runner, executor: executor),
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
