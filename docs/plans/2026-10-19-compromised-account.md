@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-19): slice 1 built (the check, the lock and the picks); slice 2 (reports) next.** On 2026-10-19 a user's account was taken over and sent a phishing email
+**Status (2026-10-19): slice 1 merged (#79); slice 2 (Pull Incident Logs) in #82; slice 3 (search a mailbox) built.** On 2026-10-19 a user's account was taken over and sent a phishing email
 from Gmail (SPF, DKIM and DMARC passed: it came from her account). The operator signed her out and reset her
 password, then found the rest needed the Admin console or GAM in Terminal, and asked for all of it in GAM GUI, now.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
@@ -71,6 +71,11 @@ what an attacker's filter uses, and those are named.
 `report login user P start -Nd` and `report token user P start -Nd events authorize` (4730), as tables: time, event,
 IP address, and for tokens the app and its scopes. N is 7, 30 or 180 days (30 by default); `maxactivities` bounds
 each (invariant 9). Needs the admin token's Reports scope.
+
+## Slice 3: search a mailbox
+From the operator's list (2026-10-19): Users → a person → Mail → **Search this mailbox**, GamGUI's search (read-only, at
+most 50 messages, Spam and Trash included), each message with its To, Cc and Bcc read by the Phishing screen's header
+rules, starting at `in:sent newer_than:3d` to find other phishing waves the account sent.
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen

@@ -133,7 +133,7 @@ struct ContentView: View {
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                          access: services.userAccess, searches: services.mailboxSearches, drafts: services.siriDrafts, calendarReads: services.calendarReads,
                           requested: $usersPerson,
                           openSignatures: { email in
                               signaturesPerson = email

@@ -76,12 +76,26 @@ let only `requires` stop a step; it may not tolerate failures).
 ## Testing / live verification
 `swift test --package-path Packages/GamKit --filter "Compromised|NativeArgv"`.
 
-**L1 (read-only, the operator's go):** Check Account on the real taken-over account: every list matches what the Admin
+**L1 (read-only, the operator's go):** Search the taken-over mailbox for `in:sent newer_than:3d`: the phish is there, its
+Bcc list matches the message's own. Then Check Account on the real taken-over account: every list matches what the Admin
 console and Gmail's settings show (filters, forwarding, delegates, send-as, recovery, 2SV, roles). Nothing runs.
 
 **L2 (the operator's yes in chat for "secure P"):** tick the reset as done if it was; tick what the attacker made; run.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
 send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
+
+## Search a mailbox (slice 3)
+- Users → a person → Mail → **Search this mailbox**: GamGUI's `searchMessages` (`print messages query <q> includespamtrash
+  max_to_print 50 headers all showlabels showdate`), read by `MailboxSearch` (GamEngine) one row per message with
+  `MessageRecipients`' header rules: To, Cc and Bcc by name with GAM's numbered repeats, never `Delivered-To`. The query
+  starts as `in:sent newer_than:3d`: a taken-over account's Sent mail shows the phishing and its Bcc list. None found is
+  GAM's exit 60, read as no messages; a read past the runner's cap is incomplete, never all there is.
+- `MailboxSearches` (Directory) keeps each person's last search for the tenant, the last eight people.
+- **The mock:** the Phishing screen's strict `print messages` handler answers it too, for the terms it models
+  (`rfc822msgid:`, `in:`, `from:`, `to:`, and `newer_than:`, a known lie: the fixture dates are fixed); any other term, a
+  glob character, or a message whose headers the fixtures lack is not modelled. The canned pair of rows that answered
+  every other `print messages` until 2026-10-19 is gone.
+- **Not modelled, for the live check to tell:** Gmail's own search semantics beyond those terms.
 
 ## Next
 - Slice 2: `report login user P` and `report token user P events authorize` as tables (time, event, IP; app and scopes).

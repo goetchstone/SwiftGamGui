@@ -27,7 +27,8 @@ command first, then, with the leaver's address typed, each step as it ends, Stop
 left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
 admin roles), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
-send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…). Reports lists the people behind each of the directory's counts and
+send-as addresses you tick removed; a person's page in Users opens it for them (Actions → Secure Account…), and their Mail tab searches their mailbox (what
+they sent, and to whom, Bcc included). Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
@@ -184,6 +185,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
 | Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
+| Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

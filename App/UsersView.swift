@@ -13,6 +13,8 @@ struct UsersView: View {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    /// A person's mailbox searched from their page (the Mail tab).
+    let searches: MailboxSearches
     let drafts: SiriDrafts
     /// Who can see a person's primary calendar (the Calendar tab).
     let calendarReads: CalendarReads
@@ -189,7 +191,7 @@ struct UsersView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
-                    UserDetail(user: user, directory: directory, changes: changes, access: access, editorOpen: $editorOpen,
+                    UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
                                openCompromised: openCompromised)
                 }
@@ -380,6 +382,7 @@ private struct UserDetail: View {
     let directory: DirectoryStore
     let changes: UserChanges
     let access: UserAccess
+    let searches: MailboxSearches
     /// Tells the list an editor is open, so Siri doesn't change the person under it.
     @Binding var editorOpen: Bool
     let openSignatures: (String) -> Void
@@ -450,9 +453,15 @@ private struct UserDetail: View {
         .onChange(of: editingRole || editingAutoReply, initial: true) { _, open in editorOpen = open }
         .onDisappear { editorOpen = false }
         #if DEBUG
-        // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would.
+        // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would; `search` opens the Mail
+        // tab and searches the mailbox for what it sent lately.
         .task(id: user.id) {
-            if ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "secure" { openCompromised(user.primaryEmail) }
+            let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
+            if tab == "secure" { openCompromised(user.primaryEmail) }
+            if tab == "search" {
+                self.tab = .mail
+                await searches.search(user.primaryEmail, query: MailboxSearch.defaultQuery)
+            }
         }
         #endif
         // Another person chosen while an editor is open (nothing should, but if it does): the editor
@@ -556,6 +565,7 @@ private struct UserDetail: View {
             SignatureCard(user: user, access: access, openSignatures: openSignatures)
             AccessList(kind: .delegates, user: user, directory: directory, changes: changes, access: access,
                        newAddress: $newDelegate)
+            MailboxSearchSection(user: user, searches: searches)
         case .calendar:
             PersonCalendarSection(user: user, reads: calendarReads, changes: changes, openCalendars: openCalendars)
         case .security:
@@ -897,4 +907,78 @@ private struct RoleEditor: View {
     }
 }
 
+/// GamGUI's "Search a mailbox": a Gmail search of this person's mail (Spam and Trash included, at most
+/// `GamCommands.messageCap`), each message with who it went to, Bcc too when it's the sender's own copy. Reads only:
+/// a taken-over account's Sent mail shows the phishing it sent, and to whom.
+private struct MailboxSearchSection: View {
+    let user: GamUser
+    let searches: MailboxSearches
+    @State private var query = MailboxSearch.defaultQuery
 
+    private var state: MailboxSearches.State? { searches.state(for: user.primaryEmail) }
+
+    var body: some View {
+        Section {
+            HStack {
+                TextField("Gmail search", text: $query, prompt: Text(verbatim: MailboxSearch.defaultQuery))
+                    .autocorrectionDisabled()
+                    .onSubmit(search)
+                if case .searching? = state { ProgressView().controlSize(.small) }
+                Button("Search", action: search)
+                    .disabled(query.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityLabel("Search \(user.fullName)'s mailbox")
+            }
+            if case .found(let asked, let result)? = state {
+                switch result {
+                case .failure(let problem):
+                    Label("Couldn't search: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor).textSelection(.enabled)
+                case .success(let messages) where messages.isEmpty:
+                    Text("Nothing matches “\(asked)”.").foregroundStyle(.secondary)
+                case .success(let messages):
+                    Text(messages.count >= GamCommands.messageCap
+                         ? "The newest \(GamCommands.messageCap) that match “\(asked)”: narrow the search to see others."
+                         : "\(messages.count) message\(messages.count == 1 ? "" : "s") match “\(asked)”, newest first.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    ForEach(messages) { message in MessageRow(message: message) }
+                }
+            }
+        } header: {
+            Text("Search this mailbox")
+        } footer: {
+            Text("A Gmail search, Spam and Trash included. Bcc shows only in the sender's own copy of a message written in Gmail: "
+                 + "a mail app or script sending over SMTP leaves it off.")
+        }
+    }
+
+    private func search() {
+        let searches = searches, email = user.primaryEmail, query = query.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return }
+        Task { await searches.search(email, query: query) }
+    }
+}
+
+/// One message: when, the subject, who sent it, and everyone it went to by header, in words.
+private struct MessageRow: View {
+    let message: MailboxSearch.Message
+
+    var body: some View {
+        let when = message.when?.formatted(date: .abbreviated, time: .shortened) ?? message.date
+        VStack(alignment: .leading, spacing: 3) {
+            Text(message.subject.isEmpty ? "(no subject)" : message.subject).fontWeight(.semibold)
+            Text("\(when) · from \(message.from)").font(.callout).foregroundStyle(.secondary)
+            ForEach([("To", message.to), ("Cc", message.cc), ("Bcc", message.bcc)].filter { !$0.1.isEmpty }, id: \.0) { header, addresses in
+                Text("\(header) (\(addresses.count)): \(addresses.joined(separator: ", "))").font(.callout)
+            }
+            if !message.unreadable.isEmpty {
+                Text("Also listed, not read as one address: \(message.unreadable.joined(separator: "; "))").font(.callout).foregroundStyle(.secondary)
+            }
+            if !message.labels.isEmpty {
+                Text("Labels: \(message.labels.joined(separator: ", "))").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}

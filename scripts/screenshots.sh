@@ -34,7 +34,8 @@ status=0
 # `confirm` too). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
 # every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
 # sheet; `result`, a made-up finished run; users-secure, carol's page in Users taking Actions → Secure Account…, which
-# opens Compromised and checks her. Reports opens on its first report, then on its
+# opens Compromised and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its
+# Bcc list). Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs).
@@ -51,7 +52,8 @@ for spec in home:home users:users groups:groups setup:setup \
             compromised:compromised:carol@example.com compromised-plan:compromised:carol@example.com:plan \
             compromised-confirm:compromised:carol@example.com:confirm compromised-result:compromised:carol@example.com:result \
             narrow-compromised:compromised:carol@example.com:plan:smallest \
-            users-secure:users:carol@example.com:secure \
+            users-secure:users:carol@example.com:secure person-search:users:carol@example.com:search \
+            narrow-person-search:users:carol@example.com:search:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \
