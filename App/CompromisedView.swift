@@ -1,3 +1,4 @@
+import AppKit
 import ChangeCore
 import Directory
 import GamEngine
@@ -12,6 +13,7 @@ struct CompromisedView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: CompromisedChanges
+    let logs: IncidentLogs
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
     /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
@@ -20,6 +22,8 @@ struct CompromisedView: View {
     @State private var form = CompromisedChanges.Form()
     @State private var confirming: CompromisedChanges.Plan?
     @State private var debugApplied = false
+    /// Debug snapshots of the reports: scrolled into view once read.
+    @State private var scrollToReports = false
     @Environment(\.appearsActive) private var appearsActive
 
     private var check: CompromisedChanges.Check? { changes.check.flatMap { $0.isFor(form.person) ? $0 : nil } }
@@ -64,6 +68,9 @@ struct CompromisedView: View {
                         CompromisedPlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
                             .id(Self.planAnchor)
                     }
+                    if setup.active != nil {
+                        IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
+                    }
                 }
                 .formStyle(.grouped)
                 .onChange(of: planShown) { _, shown in
@@ -73,6 +80,9 @@ struct CompromisedView: View {
                 .onChange(of: changes.run != nil) { _, shown in
                     guard shown else { return }
                     withAnimation { scroller.scrollTo(Self.runAnchor, anchor: .top) }
+                }
+                .onChange(of: scrollToReports) { _, wanted in
+                    if wanted { scroller.scrollTo(Self.reportsAnchor, anchor: .top) }
                 }
             }
         }
@@ -105,6 +115,7 @@ struct CompromisedView: View {
         .onChange(of: setup.generation) {
             form = CompromisedChanges.Form()
             changes.clear()
+            logs.clear()
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }
         .onChange(of: announcement) { _, text in
@@ -114,6 +125,7 @@ struct CompromisedView: View {
 
     private static let planAnchor = "compromised.plan"
     private static let runAnchor = "compromised.run"
+    private static let reportsAnchor = "compromised.reports"
 
     private var planShown: Bool {
         if case .planned(let plan) = changes.planState { return plan.form == form }
@@ -212,7 +224,8 @@ struct CompromisedView: View {
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` checks that person once the directory is loaded; `SWIFTGAMGUI_TAB` then shows
     /// the plan with every filter that hides or forwards mail, every delegate and every other send-as address ticked
-    /// (`plan`), the confirm sheet over it (`confirm`), or a finished run's panel (`result`, made up: nothing runs).
+    /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), or the
+    /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`).
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -223,6 +236,14 @@ struct CompromisedView: View {
         let changes = changes
         Task {
             await changes.check(person)
+            if tab == "reports", let email = changes.check?.user.primaryEmail {
+                await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
+                if let ip = logs.pull?.addresses.first {
+                    await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: 72, ip: ip))
+                }
+                scrollToReports = true
+                return
+            }
             guard ["plan", "confirm", "result"].contains(tab), let check = changes.check else { return }
             form.filters = Set(((try? check.filters.get()) ?? []).filter(\.hidesOrForwards).map(\.id))
             form.delegates = Set((try? check.delegates.get()) ?? [])
@@ -628,6 +649,254 @@ private struct CompromisedRunSection: View {
         case .failed(let message, _)?: message
         case .skipped(let reason)?: reason
         default: nil
+        }
+    }
+}
+
+
+// MARK: the incident logs
+
+/// Pull Incident Logs: the activity logs an incident needs, for a window, some accounts (none: every one) and an IP
+/// address, each a table in the one shape with its CSV. Reads only; the field starts with the checked person.
+private struct IncidentLogsSection: View {
+    let person: String?
+    let logs: IncidentLogs
+    let directory: DirectoryStore
+    @State private var hours = ActivityLogs.defaultHours
+    @State private var accounts = ""
+    @State private var ip = ""
+    @State private var chosen = Set(ActivityLogs.incidentDefault)
+    @State private var flaggedOnly = false
+    @State private var exported: (text: String, failed: Bool)?
+    @Environment(\.appearsActive) private var appearsActive
+
+    private var typedAccounts: [String] { IncidentLogs.Query.accounts(accounts) }
+
+    private var problem: String? {
+        let ip = ip.trimmingCharacters(in: .whitespaces)
+        if !ip.isEmpty, !Address.isIP(ip) { return "“\(ip)” isn't one IP address." }
+        if let odd = typedAccounts.first(where: { !Address.looksLikeEmail($0) }) { return "“\(odd)” isn't one email address." }
+        if typedAccounts.count > 20 { return "At most 20 accounts at once: leave the field empty for every account." }
+        // GAM fails the whole log for one address that isn't a user (its entityUnknownWarning): said here first.
+        if let users = directory.users {
+            let known = Set(users.map { $0.primaryEmail.lowercased() })
+            if let stranger = typedAccounts.first(where: { !known.contains($0.lowercased()) }) {
+                return "“\(stranger)” isn't an account's primary address in the directory."
+            }
+        }
+        if chosen.isEmpty { return "Pick at least one log." }
+        return nil
+    }
+
+    var body: some View {
+        Section {
+            Picker("Over the last", selection: $hours) {
+                ForEach(ActivityLogs.hours, id: \.self) { hours in Text(Self.window(hours)).tag(hours) }
+            }
+            .fixedSize()
+            TextField("Accounts (empty for every account)", text: $accounts, prompt: Text(verbatim: "person@example.com, other@example.com"))
+                .autocorrectionDisabled()
+            HStack {
+                TextField("Only from IP address (optional)", text: $ip, prompt: Text(verbatim: "198.51.100.23"))
+                    .autocorrectionDisabled()
+                if let addresses = logs.pull?.addresses, !addresses.isEmpty {
+                    Menu("Seen in the sign-ins") {
+                        ForEach(addresses.prefix(20), id: \.self) { address in Button(address) { ip = address } }
+                    }
+                    .fixedSize()
+                    .accessibilityLabel("Addresses seen in the last pull's sign-ins, flagged ones first")
+                }
+            }
+            DisclosureGroup("Logs: \(ActivityLogs.Application.allCases.filter(chosen.contains).map(\.name).joined(separator: ", "))") {
+                ForEach(ActivityLogs.Application.allCases, id: \.self) { application in
+                    Toggle(isOn: pick(application)) {
+                        Text(application.name)
+                        Text(application.about)
+                    }
+                    .accessibilityLabel("Read the \(application.name) log")
+                }
+            }
+            if let problem { Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor) }
+            HStack {
+                Toggle("Only what Google flagged", isOn: $flaggedOnly)
+                Spacer()
+                if logs.isPulling { ProgressView().controlSize(.small) }
+                Button("Pull Incident Logs") {
+                    let query = IncidentLogs.Query(applications: ActivityLogs.Application.allCases.filter(chosen.contains), users: typedAccounts,
+                                                   hours: hours, ip: ip.trimmingCharacters(in: .whitespaces))
+                    let logs = logs
+                    Task { await logs.pull(query) }
+                }
+                .disabled(problem != nil || logs.isPulling)
+                .help("Read each log picked, for these accounts and that address. Nothing changes.")
+            }
+            if let exported {
+                Label(exported.text, systemImage: exported.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            }
+            if let pull = logs.pull {
+                Text(Self.describe(pull.query) + (pull.ended ? "" : " Reading…")).font(.callout).foregroundStyle(.secondary)
+                ForEach(pull.logs) { log in
+                    LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login) {
+                        export(log, of: pull.query)
+                    }
+                }
+            }
+        } header: {
+            Text("Pull incident logs").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("From Google's audit logs, which can lag by up to a few hours. The phish may have reached others: filter every "
+                 + "log by the attacker's address to find each account they reached. Failed sign-ins from it show who typed "
+                 + "their password into the fake page.")
+        }
+        .onChange(of: person, initial: true) { _, person in
+            if let person, accounts.isEmpty { accounts = person }
+        }
+    }
+
+    private func pick(_ application: ActivityLogs.Application) -> Binding<Bool> {
+        Binding(get: { chosen.contains(application) }, set: { if $0 { chosen.insert(application) } else { chosen.remove(application) } })
+    }
+
+    static func window(_ hours: Int) -> String {
+        hours < 48 ? "\(hours) hours" : "\(hours / 24) days"
+    }
+
+    static func describe(_ query: IncidentLogs.Query) -> String {
+        "Over the last \(window(query.hours)), "
+            + (query.users.isEmpty ? "every account" : query.users.joined(separator: ", "))
+            + (query.ip.isEmpty ? "" : ", from \(query.ip)") + ", newest first."
+    }
+
+    /// The log as a CSV in the one shape, to a file the operator picks: private (0600), whole or not at all.
+    private func export(_ log: IncidentLogs.Log, of query: IncidentLogs.Query) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(log.application.rawValue)-log.csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.message = "The \(log.application.name) log. " + Self.describe(query)
+        let text = IncidentLogs.csv(log)
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            do {
+                try AuditExport.writePrivately(text, to: destination)
+                say("Exported the \(log.application.name) log to \(destination.lastPathComponent).", failed: false)
+            } catch {
+                say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    private func say(_ text: String, failed: Bool) {
+        exported = (text, failed)
+        if appearsActive { AccessibilityNotification.Announcement(text).post() }
+    }
+}
+
+/// One log of a pull: its name, how many events and how many flagged, the table, and Export CSV.
+private struct LogGroup: View {
+    let log: IncidentLogs.Log
+    let asked: Int
+    let flaggedOnly: Bool
+    let export: () -> Void
+    @State private var open: Bool
+
+    init(log: IncidentLogs.Log, asked: Int, flaggedOnly: Bool, startsOpen: Bool, export: @escaping () -> Void) {
+        self.log = log
+        self.asked = asked
+        self.flaggedOnly = flaggedOnly
+        self.export = export
+        _open = State(initialValue: startsOpen)
+    }
+
+    private var title: String {
+        switch log.rows {
+        case .failure: return "\(log.application.name): couldn't be read"
+        case .success(let rows):
+            let flagged = rows.filter(\.flagged).count
+            let people = Set(rows.map(\.who)).count
+            return "\(log.application.name): \(rows.count) event\(rows.count == 1 ? "" : "s")"
+                + (flagged > 0 ? ", \(flagged) flagged" : "") + (rows.isEmpty ? "" : ", \(people) account\(people == 1 ? "" : "s")")
+                + (log.hours < asked ? " (the last \(IncidentLogsSection.window(log.hours)): the most the Gmail log reads)" : "")
+        }
+    }
+
+    var body: some View {
+        DisclosureGroup(title, isExpanded: $open) {
+            ActivityList(result: log.rows.map { flaggedOnly ? $0.filter(\.flagged) : $0 }, capped: log.capped,
+                         what: "\(log.application.name) events", showsWho: true)
+            if case .success(let rows) = log.rows, !rows.isEmpty {
+                HStack {
+                    Spacer()
+                    Button("Export CSV…", action: export)
+                        .help("Save this log's events as a CSV file")
+                        .accessibilityLabel("Export the \(log.application.name) log as a CSV file")
+                }
+            }
+        }
+    }
+}
+
+/// A log's events as rows: when, who, what in words with Google's flag said, the IP address, and what else it says.
+/// At most `shown` rows, and the rest counted.
+private struct ActivityList: View {
+    let result: Result<[ActivityLogs.Row], UserAccess.Problem>
+    let capped: Bool
+    let what: String
+    let showsWho: Bool
+    private let shown = 300
+
+    var body: some View {
+        switch result {
+        case .failure(let problem):
+            Label("Couldn't read the \(what): \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor).textSelection(.enabled)
+        case .success(let rows) where rows.isEmpty:
+            Text("None.").foregroundStyle(.secondary)
+        case .success(let rows):
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 8) {
+                GridRow {
+                    Text("When")
+                    if showsWho { Text("Who") }
+                    Text("What")
+                    Text("IP address")
+                }
+                .font(.caption).foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+                ForEach(rows.prefix(shown)) { row in
+                    let when = row.date?.formatted(date: .abbreviated, time: .shortened) ?? row.time
+                    GridRow {
+                        Text(when)
+                        if showsWho { Text(row.who) }
+                        VStack(alignment: .leading, spacing: 2) {
+                            if row.flagged {
+                                Label(row.words + " · flagged", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                            } else {
+                                Text(row.words)
+                            }
+                            if !row.details.isEmpty {
+                                Text(row.details.joined(separator: " · ")).font(.callout).foregroundStyle(.secondary)
+                            }
+                        }
+                        Text(row.ip.isEmpty ? "—" : row.ip)
+                    }
+                    .textSelection(.enabled)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel([when, showsWho ? row.who : nil, row.words, row.flagged ? "flagged by Google" : nil,
+                                         row.details.isEmpty ? nil : row.details.joined(separator: ", "),
+                                         row.ip.isEmpty ? nil : "from \(row.ip)"].compactMap(\.self).joined(separator: ", "))
+                }
+            }
+            if rows.count > shown {
+                Text("Showing the newest \(shown) of \(rows.count). Export the CSV for all of them, or narrow the window or the address.")
+                    .font(.callout)
+            }
+            if capped {
+                Label("The newest \(ActivityLogs.cap) per account were read: older \(what) weren't, and the CSV doesn't have them "
+                      + "either. Narrow the window to read further back.", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            }
         }
     }
 }

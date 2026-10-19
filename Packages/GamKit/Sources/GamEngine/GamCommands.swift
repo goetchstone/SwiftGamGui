@@ -203,11 +203,44 @@ public enum GamCommands {
 
     /// An address GAM acts on as given, in an <EmailAddressEntity> or <UserEntity>: no comma or whitespace to split on, an
     /// `@` (so never a list selector), nothing around it to strip, and no form GAM rewrites to another address
-    /// (normalizeEmailAddressOrUID takes `Name <a@b>` as `a@b`; convertUIDtoEmailAddress reads `id:` and `uid:`).
+    /// (normalizeEmailAddressOrUID takes `Name <a@b>` as `a@b`; convertUIDtoEmailAddress reads `id:` and `uid:`, matched
+    /// ignoring case as Python does, so `ıd:` too: no `:` at all).
     static func isOneAddress(_ address: String) -> Bool {
-        let lowered = address.lowercased()
-        return Address.looksLikeEmail(address) && PythonText.strip(address) == address
-            && !address.unicodeScalars.contains { $0 == "<" || $0 == ">" } && !lowered.hasPrefix("id:") && !lowered.hasPrefix("uid:")
+        Address.looksLikeEmail(address) && PythonText.strip(address) == address
+            && !address.unicodeScalars.contains { $0 == "<" || $0 == ">" || $0 == ":" }
+    }
+
+    /// An activity report's application (4690-4729), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
+    /// "Access" log (cookie validation, access-token requests) is `access_evaluation`.
+    public enum ActivityApplication: String, CaseIterable, Sendable {
+        case login, token, gmail
+        case accessEvaluation = "accessevaluation"
+        case chat
+        case userAccounts = "useraccounts"
+        case drive, takeout, admin, mobile
+    }
+
+    /// Activity events, newest first (4730-4744; doReport's activity form): `users` one address each (`user` for one,
+    /// `select users` for several, `user all` for none); `start -<hours>h end now` (getDeltaTime: now less that many
+    /// hours; the end named so Gmail's 30-day rule doesn't move it); `ip` keeps the events from that address
+    /// (actorIpAddress, server-side); `events` only those names; `maxactivities` bounds each read (invariant 9). CSV, a row
+    /// per event. The admin log is read with `userisactor`, what the accounts did (doReport otherwise reads the events
+    /// that affected them). Throws for a window outside 1 hour to 180 days (30 for Gmail, the API's limit), more than 20
+    /// accounts or one that isn't one address, an `ip` that isn't one IP address, or an event name that isn't letters and `_`.
+    public static func reportActivity(_ application: ActivityApplication, users: [String] = [], hours: Int, ip: String = "",
+                                      events: [String] = [], maxActivities: Int) throws -> GamRead {
+        guard (1...4_320).contains(hours), maxActivities > 0 else { throw Invalid.argument("a report reads 1 hour to 180 days") }
+        guard application != .gmail || hours <= 720 else { throw Invalid.argument("the Gmail log reads at most 30 days") }
+        guard users.count <= 20, users.allSatisfy(isOneAddress) else {
+            throw Invalid.argument("each account is one email address, and at most 20 at once")
+        }
+        guard ip.isEmpty || Address.isIP(ip) else { throw Invalid.argument("“\(ip)” isn't one IP address") }
+        guard events.allSatisfy({ !$0.isEmpty && $0.unicodeScalars.allSatisfy { ($0.isASCII && $0.properties.isAlphabetic) || $0 == "_" } })
+        else { throw Invalid.argument("an event name is letters and “_”") }
+        let who = users.isEmpty ? ["user", "all"] : users.count == 1 ? ["user", users[0]] : ["select", "users", users.joined(separator: ",")]
+        return GamRead(["report", application.rawValue] + who + (application == .admin && !users.isEmpty ? ["userisactor"] : [])
+            + ["start", "-\(hours)h", "end", "now"] + optional("ip", ip)
+            + (events.isEmpty ? [] : ["events", events.joined(separator: ",")]) + ["maxactivities", String(maxActivities)])
     }
 
     /// The admin role assignments `user` holds directly (1579-1582; doPrintShowAdmins), CSV with `role` and `scopeType`.
