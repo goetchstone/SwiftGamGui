@@ -195,20 +195,46 @@ public final class UserAccess {
         }
     }
 
+    /// One activity log (`ActivityLogs`) for `users` (none: every account) over the last `hours`, only from `ip` when it's
+    /// given, the newest `cap` per account; GAM's own words when the read fails, as when an edition doesn't keep the log.
+    public func activity(_ application: ActivityLogs.Application, users: [String], hours: Int, ip: String = "",
+                         events: [String] = [], cap: Int, in domain: Domain? = nil) async -> Result<[ActivityLogs.Row], Problem> {
+        do {
+            let read = try GamCommands.reportActivity(application, users: users, hours: hours, ip: ip, events: events, maxActivities: cap)
+            // GAM reads one account after another: twenty accounts' Gmail takes far longer than one read.
+            return await readNow(read, in: domain, timeout: ActivityLogs.timeout) { ActivityLogs.rows($0, application: application) }
+        } catch GamCommands.Invalid.argument(let why) {
+            return .failure(Problem(summary: "Couldn't read the \(application.name) log: \(why)."))
+        } catch {
+            return .failure(Problem(summary: "\(error)"))
+        }
+    }
+
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
-    private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, parse: (String) -> T) async -> Result<T, Problem> {
+    private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, timeout: Duration = GamRunner.defaultTimeout,
+                            parse: (String) -> T) async -> Result<T, Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
         do {
-            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
-            guard result.exitCode == 0 else {
-                return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
-            }
-            return .success(parse(result.stdout))
+            return Self.outcome(try await runner.run(read, as: domain, timeout: timeout, extraEnvironment: environment),
+                                argv: read.argv, parse: parse)
         } catch GamRunnerError.timedOut {
             return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
         } catch {
             return .failure(Problem(summary: SetupModel.message(for: error)))
         }
+    }
+
+    /// A finished read as a value: GAM's own words when it failed, and never a read cut off at the runner's cap taken as
+    /// whole (its oldest rows, and a half-written last one, would pass as all there is; review 2026-10-19).
+    static func outcome<T>(_ result: GamResult, argv: [String], parse: (String) -> T) -> Result<T, Problem> {
+        guard result.exitCode == 0 else {
+            return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv).message))
+        }
+        guard !result.stdoutTruncated else {
+            return .failure(Problem(summary: "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so this wasn't all read. "
+                + "Read fewer accounts or a shorter window."))
+        }
+        return .success(parse(result.stdout))
     }
 
     /// A read's outcome as a value, with any error worded for the screen.

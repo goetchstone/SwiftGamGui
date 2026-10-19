@@ -170,7 +170,7 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                hasGam: services.executor != nil, requested: $compromisedPerson)
+                                logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson)
                     .navigationTitle("Compromised Account")
             case .phishing:
                 PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil)

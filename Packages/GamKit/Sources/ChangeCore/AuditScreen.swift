@@ -303,6 +303,33 @@ public enum AuditExport {
         return written
     }
 
+    /// `rows` (header first) as a CSV, each cell made safe as `safe` makes the audit's: another export's table.
+    public static func csv(_ rows: [[String]]) -> String {
+        rows.map { row($0.map { safe(.string($0)) }) }.joined()
+    }
+
+    /// Writes `text` to `destination` as the audit export is written: a private (0600) file, whole or not at all.
+    public static func writePrivately(_ text: String, to destination: URL) throws {
+        let partial = destination.deletingLastPathComponent()
+            .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
+        let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        var finished = false
+        defer {
+            close(fd)
+            if !finished { unlink(partial.path) }
+        }
+        let bytes = Array(text.utf8)
+        var offset = 0
+        while offset < bytes.count {
+            let wrote = bytes[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
+            guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+            offset += wrote
+        }
+        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        finished = true
+    }
+
     /// GamGUI's `csv_safe`: nothing for a missing or null value, else its text, with a `'` before a lead a
     /// spreadsheet would read as a formula (`=`, `+`, `-`, `@`, tab, CR).
     static func safe(_ value: JSONValue?) -> String {
