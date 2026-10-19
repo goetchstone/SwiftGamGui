@@ -105,7 +105,6 @@ struct PhishingView: View {
                     Text("Who it was sent to").accessibilityAddTraits(.isHeader)
                 }
                 recipientsResult
-                    .id(Self.recipientsAnchor)
             }
             .formStyle(.grouped)
             // A read the operator asked for, below the search: brought into view when it lands.
@@ -176,9 +175,12 @@ struct PhishingView: View {
             } header: {
                 Text("Couldn't read the recipients").accessibilityAddTraits(.isHeader)
             }
+            // The anchor on the section itself: a Form scrolls to a row's id, not to a conditional builder's.
+            .id(Self.recipientsAnchor)
         case .read(let recipients):
             let unnamed: [String] = if case .found(let search) = changes.state { recipients.unnamed(in: search) } else { [] }
             RecipientsSection(recipients: recipients, unnamed: unnamed, export: export)
+                .id(Self.recipientsAnchor)
         }
     }
 
