@@ -80,7 +80,8 @@ let only `requires` stop a step; it may not tolerate failures).
 console and Gmail's settings show (filters, forwarding, delegates, send-as, recovery, 2SV, roles). Pull Incident Logs
 for the person, then for every account by the attacker's address: each log's rows match the Admin console's Reporting →
 Audit and investigation export of the same log (user log, OAuth, Gmail, Access evaluation, Chat, user accounts), and a
-log the edition lacks says so in GAM's words. Nothing runs.
+log the edition lacks says so in GAM's words. Search the taken-over mailbox for `in:sent newer_than:3d`: the phish is
+there, its Bcc list matches the message's own. Nothing runs.
 
 **L2 (the operator's yes in chat for "secure P"):** tick the reset as done if it was; tick what the attacker made; run.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
@@ -114,6 +115,19 @@ send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
   address that isn't a user fails the whole log in GAM, so the screen checks the accounts against the directory first.
   Each read is pinned to the tenant the pull began on and may take ten minutes (GAM reads one account after another).
 
+## Search a mailbox (slice 3)
+- Users → a person → Mail → **Search this mailbox**: GamGUI's `searchMessages` (`print messages query <q> includespamtrash
+  max_to_print 50 headers all showlabels showdate`), read by `MailboxSearch` (GamEngine) one row per message with
+  `MessageRecipients`' header rules: To, Cc and Bcc by name with GAM's numbered repeats, never `Delivered-To`. The query
+  starts as `in:sent newer_than:3d`: a taken-over account's Sent mail shows the phishing and its Bcc list. None found is
+  GAM's exit 60, read as no messages; a read past the runner's cap is incomplete, never all there is.
+- `MailboxSearches` (Directory) keeps each person's last search for the tenant, the last eight people.
+- **The mock:** the Phishing screen's strict `print messages` handler answers it too, for the terms it models
+  (`rfc822msgid:`, `in:`, `from:`, `to:`, and `newer_than:`, a known lie: the fixture dates are fixed); any other term, a
+  glob character, or a message whose headers the fixtures lack is not modelled. The canned pair of rows that answered
+  every other `print messages` until 2026-10-19 is gone.
+- **Not modelled, for the live check to tell:** Gmail's own search semantics beyond those terms.
+
 ## Next
-- Slice 3: search a mailbox on the person's page.
+- The live checks L1 and L2, then the on-device log reader (docs/plans/2026-10-19-on-device-log-reader.md) over these rows.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
