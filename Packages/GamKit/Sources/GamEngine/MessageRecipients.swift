@@ -6,10 +6,19 @@
 /// mail client or a script sending over SMTP leaves Bcc off what it submits, so the list here may not be everyone
 /// (review of 2026-10-19, R1). No copy is GAM's header line alone and exit 60 (NO_ENTITIES_FOUND_RC).
 public struct MessageRecipients: Sendable, Equatable {
-    /// Each address once (case aside), in the headers' order: To, then Cc, then Bcc.
-    public let addresses: [String]
-    /// A recipient GAM printed that can't be read as one address: shown as it is, never dropped.
-    public let unreadable: [String]
+    /// Each address once (case aside), in the headers' order: To, then Cc, then Bcc, with the header it was first in.
+    public let recipients: [Recipient]
+    /// A recipient GAM printed that can't be read as one address: shown as it is, never dropped, with its header.
+    public let unreadableRecipients: [Recipient]
+
+    /// An address, or a piece that couldn't be read as one, and the header it was in ("To", "Cc" or "Bcc").
+    public struct Recipient: Sendable, Equatable {
+        public let address: String
+        public let header: String
+    }
+
+    public var addresses: [String] { recipients.map(\.address) }
+    public var unreadable: [String] { unreadableRecipients.map(\.address) }
     public let subject: String
     public let from: String
     /// Each distinct From and Subject among the copies, the first first: more than one means the ID matched
@@ -42,9 +51,9 @@ public struct MessageRecipients: Sendable, Equatable {
             if result.exitCode == 60 { return nil }
             throw MessageCopies.Incomplete(reason: "GAM returned nothing for this mailbox, so it may not have been read.")
         }
-        var addresses: [String] = [], seen: Set<String> = [], unreadable: [String] = []
+        var recipients: [Recipient] = [], seen: Set<String> = [], unreadable: [Recipient] = []
         var labels: [String] = [], hasBcc = false
-        for kind in ["to", "cc", "bcc"] {
+        for (kind, header) in [("to", "To"), ("cc", "Cc"), ("bcc", "Bcc")] {
             for record in records {
                 // By name, case aside, with GAM's numbered repeats ("To 1"); never "Delivered-To" or "X-Original-To".
                 for (column, value) in record.sorted(by: { $0.key.unicodeScalars.lexicographicallyPrecedes($1.key.unicodeScalars) })
@@ -52,8 +61,10 @@ public struct MessageRecipients: Sendable, Equatable {
                     guard let text = value.string else { continue }
                     if kind == "bcc" { hasBcc = true }
                     let read = Self.addresses(in: text)
-                    for address in read.addresses where seen.insert(PythonText.lower(address)).inserted { addresses.append(address) }
-                    unreadable += read.unreadable
+                    for address in read.addresses where seen.insert(PythonText.lower(address)).inserted {
+                        recipients.append(Recipient(address: address, header: header))
+                    }
+                    unreadable += read.unreadable.map { Recipient(address: $0, header: header) }
                 }
             }
         }
@@ -63,7 +74,7 @@ public struct MessageRecipients: Sendable, Equatable {
             let heading = Heading(from: record["From"]?.string ?? "", subject: record["Subject"]?.string ?? "")
             if !headings.contains(heading) { headings.append(heading) }
         }
-        return MessageRecipients(addresses: addresses, unreadable: unreadable, subject: records[0]["Subject"]?.string ?? "",
+        return MessageRecipients(recipients: recipients, unreadableRecipients: unreadable, subject: records[0]["Subject"]?.string ?? "",
                                  from: records[0]["From"]?.string ?? "", headings: headings, date: records[0]["Date"]?.string ?? "",
                                  labels: labels, hasBcc: hasBcc)
     }

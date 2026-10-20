@@ -35,7 +35,7 @@ reads the storage and mail usage; Audit shows this app's audit log, searched, pa
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
 (its Bcc too when it was sent from Gmail; Google's Email Log Search has the full record); then, with the number of mailboxes typed, it moves each copy to that person's Trash, keeping the
-sender's Sent copy.
+sender's Sent copy. Both lists save as CSV.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).

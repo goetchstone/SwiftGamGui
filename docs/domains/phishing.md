@@ -123,6 +123,13 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
 - **D7, trash, not delete.** Each copy is recoverable from the person's Trash for 30 days. Nothing in the app
   untrashes yet (see "To undo").
 - **D8, after a run the search is dropped.** Its counts are from before the run. Find Again shows what's left.
+- **D10, the lists as CSV (operator, 2026-10-19).** "Export CSV…" saves who has a copy (mailbox, found, copies,
+  and once a trash has run, each one's outcome) and who it was sent to (address, outside or inside, its header;
+  unreadable pieces as they are). The rows are built in the model from what the screen shows
+  (`PhishingChanges.copiesRows`, `recipientsRows`), and tests hold them to it. They are written as the Audit
+  export writes: a save panel with a dated name, Python's `excel` dialect, `csv_safe`'s quote before a formula
+  lead, and a hidden 0600 file beside the destination renamed over it once whole: the one private writer,
+  `AuditExport.csv` and `writePrivately`, which the Audit export and the incident logs use too.
 - **D9, who it was sent to.** This is added from the incident: the operator needed the outside recipients to
   warn them.
   - It reads the sender's copy (GamGUI's `search_messages`, detail Headers, `max_to_print 50`) with
@@ -204,6 +211,11 @@ In Gmail: Trash › Move to Inbox. With GAM: `gam user <email> untrash messages 
 (untrash searches Trash, P6). An Untrash for the same mailboxes is a natural next slice if the operator wants it.
 
 ## To do common tasks here
+- **Several Message-IDs at once, or by sender and day** (operator, 2026-10-19). The live incident went out as about
+  14 Message-IDs: two mass-send waves, colleagues' forwards and replies carrying the same link, and the outside
+  lures that started it. One Find over a list of IDs (each validated, then one `query` per ID or one OR'd query),
+  or over `from:<sender>` and a day, would replace the pastes. A sender-and-day search widens what can be trashed,
+  so it needs Find's sample to show every distinct email it matched.
 - **A Gmail search instead of a Message-ID** (`from:`, `subject:`), for an attack that sent many different
   emails: that needs its own validated type, and a mock that models those operators' meaning. Keep each
   mailbox's cap at what Find showed.
