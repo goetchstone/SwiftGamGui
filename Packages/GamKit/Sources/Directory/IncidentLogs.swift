@@ -119,4 +119,70 @@ public final class IncidentLogs {
     public static func csv(_ log: Log) -> String {
         AuditExport.csv(ActivityLogs.table((try? log.rows.get()) ?? []))
     }
+
+    /// "12 hours", or "3 days" from two days up.
+    public static func window(_ hours: Int) -> String {
+        hours < 48 ? "\(hours) hours" : "\(hours / 24) days"
+    }
+
+    /// What Export All wrote: the new folder, the logs in it, and those left out because they weren't read.
+    public struct Exported: Sendable {
+        public let folder: URL
+        public let written: [ActivityLogs.Application]
+        public let unread: [ActivityLogs.Application]
+    }
+
+    /// Every log of `pull` that was read, each as its CSV, into a new private folder (0700) in `parent`, named for when
+    /// it was exported, with `about.txt` saying what was pulled: the CSVs alone don't say which window, accounts or
+    /// address. A log that wasn't read is left out and said, never an empty CSV that would pass as no events. The folder
+    /// is whole or gone: a file that can't be written removes it (each file is `AuditExport.writePrivately`'s).
+    public static func exportAll(_ pull: Pull, into parent: URL, at now: Date = .now, timeZone: TimeZone = .current) throws -> Exported {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd HHmm"
+        let stamp = formatter.string(from: now)
+        let folder = try newFolder(in: parent, named: "Incident logs \(stamp)")
+        let read = pull.logs.filter { (try? $0.rows.get()) != nil }
+        let unread = pull.logs.filter { (try? $0.rows.get()) == nil }
+        do {
+            for log in read {
+                try AuditExport.writePrivately(csv(log), to: folder.appending(path: "\(log.application.rawValue)-log.csv"))
+            }
+            try AuditExport.writePrivately(about(pull, read: read, unread: unread, exported: "\(stamp) \(timeZone.identifier)"),
+                                           to: folder.appending(path: "about.txt"))
+        } catch {
+            try? FileManager.default.removeItem(at: folder)
+            throw error
+        }
+        return Exported(folder: folder, written: read.map(\.application), unread: unread.map(\.application))
+    }
+
+    static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
+        let query = pull.query
+        var lines = ["Incident logs exported \(exported).",
+                     "Over the last \(window(query.hours)).",
+                     "Accounts: " + (query.users.isEmpty ? "every account" : query.users.joined(separator: ", ")) + ".",
+                     "From IP address: " + (query.ip.isEmpty ? "any" : query.ip) + ".", ""]
+        for log in read {
+            let count = (try? log.rows.get().count) ?? 0
+            lines.append("\(log.application.rawValue)-log.csv: the \(log.application.name) log, \(count) events"
+                         + (log.hours < query.hours ? ", the last \(window(log.hours)) (the most it reads)" : "")
+                         + (log.capped ? "; older events past the cap weren't read" : "") + ".")
+        }
+        for log in unread {
+            if case .failure(let problem) = log.rows { lines.append("Not exported, not read: the \(log.application.name) log: \(problem.summary)") }
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// A new folder, never an existing one (" (2)" and on when the name is taken), only its owner's (0700).
+    private static func newFolder(in parent: URL, named name: String) throws -> URL {
+        for n in 1...99 {
+            let folder = parent.appending(path: n == 1 ? name : "\(name) (\(n))", directoryHint: .isDirectory)
+            if mkdir(folder.path, 0o700) == 0 { return folder }
+            guard errno == EEXIST else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        }
+        throw POSIXError(.EEXIST)
+    }
 }
