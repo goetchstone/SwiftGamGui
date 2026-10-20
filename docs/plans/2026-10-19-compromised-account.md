@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 built (Pull Incident Logs); slice 3 (search a mailbox) next.** On 2026-10-19 a user's account was taken over and sent a phishing email
+**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) in #83.** On 2026-10-19 a user's account was taken over and sent a phishing email
 from Gmail (SPF, DKIM and DMARC passed: it came from her account). The operator signed her out and reset her
 password, then found the rest needed the Admin console or GAM in Terminal, and asked for all of it in GAM GUI, now.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
@@ -90,9 +90,10 @@ from that IP showed who had typed their password into the fake page.
 - **An edition without a log:** GAM's words are shown for that log (an API refusal is GAM's systemErrorExit), the
   others still read. Which editions lack which log isn't known offline; the live check tells.
 
-## Slice 3: search a mailbox (the person's page)
-GamGUI's "Search a mailbox" (`GamCommands.searchMessages`, read-only, capped at 50) gets a screen, so the person's
-Sent mail can be checked for other phishing waves (`in:sent newer_than:3d`), with headers including Bcc.
+## Slice 3: search a mailbox
+From the operator's list (2026-10-19): Users → a person → Mail → **Search this mailbox**, GamGUI's search (read-only, at
+most 50 messages, Spam and Trash included), each message with its To, Cc and Bcc read by the Phishing screen's header
+rules, starting at `in:sent newer_than:3d` to find other phishing waves the account sent.
 
 ## Slice 4: leftover drafts
 From the operator (2026-10-19): "add removing leftover phishing drafts", then "I just need to clear the drafts on their own".

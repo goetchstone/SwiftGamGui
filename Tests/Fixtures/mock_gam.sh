@@ -740,9 +740,12 @@ fi
 #   - the CSV (_printMessage, SortTitles): User,threadId,id, GAM's default headers, LabelsCount,Labels, then every other
 #     header name sorted; each header under its own name, a repeat as "<name> 1"; Date is the message's own time
 #     (showdate overwrites the header); the header line is printed even with no row, after any failure.
-# Any other rfc822msgid: search is refused as not modelled; other `print messages` reads fall through to the canned one.
-if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "query" ] \
-   && case "${6:-}" in rfc822msgid:*) true ;; *) false ;; esac; then
+# The same read answers Users' "Search a mailbox" (MailboxSearch, docs/domains/compromised-account.md slice 3): a query of
+# space-separated Gmail terms, each modelled from the fixtures: `rfc822msgid:<id>`; `in:<label>` (the message's labels,
+# case aside); `from:<text>` (its From header) and `to:<text>` (To, Cc or Bcc), case aside, as part of the header;
+# `newer_than:<N>d|h`, a known lie: every fixture message is newer (their dates are fixed). Any other term, or a message
+# whose headers the fixtures don't hold, is refused as not modelled, never answered more kindly than Gmail.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "query" ]; then
   user=$2; query=$6
   shift 6
   spamtrash=""; all=""; labels=""; dates=""
@@ -765,8 +768,33 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] 
   done
   { [ -n "$spamtrash" ] && [ -n "$all" ] && [ -n "$labels" ] && [ -n "$dates" ]; } \
     || not_modelled "an rfc822msgid: search other than the recipients read"
-  msgid=${query#rfc822msgid:}
-  case "$msgid" in ''|*[[:space:]]*) not_modelled "a Gmail query other than rfc822msgid:<id>" ;; esac
+  [ -n "$query" ] || empty_arg "Query"
+  set -f
+  for term in $query; do
+    case "$term" in
+      *[*?[]*) not_modelled "a Gmail term like $term" ;;
+      rfc822msgid:?*|in:?*|from:?*|to:?*) ;;
+      newer_than:[0-9]*[dh]) case "${term#newer_than:}" in *[!0-9dh]*|*[dh]?*) not_modelled "a Gmail term like $term" ;; esac ;;
+      *) not_modelled "a Gmail term like $term" ;;
+    esac
+  done
+  set +f
+  # Each term of the query, against one message: its Message-ID, its labels, and its header file (`Gmail-` lines aside).
+  matches() {  # <message-id> <labels> <id>; the terms hold no glob character (refused above)
+    for term in $query; do
+      case "$term" in
+        rfc822msgid:*) [ "$1" = "${term#rfc822msgid:}" ] || return 1 ;;
+        in:*) want=$(printf '%s' "${term#in:}" | tr '[:lower:]' '[:upper:]')
+              case " $2 " in *" $want "*) ;; *) return 1 ;; esac ;;
+        newer_than:*) ;;
+        from:*|to:*)
+          [ -f "$GAM_MOCK_FIXTURES/message_headers/$3" ] || not_modelled "message $3's headers"
+          case "$term" in from:*) names='^From:' ;; *) names='^(To|Cc|CC|Bcc|BCC):' ;; esac
+          grep -E "$names" "$GAM_MOCK_FIXTURES/message_headers/$3" | grep -qiF -- "${term#*:}" || return 1 ;;
+      esac
+    done
+    return 0
+  }
   base="User
 threadId
 id
@@ -789,7 +817,9 @@ Labels"
   printf 'Getting all Messages that match query ((%s)) for %s\n' "$query" "$user" 1>&2
   ids=""; labels_of=""
   while IFS=, read -r owner id message tags; do
-    { [ "$owner" = "$user" ] && [ "$message" = "$msgid" ]; } || continue
+    [ "$owner" = "$user" ] || continue
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/trashed/$id" ]; then now="$tags TRASH"; else now=$tags; fi
+    matches "$message" "$now" "$id" || continue
     if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/deleted/$id" ]; then continue; fi
     if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/trashed/$id" ]; then tags="$tags TRASH"; fi
     ids="$ids $id"
@@ -845,21 +875,10 @@ $extras"
   exit 0
 fi
 
-# `gam user <email> print messages ...` -> formatjson NDJSON; one row carries an Amazon SES
-# Return-Path header so the mailbox-search flow has an envelope-sender to surface.
+# Any other `print messages` (no query, or another detail) is refused: until 2026-10-19 a canned pair of rows answered
+# every one, whoever's mailbox and whatever was asked.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ]; then
-  case "$*" in
-    *FAILME*) echo "ERROR: 400: Bad Request - precondptionFailed: a representative GAM failure detail" 1>&2; exit 1 ;;
-  esac
-  # `print messages` has no formatjson mode — real GAM returns CSV. One row carries a bulk-mailer
-  # style Return-Path (a bounce address unlike the From) so the mailbox-search flow has an
-  # envelope-sender to surface. Made up: never paste a real message's headers in here.
-  cat <<'EOF'
-User,id,Subject,From,Date,Return-Path
-someone@example.com,msg_1001,Your receipt,billing@vendor.example,"Mon, 23 Jun 2026 14:29:10 +0000",<fixture-bounce-0001@bounces.vendor.example>
-someone@example.com,msg_1002,Weekly digest,news@vendor.example,"Tue, 24 Jun 2026 09:00:00 +0000",<bounce@vendor.example>
-EOF
-  exit 0
+  not_modelled "print messages other than a query with headers all, showlabels and showdate"
 fi
 
 # ---- One email out of every mailbox (docs/domains/phishing.md) --------------------------------------------------------

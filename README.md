@@ -27,14 +27,15 @@ command first, then, with the leaver's address typed, each step as it ends, Stop
 left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
 admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
-send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them (Actions → Secure Account…). Pull
-Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes and
-more) for some accounts or all, filtered by an attacker's address, each a table with a CSV export. Reports lists the people behind each of the directory's counts and
+send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them
+(Actions → Secure Account…), and their Mail tab searches their mailbox (what they sent, and to whom, Bcc included). Pull
+Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes and more) for some
+accounts or all, filtered by an attacker's address, each a table with a CSV export. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
 (its Bcc too when it was sent from Gmail; Google's Email Log Search has the full record); then, with the number of mailboxes typed, it moves each copy to that person's Trash, keeping the
-sender's Sent copy.
+sender's Sent copy. Both lists save as CSV.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
@@ -188,6 +189,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
 | Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
+| Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

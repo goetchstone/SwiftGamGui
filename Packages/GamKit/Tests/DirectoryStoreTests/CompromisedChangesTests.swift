@@ -199,6 +199,19 @@ final class CompromisedChangesTests {
         #expect(plan.preview?.typedAddress == "dana@example.com" && writes().isEmpty)
     }
 
+    /// A person's mailbox searched from their page: reads only, kept per person on this tenant.
+    @Test func aMailboxSearchIsThePersonsOwn() async throws {
+        try await connect()
+        let searches = MailboxSearches(setup: setup, access: access)
+        await searches.search("carol@example.com", query: MailboxSearch.defaultQuery)
+        guard case .found(let query, let result)? = searches.state(for: "carol@example.com") else {
+            Issue.record("\(String(describing: searches.state(for: "carol@example.com")))"); return
+        }
+        let found = try result.get()
+        #expect(query == "in:sent newer_than:3d" && found.first?.bcc.count == 7)
+        #expect(searches.state(for: "alice@example.com") == nil && writes().isEmpty)
+    }
+
     /// Pull Incident Logs reads and changes nothing: the person's logs, then every account's by the address on their
     /// flagged sign-in, where another account signed in from it too; each log in the query's order, and as a CSV. An
     /// address that isn't one is refused in words, in every log.

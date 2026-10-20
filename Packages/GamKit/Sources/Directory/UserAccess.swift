@@ -197,6 +197,25 @@ public final class UserAccess {
         await readNow(GamCommands.printAdmins(user: email)) { GamOutput.records($0).map(Compromised.AdminRole.init(record:)) }
     }
 
+    /// GamGUI's "Search a mailbox": `email`'s messages matching the Gmail search `query`, the newest
+    /// `GamCommands.messageCap`, Spam and Trash included, each with its recipients (`MailboxSearch`). None found is no
+    /// messages, not a failure; a read cut off at the runner's cap is.
+    public func searchMailbox(of email: String, query: String, in pinned: Domain? = nil) async -> Result<[MailboxSearch.Message], Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let read = GamCommands.searchMessages(email: email, query: query, detail: .headers)
+        do {
+            return .success(try MailboxSearch.messages(try await runner.run(read, as: domain, extraEnvironment: environment), argv: read.argv))
+        } catch let error as GamError {
+            return .failure(Problem(summary: error.message))
+        } catch let incomplete as MessageCopies.Incomplete {
+            return .failure(Problem(summary: incomplete.reason))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// One activity log (`ActivityLogs`) for `users` (none: every account) over the last `hours`, only from `ip` when it's
     /// given, the newest `cap` per account; GAM's own words when the read fails, as when an edition doesn't keep the log.
     public func activity(_ application: ActivityLogs.Application, users: [String], hours: Int, ip: String = "",

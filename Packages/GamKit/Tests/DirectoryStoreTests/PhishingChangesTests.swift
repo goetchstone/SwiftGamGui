@@ -230,6 +230,37 @@ final class PhishingChangesTests {
         #expect(problem.detail?.contains("User: nobody@example.com, User Print Failed: invalid_grant") == true)
     }
 
+    /// The recipients CSV is the list the screen shows, in its order (outside, then inside), with each address's header.
+    @Test func theRecipientsCSVIsWhatsShown() async throws {
+        try await connect()
+        await changes.listRecipients(sender: "carol@example.com", message: Self.pasted)
+        let listed = try recipients()
+        let rows = PhishingChanges.recipientsRows(listed)
+        #expect(rows.map { $0[0] } == listed.outside + listed.inside)
+        #expect(rows == [["pat@partner.example", "outside", "Bcc"], ["guest@example.org", "outside", "Bcc"],
+                         ["carol@example.com", "inside", "To"], ["alice@example.com", "inside", "Bcc"],
+                         ["bob@example.com", "inside", "Bcc"], ["DANA@example.com", "inside", "Bcc"],
+                         ["team@example.net", "inside", "Bcc"], ["ops@alias.example.net", "inside", "Bcc"]])
+        #expect(PhishingChanges.recipientsColumns == ["address", "where", "header"])
+        #expect(PhishingChanges.exportName("recipients", on: Date(timeIntervalSince1970: 1_792_400_000)).hasPrefix("phishing-recipients-2026-"))
+    }
+
+    /// The copies CSV is every mailbox Find read, as shown; once the trash has run, each one's outcome beside it.
+    @Test func theCopiesCSVIsWhatsShownThenWhatRan() async throws {
+        try await connect()
+        await changes.find(Self.pasted)
+        let search = try search()
+        #expect(PhishingChanges.copiesRows(search, run: nil) == [["alice@example.com", "copies", "1", ""],
+                                                                  ["carol@example.com", "none", "0", ""],
+                                                                  ["dana@example.com", "copies", "2", ""]])
+        await changes.previewTrash()
+        await changes.confirm(try #require(changes.pending), typed("2"))
+        let run = try #require(changes.run)
+        #expect(PhishingChanges.copiesRows(run.pending.search, run: run) == [["alice@example.com", "copies", "1", "trashed"],
+                                                                              ["carol@example.com", "none", "0", ""],
+                                                                              ["dana@example.com", "copies", "2", "trashed"]])
+    }
+
     /// A new search drops the held trash: a confirm can't run a preview no longer shown.
     @Test func aNewSearchDropsTheHeldTrash() async throws {
         try await connect()

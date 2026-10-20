@@ -264,42 +264,20 @@ public enum AuditExport {
     /// how many. Call it off the main actor; it throws `CancellationError` when the task is cancelled.
     @discardableResult
     public static func write(from url: URL, filter: AuditFilter, to destination: URL) throws -> Int {
-        let partial = destination.deletingLastPathComponent()
-            .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
-        let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
-        guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-        var finished = false
-        defer {
-            close(fd)
-            if !finished { unlink(partial.path) }
-        }
-        var pending = Array(row(columns).utf8)
-        func flush() throws {
-            var offset = 0
-            while offset < pending.count {
-                let wrote = pending[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
-                guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-                offset += wrote
-            }
-            pending.removeAll(keepingCapacity: true)
-        }
         let needle = filter.needle
         var written = 0
-        try AuditLog.forEachRecord(at: url) { record in
-            if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
-            guard filter.keeps(record, needle: needle) else { return true }
-            let extra = record["extra"]?.object ?? [:]
-            pending += row([record["ts"], record["action"], record["target"], record["ok"], record["exit_code"],
-                            extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"]].map(safe)).utf8
-            written += 1
-            if pending.count >= 64 * 1_024 { try flush() }
-            return true
+        try writePrivately(to: destination) { emit in
+            try emit(row(columns))
+            try AuditLog.forEachRecord(at: url) { record in
+                if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
+                guard filter.keeps(record, needle: needle) else { return true }
+                let extra = record["extra"]?.object ?? [:]
+                try emit(row([record["ts"], record["action"], record["target"], record["ok"], record["exit_code"],
+                              extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"]].map(safe)))
+                written += 1
+                return true
+            }
         }
-        try flush()
-        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        finished = true
         return written
     }
 
@@ -310,6 +288,14 @@ public enum AuditExport {
 
     /// Writes `text` to `destination` as the audit export is written: a private (0600) file, whole or not at all.
     public static func writePrivately(_ text: String, to destination: URL) throws {
+        try writePrivately(to: destination) { try $0(text) }
+    }
+
+    /// The one private writer (the audit export, `IncidentLogs`, the Phishing lists): `body`'s text, appended in 64 KiB
+    /// writes to a hidden file beside `destination` (0600, created exclusively and never through a link: these list
+    /// people), synced and renamed over it once whole. A failure leaves no partial file. Streamed, so a log of a
+    /// million records is never held whole.
+    static func writePrivately(to destination: URL, _ body: (_ emit: (String) throws -> Void) throws -> Void) throws {
         let partial = destination.deletingLastPathComponent()
             .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
         let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
@@ -319,14 +305,24 @@ public enum AuditExport {
             close(fd)
             if !finished { unlink(partial.path) }
         }
-        let bytes = Array(text.utf8)
-        var offset = 0
-        while offset < bytes.count {
-            let wrote = bytes[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
-            guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-            offset += wrote
+        var pending: [UInt8] = []
+        func flush() throws {
+            var offset = 0
+            while offset < pending.count {
+                let wrote = pending[offset...].withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
+                guard wrote > 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+                offset += wrote
+            }
+            pending.removeAll(keepingCapacity: true)
         }
-        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        try body { text in
+            pending += text.utf8
+            if pending.count >= 64 * 1_024 { try flush() }
+        }
+        try flush()
+        guard fsync(fd) == 0, rename(partial.path, destination.path) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
         finished = true
     }
 
