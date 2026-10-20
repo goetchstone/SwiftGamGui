@@ -5,12 +5,12 @@ sign-in and app-grant reports, and the message pull's Gmail log). The operator a
 incident: "make it so AI could read those logs via local model".
 
 ## Why
-In the 2026-10-19 incident (one account taken over, then used to mass-send phishing), the logs answered every
-question that mattered: when the attacker got in and from which IP, everyone who received the email, everyone
-who clicked its link, whether the lock held, whether a second mailbox was touched. Getting those answers meant
-grouping about 100,000 rows of Admin console exports by hand. One false lead (a colleague's reply listed under
-her own name made her mailbox look compromised) cost a wrong call to the operator. The app should do the
-grouping in code, then have the on-device model explain it in plain words.
+When an account is taken over and used to mass-send phishing, the logs answer every
+question that matters: when the attacker got in and from which IP, everyone who received the email, everyone
+who clicked its link, whether the lock held, whether a second mailbox was touched. Getting those answers by hand
+means grouping tens of thousands of rows of Admin console exports, and a false lead is easy (a reply listed under
+its sender's name can make a mailbox look compromised). The app should do the grouping in code, then have the
+on-device model explain it in plain words.
 
 ## The rule
 - **Read-only.** The model reads a summary and writes text. It never builds, runs or proposes a command

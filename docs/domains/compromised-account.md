@@ -88,8 +88,8 @@ Then in Google: sessions ended, no app passwords or connected apps, forwarding o
 send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
 
 ## Leftover drafts (slice 4)
-The operator, 2026-10-19: the attacker's Gmail session left about 2,480 draft events, and six phishing batches started but
-blocked by Google left drafts anyone signed in could still send. "I just need to clear the drafts on their own."
+A taken-over account can be left with thousands of drafts, and phishing batches Google blocked leave drafts anyone
+signed in can still send. The operator: "I just need to clear the drafts on their own."
 - **The check** lists the person's drafts, the newest 5,000, with their subject and Gmail's own time (`listMessages`:
   `print messages query in:drafts max_to_print 5000 headers subject showlabels showdate`). GAM has no drafts command of its
   own: a draft is a message with the DRAFT label. Only the subject is read: a phishing draft's Bcc list runs to hundreds,

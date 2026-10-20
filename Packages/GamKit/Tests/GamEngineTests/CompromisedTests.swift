@@ -193,7 +193,7 @@ struct MockCompromisedTests {
     }
 }
 
-/// Leftover drafts (the operator, 2026-10-19: an attacker's Gmail session left thousands of draft events, and blocked
+/// Leftover drafts (a taken-over account can be left with thousands of drafts, and blocked
 /// phishing batches leave drafts anyone signed in can still send): listed by the check, all of them or those matching a
 /// subject deleted in one step, against the strict mock.
 @Suite("Compromised drafts")

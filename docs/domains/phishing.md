@@ -130,7 +130,7 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   export writes: a save panel with a dated name, Python's `excel` dialect, `csv_safe`'s quote before a formula
   lead, and a hidden 0600 file beside the destination renamed over it once whole: the one private writer,
   `AuditExport.csv` and `writePrivately`, which the Audit export and the incident logs use too.
-- **D9, who it was sent to.** This is added from the incident: the operator needed the outside recipients to
+- **D9, who it was sent to.** This is added from real use: the operator needed the outside recipients to
   warn them.
   - It reads the sender's copy (GamGUI's `search_messages`, detail Headers, `max_to_print 50`) with
     `rfc822msgid:<id>`, Sent included, and then `print domains` to sort the addresses.
