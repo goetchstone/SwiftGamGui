@@ -30,7 +30,7 @@ admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, 
 send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them
 (Actions → Secure Account…), and their Mail tab searches their mailbox (what they sent, and to whom, Bcc included). Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes and more) for some
-accounts or all, filtered by an attacker's address, each a table with a CSV export. Reports lists the people behind each of the directory's counts and
+accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first

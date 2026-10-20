@@ -241,6 +241,41 @@ final class CompromisedChangesTests {
         #expect(long.logs.map(\.hours) == [4_320, 720] && (try? long.logs[1].rows.get()) != nil)
     }
 
+    /// Export All writes every log that was read, and only those, into a new private folder with a note of what was
+    /// pulled; a second export never reuses the first's folder, and a folder that can't be written leaves nothing.
+    @Test func exportAllSavesEveryReadLogInANewPrivateFolder() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: [.login, .userAccounts], users: ["carol@example.com"], hours: 72, ip: ""))
+        let read = try #require(logs.pull)
+        await logs.pull(IncidentLogs.Query(applications: [.token], users: [], hours: 72, ip: "198.51.100"))
+        let refused = try #require(logs.pull?.logs.first)
+        let pull = IncidentLogs.Pull(query: read.query, logs: read.logs + [refused], ended: true)
+        let parent = scratch.appending(path: "exports")
+        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        let now = Date(timeIntervalSince1970: 1_792_500_000)
+        let utc = try #require(TimeZone(identifier: "UTC"))
+
+        let first = try IncidentLogs.exportAll(pull, into: parent, at: now, timeZone: utc)
+        #expect(first.folder.lastPathComponent == "Incident logs 2026-10-20 1240")
+        #expect(first.written == [.login, .userAccounts] && first.unread == [.token])
+        let files = try FileManager.default.contentsOfDirectory(atPath: first.folder.path).sorted()
+        #expect(files == ["about.txt", "login-log.csv", "useraccounts-log.csv"], "no CSV for the log that wasn't read")
+        #expect(try String(contentsOf: first.folder.appending(path: "login-log.csv"), encoding: .utf8) == IncidentLogs.csv(read.logs[0]))
+        let about = try String(contentsOf: first.folder.appending(path: "about.txt"), encoding: .utf8)
+        #expect(about.contains("Accounts: carol@example.com."), "\(about)")
+        #expect(about.contains("From IP address: any.") && about.contains("Over the last 3 days."))
+        #expect(about.contains("Not exported, not read: the "))
+        let mode = try FileManager.default.attributesOfItem(atPath: first.folder.path)[.posixPermissions] as? Int
+        #expect(mode == 0o700)
+
+        let second = try IncidentLogs.exportAll(pull, into: parent, at: now, timeZone: utc)
+        #expect(second.folder.lastPathComponent == "Incident logs 2026-10-20 1240 (2)")
+        #expect(throws: (any Error).self) { try IncidentLogs.exportAll(pull, into: parent.appending(path: "missing"), at: now, timeZone: utc) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: parent.path).count == 2)
+        #expect(writes().isEmpty)
+    }
+
     /// A read cut off at the runner's cap is a failure in words, never rows that pass as all there is (review 2026-10-19).
     @Test func aCutOffReadIsNeverTakenAsWhole() {
         let cut = GamResult(exitCode: 0, stdout: "name,actor.email\nlogin_success,dana@exa", stderr: "", stdoutTruncated: true,

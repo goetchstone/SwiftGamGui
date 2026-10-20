@@ -818,7 +818,14 @@ private struct IncidentLogsSection: View {
                     .symbolRenderingMode(.multicolor).font(.callout)
             }
             if let pull = logs.pull {
-                Text(Self.describe(pull.query) + (pull.ended ? "" : " Reading…")).font(.callout).foregroundStyle(.secondary)
+                HStack {
+                    Text(Self.describe(pull.query) + (pull.ended ? "" : " Reading…")).font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Export All…") { exportAll(pull) }
+                        .disabled(!pull.ended || !pull.logs.contains { (try? $0.rows.get()) != nil })
+                        .help("Save every log that was read as CSV files in a new folder, with a note of what was pulled")
+                        .accessibilityLabel("Export every log as CSV files into a new folder")
+                }
                 ForEach(pull.logs) { log in
                     LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login) {
                         export(log, of: pull.query)
@@ -841,9 +848,7 @@ private struct IncidentLogsSection: View {
         Binding(get: { chosen.contains(application) }, set: { if $0 { chosen.insert(application) } else { chosen.remove(application) } })
     }
 
-    static func window(_ hours: Int) -> String {
-        hours < 48 ? "\(hours) hours" : "\(hours / 24) days"
-    }
+    static func window(_ hours: Int) -> String { IncidentLogs.window(hours) }
 
     static func describe(_ query: IncidentLogs.Query) -> String {
         "Over the last \(window(query.hours)), "
@@ -866,6 +871,28 @@ private struct IncidentLogsSection: View {
                 say("Exported the \(log.application.name) log to \(destination.lastPathComponent).", failed: false)
             } catch {
                 say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    /// Every log that was read, into a new private folder in the folder the operator picks (`IncidentLogs.exportAll`).
+    private func exportAll(_ pull: IncidentLogs.Pull) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Export Here"
+        panel.message = "A new folder of every log that was read goes here. " + Self.describe(pull.query)
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let parent = panel.url else { return }
+            do {
+                let exported = try IncidentLogs.exportAll(pull, into: parent)
+                let skipped = exported.unread.isEmpty ? ""
+                    : " Not read, so not exported: " + exported.unread.map(\.name).joined(separator: ", ") + "."
+                say("Exported \(exported.written.count) logs to “\(exported.folder.lastPathComponent)”.\(skipped)", failed: !exported.unread.isEmpty)
+            } catch {
+                say("Couldn't export to \(parent.lastPathComponent): \(error.localizedDescription). Nothing was left there.", failed: true)
             }
         }
         if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }

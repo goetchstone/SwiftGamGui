@@ -122,6 +122,10 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
 - `IncidentLogs` (Directory): one pull, each log read (three at once) and kept in the query's order; a newer pull
   replaces one still reading; `csv(_:)` through `AuditExport.csv` (spreadsheet-safe cells) and
   `AuditExport.writePrivately` (0600, whole or not at all). `UserAccess.activity(...)` is the read.
+- **Export All** (`IncidentLogs.exportAll`): every log that was read, into a new folder (0700, never an existing one:
+  " (2)" and on) named for when, in the folder the operator picks, with `about.txt` (window, accounts, address, each
+  log's count; the CSVs alone don't say what was pulled). A log that wasn't read is said, never an empty CSV that
+  would pass as no events; a file that can't be written removes the folder. Enabled once the pull has ended.
 - The builder: `reportActivity(_:users:hours:ip:events:maxActivities:)`. 1 hour to 180 days; at most 20 accounts, each
   `isOneAddress`, joined for `select users`; `ip` is `Address.isIP` (in Address.swift, which the fuzz build compiles).
 - **The mock's logs** (`report_<application>.csv`): carol@'s sign-ins include a flagged one from 198.51.100.23, dana@
