@@ -12,6 +12,7 @@ public enum Compromised {
         case clearRecovery = "clear_recovery"
         case revoke, forward, filters, delegate
         case sendAs = "send_as"
+        case drafts
         case imapOff = "imap_off"
         case popOff = "pop_off"
 
@@ -25,6 +26,7 @@ public enum Compromised {
             case .filters: "Delete the picked filters"
             case .delegate: "Remove a delegate"
             case .sendAs: "Remove a send-as address"
+            case .drafts: "Delete the drafts"
             case .imapOff: Offboarding.Step.imapOff.name
             case .popOff: Offboarding.Step.popOff.name
             }
@@ -71,7 +73,8 @@ public enum Compromised {
     /// check read them; `delegates` and `sendAs` the addresses to remove. `recovery` is what the check read, said in the
     /// clear-recovery step's words. Throws when a pick can't be one argv element (`GamCommands.Invalid`).
     public static func steps(user: String, switchedOn: Set<Step>, filters: [Filter] = [], delegates: [String] = [],
-                             sendAs: [String] = [], recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
+                             sendAs: [String] = [], drafts: [Draft] = [],
+                             recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
         guard switchedOn.isSubset(of: Step.switchable) else {
             throw GamCommands.Invalid.argument("only \(Step.switchable.map(\.rawValue).joined(separator: ", ")) are switched")
         }
@@ -118,6 +121,15 @@ public enum Compromised {
             steps.append(Planned(key: .sendAs, label: "Remove the send-as address \(address)",
                                  summary: "Take \(address) off \(user)'s “Send mail as” list, so mail can't be sent from it as them",
                                  write: try GamCommands.deleteSendAs(email: user, address: address)))
+        }
+        if !drafts.isEmpty {
+            let subjects = drafts.map(\.subject).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+            let named = subjects.prefix(3).map { "“\($0.isEmpty ? "(no subject)" : $0)”" }.joined(separator: ", ")
+                + (subjects.count > 3 ? " and \(subjects.count - 3) other subjects" : "")
+            steps.append(Planned(key: .drafts, label: "Delete \(drafts.count) draft\(drafts.count == 1 ? "" : "s")",
+                                 summary: "Delete \(drafts.count) of \(user)'s drafts (\(named)) for good, as Gmail's Discard does, so "
+                                    + "nobody signed in to the account can send them. They can't be restored",
+                                 write: try GamCommands.deleteMessages(email: user, ids: drafts.map(\.id))))
         }
         if switchedOn.contains(.imapOff) {
             steps.append(Planned(key: .imapOff, label: Step.imapOff.name,
@@ -334,7 +346,7 @@ public enum Compromised {
     /// What the check found worth saying, before the lists: each a sentence, in the order to deal with them. `nil` for a
     /// read that failed (said beside its list, not here).
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
-                                sendAs: [SendAs]?, roles: [AdminRole]?) -> [String] {
+                                sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
@@ -355,6 +367,10 @@ public enum Compromised {
         if let others = sendAs?.filter({ !$0.isPrimary }), !others.isEmpty {
             said.append("\(user) can send as \(others.count) other address\(others.count == 1 ? "" : "es"): remove any they didn't add.")
         }
+        if let drafts, !drafts.isEmpty {
+            said.append("\(user) has \(drafts.count == Draft.cap ? "at least \(Draft.cap)" : "\(drafts.count)") draft\(drafts.count == 1 ? "" : "s"): "
+                + "an attacker's leftover drafts can still be sent by anyone signed in. Delete them, all or by subject.")
+        }
         let recovery = [account.recoveryEmail.isEmpty ? nil : "email \(account.recoveryEmail)",
                         account.recoveryPhone.isEmpty ? nil : "phone \(account.recoveryPhone)"].compactMap(\.self)
         if !recovery.isEmpty {
@@ -373,5 +389,49 @@ public enum Compromised {
             said.append("\(user) holds an admin role: check the Admin console's audit log for what it was used for.")
         }
         return said
+    }
+
+    // MARK: drafts
+
+    /// One draft as `GamCommands.listMessages` lists it: its ID, Gmail's own time and the subject.
+    public struct Draft: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let date: String
+        public let when: Date?
+        public let subject: String
+        public let labels: [String]
+
+        /// The most a check lists: an attacker's session can leave thousands.
+        public static let cap = 5_000
+        /// The listing and the delete: thousands take minutes (Gmail's per-user quota), the runner's default two.
+        public static let timeout: Duration = .seconds(600)
+
+        public init(record: GamOutput.Record) {
+            func text(_ key: String) -> String { record[key]?.string ?? "" }
+            id = text("id")
+            date = text("Date")
+            when = try? Date(date, strategy: .iso8601)
+            subject = text("Subject")
+            labels = MessageRecipients.words(text("Labels"))
+        }
+
+        /// A finished listing's messages: none is GAM's NO_ENTITIES_FOUND_RC (60). Throws the `GamError` when the read failed
+        /// and `MessageCopies.Incomplete` when GAM's output passed the runner's cap.
+        public static func list(_ result: GamResult, argv: [String]) throws -> [Draft] {
+            guard result.exitCode == 0 || result.exitCode == 60 else {
+                throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv, stdout: result.stdout)
+            }
+            guard !result.stdoutTruncated else {
+                throw MessageCopies.Incomplete(reason: "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so the list wasn't all read.")
+            }
+            return GamOutput.records(result.stdout).map(Draft.init(record:))
+        }
+    }
+
+    /// The drafts whose subject holds `text`, case and surrounding spaces aside: "select all whose subject matches".
+    public static func drafts(_ drafts: [Draft], subjectMatching text: String) -> [Draft] {
+        let needle = PythonText.lower(PythonText.strip(text))
+        guard !needle.isEmpty else { return [] }
+        return drafts.filter { PythonText.lower($0.subject).contains(needle) }
     }
 }

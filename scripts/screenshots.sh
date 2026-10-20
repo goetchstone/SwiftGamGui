@@ -33,7 +33,7 @@ status=0
 # run's panel (made up: nothing runs); `-added`, with this app's own steps added (ten steps: the sheet asks for
 # `confirm` too). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
 # every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
-# sheet; `result`, a made-up finished run; `reports`, Pull Incident Logs for her, then every account's by the address on
+# sheet (the plan also deletes the drafts sharing the newest one's subject); `result`, a made-up finished run; `reports`, Pull Incident Logs for her, then every account's by the address on
 # her flagged sign-in; users-secure, carol's page in Users taking Actions → Secure Account…, which opens Compromised
 # and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its Bcc list).
 # Reports opens on its first report, then on its

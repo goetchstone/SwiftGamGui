@@ -87,6 +87,32 @@ there, its Bcc list matches the message's own. Nothing runs.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
 send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
 
+## Leftover drafts (slice 4)
+A taken-over account can be left with thousands of drafts, and phishing batches Google blocked leave drafts anyone
+signed in can still send. The operator: "I just need to clear the drafts on their own."
+- **The check** lists the person's drafts, the newest 5,000, with their subject and Gmail's own time (`listMessages`:
+  `print messages query in:drafts max_to_print 5000 headers subject showlabels showdate`). GAM has no drafts command of its
+  own: a draft is a message with the DRAFT label. Only the subject is read: a phishing draft's Bcc list runs to hundreds,
+  and thousands of those passed the runner's 8 MiB cap in review, listing none. None is GAM's exit 60, "No drafts."
+- **The removal:** keep them (the start), delete every listed draft, or only those whose subject contains some text
+  (`Form.Discard`, `Compromised.drafts(_:subjectMatching:)`; one that matches nothing is refused in words). One held step
+  `deleteMessages` (`delete messages ids <list>`, 8170-8174; with ids GAM needs no `doit` and checks no count), its own
+  action `.deleteMessages`, destructive, needing the reset when it runs, confirmed by the typed address as every run here
+  (Guard counts steps, so the number of drafts isn't typed: it's in the step and the sheet, which says it can't be undone).
+- **Delete, not Trash** (review 2026-10-19): Gmail's own Discard deletes a draft; a draft in Trash may still be a draft
+  (drafts.list takes includeSpamTrash), sendable, while the check, which lists without Trash, would then say "No drafts."
+  GAM deletes with Gmail's batchDelete, 50 at a time (`message_batch_size`); a batch holding an ID Gmail refuses fails
+  whole, the other batches done. The listing and the delete each get ten minutes (`Draft.timeout`): thousands meet
+  Gmail's per-user quota. The IDs are `GamCommands.idList` (deleteFilters' check, shared). Gmail's log keeps the record.
+- **The screen** draws the newest 50 and says how many will be deleted; a command line of thousands of IDs is shortened
+  where it's shown and spoken (the held argv is whole). A new address resets the choice to keep.
+- **The mock:** two strict blocks ahead of the Phishing screen's search handler: the drafts listing (the DRAFT label in
+  messages.csv, a deleted one left out, none exit 60, `max_to_print 0` no limit, Gmail off 73, a non-user's token 50) and
+  the delete by IDs (batches of 50, a batch with an ID the mailbox lacks failing whole with "Invalid message id(s)", exit
+  50; state in `deleted/<id>`). carol@ has three drafts, two of them leftover phish.
+- **Not modelled, for the live check to tell:** Gmail's words for a valid-looking but missing ID in a batch, and a draft
+  that changes ID while it's listed (an autosave: GAM's 404 fails the listing; Check Again reads it again).
+
 ## Pull Incident Logs (slice 2)
 - `ActivityLogs` (GamEngine): `Row` from a `report <application>` row in the one shape (`id.time`, `actor.email`,
   `name`, `ipAddress`, then every other column by name; a nested parameter, Gmail's, named by its chain from the

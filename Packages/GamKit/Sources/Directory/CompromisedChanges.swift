@@ -30,6 +30,13 @@ public final class CompromisedChanges {
         public var filters: Set<String> = []
         public var delegates: Set<String> = []
         public var sendAs: Set<String> = []
+        /// Which of the check's drafts are deleted: none, every one, or those whose subject holds some text.
+        public var discardDrafts: Discard = .none
+
+        public enum Discard: Equatable, Sendable {
+            case none, all
+            case subjectContaining(String)
+        }
 
         public init() {}
 
@@ -60,6 +67,18 @@ public final class CompromisedChanges {
         public let delegates: Result<[String], UserAccess.Problem>
         public let sendAs: Result<[Compromised.SendAs], UserAccess.Problem>
         public let adminRoles: Result<[Compromised.AdminRole], UserAccess.Problem>
+        /// The newest `Compromised.Draft.cap` drafts.
+        public let drafts: Result<[Compromised.Draft], UserAccess.Problem>
+
+        /// The drafts `choice` picks from this check's list.
+        public func drafts(_ choice: Form.Discard) -> [Compromised.Draft] {
+            let listed = (try? drafts.get()) ?? []
+            switch choice {
+            case .none: return []
+            case .all: return listed
+            case .subjectContaining(let text): return Compromised.drafts(listed, subjectMatching: text)
+            }
+        }
         /// What's worth saying first (`Compromised.findings`).
         public let findings: [String]
         /// The admin this app is connected as is this person: nothing here can run (the sign-out would delete the app's
@@ -171,6 +190,7 @@ public final class CompromisedChanges {
             for (row, result) in zip(plan.runningRows, results) where result?.isSucceeded == true {
                 switch row.key {
                 case .filters: form.filters = []
+                case .drafts: form.discardDrafts = .none
                 case .delegate, .sendAs: break   // the check again drops what's gone
                 default: form.done.insert(row.key)
                 }
@@ -278,16 +298,20 @@ public final class CompromisedChanges {
         async let delegates = access.delegates(of: email)
         async let sendAs = access.sendAs(of: email)
         async let roles = access.adminRoles(of: email)
+        async let drafts = access.drafts(of: email)
         let (readFilters, readForwarding, readAddresses, readDelegates, readSendAs, readRoles)
             = await (filters, forwarding, addresses, delegates, sendAs, roles)
+        let readDrafts = await drafts
         let account = Compromised.Account(user)
         let admin = setup.connectedAdmin ?? ""
         let check = Check(
             asked: person, user: user, account: account, filters: readFilters, forwarding: readForwarding,
             forwardingAddresses: readAddresses, delegates: readDelegates, sendAs: readSendAs, adminRoles: readRoles,
+            drafts: readDrafts,
             findings: Compromised.findings(account: account, forwarding: (try? readForwarding.get()) ?? nil,
                                            filters: try? readFilters.get(), delegates: try? readDelegates.get(),
-                                           sendAs: try? readSendAs.get(), roles: try? readRoles.get()),
+                                           sendAs: try? readSendAs.get(), roles: try? readRoles.get(),
+                                           drafts: try? readDrafts.get()),
             isConnectedAdmin: !admin.isEmpty && Guard.normalized(admin) == Guard.normalized(email))
         finish(.checked(check))
     }
@@ -322,11 +346,16 @@ public final class CompromisedChanges {
         let user = check.user.primaryEmail
         let picked = (filters: ((try? check.filters.get()) ?? []).filter { form.filters.contains($0.id) },
                       delegates: ((try? check.delegates.get()) ?? []).filter { form.delegates.contains($0) },
-                      sendAs: ((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary && form.sendAs.contains($0.address) }.map(\.address))
+                      sendAs: ((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary && form.sendAs.contains($0.address) }.map(\.address),
+                      drafts: check.drafts(form.discardDrafts))
+        if case .subjectContaining(let text) = form.discardDrafts, picked.drafts.isEmpty {
+            return refuse("No draft's subject contains “\(PythonText.strip(text))”: change the text, or keep the drafts.")
+        }
         let planned: [Compromised.Planned]
         do {
             planned = try Compromised.steps(user: user, switchedOn: form.switchedOn.intersection(Compromised.Step.switchable),
                                             filters: picked.filters, delegates: picked.delegates, sendAs: picked.sendAs,
+                                            drafts: picked.drafts,
                                             recovery: (check.account.recoveryEmail, check.account.recoveryPhone))
         } catch GamCommands.Invalid.argument(let why) {
             return refuse("Couldn't plan this: \(why). Remove it in the Admin console or Gmail's settings instead.")
@@ -344,7 +373,8 @@ public final class CompromisedChanges {
         let resetIndex = running.firstIndex { $0.key == .password }
         let steps = running.enumerated().map { index, step in
             WriteStep(step.write, target: user, summary: step.summary,
-                      requires: resetIndex.map { $0 == index ? [] : [$0] } ?? [], about: ["compromised": user])
+                      requires: resetIndex.map { $0 == index ? [] : [$0] } ?? [], about: ["compromised": user],
+                      timeout: step.key == .drafts ? Compromised.Draft.timeout : GamRunner.defaultTimeout)
         }
         var preview: HeldPreview?
         if let executor, let domain = tenant.domain {
