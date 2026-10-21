@@ -103,7 +103,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 43)
+        #expect(writes == 44)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -131,6 +131,7 @@ struct CommandKindTests {
         "clear_recovery": .clearRecovery, "hide_from_directory": .hideFromDirectory,
         "transfer_calendar_ownership": .transferCalendarOwnership, "delete_filters": .deleteFilters,
         "imap_off": .imapOff, "pop_off": .popOff, "delete_sendas": .deleteSendAs, "delete_messages": .deleteMessages, "trash_message": .trashMessage,
+        "set_password": .setPassword,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -154,7 +155,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 33 && writes == 43, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 33 && writes == 44, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }

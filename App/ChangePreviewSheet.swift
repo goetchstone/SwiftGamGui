@@ -65,16 +65,18 @@ struct ChangePreviewSheet: View {
         .formStyle(.grouped)
         .frame(minWidth: 460)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() }.disabled(changes.isBusy) }
             // A destructive change, or one Siri drafted (it opens on its own), isn't confirmed by Return
             // alone: it isn't the default button, so it has to be chosen (clicked, or Tab and Space).
             if pending.isDestructive || pending.preview.origin != .form {
                 ToolbarItem(placement: .primaryAction) {
                     Button(pending.confirmLabel, role: pending.isDestructive ? .destructive : nil) { confirm() }
+                        .disabled(changes.isBusy)
                 }
             } else {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(pending.confirmLabel) { confirm() }
+                        .disabled(changes.isBusy)
                 }
             }
         }

@@ -31,12 +31,45 @@ public final class UserChanges {
         /// Something the operator should know before confirming (GamGUI's "Add anyway" warnings).
         public let warning: String?
         let patch: @Sendable (GamUser) -> GamUser
+        /// Set Temporary Password's password: shown after the run (`signIn`), never before.
+        let password: TemporaryPassword?
 
         public var id: UUID { preview.id }
         public var isDestructive: Bool { preview.decision.maxRisk == .destructive }
+        /// Set Temporary Password's: the page keeps its sheet through the run, to the sign-in details.
+        public var setsPassword: Bool { password != nil }
     }
 
     public private(set) var state: State = .idle
+
+    /// The one-time sign-in details after Set Temporary Password: the person's name and address and the password to hand
+    /// over. Held fifteen minutes or until Done, as onboarding's card (`OnboardChanges.cardLifetime`).
+    public struct SignIn: Sendable, Identifiable {
+        public let id = UUID()
+        public let name: String
+        public let email: String
+        public let orgUnit: String
+        public let password: TemporaryPassword
+        /// The set didn't finish (a timeout or an interruption): the password may or may not be the one now.
+        public let unsure: Bool
+        /// The preview it was set from: the page's one sheet keeps this identity from the preview to these details, so it
+        /// changes in place rather than closing one sheet and opening another (review 2026-10-21).
+        public let preview: UUID
+        let shownAt: ContinuousClock.Instant
+    }
+
+    /// The sign-in details while they're held.
+    public var signIn: SignIn? {
+        guard let heldSignIn, now() - heldSignIn.shownAt <= OnboardChanges.cardLifetime else { return nil }
+        return heldSignIn
+    }
+    /// The sign-in details, when they're `email`'s.
+    public func signIn(for email: String) -> SignIn? {
+        signIn.flatMap { Guard.normalized($0.email) == Guard.normalized(email) ? $0 : nil }
+    }
+    private var heldSignIn: SignIn?
+    private var signInTimer: Task<Void, Never>?
+    private let now: @Sendable () -> ContinuousClock.Instant
     /// Counts confirmed changes that succeeded: a screen showing a person's live lists reads them again.
     public private(set) var finished = 0
     /// The address the current state is about, so a panel shows a result only under its own person.
@@ -48,10 +81,12 @@ public final class UserChanges {
     private let today: @Sendable () -> String
 
     public init(executor: Executor?, directory: DirectoryStore,
-                today: @escaping @Sendable () -> String = { UserChanges.day(Date()) }) {
+                today: @escaping @Sendable () -> String = { UserChanges.day(Date()) },
+                now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now }) {
         self.executor = executor
         self.directory = directory
         self.today = today
+        self.now = now
     }
 
     public nonisolated static func day(_ date: Date) -> String {
@@ -188,6 +223,47 @@ public final class UserChanges {
         await hold(step, title: "Turn off the auto-reply", confirmLabel: "Turn Off", email: user.primaryEmail)
     }
 
+    /// A password the operator hands over, which the person changes at their next sign-in: for someone locked out after a
+    /// reset nobody saw, or back after an incident. Destructive (their current password stops working). Never for the
+    /// admin this app is connected as: it would sign the app out. The password is made here, masked in the preview and
+    /// the audit, and shown only after the run (`signIn`).
+    ///
+    /// `connectedAdmin` is read now and again when the change runs (the executor's precondition), and an unknown admin
+    /// refuses, as Compromised and Offboard do. One at a time: while a password's details are held (another window, say),
+    /// a second would drop them before they were handed over (review 2026-10-21).
+    public func previewTemporaryPassword(_ user: GamUser, connectedAdmin: @escaping @MainActor @Sendable () -> String?) async {
+        let email = user.primaryEmail
+        func refuse(_ text: String) {
+            subject = email
+            state = .problem(text)
+        }
+        if let held = signIn {
+            return refuse("Finish with \(held.email)'s temporary password first: hand it over, then click Done on its details.")
+        }
+        guard let admin = connectedAdmin(), !admin.isEmpty else {
+            return refuse("The admin this app signs in as isn't known. Check access on Setup, then preview again.")
+        }
+        if Guard.normalized(admin) == Guard.normalized(email) {
+            return refuse("\(email) is the admin this app is connected as: setting its password here would sign the app out. "
+                + "Change it in the Admin console or at myaccount.google.com.")
+        }
+        let password = TemporaryPassword.generate()
+        let step = WriteStep(password.setPassword(email: email), target: email,
+                             summary: "Set a temporary password for \(email). Their current password stops working, and Google asks "
+                                 + "them for a new one when they next sign in. The password shows once, after it's set.",
+                             secrets: [password.secret])
+        let warning = user.isAdmin
+            ? "\(email) is a super admin: check they're the one you mean. Their admin access "
+                + "pauses until they sign in with the new password."
+            : nil
+        let precondition: @Sendable () async throws -> Bool = {
+            guard let admin = await connectedAdmin(), !admin.isEmpty else { return false }
+            return Guard.normalized(admin) != Guard.normalized(email)
+        }
+        await hold(step, title: "Set a temporary password for \(user.fullName)", confirmLabel: "Set Password", email: email,
+                   warning: warning, password: password, precondition: precondition)
+    }
+
     /// GamGUI's `/users/signout`: ends every session; the person signs in again. LOW, as GamGUI rates it.
     public func previewSignOut(_ user: GamUser) async {
         let step = WriteStep(GamCommands.signOutUser(email: user.primaryEmail), target: user.primaryEmail,
@@ -282,18 +358,19 @@ public final class UserChanges {
     }
 
     private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String, confirmStep: Bool = false,
-                      warning: String? = nil, origin: Origin = .form,
-                      patch: @escaping @Sendable (GamUser) -> GamUser = { $0 }) async {
+                      warning: String? = nil, origin: Origin = .form, password: TemporaryPassword? = nil,
+                      patch: @escaping @Sendable (GamUser) -> GamUser = { $0 },
+                      precondition: (@Sendable () async throws -> Bool)? = nil) async {
         guard !isBusy else { return }
         subject = email
         guard let executor else {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
         }
-        switch await executor.preview([step], origin: origin, confirmStep: confirmStep) {
+        switch await executor.preview([step], origin: origin, confirmStep: confirmStep, precondition: precondition) {
         case .success(let preview):
             state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email,
-                                        warning: warning, patch: patch))
+                                        warning: warning, patch: patch, password: password))
         case .failure(let refusal):
             state = .problem(refusal.message)
         }
@@ -305,8 +382,17 @@ public final class UserChanges {
     /// step; the executor decides whether it is enough.
     public func confirm(_ pending: Pending, _ confirmation: OperatorConfirmation) async {
         guard !isBusy, let executor else { return }
+        if pending.password != nil, let held = signIn {
+            state = .problem("Finish with \(held.email)'s temporary password first: hand it over, then click Done on its details.")
+            return
+        }
         state = .running(pending)
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
+        if let password = pending.password, let result = outcome.steps.first, result.isSucceeded || result.mayHaveChanged {
+            let user = directory.users?.first { Guard.normalized($0.primaryEmail) == Guard.normalized(pending.email) }
+            showSignIn(SignIn(name: user?.fullName ?? pending.email, email: pending.email, orgUnit: user?.orgUnitPath ?? "",
+                              password: password, unsure: !result.isSucceeded, preview: pending.preview.id, shownAt: now()))
+        }
         if let refusal = outcome.refusal {
             state = .problem(refusal)
             return
@@ -324,6 +410,30 @@ public final class UserChanges {
         case nil:
             state = .problem("Nothing ran.")
         }
+    }
+
+    private func showSignIn(_ signIn: SignIn) {
+        heldSignIn = signIn
+        signInTimer?.cancel()
+        let id = signIn.id
+        signInTimer = Task { [weak self] in
+            try? await Task.sleep(for: OnboardChanges.cardLifetime)
+            guard !Task.isCancelled else { return }
+            self?.dropSignIn(ifExpired: id)
+        }
+    }
+
+    /// Drops the details once their fifteen minutes are up (the timer's call; a test's after moving the clock).
+    func dropSignIn(ifExpired id: UUID) {
+        guard let heldSignIn, heldSignIn.id == id, now() - heldSignIn.shownAt > OnboardChanges.cardLifetime else { return }
+        self.heldSignIn = nil
+    }
+
+    /// Done on the sign-in details: the password is dropped now.
+    public func doneWithSignIn() {
+        heldSignIn = nil
+        signInTimer?.cancel()
+        signInTimer = nil
     }
 
     /// Whether the current state is about `email`.

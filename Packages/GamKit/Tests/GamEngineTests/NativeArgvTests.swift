@@ -12,6 +12,10 @@ struct NativeArgvTests {
         // `recoveryphone <String>`: GAM reads an empty value as the field cleared.
         ("clear_recovery", GamCommands.clearRecovery(email: "<email>"),
          ["update", "user", "<email>", "recoveryemail", "", "recoveryphone", ""]),
+        // 5942 update user <UserItem> <UserAttribute>*; 5838-5841 `password <Password>`, 5825 `changepassword
+        // <Boolean>`: the temporary password, changed by the person at their next sign-in.
+        ("set_password", GamCommands.setPassword(email: "<email>", password: "Abcd-Efgh-Jkmn"),
+         ["update", "user", "<email>", "password", "Abcd-Efgh-Jkmn", "changepassword", "on"]),
         // 5831 `gal|includeinglobaladdresslist [<Boolean>]`: optional, true when bare, so `off` always.
         ("hide_from_directory", GamCommands.hideFromDirectory(email: "<email>"), ["update", "user", "<email>", "gal", "off"]),
         // 8372 `<UserTypeEntity> imap|imap4 <Boolean>`, 8378 `pop|pop3 <Boolean>`: required; `off` is getBoolean's.
@@ -63,6 +67,19 @@ struct NativeArgvTests {
     ]
 
     static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Invite=0001@mail.example.com>")
+
+    /// A temporary password is never one of GAM's words in `password`'s place (5838-5841), so GAM always sets it as
+    /// given; and the command shown and audited masks it.
+    @Test func aTemporaryPasswordIsNeverGAMsKeywordAndIsMasked() {
+        let words: Set<String> = ["random", "uniquerandom", "blocklogin", "prompt", "uniqueprompt"]
+        for _ in 0..<500 {
+            let password = TemporaryPassword.generate()
+            let write = password.setPassword(email: "c@example.com")
+            #expect(!words.contains(write.argv[4].lowercased()) && write.argv[4].contains("-"))
+            #expect(!GamCommandLine.text(ArgvRedaction.redact(write.argv)).contains(password.shownOnTheSheet))
+        }
+        #expect(GamCommands.setPassword(email: "c@example.com", password: "x").action == .setPassword)
+    }
 
     @Test func eachIsExactlyItsArgv() {
         for item in Self.cases {
