@@ -104,6 +104,8 @@ struct ContentView: View {
     @State private var usersPerson: String?
     /// The person Compromised Account checks when Users sends it one (Actions → Secure Account…).
     @State private var compromisedPerson: String?
+    /// A Message-ID another screen asked Phishing to find (the log reader's "Pull … from Every Mailbox…").
+    @State private var phishingMessage: String?
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -170,10 +172,14 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson)
+                                logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson) { id in
+                    phishingMessage = id
+                    screen = .phishing
+                }
                     .navigationTitle("Compromised Account")
             case .phishing:
-                PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil)
+                PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil,
+                             requested: $phishingMessage)
                     .navigationTitle("Phishing")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in

@@ -15,6 +15,8 @@ struct PhishingView: View {
     let changes: PhishingChanges
     /// This build has GAM: a search can run. Without it nothing here can.
     let hasGam: Bool
+    /// A Message-ID another screen asked for (the log reader): pasted and found at once, a read. Cleared once taken.
+    @Binding var requested: String?
     @State private var pasted = ""
     @State private var sender = ""
     /// The last save's result, shown at the top and spoken.
@@ -119,6 +121,13 @@ struct PhishingView: View {
             PhishingConfirmSheet(pending: pending, changes: changes)
         }
         .task(id: setup.active?.name) { fillForSnapshot() }
+        .onChange(of: requested, initial: true) { _, id in
+            guard let id else { return }
+            requested = nil
+            // Mid-run the run stays as it is: Find says why it can't start.
+            pasted = id
+            if canFind { find() }
+        }
         // Said once, from the window in front: each result on its own, so one shown doesn't silence the other.
         .onChange(of: announcement) { _, text in
             if let text, appearsActive { AccessibilityNotification.Announcement(text).post() }

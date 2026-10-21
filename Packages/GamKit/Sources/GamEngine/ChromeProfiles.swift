@@ -12,7 +12,7 @@ public enum ChromeProfiles {
         public let userEmail: String
         /// The computer's name, or its model where the name isn't reported.
         public let device: String
-        /// "MAC 15.6", "WINDOWS 11", as Chrome reports them.
+        /// "macOS 15.6", "Windows 10.0.22631": the platform in words, its version as Chrome reports it.
         public let system: String
         /// "141.0.7390.66 (stable)".
         public let browser: String
@@ -32,7 +32,7 @@ public enum ChromeProfiles {
             let info = record["deviceInfo"]?.object ?? [:]
             let hostname = Fields.text(info["hostname"]), machine = Fields.text(info["machine"])
             device = hostname.isEmpty ? machine : hostname
-            system = [text("osPlatformType"), text("osVersion")].filter { !$0.isEmpty }.joined(separator: " ")
+            system = [ChromeProfiles.platform(text("osPlatformType")), text("osVersion")].filter { !$0.isEmpty }.joined(separator: " ")
             let version = text("browserVersion"), channel = text("browserChannel")
             browser = channel.isEmpty ? version : "\(version) (\(channel.lowercased()))"
             lastActivity = text("lastActivityTime")
@@ -54,6 +54,19 @@ public enum ChromeProfiles {
     /// The read failed for want of a scope (`scopeNote`).
     public static func needsScope(_ error: GamError) -> Bool {
         error.exitCode == 15 || error.kind == .scopeMissing
+    }
+
+    /// Chrome's platform type (`MAC`, `WINDOWS`, `CHROME_OS`…) as people say it.
+    static func platform(_ type: String) -> String {
+        switch type {
+        case "MAC": "macOS"
+        case "WINDOWS": "Windows"
+        case "LINUX": "Linux"
+        case "CHROME_OS": "ChromeOS"
+        case "ANDROID": "Android"
+        case "IOS": "iOS"
+        default: type
+        }
     }
 
     /// GAM's time with or without fractional seconds.

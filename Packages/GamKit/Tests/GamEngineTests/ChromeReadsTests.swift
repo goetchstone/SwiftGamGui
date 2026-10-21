@@ -79,7 +79,7 @@ struct ChromeReadsTests {
         let profiles = try ChromeProfiles.profiles(result, argv: read.argv)
         #expect(profiles.map(\.device) == ["CAROL-MBP", "OptiPlex 7010"], "the hostname, or the model without one")
         #expect(profiles.allSatisfy { $0.userEmail == "carol@example.com" })
-        #expect(profiles[0].displayName == "Work" && profiles[0].system == "MAC 15.6.1" && profiles[0].browser == "141.0.7390.66 (stable)")
+        #expect(profiles[0].displayName == "Work" && profiles[0].system == "macOS 15.6.1" && profiles[1].system == "Windows 10.0.22631" && profiles[0].browser == "141.0.7390.66 (stable)")
         #expect(profiles[0].lastActive == (try? Date("2026-10-19T08:55:12Z", strategy: .iso8601)) && !profiles[0].onManagedDevice)
         #expect(profiles[1].onManagedDevice && profiles[1].firstEnrolled != nil)
         let alice = try GamCommands.printChromeProfiles(user: "alice@example.com")
