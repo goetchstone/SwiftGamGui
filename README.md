@@ -95,6 +95,14 @@ audit log, searched, paged and exported to CSV.
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](docs/screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](docs/screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words, and a page at a time](docs/screenshots/audit.png) |
 
+Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
+attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
+a switch, with what you tick undone, once you've typed the person's address.
+
+| Incident | Read the logs |
+|---|---|
+| ![Incident: the order to work in, the logs to pull, then the account to secure](docs/screenshots/compromised.png) | ![Read the logs: each finding in words, with its fix as a button: secure the person, or pull the email from every mailbox](docs/screenshots/compromised-reading.png) |
+
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move
 a copy from, and runs with their number typed.
