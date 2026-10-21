@@ -1,8 +1,8 @@
 # Plan: an on-device reader for security logs
 
 **Status (2026-10-19): PLANNED, not started.** Builds after the report reads merge (the compromised-account
-sign-in and app-grant reports, and the message pull's Gmail log). The operator asked for it during a live
-incident: "make it so AI could read those logs via local model".
+sign-in and app-grant reports, and the message pull's Gmail log). The operator asked for it:
+"make it so AI could read those logs via local model".
 
 ## Why
 When an account is taken over and used to mass-send phishing, the logs answer every
@@ -57,7 +57,7 @@ on-device model explain it in plain words.
 
 ## Tests
 - The summary and the flags: fixture rows (`example.com`, made-up IPs), each rule with a case that fires and
-  one that must not (a colleague's reply listed under her name, the bounce of a mass send).
+  one that must not (a colleague's reply listed under their own name, the bounce of a mass send).
 - The CSV import: column order changes, a missing column, an oversized file refused, a formula-looking cell
   kept as text.
 - The citation filter: a finding citing an unknown item is dropped.

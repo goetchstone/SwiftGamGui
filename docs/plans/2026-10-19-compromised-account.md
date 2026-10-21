@@ -1,8 +1,8 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) in #83.** On 2026-10-19 a user's account was taken over and sent a phishing email
-from Gmail (SPF, DKIM and DMARC passed: it came from her account). The operator signed her out and reset her
-password, then found the rest needed the Admin console or GAM in Terminal, and asked for all of it in GAM GUI, now.
+**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) in #83.** When an account is taken over and sends phishing from Gmail, signing the person
+out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
+operator asked for all of it in GAM GUI.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
 asking (the operator: "get it done asap"); each is below, for the operator to change.
 
@@ -18,7 +18,7 @@ names), `UserAccess`'s reads, ChangeCore's held preview, typed address and Stop,
 rows. Nothing in offboarding changes.
 
 ## The flow
-0. **From anyone's page** (asked 2026-10-19, after a second account needed it): Users → Actions → **Secure Account…**
+0. **From anyone's page** (the operator: "a button to do that for anyone"): Users → Actions → **Secure Account…**
    opens this screen for that person and checks them. "Password already reset" stays for the operator to tick.
 1. **Check Account** (read-only, nothing runs): P's account (`info user`), every Gmail filter with what it does,
    auto-forwarding and the forwarding addresses, mail delegates, send-as addresses, and admin role assignments. Each
