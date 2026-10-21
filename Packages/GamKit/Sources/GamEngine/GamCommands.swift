@@ -236,6 +236,31 @@ public enum GamCommands {
             && !address.unicodeScalars.contains { $0 == "<" || $0 == ">" || $0 == ":" }
     }
 
+    /// A Google account's address in a filter's value, lowercased: letters, digits, `.`, `_`, `'` and `-` before the `@`
+    /// (Google's username characters), and a domain of letters, digits and `-` in dot-separated labels. Nothing a
+    /// filter could read as more than the value (a comma, an operator, a quote, a wildcard); nil for anything else.
+    static func filterAddress(_ address: String) -> String? {
+        let lowered = PythonText.lower(address)
+        let parts = lowered.split(separator: "@", omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty,
+              parts[0].unicodeScalars.allSatisfy({ ("a"..."z").contains($0) || ("0"..."9").contains($0) || "._'-".unicodeScalars.contains($0) })
+        else { return nil }
+        let labels = parts[1].split(separator: ".", omittingEmptySubsequences: false)
+        guard labels.count >= 2, labels.allSatisfy({ label in
+            !label.isEmpty && label.unicodeScalars.allSatisfy { ("a"..."z").contains($0) || ("0"..."9").contains($0) || $0 == "-" }
+        }) else { return nil }
+        return lowered
+    }
+
+    /// How Chrome's log finds one account's events (`reportActivity`): `profile`, by the account signed in to the Chrome
+    /// profile (`PROFILE_USER_NAME`); `device`, GAM's own match for a named user, the device's user (`DEVICE_USER`: a
+    /// Chromebook's account, but on a Mac or PC the computer's login name). Neither finds every event alone: ChromeOS
+    /// sign-ins, data-protection events and extension requests carry no profile (Google's appendix), and on a Mac or PC
+    /// an event with no profile names no account at all.
+    public enum ChromeMatch: Sendable, CaseIterable {
+        case profile, device
+    }
+
     /// An activity report's application (4690-4729), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
     /// "Access" log (cookie validation, access-token requests) is `access_evaluation`.
     public enum ActivityApplication: String, CaseIterable, Sendable {
@@ -243,7 +268,7 @@ public enum GamCommands {
         case accessEvaluation = "accessevaluation"
         case chat
         case userAccounts = "useraccounts"
-        case drive, takeout, admin, mobile
+        case drive, takeout, admin, mobile, chrome
     }
 
     /// Activity events, newest first (4730-4744; doReport's activity form): `users` one address each (`user` for one,
@@ -251,23 +276,52 @@ public enum GamCommands {
     /// hours; the end named so Gmail's 30-day rule doesn't move it); `ip` keeps the events from that address
     /// (actorIpAddress, server-side); `events` only those names; `maxactivities` bounds each read (invariant 9). CSV, a row
     /// per event. The admin log is read with `userisactor`, what the accounts did (doReport otherwise reads the events
-    /// that affected them). Throws for a window outside 1 hour to 180 days (30 for Gmail, the API's limit), more than 20
-    /// accounts or one that isn't one address, an `ip` that isn't one IP address, or an event name that isn't letters and `_`.
+    /// that affected them). Chrome's is read one account at a time, by `chrome` (`ChromeMatch`): the profile's account
+    /// (`user all filter PROFILE_USER_NAME==<account>`, the filter passed as given, so the address lowercased as Google
+    /// keeps it), or GAM's own `user <account>`, which doReport turns into `DEVICE_USER==<account>`. Throws for a window
+    /// outside 1 hour to 180 days (30 for Gmail, the API's limit), more than 20 accounts (Chrome: more than one, and only
+    /// Google's address characters) or one that isn't one address, an `ip` that isn't one IP address, or an event name
+    /// that isn't letters and `_`.
     public static func reportActivity(_ application: ActivityApplication, users: [String] = [], hours: Int, ip: String = "",
-                                      events: [String] = [], maxActivities: Int) throws -> GamRead {
+                                      events: [String] = [], maxActivities: Int, chrome: ChromeMatch = .profile) throws -> GamRead {
         guard (1...4_320).contains(hours), maxActivities > 0 else { throw Invalid.argument("a report reads 1 hour to 180 days") }
         guard application != .gmail || hours <= 720 else { throw Invalid.argument("the Gmail log reads at most 30 days") }
         guard users.count <= 20, users.allSatisfy(isOneAddress) else {
             throw Invalid.argument("each account is one email address, and at most 20 at once")
         }
+        guard application != .chrome || users.count <= 1 else { throw Invalid.argument("the Chrome log reads one account at a time") }
+        let chromeAccount = application == .chrome ? users.first.map(filterAddress) : nil
+        guard chromeAccount != .some(nil) else { throw Invalid.argument("“\(users[0])” isn't an address the Chrome log can match") }
         guard ip.isEmpty || Address.isIP(ip) else { throw Invalid.argument("“\(ip)” isn't one IP address") }
         guard events.allSatisfy({ !$0.isEmpty && $0.unicodeScalars.allSatisfy { ($0.isASCII && $0.properties.isAlphabetic) || $0 == "_" } })
         else { throw Invalid.argument("an event name is letters and “_”") }
-        let who = users.isEmpty ? ["user", "all"] : users.count == 1 ? ["user", users[0]] : ["select", "users", users.joined(separator: ",")]
+        let who: [String]
+        if users.isEmpty {
+            who = ["user", "all"]
+        } else if let account = chromeAccount ?? nil {
+            who = chrome == .profile ? ["user", "all", "filter", "PROFILE_USER_NAME==\(account)"] : ["user", account]
+        } else {
+            who = users.count == 1 ? ["user", users[0]] : ["select", "users", users.joined(separator: ",")]
+        }
         return GamRead(["report", application.rawValue] + who + (application == .admin && !users.isEmpty ? ["userisactor"] : [])
             + ["start", "-\(hours)h", "end", "now"] + optional("ip", ip)
             + (events.isEmpty ? [] : ["events", events.joined(separator: ",")]) + ["maxactivities", String(maxActivities)])
     }
+
+    /// The Chrome profiles signed in with `user`'s account that Google knows of (2296-2335; doPrintShowChromeProfiles):
+    /// `print chromeprofiles filter user_email="<user>"`, the Chrome Management API's own field name, the address quoted
+    /// so its `@` and dots are one value, and lowercased as Google keeps it (GAM passes a filter as given). CSV
+    /// `name,profileId,JSON`. Needs GAM's "Chrome Management API - Profiles" scope (exit 15 with no Chrome Management scope
+    /// at all, 50 with the API's refusal) and managed profile reporting on in the Admin console. Throws for an address
+    /// outside Google's address characters (`filterAddress`).
+    public static func printChromeProfiles(user: String) throws -> GamRead {
+        guard let account = filterAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
+        return GamRead(["print", "chromeprofiles", "filter", "user_email=\"\(account)\"", "fields", chromeProfileFields, "formatjson"])
+    }
+
+    /// What a person's Chrome profile says: whose, where, which browser, and when it was last used.
+    static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"
+        + "browserversion,browserchannel,deviceinfo,affiliationstate"
 
     /// The admin role assignments `user` holds directly (1579-1582; doPrintShowAdmins), CSV with `role` and `scopeType`.
     /// Without `recursive`, a role held through a group isn't listed.

@@ -760,8 +760,12 @@ private struct IncidentLogsSection: View {
         if !ip.isEmpty, !Address.isIP(ip) { return "“\(ip)” isn't one IP address." }
         if let odd = typedAccounts.first(where: { !Address.looksLikeEmail($0) }) { return "“\(odd)” isn't one email address." }
         if typedAccounts.count > 20 { return "At most 20 accounts at once: leave the field empty for every account." }
-        // GAM fails the whole log for one address that isn't a user (its entityUnknownWarning): said here first.
-        if let users = directory.users {
+        // GAM fails the whole log for one address that isn't a user (its entityUnknownWarning): said here first. Chrome's reads
+        // one with no events at all, as if nothing happened, so with Chrome picked the directory must be there to check.
+        if !typedAccounts.isEmpty, directory.users == nil, chosen.contains(.chrome) {
+            return "Chrome's log checks the accounts against the directory first: load it on Home."
+        }
+        if !typedAccounts.isEmpty, let users = directory.users {
             let known = Set(users.map { $0.primaryEmail.lowercased() })
             if let stranger = typedAccounts.first(where: { !known.contains($0.lowercased()) }) {
                 return "“\(stranger)” isn't an account's primary address in the directory."

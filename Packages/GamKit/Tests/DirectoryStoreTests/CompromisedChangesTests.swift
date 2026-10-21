@@ -212,6 +212,46 @@ final class CompromisedChangesTests {
         #expect(searches.state(for: "alice@example.com") == nil && writes().isEmpty)
     }
 
+    /// A person's Chrome profiles read from their page: reads only, kept per person on this tenant, a failure in GAM's words.
+    @Test func aPersonsChromeProfilesAreTheirOwn() async throws {
+        try await connect()
+        let reads = ChromeProfileReads(setup: setup, access: access)
+        await reads.read("carol@example.com")
+        guard case .read(.success(let profiles))? = reads.state(for: "carol@example.com") else {
+            Issue.record("\(String(describing: reads.state(for: "carol@example.com")))"); return
+        }
+        #expect(profiles.map(\.device) == ["CAROL-MBP", "OptiPlex 7010"] && reads.state(for: "dana@example.com") == nil)
+        try FileManager.default.createDirectory(at: state.appending(path: "noscope"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "noscope/chromemanagement").path, contents: Data())
+        await reads.read("dana@example.com")
+        guard case .read(.failure(let problem))? = reads.state(for: "dana@example.com") else { Issue.record("not refused"); return }
+        #expect(problem.summary.contains("Chrome Management API") && problem.summary.contains("exit=15"), "\(problem.summary)")
+        #expect(problem.summary.hasSuffix(ChromeProfiles.scopeNote), "the scope's fix, said for a missing scope")
+        #expect(writes().isEmpty)
+    }
+
+    /// Chrome's log for several accounts reads each one both ways (by the profile's account, and GAM's own device match,
+    /// which finds a Chromebook's sign-in), each event once, newest first together; one read that can't be made fails the
+    /// log, never a part passed as the whole.
+    @Test func chromesLogIsEachAccountsBothWays() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: [.chrome], users: ["carol@example.com", "dana@example.com"], hours: 72, ip: ""))
+        let rows = try #require(logs.pull?.logs.first).rows.get()
+        #expect(rows.map(\.event) == ["UNSAFE_SITE_VISIT", "PASSWORD_BREACH", "CHROME_OS_LOGIN_FAILURE_EVENT", "PASSWORD_REUSE",
+                                     "LOGIN_EVENT"], "the breach both reads found, once")
+        #expect(rows.map(\.who) == ["dana@example.com", "dana@example.com", "dana@example.com", "carol@example.com", "carol@example.com"])
+        let read = try String(contentsOf: argvLog, encoding: .utf8)
+        #expect(read.contains("PROFILE_USER_NAME==carol@example.com") && read.contains("PROFILE_USER_NAME==dana@example.com"))
+        #expect(read.contains("chrome\u{0}user\u{0}carol@example.com\u{0}start") && read.contains("chrome\u{0}user\u{0}dana@example.com\u{0}start"))
+        try FileManager.default.createDirectory(at: state.appending(path: "nolog"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "nolog/chrome").path, contents: Data())
+        await logs.pull(IncidentLogs.Query(applications: [.chrome], users: ["carol@example.com", "dana@example.com"], hours: 72, ip: ""))
+        guard case .failure(let problem)? = logs.pull?.logs.first?.rows else { Issue.record("a failed read passed"); return }
+        #expect(problem.summary.hasPrefix("carol@example.com: "), "\(problem.summary)")
+        #expect(writes().isEmpty)
+    }
+
     /// Pull Incident Logs reads and changes nothing: the person's logs, then every account's by the address on their
     /// flagged sign-in, where another account signed in from it too; each log in the query's order, and as a CSV. An
     /// address that isn't one is refused in words, in every log.
