@@ -22,6 +22,19 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-21 — A limit the runbook recorded was a hole in the one job the screen exists for
+- **What happened:** the Phishing screen's pull by query couldn't reach the copies Gmail had filed to Spam (GAM's
+  `trash` lists without Spam). The runbook recorded it (P6), the screen said it in small print, and a test held the
+  Spam copy untouched as intended, so the hole read as designed until someone asked whether the pull reached every
+  copy. Now Find reads the copies in Spam and Trash moves them by ID (docs/domains/phishing.md, D11).
+- **Invariant in force:** none — new shape: a write whose whole purpose is "every copy", with a documented gap.
+- **Why it didn't hold:** the mock was faithful, so its test pinned the limit in place; a faithful mock proves a limit
+  is GAM's, not that the screen does its job. Writing the limit down felt like handling it.
+- **Would a rule have caught it?** only if enforced differently: for a write that claims "every" or "all", the review
+  asks what GAM's selection leaves out (Spam and Trash, suspended or archived users) and whether the screen reaches it,
+  or says so where the operator decides rather than in help text.
+- **Enforcement home if changed:** skill (the `gam-command-reviewer` agent's prompt, or `pre-commit`'s GAM items).
+
 ## 2026-10-21 — A parity fixture pinned a reader's flaw a security decision came to rest on
 - **What happened:** the Incident check began deciding from the auto-reply reader whether an attacker's auto-reply is on.
   That reader, ported from GamGUI and held to its fixture, let the reply's own text say `Enabled: False`. The security

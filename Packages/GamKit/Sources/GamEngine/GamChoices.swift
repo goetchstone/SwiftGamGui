@@ -153,6 +153,9 @@ extension GamCommands {
         /// Every copy in one mailbox, Sent included: the sender's own is the only one that keeps the Bcc header.
         public var anyCopyQuery: String { "rfc822msgid:\(id)" }
 
+        /// The copies Gmail filed to Spam, which `query` can't reach through `trash messages` (it lists without Spam).
+        public var spamQuery: String { "rfc822msgid:\(id) in:spam" }
+
         /// `text` begins with `label`, ASCII letters in any case.
         static func hasPrefix(_ text: String, _ label: String) -> Bool {
             let head = text.unicodeScalars.prefix(label.unicodeScalars.count)
