@@ -38,8 +38,9 @@ let only `requires` stop a step; it may not tolerate failures).
 1. **Check Account:** `info user P fields <Compromised.accountFields> formatjson` first (an alias reads as its owner; a
    failure stops the check, in GAM's words), then at once: `print filters labelidsonly formatjson`, `print forward`,
    `print forwardingaddresses`, `print delegates`, `print sendas verifyonly`, `print admins user P`, the drafts, `show
-   vacation` (an attacker's auto-reply phishes everyone who writes) and `print mobile query email:P` (a phone that syncs
-   the mail may be the attacker's; shown, not changed: the wipe is the Admin console's). Each failure is said
+   vacation` (an attacker's auto-reply phishes everyone who writes), `print mobile query email:P` (a phone that syncs
+   the mail may be the attacker's; shown, not changed: the wipe is the Admin console's) and `print devices query email:P`
+   (a computer signed in with the account, which an attacker's sign-in can leave behind; slice 8). Each failure is said
    beside its list, never taken as "none". `findings` says what to look at first. The connected admin as P is shown and
    blocks the plan.
 2. **Pick:** a box per filter (delete), delegate (remove) and send-as address but the primary (remove), the auto-reply
@@ -68,6 +69,7 @@ let only `requires` stop a step; it may not tolerate failures).
 | `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5780-5810 | USER_FIELDS_CHOICE_MAP |
 | `user P show vacation`, `user P vacation off` | 8283-8286 | GamGUI's builders (Users' auto-reply), held to argv.json |
 | `print mobile query email:P fields resourceid,… formatjson` | 4555-4562 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
+| `print devices query email:P fields … userfields … formatjson` | 4359-4367 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
 
 ## Gotchas / mock-lies traps
 - **The mock's Gmail reads act as the person** (`gmail_read`): a non-user fails at the token (exit 50), `nogmail/<u>` is
@@ -258,6 +260,51 @@ Who has apps and AI agents connected, and what they did. Reads only.
   `denied/tokens` is exit 12; an address that isn't a user is GAM's "Does not exist", 56.
 - **Not modelled, for the live check to tell:** which logs carry `actor.applicationInfo` or agent attribution today, the
   agent types Google reports, and the Gemini log's parameters beyond `action` and `app_name`.
+
+## Computers, and a device joined at a sign-in (slice 8)
+An attacker's sign-in can register their own computer to the account (often a Windows "Virtual Machine", registered in
+the same second as the sign-in), and the phones list never shows a computer. Reads only.
+- **Check Account's computers** (`GamCommands.printDevices`, `Compromised.Computer`, `UserAccess.computers`): Google's
+  endpoint management by the person's address. The `email:` search matches a prefix, so only devices whose users include
+  the person exactly are kept, and only Windows, Mac, Linux and ChromeOS (phones are the phones list's). Each says what
+  it is and is called, when the person first signed in to it (their own `createTime`: Google moves `firstSyncTime` at each
+  registration) and last synced it, whose it is, its serial number, its state (blocked, wiped, waiting for approval), and a
+  virtual machine (by model or maker: Hyper-V, VMware, VirtualBox, Parallels, QEMU and KVM, Xen, the clouds') or a
+  compromised report in words. The findings count only those still signed in; one blocked or wiped stays listed until
+  it's deleted, said as such. Block or delete one in the Admin console's Devices.
+- **The scope:** GAM reads devices as the admin through the service account, so domain-wide delegation needs
+  `https://www.googleapis.com/auth/cloud-identity.devices` (GAM's default service account scope, or its `.readonly` form
+  when the service account was set up read-only; Setup's check doesn't test it). Each cause has its own fix
+  (`Compromised.Computer.note(for:)`), never "no computer", and the rest of the check reads as before:
+  - "User: <admin>, Cloud Identity API - Devices Service/App not enabled" (73): the delegation, in the Admin console.
+  - "API access Denied" (12): the service account's own list of APIs (in its file) lacks it, and GAM refuses before it
+    asks Google, so delegating can't fix it: set the service account up again and import the folder. It wins when both
+    are missing.
+  - A dead key or a clock off is exit 12 too ("Authentication Token Error"): no scope note.
+- **The Devices log in words:** `DEVICE_REGISTER_UNREGISTER_EVENT` is "Registered a device" (or unregistered, by
+  `ACCOUNT_STATE`), with the device's kind, model and OS; a sync says so. Its `actor.applicationInfo.applicationName` is
+  "Device", the device itself, so no app is said to have acted; a real app that synced it (Gmail's) is.
+- **The Devices log's other events** (an action such as an account wipe, a property changed) say their own parameters
+  beside the device, and a sync its warnings in words (not encrypted, no screen lock); never its identifiers.
+- **Pull Incident Logs by address:** the Devices log has no address, so a pull by one would drop it whole. It reads the
+  log's registrations instead (`DEVICE_REGISTER_UNREGISTER_EVENT`), for the accounts asked; its description says so.
+- **Read the logs** (`deviceAtSuspectSignIn`): a device registered to an account from a minute before to ten minutes after
+  that account's successful sign-in is tied to the sign-in nearest it, from any address, and said as the attacker's own
+  when that one is from a suspect address, with Secure Account drafted. The Devices log carries no IP address, so only the
+  account and the time tie them: a person's own new computer beside their own sign-in, an even tie, an unregistration, or
+  one near only a failed sign-in, isn't one.
+- **The mock:** `ci_devices.json` (carol@'s virtual machine registered the second after the suspect sign-in, her MacBook
+  Pro and Pixel, alice@'s MacBook Air, and carol@example.com.au's PC that the prefix answers); `report_mobile.csv` (that
+  registration and a sync, alice@'s Mac long before, dana@'s phone through Gmail's app). `noscope/devices` is exit 73,
+  `denied/devices` exit 12, both before any argument, as GAM builds the service first.
+- **Not modelled, for the live check to tell:** Google's `email:` matching for devices beyond a prefix; whether the
+  device users attached are only the person's or every user of a matched device (the reader takes the person's own);
+  whether Google fills a device user's `createTime` for an Endpoint Verification computer; the time format GAM prints for
+  the times; how long a blocked device user stays listed; and how soon after a sign-in the Devices log records a
+  registration.
+- **Live check (L1d, read-only):** Check Account on an account with a known computer: the computers match the Admin
+  console's Devices › Endpoints for that user; without the scope, the note. Pull Incident Logs with Devices for an
+  account that just registered a computer: the registration is said in words.
 
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it

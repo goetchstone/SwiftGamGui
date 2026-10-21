@@ -102,6 +102,8 @@ final class CompromisedChangesTests {
         #expect(try check.apps.get().map(\.name) == ["Mail Sync Pro", "Google Chrome"], "the broadest first")
         #expect(check.findings.contains { $0.hasPrefix("2 apps have access to carol@example.com's account (broad: Mail Sync Pro). The sign-out revokes them all") })
         #expect(check.findings.contains { $0.hasPrefix("2 phones or tablets sync carol@example.com's account") })
+        #expect(try check.computers.get().map(\.model) == ["Virtual Machine", "MacBook Pro"], "her own, never the prefix's other account's")
+        #expect(check.findings.contains { $0.hasPrefix("2 computers are signed in with carol@example.com's account, 1 of them a virtual machine") })
         #expect(writes().isEmpty)
         #expect(check.user.primaryEmail == "carol@example.com" && !check.isConnectedAdmin)
         #expect(check.account.recoveryPhone == "+15555550123")
@@ -216,6 +218,19 @@ final class CompromisedChangesTests {
         #expect(searches.state(for: "alice@example.com") == nil && writes().isEmpty)
     }
 
+    /// A domain whose service account can't read devices: the computers say how to grant the scope, and the rest of the check
+    /// reads as before; nothing is taken for "no computer".
+    @Test func computersWithoutTheScopeSayHowToGrantIt() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: state.appending(path: "noscope"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "noscope/devices").path, contents: Data())
+        let check = try await checked()
+        guard case .failure(let problem) = check.computers else { Issue.record("\(check.computers)"); return }
+        #expect(problem.summary.contains("exit=73") && problem.summary.hasSuffix(Compromised.Computer.delegationNote), "\(problem.summary)")
+        #expect(try check.devices.get().count == 2 && !check.findings.contains { $0.contains("computer") })
+        #expect(writes().isEmpty)
+    }
+
     /// Every account's connected apps, read from Incident: AI assistants and agents first, never a suspended account's grants,
     /// kept for the tenant; a refusal is GAM's words.
     @Test func everyAccountsConnectedAppsAreRead() async throws {
@@ -288,6 +303,12 @@ final class CompromisedChangesTests {
         let domain = try #require(logs.pull)
         #expect(Set(try domain.logs[0].rows.get().map(\.who)) == ["carol@example.com", "dana@example.com"])
         #expect(try domain.logs[1].rows.get().map(\.event) == ["recovery_phone_edit"])
+        // The Devices log has no address: by one it would be empty, so its registrations are read instead, for the reader to
+        // tie to the sign-ins by time.
+        await logs.pull(IncidentLogs.Query(applications: [.mobile], users: [], hours: 72, ip: address))
+        let devices = try #require(logs.pull?.logs.first).rows.get()
+        #expect(devices.map(\.who) == ["carol@example.com", "alice@example.com"]
+                && devices.allSatisfy { $0.event == "DEVICE_REGISTER_UNREGISTER_EVENT" })
         #expect(writes().isEmpty)
         let csv = IncidentLogs.csv(domain.logs[0])
         #expect(csv.hasPrefix("log,time,actor,event,ip_address,flagged,via,parameters\r\nlogin,") && csv.contains("198.51.100.23"))

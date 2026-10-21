@@ -142,7 +142,7 @@ private struct FindingRow: View {
 
     private var symbol: String {
         switch finding.kind {
-        case .signedInFromSuspect, .appFromSuspect, .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock:
+        case .signedInFromSuspect, .deviceAtSuspectSignIn, .appFromSuspect, .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock:
             "exclamationmark.octagon.fill"
         case .mailFromSuspect, .failedFromSuspect, .chatFromSuspect, .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
         case .agentActed: "sparkles"

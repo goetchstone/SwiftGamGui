@@ -47,7 +47,53 @@ struct LogReadingTests {
         #expect(reading.findings[5].drafts.isEmpty, "going past a warning is said, not fixed")
     }
 
-    /// Many accounts signing in from a flagged address is likely an office's or a VPN's: said, nothing drafted. The one the
+    /// A device registered to an account in the minutes around its sign-in from a suspect address is the attacker's own
+    /// computer joining it: said, the lock drafted. The Devices log has no address, so the account and the time tie them, and
+    /// the nearest sign-in from any address decides; one beside the person's own sign-in, hours later, more than a minute
+    /// before, after only a failed sign-in, or taken off, isn't.
+    @Test func aDeviceJoinedAtASuspectSignInIsSaid() {
+        let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_MODEL": "Virtual Machine", "OS_VERSION": "Windows 10.0.19045"]
+        let mac = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "MAC"]
+        let more = Self.incident + [
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, vm),
+            Self.event("mobile", "dana@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 26, mac),
+            Self.event("mobile", "alice@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 5, mac),
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 200, vm),
+            Self.event("mobile", "erin@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 25, vm),
+            Self.event("mobile", "dana@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 20, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_TYPE": "WINDOWS"]),
+            Self.event("mobile", "dana@example.com", "DEVICE_SYNC_EVENT", at: 20, ["DEVICE_TYPE": "WINDOWS"]),
+            // gail signs in at the office and gets a new Mac; the attacker signs in as her minutes later: hers, not theirs.
+            Self.event("login", "gail@example.com", "login_success", ip: Self.office, at: 40),
+            Self.event("mobile", "gail@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 40, mac),
+            Self.event("login", "gail@example.com", "login_success", ip: Self.attacker, at: 48),
+            // hank's registered a minute before the attacker's sign-in (the logs' clocks); ivan's two minutes before.
+            Self.event("login", "hank@example.com", "login_success", ip: Self.attacker, at: 50),
+            Self.event("mobile", "hank@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 49, mac),
+            Self.event("login", "ivan@example.com", "login_success", ip: Self.attacker, at: 60),
+            Self.event("mobile", "ivan@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 58, mac),
+        ]
+        let reading = LogReading.read(more)
+        let found = reading.findings.filter { $0.kind == .deviceAtSuspectSignIn }
+        #expect(found.map(\.accounts) == [["carol@example.com"], ["dana@example.com"], ["hank@example.com"]])
+        #expect(found.first?.words == "A Windows computer (Virtual Machine, Windows 10.0.19045) joined carol@example.com's account within a "
+                + "minute of its sign-in from 198.51.100.23: likely the attacker's own. Check Account lists it; block or delete it in the "
+                + "Admin console's Devices.")
+        #expect(found[1].words.hasPrefix("A Mac joined dana@example.com's account within 6 minutes of its sign-in") == true)
+        #expect(found[2].words.hasPrefix("A Mac joined hank@example.com's account within a minute of its sign-in") == true)
+        // Two devices, one sentence: carol's VM and, a minute on (exactly 60 s: still "within a minute"), a Mac.
+        let two = LogReading.read(Self.incident + [
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, vm),
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 12, mac),
+        ]).findings.first { $0.kind == .deviceAtSuspectSignIn }
+        #expect(two?.words.hasPrefix("A Windows computer (Virtual Machine, Windows 10.0.19045) and a Mac joined carol@example.com's "
+                                     + "account within a minute of") == true, "\(two?.words ?? "")")
+        #expect(found.allSatisfy { $0.drafts == [.secureAccount($0.accounts[0])] && $0.events == 1 })
+        let kinds = reading.findings.map(\.kind)
+        #expect(kinds.firstIndex(of: .deviceAtSuspectSignIn)! > kinds.lastIndex(of: .signedInFromSuspect)!, "said after the sign-ins")
+        #expect(!LogReading.read(Self.incident).findings.contains { $0.kind == .deviceAtSuspectSignIn })
+    }
+
+    /// Many accounts signing in from a flagged address is likely an office's or a VPN's: said, nothing drafted. The one the    /// Many accounts signing in from a flagged address is likely an office's or a VPN's: said, nothing drafted. The one the
     /// operator pulled by is theirs to call the attacker's.
     @Test func aSharedAddressDraftsNothingUnlessTheOperatorNamedIt() {
         let everyone = (1...11).map { Self.event("login", "user\($0)@example.com", "login_success", ip: Self.office, at: $0) }

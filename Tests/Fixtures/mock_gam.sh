@@ -1139,6 +1139,81 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
   exit 0
 fi
 
+# `gam print devices query email:<address> fields <DeviceFieldNameList> userfields <DeviceUserFieldNameList> formatjson` ->
+# GAM's CSV, `name` and a `JSON` column per device (doPrintCIDevices, gam/__init__.py:32609-32780 at 7.48.30; the compromised-
+# account check's computers): the devices in mock_gam/ci_devices.json with a user the address starts, as Google's `email:`
+# device search matches a prefix (carol@example.com.au's PC answers carol@example.com), each with its users (GAM's default
+# lists them and attaches each to its device); none is the titles alone (exit 0). The service account impersonates the
+# admin, and GAM builds that before it reads an argument, checking its own scope list before it asks Google:
+# GAM_MOCK_STATE/denied/devices is a service account scope list without the API (getSvcAcctCredentials:
+# SvcAcctAPIAccessDeniedExit, API_ACCESS_DENIED_RC 12), which wins over GAM_MOCK_STATE/noscope/devices, the scope not
+# delegated (handleOAuthTokenError with softErrors: userServiceNotEnabledWarning for the admin, SERVICE_NOT_APPLICABLE_RC
+# 73); GAM_MOCK_STATE/badkey/devices a dead key (an invalid_grant handleOAuthTokenError doesn't know: "Authentication Token
+# Error", then APIAccessDeniedExit, 12). Then only that query (_validateDeviceQuery: a field, a colon, a value, no `?`,
+# else GAM's usage error) and the grammar's field names (getFieldsList: an invalid choice, GAM's list sorted); the app's
+# own fields only, as the fixture holds them (GAM fetches only the fields named). Not modelled: Google's search beyond a
+# user's prefix, the views (company, personal), and the other options.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "devices" ]; then
+  denied='ERROR: API access Denied\nPlease make sure the Service Account Client ID: 1 is authorized for the appropriate API or scopes: Cloud Identity API - Devices\n\nRun: gam user admin@example.com update serviceaccount\n'
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/devices" ]; then printf "\n$denied" 1>&2; exit 12; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/badkey/devices" ]; then
+    printf "\nERROR: Authentication Token Error - invalid_grant: Invalid JWT Signature\n\n$denied" 1>&2; exit 12
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/noscope/devices" ]; then
+    printf 'User: admin@example.com, Cloud Identity API - Devices Service/App not enabled\n' 1>&2; exit 73
+  fi
+  shift 2; fj=""; owner=""; dwant=" "; uwant=" "
+  while [ $# -gt 0 ]; do
+    word=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+    case "$word" in
+      query) need_value $# "QueryDevice"
+        bad="Invalid Device query \"$2\"; it must be if the form \"field:value\" and must not contain a \"?\""
+        case "$2" in *\?*|:*|*:) usage_error "$bad" ;; email:?*) owner=${2#email:} ;;
+          *:*) not_modelled "print devices query $2" ;; *) usage_error "$bad" ;; esac
+        shift 2 ;;
+      fields) need_value $# "DeviceFieldNameList"; [ -n "$2" ] || empty_arg "DeviceFieldNameList"
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          case "$field" in
+            androidspecificattributes|assettag|basebandversion|bootloaderversion|brand|buildnumber|compromisedstate|createtime|\
+            deviceid|devicetype|enableddeveloperoptions|enabledusbdebugging|encryptionstate|endpointverificationspecificattributes|\
+            hostname|imei|kernelversion|lastsynctime|managementstate|manufacturer|meid|model|name|networkoperator|osversion|\
+            otheraccounts|ownertype|releaseversion|securitypatchtime|serialnumber|unifieddeviceid|wifimacaddresses) dwant="$dwant$field " ;;
+            *) invalid_choice "$field" "androidspecificattributes|assettag|basebandversion|bootloaderversion|brand|buildnumber|compromisedstate|createtime|deviceid|devicetype|enableddeveloperoptions|enabledusbdebugging|encryptionstate|endpointverificationspecificattributes|hostname|imei|kernelversion|lastsynctime|managementstate|manufacturer|meid|model|name|networkoperator|osversion|otheraccounts|ownertype|releaseversion|securitypatchtime|serialnumber|unifieddeviceid|wifimacaddresses" ;;
+          esac
+        done
+        shift 2 ;;
+      userfields) need_value $# "DeviceUserFieldNameList"; [ -n "$2" ] || empty_arg "DeviceUserFieldNameList"
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          case "$field" in
+            compromisedstate|createtime|firstsynctime|languagecode|lastsynctime|managementstate|name|passwordstate|useragent|useremail) uwant="$uwant$field " ;;
+            *) invalid_choice "$field" "compromisedstate|createtime|firstsynctime|languagecode|lastsynctime|managementstate|name|passwordstate|useragent|useremail" ;;
+          esac
+        done
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print devices with $1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print devices without formatjson"
+  [ -n "$owner" ] || not_modelled "print devices without an email: query"
+  for f in devicetype model manufacturer osversion hostname serialnumber ownertype managementstate compromisedstate createtime lastsynctime; do
+    case "$dwant" in *" $f "*) ;; *) not_modelled "print devices without field $f (the fixture holds it; GAM fetches only the fields named)" ;; esac
+  done
+  for f in useremail createtime firstsynctime lastsynctime managementstate; do
+    case "$uwant" in *" $f "*) ;; *) not_modelled "print devices without user field $f (the fixture holds it; GAM fetches only the fields named)" ;; esac
+  done
+  printf 'Getting all Devices that match query (email:%s), may take some time on a large Google Workspace Account...\n' "$owner" 1>&2
+  n=$(grep -c "\"userEmail\": \"$owner" "$GAM_MOCK_FIXTURES/ci_devices.json" || true)
+  printf 'Got %s Devices...\n' "$n" 1>&2
+  printf 'Getting all Device Users that match query (email:%s), may take some time on a large Google Workspace Account...\n' "$owner" 1>&2
+  printf 'Got %s Device Users...\n' "$n" 1>&2
+  echo "name,JSON"
+  while IFS= read -r record; do
+    case "$record" in *"\"userEmail\": \"$owner"*) gam_row "$(json_text name "$record")" "$record" ;; esac   # a prefix, as the API's
+  done < "$GAM_MOCK_FIXTURES/ci_devices.json"
+  exit 0
+fi
+
 # `gam print tokens` and `gam user <u> print tokens` -> GAM's CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`
 # (_printShowTokens, gam/__init__.py:74326-74533 at 7.48.30; Incident's connected apps and Check Account): the grants in
 # mock_gam/tokens.csv, for every account but the suspended ones (GAM's default entity, all users), or that account's,

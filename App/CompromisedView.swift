@@ -681,7 +681,8 @@ private struct ConnectedAppsSection: View {
     }
 }
 
-/// The phones and tablets syncing the account, shown: one the person doesn't own may be the attacker's.
+/// The phones and tablets syncing the account, then the computers signed in with it, shown: one the person doesn't own
+/// may be the attacker's.
 private struct DevicesSection: View {
     let check: CompromisedChanges.Check
 
@@ -711,6 +712,39 @@ private struct DevicesSection: View {
             Text("Phones and tablets")
         } footer: {
             Text("Shown, not changed here: wipe the account from a device in the Admin console's Devices.")
+        }
+        .textSelection(.enabled)
+        Section {
+            switch check.computers {
+            case .success(let computers) where computers.isEmpty:
+                Text("No computer is signed in with this account in Google's endpoint management.").foregroundStyle(.secondary)
+            case .success(let computers):
+                ForEach(computers) { computer in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(computer.words).fontWeight(.semibold)
+                        Text("Last synced " + (computer.lastSynced?.formatted(date: .abbreviated, time: .shortened) ?? computer.lastSync)
+                             + (computer.firstSync.isEmpty ? "" : " · first signed in "
+                                + (computer.firstSynced?.formatted(date: .abbreviated, time: .shortened) ?? computer.firstSync))
+                             + (computer.ownership.isEmpty ? "" : " · \(computer.ownership)")
+                             + (computer.state.isEmpty ? "" : " · \(computer.state)")
+                             + (computer.serialNumber.isEmpty ? "" : " · serial \(computer.serialNumber)"))
+                            .font(.callout).foregroundStyle(.secondary)
+                        if computer.looksVirtual {
+                            Label("A virtual machine, as a remote attacker's often is", systemImage: "exclamationmark.triangle.fill")
+                                .symbolRenderingMode(.multicolor)
+                        }
+                        if computer.reportsCompromise {
+                            Label("Reports it's compromised", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            case .failure(let problem): Unread(what: "the computers", problem: problem)
+            }
+        } header: {
+            Text("Computers")
+        } footer: {
+            Text("Shown, not changed here: block or delete one in the Admin console's Devices.")
         }
         .textSelection(.enabled)
     }

@@ -106,7 +106,12 @@ public final class IncidentLogs {
     private static func read(_ application: ActivityLogs.Application, _ query: Query, _ access: UserAccess, _ tenant: Domain) async -> Log {
         let hours = ActivityLogs.window(application, asked: query.hours)
         if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, access, tenant) }
-        let rows = await access.activity(application, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap, in: tenant)
+        // The Devices log records no address, so a pull by one would drop it whole: its registrations instead, for the
+        // accounts asked, which the reader ties to a suspect sign-in by time (syncs say nothing of an address either).
+        let rows = application == .mobile && !query.ip.isEmpty
+            ? await access.activity(.mobile, users: query.users, hours: hours, events: ["DEVICE_REGISTER_UNREGISTER_EVENT"],
+                                    cap: ActivityLogs.cap, in: tenant)
+            : await access.activity(application, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap, in: tenant)
         return Log(application: application, rows: rows, hours: hours,
                    capped: (try? rows.get()).map { ActivityLogs.capped($0, accounts: query.users) } ?? false)
     }

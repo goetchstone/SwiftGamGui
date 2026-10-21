@@ -383,6 +383,124 @@ public enum Compromised {
         }
     }
 
+    /// One computer signed in with the account (`GamCommands.printDevices`: Windows, Mac, Linux or ChromeOS, which the
+    /// phones list never shows): what it is, its name, and when the person first and last synced it. An attacker's sign-in
+    /// can leave one here, often a virtual machine.
+    public struct Computer: Sendable, Equatable, Identifiable {
+        /// Google's name for it, `devices/<id>`.
+        public let id: String
+        /// What it runs, as people say it: Windows, macOS, Linux, ChromeOS.
+        public let kind: String
+        public let model: String
+        public let manufacturer: String
+        public let os: String
+        public let hostname: String
+        public let serialNumber: String
+        /// "the company's" or "personal" (`ownerType`), empty when Google doesn't say.
+        public let ownership: String
+        /// The person's state on it in words ("blocked", "the account wiped"…), empty when approved: the person's own
+        /// `managementState`, else the device's.
+        public let state: String
+        /// Still signed in: not blocked, wiped, being wiped or unenrolled (a blocked device user stays listed until deleted).
+        public let isActive: Bool
+        /// When the person first signed in to it (their own `createTime`), else when they last registered with it
+        /// (`firstSyncTime`, which Google sets again at each registration).
+        public let firstSync: String
+        public let firstSynced: Date?
+        public let lastSync: String
+        public let lastSynced: Date?
+        /// The device says it's compromised (`compromisedState` COMPROMISED).
+        public let reportsCompromise: Bool
+
+        /// The computer in `record`, when it is one and `owner` is exactly among its users: the API's `email:` matches a
+        /// prefix, and a phone or tablet is the phones list's.
+        public init?(record: GamOutput.Record, owner: String) {
+            func text(_ key: String, in object: GamOutput.Record? = nil) -> String { Fields.text((object ?? record)[key]) }
+            kind = switch text("deviceType") {
+            case "WINDOWS": "Windows"
+            case "MAC_OS": "macOS"
+            case "LINUX": "Linux"
+            case "CHROME_OS": "ChromeOS"
+            default: ""
+            }
+            let wanted = PythonText.lower(owner)
+            let users = (record["users"]?.array ?? []).compactMap(\.object)
+            guard !kind.isEmpty, let mine = users.first(where: { PythonText.lower(text("userEmail", in: $0)) == wanted }) else { return nil }
+            id = text("name")
+            model = text("model")
+            manufacturer = text("manufacturer")
+            os = text("osVersion")
+            hostname = text("hostname")
+            serialNumber = text("serialNumber")
+            ownership = switch text("ownerType") {
+            case "COMPANY": "the company's"
+            case "BYOD": "personal"
+            default: ""
+            }
+            let raw = text("managementState", in: mine).isEmpty ? text("managementState") : text("managementState", in: mine)
+            isActive = !["BLOCKED", "WIPING", "WIPED", "UNENROLLED"].contains(raw)
+            state = switch raw {
+            case "", "APPROVED": ""
+            case "BLOCKED": "blocked"
+            case "PENDING", "PENDING_APPROVAL": "waiting for approval"
+            case "WIPING": "the account being wiped"
+            case "WIPED": "the account wiped"
+            case "UNENROLLED": "unenrolled"
+            case "UNPROVISIONED": "not provisioned"
+            case let other: PythonText.lower(other)
+            }
+            let signedIn = text("createTime", in: mine)
+            firstSync = signedIn.isEmpty ? text("firstSyncTime", in: mine) : signedIn
+            firstSynced = ChromeProfiles.date(firstSync)
+            let last = text("lastSyncTime", in: mine)
+            lastSync = last.isEmpty ? text("lastSyncTime") : last
+            lastSynced = ChromeProfiles.date(lastSync)
+            reportsCompromise = text("compromisedState") == "COMPROMISED"
+        }
+
+        /// Its model or maker says it's a virtual machine, as a remote attacker's often is: Hyper-V and Azure ("Virtual
+        /// Machine"), VMware, VirtualBox, Parallels, QEMU and KVM, Xen, and the clouds' own.
+        public var looksVirtual: Bool {
+            let said = PythonText.lower(model + " " + manufacturer)
+            return Self.virtualWords.contains { said.contains($0) }
+        }
+
+        static let virtualWords = ["virtual", "vmware", "virtualbox", "innotek", "parallels", "qemu", "kvm", "xen", "hvm domu",
+                                   "google compute engine", "amazon ec2", "bochs"]
+
+        /// "Virtual Machine, Windows 10.0.19045 (Windows), named DESKTOP-7Q2".
+        public var words: String {
+            [model.isEmpty ? "A computer" : model, os].filter { !$0.isEmpty }.joined(separator: ", ")
+                + (kind.isEmpty ? "" : " (\(kind))") + (hostname.isEmpty ? "" : ", named \(hostname)")
+        }
+
+        /// The scope not delegated (GAM's "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73, or a
+        /// scope refusal): granted in the Admin console.
+        public static let delegationNote = "Listing computers needs the service account's domain-wide delegation to include "
+            + "https://www.googleapis.com/auth/cloud-identity.devices, or its .readonly form if this domain's service account "
+            + "was set up read-only for Cloud Identity Devices (Admin console: Security › Access and data control › API "
+            + "controls › Domain-wide delegation). Until then, the Devices log in Pull Incident Logs shows each computer when "
+            + "it registers."
+
+        /// The service account's own list of APIs without it (GAM's "API access Denied", exit 12, before it asks Google):
+        /// delegating the scope alone can't fix it.
+        public static let scopeListNote = "This domain's service-account file carries GAM's own list of APIs, and Cloud "
+            + "Identity Devices isn't on it, so GAM never asks Google for the scope: delegating it alone won't help. Set the "
+            + "service account up again with Cloud Identity Devices among its APIs (or with no list, so GAM uses its "
+            + "defaults), delegate the scope, and import the folder again on Setup. Until then, the Devices log in Pull "
+            + "Incident Logs shows each computer when it registers."
+
+        /// The note for a failed read, by its cause; nil when no scope explains it (a dead key's token error is exit 12
+        /// too, but no "API access Denied" of the scope list's).
+        public static func note(for error: GamError) -> String? {
+            if error.exitCode == 12 {
+                return error.stderr.contains("API access Denied") && !error.stderr.contains("Authentication Token Error")
+                    ? scopeListNote : nil
+            }
+            return error.exitCode == 73 || error.kind == .scopeMissing ? delegationNote : nil
+        }
+    }
+
     /// The account as `info user … fields accountFields` has it: the facts the panel shows.
     public struct Account: Sendable, Equatable {
         public let primaryEmail: String
@@ -412,7 +530,8 @@ public enum Compromised {
     /// read that failed (said beside its list, not here).
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
                                 sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil, autoReply: Vacation? = nil,
-                                devices: [MobileDevice]? = nil, apps: [ConnectedApps.App]? = nil) -> [String] {
+                                devices: [MobileDevice]? = nil, computers: [Computer]? = nil,
+                                apps: [ConnectedApps.App]? = nil) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
@@ -450,6 +569,16 @@ public enum Compromised {
                 + "one they don't own may be the attacker's. The reset and the sign-out cut its sync off; to wipe the account "
                 + "from it, use the Admin console's Devices."
                 + (devices.contains(where: \.reportsCompromise) ? " One reports it's rooted or jailbroken." : ""))
+        }
+        // Only the computers still signed in: one already blocked or wiped needs nothing more, and is said as such.
+        if let computers, case let active = computers.filter(\.isActive), !active.isEmpty {
+            let count = active.count, virtual = active.filter(\.looksVirtual).count, stopped = computers.count - count
+            let machines = virtual == 0 ? "" : count == 1 ? ", and it's a virtual machine"
+                : ", \(virtual) of them \(virtual == 1 ? "a virtual machine" : "virtual machines")"
+            said.append("\(count == 1 ? "A computer is" : "\(count) computers are") signed in with \(user)'s account\(machines): one "
+                + "they don't use may be the attacker's. The sign-out ends its session; block or delete it in the Admin console's Devices."
+                + (active.contains(where: \.reportsCompromise) ? " One reports it's compromised." : "")
+                + (stopped == 0 ? "" : " \(stopped) more \(stopped == 1 ? "is" : "are") already blocked or wiped."))
         }
         if let drafts, !drafts.isEmpty {
             said.append("\(user) has \(drafts.count == Draft.cap ? "at least \(Draft.cap)" : "\(drafts.count)") draft\(drafts.count == 1 ? "" : "s"): "
