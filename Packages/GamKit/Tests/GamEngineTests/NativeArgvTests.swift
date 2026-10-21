@@ -53,6 +53,8 @@ struct NativeArgvTests {
         ("print_mobile_devices", try! GamCommands.printMobileDevices(user: "P@Example.com"),
          ["print", "mobile", "query", "email:p@example.com", "fields",
           "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "formatjson"]),
+        // 9076-9085 `[<UserTypeEntity>] print tokens|token …`: no entity is GAM's default, every account but the suspended.
+        ("print_tokens", try! GamCommands.printTokens(), ["print", "tokens"]),
         ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
          ["print", "chromeprofiles", "filter", "user_email=\"p@example.com\"", "fields",
           "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,browserversion,browserchannel,"
@@ -187,6 +189,14 @@ struct NativeArgvTests {
         }
         #expect(try GamCommands.reportActivity(.chrome, users: ["o'neil.x_y-z@mail.example.co.uk"], hours: 3, maxActivities: 1).argv[5]
                 == "PROFILE_USER_NAME==o'neil.x_y-z@mail.example.co.uk")
+    }
+
+    /// One person's grants are `user <address> print tokens`; anything but one address is refused.
+    @Test func onePersonsTokensAreOneAddress() throws {
+        #expect(try GamCommands.printTokens(user: "p@example.com").argv == ["user", "p@example.com", "print", "tokens"])
+        for user in ["a@example.com,b@example.com", "all", "id:123", ""] {
+            #expect(throws: GamCommands.Invalid.self, "\(user)") { try GamCommands.printTokens(user: user) }
+        }
     }
 
     /// A person's Chrome profiles: one address, nothing that would change the filter's meaning (a quote or backslash

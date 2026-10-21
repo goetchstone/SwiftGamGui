@@ -167,6 +167,17 @@ public final class UserAccess {
         }
     }
 
+    /// The apps given access to `email`'s account, or to every account's (nil): one Directory API call per account, so every
+    /// account's gets the long timeout.
+    public func connectedApps(of email: String? = nil, in pinned: Domain? = nil) async -> Result<[ConnectedApps.App], Problem> {
+        guard let read = try? GamCommands.printTokens(user: email) else {
+            return .failure(Problem(summary: "Couldn't read the connected apps: “\(email ?? "")” isn't one email address."))
+        }
+        return await readNow(read, in: pinned, timeout: email == nil ? ActivityLogs.timeout : GamRunner.defaultTimeout) {
+            ConnectedApps.apps(ConnectedApps.grants($0))
+        }
+    }
+
     /// The phones and tablets syncing the account (`GamCommands.printMobileDevices`).
     public func mobileDevices(of email: String) async -> Result<[Compromised.MobileDevice], Problem> {
         guard let read = try? GamCommands.printMobileDevices(user: email) else {

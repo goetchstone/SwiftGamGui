@@ -231,6 +231,34 @@ that Chrome saved was within the attacker's reach. Two reads, nothing changes.
   whether `actor.email` is set on them; which events this tenant reports at all (website logins and password events need
   Chrome's event reporting turned on).
 
+## Apps and AI agents (slice 7)
+Who has apps and AI agents connected, and what they did. Reads only.
+- **Who acted, on every log row** (`ActivityLogs.Row.agent`, `.app`, `.via`): the Reports API says when an AI agent acted
+  (`isAgenticAction`, `actor.agentAttributionInfo`: its name, type, ID and owner) and when an app acted for the person
+  (`actor.applicationInfo`: its name, OAuth client ID, and whether it impersonated them). GAM's report prints them as
+  columns; they're never parameters. Each row says it in words ("by the AI agent …", "through …"), and the CSV has a `via`
+  column. The Admin console's exports call these "By an agent", "Agent info" and "Actor application info".
+- **Every log GAM's report reads** (2026-10-21, "add any logs we are missing"): the ones above, and Gemini (on by default:
+  an assistant an attacker can ask to search a mailbox), Meet, Contacts, Keep, Tasks, admin data actions, Access
+  Transparency, Looker Studio, Groups (Cloud Identity), Profiles, Secure LDAP, directory sync, Google Cloud, Cloud Search,
+  Classroom, data migration, Meet hardware, Assignments and Graduation. Not Currents (`gplus`) or Jamboard, whose services
+  ended. The mock answers each, and capitalizes events where doReport does (REPORT_ACTIVITIES_UPPERCASE_EVENTS).
+- **Connected apps** (`ConnectedApps`, `GamCommands.printTokens`, `ConnectedAppsRead`): `print tokens` for every account but
+  the suspended ones (GAM's default), on Incident's step 1, and `user P print tokens` in Check Account. Grants grouped by
+  app: who granted it, what it may do in words (`describe`: all of Gmail, Gmail forwarding, all of Drive, admin and Cloud
+  are broad), and whether its name looks like an AI assistant or agent (`looksLikeAI`: whole words, so "Promotion
+  Manager" isn't Motion). AI first, then the broadest reach, then the most people. Revoking stays the lock's sign-out
+  (every app at once) or the Admin console's App access control (an app for everyone).
+- **Read the logs:** an app acting from a suspect address, and anything else a suspect address did as an account
+  (Gemini, Drive, Contacts…), draft Secure Account; an AI agent acting for someone is said, and called out when the
+  attacker had that account.
+- **The mock:** `tokens.csv` (carol@'s Mail Sync Pro with all of Gmail, dana@'s ChatGPT and Read AI, Zoom for several, bob@
+  suspended so left out of every account's read); `report_drive.csv` (a download through Mail Sync Pro from the attacker's
+  address); `report_geminiinworkspaceapps.csv` (Gemini asked from the attacker's address, and an agent's action for dana@).
+  `denied/tokens` is exit 12; an address that isn't a user is GAM's "Does not exist", 56.
+- **Not modelled, for the live check to tell:** which logs carry `actor.applicationInfo` or agent attribution today, the
+  agent types Google reports, and the Gemini log's parameters beyond `action` and `app_name`.
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.

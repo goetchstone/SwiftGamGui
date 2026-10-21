@@ -1,0 +1,9 @@
+user,clientId,displayText,anonymous,nativeApp,userKey,scopes
+alice@example.com,77185425430.apps.googleusercontent.com,macOS,False,True,1001,openid https://www.googleapis.com/auth/userinfo.email
+alice@example.com,84371-zoom.apps.googleusercontent.com,Zoom,False,False,1001,https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email
+bob@example.com,84371-zoom.apps.googleusercontent.com,Zoom,False,False,1002,https://www.googleapis.com/auth/calendar.readonly
+carol@example.com,123456-abc.apps.googleusercontent.com,Mail Sync Pro,False,False,1003,https://mail.google.com/ https://www.googleapis.com/auth/contacts.readonly
+carol@example.com,77185425430.apps.googleusercontent.com,Google Chrome,False,True,1003,https://www.googleapis.com/auth/userinfo.email
+dana@example.com,765432-gptapp.apps.googleusercontent.com,ChatGPT,False,False,1004,https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly
+dana@example.com,555111-readai.apps.googleusercontent.com,Read AI Notetaker,False,False,1004,https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email
+dana@example.com,84371-zoom.apps.googleusercontent.com,Zoom,False,False,1004,https://www.googleapis.com/auth/calendar.readonly

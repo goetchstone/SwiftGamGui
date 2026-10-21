@@ -32,11 +32,11 @@ public enum ActivityLogs {
         for row in rows { counts[row.who.lowercased(), default: 0] += 1 }
         return counts.values.contains { $0 >= cap }
     }
-    /// The logs the operator read together on 2026-10-19 (sign-ins, OAuth, Gmail, Access, Chat) and account changes, with
-    /// (2026-10-21, "add any other logs that should be looked at") the other ways in and out an attacker uses: sign-ins to
-    /// other apps through Google (SAML), Takeout exports, and phones and tablets syncing the account.
+    /// The logs an incident needs first: sign-ins, OAuth, Gmail, Access, Chat and account changes, the other ways in and out
+    /// an attacker uses (sign-ins to other apps through Google, Takeout exports, phones syncing the account), and Gemini (an
+    /// assistant an attacker can ask to search a mailbox).
     public static let incidentDefault: [Application] = [.login, .token, .saml, .gmail, .accessEvaluation, .chat, .userAccounts,
-                                                        .takeout, .mobile]
+                                                        .takeout, .mobile, .gemini]
 
     /// One parameter of an event: a nested one is named by its chain, `message_info.source.address`.
     public struct Parameter: Sendable, Equatable {
@@ -62,6 +62,11 @@ public enum ActivityLogs {
         public let parameters: [Parameter]
         /// Google itself raised it: a suspicious sign-in, a failed challenge, a denial, a block, a disabled account.
         public let flagged: Bool
+        /// The AI agent that acted (the activity's `isAgenticAction`, `actor.agentAttributionInfo`), in words; empty when none.
+        public let agent: String
+        /// The app that acted for the person (`actor.applicationInfo`): its name, else its OAuth client ID, and whether it
+        /// impersonated them; empty when the person acted themselves.
+        public let app: String
 
         public init(record: GamOutput.Record, application: Application, index: Int) {
             self.application = application
@@ -84,6 +89,21 @@ public enum ActivityLogs {
                 .contains(where: lowered.contains)
                 || Fields.flag(record["is_suspicious"])
                 || (event == "login_challenge" && text("login_challenge_status").lowercased().contains("fail"))
+            let agentName = text("actor.agentAttributionInfo.agentName"), agentType = text("actor.agentAttributionInfo.agentType")
+            let owner = text("actor.agentAttributionInfo.agentOwner.email")
+            agent = agentName.isEmpty && agentType.isEmpty && !Fields.flag(record["isAgenticAction"]) ? ""
+                : (agentName.isEmpty ? "an AI agent" : "the AI agent \(agentName)")
+                    + (agentType.isEmpty ? "" : " (\(agentType.lowercased().replacingOccurrences(of: "_", with: " ")))")
+                    + (owner.isEmpty ? "" : ", made by \(owner)")
+            let appName = text("actor.applicationInfo.applicationName"), client = text("actor.applicationInfo.oauthClientId")
+            app = appName.isEmpty && client.isEmpty ? ""
+                : (appName.isEmpty ? "app \(client)" : appName)
+                    + (Fields.flag(record["actor.applicationInfo.impersonation"]) ? " (acting as the person)" : "")
+        }
+
+        /// Who acted besides the person, in words: "by the AI agent …", "through Mail Sync Pro"; empty when they acted themselves.
+        public var via: String {
+            [agent.isEmpty ? "" : "by \(agent)", app.isEmpty ? "" : "through \(app)"].filter { !$0.isEmpty }.joined(separator: "; ")
         }
 
         func value(_ name: String) -> String { parameters.first { $0.name == name }?.value ?? "" }
@@ -94,13 +114,16 @@ public enum ActivityLogs {
             case (.saml, "login_success"): "Signed in to an app through Google"
             case (.saml, "login_failure"): "A sign-in to an app through Google failed"
             case (.chat, "message_posted"): "Posted a Chat message"
+            case (.gemini, "feature_utilization"): "Used Gemini"
             default: ActivityLogs.words(event)
             }
         }
 
         /// What else the event says, in words: how they signed in and the challenge, the app and its access, or (for the
         /// other logs) its first few parameters.
-        public var details: [String] {
+        public var details: [String] { said + (via.isEmpty ? [] : [via]) }
+
+        private var said: [String] {
             switch application {
             case .login:
                 var said: [String] = []
@@ -141,7 +164,11 @@ public enum ActivityLogs {
 
     /// The activity's own columns, and the counts flattenJSON writes for a list: never a parameter.
     static let activityColumns: Set = ["name", "id.time", "actor.email", "ipAddress", "id.uniqueQualifier", "id.applicationName",
-                                       "id.customerId", "actor.profileId", "actor.callerType", "actor.key", "parameters"]
+                                       "id.customerId", "actor.profileId", "actor.callerType", "actor.key", "parameters",
+                                       "isAgenticAction", "actor.agentAttributionInfo.agentName", "actor.agentAttributionInfo.agentType",
+                                       "actor.agentAttributionInfo.agentId", "actor.agentAttributionInfo.agentOwner.email",
+                                       "actor.applicationInfo.applicationName", "actor.applicationInfo.oauthClientId",
+                                       "actor.applicationInfo.impersonation"]
 
     /// Each simple column by name, then each nested parameter by its chain of names, in GAM's column order.
     static func parameters(_ record: GamOutput.Record) -> [Parameter] {
@@ -295,8 +322,8 @@ public enum ActivityLogs {
     /// The rows as a table in the one shape, header first: the log, when, who, the event, the IP address, whether Google
     /// flagged it, and every parameter as `name: value`. For a CSV the caller makes safe to open in a spreadsheet.
     public static func table(_ rows: [Row]) -> [[String]] {
-        [["log", "time", "actor", "event", "ip_address", "flagged", "parameters"]] + rows.map { row in
-            [row.application.rawValue, row.time, row.who, row.event, row.ip, row.flagged ? "yes" : "",
+        [["log", "time", "actor", "event", "ip_address", "flagged", "via", "parameters"]] + rows.map { row in
+            [row.application.rawValue, row.time, row.who, row.event, row.ip, row.flagged ? "yes" : "", row.via,
              row.parameters.map { "\($0.name): \($0.value)" }.joined(separator: " | ")]
         }
     }
@@ -323,6 +350,25 @@ extension GamCommands.ActivityApplication {
         case .rules: "Rules"
         case .contextAwareAccess: "Context-aware access"
         case .vault: "Vault"
+        case .gemini: "Gemini"
+        case .meet: "Meet"
+        case .contacts: "Contacts"
+        case .keep: "Keep"
+        case .tasks: "Tasks"
+        case .adminDataAction: "Admin data actions"
+        case .accessTransparency: "Access Transparency"
+        case .dataStudio: "Looker Studio"
+        case .groupsEnterprise: "Groups (Cloud Identity)"
+        case .profile: "Profiles"
+        case .ldap: "Secure LDAP"
+        case .directorySync: "Directory sync"
+        case .gcp: "Google Cloud"
+        case .cloudSearch: "Cloud Search"
+        case .classroom: "Classroom"
+        case .dataMigration: "Data migration"
+        case .meetHardware: "Meet hardware"
+        case .assignments: "Assignments"
+        case .graduation: "Graduation"
         }
     }
 
@@ -345,6 +391,26 @@ extension GamCommands.ActivityApplication {
         case .rules: "Data protection and other rules that fired. Some editions don't keep it."
         case .contextAwareAccess: "Access that context-aware rules blocked. Some editions don't keep it."
         case .vault: "Vault searches, exports and holds: what matters when an admin's account was taken."
+        case .gemini: "Gemini in Gmail, Docs, Drive and the Gemini app: what was asked and done. An attacker can ask it to find invoices "
+            + "or passwords in a mailbox."
+        case .meet: "Meetings hosted and joined, and who took part."
+        case .contacts: "Contacts exported, imported and changed."
+        case .keep: "Notes made, shared and changed."
+        case .tasks: "Tasks made and changed."
+        case .adminDataAction: "Data actions admins ran, such as exports and deletions."
+        case .accessTransparency: "Google staff access to your data, and why. Some editions don't keep it."
+        case .dataStudio: "Looker Studio reports and data sources made, shared and viewed."
+        case .groupsEnterprise: "Group membership changes made through the Cloud Identity Groups API."
+        case .profile: "Changes people made to their own profile."
+        case .ldap: "Secure LDAP sign-ins and lookups by the apps that use it."
+        case .directorySync: "Directory sync runs from another directory."
+        case .gcp: "Google Cloud: projects, resources and who changed them."
+        case .cloudSearch: "Cloud Search queries and settings."
+        case .classroom: "Classroom activity."
+        case .dataMigration: "Data migrated into Workspace."
+        case .meetHardware: "Meet room hardware."
+        case .assignments: "Assignments (education)."
+        case .graduation: "Graduation (education accounts)."
         case .chrome: "Chrome's warnings and website sign-ins, by the account signed in to Chrome or a Chromebook's own. Only what "
             + "Chrome reports: empty can mean its reporting is off, not that Chrome isn't used. Events a Mac or PC ties to no "
             + "account (an extension request) show for every account only."

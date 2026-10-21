@@ -37,7 +37,8 @@ sign-in, shown once. Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes, Chrome and more) for some
 accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder;
 Read the logs then says what they show (by rules in code, with the on-device model's explanation on request) and drafts
-the fixes, each opening Secure Account or Phishing with the person or the email filled in. Reports lists the people behind each of the directory's counts and
+the fixes, each opening Secure Account or Phishing with the person or the email filled in. Every log row says when an app
+or an AI agent acted for someone, and Incident lists every account's connected apps and agents. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
@@ -210,6 +211,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Read the logs: findings, drafted fixes, the on-device model's explanation (Incident; changes nothing) | not yet: new to both apps |
 | Incident: turn off the auto-reply; any lock step alone (Incident) | not yet from this screen: Users' auto-reply off, confirmed there |
 | Incident: the phones and tablets syncing an account (reads only) | not yet: new to both apps |
+| Incident: connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

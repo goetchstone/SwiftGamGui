@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built.** When an account is taken over and sends phishing from Gmail, signing the person
+**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built; slice 7 (apps and AI agents, every log) built.** When an account is taken over and sends phishing from Gmail, signing the person
 out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
 operator asked for all of it in GAM GUI.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Each default is below, for the
@@ -112,6 +112,11 @@ incident should look at. One screen in working order (find who's affected, secur
 lock step a switch so any one runs alone, the auto-reply (read and turned off) and the devices (read) in the check, and
 SAML, Takeout and Devices among the logs pulled by default, with Calendar, Groups, Rules, Context-aware access and Vault to
 tick. Runbook: docs/domains/compromised-account.md.
+
+## Slice 7: apps and AI agents
+Asked for (2026-10-21): who has apps and agents connected and what they might be doing, and every log an incident might
+need. Each log row says when an AI agent or an app acted; GAM's whole list of activity logs is offered; Incident reads every
+account's connected apps, and Check Account the person's. Runbook: docs/domains/compromised-account.md, "Apps and AI agents".
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen
