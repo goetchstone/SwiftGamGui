@@ -22,6 +22,18 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-21 — A parity fixture pinned a reader's flaw a security decision came to rest on
+- **What happened:** the Incident check began deciding from the auto-reply reader whether an attacker's auto-reply is on.
+  That reader, ported from GamGUI and held to its fixture, let the reply's own text say `Enabled: False`. The security
+  review caught it before the commit (failure-log 2026-10-21, "An auto-reply's own text could hide it from the check").
+- **Invariant in force:** #11 (GamGUI parity is a test), against the incident's need to read attacker-written text safely.
+- **Why it didn't hold:** parity proves we read as GamGUI reads, not that GamGUI reads safely; the reader was harmless
+  while it only filled in a page, and became a security input when a new decision used it.
+- **Would a rule have caught it?** only if enforced differently: when a parity-held reader starts deciding something
+  about attacker-controlled data, review the reader against the source's own output shape, not only the fixture.
+- **Enforcement home if changed:** skill (`pre-commit` item 6 or 11: "a reader of attacker text that a lock decision
+  rests on is read against GAM's printer, not only GamGUI's fixture").
+
 ## 2026-10-21 — A filtered read's fixture held only rows its own filter could find
 - **What happened:** the Chrome log read an account by `PROFILE_USER_NAME`. Its fixture's every event had that
   parameter, so the strict mock passed; Google's appendix lists ten of nineteen Chrome events without it (ChromeOS

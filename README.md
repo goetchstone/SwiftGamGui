@@ -24,10 +24,12 @@ default), with steps of its own to add (clear their recovery info, remove mail f
 POP, hand their secondary calendars to the manager, hide them from the directory) and warnings
 for what the later delete would lose (their secondary calendars) or a Vault hold would stop: every step's exact
 command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
-left to finish. Compromised Account is for someone who stays but whose account was taken over: it checks what an
-attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
-admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
-send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them
+left to finish. Incident is for an account taken over, in the order it's worked: find who's affected, secure each account,
+pull the email, then a checklist. It checks what an attacker commonly changes (filters, forwarding, an auto-reply,
+delegates, send-as addresses, recovery details, 2-Step Verification, admin roles, leftover drafts, the phones that sync
+the mail), then runs the lock (reset, sign-out, forwarding, IMAP and POP off; each a switch, so any one runs alone) with
+the filters, delegates and send-as addresses you tick removed, the auto-reply off and the leftover drafts (all, or by
+subject) deleted; a person's page in Users opens it for them
 (Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), their
 Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last
 used), and Set Temporary Password (Actions, or their Security tab) gives them a password to change at their next
@@ -94,6 +96,14 @@ audit log, searched, paged and exported to CSV.
 | Reports | Usage | Audit |
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](docs/screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](docs/screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words, and a page at a time](docs/screenshots/audit.png) |
+
+Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
+attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
+a switch, with what you tick undone, once you've typed the person's address.
+
+| Incident | Read the logs |
+|---|---|
+| ![Incident: the order to work in, the logs to pull, then the account to secure](docs/screenshots/compromised.png) | ![Read the logs: each finding in words, with its fix as a button: secure the person, or pull the email from every mailbox](docs/screenshots/compromised-reading.png) |
 
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move
@@ -197,7 +207,9 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
 | Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
-| Read the logs: findings, drafted fixes, the on-device model's explanation (Compromised; changes nothing) | not yet: new to both apps |
+| Read the logs: findings, drafted fixes, the on-device model's explanation (Incident; changes nothing) | not yet: new to both apps |
+| Incident: turn off the auto-reply; any lock step alone (Incident) | not yet from this screen: Users' auto-reply off, confirmed there |
+| Incident: the phones and tablets syncing an account (reads only) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

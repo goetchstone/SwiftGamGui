@@ -49,8 +49,12 @@ struct HTMLTextTests {
         }
     }
 
+    /// GamGUI's readings, but one: a setting's line below `Message:` is the reply's own text, never the setting (GAM prints
+    /// the message last). GamGUI takes it, so a reply that says `Enabled: False` reads as off (failure-log 2026-10-21).
     @Test func showVacationIsReadAsGamGUIReadsIt() {
-        for show in document.show_vacation {
+        let attackersOwnLine = "  Enabled: true\r\n  Subject:   Away  \r\n  Message:\r\n   line one\r\n   line two\r\n  Enabled: False\r\n"
+        #expect(document.show_vacation.contains { $0.text == attackersOwnLine && !$0.enabled }, "GamGUI's reading, recorded")
+        for show in document.show_vacation where show.text != attackersOwnLine {
             let vacation = Vacation(showText: show.text)
             #expect(vacation.enabled == show.enabled && vacation.contactsOnly == show.contacts_only
                     && vacation.domainOnly == show.domain_only, "\(show.text)")
@@ -58,5 +62,11 @@ struct HTMLTextTests {
             #expect(bytes(vacation.message) == bytes(show.message), "\(show.text)")
             #expect(vacation.start == show.start && vacation.end == show.end, "\(show.text)")
         }
+        let ours = Vacation(showText: attackersOwnLine)
+        #expect(ours.enabled && ours.subject == "Away" && ours.message == "line one\nline two\nEnabled: False")
+        // A body faking every setting changes none of them.
+        let faked = Vacation(showText: "User: c@example.com, Vacation:\n  Enabled: True\n  Contacts Only: False\n  Subject: Invoice\n"
+                             + "  Message:\n    Pay here\n    Enabled: False\n    Subject: Out of office\n    Contacts Only: True\n")
+        #expect(faked.enabled && faked.subject == "Invoice" && !faked.contactsOnly)
     }
 }

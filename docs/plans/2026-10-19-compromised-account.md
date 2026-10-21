@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built.** When an account is taken over and sends phishing from Gmail, signing the person
+**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built.** When an account is taken over and sends phishing from Gmail, signing the person
 out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
 operator asked for all of it in GAM GUI.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
@@ -105,6 +105,14 @@ From the operator (2026-10-21), checking whether a person uses Chrome and its sa
 Logs, read by the account signed in to the profile (GAM's own match for a named user is the computer's login name), and a
 person's Chrome profiles on their Security tab. Reads only; saved passwords are never readable. Runbook:
 docs/domains/compromised-account.md, "Chrome".
+
+## Slice 6: the Incident screen
+From the operator (2026-10-21), after the incident's features were added in a hurry: "consolidate what is needed to
+remediate this in the future, and have ways to do things on an individual basis", then "add any other logs that should
+be looked at". One screen in working order (find who's affected, secure an account, pull the email, afterwards), every
+lock step a switch so any one runs alone, the auto-reply (read and turned off) and the devices (read) in the check, and
+SAML, Takeout and Devices among the logs pulled by default, with Calendar, Groups, Rules, Context-aware access and Vault to
+tick. Runbook: docs/domains/compromised-account.md.
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen

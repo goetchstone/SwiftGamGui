@@ -460,8 +460,8 @@ fi
 # <address>`, and `user all filter PROFILE_USER_NAME==<address>`, the account signed in to the profile, the one filter
 # modelled, for Chrome with `user all`; a Chrome `select` isn't modelled. An event without an IP address column is never
 # one `ip` keeps.
-if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome) true ;; *) false ;; esac; then
-  case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; *) app=$2 ;; esac
+if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome|saml|calendar|calendars|groups|group|rules|contextawareaccess|vault) true ;; *) false ;; esac; then
+  case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; calendars) app=calendar ;; group) app=groups ;; *) app=$2 ;; esac
   shift 2; who=""; start=""; end=""; ip=""; max=""; events=""; actor=""; filter=""; selected=""
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -486,9 +486,10 @@ if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthto
   case "$unit" in [dD]) hours=$((count * 24)) ;; *) hours=$count ;; esac
   [ -z "$actor" ] || [ "$app" = admin ] || not_modelled "report $app userisactor"
   match=""
+  # doReport's REPORT_ACTIVITIES_UPPERCASE_EVENTS: these logs' event names are capitals; the rest, lower case.
+  case "$app" in admin|chrome|contextawareaccess|mobile|takeout) events=$(printf '%s' "$events" | tr '[:lower:]' '[:upper:]') ;; esac
   if [ "$app" = chrome ]; then
     [ -z "$selected" ] || not_modelled "report chrome select users"
-    events=$(printf '%s' "$events" | tr '[:lower:]' '[:upper:]')
     if [ -n "$filter" ]; then
       [ "$who" = all ] || not_modelled "report chrome user $who with a filter"
       case "$filter" in PROFILE_USER_NAME==?*) ;; *) not_modelled "report chrome filter $filter" ;; esac
@@ -1082,6 +1083,53 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "chromeprofiles" ]; then
     [ "$(json_text userEmail "$record")" = "$owner" ] || continue
     gam_row "$(json_text name "$record")" "$(json_text profileId "$record")" "$record"
   done < "$GAM_MOCK_FIXTURES/chrome_profiles.json"
+  exit 0
+fi
+
+# `gam print mobile query email:<address> fields <MobileFieldNameList> formatjson` -> GAM's CSV, `resourceId` and a `JSON`
+# column per device (doPrintMobileDevices, gam/__init__.py:34750-34891 at 7.48.30; the compromised-account check): the
+# devices in mock_gam/mobile_devices.json with an owner the address starts, as the API's `email:` search matches a
+# prefix (carol@example.com.au's phone answers carol@example.com), none the titles alone (exit 0). Only that
+# query (_validateDeviceQuery: a field, a colon, a value, no `?`, else a usage error) and the grammar's field names;
+# formatjson needs `resourceid` among them (its row is written from it). GAM_MOCK_STATE/denied/mobile is the API's
+# refusal: ClientAPIAccessDeniedExit, the error then "Reauthentication is needed", API_ACCESS_DENIED_RC 12. Not modelled:
+# Google's search beyond an owner's prefix.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
+  shift 2; fj=""; owner=""; fields=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      query) need_value $# "QueryMobile"
+        case "$2" in *\?*|:*|*:) usage_error "Invalid Mobile Device query: $2" ;; email:?*) owner=${2#email:} ;;
+          *:*) not_modelled "print mobile query $2" ;; *) usage_error "Invalid Mobile Device query: $2" ;; esac
+        shift 2 ;;
+      fields) need_value $# "MobileFieldNameList"; [ -n "$2" ] || empty_arg "MobileFieldNameList"; fields="$2"
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          case "$field" in
+            adbstatus|applications|basebandversion|bootloaderversion|brand|buildnumber|defaultlanguage|developeroptionsstatus|\
+            devicecompromisedstatus|deviceid|devicepasswordstatus|email|encryptionstatus|firstsync|hardware|hardwareid|imei|\
+            kernelversion|lastsync|managedaccountisonownerprofile|manufacturer|meid|model|name|networkoperator|os|\
+            otheraccountsinfo|privilege|releaseversion|resourceid|securitypatchlevel|serialnumber|status|supportsworkprofile|\
+            type|unknownsourcesstatus|useragent|wifimacaddress) ;;
+            *) invalid_choice "$field" "MobileFieldName" ;;
+          esac
+        done
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print mobile with $1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print mobile without formatjson"
+  [ -n "$owner" ] || not_modelled "print mobile without an email: query"
+  case ",$fields," in *,resourceid,*) ;; *) not_modelled "print mobile formatjson without resourceid (GAM's row needs it)" ;; esac
+  printf 'Getting all Mobile Devices that match query (email:%s)\n' "$owner" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/mobile" ]; then
+    printf '\nERROR: Not Authorized to access this resource/api\n\nERROR: Reauthentication is needed, please run\n\ngam oauth create\n' 1>&2
+    exit 12
+  fi
+  echo "resourceId,JSON"
+  while IFS= read -r record; do
+    case "$record" in *"\"$owner"*) gam_row "$(json_text resourceId "$record")" "$record" ;; esac   # a prefix, as the API's
+  done < "$GAM_MOCK_FIXTURES/mobile_devices.json"
   exit 0
 fi
 

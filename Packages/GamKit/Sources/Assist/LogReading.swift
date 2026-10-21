@@ -60,8 +60,8 @@ public enum LogReading {
     /// the drafts it points to. `id` ("F1") is what the model's points cite.
     public struct Finding: Sendable, Equatable, Identifiable {
         public enum Kind: String, Sendable, CaseIterable {
-            case signedInFromSuspect, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect, afterLock,
-                 pastPhishingWarning, passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
+            case signedInFromSuspect, exportedFromSuspect, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect,
+                 chatFromSuspect, afterLock, pastPhishingWarning, passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
         }
         public let id: String
         public let kind: Kind
@@ -123,12 +123,20 @@ public enum LogReading {
                                  here.count, []))
         }
 
-        // A sign-in, app grant or account change from a suspect address: the attacker had that account.
+        // A sign-in (to Google, or to another app through it), an app grant or an account change from a suspect address:
+        // the attacker had that account.
         let entered = events.filter { acting.contains($0.ip) && isAccount($0.who)
-            && (($0.log == "login" && $0.event == "login_success") || ($0.log == "token" && $0.event == "authorize")
+            && ((["login", "saml"].contains($0.log) && $0.event == "login_success") || ($0.log == "token" && $0.event == "authorize")
                 || $0.log == "useraccounts") }
         for (account, theirs) in grouped(entered) {
-            let what = unique(theirs.map { $0.log == "login" ? "signed in" : $0.log == "token" ? "granted an app access" : "changed account settings" })
+            let what = unique(theirs.map {
+                switch $0.log {
+                case "login": "signed in to Google"
+                case "saml": "reached another app through Google (SAML)"
+                case "token": "granted an app access"
+                default: "changed account settings"
+                }
+            })
             found.append(Pending(.signedInFromSuspect, "\(account) \(list(what)) from \(list(unique(theirs.map(\.ip)))).", [account],
                                  unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
         }
@@ -140,6 +148,25 @@ public enum LogReading {
             found.append(Pending(.failedFromSuspect, "Someone tried \(account)'s password from \(list(unique(theirs.map(\.ip)))): they may "
                                  + "have typed it into the fake page.", [account], unique(theirs.map(\.ip)), theirs.count,
                                  [.secureAccount(account)]))
+        }
+
+        // The account's data exported with Google Takeout from a suspect address: it may be in the attacker's hands.
+        let exported = events.filter { $0.log == "takeout" && acting.contains($0.ip) && isAccount($0.who)
+            && ["STARTED_USER_TAKEOUT", "DOWNLOADED_USER_TAKEOUT", "SCHEDULED_USER_TAKEOUT"].contains($0.event) }
+        for (account, theirs) in grouped(exported) {
+            let products = unique(theirs.compactMap { $0.parameters["PRODUCTS_REQUESTED"] }.filter { !$0.isEmpty })
+            found.append(Pending(.exportedFromSuspect, "\(account)'s data was exported with Google Takeout from "
+                                 + list(unique(theirs.map(\.ip))) + (products.isEmpty ? "" : " (\(list(products)))")
+                                 + ": treat it as in the attacker's hands.", [account], unique(theirs.map(\.ip)), theirs.count,
+                                 [.secureAccount(account)]))
+        }
+
+        // Chat messages from a suspect address: phishing can go out in Chat too.
+        let chatted = events.filter { $0.log == "chat" && $0.event == "message_posted" && acting.contains($0.ip) && isAccount($0.who) }
+        for (account, theirs) in grouped(chatted) {
+            found.append(Pending(.chatFromSuspect, "\(account) posted \(theirs.count) Chat message\(theirs.count == 1 ? "" : "s") from "
+                                 + list(unique(theirs.map(\.ip))) + ": ask who got them not to open their links.", [account],
+                                 unique(theirs.map(\.ip)), theirs.count, []))
         }
 
         // Chrome's own warnings, by the account whose password it was (the trigger's), else the profile's.

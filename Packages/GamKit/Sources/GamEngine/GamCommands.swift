@@ -274,11 +274,13 @@ public enum GamCommands {
     /// An activity report's application (4690-4729), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
     /// "Access" log (cookie validation, access-token requests) is `access_evaluation`.
     public enum ActivityApplication: String, CaseIterable, Sendable {
-        case login, token, gmail
+        case login, token, saml, gmail
         case accessEvaluation = "accessevaluation"
         case chat
         case userAccounts = "useraccounts"
-        case drive, takeout, admin, mobile, chrome
+        case takeout, mobile, chrome, drive, calendar, groups, admin, rules
+        case contextAwareAccess = "contextawareaccess"
+        case vault
     }
 
     /// Activity events, newest first (4730-4744; doReport's activity form): `users` one address each (`user` for one,
@@ -328,6 +330,18 @@ public enum GamCommands {
         guard let account = filterAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
         return GamRead(["print", "chromeprofiles", "filter", "user_email=\"\(account)\"", "fields", chromeProfileFields, "formatjson"])
     }
+
+    /// The phones and tablets that sync `user`'s account (4555-4562; doPrintMobileDevices): `print mobile query
+    /// email:<user> fields … formatjson`, the Directory API's mobile search by owner, the address lowercased and only
+    /// Google's address characters (`filterAddress`, so the query is one `field:value`). CSV `resourceId,JSON`. A refusal
+    /// is GAM's ClientAPIAccessDeniedExit, exit 12.
+    public static func printMobileDevices(user: String) throws -> GamRead {
+        guard let account = filterAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
+        return GamRead(["print", "mobile", "query", "email:\(account)", "fields", mobileFields, "formatjson"])
+    }
+
+    /// What a device says: whose (`email`, which the formatjson row needs `resourceid` beside), what it is, and its syncs.
+    static let mobileFields = "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus"
 
     /// What a person's Chrome profile says: whose, where, which browser, and when it was last used.
     static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"

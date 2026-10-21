@@ -53,16 +53,16 @@ for spec in home:home users:users groups:groups setup:setup \
             offboard-confirm:offboard:carol@example.com:confirm offboard-result:offboard:carol@example.com:result \
             narrow-offboard:offboard:carol@example.com:plan:smallest \
             offboard-added:offboard:carol@example.com:plan-added offboard-confirm-added:offboard:carol@example.com:confirm-added \
-            compromised:compromised:carol@example.com compromised-plan:compromised:carol@example.com:plan \
-            compromised-confirm:compromised:carol@example.com:confirm compromised-result:compromised:carol@example.com:result \
-            narrow-compromised:compromised:carol@example.com:plan:smallest \
+            compromised:incident:carol@example.com compromised-plan:incident:carol@example.com:plan \
+            compromised-confirm:incident:carol@example.com:confirm compromised-result:incident:carol@example.com:result \
+            narrow-compromised:incident:carol@example.com:plan:smallest \
             users-secure:users:carol@example.com:secure person-search:users:carol@example.com:search \
             person-password:users:carol@example.com:password \
             narrow-person-search:users:carol@example.com:search:smallest \
             person-chrome:users:carol@example.com:chrome narrow-person-chrome:users:carol@example.com:chrome:smallest \
-            compromised-reports:compromised:carol@example.com:reports \
-            compromised-reading:compromised:carol@example.com:reading narrow-compromised-reading:compromised:carol@example.com:reading:smallest \
-            narrow-compromised-reports:compromised:carol@example.com:reports:smallest \
+            compromised-reports:incident:carol@example.com:reports \
+            compromised-reading:incident:carol@example.com:reading narrow-compromised-reading:incident:carol@example.com:reading:smallest \
+            narrow-compromised-reports:incident:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \

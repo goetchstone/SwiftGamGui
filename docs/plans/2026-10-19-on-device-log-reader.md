@@ -32,7 +32,9 @@ it in plain words; the fixes it points to are drafts the operator confirms.
   own failed challenge or a denied cookie is flagged too, from the office as often as anywhere (review 2026-10-21). Never
   an address only because many accounts used it; one more than 10 accounts signed in from is said as likely shared (an
   office, a VPN) and drafts nothing, unless the operator pulled by it.
-- **In from a suspect address** (a sign-in, an app grant, an account change) → Secure Account.
+- **In from a suspect address** (a sign-in to Google or to another app through it, an app grant, an account change)
+  → Secure Account. **A Takeout export from it** → Secure Account, and the data counted as the attacker's. **Chat
+  messages from it** → said: ask who got them not to open their links.
 - **A failed sign-in from a suspect address:** someone had that password, likely from the fake page → Secure Account.
 - **Chrome:** a password typed on a phishing site → Secure Account; on another site, a breached password, or past
   Chrome's phishing warning → said.

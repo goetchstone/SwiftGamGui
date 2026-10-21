@@ -43,7 +43,8 @@ enum Screen: String, CaseIterable, Identifiable {
     case signatures = "Signatures"
     case onboard = "Onboard"
     case offboard = "Offboard"
-    case compromised = "Compromised"
+    /// A taken-over account, start to finish (the compromised-account runbook): find who's affected, secure, pull, clean up.
+    case compromised = "Incident"
     case phishing = "Phishing"
     case reports = "Reports"
     case audit = "Audit"
@@ -102,7 +103,7 @@ struct ContentView: View {
     @State private var calendarsPerson: String?
     /// The person Users opens on when another screen sends it one (Reports' Show in Users).
     @State private var usersPerson: String?
-    /// The person Compromised Account checks when Users sends it one (Actions → Secure Account…).
+    /// The person Incident checks when Users sends it one (Actions → Secure Account…).
     @State private var compromisedPerson: String?
     /// A Message-ID another screen asked Phishing to find (the log reader's "Pull … from Every Mailbox…").
     @State private var phishingMessage: String?
@@ -173,10 +174,11 @@ struct ContentView: View {
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
                                 logs: services.incidentLogs, hasGam: services.executor != nil, requested: $compromisedPerson) { id in
-                    phishingMessage = id
+                    // An empty ID only opens the screen: what the operator pasted there stays.
+                    if !id.isEmpty { phishingMessage = id }
                     screen = .phishing
                 }
-                    .navigationTitle("Compromised Account")
+                    .navigationTitle("Incident")
             case .phishing:
                 PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil,
                              requested: $phishingMessage)

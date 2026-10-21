@@ -14,9 +14,9 @@ struct CompromisedTests {
 
     @Test func theLockRunsInOrderWithThePicks() throws {
         let filters = [try filter(#"{"id": "F1", "criteria": {"from": "x@example.org"}, "action": {"addLabelIds": ["TRASH"]}}"#)]
-        let steps = try Compromised.steps(user: "carol@example.com", switchedOn: [.imapOff, .popOff, .clearRecovery], filters: filters,
+        let steps = try Compromised.steps(user: "carol@example.com", switchedOn: Set(Compromised.Step.switchable), filters: filters,
                                           delegates: ["helpdesk@example.com"], sendAs: ["billing.desk@example.net"],
-                                          recovery: ("carol.recovery@example.net", ""))
+                                          autoReplyOff: true, recovery: ("carol.recovery@example.net", ""))
         #expect(steps.map(\.write.argv) == [
             ["update", "user", "carol@example.com", "password", "random", "changepassword", "off"],
             ["update", "user", "carol@example.com", "recoveryemail", "", "recoveryphone", ""],
@@ -25,25 +25,30 @@ struct CompromisedTests {
             ["user", "carol@example.com", "delete", "filters", "F1"],
             ["user", "carol@example.com", "delete", "delegate", "helpdesk@example.com"],
             ["user", "carol@example.com", "delete", "sendas", "billing.desk@example.net"],
+            ["user", "carol@example.com", "vacation", "off"],
             ["user", "carol@example.com", "imap", "off"],
             ["user", "carol@example.com", "pop", "off"],
         ])
-        #expect(steps.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .filters, .delegate, .sendAs, .imapOff, .popOff])
+        #expect(steps.map(\.key) == [.password, .clearRecovery, .revoke, .forward, .filters, .delegate, .sendAs, .autoReply, .imapOff,
+                                     .popOff])
         #expect(steps[1].summary.contains("now email carol.recovery@example.net"))
         #expect(steps[4].summary.contains("“From x@example.org: deletes it (to Trash)”"))
     }
 
-    /// The defaults: IMAP and POP off are part of the lock; clearing recovery waits for the operator.
+    /// The defaults: the reset, the sign-out, forwarding off, IMAP and POP off are the lock; clearing recovery waits for
+    /// the operator. Every step is a switch: any one runs alone, and none is a plan of nothing.
     @Test func theDefaultsAreTheLockAndNothingPicked() throws {
         let steps = try Compromised.steps(user: "p@example.com", switchedOn: Compromised.Step.onByDefault)
         #expect(steps.map(\.key) == [.password, .revoke, .forward, .imapOff, .popOff])
+        #expect(try Compromised.steps(user: "p@example.com", switchedOn: [.revoke]).map(\.write.argv) == [["user", "p@example.com", "deprovision", "signout"]])
+        #expect(try Compromised.steps(user: "p@example.com", switchedOn: []).isEmpty)
         #expect(Compromised.whatStopsWhat(resetRuns: true).hasPrefix("If “Reset password” fails, nothing after it runs."))
         #expect(Compromised.header(user: "p@example.com", runs: 4, total: 5) == "Securing p@example.com — 4 of 5 steps (1 ticked as already done)")
         #expect(Compromised.header(user: "p@example.com", runs: 1, total: 1) == "Securing p@example.com — 1 step")
     }
 
     /// A pick that wouldn't be one argv element is refused, never sent: GAM splits a delegate or send-as on commas and
-    /// whitespace, and a switched step is only one of the switchable three.
+    /// whitespace, and a switched step is only a switchable one (never a pick).
     @Test func aPickThatIsntOneAddressIsRefused() {
         // The last three stay one element but GAM acts on another address: `Name <a@b>` reads as `a@b`, `id:` and `uid:` as IDs.
         for bad in ["a@example.com,b@example.com", "a b@example.com", " a@example.com", "file", "x<victim@example.com>",
@@ -51,7 +56,7 @@ struct CompromisedTests {
             #expect(throws: GamCommands.Invalid.self) { try Compromised.steps(user: "p@example.com", switchedOn: [], delegates: [bad]) }
             #expect(throws: GamCommands.Invalid.self) { try Compromised.steps(user: "p@example.com", switchedOn: [], sendAs: [bad]) }
         }
-        #expect(throws: GamCommands.Invalid.self) { try Compromised.steps(user: "p@example.com", switchedOn: [.revoke]) }
+        #expect(throws: GamCommands.Invalid.self) { try Compromised.steps(user: "p@example.com", switchedOn: [.drafts]) }
     }
 
     /// A filter in words: what it matches, what it does, and whether it's what an attacker's filter does.

@@ -32,8 +32,11 @@ public enum ActivityLogs {
         for row in rows { counts[row.who.lowercased(), default: 0] += 1 }
         return counts.values.contains { $0 >= cap }
     }
-    /// The logs the operator read together on 2026-10-19 (sign-ins, OAuth, Gmail, Access, Chat), and account changes.
-    public static let incidentDefault: [Application] = [.login, .token, .gmail, .accessEvaluation, .chat, .userAccounts]
+    /// The logs the operator read together on 2026-10-19 (sign-ins, OAuth, Gmail, Access, Chat) and account changes, with
+    /// (2026-10-21, "add any other logs that should be looked at") the other ways in and out an attacker uses: sign-ins to
+    /// other apps through Google (SAML), Takeout exports, and phones and tablets syncing the account.
+    public static let incidentDefault: [Application] = [.login, .token, .saml, .gmail, .accessEvaluation, .chat, .userAccounts,
+                                                        .takeout, .mobile]
 
     /// One parameter of an event: a nested one is named by its chain, `message_info.source.address`.
     public struct Parameter: Sendable, Equatable {
@@ -86,7 +89,14 @@ public enum ActivityLogs {
         func value(_ name: String) -> String { parameters.first { $0.name == name }?.value ?? "" }
 
         /// The event in words: "Signed in", "Google flagged a suspicious sign-in", "Granted an app access".
-        public var words: String { ActivityLogs.words(event) }
+        public var words: String {
+            switch (application, event) {
+            case (.saml, "login_success"): "Signed in to an app through Google"
+            case (.saml, "login_failure"): "A sign-in to an app through Google failed"
+            case (.chat, "message_posted"): "Posted a Chat message"
+            default: ActivityLogs.words(event)
+            }
+        }
 
         /// What else the event says, in words: how they signed in and the challenge, the app and its access, or (for the
         /// other logs) its first few parameters.
@@ -213,6 +223,10 @@ public enum ActivityLogs {
         case "PASSWORD_CHANGED": "Changed a protected password"
         case "UNSAFE_SITE_VISIT": "Chrome warned of an unsafe website"
         case "MALWARE_TRANSFER": "Chrome found malware in a file"
+        case "STARTED_USER_TAKEOUT": "Started a Takeout export of the account's data"
+        case "COMPLETED_USER_TAKEOUT": "A Takeout export finished"
+        case "DOWNLOADED_USER_TAKEOUT": "Downloaded a Takeout export"
+        case "SCHEDULED_USER_TAKEOUT": "Scheduled repeating Takeout exports"
         default:
             sentence(event)
         }
@@ -303,6 +317,12 @@ extension GamCommands.ActivityApplication {
         case .admin: "Admin console changes"
         case .mobile: "Devices"
         case .chrome: "Chrome"
+        case .saml: "SAML (sign-ins to other apps)"
+        case .calendar: "Calendar"
+        case .groups: "Groups"
+        case .rules: "Rules"
+        case .contextAwareAccess: "Context-aware access"
+        case .vault: "Vault"
         }
     }
 
@@ -318,7 +338,13 @@ extension GamCommands.ActivityApplication {
         case .drive: "Files viewed, downloaded, shared and deleted."
         case .takeout: "Exports of the account's data."
         case .admin: "What admins changed in the Admin console."
-        case .mobile: "Phones and tablets syncing the account."
+        case .mobile: "Phones and tablets syncing the account: an attacker's may still get the mail."
+        case .saml: "Sign-ins to other apps through Google (single sign-on): which apps the account reached."
+        case .calendar: "Events made, changed and shared: invitations can carry phishing too."
+        case .groups: "Group settings and members: someone added to a group, a group opened to outsiders."
+        case .rules: "Data protection and other rules that fired. Some editions don't keep it."
+        case .contextAwareAccess: "Access that context-aware rules blocked. Some editions don't keep it."
+        case .vault: "Vault searches, exports and holds: what matters when an admin's account was taken."
         case .chrome: "Chrome's warnings and website sign-ins, by the account signed in to Chrome or a Chromebook's own. Only what "
             + "Chrome reports: empty can mean its reporting is off, not that Chrome isn't used. Events a Mac or PC ties to no "
             + "account (an extension request) show for every account only."

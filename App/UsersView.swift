@@ -26,7 +26,7 @@ struct UsersView: View {
     let openSignatures: (String) -> Void
     /// Opens Calendars for a person (the Calendar tab's "Show Their Calendars…").
     let openCalendars: (String) -> Void
-    /// Opens Compromised Account for a person and checks it (Actions → "Secure Account…"): only the address goes;
+    /// Opens Incident for a person and checks it (Actions → "Secure Account…"): only the address goes;
     /// everything that changes the account is that screen's.
     let openCompromised: (String) -> Void
     @State private var filter = UserFilter()
@@ -536,7 +536,7 @@ private struct UserDetail: View {
                 Divider()
                 Button("Secure Account…") { openCompromised(user.primaryEmail) }
                     .accessibilityLabel("Secure \(user.fullName)'s account")
-                    .accessibilityHint("Opens Compromised Account and checks it. Nothing changes until you preview and confirm there.")
+                    .accessibilityHint("Opens Incident and checks it. Nothing changes until you preview and confirm there.")
             } label: {
                 Label("Actions", systemImage: "ellipsis.circle")
             }
