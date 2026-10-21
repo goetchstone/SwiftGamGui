@@ -112,6 +112,19 @@ struct WriteRouteTests {
         #expect(!writing.contains("App/SiriDrafts.swift"))
     }
 
+    /// Invariant 10 for the log reader (docs/plans/2026-10-19-on-device-log-reader.md): the module that talks to the model
+    /// depends on nothing in GamKit, so nothing it holds can run gam, and its one screen hands a fix to another screen
+    /// as an address or a Message-ID (it is among `noIntentReachesAWrite`'s model files, which reach no write).
+    @Test func theLogReaderCanRunNothing() throws {
+        let manifest = try String(contentsOf: Self.root.appending(path: "Packages/GamKit/Package.swift"), encoding: .utf8)
+        #expect(manifest.contains(#".target(name: "Assist"),"#), "Assist gains no dependency")
+        let imports = try Self.swiftFiles(in: "Packages/GamKit/Sources/Assist").flatMap(\.lines).filter { $0.hasPrefix("import ") }
+        #expect(Set(imports).isSubset(of: ["import Foundation", "import FoundationModels"]), "\(imports)")
+        #expect(try Self.files(in: "App", matching: ["LogReading", "LogExplainer"]) == ["App/LogReaderView.swift"])
+        #expect(try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
+            .contains("App/LogReaderView.swift"), "the scan must see the reader")
+    }
+
     /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
     /// "Secure Account…" hands over an address, never a preview.
     @Test func onlyItsScreenReachesTheCompromisedModel() throws {

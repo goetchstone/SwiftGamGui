@@ -19,11 +19,15 @@ struct CompromisedView: View {
     /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
     /// nothing ticked (the operator says whether the password was already reset). Cleared once taken.
     @Binding var requested: String?
+    /// Opens Phishing with a Message-ID the log reader found, and finds who has that email.
+    let openPhishing: (String) -> Void
     @State private var form = CompromisedChanges.Form()
     @State private var confirming: CompromisedChanges.Plan?
     @State private var debugApplied = false
     /// Debug snapshots of the reports: scrolled into view once read.
     @State private var scrollToReports = false
+    /// …and to the log reader (`reading`).
+    @State private var scrollToReader = false
     @Environment(\.appearsActive) private var appearsActive
 
     private var check: CompromisedChanges.Check? { changes.check.flatMap { $0.isFor(form.person) ? $0 : nil } }
@@ -50,7 +54,7 @@ struct CompromisedView: View {
                                  + "preview the steps.")
                                 .foregroundStyle(.secondary)
                         }
-                        whoSection
+                        whoSection.id(Self.checkAnchor)
                         if let check {
                             FindingsSection(check: check)
                             AccountSection(check: check)
@@ -71,6 +75,14 @@ struct CompromisedView: View {
                     }
                     if setup.active != nil {
                         IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
+                        if let pull = logs.pull, pull.ended {
+                            // A fix the reader found is an address for this screen's own check, or a Message-ID for Phishing.
+                            LogReaderView(pull: pull, secure: { person in
+                                requested = person
+                                withAnimation { scroller.scrollTo(Self.checkAnchor, anchor: .top) }
+                            }, pullEmail: openPhishing)
+                            .id(Self.readerAnchor)
+                        }
                     }
                 }
                 .formStyle(.grouped)
@@ -83,7 +95,7 @@ struct CompromisedView: View {
                     withAnimation { scroller.scrollTo(Self.runAnchor, anchor: .top) }
                 }
                 .onChange(of: scrollToReports) { _, wanted in
-                    if wanted { scroller.scrollTo(Self.reportsAnchor, anchor: .top) }
+                    if wanted { scroller.scrollTo(scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
                 }
             }
         }
@@ -128,6 +140,8 @@ struct CompromisedView: View {
     private static let planAnchor = "compromised.plan"
     private static let runAnchor = "compromised.run"
     private static let reportsAnchor = "compromised.reports"
+    private static let readerAnchor = "compromised.reader"
+    private static let checkAnchor = "compromised.check"
 
     private var planShown: Bool {
         if case .planned(let plan) = changes.planState { return plan.form == form }
@@ -226,8 +240,9 @@ struct CompromisedView: View {
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` checks that person once the directory is loaded; `SWIFTGAMGUI_TAB` then shows
     /// the plan with every filter that hides or forwards mail, every delegate and every other send-as address ticked
-    /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), or the
-    /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`).
+    /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), the
+    /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), or the
+    /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`).
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -243,6 +258,13 @@ struct CompromisedView: View {
                 if let ip = logs.pull?.addresses.first {
                     await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: 72, ip: ip))
                 }
+                scrollToReports = true
+                return
+            }
+            if tab == "reading", let email = changes.check?.user.primaryEmail {
+                await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome], users: [email, "dana@example.com"],
+                                                   hours: 72, ip: ""))
+                scrollToReader = true
                 scrollToReports = true
                 return
             }
