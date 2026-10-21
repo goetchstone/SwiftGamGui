@@ -31,7 +31,9 @@ send-as addresses you tick removed and the leftover drafts (all, or by subject) 
 (Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), and their
 Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last used). Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes, Chrome and more) for some
-accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder. Reports lists the people behind each of the directory's counts and
+accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder;
+Read the logs then says what they show (by rules in code, with the on-device model's explanation on request) and drafts
+the fixes, each opening Secure Account or Phishing with the person or the email filled in. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing) and, from the sender's own copy, who it was addressed to, outside the domain first
@@ -192,6 +194,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
 | Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
+| Read the logs: findings, drafted fixes, the on-device model's explanation (Compromised; changes nothing) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

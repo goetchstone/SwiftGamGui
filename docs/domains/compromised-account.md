@@ -213,6 +213,22 @@ websites with it? Two reads, nothing changes.
   whether `actor.email` is set on them; which events this tenant reports at all (website logins and password events need
   Chrome's event reporting turned on).
 
+## Log reader (Read the logs)
+Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
+points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
+- **Files:** `Assist/LogReading.swift` (the rules, the findings, the drafts; pure), `Assist/LogExplainer.swift`
+  (FoundationModels: a guided `Answer`, the citation filter, availability in words), `App/LogReaderView.swift` (the
+  section; rows become `LogReading.Event`s there). Tests: `AssistTests/LogReadingTests.swift` (a stand-in model; CI has
+  none), `WriteRouteTests.theLogReaderCanRunNothing`.
+- **A fix is a hand-off, never a change:** Secure sets this screen's `requested` (the same path as Users' Secure
+  Account…: a new form, checked, nothing ticked); Pull … from Every Mailbox opens Phishing with the Message-ID, which
+  finds who has it (its dry run, a read). Each screen's preview and confirmation are where anything changes.
+- **Gotchas:** `LogReaderView.swift` is model code to `WriteRouteTests`: it may not name the executor, a changes model,
+  `AppServices` or a confirmation, even in a comment, and the screens it sits in may not name `Assist` or the model's
+  framework. The model's answer is shown as the model's, beside the findings it cites; the findings and drafts are code's.
+- **Live check (L1r, read-only):** on this Mac with Apple Intelligence on, pull an incident's logs and Explain: every
+  point cites a finding shown, and nothing names an account or address the findings don't.
+
 ## Next
-- The live checks L1 and L2, then the on-device log reader (docs/plans/2026-10-19-on-device-log-reader.md) over these rows.
+- The live checks L1, L1c, L1r and L2.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
