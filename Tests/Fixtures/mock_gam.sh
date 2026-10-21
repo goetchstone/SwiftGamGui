@@ -1643,9 +1643,14 @@ check_user_attrs() {
       suspended|suspend|changepassword|changepasswordatnextlogin|archived|archive)
         need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       password)
+        # Grammar 5838-5841: GAM reads these words as keywords, whatever their case, never as the password. `prompt` and
+        # `uniqueprompt` read the password from the terminal, which the app's gam has none of: refused here (the wording
+        # is the mock's own, not GAM's), so a value that is one of them can't pass as set (review 2026-10-21).
         need_value $# "Password"
-        case "$2" in
+        case "$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')" in
           random|uniquerandom) shift 2; case "${1:-}" in [0-9]*) shift ;; esac ;;
+          blocklogin) shift 2 ;;
+          prompt|uniqueprompt) invalid_arg "password $2 needs a terminal" ;;
           *) shift 2 ;;
         esac ;;
       firstname|givenname|lastname|familyname)

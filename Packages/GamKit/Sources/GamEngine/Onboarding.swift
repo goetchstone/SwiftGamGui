@@ -458,6 +458,12 @@ public struct TemporaryPassword: Sendable, CustomStringConvertible, CustomDebugS
                                orgUnit: orgUnit)
     }
 
+    /// An existing person's password set to this one, changed by them at their next sign-in (Set Temporary Password…),
+    /// with this password as its one element.
+    package func setPassword(email: String) -> GamWrite {
+        GamCommands.setPassword(email: email, password: text)
+    }
+
     public var description: String { "<temporary password>" }
     public var debugDescription: String { description }
     public var customMirror: Mirror { Mirror(self, children: []) }

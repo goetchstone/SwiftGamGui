@@ -139,6 +139,18 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   banner VoiceOver announces, and tabs (Profile, Groups, Mail, Security; mail delegates sit with the
   auto-reply under Mail). A preview leads with the change in words; the command is under **Show
   command**. CI renders each tab (`SWIFTGAMGUI_SELECT`, `SWIFTGAMGUI_TAB`).
+- **Set Temporary Password (2026-10-21):** the operator had to use the Admin console to hand a
+  locked-out person a password: GamGUI's reset is `random` with `changepassword off`, which nobody sees. Actions and the
+  Security tab now preview `update user P password <generated> changepassword on` (native, `NativeArgvTests`; destructive,
+  `setPassword`). The password is `TemporaryPassword`'s, made at the preview, masked in it and in the audit (by value
+  and by position), and shown only after a run that set it or may have (marked unsure), on the shared `SignInCard`
+  (`App/OnboardCredentialSheet.swift`, still the one file that reads its text), held fifteen minutes or until Done; Esc
+  doesn't close it. The connected admin is refused (it would sign the app out), an unknown one too, and it's read
+  again when the change runs (the executor's precondition); another super admin gets a warning. One at a time: while a
+  password's details are held, no second is previewed or confirmed (two windows could otherwise drop the first unseen).
+  The page has one sheet, kept through the run and under the preview's identity to the details, so it changes in place
+  (review 2026-10-21). Not yet tested: the unsure path (the mock has no per-user timeout; the rule is onboarding's
+  `mayHaveChanged`).
 - **The list's columns (2026-10-10):** the same six whether or not a page is open. Dropping four
   when a name was clicked read to the operator as lost headers, and rebuilt the table while the page
   slid in. The operator hides, shows, reorders and resizes them (right-click a header, or the toolbar's

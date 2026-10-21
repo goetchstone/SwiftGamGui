@@ -196,7 +196,7 @@ struct UsersView: View {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
                                chromeProfiles: chromeProfiles, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
-                               openCompromised: openCompromised)
+                               openCompromised: openCompromised, connectedAdmin: { [setup] in setup.connectedAdmin })
                 }
             }
         } else {
@@ -393,6 +393,9 @@ private struct UserDetail: View {
     let calendarReads: CalendarReads
     let openCalendars: (String) -> Void
     let openCompromised: (String) -> Void
+    /// The admin this app is connected as, read when it's needed: Set Temporary Password refuses it (it would sign the app
+    /// out) and refuses when it isn't known.
+    let connectedAdmin: @MainActor @Sendable () -> String?
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var newGroup = ""
@@ -458,10 +461,15 @@ private struct UserDetail: View {
         .onDisappear { editorOpen = false }
         #if DEBUG
         // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would; `search` opens the Mail
-        // tab and searches the mailbox for what it sent lately; `chrome` opens the Security tab and reads their Chrome profiles.
+        // tab and searches the mailbox for what it sent lately; `password` previews Set Temporary Password from Security;
+        // `chrome` opens the Security tab and reads their Chrome profiles.
         .task(id: user.id) {
             let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
             if tab == "secure" { openCompromised(user.primaryEmail) }
+            if tab == "password" {
+                self.tab = .security
+                await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin)
+            }
             if tab == "search" {
                 self.tab = .mail
                 await searches.search(user.primaryEmail, query: MailboxSearch.defaultQuery)
@@ -478,8 +486,28 @@ private struct UserDetail: View {
             editingRole = false
             editingAutoReply = false
         }
-        .sheet(item: Binding(get: { changes.previewing(for: user.primaryEmail) }, set: { if $0 == nil { changes.dismiss() } })) { pending in
-            ChangePreviewSheet(pending: pending, changes: changes)
+        // One sheet: a preview, and for Set Temporary Password the same sheet through its run to the sign-in details, under
+        // one identity, so it changes in place rather than one sheet closing as another opens (review 2026-10-21). Only
+        // Done (or fifteen minutes) drops the password, so Esc can't lose it before it's handed over.
+        .sheet(item: Binding(get: { PersonSheet.current(changes, for: user.primaryEmail) },
+                             set: { if $0 == nil { changes.dismiss() } })) { sheet in
+            switch sheet {
+            case .preview(let pending):
+                ChangePreviewSheet(pending: pending, changes: changes)
+                    .interactiveDismissDisabled(changes.isBusy)
+            case .signIn(let signIn):
+                Form {
+                    SignInCard(details: SignInDetails(
+                        name: signIn.name, email: signIn.email, orgUnit: signIn.orgUnit, password: signIn.password,
+                        unsure: signIn.unsure ? "The change didn't finish in time; the password may not have been set \u{2014} "
+                            + "try it once before handing it over." : nil,
+                        signature: nil, header: "Temporary password set \u{2014} sign-in details"),
+                        done: changes.doneWithSignIn)
+                }
+                .formStyle(.grouped)
+                .frame(minWidth: 460)
+                .interactiveDismissDisabled()
+            }
         }
     }
 
@@ -500,6 +528,8 @@ private struct UserDetail: View {
                 Button("Edit Title and Department…") { editingRole = true }
                 Divider()
                 Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
+                Button("Set Temporary Password…") { Task { await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin) } }
+                    .accessibilityHint("Previews a new password for them to change at their next sign-in. It shows once, after it's set.")
                 Button(user.suspended ? "Unsuspend…" : "Suspend…", role: user.suspended ? nil : .destructive) {
                     Task { await changes.previewSuspend(user, suspend: !user.suspended) }
                 }
@@ -582,8 +612,39 @@ private struct UserDetail: View {
                 LabeledContent("2-step verification", value: user.isEnrolledIn2SV ? "Enrolled" : "Not enrolled")
                 LabeledContent("Recovery email", value: user.recoveryEmail.isEmpty ? "—" : user.recoveryEmail)
             }
+            Section("Password") {
+                Text("A temporary password you hand over: their current one stops working, and Google asks them for a new one "
+                     + "when they next sign in. It shows once, after it's set, and isn't written to the audit log.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button("Set Temporary Password…") {
+                    Task { await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin) }
+                }
+                .disabled(changes.isBusy)
+                .accessibilityLabel("Set a temporary password for \(user.fullName)")
+            }
             ChromeProfilesSection(user: user, reads: chromeProfiles)
         }
+    }
+}
+
+/// What the person page's one sheet shows: a held preview, a Set Temporary Password still running (the sheet stays, its
+/// buttons off), then that password's sign-in details, all three under the preview's identity.
+private enum PersonSheet: Identifiable {
+    case preview(UserChanges.Pending)
+    case signIn(UserChanges.SignIn)
+
+    var id: UUID {
+        switch self {
+        case .preview(let pending): pending.id
+        case .signIn(let signIn): signIn.preview
+        }
+    }
+
+    @MainActor static func current(_ changes: UserChanges, for email: String) -> PersonSheet? {
+        if let signIn = changes.signIn(for: email) { return .signIn(signIn) }
+        if let pending = changes.previewing(for: email) { return .preview(pending) }
+        if case .running(let pending) = changes.state, pending.setsPassword, pending.email == email { return .preview(pending) }
+        return nil
     }
 }
 

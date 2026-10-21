@@ -28,8 +28,10 @@ left to finish. Compromised Account is for someone who stays but whose account w
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
 admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
 send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them
-(Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), and their
-Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last used). Pull
+(Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), their
+Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last
+used), and Set Temporary Password (Actions, or their Security tab) gives them a password to change at their next
+sign-in, shown once. Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes, Chrome and more) for some
 accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder;
 Read the logs then says what they show (by rules in code, with the on-device model's explanation on request) and drafts
@@ -166,6 +168,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
 | Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
+| Set a temporary password, changed at next sign-in (Users) | not yet: new to both apps |
 | Set signature (Signatures) | **confirmed** (2026-10-13) |
 | Add people to a group as members (Groups) | **confirmed** (2026-10-13) |
 | Add people to a group as managers or owners (Groups) | not yet: never run live in either app |
