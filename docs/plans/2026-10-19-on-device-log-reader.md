@@ -27,9 +27,11 @@ it in plain words; the fixes it points to are drafts the operator confirms.
   alone, and the screen says why in words.
 
 ## The rules (each with a case that fires and one that must not)
-- **Suspect addresses:** an IP on any event Google flagged, and the address the operator pulled by. Never an address
-  only because many accounts used it; one more than 10 accounts signed in from is said as likely shared (an office, a
-  VPN) and drafts nothing, unless the operator pulled by it.
+- **Suspect addresses:** an IP of a sign-in Google called suspicious (a `suspicious_…` event, one marked suspicious, an
+  attack warning, an account disabled as hijacked), and the address the operator pulled by. Not every flag: a person's
+  own failed challenge or a denied cookie is flagged too, from the office as often as anywhere (review 2026-10-21). Never
+  an address only because many accounts used it; one more than 10 accounts signed in from is said as likely shared (an
+  office, a VPN) and drafts nothing, unless the operator pulled by it.
 - **In from a suspect address** (a sign-in, an app grant, an account change) → Secure Account.
 - **A failed sign-in from a suspect address:** someone had that password, likely from the fake page → Secure Account.
 - **Chrome:** a password typed on a phishing site → Secure Account; on another site, a breached password, or past
