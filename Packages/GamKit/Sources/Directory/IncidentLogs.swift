@@ -105,9 +105,41 @@ public final class IncidentLogs {
     /// One log, on the tenant the pull began on: a queued read never goes to a domain switched to since.
     private static func read(_ application: ActivityLogs.Application, _ query: Query, _ access: UserAccess, _ tenant: Domain) async -> Log {
         let hours = ActivityLogs.window(application, asked: query.hours)
+        if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, access, tenant) }
         let rows = await access.activity(application, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap, in: tenant)
         return Log(application: application, rows: rows, hours: hours,
                    capped: (try? rows.get()).map { ActivityLogs.capped($0, accounts: query.users) } ?? false)
+    }
+
+    /// Chrome's log for some accounts: each account read both ways at once (`GamCommands.ChromeMatch`: by the profile's
+    /// account, and by GAM's own device match, which finds a Chromebook's sign-ins), an event the second read repeats
+    /// dropped, newest first. One read that fails fails the log in GAM's words, never a part passed as the whole; one at the
+    /// cap marks it capped.
+    private static func chrome(_ query: Query, hours: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
+        var rows: [ActivityLogs.Row] = [], capped = false
+        for user in query.users {
+            async let profile = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+                                                chrome: .profile, in: tenant)
+            async let device = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+                                               chrome: .device, in: tenant)
+            let reads = await [profile, device]
+            var seen: Set<String> = []
+            for read in reads {
+                switch read {
+                case .success(let read):
+                    capped = capped || read.count >= ActivityLogs.cap
+                    rows += read.filter { !seen.contains($0.identity) }
+                    seen.formUnion(read.map(\.identity))
+                case .failure(let problem):
+                    return Log(application: .chrome, rows: .failure(UserAccess.Problem(summary: "\(user): \(problem.summary)")),
+                               hours: hours, capped: false)
+                }
+            }
+        }
+        let newest = rows.enumerated().sorted { a, b in
+            (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+        }.map(\.element)
+        return Log(application: .chrome, rows: .success(newest), hours: hours, capped: capped)
     }
 
     public func clear() {

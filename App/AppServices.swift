@@ -50,6 +50,8 @@ struct AppServices {
     let phishingChanges: PhishingChanges
     /// A person's mailbox searched from their page.
     let mailboxSearches: MailboxSearches
+    /// A person's Chrome profiles, read from their page.
+    let chromeProfiles: ChromeProfileReads
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -115,6 +117,7 @@ struct AppServices {
                            incidentLogs: IncidentLogs(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            phishingChanges: PhishingChanges(setup: setup, runner: runner, executor: executor),
                            mailboxSearches: MailboxSearches(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }

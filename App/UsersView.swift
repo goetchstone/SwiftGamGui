@@ -15,6 +15,8 @@ struct UsersView: View {
     let access: UserAccess
     /// A person's mailbox searched from their page (the Mail tab).
     let searches: MailboxSearches
+    /// A person's Chrome profiles, read from their page (the Security tab).
+    let chromeProfiles: ChromeProfileReads
     let drafts: SiriDrafts
     /// Who can see a person's primary calendar (the Calendar tab).
     let calendarReads: CalendarReads
@@ -191,7 +193,8 @@ struct UsersView: View {
             }
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
-                    UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches, editorOpen: $editorOpen,
+                    UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
+                               chromeProfiles: chromeProfiles, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
                                openCompromised: openCompromised)
                 }
@@ -383,6 +386,7 @@ private struct UserDetail: View {
     let changes: UserChanges
     let access: UserAccess
     let searches: MailboxSearches
+    let chromeProfiles: ChromeProfileReads
     /// Tells the list an editor is open, so Siri doesn't change the person under it.
     @Binding var editorOpen: Bool
     let openSignatures: (String) -> Void
@@ -454,13 +458,17 @@ private struct UserDetail: View {
         .onDisappear { editorOpen = false }
         #if DEBUG
         // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would; `search` opens the Mail
-        // tab and searches the mailbox for what it sent lately.
+        // tab and searches the mailbox for what it sent lately; `chrome` opens the Security tab and reads their Chrome profiles.
         .task(id: user.id) {
             let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
             if tab == "secure" { openCompromised(user.primaryEmail) }
             if tab == "search" {
                 self.tab = .mail
                 await searches.search(user.primaryEmail, query: MailboxSearch.defaultQuery)
+            }
+            if tab == "chrome" {
+                self.tab = .security
+                await chromeProfiles.read(user.primaryEmail)
             }
         }
         #endif
@@ -574,6 +582,7 @@ private struct UserDetail: View {
                 LabeledContent("2-step verification", value: user.isEnrolledIn2SV ? "Enrolled" : "Not enrolled")
                 LabeledContent("Recovery email", value: user.recoveryEmail.isEmpty ? "—" : user.recoveryEmail)
             }
+            ChromeProfilesSection(user: user, reads: chromeProfiles)
         }
     }
 }
@@ -955,6 +964,81 @@ private struct MailboxSearchSection: View {
         let searches = searches, email = user.primaryEmail, query = query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return }
         Task { await searches.search(email, query: query) }
+    }
+}
+
+/// Whether this person uses Chrome with their work account: the Chrome profiles signed in with it that Google knows of,
+/// read when asked (`ChromeProfiles`). Reads only. Never their saved passwords: Google gives no one those.
+private struct ChromeProfilesSection: View {
+    let user: GamUser
+    let reads: ChromeProfileReads
+
+    var body: some View {
+        Section {
+            HStack {
+                Text(summary).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                if case .reading? = reads.state(for: user.primaryEmail) { ProgressView().controlSize(.small) }
+                Button(reads.state(for: user.primaryEmail) == nil ? "Check Chrome" : "Check Again") {
+                    let reads = reads, email = user.primaryEmail
+                    Task { await reads.read(email) }
+                }
+                .disabled(isReading)
+                .accessibilityLabel("Check \(user.fullName)'s Chrome profiles")
+            }
+            .accessibilityElement(children: .contain)
+            if case .read(.failure(let problem))? = reads.state(for: user.primaryEmail) {
+                Label("Couldn't read Chrome profiles: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor).textSelection(.enabled)
+            }
+            if case .read(.success(let profiles))? = reads.state(for: user.primaryEmail) {
+                ForEach(profiles) { profile in ChromeProfileRow(profile: profile) }
+            }
+        } header: {
+            Text("Chrome")
+        } footer: {
+            Text("Chrome profiles signed in with this work account, as Chrome reports them to Google. None can also mean managed "
+                 + "profile reporting is off in the Admin console's Chrome settings. Saved passwords are never shown: Google gives "
+                 + "no one those.")
+        }
+    }
+
+    private var isReading: Bool {
+        if case .reading? = reads.state(for: user.primaryEmail) { return true }
+        return false
+    }
+
+    private var summary: String {
+        switch reads.state(for: user.primaryEmail) {
+        case nil: "Not checked."
+        case .reading?: "Reading Chrome profiles…"
+        case .read(.failure)?: "Not read."
+        case .read(.success(let profiles))? where profiles.isEmpty: "Google knows of no Chrome profile signed in with this account."
+        case .read(.success(let profiles))?:
+            "\(profiles.count) Chrome profile\(profiles.count == 1 ? "" : "s") signed in with this account, the most recently used first."
+        }
+    }
+}
+
+/// One Chrome profile: its name and computer, the system and Chrome, when it was last used and first seen, and whether
+/// the computer is the organization's too. In words, so VoiceOver reads it whole.
+private struct ChromeProfileRow: View {
+    let profile: ChromeProfiles.Profile
+
+    var body: some View {
+        let last = profile.lastActive?.formatted(date: .abbreviated, time: .shortened) ?? profile.lastActivity
+        let first = profile.firstEnrolled?.formatted(date: .abbreviated, time: .omitted) ?? profile.firstEnrollment
+        VStack(alignment: .leading, spacing: 3) {
+            Text([profile.displayName.isEmpty ? "Chrome profile" : profile.displayName, profile.device].filter { !$0.isEmpty }
+                .joined(separator: " on ")).fontWeight(.semibold)
+            Text("Last used " + (last.isEmpty ? "unknown" : last) + (first.isEmpty ? "" : " · first seen \(first)")).font(.callout)
+            Text([profile.system, profile.browser.isEmpty ? "" : "Chrome \(profile.browser)",
+                  profile.affiliation.isEmpty ? "" : profile.onManagedDevice ? "the organization's computer" : "a computer the organization doesn't manage"]
+                .filter { !$0.isEmpty }.joined(separator: " · "))
+                .font(.callout).foregroundStyle(.secondary)
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -42,6 +42,12 @@ struct NativeArgvTests {
         // `now` TODAY_NOW's; `select users a,b` the grammar's `users <UserList>`.
         ("report_activity", try! GamCommands.reportActivity(.login, users: ["p@example.com"], hours: 72, ip: "198.51.100.23", maxActivities: 1000),
          ["report", "login", "user", "p@example.com", "start", "-72h", "end", "now", "ip", "198.51.100.23", "maxactivities", "1000"]),
+        // 2324-2335 `print chromeprofiles … [filter <String>] … [fields <ChromeProfileFieldNameList>] [formatjson]`; the filter's
+        // `user_email` is the Chrome Management API's own field (customers.profiles.list), the address quoted as one value.
+        ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
+         ["print", "chromeprofiles", "filter", "user_email=\"p@example.com\"", "fields",
+          "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,browserversion,browserchannel,"
+            + "deviceinfo,affiliationstate", "formatjson"]),
         // 8232-8240 `print messages … query <QueryGmail> … [max_to_print <Number>] … [headers all|<SMTPHeaderList>] …
         // [showlabels] … [showdate]`; 8170-8174 `delete messages … (ids <MessageIDEntity>)`.
         ("list_messages", GamCommands.listMessages(email: "<email>", query: "in:drafts", max: 5000),
@@ -139,6 +145,36 @@ struct NativeArgvTests {
                 == ["report", "admin", "user", "p@example.com", "userisactor", "start", "-3h", "end", "now", "maxactivities", "1"])
         #expect(!(try GamCommands.reportActivity(.admin, hours: 3, maxActivities: 1).argv.contains("userisactor")))
         #expect(try GamCommands.reportActivity(.login, hours: 3, ip: "2001:db8::1", maxActivities: 1).argv.contains("2001:db8::1"))
+        // Chrome's by the profile's account, one at a time (doReport would match a named user to the computer's login name).
+        #expect(try GamCommands.reportActivity(.chrome, users: ["p@example.com"], hours: 3, maxActivities: 1).argv
+                == ["report", "chrome", "user", "all", "filter", "PROFILE_USER_NAME==p@example.com", "start", "-3h", "end", "now",
+                    "maxactivities", "1"])
+        #expect(try GamCommands.reportActivity(.chrome, hours: 3, maxActivities: 1).argv
+                == ["report", "chrome", "user", "all", "start", "-3h", "end", "now", "maxactivities", "1"])
+        #expect(try GamCommands.reportActivity(.chrome, users: ["P@Example.com"], hours: 3, maxActivities: 1, chrome: .device).argv
+                == ["report", "chrome", "user", "p@example.com", "start", "-3h", "end", "now", "maxactivities", "1"])
+        #expect(throws: GamCommands.Invalid.self) {
+            try GamCommands.reportActivity(.chrome, users: ["a@example.com", "b@example.com"], hours: 3, maxActivities: 1)
+        }
+        // A filter's value is only Google's address characters: nothing it could read as more than the value.
+        for user in ["a=b@example.com", "a%b@example.com", "a|b@example.com", "a+b@example.com", "ä@example.com", "a\"b@example.com",
+                     "a*@example.com"] {
+            #expect(throws: GamCommands.Invalid.self, "\(user)") {
+                try GamCommands.reportActivity(.chrome, users: [user], hours: 3, maxActivities: 1)
+            }
+        }
+        #expect(try GamCommands.reportActivity(.chrome, users: ["o'neil.x_y-z@mail.example.co.uk"], hours: 3, maxActivities: 1).argv[5]
+                == "PROFILE_USER_NAME==o'neil.x_y-z@mail.example.co.uk")
+    }
+
+    /// A person's Chrome profiles: one address, nothing that would change the filter's meaning (a quote or backslash
+    /// ending the value, the wildcard matching others).
+    @Test func aChromeProfileFilterIsOnePersonsAddress() throws {
+        for user in ["a\"b@example.com", "a\\b@example.com", "*@example.com", "a@example.com,b@example.com", "a b@example.com",
+                     "Name <a@example.com>", "", "a@example", "a=b@example.com"] {
+            #expect(throws: GamCommands.Invalid.self, "\(user)") { try GamCommands.printChromeProfiles(user: user) }
+        }
+        #expect(try GamCommands.printChromeProfiles(user: "Carol@Example.com").argv[3] == "user_email=\"carol@example.com\"")
     }
 
     /// What an operator pastes from the headers, each to the same bare ID: Gmail's `rfc822msgid:` takes it without

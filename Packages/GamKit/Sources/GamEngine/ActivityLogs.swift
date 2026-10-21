@@ -44,6 +44,9 @@ public enum ActivityLogs {
     /// One event, in the one shape.
     public struct Row: Sendable, Equatable, Identifiable {
         public let id: String
+        /// The event itself, whichever read it came from: its activity's unique qualifier, time, name and parameters.
+        /// Two reads of one log (Chrome's two matches) are merged on it.
+        public let identity: String
         public let application: Application
         /// When, as GAM printed it (UTC unless GAM's config converts it), and as a date when it reads as one.
         public let time: String
@@ -62,11 +65,17 @@ public enum ActivityLogs {
             func text(_ key: String) -> String { Fields.text(Fields.first(record, key)) }
             time = text("id.time")
             date = try? Date(time, strategy: .iso8601)
-            who = text("actor.email")
             event = text("name")
             ip = text("ipAddress")
-            id = [text("id.uniqueQualifier"), time, event, String(index)].joined(separator: "|")
             parameters = ActivityLogs.parameters(record)
+            identity = ([text("id.uniqueQualifier"), time, event] + parameters.map { "\($0.name)=\($0.value)" }).joined(separator: "|")
+            id = [text("id.uniqueQualifier"), time, event, String(index)].joined(separator: "|")
+            // A Chrome event's person is the account signed in to the profile, else the actor, else the device's user: a
+            // Chromebook's account, or on a Mac or PC the computer's login name, which is still who it was.
+            let profile = parameters.first { $0.name == "PROFILE_USER_NAME" }?.value ?? ""
+            let device = parameters.first { $0.name == "DEVICE_USER" }?.value ?? ""
+            who = application != .chrome ? text("actor.email") : !profile.isEmpty ? profile
+                : !text("actor.email").isEmpty ? text("actor.email") : device
             let lowered = event.lowercased()
             flagged = ActivityLogs.flaggedEvents.contains(event) || ["suspicious", "blocked", "deny", "disabled", "leak", "attack"]
                 .contains(where: lowered.contains)
@@ -100,6 +109,19 @@ public enum ActivityLogs {
                 let app = value("app_name"), client = value("client_id"), scope = value("scope")
                 if !app.isEmpty { said.append(app) } else if !client.isEmpty { said.append("app \(client)") }
                 if !scope.isEmpty { said.append("access: " + ActivityLogs.scopes(scope)) }
+                return said
+            case .chrome:
+                var said: [String] = []
+                let url = value("URL"), login = value("LOGIN_USER_NAME"), device = value("DEVICE_NAME")
+                let platform = value("DEVICE_PLATFORM"), result = value("EVENT_RESULT"), reason = value("EVENT_REASON")
+                if !url.isEmpty { said.append(url) }
+                if !login.isEmpty { said.append("as \(login)") }
+                if !device.isEmpty || !platform.isEmpty {
+                    said.append("on " + [device, platform.isEmpty || device.isEmpty ? platform : "(\(platform))"]
+                        .filter { !$0.isEmpty }.joined(separator: " "))
+                }
+                if !result.isEmpty { said.append(result == "BYPASSED" ? "warned, and went on anyway" : ActivityLogs.sentence(result).lowercased()) }
+                if !reason.isEmpty, reason != "EVENT_REASON_UNSPECIFIED" { said.append(ActivityLogs.chromeReason(reason)) }
                 return said
             default:
                 return parameters.filter { !["type", "is_suspicious"].contains($0.name) }.prefix(4).map { "\($0.name): \($0.value)" }
@@ -160,8 +182,11 @@ public enum ActivityLogs {
         return out.filter { seen.insert($0.name + "\u{0}" + $0.value).inserted }
     }
 
-    /// The events Google raises itself, beside any whose name says suspicious, blocked, deny, disabled, leak or attack.
-    static let flaggedEvents: Set = ["gov_attack_warning", "risky_sensitive_action_blocked", "risky_sensitive_action_allowed"]
+    /// The events Google raises itself, beside any whose name says suspicious, blocked, deny, disabled, leak or attack:
+    /// Chrome's own warnings among them (a protected password typed on another site, one found in a breach, a dangerous
+    /// site or download).
+    static let flaggedEvents: Set = ["gov_attack_warning", "risky_sensitive_action_blocked", "risky_sensitive_action_allowed",
+                                     "PASSWORD_REUSE", "PASSWORD_BREACH", "UNSAFE_SITE_VISIT", "MALWARE_TRANSFER"]
 
     static func words(_ event: String) -> String {
         switch event {
@@ -182,8 +207,34 @@ public enum ActivityLogs {
         case "risky_sensitive_action_blocked": "A risky sensitive action was blocked"
         case "authorize": "Granted an app access"
         case "revoke": "An app's access was revoked"
+        case "LOGIN_EVENT": "Signed in to a website in Chrome"
+        case "PASSWORD_REUSE": "Typed a protected password on another website"
+        case "PASSWORD_BREACH": "Used a password found in a data breach"
+        case "PASSWORD_CHANGED": "Changed a protected password"
+        case "UNSAFE_SITE_VISIT": "Chrome warned of an unsafe website"
+        case "MALWARE_TRANSFER": "Chrome found malware in a file"
         default:
-            event.replacingOccurrences(of: "_", with: " ").prefix(1).uppercased() + event.replacingOccurrences(of: "_", with: " ").dropFirst()
+            sentence(event)
+        }
+    }
+
+    /// `login_failure` or Chrome's `CONTENT_TRANSFER` as "Login failure", "Content transfer".
+    static func sentence(_ name: String) -> String {
+        let words = name.replacingOccurrences(of: "_", with: " ")
+        let rest = words.dropFirst()
+        return words.prefix(1).uppercased() + (words.uppercased() == words ? rest.lowercased() : String(rest))
+    }
+
+    /// Chrome's reason (`PASSWORD_REUSED_PHISHING_URL`, `UNSAFE_SITE_VISIT_SOCIAL_ENGINEERING`) in words.
+    static func chromeReason(_ reason: String) -> String {
+        switch reason {
+        case "PASSWORD_REUSED_PHISHING_URL": "on a phishing site"
+        case "PASSWORD_REUSED_UNAUTHORIZED_SITE": "on a site not on the allowed list"
+        case "UNSAFE_SITE_VISIT_SOCIAL_ENGINEERING": "a phishing site"
+        case "UNSAFE_SITE_VISIT_MALWARE": "a malware site"
+        case "UNSAFE_SITE_VISIT_UNWANTED_SOFTWARE": "an unwanted-software site"
+        case "UNSAFE_SITE_VISIT_SSL_ERROR": "a certificate error"
+        default: sentence(reason).lowercased()
         }
     }
 
@@ -251,6 +302,7 @@ extension GamCommands.ActivityApplication {
         case .takeout: "Takeout"
         case .admin: "Admin console changes"
         case .mobile: "Devices"
+        case .chrome: "Chrome"
         }
     }
 
@@ -267,6 +319,9 @@ extension GamCommands.ActivityApplication {
         case .takeout: "Exports of the account's data."
         case .admin: "What admins changed in the Admin console."
         case .mobile: "Phones and tablets syncing the account."
+        case .chrome: "Chrome's warnings and website sign-ins, by the account signed in to Chrome or a Chromebook's own. Only what "
+            + "Chrome reports: empty can mean its reporting is off, not that Chrome isn't used. Events a Mac or PC ties to no "
+            + "account (an extension request) show for every account only."
         }
     }
 }
