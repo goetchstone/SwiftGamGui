@@ -225,8 +225,8 @@ struct CompromisedDraftsTests {
     @Test func theDraftsAreListedNewestFirst() async throws {
         let listed = try await drafts("carol@example.com")
         #expect(listed.map(\.id) == ["19a0c0ffee000011", "19a0c0ffee000012", "19a0c0ffee000013"])
-        #expect(listed[0].subject == "You're invited: Fall party" && listed[0].labels == ["DRAFT"] && listed[0].when != nil)
-        #expect(Compromised.drafts(listed, subjectMatching: " fall PARTY ").map(\.id) == ["19a0c0ffee000011", "19a0c0ffee000012"])
+        #expect(listed[0].subject == "Shared file: Q4 invoices" && listed[0].labels == ["DRAFT"] && listed[0].when != nil)
+        #expect(Compromised.drafts(listed, subjectMatching: " q4 INVOICES ").map(\.id) == ["19a0c0ffee000011", "19a0c0ffee000012"])
         #expect(Compromised.drafts(listed, subjectMatching: "  ").isEmpty)
         #expect(try await drafts("carol@example.com", max: 1).count == 1)
         #expect(try await drafts("carol@example.com", max: 0).count == 3, "GAM's 0 is no limit")
@@ -256,12 +256,12 @@ struct CompromisedDraftsTests {
     }
 
     @Test func theStepSaysWhatItDeletesAndTheFindingsSayHowMany() throws {
-        let listed = [Compromised.Draft(record: ["id": .string("D1"), "Subject": .string("You're invited")]),
-                      Compromised.Draft(record: ["id": .string("D2"), "Subject": .string("You're invited")])]
+        let listed = [Compromised.Draft(record: ["id": .string("D1"), "Subject": .string("Shared file")]),
+                      Compromised.Draft(record: ["id": .string("D2"), "Subject": .string("Shared file")])]
         let steps = try Compromised.steps(user: "carol@example.com", switchedOn: [], drafts: listed)
         let step = try #require(steps.first { $0.key == .drafts })
         #expect(step.write.argv == ["user", "carol@example.com", "delete", "messages", "ids", "D1,D2"])
-        #expect(step.label == "Delete 2 drafts" && step.summary.contains("“You're invited”") && step.summary.contains("can't be restored"))
+        #expect(step.label == "Delete 2 drafts" && step.summary.contains("“Shared file”") && step.summary.contains("can't be restored"))
         let account = Compromised.Account(GamUser(record: ["primaryEmail": .string("carol@example.com"), "isEnrolledIn2Sv": .bool(true)]))
         let said = Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,
                                         drafts: listed)

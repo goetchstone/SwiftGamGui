@@ -10,8 +10,8 @@ import TestSupport
 @Suite("Mock phishing")
 struct MockPhishingTests {
     let mock = GamRunner(binary: Fixtures.mockGam)
-    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Invite=0001@mail.example.com>")
-    static let query = "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent"
+    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
+    static let query = "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent"
 
     private func withState(_ body: (URL) async throws -> Void) async throws {
         let state = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-phish-\(UUID().uuidString)")

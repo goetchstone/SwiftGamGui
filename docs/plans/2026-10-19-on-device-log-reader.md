@@ -1,9 +1,8 @@
 # Plan: an on-device reader for security logs
 
 **Status (2026-10-21): R1 and R2 built** (Read the logs, under Pull Incident Logs; runbook:
-docs/domains/compromised-account.md, "Log reader"). The operator asked for it during a live incident ("make it so AI
-could read those logs via local model"), then (2026-10-21) for recommendations, and to "use what is in the logs to
-setup commands to run for remediation".
+docs/domains/compromised-account.md, "Log reader"). Asked for: the incident logs read by a model on this Mac, with
+recommendations, and the fixes the logs point to set up to run.
 
 ## Why
 When an account is taken over and used to mass-send phishing, the logs answer the questions that matter: which address
