@@ -94,6 +94,16 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "recoveryemail", "", "recoveryphone", ""], action: .clearRecovery)
     }
 
+    /// A password the operator hands over, which Google makes the person change at their next sign-in (grammar 5942
+    /// `update user <UserItem> <UserAttribute>*`; 5838-5841 `password <Password>`, 5825 `changepassword <Boolean>`).
+    /// GamGUI's reset is `random` with `changepassword off`, which nobody sees, so this one is native. `password` is
+    /// one element and never one of GAM's words there (`random`, `uniquerandom`, `blocklogin`, `prompt`,
+    /// `uniqueprompt`): `TemporaryPassword`'s are three dashed groups,
+    /// masked in what's shown and audited (`ArgvRedaction`) and in GAM's echo (`SecretScrub`).
+    package static func setPassword(email: String, password: String) -> GamWrite {
+        GamWrite(["update", "user", email, "password", password, "changepassword", "on"], action: .setPassword)
+    }
+
     /// Out of the Global Address List and autocomplete (grammar 5831). Always the explicit `off`: GAM reads a
     /// bare `gal` as on.
     public static func hideFromDirectory(email: String) -> GamWrite {

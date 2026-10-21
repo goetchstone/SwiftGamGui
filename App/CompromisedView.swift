@@ -823,7 +823,8 @@ private struct PullEmailSection: View {
 /// Step 4: what's left once the accounts are secured, each said with where it's done.
 private struct AfterwardsSection: View {
     static let items = [
-        ("key", "Give each secured person a new password (Admin console → Users → Reset password), in person or by phone."),
+        ("key", "Give each secured person a new password: Users → their page → Actions → Set Temporary Password…, then tell them "
+            + "in person or by phone. It shows once."),
         ("lock.shield", "Turn on 2-Step Verification for anyone who doesn't have it (the check says who)."),
         ("globe", "Check their Chrome profiles (Users → their page → Security → Check Chrome): passwords saved in a Chrome "
             + "signed in with the work account were within the attacker's reach; change the important ones."),
