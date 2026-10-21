@@ -1,10 +1,12 @@
 # Compromised account
 
-**One line:** for a person who stays employed but whose account was taken over: Check Account reads what an attacker
-commonly changes (and changes nothing), the operator ticks what to undo, and the lock plus the picks run as one
-ChangeCore preview, the person's address typed. Built 2026-10-19: slice 1, then slice 2, Pull Incident Logs (every
+**One line:** the Incident screen (sidebar "Incident", `Screen.compromised`), in the order an incident is worked: 1 find
+who's affected (Pull Incident Logs, Read the logs), 2 secure an account (Check Account reads what an attacker commonly
+changes and changes nothing; the operator switches steps and ticks what to undo; one ChangeCore preview, the person's
+address typed), 3 pull the email (Phishing), 4 afterwards (a checklist). Every step is a switch: any one runs alone. Built 2026-10-19: slice 1, then slice 2, Pull Incident Logs (every
 activity log an incident needs, by account and attacker IP, with CSV export); 2026-10-21 slice 5, Chrome (its log by
-the profile's account, and a person's Chrome profiles). The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
+the profile's account, and a person's Chrome profiles); slice 6, the Incident screen (the order, every step a switch, the
+auto-reply and devices in the check, the other logs an incident needs). The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
 
 **Owns invariants:** #1 (each pick one argv element: a delegate or send-as address must be one plain address, a filter
 ID list offboarding's checked one), #2 (one held preview, the precondition at the run), #10 (nothing from Siri or a
@@ -35,13 +37,19 @@ let only `requires` stop a step; it may not tolerate failures).
    (`WriteRouteTests.onlyItsScreenReachesTheCompromisedModel`).
 1. **Check Account:** `info user P fields <Compromised.accountFields> formatjson` first (an alias reads as its owner; a
    failure stops the check, in GAM's words), then at once: `print filters labelidsonly formatjson`, `print forward`,
-   `print forwardingaddresses`, `print delegates`, `print sendas verifyonly`, `print admins user P`. Each failure is said
+   `print forwardingaddresses`, `print delegates`, `print sendas verifyonly`, `print admins user P`, the drafts, `show
+   vacation` (an attacker's auto-reply phishes everyone who writes) and `print mobile query email:P` (a phone that syncs
+   the mail may be the attacker's; shown, not changed: the wipe is the Admin console's). Each failure is said
    beside its list, never taken as "none". `findings` says what to look at first. The connected admin as P is shown and
    blocks the plan.
-2. **Pick:** a box per filter (delete), delegate (remove) and send-as address but the primary (remove). None ticked.
-3. **Preview:** `steps` in run order: reset, clear recovery (switched, off), sign-out, forwarding off, the filters (one
-   command), each delegate, each send-as address, IMAP off and POP off (switched, on). "Password already reset" ticks
-   the reset as done. When the reset runs, every other step `requires` it; otherwise nothing stops anything.
+2. **Pick:** a box per filter (delete), delegate (remove) and send-as address but the primary (remove), the auto-reply
+   (turn off) when it's on, and the drafts (none, all, by subject). None ticked.
+3. **Preview:** `steps` in run order: reset, clear recovery, sign-out, forwarding off, the filters (one command), each
+   delegate, each send-as address, the auto-reply off, the drafts, IMAP off and POP off. **Every step but the picks is a
+   switch** (2026-10-21, "ways to do things on an individual basis"): the lock (reset, sign-out, forwarding, IMAP, POP)
+   is on to start, clear recovery off; All Off and The Lock set them at once; nothing switched or picked is refused in
+   words. Off when the reset was done in the Admin console. When the reset runs, every other step `requires` it;
+   otherwise nothing stops anything.
    `stopsAtAccountWideFailure: false`: a refused sign-out (the admin token's scope) mustn't stop forwarding off (the
    service account's). The person's address is typed; ten steps with a destructive one also ask for `confirm`.
 4. **Run:** the precondition reads P fresh (`info user`): the same primary address, suspension and admin flags, and
@@ -58,6 +66,8 @@ let only `requires` stop a step; it may not tolerate failures).
 | `print admins user P` | 1579 | doPrintShowAdmins: PRINT_ADMIN_TITLES; `_SEED_ADMIN_ROLE` is Super Admin; no group roles without `recursive` |
 | `user P delete delegate D` | 7919 | processDelegates: Gmail's notFound for one they don't have, exit 50 |
 | `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5780-5810 | USER_FIELDS_CHOICE_MAP |
+| `user P show vacation`, `user P vacation off` | 8283-8286 | GamGUI's builders (Users' auto-reply), held to argv.json |
+| `print mobile query email:P fields resourceid,… formatjson` | 4555-4562 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
 
 ## Gotchas / mock-lies traps
 - **The mock's Gmail reads act as the person** (`gmail_read`): a non-user fails at the token (exit 50), `nogmail/<u>` is
@@ -71,6 +81,8 @@ let only `requires` stop a step; it may not tolerate failures).
 - **Not modelled, for the live check to tell:** Gmail's exact words for a refused send-as delete; whether `print
   admins user` lists a role held through a group (not without `recursive`, per the source).
 - **User labels show as IDs** (`labelidsonly`): the system labels an attacker's filter uses are named.
+- **The auto-reply's own text is the attacker's** (review 2026-10-21): the reader takes settings only above `Message:`,
+  which GAM prints last; GamGUI's reader (and its parity fixture) let a line `Enabled: False` in the reply hide it.
 - **"Already done" belongs to one person** (review 2026-10-19): Preview the Rest ticks the lock steps that succeeded,
   and those ticks once carried to the next person typed, whose plan then skipped the reset and the sign-out. Now a new
   address clears every tick and pick, and `plan` refuses lock steps ticked by another person's run (`Form.restOf`).
@@ -123,6 +135,12 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   that changes ID while it's listed (an autosave: GAM's 404 fails the listing; Check Again reads it again).
 
 ## Pull Incident Logs (slice 2)
+- **The logs** (2026-10-21, "add any other logs that should be looked at"): sign-ins, OAuth, SAML (sign-ins to other apps
+  through Google), Gmail, Access, Chat, account changes, Takeout and Devices on by default; Chrome, Drive, Calendar
+  (invitation phishing), Groups (members added, a group opened to outsiders), Admin, Rules, Context-aware access and
+  Vault (what matters when an admin was taken) to tick. GAM's REPORT_CHOICE_MAP spells each; the mock answers each, those
+  without a fixture with GAM's titles alone, and capitalizes the events of admin, chrome, context-aware access, mobile
+  and takeout as doReport's REPORT_ACTIVITIES_UPPERCASE_EVENTS does.
 - `ActivityLogs` (GamEngine): `Row` from a `report <application>` row in the one shape (`id.time`, `actor.email`,
   `name`, `ipAddress`, then every other column by name; a nested parameter, Gmail's, named by its chain from the
   `parameters.N….name` columns), its words, its details (the sign-in's type, challenge and outcome; the app and its

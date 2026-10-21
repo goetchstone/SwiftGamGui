@@ -44,6 +44,11 @@ struct NativeArgvTests {
          ["report", "login", "user", "p@example.com", "start", "-72h", "end", "now", "ip", "198.51.100.23", "maxactivities", "1000"]),
         // 2324-2335 `print chromeprofiles … [filter <String>] … [fields <ChromeProfileFieldNameList>] [formatjson]`; the filter's
         // `user_email` is the Chrome Management API's own field (customers.profiles.list), the address quoted as one value.
+        // 4555-4562 `print mobile … [(query <QueryMobile>)…] … [fields <MobileFieldNameList>] [formatjson]`; formatjson's row
+        // is written from `resourceId`, so it's among the fields.
+        ("print_mobile_devices", try! GamCommands.printMobileDevices(user: "P@Example.com"),
+         ["print", "mobile", "query", "email:p@example.com", "fields",
+          "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "formatjson"]),
         ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
          ["print", "chromeprofiles", "filter", "user_email=\"p@example.com\"", "fields",
           "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,browserversion,browserchannel,"

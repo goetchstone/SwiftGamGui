@@ -6,11 +6,11 @@ import SwiftUI
 /// "Read the logs" (docs/plans/2026-10-19-on-device-log-reader.md): what a pull of the incident logs shows, found by
 /// rules in code (`LogReading`), each finding with the fixes it points to, and on request the on-device model's
 /// explanation (`LogExplainer`). It changes nothing and reaches no change: a fix only hands an address or a Message-ID
-/// to its screen (Compromised Account checks the person; Phishing finds who has the email), and that screen shows its
+/// to its screen (Incident checks the person; Phishing finds who has the email), and that screen shows its
 /// own preview, confirmed there. Its own file, apart from anything that can run gam (invariant 10, `WriteRouteTests`).
 struct LogReaderView: View {
     let pull: IncidentLogs.Pull
-    /// Opens Compromised Account for a person and checks them.
+    /// Opens Incident for a person and checks them.
     let secure: (String) -> Void
     /// Opens Phishing with a Message-ID and finds who has the email.
     let pullEmail: (String) -> Void
@@ -141,8 +141,8 @@ private struct FindingRow: View {
 
     private var symbol: String {
         switch finding.kind {
-        case .signedInFromSuspect, .passwordOnPhishingSite, .afterLock: "exclamationmark.octagon.fill"
-        case .mailFromSuspect, .failedFromSuspect, .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
+        case .signedInFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock: "exclamationmark.octagon.fill"
+        case .mailFromSuspect, .failedFromSuspect, .chatFromSuspect, .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
         case .passwordOnOtherSite, .sharedAddress, .suspectAddress: "info.circle"
         }
     }
@@ -174,7 +174,7 @@ private struct FindingRow: View {
 
     private func hint(_ draft: LogReading.Draft) -> String {
         switch draft {
-        case .secureAccount: "Opens Compromised Account and checks them. Nothing changes until you preview and confirm there."
+        case .secureAccount: "Opens Incident and checks them. Nothing changes until you preview and confirm there."
         case .pullEmail: "Opens Phishing and finds who has the email. Nothing changes until you preview and confirm there."
         }
     }

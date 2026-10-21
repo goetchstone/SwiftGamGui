@@ -52,7 +52,10 @@ struct ActivityLogsTests {
         #expect(try await read(.gmail, ip: attacker).count == 1)
         #expect(try await read(.accessEvaluation, ip: attacker).map(\.event) == ["deny_cookie_validation_request", "allow_token_request"])
         #expect(try await read(.userAccounts, ip: attacker).map(\.words) == ["Recovery phone edit"])
-        #expect(try await read(.chat, ip: attacker).isEmpty, "no fixture: GAM's titles alone")
+        #expect(try await read(.chat, ip: attacker).map(\.words) == ["Posted a Chat message"])
+        #expect(try await read(.saml, ip: attacker).map(\.words) == ["Signed in to an app through Google"])
+        #expect(try await read(.takeout, ip: attacker).map(\.words) == ["Started a Takeout export of the account's data"])
+        #expect(try await read(.vault, ip: attacker).isEmpty, "no fixture: GAM's titles alone")
         let all = try await read(.login)
         #expect(Set(all.map(\.who)) == ["carol@example.com", "dana@example.com", "alice@example.com"])
     }

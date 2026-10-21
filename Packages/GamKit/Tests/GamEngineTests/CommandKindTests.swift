@@ -85,7 +85,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 34)
+        #expect(reads == 35)
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -154,7 +154,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 34 && writes == 43, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 35 && writes == 43, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         #expect(try commands().count == reads + writes)
     }

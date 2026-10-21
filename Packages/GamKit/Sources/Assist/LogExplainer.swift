@@ -86,7 +86,10 @@ public enum LogExplainer {
     /// What each kind of finding means, for the model.
     static func meaning(_ kind: LogReading.Finding.Kind) -> String {
         switch kind {
-        case .signedInFromSuspect: "these accounts signed in, granted an app or changed settings from a suspect address"
+        case .signedInFromSuspect: "these accounts signed in (to Google or another app through it), granted an app or changed "
+            + "settings from a suspect address"
+        case .exportedFromSuspect: "these accounts' data was exported with Google Takeout from a suspect address"
+        case .chatFromSuspect: "these accounts posted Chat messages from a suspect address"
         case .mailFromSuspect: "an email went through Gmail from a suspect address (its subject is shown to the administrator)"
         case .passwordOnPhishingSite: "Chrome saw these accounts' passwords typed on a phishing site"
         case .failedFromSuspect: "a suspect address tried these accounts' passwords and failed: they may have typed them into a fake page"

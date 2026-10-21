@@ -38,7 +38,7 @@ struct LogReadingTests {
         #expect(reading.findings.map(\.kind) == [.signedInFromSuspect, .signedInFromSuspect, .mailFromSuspect, .passwordOnPhishingSite,
                                                  .failedFromSuspect, .pastPhishingWarning, .suspectAddress])
         #expect(reading.findings.map(\.id) == ["F1", "F2", "F3", "F4", "F5", "F6", "F7"])
-        #expect(reading.findings[0].words == "carol@example.com signed in and granted an app access from 198.51.100.23.")
+        #expect(reading.findings[0].words == "carol@example.com signed in to Google and granted an app access from 198.51.100.23.")
         #expect(reading.findings[2].words == "“You are invited” (<phish-1@mail.example.com>) went through Gmail from 198.51.100.23.")
         #expect(reading.drafts == [.secureAccount("carol@example.com"), .secureAccount("dana@example.com"),
                                    .pullEmail(messageID: "<phish-1@mail.example.com>", subject: "You are invited"),
@@ -83,6 +83,26 @@ struct LogReadingTests {
     @Test func aComputerLoginNameIsNoAccount() {
         let reading = LogReading.read([Self.event("chrome", "carol", "PASSWORD_REUSE", ["EVENT_REASON": "PASSWORD_REUSED_PHISHING_URL"])])
         #expect(reading.findings.isEmpty)
+    }
+
+    /// The other ways an attacker uses an account: another app through Google (SAML), a Takeout export, Chat. Each from the
+    /// attacker's address is found; the same from the office is not.
+    @Test func samlTakeoutAndChatFromTheAttackersAddress() {
+        let more = Self.incident + [
+            Self.event("saml", "dana@example.com", "login_success", ip: Self.attacker, at: 40, ["application_name": "Payroll Portal"]),
+            Self.event("takeout", "carol@example.com", "STARTED_USER_TAKEOUT", ip: Self.attacker, at: 41, ["PRODUCTS_REQUESTED": "Mail"]),
+            Self.event("chat", "carol@example.com", "message_posted", ip: Self.attacker, at: 42),
+            Self.event("takeout", "alice@example.com", "STARTED_USER_TAKEOUT", ip: Self.office, at: 43),
+            Self.event("chat", "alice@example.com", "message_posted", ip: Self.office, at: 44),
+        ]
+        let reading = LogReading.read(more)
+        #expect(reading.findings.first { $0.accounts == ["dana@example.com"] && $0.kind == .signedInFromSuspect }?.words
+                == "dana@example.com signed in to Google and reached another app through Google (SAML) from 198.51.100.23.")
+        let exported = reading.findings.filter { $0.kind == .exportedFromSuspect }
+        #expect(exported.map(\.accounts) == [["carol@example.com"]] && exported.first?.drafts == [.secureAccount("carol@example.com")])
+        #expect(exported.first?.words.contains("(Mail)") == true)
+        #expect(reading.findings.filter { $0.kind == .chatFromSuspect }.map(\.accounts) == [["carol@example.com"]])
+        #expect(!reading.findings.contains { $0.accounts.contains("alice@example.com") })
     }
 
     @Test func activityAfterTheLockIsSaid() {

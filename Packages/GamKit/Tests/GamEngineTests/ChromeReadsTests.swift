@@ -112,6 +112,37 @@ struct ChromeReadsTests {
         }
     }
 
+    /// A person's phones and tablets (the compromised-account check): each in words, how it syncs, and a refusal as GAM's
+    /// exit 12, never "no devices". The mock takes only an owner's query, the grammar's fields, and `resourceid` among them.
+    @Test func aPersonsDevicesAreTheirsAndARefusalIsSaid() async throws {
+        let read = try GamCommands.printMobileDevices(user: "carol@example.com")
+        let result = try await run(read.argv)
+        #expect(result.exitCode == 0, "\(result.stderr)")
+        let listed = GamOutput.records(result.stdout).map(Compromised.MobileDevice.init(record:))
+        // The API's `email:` matches a prefix: carol@example.com.au's phone comes too, and only an exact owner is hers.
+        #expect(listed.map(\.owners) == [["carol@example.com"], ["carol@example.com"], ["carol@example.com.au"]])
+        let devices = listed.filter { $0.owners.contains("carol@example.com") }
+        #expect(devices.map(\.words) == ["Pixel 8, Android 15 (Android)", "A device (Exchange sync (Google Sync))"])
+        #expect(devices[1].firstSynced != nil)
+        #expect(devices[0].lastSynced != nil && !devices.contains(where: \.reportsCompromise))
+        let none = try await run(try GamCommands.printMobileDevices(user: "dana@example.com").argv)
+        #expect(none.exitCode == 0 && GamOutput.records(none.stdout).isEmpty)
+        let state = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-mobile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: state) }
+        try FileManager.default.createDirectory(at: state.appending(path: "denied"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "denied/mobile").path, contents: Data())
+        let denied = try await run(read.argv, state: state)
+        #expect(denied.exitCode == 12 && denied.stderr.contains("Reauthentication is needed"))
+        for argv in [["print", "mobile", "query", "status:APPROVED", "fields", "resourceid", "formatjson"],
+                     ["print", "mobile", "query", "email:carol@example.com", "fields", "model", "formatjson"],
+                     ["print", "mobile", "query", "email:carol@example.com", "fields", "resourceid"]] {
+            let refused = try await run(argv)
+            #expect(refused.exitCode == 2 && refused.stderr.contains("isn't modelled"), "\(argv)")
+        }
+        #expect(try await run(["print", "mobile", "query", "email?", "formatjson"]).exitCode == 2, "GAM's usage error")
+        #expect(try await run(["print", "mobile", "query", "email:carol@example.com", "fields", "passwords", "formatjson"]).exitCode == 2)
+    }
+
     /// The mock takes only the app's filter and the grammar's fields.
     @Test func theMockHoldsTheProfileReadToTheGrammar() async throws {
         let fields = ["fields", "displayname,useremail", "formatjson"]

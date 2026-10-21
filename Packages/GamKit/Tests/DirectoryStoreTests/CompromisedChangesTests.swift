@@ -98,6 +98,8 @@ final class CompromisedChangesTests {
     @Test func theCheckReadsEverythingAndChangesNothing() async throws {
         try await connect()
         let check = try await checked()
+        #expect(try check.devices.get().count == 2)
+        #expect(check.findings.contains { $0.hasPrefix("2 phones or tablets sync carol@example.com's account") })
         #expect(writes().isEmpty)
         #expect(check.user.primaryEmail == "carol@example.com" && !check.isConnectedAdmin)
         #expect(check.account.recoveryPhone == "+15555550123")
@@ -355,6 +357,33 @@ final class CompromisedChangesTests {
         let again = try #require(changes.check)
         #expect(try again.drafts.get().map(\.id) == ["19a0c0ffee000013"])
         #expect(changes.run?.rest.discardDrafts == CompromisedChanges.Form.Discard.none)
+    }
+
+    /// An attacker's auto-reply sends their message to everyone who writes: the check reads it, says it, and "Turn off the
+    /// auto-reply" is one step of the plan, run through the executor; the check again reads it off. Off, it plans nothing.
+    @Test func anAutoReplyIsReadSaidAndTurnedOff() async throws {
+        try await connect()
+        #expect(try await checked().autoReply.get().enabled == false, "carol@'s own is off")
+        let stored = state.appending(path: "vacation/carol@example.com")
+        try FileManager.default.createDirectory(at: stored, withIntermediateDirectories: true)
+        try Data("True".utf8).write(to: stored.appending(path: "enabled"))
+        try Data("Invoice ready".utf8).write(to: stored.appending(path: "subject"))
+        // The attacker's own text says it's off: GAM prints the message last, so it's the message, never the setting.
+        try Data("Pay here: https://login-check.example.net\nEnabled: False".utf8).write(to: stored.appending(path: "message"))
+        let check = try await checked()
+        #expect(try check.autoReply.get().subject == "Invoice ready" && check.autoReply.get().enabled)
+        #expect(check.findings.contains { $0.hasPrefix("An auto-reply is on (“Invoice ready”)") })
+        var form = form()
+        form.switchedOn = []
+        form.autoReplyOff = true
+        let plan = try await plan(form)
+        #expect(plan.steps.map(\.commandLine) == ["gam user carol@example.com vacation off"], "one step alone")
+        await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        #expect(changes.run?.isComplete == true, "\(String(describing: changes.run?.results))")
+        #expect(try #require(changes.check).autoReply.get().enabled == false)
+        #expect(changes.run?.rest.autoReplyOff == false)
+        form.autoReplyOff = false
+        #expect(await blocked(form)?.hasPrefix("No step is switched on") == true)
     }
 
     /// The reset, when it runs, gates every other step; a typed address that isn't the person's runs nothing.

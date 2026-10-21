@@ -12,6 +12,7 @@ public enum Compromised {
         case clearRecovery = "clear_recovery"
         case revoke, forward, filters, delegate
         case sendAs = "send_as"
+        case autoReply = "auto_reply"
         case drafts
         case imapOff = "imap_off"
         case popOff = "pop_off"
@@ -26,6 +27,7 @@ public enum Compromised {
             case .filters: "Delete the picked filters"
             case .delegate: "Remove a delegate"
             case .sendAs: "Remove a send-as address"
+            case .autoReply: "Turn off the auto-reply"
             case .drafts: "Delete the drafts"
             case .imapOff: Offboarding.Step.imapOff.name
             case .popOff: Offboarding.Step.popOff.name
@@ -33,14 +35,22 @@ public enum Compromised {
         }
 
         /// The steps a switch turns on or off; the others run whenever they have something to act on.
-        public static let switchable: [Step] = [.clearRecovery, .imapOff, .popOff]
-        /// The lock as asked (2026-10-19): IMAP and POP off. Clearing recovery is a loss when the values are the
-        /// person's own, so it waits for the operator to look.
-        public static let onByDefault: Set<Step> = [.imapOff, .popOff]
+        /// Every step but the picks, in run order: each one a switch, so any of them can run alone (the operator,
+        /// 2026-10-21: "have ways to do things on an individual basis").
+        public static let switchable: [Step] = [.password, .clearRecovery, .revoke, .forward, .imapOff, .popOff]
+        /// The lock as asked (2026-10-19): the reset, the sign-out, forwarding off, IMAP and POP off. Clearing recovery is a
+        /// loss when the values are the person's own, so it waits for the operator to look.
+        public static let onByDefault: Set<Step> = [.password, .revoke, .forward, .imapOff, .popOff]
 
         /// What a switched step is for, said beside its switch.
         public var note: String? {
             switch self {
+            case .password: "Sets a random password nobody is shown, so the attacker's copy stops working; you give the person a "
+                + "new one afterwards. Off when you already reset it in the Admin console. While it runs, every other step "
+                + "waits for it to succeed."
+            case .revoke: "Ends every session and revokes app passwords and connected apps: the person signs in again and "
+                + "re-grants the apps they use."
+            case .forward: "Stops automatic forwarding of their mail (harmless if it's already off)."
             case .clearRecovery: "Removes both, so an attacker's recovery phone or address can't take the account back through "
                 + "“Forgot password?”. The old values aren't kept: the person adds their own again."
             case .imapOff: "No mail app can download their mail over IMAP. The reset and the sign-out already cut off the ones "
@@ -68,12 +78,12 @@ public enum Compromised {
         public let write: GamWrite
     }
 
-    /// Every step in run order, for `user` (the account's primary address): the reset and the three lock steps always,
-    /// the switched ones in `switchedOn`, and one removal per picked item. `filters` are the filters to delete, as the
+    /// Every step in run order, for `user` (the account's primary address): the switched ones in `switchedOn`, and one
+    /// removal per picked item. Any of them alone is a plan. `filters` are the filters to delete, as the
     /// check read them; `delegates` and `sendAs` the addresses to remove. `recovery` is what the check read, said in the
     /// clear-recovery step's words. Throws when a pick can't be one argv element (`GamCommands.Invalid`).
     public static func steps(user: String, switchedOn: Set<Step>, filters: [Filter] = [], delegates: [String] = [],
-                             sendAs: [String] = [], drafts: [Draft] = [],
+                             sendAs: [String] = [], autoReplyOff: Bool = false, drafts: [Draft] = [],
                              recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
         guard switchedOn.isSubset(of: Step.switchable) else {
             throw GamCommands.Invalid.argument("only \(Step.switchable.map(\.rawValue).joined(separator: ", ")) are switched")
@@ -83,12 +93,13 @@ public enum Compromised {
         }
         let was = [recovery.email.isEmpty ? nil : "email \(recovery.email)", recovery.phone.isEmpty ? nil : "phone \(recovery.phone)"]
             .compactMap(\.self)
-        var steps: [Planned] = [
-            Planned(key: .password, label: Step.password.name,
-                    summary: "Set \(user)'s password to a random one nobody is shown, so the attacker's copy stops working. "
-                        + "The person can't sign in until you give them a new one (Admin console → Reset password)",
-                    write: GamCommands.resetPassword(email: user)),
-        ]
+        var steps: [Planned] = []
+        if switchedOn.contains(.password) {
+            steps.append(Planned(key: .password, label: Step.password.name,
+                                 summary: "Set \(user)'s password to a random one nobody is shown, so the attacker's copy stops working. "
+                                    + "The person can't sign in until you give them a new one (Admin console → Reset password)",
+                                 write: GamCommands.resetPassword(email: user)))
+        }
         if switchedOn.contains(.clearRecovery) {
             steps.append(Planned(key: .clearRecovery, label: Step.clearRecovery.name,
                                  summary: "Remove \(user)'s recovery email and recovery phone"
@@ -96,16 +107,18 @@ public enum Compromised {
                                     + ", so “Forgot password?” can't send a code to an attacker's. The old values aren't kept",
                                  write: GamCommands.clearRecovery(email: user)))
         }
-        steps += [
-            Planned(key: .revoke, label: Step.revoke.name,
-                    summary: "Sign \(user) out of every web and device session, delete their app passwords, invalidate their "
-                        + "2-Step Verification backup codes and revoke every connected app's access (OAuth tokens). They sign in "
-                        + "again and re-grant the apps they use; 2-Step Verification itself is left on",
-                    write: GamCommands.deprovisionUser(email: user)),
-            Planned(key: .forward, label: Step.forward.name,
-                    summary: "Turn off automatic forwarding of \(user)'s incoming mail (harmless if it's already off)",
-                    write: GamCommands.forwardOff(email: user)),
-        ]
+        if switchedOn.contains(.revoke) {
+            steps.append(Planned(key: .revoke, label: Step.revoke.name,
+                                 summary: "Sign \(user) out of every web and device session, delete their app passwords, invalidate "
+                                    + "their 2-Step Verification backup codes and revoke every connected app's access (OAuth tokens). "
+                                    + "They sign in again and re-grant the apps they use; 2-Step Verification itself is left on",
+                                 write: GamCommands.deprovisionUser(email: user)))
+        }
+        if switchedOn.contains(.forward) {
+            steps.append(Planned(key: .forward, label: Step.forward.name,
+                                 summary: "Turn off automatic forwarding of \(user)'s incoming mail (harmless if it's already off)",
+                                 write: GamCommands.forwardOff(email: user)))
+        }
         if !filters.isEmpty {
             steps.append(Planned(key: .filters, label: "Delete \(filters.count) filter\(filters.count == 1 ? "" : "s")",
                                  summary: "Delete \(user)'s Gmail filter\(filters.count == 1 ? "" : "s") "
@@ -121,6 +134,12 @@ public enum Compromised {
             steps.append(Planned(key: .sendAs, label: "Remove the send-as address \(address)",
                                  summary: "Take \(address) off \(user)'s “Send mail as” list, so mail can't be sent from it as them",
                                  write: try GamCommands.deleteSendAs(email: user, address: address)))
+        }
+        if autoReplyOff {
+            steps.append(Planned(key: .autoReply, label: Step.autoReply.name,
+                                 summary: "Turn off \(user)'s auto-reply, so nobody who writes to them gets its message. Its subject "
+                                    + "and text stay in Gmail's settings, off",
+                                 write: GamCommands.vacationOff(email: user)))
         }
         if !drafts.isEmpty {
             let subjects = drafts.map(\.subject).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
@@ -318,6 +337,52 @@ public enum Compromised {
         public var words: String { "\(role), for \(scope)" }
     }
 
+    /// One phone or tablet syncing the account (`GamCommands.printMobileDevices`): what it is, how it syncs, and when it
+    /// first and last did.
+    public struct MobileDevice: Sendable, Equatable, Identifiable {
+        public let id: String
+        /// The accounts on it (`email`): the Directory API's `email:` search matches a prefix, so the read keeps only the
+        /// devices that list the person exactly.
+        public let owners: [String]
+        public let model: String
+        public let os: String
+        /// How it syncs, in words: the Android device policy app, Google's iOS app, or Exchange sync (Google Sync).
+        public let kind: String
+        public let status: String
+        public let firstSync: String
+        public let firstSynced: Date?
+        public let lastSync: String
+        public let lastSynced: Date?
+        /// The device says it's rooted or jailbroken.
+        public let reportsCompromise: Bool
+
+        public init(record: GamOutput.Record) {
+            func text(_ key: String) -> String { Fields.text(record[key]) }
+            id = text("resourceId")
+            owners = (record["email"]?.array ?? []).compactMap(\.string)
+            model = text("model")
+            os = text("os")
+            kind = switch text("type") {
+            case "ANDROID": "Android"
+            case "IOS_SYNC": "iPhone or iPad (Google's app)"
+            case "GOOGLE_SYNC": "Exchange sync (Google Sync)"
+            case let other: other
+            }
+            status = text("status")
+            firstSync = text("firstSync")
+            firstSynced = (try? Date(firstSync, strategy: .iso8601))
+            lastSync = text("lastSync")
+            lastSynced = (try? Date(lastSync, strategy: .iso8601))
+            let compromise = PythonText.lower(text("deviceCompromisedStatus"))
+            reportsCompromise = compromise.contains("compromise detected") && !compromise.hasPrefix("no ")
+        }
+
+        /// "Pixel 8, Android 15 (Android)".
+        public var words: String {
+            [model.isEmpty ? "A device" : model, os].filter { !$0.isEmpty }.joined(separator: ", ") + (kind.isEmpty ? "" : " (\(kind))")
+        }
+    }
+
     /// The account as `info user … fields accountFields` has it: the facts the panel shows.
     public struct Account: Sendable, Equatable {
         public let primaryEmail: String
@@ -346,7 +411,8 @@ public enum Compromised {
     /// What the check found worth saying, before the lists: each a sentence, in the order to deal with them. `nil` for a
     /// read that failed (said beside its list, not here).
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
-                                sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil) -> [String] {
+                                sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil, autoReply: Vacation? = nil,
+                                devices: [MobileDevice]? = nil) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
@@ -366,6 +432,16 @@ public enum Compromised {
         }
         if let others = sendAs?.filter({ !$0.isPrimary }), !others.isEmpty {
             said.append("\(user) can send as \(others.count) other address\(others.count == 1 ? "" : "es"): remove any they didn't add.")
+        }
+        if let autoReply, autoReply.enabled {
+            said.append("An auto-reply is on (“\(autoReply.subject)”): an attacker's sends their message, a link say, to everyone "
+                + "who writes. Tick “\(Step.autoReply.name)” unless it's \(user)'s own.")
+        }
+        if let devices, !devices.isEmpty {
+            said.append("\(devices.count == 1 ? "A phone or tablet syncs" : "\(devices.count) phones or tablets sync") \(user)'s account: "
+                + "one they don't own may be the attacker's. The reset and the sign-out cut its sync off; to wipe the account "
+                + "from it, use the Admin console's Devices."
+                + (devices.contains(where: \.reportsCompromise) ? " One reports it's rooted or jailbroken." : ""))
         }
         if let drafts, !drafts.isEmpty {
             said.append("\(user) has \(drafts.count == Draft.cap ? "at least \(Draft.cap)" : "\(drafts.count)") draft\(drafts.count == 1 ? "" : "s"): "

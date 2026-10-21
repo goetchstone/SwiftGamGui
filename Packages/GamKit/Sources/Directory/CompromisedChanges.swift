@@ -30,6 +30,8 @@ public final class CompromisedChanges {
         public var filters: Set<String> = []
         public var delegates: Set<String> = []
         public var sendAs: Set<String> = []
+        /// The check found an auto-reply on, and it's to be turned off.
+        public var autoReplyOff = false
         /// Which of the check's drafts are deleted: none, every one, or those whose subject holds some text.
         public var discardDrafts: Discard = .none
 
@@ -41,7 +43,7 @@ public final class CompromisedChanges {
         public init() {}
 
         /// A new form for `person`, as another screen's "Secure Account…" starts one: nothing ticked as done or picked,
-        /// IMAP and POP off on.
+        /// the full lock switched on.
         public init(person: String) {
             self.person = person
         }
@@ -51,6 +53,7 @@ public final class CompromisedChanges {
             filters.formIntersection(((try? check.filters.get()) ?? []).map(\.id))
             delegates.formIntersection((try? check.delegates.get()) ?? [])
             sendAs.formIntersection(((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary }.map(\.address))
+            if (try? check.autoReply.get())?.enabled != true { autoReplyOff = false }
         }
     }
 
@@ -69,6 +72,10 @@ public final class CompromisedChanges {
         public let adminRoles: Result<[Compromised.AdminRole], UserAccess.Problem>
         /// The newest `Compromised.Draft.cap` drafts.
         public let drafts: Result<[Compromised.Draft], UserAccess.Problem>
+        /// The auto-reply (`show vacation`).
+        public let autoReply: Result<Vacation, UserAccess.Problem>
+        /// The phones and tablets syncing the account.
+        public let devices: Result<[Compromised.MobileDevice], UserAccess.Problem>
 
         /// The drafts `choice` picks from this check's list.
         public func drafts(_ choice: Form.Discard) -> [Compromised.Draft] {
@@ -191,6 +198,7 @@ public final class CompromisedChanges {
                 switch row.key {
                 case .filters: form.filters = []
                 case .drafts: form.discardDrafts = .none
+                case .autoReply: form.autoReplyOff = false
                 case .delegate, .sendAs: break   // the check again drops what's gone
                 default: form.done.insert(row.key)
                 }
@@ -299,19 +307,22 @@ public final class CompromisedChanges {
         async let sendAs = access.sendAs(of: email)
         async let roles = access.adminRoles(of: email)
         async let drafts = access.drafts(of: email)
+        async let autoReply = access.autoReply(of: email)
+        async let devices = access.mobileDevices(of: email)
         let (readFilters, readForwarding, readAddresses, readDelegates, readSendAs, readRoles)
             = await (filters, forwarding, addresses, delegates, sendAs, roles)
-        let readDrafts = await drafts
+        let (readDrafts, readAutoReply, readDevices) = await (drafts, autoReply, devices)
         let account = Compromised.Account(user)
         let admin = setup.connectedAdmin ?? ""
         let check = Check(
             asked: person, user: user, account: account, filters: readFilters, forwarding: readForwarding,
             forwardingAddresses: readAddresses, delegates: readDelegates, sendAs: readSendAs, adminRoles: readRoles,
-            drafts: readDrafts,
+            drafts: readDrafts, autoReply: readAutoReply, devices: readDevices,
             findings: Compromised.findings(account: account, forwarding: (try? readForwarding.get()) ?? nil,
                                            filters: try? readFilters.get(), delegates: try? readDelegates.get(),
                                            sendAs: try? readSendAs.get(), roles: try? readRoles.get(),
-                                           drafts: try? readDrafts.get()),
+                                           drafts: try? readDrafts.get(), autoReply: try? readAutoReply.get(),
+                                           devices: try? readDevices.get()),
             isConnectedAdmin: !admin.isEmpty && Guard.normalized(admin) == Guard.normalized(email))
         finish(.checked(check))
     }
@@ -355,6 +366,7 @@ public final class CompromisedChanges {
         do {
             planned = try Compromised.steps(user: user, switchedOn: form.switchedOn.intersection(Compromised.Step.switchable),
                                             filters: picked.filters, delegates: picked.delegates, sendAs: picked.sendAs,
+                                            autoReplyOff: form.autoReplyOff && (try? check.autoReply.get())?.enabled == true,
                                             drafts: picked.drafts,
                                             recovery: (check.account.recoveryEmail, check.account.recoveryPhone))
         } catch GamCommands.Invalid.argument(let why) {
@@ -367,7 +379,8 @@ public final class CompromisedChanges {
         guard form.done.isSubset(of: [.password]) || Guard.normalized(form.restOf) == Guard.normalized(user) else {
             return refuse("Steps are ticked as already done from another person's run. Check this account again and preview.")
         }
-        let done = form.done.intersection([.password, .clearRecovery, .revoke, .forward, .imapOff, .popOff])
+        guard !planned.isEmpty else { return refuse("No step is switched on and nothing is ticked to undo: there is nothing to run.") }
+        let done = form.done.intersection(Compromised.Step.switchable)
         let running = planned.filter { !done.contains($0.key) }
         guard !running.isEmpty else { return refuse("Every step is ticked as already done: there is nothing to run.") }
         let resetIndex = running.firstIndex { $0.key == .password }

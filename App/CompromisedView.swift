@@ -5,7 +5,7 @@ import GamEngine
 import Setup
 import SwiftUI
 
-/// Compromised Account (docs/plans/2026-10-19-compromised-account.md): for a person who stays employed but whose account
+/// Incident (docs/plans/2026-10-19-compromised-account.md): for a person who stays employed but whose account
 /// was taken over. Check Account reads what an attacker commonly changes, and changes nothing; the operator ticks what
 /// to undo; the lock and the picks are previewed as exact `gam` lines, then run once with the person's address typed,
 /// each step's result as it ends, Stop between steps, and the account checked again.
@@ -47,31 +47,11 @@ struct CompromisedView: View {
                         }
                         .id(Self.runAnchor)
                     }
-                    Group {
-                        Section {
-                            Text("For a person who stays employed but whose account was taken over. Check the account first: it "
-                                 + "reads what an attacker commonly changes, and changes nothing. Then tick what to undo, and "
-                                 + "preview the steps.")
-                                .foregroundStyle(.secondary)
-                        }
-                        whoSection.id(Self.checkAnchor)
-                        if let check {
-                            FindingsSection(check: check)
-                            AccountSection(check: check)
-                            ForwardingSection(check: check)
-                            FiltersSection(check: check, picked: $form.filters)
-                            DelegatesSection(check: check, picked: $form.delegates)
-                            SendAsSection(check: check, picked: $form.sendAs)
-                            DraftsSection(check: check, discard: $form.discardDrafts)
-                            AdminRolesSection(check: check)
-                            StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
-                            previewSection
-                        }
-                    }
-                    .disabled(changes.isRunning)
-                    if case .planned(let plan) = changes.planState, plan.form == form, check != nil {
-                        CompromisedPlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
-                            .id(Self.planAnchor)
+                    Section {
+                        Text("For an account taken over, in the order you work: find who's affected, secure each account, pull "
+                             + "the email from every mailbox, then the checklist. Reading changes nothing; every change is "
+                             + "previewed first and confirmed with the person's address.")
+                            .foregroundStyle(.secondary)
                     }
                     if setup.active != nil {
                         IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
@@ -84,6 +64,29 @@ struct CompromisedView: View {
                             .id(Self.readerAnchor)
                         }
                     }
+                    Group {
+                        whoSection.id(Self.checkAnchor)
+                        if let check {
+                            FindingsSection(check: check)
+                            AccountSection(check: check)
+                            ForwardingSection(check: check, autoReplyOff: $form.autoReplyOff)
+                            FiltersSection(check: check, picked: $form.filters)
+                            DelegatesSection(check: check, picked: $form.delegates)
+                            SendAsSection(check: check, picked: $form.sendAs)
+                            DraftsSection(check: check, discard: $form.discardDrafts)
+                            AdminRolesSection(check: check)
+                            DevicesSection(check: check)
+                            StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
+                            previewSection
+                        }
+                    }
+                    .disabled(changes.isRunning)
+                    if case .planned(let plan) = changes.planState, plan.form == form, check != nil {
+                        CompromisedPlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
+                            .id(Self.planAnchor)
+                    }
+                    PullEmailSection(openPhishing: openPhishing)
+                    AfterwardsSection()
                 }
                 .formStyle(.grouped)
                 .onChange(of: planShown) { _, shown in
@@ -107,7 +110,9 @@ struct CompromisedView: View {
         // Another person: the ticks and the picks were the last one's.
         .onChange(of: form.person) { old, new in
             guard old.trimmingCharacters(in: .whitespaces).lowercased() != new.trimmingCharacters(in: .whitespaces).lowercased() else { return }
-            (form.done, form.restOf, form.filters, form.delegates, form.sendAs) = ([], "", [], [], [])
+            (form.done, form.restOf, form.filters, form.delegates, form.sendAs, form.autoReplyOff) = ([], "", [], [], [], false)
+            // The switches too: a step turned off for one person's errand is never off for the next person's lock.
+            form.switchedOn = Compromised.Step.onByDefault
             form.discardDrafts = .none
         }
         // A check again (after a run): the ticks on what's gone are dropped.
@@ -170,7 +175,7 @@ struct CompromisedView: View {
     }
 
     private var whoSection: some View {
-        Section("Whose account") {
+        Section("2. Secure an account") {
             AddressField(title: "Person whose account was taken over", prompt: "person@example.com", text: $form.person,
                          directory: directory)
                 .onSubmit(checkAccount)
@@ -344,9 +349,21 @@ private struct AccountSection: View {
 
 private struct ForwardingSection: View {
     let check: CompromisedChanges.Check
+    @Binding var autoReplyOff: Bool
 
     var body: some View {
         Section {
+            switch check.autoReply {
+            case .success(let reply) where reply.enabled:
+                Toggle(isOn: $autoReplyOff) {
+                    Text("Turn off the auto-reply: “\(reply.subject)”")
+                    Label("On: everyone who writes gets its message. Check it's the person's own", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                .accessibilityLabel("Turn off the auto-reply, “\(reply.subject)”")
+            case .success: LabeledContent("Auto-reply", value: "Off")
+            case .failure(let problem): Unread(what: "the auto-reply", problem: problem)
+            }
             switch check.forwarding {
             case .success(let forwarding?): LabeledContent("Automatic forwarding", value: forwarding.words)
             case .success(nil): LabeledContent("Automatic forwarding", value: "Gmail didn't say")
@@ -362,9 +379,9 @@ private struct ForwardingSection: View {
             case .failure(let problem): Unread(what: "forwarding addresses", problem: problem)
             }
         } header: {
-            Text("Forwarding")
+            Text("Forwarding and auto-reply")
         } footer: {
-            Text("“Turn off forwarding” always runs. The addresses stay listed: removing one is in Gmail's settings.")
+            Text("“Turn off forwarding” is a step below. The addresses stay listed: removing one is in Gmail's settings.")
         }
         .textSelection(.enabled)
     }
@@ -560,7 +577,42 @@ private struct AdminRolesSection: View {
     }
 }
 
-/// The lock: the reset (often already done), the two steps that always run, and the three switches.
+/// The phones and tablets syncing the account, shown: one the person doesn't own may be the attacker's.
+private struct DevicesSection: View {
+    let check: CompromisedChanges.Check
+
+    var body: some View {
+        Section {
+            switch check.devices {
+            case .success(let devices) where devices.isEmpty:
+                Text("No phone or tablet syncs this account.").foregroundStyle(.secondary)
+            case .success(let devices):
+                ForEach(devices) { device in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(device.words).fontWeight(.semibold)
+                        Text("Last synced " + (device.lastSynced?.formatted(date: .abbreviated, time: .shortened) ?? device.lastSync)
+                             + (device.firstSync.isEmpty ? "" : " · first "
+                                + (device.firstSynced?.formatted(date: .abbreviated, time: .shortened) ?? device.firstSync))
+                             + (device.status.isEmpty ? "" : " · \(device.status)"))
+                            .font(.callout).foregroundStyle(.secondary)
+                        if device.reportsCompromise {
+                            Label("Reports it's rooted or jailbroken", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            case .failure(let problem): Unread(what: "the devices", problem: problem)
+            }
+        } header: {
+            Text("Phones and tablets")
+        } footer: {
+            Text("Shown, not changed here: wipe the account from a device in the Admin console's Devices.")
+        }
+        .textSelection(.enabled)
+    }
+}
+
+/// Every lock step a switch, the full lock on to start, and the picks above said in a line.
 private struct StepsSection: View {
     @Binding var form: CompromisedChanges.Form
     /// How many drafts the form's choice moves to Trash.
@@ -568,26 +620,15 @@ private struct StepsSection: View {
 
     var body: some View {
         Section {
-            Toggle(isOn: resetDone) {
-                Text("Password already reset")
-                Text("Tick when you reset it in the Admin console: “\(Compromised.Step.password.name)” isn't run, and nothing waits "
-                     + "for it. Otherwise it sets a random password, and you give the person a new one afterwards.")
-            }
-            .accessibilityLabel("Already done: \(Compromised.Step.password.name)")
-            ForEach([Compromised.Step.revoke, .forward], id: \.self) { step in
-                if form.done.contains(step) {
-                    Toggle(isOn: done(step)) {
-                        Text("\(step.name): already done")
-                        Text("It succeeded in the last run, so it isn't run again. Untick to run it.")
-                    }
-                    .accessibilityLabel("Already done: \(step.name)")
-                } else {
-                    LabeledContent(step.name) {
-                        Label("Always runs", systemImage: "lock.fill").foregroundStyle(.secondary)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(step.name): always runs")
-                }
+            HStack {
+                Text("The full lock is on to start. Every step is a switch: turn them all off to run one thing alone.")
+                    .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Button("All Off") { form.switchedOn = [] }
+                    .disabled(form.switchedOn.isEmpty)
+                    .accessibilityLabel("Turn every step off")
+                Button("The Lock") { form.switchedOn = Compromised.Step.onByDefault }
+                    .disabled(form.switchedOn == Compromised.Step.onByDefault)
+                    .accessibilityLabel("Turn the full lock back on")
             }
             ForEach(Compromised.Step.switchable, id: \.self) { step in
                 if form.done.contains(step) {
@@ -606,21 +647,19 @@ private struct StepsSection: View {
                 }
             }
             let picks = [(form.filters.count, "filter", "delete"), (form.delegates.count, "delegate", "remove"),
-                         (form.sendAs.count, "send-as address", "remove"), (draftsChosen, "draft", "delete")]
+                         (form.sendAs.count, "send-as address", "remove"), (form.autoReplyOff ? 1 : 0, "auto-reply", "turn off"),
+                         (draftsChosen, "draft", "delete")]
                 .filter { $0.0 > 0 }
-            Text(picks.isEmpty ? "Nothing ticked to undo above: only the lock runs."
+            Text(picks.isEmpty ? "Nothing ticked to undo above."
                  : "Also: " + picks.map { "\($0.2) \($0.0) \($0.1)\($0.0 == 1 ? "" : ($0.1.hasSuffix("s") ? "es" : "s"))" }
                     .joined(separator: ", ") + ".")
                 .font(.callout).foregroundStyle(.secondary)
         } header: {
             Text("Steps")
         } footer: {
-            Text("The sign-out ends every session and revokes app passwords and connected apps: the person signs in again and "
-                 + "re-grants the apps they use.")
+            Text("Every step runs only once you preview the plan and confirm it with the person's address.")
         }
     }
-
-    private var resetDone: Binding<Bool> { done(.password) }
 
     private func done(_ step: Compromised.Step) -> Binding<Bool> {
         Binding(get: { form.done.contains(step) }, set: { if $0 { form.done.insert(step) } else { form.done.remove(step) } })
@@ -759,6 +798,51 @@ private struct CompromisedRunSection: View {
 }
 
 
+// MARK: steps 3 and 4
+
+/// Step 3: the phishing email out of every mailbox, on the Phishing screen (its dry run finds who has a copy, a read; the
+/// trash is previewed and confirmed there). The log reader's “Pull … from Every Mailbox…” opens it with the Message-ID.
+private struct PullEmailSection: View {
+    let openPhishing: (String) -> Void
+
+    var body: some View {
+        Section {
+            HStack {
+                Text("If the account sent phishing, take it out of every mailbox by its Message-ID. Phishing finds who has a copy "
+                     + "first, and keeps the sender's own copy as evidence.")
+                    .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                Button("Open Phishing…") { openPhishing("") }
+                    .accessibilityHint("Opens the Phishing screen. Nothing changes until you preview and confirm there.")
+            }
+        } header: {
+            Text("3. Pull the email from every mailbox").accessibilityAddTraits(.isHeader)
+        }
+    }
+}
+
+/// Step 4: what's left once the accounts are secured, each said with where it's done.
+private struct AfterwardsSection: View {
+    static let items = [
+        ("key", "Give each secured person a new password (Admin console → Users → Reset password), in person or by phone."),
+        ("lock.shield", "Turn on 2-Step Verification for anyone who doesn't have it (the check says who)."),
+        ("globe", "Check their Chrome profiles (Users → their page → Security → Check Chrome): passwords saved in a Chrome "
+            + "signed in with the work account were within the attacker's reach; change the important ones."),
+        ("clock.arrow.circlepath", "Pull the logs again later, with the lock time set in Read the logs: nothing from the "
+            + "attacker's address should come after it."),
+        ("folder", "Export All the logs into a folder, for the record."),
+    ]
+
+    var body: some View {
+        Section {
+            ForEach(Self.items, id: \.1) { symbol, text in
+                Label(text, systemImage: symbol)
+            }
+        } header: {
+            Text("4. Afterwards").accessibilityAddTraits(.isHeader)
+        }
+    }
+}
+
 // MARK: the incident logs
 
 /// Pull Incident Logs: the activity logs an incident needs, for a window, some accounts (none: every one) and an IP
@@ -859,7 +943,7 @@ private struct IncidentLogsSection: View {
                 }
             }
         } header: {
-            Text("Pull incident logs").accessibilityAddTraits(.isHeader)
+            Text("1. Find who's affected: pull the incident logs").accessibilityAddTraits(.isHeader)
         } footer: {
             Text("From Google's audit logs, which can lag by up to a few hours. The phish may have reached others: filter every "
                  + "log by the attacker's address to find each account they reached. Failed sign-ins from it show who typed "

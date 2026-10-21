@@ -167,6 +167,23 @@ public final class UserAccess {
         }
     }
 
+    /// The phones and tablets syncing the account (`GamCommands.printMobileDevices`).
+    public func mobileDevices(of email: String) async -> Result<[Compromised.MobileDevice], Problem> {
+        guard let read = try? GamCommands.printMobileDevices(user: email) else {
+            return .failure(Problem(summary: "Couldn't read the devices: “\(email)” isn't one email address."))
+        }
+        let owner = PythonText.lower(email)
+        return await readNow(read) { stdout in
+            GamOutput.records(stdout).map(Compromised.MobileDevice.init(record:))
+                .filter { $0.owners.contains { PythonText.lower($0) == owner } }
+        }
+    }
+
+    /// The auto-reply as it is now (`show vacation`), read on its own: Check Account's, never a page's cached lists.
+    public func autoReply(of email: String) async -> Result<Vacation, Problem> {
+        await readNow(GamCommands.showVacation(email: email)) { Vacation(showText: $0) }
+    }
+
     public func sendAs(of email: String) async -> Result<[Compromised.SendAs], Problem> {
         await readNow(GamCommands.printSendAs(email: email)) { GamOutput.records($0).map(Compromised.SendAs.init(record:)) }
     }
