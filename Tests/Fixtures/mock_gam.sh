@@ -453,14 +453,22 @@ fi
 # GAM_MOCK_STATE/nolog/<application>, the edition doesn't keep that log: systemErrorExit(GOOGLE_API_ERROR_RC), exit 4
 # (Google's words approximate). A known lie: every fixture event is answered whatever the window (the dates are fixed).
 # The start is only the app's form, `-<N>h` or `-<N>d`. Only the app's shape.
-if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices) true ;; *) false ;; esac; then
+# Chrome (:14790-14797): doReport reads userKey all and maps a named user to the filter DEVICE_USER==<u>, the computer's
+# own login name ("carol"), so a work address finds none of a Mac's events, though a Chromebook's (its account) it does;
+# nothing checks the address, so a non-user isn't refused, and the value is compared exactly as Google may. Its
+# event names are capitals (REPORT_ACTIVITIES_UPPERCASE_EVENTS). The app reads an account both ways: GAM's own `user
+# <address>`, and `user all filter PROFILE_USER_NAME==<address>`, the account signed in to the profile, the one filter
+# modelled, for Chrome with `user all`; a Chrome `select` isn't modelled. An event without an IP address column is never
+# one `ip` keeps.
+if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome) true ;; *) false ;; esac; then
   case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; *) app=$2 ;; esac
-  shift 2; who=""; start=""; end=""; ip=""; max=""; events=""; actor=""
+  shift 2; who=""; start=""; end=""; ip=""; max=""; events=""; actor=""; filter=""; selected=""
   while [ $# -gt 0 ]; do
     case "$1" in
       user) need_value $# "EmailAddress"; who=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift 2 ;;
       select) [ "${2:-}" = users ] || not_modelled "report select ${2:-}"; need_value $(($# - 1)) "UserList"
-              who=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]'); shift 3 ;;
+              who=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]'); selected=1; shift 3 ;;
+      filter|filters) need_value $# "String"; filter="$2"; shift 2 ;;
       start|starttime) need_value $# "Time"; start="$2"; shift 2 ;;
       end|endtime) need_value $# "Time"; end="$2"; shift 2 ;;
       ip) need_value $# "String"; ip="$2"; shift 2 ;;
@@ -477,6 +485,20 @@ if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthto
     *) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac
   case "$unit" in [dD]) hours=$((count * 24)) ;; *) hours=$count ;; esac
   [ -z "$actor" ] || [ "$app" = admin ] || not_modelled "report $app userisactor"
+  match=""
+  if [ "$app" = chrome ]; then
+    [ -z "$selected" ] || not_modelled "report chrome select users"
+    events=$(printf '%s' "$events" | tr '[:lower:]' '[:upper:]')
+    if [ -n "$filter" ]; then
+      [ "$who" = all ] || not_modelled "report chrome user $who with a filter"
+      case "$filter" in PROFILE_USER_NAME==?*) ;; *) not_modelled "report chrome filter $filter" ;; esac
+      by=PROFILE_USER_NAME; match=${filter#PROFILE_USER_NAME==}   # as given: GAM passes a filter unchanged
+    elif [ "$who" != all ]; then
+      by=DEVICE_USER; match=$who; who=all
+    fi
+  else
+    [ -z "$filter" ] || not_modelled "report $app filter"
+  fi
   case "$end" in ""|now|NOW) ;; *) not_modelled "report end $end" ;; esac
   case "$max" in ""|*[!0-9]*) usage_error "Invalid argument: Expected <Number>" ;; esac
   case "$who" in *[[:space:]]*) not_modelled "an account list like $who" ;; esac
@@ -494,7 +516,7 @@ if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthto
   if [ -f "$file" ]; then head -n 1 "$file"; else printf 'name\n'; fi
   missing=""; rc=56; seen=" "
   # The admin log without userisactor reads the events that affected the account (USER_EMAIL), not what it did.
-  if [ "$app" = admin ] && [ -z "$actor" ]; then by=USER_EMAIL; else by=actor.email; fi
+  if [ "$app" = admin ] && [ -z "$actor" ]; then by=USER_EMAIL; elif [ -z "$match" ]; then by=actor.email; fi
   for account in $(printf '%s' "$who" | tr ',' ' '); do
     case "$seen" in *" $account "*) continue ;; esac
     seen="$seen$account "
@@ -509,10 +531,12 @@ if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthto
       fi
     fi
     [ -f "$file" ] || continue
-    tail -n +2 "$file" | awk -F, -v who="$account" -v ip="$ip" -v events="$events" -v by="$by" -v header="$(head -n 1 "$file")" '
+    tail -n +2 "$file" | awk -F, -v who="$account" -v ip="$ip" -v events="$events" -v by="$by" -v only="$match" \
+      -v header="$(head -n 1 "$file")" '
       BEGIN { n = split(header, h, ","); for (i = 1; i <= n; i++) col[h[i]] = i
               m = split(events, e, ","); for (i = 1; i <= m; i++) want[e[i]] = 1 }
-      (who == "all" || ((by in col) && $col[by] == who)) && (ip == "" || $col["ipAddress"] == ip) && (m == 0 || ($1 in want))' \
+      (only != "" ? ((by in col) && $col[by] == only) : (who == "all" || ((by in col) && $col[by] == who))) \
+        && (ip == "" || (("ipAddress" in col) && $col["ipAddress"] == ip)) && (m == 0 || ($1 in want))' \
       | head -n "$max"
   done
   [ -z "$missing" ] || exit "$rc"
@@ -1008,6 +1032,56 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "cros" ]; then
   done
   [ -n "$fj" ] || not_modelled "print cros without formatjson"
   print_formatjson deviceId cros.json
+  exit 0
+fi
+
+# `gam print chromeprofiles filter user_email="<address>" fields <ChromeProfileFieldNameList> formatjson` -> GAM's CSV,
+# `name`, `profileId` and a `JSON` column per profile (doPrintShowChromeProfiles, gam/__init__.py:26525-26592 at 7.48.30;
+# a person's page, Security tab): the profiles in mock_gam/chrome_profiles.json signed in with that address, none the
+# titles alone (exit 0). Only that filter is modelled (the Chrome Management API's own field name, the address quoted);
+# any other filter or option, or no formatjson, is refused; a field outside the grammar's <ChromeProfileFieldName> is
+# getFieldsList's invalid choice. GAM_MOCK_STATE/noscope/chromemanagement is an authorization with no Chrome Management
+# scope (buildGAPIObject: NO_SCOPES_FOR_API_RC, 15, before any request); GAM_MOCK_STATE/denied/chromeprofiles the API's
+# refusal, without the Profiles scope (entityActionFailedExit, ACTION_FAILED_RC, 50; Google's words approximate).
+# Not modelled: whether the API matches the address in another case, and what an unreported profile lacks.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "chromeprofiles" ]; then
+  shift 2; fj=""; owner=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      filter|filters) need_value $# "String"
+        case "$2" in user_email=\"?*\") owner=${2#user_email=\"}; owner=${owner%\"} ;; *) not_modelled "print chromeprofiles filter $2" ;; esac
+        case "$owner" in *\"*|*\\*|*\**|*[[:space:]]*) not_modelled "print chromeprofiles filter $2" ;; esac
+        shift 2 ;;
+      fields) need_value $# "ChromeProfileFieldNameList"; [ -n "$2" ] || empty_arg "ChromeProfileFieldNameList"
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          case "$field" in
+            affiliationstate|annotatedlocation|annotateduser|attestationcredential|browserchannel|browserversion|deviceinfo|\
+            displayname|extensioncount|firstenrollmenttime|identityprovider|lastactivitytime|lastpolicyfetchtime|\
+            lastpolicysynctime|laststatusreporttime|name|osplatformtype|osplatformversion|osversion|policycount|profileid|\
+            profilepermanentid|reportingdata|useremail|userid) ;;
+            *) invalid_choice "$field" "affiliationstate|annotatedlocation|annotateduser|attestationcredential|browserchannel|browserversion|deviceinfo|displayname|extensioncount|firstenrollmenttime|identityprovider|lastactivitytime|lastpolicyfetchtime|lastpolicysynctime|laststatusreporttime|name|osplatformtype|osplatformversion|osversion|policycount|profileid|profilepermanentid|reportingdata|useremail|userid" ;;
+          esac
+        done
+        shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print chromeprofiles with $1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print chromeprofiles without formatjson"
+  [ -n "$owner" ] || not_modelled "print chromeprofiles without a user_email filter"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/noscope/chromemanagement" ]; then
+    printf '\nERROR: There are no scopes authorized for the API(s): Chrome Management API\n' 1>&2; exit 15
+  fi
+  printf 'Getting all Chrome Profiles that match query (user_email="%s")\n' "$owner" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/chromeprofiles" ]; then
+    printf '\nERROR: Chrome Profile: user_email="%s", Print Failed: Request had insufficient authentication scopes.\n' "$owner" 1>&2
+    exit 50
+  fi
+  echo "name,profileId,JSON"
+  while IFS= read -r record; do
+    [ "$(json_text userEmail "$record")" = "$owner" ] || continue
+    gam_row "$(json_text name "$record")" "$(json_text profileId "$record")" "$record"
+  done < "$GAM_MOCK_FIXTURES/chrome_profiles.json"
   exit 0
 fi
 

@@ -28,9 +28,11 @@ left to finish. Compromised Account is for someone who stays but whose account w
 attacker commonly changes (filters, forwarding, delegates, send-as addresses, recovery details, 2-Step Verification,
 admin roles, leftover drafts), then runs the lock (reset, sign-out, forwarding, IMAP and POP off) with the filters, delegates and
 send-as addresses you tick removed and the leftover drafts (all, or by subject) deleted; a person's page in Users opens it for them
-(Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), and
-Set Temporary Password (Actions, or their Security tab) gives them a password to change at their next sign-in, shown once. Pull
-Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes and more) for some
+(Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), their
+Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last
+used), and Set Temporary Password (Actions, or their Security tab) gives them a password to change at their next
+sign-in, shown once. Pull
+Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes, Chrome and more) for some
 accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder. Reports lists the people behind each of the directory's counts and
 reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
@@ -60,7 +62,7 @@ A person's page, opened from Users: an Actions menu for what changes the account
 
 | Calendar | Security |
 |---|---|
-| ![A person's Calendar tab: who can see their calendar, each with Remove…, an access level and a field to share it](docs/screenshots/person-calendar.png) | ![A person's security: admin role, 2-step verification and recovery email](docs/screenshots/person-security.png) |
+| ![A person's Calendar tab: who can see their calendar, each with Remove…, an access level and a field to share it](docs/screenshots/person-calendar.png) | ![A person's security: admin role, 2-step verification and recovery email, and their Chrome profiles checked: each computer, system, Chrome and when it was last used](docs/screenshots/person-chrome.png) |
 
 Groups: the domain's groups, and a group's members, owners first, with Add Members… and a Remove… for
 each member.
@@ -192,6 +194,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
 | Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
+| Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

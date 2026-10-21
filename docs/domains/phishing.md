@@ -1,9 +1,8 @@
 # Phishing
 
 **One line:** take one email out of every mailbox that has it, by its Message-ID, for a phishing email sent from a
-compromised account. On 2026-10-19 a user's account was compromised and sent an Evite-style lure to Bcc'd
-recipients. The operator signed her out and reset her password in this app, then had to go to Terminal to trash
-the email everywhere. Find lists who has a copy, using GAM's own dry run, which is a read. Trash moves those copies
+compromised account. When a taken-over account Bcc's a phishing email, the operator can sign the person out and
+reset the password in this app, but trashing the email everywhere meant going to Terminal. Find lists who has a copy, using GAM's own dry run, which is a read. Trash moves those copies
 to each person's Trash, where they stay for 30 days. It runs one ChangeCore step per mailbox and keeps the
 sender's Sent copy as evidence. Who it was addressed to, outside the domain first, is read from the sender's own copy
 (its Bcc only when it was written in Gmail).
@@ -92,7 +91,7 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   `{ }` OR syntax is refused as well, and so are bracketed literals, non-ASCII and anything over 998
   characters. A free-form Gmail query is a broader tool and isn't built (see the end of this runbook).
 - **D2, the query is `rfc822msgid:<id> -in:sent`.** The compromised sender's Sent copy (also an Inbox copy
-  if she Bcc'd herself, since it's one message) is left as evidence. Replies and forwards have their own
+  if they Bcc'd themselves, since it's one message) is left as evidence. Replies and forwards have their own
   Message-IDs and aren't touched.
 - **D3, the dry run is a reviewed `GamRead`, not a held write.**
   - It changes nothing (P1).
@@ -211,9 +210,9 @@ In Gmail: Trash › Move to Inbox. With GAM: `gam user <email> untrash messages 
 (untrash searches Trash, P6). An Untrash for the same mailboxes is a natural next slice if the operator wants it.
 
 ## To do common tasks here
-- **Several Message-IDs at once, or by sender and day** (operator, 2026-10-19). The live incident went out as about
-  14 Message-IDs: two mass-send waves, colleagues' forwards and replies carrying the same link, and the outside
-  lures that started it. One Find over a list of IDs (each validated, then one `query` per ID or one OR'd query),
+- **Several Message-IDs at once, or by sender and day** (operator). One phishing run can span many
+  Message-IDs: several mass sends, colleagues' forwards and replies carrying the same link, and the outside
+  email that started it. One Find over a list of IDs (each validated, then one `query` per ID or one OR'd query),
   or over `from:<sender>` and a day, would replace the pastes. A sender-and-day search widens what can be trashed,
   so it needs Find's sample to show every distinct email it matched.
 - **A Gmail search instead of a Message-ID** (`from:`, `subject:`), for an attack that sent many different

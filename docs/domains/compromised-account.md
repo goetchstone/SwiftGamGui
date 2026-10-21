@@ -3,7 +3,8 @@
 **One line:** for a person who stays employed but whose account was taken over: Check Account reads what an attacker
 commonly changes (and changes nothing), the operator ticks what to undo, and the lock plus the picks run as one
 ChangeCore preview, the person's address typed. Built 2026-10-19: slice 1, then slice 2, Pull Incident Logs (every
-activity log an incident needs, by account and attacker IP, with CSV export). The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
+activity log an incident needs, by account and attacker IP, with CSV export); 2026-10-21 slice 5, Chrome (its log by
+the profile's account, and a person's Chrome profiles). The plan and its defaults: [docs/plans/2026-10-19-compromised-account.md](../plans/2026-10-19-compromised-account.md).
 
 **Owns invariants:** #1 (each pick one argv element: a delegate or send-as address must be one plain address, a filter
 ID list offboarding's checked one), #2 (one held preview, the precondition at the run), #10 (nothing from Siri or a
@@ -23,6 +24,9 @@ let only `requires` stop a step; it may not tolerate failures).
   `forwardingAddresses`, `sendAs`, `adminRoles`; `delegates` is offboarding's).
 - `App/CompromisedView.swift` (sidebar "Compromised"); `CompromisedConfirmSheet` in `App/ChangePreviewSheet.swift`, where
   every confirmation is made (`WriteRouteTests`).
+- Chrome (slice 5): `GamEngine/ChromeProfiles.swift` (a profile in words), `Directory/ChromeProfileReads.swift` (a person's,
+  kept per person), `UserAccess.chromeProfiles`, the Chrome cases in `ActivityLogs`; the Security tab's
+  `ChromeProfilesSection` in `App/UsersView.swift`. Tests: `GamEngineTests/ChromeReadsTests.swift`.
 
 ## How it works
 0. **From a person's page** (the operator, 2026-10-19: "a button to do that for anyone"): Users → Actions → **Secure
@@ -75,6 +79,11 @@ let only `requires` stop a step; it may not tolerate failures).
 
 ## Testing / live verification
 `swift test --package-path Packages/GamKit --filter "Compromised|NativeArgv"`.
+
+**L1c (read-only, the operator's go):** a person's Security tab → Check Chrome: their profiles match the Admin console's
+Devices → Chrome → Managed browsers' profiles; a person with none says none; a missing scope says so. Pull Incident Logs
+with Chrome ticked for that person: their events (if Chrome reports any) match the Admin console's Chrome log filtered by
+"Profile user".
 
 **L1 (read-only, the operator's go):** Check Account on the real taken-over account: every list matches what the Admin
 console and Gmail's settings show (filters, forwarding, delegates, send-as, recovery, 2SV, roles). Pull Incident Logs
@@ -157,6 +166,52 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   glob character, or a message whose headers the fixtures lack is not modelled. The canned pair of rows that answered
   every other `print messages` until 2026-10-19 is gone.
 - **Not modelled, for the live check to tell:** Gmail's own search semantics beyond those terms.
+
+## Chrome (slice 5)
+The operator, during an incident: does this person use Chrome, signed in with their work account, and do they sign in to
+websites with it? Two reads, nothing changes.
+- **Chrome's log in Pull Incident Logs** (`ActivityApplication.chrome`, off by default): Chrome's own events, its
+  warnings flagged (`PASSWORD_REUSE`, `PASSWORD_BREACH`, `UNSAFE_SITE_VISIT`, `MALWARE_TRANSFER`), each in words with
+  its URL, the name signed in with, the computer and Chrome's result. No accounts typed reads the whole tenant's (`user
+  all`). **An account is read both ways** (`GamCommands.ChromeMatch`, merged by `Row.identity`, each event once):
+  - by the profile's account, `user all filter PROFILE_USER_NAME==<address>` ("GSuite user name of the profile");
+  - by GAM's own `user <address>`, which doReport (:14790-14797) turns into `DEVICE_USER==<address>`: a Chromebook's
+    account, but on a Mac or PC the computer's login name ("carol"), so alone it finds none of a Mac's events.
+  Neither alone finds every event: ChromeOS sign-ins, data-protection events and extension requests carry no profile
+  (Google's appendix, review 2026-10-21), and on a Mac or PC such an event names no account at all, so it shows only when
+  every account is read (the log's `about` says so). Each read is its own; one that fails fails the log, one at the cap
+  marks it capped. A row's person (`Row.who`) is the profile's account, else the actor, else the device's user.
+- **Case and typos** (review 2026-10-21): GAM passes a filter as given, and Google may match it exactly, so the address
+  goes lowercased (`GamCommands.filterAddress`: Google's address characters only, nothing a filter could read as more
+  than the value), and the mock compares exactly. Chrome's per-account reads never fail for an address that isn't a
+  user (no "Does not exist" path): they read none, as if nothing happened, so with Chrome picked Pull Incident Logs waits
+  for the directory and checks typed accounts against it (other logs refuse such an address themselves). Each account's
+  two reads run at once; an event the second repeats is dropped, never two alike in one read.
+- **A person's Chrome profiles** (Users → a person → Security → **Check Chrome**; `ChromeProfileReads`, kept per person
+  as the mailbox searches are): `print chromeprofiles filter user_email="<address>" fields … formatjson`
+  (`GamCommands.printChromeProfiles`), the Chrome Management API's own field name (customers.profiles.list; GAM's wiki
+  writes the same fields camel-cased), the address quoted and lowercased. Each profile's name, computer (hostname, else
+  model), system, Chrome, last used, first seen, and whether the computer is the organization's (`AFFILIATED_…`). Never
+  saved passwords: no API gives them.
+- **What it needs:** GAM's "Chrome Management API - Profiles" scope (read-only is enough; authorized again from Setup's
+  fresh setup) and managed profile reporting on in the Admin console's Chrome settings. With no Chrome Management scope
+  at all GAM exits 15 before any request ("There are no scopes authorized for the API(s): Chrome Management API"); with
+  another Chrome Management scope but not Profiles the API refuses, exit 50. Either is said in GAM's words, never "no
+  profiles", and only those (exit 15 or a scope refusal) add how to authorize the scope (`ChromeProfiles.scopeNote`): an
+  invalid filter or a timeout can't be fixed by a scope. **Empty is not "doesn't use Chrome":** the screen says reporting
+  may be off.
+- **The mock:** `report_chrome.csv` (carol@'s Mac: her profile's login to erp.example.net, her password typed on the
+  phishing page, an extension request naming only "carol"; dana@ going past Chrome's phishing warning on her Mac, and on
+  her Chromebook a failed sign-in and a breached password, the second found both ways; alice@'s login);
+  `chrome_profiles.json` (carol@ on two computers, one the organization's; dana@ on one; alice@ none). The report handler
+  models GAM's `DEVICE_USER` match and the app's `PROFILE_USER_NAME` filter, compared exactly, and refuses any other
+  filter, a filter with a named user, and Chrome's `select`. `noscope/chromemanagement` is exit 15,
+  `denied/chromeprofiles` exit 50.
+- **Not modelled, for the live check to tell:** whether the API takes `user_email` with the address quoted (the API's
+  list) or wants `userEmail` (GAM's wiki): the wrong one fails loudly (exit 50, invalid argument); whether Google
+  matches a filter's case; whether Chrome's events carry an IP address (the mock's have none, so an `ip` keeps none);
+  whether `actor.email` is set on them; which events this tenant reports at all (website logins and password events need
+  Chrome's event reporting turned on).
 
 ## Next
 - The live checks L1 and L2, then the on-device log reader (docs/plans/2026-10-19-on-device-log-reader.md) over these rows.

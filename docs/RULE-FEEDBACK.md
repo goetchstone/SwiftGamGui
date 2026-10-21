@@ -22,6 +22,19 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-21 — A filtered read's fixture held only rows its own filter could find
+- **What happened:** the Chrome log read an account by `PROFILE_USER_NAME`. Its fixture's every event had that
+  parameter, so the strict mock passed; Google's appendix lists ten of nineteen Chrome events without it (ChromeOS
+  sign-ins among them), which the read would have dropped as "no events". The gam-command-reviewer caught it before the
+  PR; the app now reads each account two ways (docs/domains/compromised-account.md, "Chrome").
+- **Invariant in force:** "the mock lies" (#11's neighbour): make the mock fail the way GAM fails, checked against
+  the grammar.
+- **Why it didn't hold:** the grammar says what GAM accepts, not what the API returns; a server-side filter's misses are
+  in the API's record shapes, and the fixture was written from the rows the read was meant to find.
+- **Would a rule have caught it?** only if enforced differently: a fixture for a filtered read also holds a record of
+  each documented shape the filter can't match, with a test that says where it shows.
+- **Enforcement home if changed:** skill (`pre-commit` item 6: "a filtered read's fixture holds a row the filter misses").
+
 ## 2026-10-19 — A domain-wide read's parser failed open, and a mock helper's wording was older than GAM's
 - **What happened:**
   - The Phishing screen's Find reads GAM's dry run of `trash messages` line by line. It counted only the lines

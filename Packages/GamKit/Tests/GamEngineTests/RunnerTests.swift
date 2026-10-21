@@ -64,14 +64,16 @@ struct RunnerTests {
         ])
     }
 
+    /// The timeout stops the process: a 10-minute sleep ends long before it would. The bound is wall time, as it must
+    /// be, but far from both ends, so a busy CI runner can't cross it (failure-log 2026-10-20).
     @Test func aRunPastItsTimeoutIsStopped() async throws {
         let sleeper = GamRunner(binary: URL(filePath: "/bin/sleep"))
         let clock = ContinuousClock()
         let started = clock.now
         await #expect(throws: GamRunnerError.timedOut(seconds: 0)) {
-            try await sleeper.runRaw(["30"], timeout: .milliseconds(300))
+            try await sleeper.runRaw(["600"], timeout: .milliseconds(300))
         }
-        #expect(clock.now - started < .seconds(10))
+        #expect(clock.now - started < .seconds(60))
     }
 
     @Test func outputIsCappedNotUnbounded() async throws {

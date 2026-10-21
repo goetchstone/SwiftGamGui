@@ -35,8 +35,9 @@ status=0
 # every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
 # sheet (the plan also deletes the drafts sharing the newest one's subject); `result`, a made-up finished run; `reports`, Pull Incident Logs for her, then every account's by the address on
 # her flagged sign-in; users-secure, carol's page in Users taking Actions → Secure Account…, which opens Compromised
-# and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its Bcc list).
-# person-password, her Security tab with Set Temporary Password's preview (the password masked; it shows once, after a run).
+# and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its Bcc list);
+# person-chrome, her Security tab with her Chrome profiles read; person-password, her Security tab with Set Temporary
+# Password's preview (the password masked; it shows once, after a run).
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
@@ -57,6 +58,7 @@ for spec in home:home users:users groups:groups setup:setup \
             users-secure:users:carol@example.com:secure person-search:users:carol@example.com:search \
             person-password:users:carol@example.com:password \
             narrow-person-search:users:carol@example.com:search:smallest \
+            person-chrome:users:carol@example.com:chrome narrow-person-chrome:users:carol@example.com:chrome:smallest \
             compromised-reports:compromised:carol@example.com:reports \
             narrow-compromised-reports:compromised:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \

@@ -1,8 +1,8 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-19): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) in #83.** On 2026-10-19 a user's account was taken over and sent a phishing email
-from Gmail (SPF, DKIM and DMARC passed: it came from her account). The operator signed her out and reset her
-password, then found the rest needed the Admin console or GAM in Terminal, and asked for all of it in GAM GUI, now.
+**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built.** When an account is taken over and sends phishing from Gmail, signing the person
+out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
+operator asked for all of it in GAM GUI.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
 asking (the operator: "get it done asap"); each is below, for the operator to change.
 
@@ -18,7 +18,7 @@ names), `UserAccess`'s reads, ChangeCore's held preview, typed address and Stop,
 rows. Nothing in offboarding changes.
 
 ## The flow
-0. **From anyone's page** (asked 2026-10-19, after a second account needed it): Users → Actions → **Secure Account…**
+0. **From anyone's page** (the operator: "a button to do that for anyone"): Users → Actions → **Secure Account…**
    opens this screen for that person and checks them. "Password already reset" stays for the operator to tick.
 1. **Check Account** (read-only, nothing runs): P's account (`info user`), every Gmail filter with what it does,
    auto-forwarding and the forwarding addresses, mail delegates, send-as addresses, and admin role assignments. Each
@@ -99,6 +99,12 @@ rules, starting at `in:sent newer_than:3d` to find other phishing waves the acco
 From the operator (2026-10-19): "add removing leftover phishing drafts", then "I just need to clear the drafts on their own".
 The check lists the drafts (newest 5,000); all of them, or those whose subject matches, are deleted in one held step, as
 Gmail's Discard does (a trashed draft may still be sendable: review 2026-10-19). Scheduled sends are left out. Runbook: docs/domains/compromised-account.md, "Leftover drafts".
+
+## Slice 5: Chrome
+From the operator (2026-10-21), checking whether a person uses Chrome and its saved passwords: Chrome's log in Pull Incident
+Logs, read by the account signed in to the profile (GAM's own match for a named user is the computer's login name), and a
+person's Chrome profiles on their Security tab. Reads only; saved passwords are never readable. Runbook:
+docs/domains/compromised-account.md, "Chrome".
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen
