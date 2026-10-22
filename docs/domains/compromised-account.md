@@ -248,8 +248,9 @@ Who has apps and AI agents connected, and what they did. Reads only.
   Transparency, Looker Studio, Groups (Cloud Identity), Profiles, Secure LDAP, directory sync, Google Cloud, Cloud Search,
   Classroom, data migration, Meet hardware, Assignments and Graduation. Not Currents (`gplus`) or Jamboard, whose services
   ended. The mock answers each, and capitalizes events where doReport does (REPORT_ACTIVITIES_UPPERCASE_EVENTS).
-- **Connected apps** (`ConnectedApps`, `GamCommands.printTokens`, `ConnectedAppsRead`): `print tokens` for every account but
-  the suspended ones (GAM's default), on Incident's step 1, and `user P print tokens` in Check Account. Grants grouped by
+- **Connected apps** (`ConnectedApps`, `GamCommands.printTokens`, `ConnectedAppsRead`): `user P print tokens` in Check Account,
+  and `print tokens` for every account but the suspended ones (GAM's default), which moved to its own row on Reports on
+  2026-10-22 (a check of the whole tenant, not of an incident: [audit-reports.md](audit-reports.md)). Grants grouped by
   app: who granted it, what it may do in words (`describe`: all of Gmail, Gmail forwarding, all of Drive, admin and Cloud
   are broad), and whether its name looks like an AI assistant or agent (`looksLikeAI`: whole words, so "Promotion
   Manager" isn't Motion). AI first, then the broadest reach, then the most people. Revoking stays the lock's sign-out

@@ -306,8 +306,8 @@ final class CompromisedChangesTests {
         #expect(writes().isEmpty)
     }
 
-    /// Every account's connected apps, read from Incident: AI assistants and agents first, never a suspended account's grants,
-    /// kept for the tenant; a refusal is GAM's words.
+    /// Every account's connected apps, read for Reports: AI assistants and agents first, never a suspended account's grants,
+    /// counted and said in words, kept for the tenant; a refusal is GAM's words.
     @Test func everyAccountsConnectedAppsAreRead() async throws {
         try await connect()
         let reads = ConnectedAppsRead(setup: setup, access: access)
@@ -315,6 +315,13 @@ final class CompromisedChangesTests {
         guard case .read(.success(let apps), _)? = reads.state else { Issue.record("\(String(describing: reads.state))"); return }
         #expect(apps.map(\.name) == ["ChatGPT", "Read AI Notetaker", "Mail Sync Pro", "Zoom", "macOS"])
         #expect(apps.first { $0.name == "Zoom" }?.users == ["alice@example.com", "dana@example.com"], "bob@ is suspended")
+        #expect(ConnectedApps.Summary(apps).sentences == [
+            "3 people have given 5 apps access.",
+            "2 apps look like an AI assistant or agent by name, granted by 1 person; none with broad access.",
+            "1 app has broad access: 1 to all of Gmail or reading and changing mail.",
+            "3 apps were granted by one person only, among them 2 that look like AI and 1 with broad access.",
+            "At most 2 people granted any one app.",
+        ])
         try FileManager.default.createDirectory(at: state.appending(path: "denied"), withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: state.appending(path: "denied/tokens").path, contents: Data())
         await reads.read()
