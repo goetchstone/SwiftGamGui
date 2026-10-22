@@ -186,8 +186,8 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
 - **Not modelled, for the live check to tell:** Gmail's own search semantics beyond those terms.
 
 ## Chrome (slice 5)
-The operator, during an incident: does this person use Chrome, signed in with their work account, and do they sign in to
-websites with it? Two reads, nothing changes.
+After a takeover: does the person use Chrome signed in with their work account, and sign in to websites with it? What
+that Chrome saved was within the attacker's reach. Two reads, nothing changes.
 - **Chrome's log in Pull Incident Logs** (`ActivityApplication.chrome`, off by default): Chrome's own events, its
   warnings flagged (`PASSWORD_REUSE`, `PASSWORD_BREACH`, `UNSAFE_SITE_VISIT`, `MALWARE_TRANSFER`), each in words with
   its URL, the name signed in with, the computer and Chrome's result. No accounts typed reads the whole tenant's (`user

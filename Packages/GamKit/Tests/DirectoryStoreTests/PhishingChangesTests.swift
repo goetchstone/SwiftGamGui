@@ -22,7 +22,7 @@ final class PhishingChangesTests {
     let argvLog: URL
     let auditURL: URL
     let state: URL
-    static let pasted = "Message-ID: <CAPh1sh+Invite=0001@mail.example.com>"
+    static let pasted = "Message-ID: <CAPh1sh+Notice=0001@mail.example.com>"
     static let message = try! GamCommands.MessageID(validating: pasted)
 
     init() throws {
@@ -86,13 +86,13 @@ final class PhishingChangesTests {
         #expect(search.message == Self.message)
         #expect(search.copies.mailboxes.map(\.email) == ["alice@example.com", "carol@example.com", "dana@example.com"])
         #expect(search.copies.mailboxes.map(\.finding) == [.copies(1), .none, .copies(2)])
-        #expect(search.commandLine == "gam all users trash messages query 'rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent' "
+        #expect(search.commandLine == "gam all users trash messages query 'rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent' "
                 + "notquick max_to_trash 1")
         #expect(trashCalls() == [GamCommands.findMessageCopies(Self.message).argv])
         // What the ID matched, as the first mailbox has it: to check it's the phish before trashing it everywhere.
         let sample = try #require(search.sample)
         #expect(sample.mailbox == "alice@example.com" && sample.copy.from == "Carol Clark <carol@example.com>"
-                && sample.copy.subject == "You're invited: Fall party" && search.sampleProblem == nil)
+                && sample.copy.subject == "Shared file: Q4 invoices" && search.sampleProblem == nil)
         #expect(!FileManager.default.fileExists(atPath: state.appending(path: "trashed").path), "a dry run trashes nothing")
         #expect(AuditLog.records(at: auditURL).isEmpty, "a read isn't audited as a change")
     }
@@ -195,7 +195,7 @@ final class PhishingChangesTests {
         #expect(listed.outside == ["pat@partner.example", "guest@example.org"])
         #expect(listed.inside == ["carol@example.com", "alice@example.com", "bob@example.com", "DANA@example.com",
                                   "team@example.net", "ops@alias.example.net"])
-        #expect(listed.commandLine == "gam user carol@example.com print messages query rfc822msgid:CAPh1sh+Invite=0001@mail.example.com "
+        #expect(listed.commandLine == "gam user carol@example.com print messages query rfc822msgid:CAPh1sh+Notice=0001@mail.example.com "
                 + "includespamtrash max_to_print 50 headers all showlabels showdate")
         #expect(trashCalls().isEmpty && AuditLog.records(at: auditURL).isEmpty, "reads only")
     }

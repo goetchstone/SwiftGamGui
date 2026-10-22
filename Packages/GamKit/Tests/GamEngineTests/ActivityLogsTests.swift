@@ -63,11 +63,11 @@ struct ActivityLogsTests {
     /// Gmail's parameters are nested: each is named by its chain, as the one shape keeps them.
     @Test func gmailsNestedParametersAreNamedByTheirChain() async throws {
         let send = try #require(try await read(.gmail, users: ["carol@example.com"]).first)
-        #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.subject", value: "You are invited to a party")))
+        #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.subject", value: "Shared file: Q4 invoices")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.num_message_attachments", value: "1")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "type", value: "email")))
         #expect(!send.parameters.contains { $0.name.hasPrefix("parameters") }, "never a raw flattened column")
-        #expect(send.details.first == "message_info.subject: You are invited to a party")
+        #expect(send.details.first == "message_info.subject: Shared file: Q4 invoices")
     }
 
     @Test func appGrantsSayTheAppAndItsAccess() async throws {

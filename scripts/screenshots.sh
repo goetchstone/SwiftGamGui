@@ -76,11 +76,11 @@ for spec in home:home users:users groups:groups setup:setup \
             narrow-onboard:onboard:Salesperson:create:smallest \
             onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \
             onboard-welcome:onboard:Salesperson:welcome \
-            phishing:phishing phishing-found:phishing:CAPh1sh+Invite=0001@mail.example.com \
-            phishing-recipients:phishing:CAPh1sh+Invite=0001@mail.example.com:recipients:1100x1100 \
-            phishing-confirm:phishing:CAPh1sh+Invite=0001@mail.example.com:confirm \
-            phishing-result:phishing:CAPh1sh+Invite=0001@mail.example.com:result \
-            narrow-phishing:phishing:CAPh1sh+Invite=0001@mail.example.com::smallest; do
+            phishing:phishing phishing-found:phishing:CAPh1sh+Notice=0001@mail.example.com \
+            phishing-recipients:phishing:CAPh1sh+Notice=0001@mail.example.com:recipients:1100x1100 \
+            phishing-confirm:phishing:CAPh1sh+Notice=0001@mail.example.com:confirm \
+            phishing-result:phishing:CAPh1sh+Notice=0001@mail.example.com:result \
+            narrow-phishing:phishing:CAPh1sh+Notice=0001@mail.example.com::smallest; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"
   rm -f "$file"

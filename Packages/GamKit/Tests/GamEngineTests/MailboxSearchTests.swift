@@ -29,17 +29,17 @@ struct MailboxSearchTests {
         let sent = try MailboxSearch.messages(result, argv: argv)
         #expect(sent.count == 1)
         let phish = try #require(sent.first)
-        #expect(phish.subject == "You're invited: Fall party" && phish.from == "Carol Clark <carol@example.com>")
+        #expect(phish.subject == "Shared file: Q4 invoices" && phish.from == "Carol Clark <carol@example.com>")
         #expect(phish.to == ["carol@example.com"] && phish.cc.isEmpty && phish.labels == ["SENT"])
         #expect(phish.bcc == ["alice@example.com", "bob@example.com", "DANA@example.com", "pat@partner.example", "guest@example.org",
                               "team@example.net", "ops@alias.example.net"], "\(phish.bcc)")
-        #expect(phish.recipients.count == 8 && phish.messageID == "<CAPh1sh+Invite=0001@mail.example.com>")
+        #expect(phish.recipients.count == 8 && phish.messageID == "<CAPh1sh+Notice=0001@mail.example.com>")
         #expect(phish.when != nil)
     }
 
     /// Each modelled term narrows the search as Gmail does; none found is GAM's exit 60, read as no messages.
     @Test func eachTermIsModelledOrRefused() async throws {
-        let (spam, spamArgv) = try await search("alice@example.com", "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com in:spam")
+        let (spam, spamArgv) = try await search("alice@example.com", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam")
         #expect(try MailboxSearch.messages(spam, argv: spamArgv).map(\.id) == ["19a0c0ffee000002"])
         let (none, noneArgv) = try await search("carol@example.com", "in:inbox")
         let nothing = try MailboxSearch.messages(none, argv: noneArgv)

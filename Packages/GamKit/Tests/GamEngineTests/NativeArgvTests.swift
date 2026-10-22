@@ -70,14 +70,14 @@ struct NativeArgvTests {
         // 8186-8190 `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]`.
         // The dry run has no `doit` (GAM 7.48.30's _processMessagesThreads then trashes nothing); the run is one mailbox's.
         ("find_message_copies", GamCommands.findMessageCopies(phish),
-         ["all", "users", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent",
+         ["all", "users", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent",
           "notquick", "max_to_trash", "1"]),
         ("trash_message", try! GamCommands.trashMessage(email: "<email>", phish, copies: 2),
-         ["user", "<email>", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent",
+         ["user", "<email>", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent",
           "notquick", "max_to_trash", "2", "doit"]),
     ]
 
-    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Invite=0001@mail.example.com>")
+    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
 
     /// A temporary password is never one of GAM's words in `password`'s place (5838-5841), so GAM always sets it as
     /// given; and the command shown and audited masks it.
@@ -202,15 +202,15 @@ struct NativeArgvTests {
     /// What an operator pastes from the headers, each to the same bare ID: Gmail's `rfc822msgid:` takes it without
     /// the brackets.
     @Test func aMessageIDIsTakenAsPasted() throws {
-        for pasted in ["<CAPh1sh+Invite=0001@mail.example.com>", "CAPh1sh+Invite=0001@mail.example.com",
-                       "  Message-ID: <CAPh1sh+Invite=0001@mail.example.com>\n", "message-id:<CAPh1sh+Invite=0001@mail.example.com>",
-                       "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com", "RFC822MSGID:<CAPh1sh+Invite=0001@mail.example.com>"] {
+        for pasted in ["<CAPh1sh+Notice=0001@mail.example.com>", "CAPh1sh+Notice=0001@mail.example.com",
+                       "  Message-ID: <CAPh1sh+Notice=0001@mail.example.com>\n", "message-id:<CAPh1sh+Notice=0001@mail.example.com>",
+                       "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com", "RFC822MSGID:<CAPh1sh+Notice=0001@mail.example.com>"] {
             #expect(try GamCommands.MessageID(validating: pasted) == Self.phish, "\(pasted)")
         }
         // Every other character of RFC 5322's atext, as mailers use them (but `*`).
         let odd = "a!#$%&'+-/=?^_`|~.b@x-y.example"
         #expect(try GamCommands.MessageID(validating: "<\(odd)>").id == odd)
-        #expect(Self.phish.query == "rfc822msgid:CAPh1sh+Invite=0001@mail.example.com -in:sent")
+        #expect(Self.phish.query == "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent")
     }
 
     /// The ID is one Gmail term: nothing that would end it, start another operator, group or OR it, or split on a

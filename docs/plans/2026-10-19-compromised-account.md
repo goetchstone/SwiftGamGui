@@ -3,8 +3,8 @@
 **Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built.** When an account is taken over and sends phishing from Gmail, signing the person
 out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
 operator asked for all of it in GAM GUI.
-This is that response, for a person who **stays employed**: no manager, no hand-over. Defaults were chosen without
-asking (the operator: "get it done asap"); each is below, for the operator to change.
+This is that response, for a person who **stays employed**: no manager, no hand-over. Each default is below, for the
+operator to change.
 
 Placeholders: P the person. Grammar lines are `Vendor/gam7/GamCommands.txt` (GAM 7.48.30); GAM's source is
 `src/gam/__init__.py` at tag v7.48.30.
@@ -68,15 +68,14 @@ User labels show as their IDs (`labelidsonly`, offboarding's read): system label
 what an attacker's filter uses, and those are named.
 
 ## Slice 2: Pull Incident Logs
-The operator, 2026-10-19: "we need to be able to just grab these logs via gam when something like this happens". That
-day they exported the Gmail, OAuth, Access, Chat and sign-in logs from the Admin console by hand, and reading them
-together found every compromised account: the sign-in log mattered most (success, failure, the challenge, "is
-suspicious", Google's warnings), and filtering every log by the attacker's IP was the most useful view. Failed sign-ins
-from that IP showed who had typed their password into the fake page.
+Why: when an account is taken over, its logs read together (sign-ins, OAuth, Gmail, Access, Chat) find every other
+account the attacker reached. The sign-in log matters most (success, failure, the challenge, "is suspicious", Google's
+warnings), and filtering every log by the attacker's IP is the most useful view: failed sign-ins from it show who typed
+their password into the fake page. Without this, those logs are exported from the Admin console one at a time.
 
 - **One read per log:** `report <application> (user <u>|user all|select users <list>) start -<hours>h end now [ip X]
   maxactivities 1000` (4730-4744), for login, token, gmail, accessevaluation, chat, useraccounts, drive, takeout, admin
-  and mobile. The first six are on by default (the logs read that day, and account changes). The Admin console's
+  and mobile. The logs an incident needs first are on by default (see the runbook's list). The Admin console's
   "Access" log is the Reports API's `access_evaluation` (cookie validation and access-token requests; Google's appendix).
 - **The window:** a day, 3 days (the default), a week, a month or six months. `end now` is named so the Gmail log's
   30-day rule (doReport) doesn't move it. **The accounts:** empty for every account, else up to 20 (the field starts
@@ -96,20 +95,20 @@ most 50 messages, Spam and Trash included), each message with its To, Cc and Bcc
 rules, starting at `in:sent newer_than:3d` to find other phishing waves the account sent.
 
 ## Slice 4: leftover drafts
-From the operator (2026-10-19): "add removing leftover phishing drafts", then "I just need to clear the drafts on their own".
+A taken-over account can be left with phishing drafts anyone signed in can send: they're removed, all or by subject, alone if need be.
 The check lists the drafts (newest 5,000); all of them, or those whose subject matches, are deleted in one held step, as
 Gmail's Discard does (a trashed draft may still be sendable: review 2026-10-19). Scheduled sends are left out. Runbook: docs/domains/compromised-account.md, "Leftover drafts".
 
 ## Slice 5: Chrome
-From the operator (2026-10-21), checking whether a person uses Chrome and its saved passwords: Chrome's log in Pull Incident
+Why: after a takeover, whether the person uses Chrome signed in with their work account matters, since what that Chrome
+saved was within the attacker's reach. Chrome's log in Pull Incident
 Logs, read by the account signed in to the profile (GAM's own match for a named user is the computer's login name), and a
 person's Chrome profiles on their Security tab. Reads only; saved passwords are never readable. Runbook:
 docs/domains/compromised-account.md, "Chrome".
 
 ## Slice 6: the Incident screen
-From the operator (2026-10-21), after the incident's features were added in a hurry: "consolidate what is needed to
-remediate this in the future, and have ways to do things on an individual basis", then "add any other logs that should
-be looked at". One screen in working order (find who's affected, secure an account, pull the email, afterwards), every
+Asked for (2026-10-21): the remediation as one procedure, each step also runnable on its own, and every log an
+incident should look at. One screen in working order (find who's affected, secure an account, pull the email, afterwards), every
 lock step a switch so any one runs alone, the auto-reply (read and turned off) and the devices (read) in the check, and
 SAML, Takeout and Devices among the logs pulled by default, with Calendar, Groups, Rules, Context-aware access and Vault to
 tick. Runbook: docs/domains/compromised-account.md.

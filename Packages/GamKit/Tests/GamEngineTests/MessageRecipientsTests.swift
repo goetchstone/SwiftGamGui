@@ -10,7 +10,7 @@ import TestSupport
 @Suite("Message recipients")
 struct MessageRecipientsTests {
     let mock = GamRunner(binary: Fixtures.mockGam)
-    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Invite=0001@mail.example.com>")
+    static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
     static let header = "User,threadId,id,Date,Subject,From,Reply-To,To,Delivered-To,Content-Type,Message-ID,LabelsCount,Labels"
 
     private func withState(_ body: (URL) async throws -> Void) async throws {
@@ -46,9 +46,9 @@ struct MessageRecipientsTests {
         #expect(result.exitCode == 0, "\(result.stderr)")
         #expect(PythonText.lines(result.stdout) == [
             Self.header + ",Bcc,MIME-Version",
-            "carol@example.com,19a0c0ffee000003,19a0c0ffee000003,2026-10-19T13:12:03+00:00,You're invited: Fall party,"
+            "carol@example.com,19a0c0ffee000003,19a0c0ffee000003,2026-10-19T13:12:03+00:00,Shared file: Q4 invoices,"
                 + "Carol Clark <carol@example.com>,,carol@example.com,,\"multipart/alternative; boundary=\"\"0000000000001234\"\"\","
-                + "<CAPh1sh+Invite=0001@mail.example.com>,1,SENT,\"alice@example.com, \"\"Brown, Bob\"\" <bob@example.com>, Dana Davis "
+                + "<CAPh1sh+Notice=0001@mail.example.com>,1,SENT,\"alice@example.com, \"\"Brown, Bob\"\" <bob@example.com>, Dana Davis "
                 + "<DANA@example.com>, \"\"Pat Partner\"\" <pat@partner.example>, guest@example.org (Guest), team@example.net, "
                 + "ops@alias.example.net, undisclosed-recipients:;\",1.0",
         ])
@@ -56,7 +56,7 @@ struct MessageRecipientsTests {
         #expect(copy.addresses == ["carol@example.com", "alice@example.com", "bob@example.com", "DANA@example.com",
                                    "pat@partner.example", "guest@example.org", "team@example.net", "ops@alias.example.net"])
         #expect(copy.unreadable.isEmpty && copy.hasBcc && copy.labels == ["SENT"])
-        #expect(copy.subject == "You're invited: Fall party" && copy.date == "2026-10-19T13:12:03+00:00"
+        #expect(copy.subject == "Shared file: Q4 invoices" && copy.date == "2026-10-19T13:12:03+00:00"
                 && copy.from == "Carol Clark <carol@example.com>")
     }
 
@@ -164,12 +164,12 @@ struct MessageRecipientsTests {
     /// Copies of one ID that aren't the same email are each named, so the operator sees the ID matched more than one.
     @Test func everyDistinctHeading() throws {
         let csv = "User,threadId,id,Subject,From,To,Labels\n"
-            + "s@example.com,t,1,Invite,Carol <c@example.com>,a@example.com,INBOX\n"
-            + "s@example.com,t,2,Invite,Carol <c@example.com>,a@example.com,SPAM\n"
+            + "s@example.com,t,1,Notice,Carol <c@example.com>,a@example.com,INBOX\n"
+            + "s@example.com,t,2,Notice,Carol <c@example.com>,a@example.com,SPAM\n"
             + "s@example.com,t,3,Invoice,Billing <b@example.org>,a@example.com,INBOX\n"
         let copy = try #require(try MessageRecipients.read(GamResult(exitCode: 0, stdout: csv, stderr: "", stdoutTruncated: false,
                                                                      stderrTruncated: false), argv: []))
-        #expect(copy.headings == [.init(from: "Carol <c@example.com>", subject: "Invite"),
+        #expect(copy.headings == [.init(from: "Carol <c@example.com>", subject: "Notice"),
                                   .init(from: "Billing <b@example.org>", subject: "Invoice")])
     }
 

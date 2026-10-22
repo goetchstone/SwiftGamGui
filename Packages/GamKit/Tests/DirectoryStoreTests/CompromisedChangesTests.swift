@@ -345,7 +345,7 @@ final class CompromisedChangesTests {
                                      + "19a0c0ffee000011,19a0c0ffee000012,19a0c0ffee000013" })
         form.discardDrafts = .subjectContaining("nothing like it")
         #expect(await blocked(form)?.hasPrefix("No draft's subject contains “nothing like it”") == true)
-        form.discardDrafts = .subjectContaining(" FALL party")
+        form.discardDrafts = .subjectContaining(" Q4 INVOICES")
         let plan = try await plan(form)
         let step = try #require(plan.steps.first { $0.action == .deleteMessages })
         #expect(step.commandLine == "gam user carol@example.com delete messages ids 19a0c0ffee000011,19a0c0ffee000012")

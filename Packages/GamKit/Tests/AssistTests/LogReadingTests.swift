@@ -25,7 +25,7 @@ struct LogReadingTests {
         event("login", "erin@example.com", "login_failure", ip: attacker, at: 25),
         event("login", "alice@example.com", "login_success", ip: office, at: 5),
         event("gmail", "carol@example.com", "delivery", ip: attacker, at: 30,
-              ["message_info.subject": "You are invited", "message_info.rfc2822_message_id": "<phish-1@mail.example.com>"]),
+              ["message_info.subject": "Shared file", "message_info.rfc2822_message_id": "<phish-1@mail.example.com>"]),
         event("chrome", "carol@example.com", "PASSWORD_REUSE", flagged: true, at: 8,
               ["EVENT_REASON": "PASSWORD_REUSED_PHISHING_URL", "TRIGGER_USER": "carol@example.com",
                "URL": "https://login-check.example.net/signin"]),
@@ -39,9 +39,9 @@ struct LogReadingTests {
                                                  .failedFromSuspect, .pastPhishingWarning, .suspectAddress])
         #expect(reading.findings.map(\.id) == ["F1", "F2", "F3", "F4", "F5", "F6", "F7"])
         #expect(reading.findings[0].words == "carol@example.com signed in to Google and granted an app access from 198.51.100.23.")
-        #expect(reading.findings[2].words == "“You are invited” (<phish-1@mail.example.com>) went through Gmail from 198.51.100.23.")
+        #expect(reading.findings[2].words == "“Shared file” (<phish-1@mail.example.com>) went through Gmail from 198.51.100.23.")
         #expect(reading.drafts == [.secureAccount("carol@example.com"), .secureAccount("dana@example.com"),
-                                   .pullEmail(messageID: "<phish-1@mail.example.com>", subject: "You are invited"),
+                                   .pullEmail(messageID: "<phish-1@mail.example.com>", subject: "Shared file"),
                                    .secureAccount("erin@example.com")])
         #expect(!reading.findings.contains { $0.accounts.contains("alice@example.com") }, "the office's address is no suspect")
         #expect(reading.findings[5].drafts.isEmpty, "going past a warning is said, not fixed")
@@ -136,7 +136,7 @@ struct LogReadingTests {
     @Test func thePromptHoldsNoTextTheAttackerWrote() {
         let prompt = LogExplainer.prompt(LogReading.read(Self.incident))
         #expect(prompt.contains("F1:") && prompt.contains("carol@example.com") && prompt.contains(Self.attacker))
-        #expect(!prompt.contains("You are invited") && !prompt.contains("login-check") && !prompt.contains("phish-1"))
+        #expect(!prompt.contains("Shared file") && !prompt.contains("login-check") && !prompt.contains("phish-1"))
     }
 }
 
