@@ -249,6 +249,31 @@ public enum GamCommands {
         GamRead(["user", email, "print", "sendas", "verifyonly"])
     }
 
+    /// One account's sign-in on a computer, blocked in Google's endpoint management: the computer can't reach the account's
+    /// data, and stays listed as blocked (approving it undoes it). 4378; _performCIDeviceUserAction. `name` is the device
+    /// user's own (`isDeviceUserName`), by which GAM acts without `doit`.
+    public static func blockDeviceUser(name: String) throws -> GamWrite {
+        guard isDeviceUserName(name) else { throw Invalid.argument("a computer's sign-in is devices/<id>/deviceUsers/<id>") }
+        return GamWrite(["block", "deviceuser", name], action: .blockDeviceUser)
+    }
+
+    /// One account's sign-in on a computer, deleted: the account is taken off it and its access to the account's data
+    /// revoked (4375; the same). It shows again only if someone signs in on it again.
+    public static func deleteDeviceUser(name: String) throws -> GamWrite {
+        guard isDeviceUserName(name) else { throw Invalid.argument("a computer's sign-in is devices/<id>/deviceUsers/<id>") }
+        return GamWrite(["delete", "deviceuser", name], action: .deleteDeviceUser)
+    }
+
+    /// A device user's name as Google gives it and GAM takes it by name (DEVICE_USERNAME_PATTERN, `devices/.+/deviceUsers/.+`),
+    /// held to Google's ID characters: never `query:`, `id`, a list, the API's `-` wildcard (`devices/-/deviceUsers/-`, every
+    /// one) or anything GAM reads as more than the one name.
+    static func isDeviceUserName(_ name: String) -> Bool {
+        let parts = name.split(separator: "/", omittingEmptySubsequences: false)
+        let id = { (part: Substring) in !part.isEmpty && part != "-" && part.count <= 256
+            && part.unicodeScalars.allSatisfy { ("a"..."z").contains($0) || ("A"..."Z").contains($0) || ("0"..."9").contains($0) || $0 == "-" || $0 == "_" } }
+        return parts.count == 4 && parts[0] == "devices" && parts[2] == "deviceUsers" && id(parts[1]) && id(parts[3])
+    }
+
     /// One send-as address taken off the person's "Send mail as" list (8293; deleteInfoSendAs). The address is one
     /// <EmailAddressEntity> element GAM splits on commas and Python's whitespace, or reads a file from when it's a list
     /// selector, so it must be one plain address (`isOneAddress`).
@@ -409,7 +434,7 @@ public enum GamCommands {
         + "compromisedstate,createtime,lastsynctime"
 
     /// What each of its users says (4319-4329): who, when they first signed in to it and last synced it, and their state on it.
-    static let deviceUserFields = "useremail,createtime,firstsynctime,lastsynctime,managementstate"
+    static let deviceUserFields = "name,useremail,createtime,firstsynctime,lastsynctime,managementstate"
 
     /// The Apps Script projects `user` owns (7793-7822 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] …
     /// (fields <DriveFieldNameList>) … [formatjson]`; printFileList): Drive files of type `gscript`

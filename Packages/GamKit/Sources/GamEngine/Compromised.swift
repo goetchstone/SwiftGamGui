@@ -13,6 +13,7 @@ public enum Compromised {
         case revoke, forward, filters, delegate
         case sendAs = "send_as"
         case autoReply = "auto_reply"
+        case computer
         case drafts
         case imapOff = "imap_off"
         case popOff = "pop_off"
@@ -28,6 +29,7 @@ public enum Compromised {
             case .delegate: "Remove a delegate"
             case .sendAs: "Remove a send-as address"
             case .autoReply: "Turn off the auto-reply"
+            case .computer: "Block or remove a computer"
             case .drafts: "Delete the drafts"
             case .imapOff: Offboarding.Step.imapOff.name
             case .popOff: Offboarding.Step.popOff.name
@@ -83,8 +85,8 @@ public enum Compromised {
     /// check read them; `delegates` and `sendAs` the addresses to remove. `recovery` is what the check read, said in the
     /// clear-recovery step's words. Throws when a pick can't be one argv element (`GamCommands.Invalid`).
     public static func steps(user: String, switchedOn: Set<Step>, filters: [Filter] = [], delegates: [String] = [],
-                             sendAs: [String] = [], autoReplyOff: Bool = false, drafts: [Draft] = [],
-                             recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
+                             sendAs: [String] = [], autoReplyOff: Bool = false, computers: [(Computer, ComputerAction)] = [],
+                             drafts: [Draft] = [], recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
         guard switchedOn.isSubset(of: Step.switchable) else {
             throw GamCommands.Invalid.argument("only \(Step.switchable.map(\.rawValue).joined(separator: ", ")) are switched")
         }
@@ -140,6 +142,20 @@ public enum Compromised {
                                  summary: "Turn off \(user)'s auto-reply, so nobody who writes to them gets its message. Its subject "
                                     + "and text stay in Gmail's settings, off",
                                  write: GamCommands.vacationOff(email: user)))
+        }
+        for (computer, action) in computers {
+            switch action {
+            case .block:
+                steps.append(Planned(key: .computer, label: "Block \(computer.words)",
+                                     summary: "Block \(user)'s sign-in on \(computer.words), so it can't reach their data: it stays "
+                                        + "listed as blocked in the Admin console's Devices, and approving it there undoes this",
+                                     write: try GamCommands.blockDeviceUser(name: computer.deviceUser)))
+            case .delete:
+                steps.append(Planned(key: .computer, label: "Remove \(user) from \(computer.words)",
+                                     summary: "Take \(user)'s account off \(computer.words) and revoke its access to their data. It "
+                                        + "comes back only if someone signs in on it again",
+                                     write: try GamCommands.deleteDeviceUser(name: computer.deviceUser)))
+            }
         }
         if !drafts.isEmpty {
             let subjects = drafts.map(\.subject).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
@@ -383,12 +399,22 @@ public enum Compromised {
         }
     }
 
+    /// What to do with a computer the attacker signed in on: block the account there (it stays listed, blocked), or take
+    /// the account off it.
+    public enum ComputerAction: String, Sendable, CaseIterable {
+        case block, delete
+    }
+
     /// One computer signed in with the account (`GamCommands.printDevices`: Windows, Mac, Linux or ChromeOS, which the
     /// phones list never shows): what it is, its name, and when the person first and last synced it. An attacker's sign-in
     /// can leave one here, often a virtual machine.
     public struct Computer: Sendable, Equatable, Identifiable {
         /// Google's name for it, `devices/<id>`.
         public let id: String
+        /// The person's own sign-in on it, `devices/<id>/deviceUsers/<id>`: what blocking or removing acts on. Empty when
+        /// Google didn't give it, or gave one the builders refuse: that computer can't be picked, and the rest of the plan
+        /// (the lock with it) still runs.
+        public let deviceUser: String
         /// What it runs, as people say it: Windows, macOS, Linux, ChromeOS.
         public let kind: String
         public let model: String
@@ -427,6 +453,7 @@ public enum Compromised {
             let users = (record["users"]?.array ?? []).compactMap(\.object)
             guard !kind.isEmpty, let mine = users.first(where: { PythonText.lower(text("userEmail", in: $0)) == wanted }) else { return nil }
             id = text("name")
+            deviceUser = GamCommands.isDeviceUserName(text("name", in: mine)) ? text("name", in: mine) : ""
             model = text("model")
             manufacturer = text("manufacturer")
             os = text("osVersion")
@@ -638,7 +665,7 @@ public enum Compromised {
             let machines = virtual == 0 ? "" : count == 1 ? ", and it's a virtual machine"
                 : ", \(virtual) of them \(virtual == 1 ? "a virtual machine" : "virtual machines")"
             said.append("\(count == 1 ? "A computer is" : "\(count) computers are") signed in with \(user)'s account\(machines): one "
-                + "they don't use may be the attacker's. The sign-out ends its session; block or delete it in the Admin console's Devices."
+                + "they don't use may be the attacker's. The sign-out ends its session; block it or take the account off it below."
                 + (active.contains(where: \.reportsCompromise) ? " One reports it's compromised." : "")
                 + (stopped == 0 ? "" : " \(stopped) more \(stopped == 1 ? "is" : "are") already blocked or wiped."))
         }

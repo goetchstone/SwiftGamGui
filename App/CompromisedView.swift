@@ -30,6 +30,11 @@ struct CompromisedView: View {
     @State private var scrollToReports = false
     /// …and to the log reader (`reading`).
     @State private var scrollToReader = false
+    /// What a "Do It Here" asked to pick for a person, applied once the check has read them; only that one thing, not the
+    /// full lock again.
+    @State private var pendingPick: (person: String, pick: SecurePick)?
+    /// The computer a "Do It Here" named matched none still signed in: the computers say so.
+    @State private var pickMissed = false
     @Environment(\.appearsActive) private var appearsActive
 
     private var check: CompromisedChanges.Check? { changes.check.flatMap { $0.isFor(form.person) ? $0 : nil } }
@@ -60,7 +65,8 @@ struct CompromisedView: View {
                         if let pull = logs.pull, pull.ended {
                             // A fix the reader found is an address for this screen's own check, or a Message-ID for Phishing.
                             let domain = setup.active?.name ?? ""
-                            LogReaderView(pull: pull, secure: { person in
+                            LogReaderView(pull: pull, secure: { person, pick in
+                                pendingPick = pick.map { (person, $0) }
                                 requested = person
                                 withAnimation { scroller.scrollTo(Self.checkAnchor, anchor: .top) }
                             }, pullEmail: openPhishing, marks: known.marks(for: domain), marksProblem: known.openProblem,
@@ -80,7 +86,7 @@ struct CompromisedView: View {
                             SendAsSection(check: check, picked: $form.sendAs)
                             DraftsSection(check: check, discard: $form.discardDrafts)
                             AdminRolesSection(check: check)
-                            DevicesSection(check: check)
+                            DevicesSection(check: check, picked: $form.computers, missed: pickMissed)
                             AppsSection(check: check)
                             ScriptsSection(check: check)
                             StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
@@ -118,13 +124,25 @@ struct CompromisedView: View {
         .onChange(of: form.person) { old, new in
             guard old.trimmingCharacters(in: .whitespaces).lowercased() != new.trimmingCharacters(in: .whitespaces).lowercased() else { return }
             (form.done, form.restOf, form.filters, form.delegates, form.sendAs, form.autoReplyOff) = ([], "", [], [], [], false)
+            form.computers = [:]
+            // A "Do It Here" is for its own person only (a request sets the person first, so its pick survives this).
+            if let pending = pendingPick, pending.person.lowercased() != new.trimmingCharacters(in: .whitespaces).lowercased() {
+                pendingPick = nil
+            }
+            pickMissed = false
             // The switches too: a step turned off for one person's errand is never off for the next person's lock.
             form.switchedOn = Compromised.Step.onByDefault
             form.discardDrafts = .none
         }
         // A check again (after a run): the ticks on what's gone are dropped.
         .onChange(of: changes.check?.id) {
-            if let check = changes.check { form.keepPicks(in: check) }
+            guard let check = changes.check else { return }
+            form.keepPicks(in: check)
+            pickMissed = false
+            if let pending = pendingPick {
+                pendingPick = nil
+                if check.isFor(pending.person), check.isFor(form.person) { pick(pending.pick, in: check) }
+            }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .onAppear {
@@ -133,8 +151,9 @@ struct CompromisedView: View {
         .onChange(of: requested, initial: true) { _, email in
             guard let email else { return }
             requested = nil
-            // Mid-run the form stays as it is: the check says why it can't start.
-            if !changes.isRunning { form = CompromisedChanges.Form(person: email) }
+            // Mid-run the form stays as it is: the check says why it can't start, and a "Do It Here" is dropped, never left
+            // to pick on a later check.
+            if changes.isRunning { pendingPick = nil } else { form = CompromisedChanges.Form(person: email) }
             let changes = changes
             Task { await changes.check(email) }
         }
@@ -216,7 +235,17 @@ struct CompromisedView: View {
         }
     }
 
+    /// Picks only what a "Do It Here" asked for, on what the check read (`Form.pickOnly`).
+    private func pick(_ pick: SecurePick, in check: CompromisedChanges.Check) {
+        switch pick {
+        case .clearRecovery: form.pickOnlyClearRecovery()
+        case .computer(let resourceID, let registeredAt):
+            pickMissed = !form.pickOnly(computer: resourceID, registeredAt: registeredAt, in: check)
+        }
+    }
+
     private func checkAccount() {
+        pendingPick = nil   // the operator's own check: the full lock, as ever
         let person = form.person, changes = changes
         Task { await changes.check(person) }
     }
@@ -610,6 +639,15 @@ private struct AppsSection: View {
 /// may be the attacker's.
 private struct DevicesSection: View {
     let check: CompromisedChanges.Check
+    /// The computers to block or take the account off, by the person's sign-in on each.
+    @Binding var picked: [String: Compromised.ComputerAction]
+    /// A "Do It Here" named a computer none of these matched.
+    let missed: Bool
+
+    /// Keep it, block it, or take the account off it: what the plan does with one computer.
+    private func choice(_ computer: Compromised.Computer) -> Binding<Compromised.ComputerAction?> {
+        Binding(get: { picked[computer.deviceUser] }, set: { picked[computer.deviceUser] = $0 })
+    }
 
     var body: some View {
         Section {
@@ -640,6 +678,10 @@ private struct DevicesSection: View {
         }
         .textSelection(.enabled)
         Section {
+            if missed {
+                Label("The computer the logs named matched none still signed in here, by Google's ID or by when it signed in: if "
+                      + "it's listed, pick it by hand.", systemImage: "questionmark.circle")
+            }
             switch check.computers {
             case .success(let computers) where computers.isEmpty:
                 Text("No computer is signed in with this account in Google's endpoint management.").foregroundStyle(.secondary)
@@ -663,13 +705,26 @@ private struct DevicesSection: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
+                    // Only a computer still signed in, by the person's own sign-in on it, can be blocked or left.
+                    if computer.isActive, !computer.deviceUser.isEmpty {
+                        Picker("What to do with it", selection: choice(computer)) {
+                            Text("Keep it").tag(Compromised.ComputerAction?.none)
+                            Text("Block it").tag(Compromised.ComputerAction?.some(.block))
+                            Text("Take the account off it").tag(Compromised.ComputerAction?.some(.delete))
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityLabel("What to do with \(computer.words)")
+                        .accessibilityHint("Blocking keeps it listed, blocked, and approving it in the Admin console undoes it. Taking the "
+                                           + "account off revokes its access; it shows again only if someone signs in on it.")
+                    }
                 }
             case .failure(let problem): Unread(what: "the computers", problem: problem)
             }
         } header: {
             Text("Computers")
         } footer: {
-            Text("Shown, not changed here: block or delete one in the Admin console's Devices.")
+            Text("Block a computer that isn't the person's, or take the account off it: each is a step below, previewed and confirmed "
+                 + "with the rest. Blocking keeps it listed, blocked, which approving it in the Admin console undoes.")
         }
         .textSelection(.enabled)
     }
@@ -751,6 +806,8 @@ private struct StepsSection: View {
             }
             let picks = [(form.filters.count, "filter", "delete"), (form.delegates.count, "delegate", "remove"),
                          (form.sendAs.count, "send-as address", "remove"), (form.autoReplyOff ? 1 : 0, "auto-reply", "turn off"),
+                         (form.computers.values.filter { $0 == .block }.count, "computer", "block"),
+                         (form.computers.values.filter { $0 == .delete }.count, "computer", "take the account off"),
                          (draftsChosen, "draft", "delete")]
                 .filter { $0.0 > 0 }
             Text(picks.isEmpty ? "Nothing ticked to undo above."

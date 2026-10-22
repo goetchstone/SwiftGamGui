@@ -32,6 +32,9 @@ public final class CompromisedChanges {
         public var sendAs: Set<String> = []
         /// The check found an auto-reply on, and it's to be turned off.
         public var autoReplyOff = false
+        /// The computers signed in with the account to block or take the account off, by the person's sign-in on each
+        /// (`Compromised.Computer.deviceUser`).
+        public var computers: [String: Compromised.ComputerAction] = [:]
         /// Which of the check's drafts are deleted: none, every one, or those whose subject holds some text.
         public var discardDrafts: Discard = .none
 
@@ -48,12 +51,43 @@ public final class CompromisedChanges {
             self.person = person
         }
 
+        /// Only the computer a to-do item's "Do It Here" named, to block, the lock steps off (the lock is a to-do item of its
+        /// own): by Google's own ID when the Devices log's `resourceID` is it, else the computer first signed in within two
+        /// minutes of the registration. One found by its ID but no longer signed in picks nothing, never another by time
+        /// (security review 2026-10-22). Returns whether one was picked.
+        @discardableResult
+        public mutating func pickOnly(computer resourceID: String, registeredAt: Date?, in check: Check) -> Bool {
+            switchedOn = []
+            let listed = (try? check.computers.get()) ?? []
+            let pickable = listed.filter { $0.isActive && !$0.deviceUser.isEmpty }
+            let computer: Compromised.Computer?
+            if !resourceID.isEmpty, let named = listed.first(where: { $0.id == "devices/\(resourceID)" }) {
+                computer = pickable.contains(named) ? named : nil
+            } else {
+                computer = registeredAt.flatMap { at in
+                    pickable.filter { ($0.firstSynced.map { abs($0.timeIntervalSince(at)) } ?? .infinity) <= 120 }
+                        .min { abs(($0.firstSynced ?? at).timeIntervalSince(at)) < abs(($1.firstSynced ?? at).timeIntervalSince(at)) }
+                }
+            }
+            guard let computer else { return false }
+            self.computers[computer.deviceUser] = .block
+            return true
+        }
+
+        /// Only the recovery details cleared, as a to-do item's "Do It Here" asks: the lock steps off.
+        public mutating func pickOnlyClearRecovery() {
+            switchedOn = [.clearRecovery]
+        }
+
         /// The picks of what `check` no longer lists dropped: a check again after a run lists what's left.
         public mutating func keepPicks(in check: Check) {
             filters.formIntersection(((try? check.filters.get()) ?? []).map(\.id))
             delegates.formIntersection((try? check.delegates.get()) ?? [])
             sendAs.formIntersection(((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary }.map(\.address))
             if (try? check.autoReply.get())?.enabled != true { autoReplyOff = false }
+            // A computer already blocked or the account gone from it needs nothing more.
+            let active = Set(((try? check.computers.get()) ?? []).filter(\.isActive).map(\.deviceUser))
+            computers = computers.filter { active.contains($0.key) }
         }
     }
 
@@ -205,7 +239,7 @@ public final class CompromisedChanges {
                 case .filters: form.filters = []
                 case .drafts: form.discardDrafts = .none
                 case .autoReply: form.autoReplyOff = false
-                case .delegate, .sendAs: break   // the check again drops what's gone
+                case .delegate, .sendAs, .computer: break   // the check again drops what's gone
                 default: form.done.insert(row.key)
                 }
             }
@@ -370,7 +404,9 @@ public final class CompromisedChanges {
         let picked = (filters: ((try? check.filters.get()) ?? []).filter { form.filters.contains($0.id) },
                       delegates: ((try? check.delegates.get()) ?? []).filter { form.delegates.contains($0) },
                       sendAs: ((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary && form.sendAs.contains($0.address) }.map(\.address),
-                      drafts: check.drafts(form.discardDrafts))
+                      drafts: check.drafts(form.discardDrafts),
+                      computers: ((try? check.computers.get()) ?? []).filter { $0.isActive && !$0.deviceUser.isEmpty }
+                        .compactMap { computer in form.computers[computer.deviceUser].map { (computer, $0) } })
         if case .subjectContaining(let text) = form.discardDrafts, picked.drafts.isEmpty {
             return refuse("No draft's subject contains “\(PythonText.strip(text))”: change the text, or keep the drafts.")
         }
@@ -379,7 +415,7 @@ public final class CompromisedChanges {
             planned = try Compromised.steps(user: user, switchedOn: form.switchedOn.intersection(Compromised.Step.switchable),
                                             filters: picked.filters, delegates: picked.delegates, sendAs: picked.sendAs,
                                             autoReplyOff: form.autoReplyOff && (try? check.autoReply.get())?.enabled == true,
-                                            drafts: picked.drafts,
+                                            computers: picked.computers, drafts: picked.drafts,
                                             recovery: (check.account.recoveryEmail, check.account.recoveryPhone))
         } catch GamCommands.Invalid.argument(let why) {
             return refuse("Couldn't plan this: \(why). Remove it in the Admin console or Gmail's settings instead.")

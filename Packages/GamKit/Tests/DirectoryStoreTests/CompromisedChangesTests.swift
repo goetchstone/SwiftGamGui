@@ -173,6 +173,69 @@ final class CompromisedChangesTests {
         #expect(records.filter { $0["extra"]?.object?["compromised"]?.string == "carol@example.com" }.count >= 7)
     }
 
+    /// A computer the attacker signed in on, blocked or the account taken off it from the plan: each its own previewed step
+    /// by the person's sign-in on it, removal destructive; the run blocks the virtual machine, and the check again shows it
+    /// blocked, so its pick drops. A computer not picked, or already blocked, runs nothing.
+    @Test func aComputerIsBlockedOrRemovedFromThePlan() async throws {
+        try await connect()
+        let check = try await checked()
+        #expect(try check.computers.get().map(\.deviceUser) == ["devices/0vmcarol01/deviceUsers/u1", "devices/0maccarol01/deviceUsers/u2"])
+        var form = form()
+        form.switchedOn = []
+        form.computers = ["devices/0vmcarol01/deviceUsers/u1": .block, "devices/0maccarol01/deviceUsers/u2": .delete]
+        let both = try await plan(form)
+        #expect(both.steps.map(\.commandLine) == ["gam block deviceuser devices/0vmcarol01/deviceUsers/u1",
+                                                  "gam delete deviceuser devices/0maccarol01/deviceUsers/u2"])
+        #expect(both.steps[1].risk == .destructive)
+        form.computers = ["devices/0vmcarol01/deviceUsers/u1": .block]
+        let plan = try await plan(form)
+        #expect(plan.steps.first?.summary.hasPrefix("Block carol@example.com's sign-in on Virtual Machine, Windows 10.0.19045") == true)
+        await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        let run = try #require(changes.run)
+        #expect(run.isComplete && changes.problem == nil, "\(run.results) \(changes.problem ?? "")")
+        #expect(writes() == ["gam block deviceuser devices/0vmcarol01/deviceUsers/u1"])
+        let again = try #require(changes.check)
+        #expect(try again.computers.get().first { $0.id == "devices/0vmcarol01" }?.state == "blocked")
+        form.keepPicks(in: again)
+        #expect(form.computers.isEmpty, "blocked now: nothing more to do")
+    }
+
+    /// A to-do item's "Do It Here" picks only its own fix, the lock steps off: the computer by the Devices log's ID, else
+    /// the one first signed in within two minutes of the registration; nothing when neither matches.
+    @Test func doItHerePicksOnlyItsOwnFix() async throws {
+        try await connect()
+        let check = try await checked()
+        var form = form()
+        let byID = form.pickOnly(computer: "0vmcarol01", registeredAt: nil, in: check)
+        #expect(byID)
+        #expect(form.switchedOn.isEmpty && form.computers == ["devices/0vmcarol01/deviceUsers/u1": .block])
+        let joined = try Date("2026-10-19T14:13:30Z", strategy: .iso8601)
+        form = self.form()
+        let unknownID = form.pickOnly(computer: "an-id-the-api-doesnt-use", registeredAt: joined, in: check)
+        #expect(unknownID)
+        #expect(form.computers == ["devices/0vmcarol01/deviceUsers/u1": .block])
+        form = self.form()
+        let tooLate = form.pickOnly(computer: "", registeredAt: joined.addingTimeInterval(600), in: check)
+        #expect(!tooLate)
+        #expect(form.switchedOn.isEmpty && form.computers.isEmpty, "nothing matched: nothing picked")
+        form.pickOnlyClearRecovery()
+        #expect(form.switchedOn == [.clearRecovery])
+        let plan = try await plan(form)
+        #expect(plan.steps.allSatisfy { $0.summary.localizedCaseInsensitiveContains("recovery") }, "\(plan.steps.map(\.summary))")
+        // Blocked now: named by its ID, it picks nothing, never the person's own Mac that signed in near that time.
+        var block = self.form()
+        block.switchedOn = []
+        block.computers = ["devices/0vmcarol01/deviceUsers/u1": .block]
+        await changes.confirm(try await self.plan(block), OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        let again = try #require(changes.check)
+        var after = self.form()
+        let macSignedIn = try Date("2025-02-03T15:05:30Z", strategy: .iso8601)
+        let named = after.pickOnly(computer: "0vmcarol01", registeredAt: macSignedIn, in: again)
+        #expect(!named && after.computers.isEmpty)
+        let byTime = after.pickOnly(computer: "", registeredAt: macSignedIn, in: again)
+        #expect(byTime && after.computers == ["devices/0maccarol01/deviceUsers/u2": .block], "with no ID, the time decides")
+    }
+
     /// The rest of a run is that person's: its "already done" lock steps never carry to the next person checked, who
     /// would then lose their sign-out (review 2026-10-19). The rest itself plans only what's left.
     @Test func theRestIsThePersonsOwn() async throws {

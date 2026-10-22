@@ -1270,6 +1270,47 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
   exit 0
 fi
 
+# `gam block|delete deviceuser devices/<id>/deviceUsers/<id>` (doBlockCIDeviceUser, doDeleteCIDeviceUser:
+# _performCIDeviceUserAction, gam/__init__.py:32740-32790 at 7.48.30; the compromised-account plan's computer step): one
+# device user by its name, which GAM takes without `doit` (getCIDeviceUserEntity, DEVICE_USERNAME_PATTERN); a name not of
+# that form is invalidArgumentExit, exit 2. The service first, as `print devices` and before any argument (denied 12, a dead
+# key 12, noscope 73: buildGAPICIDeviceServiceObject before getString in getCIDeviceUserEntity). A device user in
+# mock_gam/ci_devices.json: "Device User: <name>, Blocked" (or "Deleted"), then the operation GAM shows, done; kept in
+# GAM_MOCK_STATE/deviceusers, so `print devices` shows it blocked, or the person gone from it. One deleted already, or not
+# in the fixture: the API's notFound, entityUnknownWarning, "Device User: <name>, Does not exist", exit 56.
+# GAM_MOCK_STATE/refused/deviceusers: the API's failedPrecondition, entityActionFailedWarning, exit 50 (Google's words
+# approximate). Not modelled: `doit`, a `query:`, the other actions (approve, wipe, cancelwipe), an operation not done at once.
+if { [ "${1:-}" = "block" ] || [ "${1:-}" = "delete" ]; } && [ "${2:-}" = "deviceuser" ]; then
+  verb=$1
+  denied='ERROR: API access Denied\nPlease make sure the Service Account Client ID: 1 is authorized for the appropriate API or scopes: Cloud Identity API - Devices\n\nRun: gam user admin@example.com update serviceaccount\n'
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/devices" ]; then printf "\n$denied" 1>&2; exit 12; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/badkey/devices" ]; then
+    printf "\nERROR: Authentication Token Error - invalid_grant: Invalid JWT Signature\n\n$denied" 1>&2; exit 12
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/noscope/devices" ]; then
+    printf 'User: admin@example.com, Cloud Identity API - Devices Service/App not enabled\n' 1>&2; exit 73
+  fi
+  [ $# -ge 3 ] || missing_arg "DeviceUserEntity"
+  [ $# -eq 3 ] || not_modelled "$verb deviceuser with $4"
+  name=$3
+  case "$name" in [Qq][Uu][Ee][Rr][Yy]:*|id|name) not_modelled "$verb deviceuser $name" ;; esac
+  printf '%s' "$name" | grep -Eq '^(devices/.+)/(deviceUsers/.+)$' || invalid_arg "Expected <devices/<String>/deviceUsers/<String>>"
+  sfile="${GAM_MOCK_STATE:-/nonexistent}/deviceusers/$(printf '%s' "$name" | tr '/' '_')"
+  if ! grep -qF "\"name\": \"$name\"" "$GAM_MOCK_FIXTURES/ci_devices.json" || [ "$(cat "$sfile" 2>/dev/null)" = DELETED ]; then
+    does_not_exist "Device User" "$name"
+  fi
+  case "$verb" in block) done_word=Blocked; failed_word="Block Failed" ;; *) done_word=Deleted; failed_word="Delete Failed" ;; esac
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/refused/deviceusers" ]; then
+    printf 'Device User: %s, %s: Precondition check failed.\n' "$name" "$failed_word" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/deviceusers"
+    case "$verb" in block) echo BLOCKED > "$sfile" ;; *) echo DELETED > "$sfile" ;; esac
+  fi
+  printf 'Device User: %s, %s\n  done: True\n' "$name" "$done_word"
+  exit 0
+fi
+
 # `gam print devices query email:<address> fields <DeviceFieldNameList> userfields <DeviceUserFieldNameList> formatjson` ->
 # GAM's CSV, `name` and a `JSON` column per device (doPrintCIDevices, gam/__init__.py:32609-32780 at 7.48.30; the compromised-
 # account check's computers): the devices in mock_gam/ci_devices.json with a user the address starts, as Google's `email:`
@@ -1330,7 +1371,7 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "devices" ]; then
   for f in devicetype model manufacturer osversion hostname serialnumber ownertype managementstate compromisedstate createtime lastsynctime; do
     case "$dwant" in *" $f "*) ;; *) not_modelled "print devices without field $f (the fixture holds it; GAM fetches only the fields named)" ;; esac
   done
-  for f in useremail createtime firstsynctime lastsynctime managementstate; do
+  for f in name useremail createtime firstsynctime lastsynctime managementstate; do
     case "$uwant" in *" $f "*) ;; *) not_modelled "print devices without user field $f (the fixture holds it; GAM fetches only the fields named)" ;; esac
   done
   printf 'Getting all Devices that match query (email:%s), may take some time on a large Google Workspace Account...\n' "$owner" 1>&2
@@ -1340,7 +1381,17 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "devices" ]; then
   printf 'Got %s Device Users...\n' "$n" 1>&2
   echo "name,JSON"
   while IFS= read -r record; do
-    case "$record" in *"\"userEmail\": \"$owner"*) gam_row "$(json_text name "$record")" "$record" ;; esac   # a prefix, as the API's
+    case "$record" in *"\"userEmail\": \"$owner"*) ;; *) continue ;; esac   # a prefix, as the API's
+    # A device user `block deviceuser` blocked shows BLOCKED; one `delete deviceuser` deleted is gone (GAM_MOCK_STATE/deviceusers).
+    for user in $(printf '%s' "$record" | grep -o '"name": "devices/[^"]*/deviceUsers/[^"]*"' | sed 's/^"name": "//; s/"$//'); do
+      sfile="${GAM_MOCK_STATE:-/nonexistent}/deviceusers/$(printf '%s' "$user" | tr '/' '_')"
+      [ -f "$sfile" ] || continue
+      case "$(cat "$sfile")" in
+        BLOCKED) record=$(printf '%s' "$record" | sed "s#\"managementState\": \"[A-Z_]*\", \"name\": \"$user\"#\"managementState\": \"BLOCKED\", \"name\": \"$user\"#") ;;
+        DELETED) case "$record" in *"\"name\": \"$user\", \"userEmail\": \"$owner"*) record="" ;; esac ;;   # the person gone from it
+      esac
+    done
+    [ -n "$record" ] && gam_row "$(json_text name "$record")" "$record"
   done < "$GAM_MOCK_FIXTURES/ci_devices.json"
   exit 0
 fi

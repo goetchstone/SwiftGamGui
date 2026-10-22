@@ -185,16 +185,27 @@ public enum LogReading {
     public enum Draft: Sendable, Hashable {
         case secureAccount(String)
         case pullEmail(messageID: String, subject: String)
+        /// Secure Account opened for the person with only this picked ("Do It Here"): its preview and confirmation run it.
+        case undo(account: String, pick: Pick)
 
         /// "Secure carol@example.com", "Pull “Invoice” from every mailbox".
         public var title: String {
             switch self {
             case .secureAccount(let person): "Secure \(person)…"
+            case .undo: "Do It Here…"
             case .pullEmail(_, let subject):
                 // The subject is the attacker's text, of any length: a button shows its start, the finding all of it.
                 "Pull “\(subject.isEmpty ? "(no subject)" : subject.count > 40 ? subject.prefix(40) + "…" : subject)” from Every Mailbox…"
             }
         }
+    }
+
+    /// What a "Do It Here" picks in the person's Check Account: a computer the attacker's sign-in joined (by the Devices
+    /// log's ID for it, which may be Google's own, and when it registered, to find it by time otherwise), or clearing the
+    /// recovery details.
+    public enum Pick: Sendable, Hashable {
+        case computer(resourceID: String, registeredAt: Date?)
+        case clearRecovery
     }
 
     /// One thing the logs show, in a sentence, with the accounts and addresses it concerns, how many events say it, and
@@ -345,26 +356,25 @@ public enum LogReading {
             let ips = unique(mine.map(\.signIn.ip)), gap = mine.map(\.gap).max() ?? 0
             let when = gap <= 60 ? "within a minute of" : "within \(Int((gap / 60).rounded(.up))) minutes of"
             let devices = list(unique(theirs.map(deviceWords)))
-            // Still there unless that account's latest word on the device says it left: unregistered, or an admin's action on
-            // it that succeeded. Registered again is there again (security review 2026-10-22).
+            // Still there unless the latest word on the device says it left (`deviceWord`). Registered or approved again is
+            // there again, from any address; gone never counts from a suspect's (security reviews 2026-10-22).
             let left = theirs.filter { device in
-                let id = device.parameters["DEVICE_ID"] ?? device.parameters["RESOURCE_ID"] ?? ""
-                guard !id.isEmpty, let at = device.time else { return true }
-                let latest = events.filter { later in
-                    later.log == "mobile" && later.who.lowercased() == account.lowercased() && (later.time ?? .distantPast) > at
-                        && (later.parameters["DEVICE_ID"] ?? later.parameters["RESOURCE_ID"]) == id
-                        && (later.event == "DEVICE_REGISTER_UNREGISTER_EVENT"
-                            || (later.event == "DEVICE_ACTION_EVENT" && (later.parameters["ACTION_EXECUTION_STATUS"] ?? "").uppercased().contains("SUCCESS")))
-                }.max { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
-                guard let latest else { return true }
-                return latest.event == "DEVICE_REGISTER_UNREGISTER_EVENT" && latest.parameters["ACCOUNT_STATE"] != "UNREGISTERED"
+                let ids = Set([device.parameters["DEVICE_ID"], device.parameters["RESOURCE_ID"]].compactMap { $0 }.filter { !$0.isEmpty })
+                guard !ids.isEmpty, let at = device.time else { return true }
+                let words = events.filter { ($0.time ?? .distantPast) > at }
+                    .compactMap { event in Self.deviceWord(event, on: ids, of: account).map { (event, there: $0) } }
+                    .filter { $0.there || !acting.contains($0.0.ip) }
+                return words.max { ($0.0.time ?? .distantPast) < ($1.0.time ?? .distantPast) }?.there ?? true
             }
             found.append(Pending(.deviceAtSuspectSignIn, devices.prefix(1).uppercased() + devices.dropFirst() + " joined \(account)'s "
-                                 + "account \(when) its sign-in from \(list(ips)): likely the attacker's own. Check Account lists it; "
-                                 + "block or delete it in the Admin console's Devices.", [account], ips, theirs.count,
+                                 + "account \(when) its sign-in from \(list(ips)): likely the attacker's own. Check Account lists it, "
+                                 + "to block or take the account off.", [account], ips, theirs.count,
                                  [.secureAccount(account)],
-                                 todo: left.isEmpty ? [] : [(.deleteDevice, "Delete \(list(unique(left.map(deviceWords)))) that joined \(account) "
-                                                             + "at the attacker's sign-in: the Admin console's Devices.", [])]))
+                                 todo: left.map { device in
+                                    (.deleteDevice, "Block or take \(account) off \(deviceWords(device)) that joined at the attacker's sign-in: "
+                                     + "Do It Here, or the Admin console's Devices.",
+                                     [.undo(account: account, pick: .computer(resourceID: device.parameters["RESOURCE_ID"] ?? "", registeredAt: device.time))])
+                                 }))
         }
 
         // A failed sign-in from a suspect address: someone had that account's password, likely from the fake page.
@@ -477,7 +487,7 @@ public enum LogReading {
             }
             if theirs.contains(where: { ["recovery_email_edit", "recovery_phone_edit"].contains($0.event) }), !cleared {
                 todo.append((.clearRecovery, "Clear \(account)'s recovery email and phone: Check Account's “Clear recovery email & phone” step.",
-                             [.secureAccount(account)]))
+                             [.undo(account: account, pick: .clearRecovery)]))
             }
             if blocked {
                 let senders = unique(theirs.filter { $0.event == "blocked_sender" }.compactMap { $0.parameters["affected_email_address"] })
@@ -818,6 +828,9 @@ public enum LogReading {
             case "REMOVE_RECOVERY_PHONE": add(event.time, .recoveryRemoved, "Recovery phone removed by \(by)")
             case "SUSPEND_USER": add(event.time, .suspended, "Suspended by \(by)")
             case "UNSUSPEND_USER": add(event.time, .unsuspended, "Unsuspended by \(by)")
+            case "MOBILE_DEVICE_BLOCK": add(event.time, .adminChange, "A device blocked by \(by)")
+            case "MOBILE_DEVICE_DELETE": add(event.time, .adminChange, "A device removed by \(by)")
+            case "MOBILE_DEVICE_WIPE", "MOBILE_ACCOUNT_WIPE": add(event.time, .adminChange, "A device wiped by \(by)")
             case "CHANGE_PASSWORD_ON_NEXT_LOGIN": break   // said with the reset beside it
             default: add(event.time, .adminChange, "\(sentence(event.event)) by \(by)")
             }
@@ -915,6 +928,34 @@ public enum LogReading {
     /// When a device's registration is tied to a sign-in: from a minute before it (the two logs' clocks) to ten minutes
     /// after. The attacker's computer registers in the same second; the nearest sign-in from any address decides whose.
     static let deviceWindow: ClosedRange<TimeInterval> = -60...(10 * 60)
+
+    /// What `event` says of the account's device `ids`: true there (registered, approved, access allowed), false gone
+    /// (unregistered, an admin's block, wipe or delete done), nil nothing. Google's names, from the Reports API's Devices and Admin
+    /// mobile-settings events: a Devices-log action counts only once `EXECUTED` (2026-10-22: a guessed `SUCCESS` matched
+    /// nothing Google sends, so a computer an admin blocked stayed on the list).
+    static func deviceWord(_ event: Event, on ids: Set<String>, of account: String) -> Bool? {
+        let on = [event.parameters["DEVICE_ID"], event.parameters["RESOURCE_ID"]].contains { $0.map(ids.contains) ?? false }
+        guard on else { return nil }
+        switch (event.log, event.event) {
+        case ("mobile", _) where event.who.lowercased() != account.lowercased(): return nil
+        case ("mobile", "DEVICE_REGISTER_UNREGISTER_EVENT"): return event.parameters["ACCOUNT_STATE"] != "UNREGISTERED"
+        case ("mobile", "DEVICE_ACTION_EVENT"):
+            guard event.parameters["ACTION_EXECUTION_STATUS"] == "EXECUTED" else { return nil }
+            switch event.parameters["ACTION_TYPE"] ?? "" {
+            case "BLOCK", "DISALLOW_ACCESS", "ACCOUNT_WIPE", "DEVICE_WIPE", "UNENROLL": return false
+            case "APPROVE", "ALLOW_ACCESS": return true
+            default: return nil
+            }
+        case ("mobile", "DEVICE_COMPLIANCE_CHANGED_EVENT"):
+            return event.parameters["DEVICE_DEACTIVATION_REASON"] == "DEVICE_BLOCKED_BY_ADMIN" ? false : nil
+        case ("admin", _) where event.parameters["USER_EMAIL"]?.lowercased() != account.lowercased(): return nil
+        case ("admin", "MOBILE_DEVICE_BLOCK"), ("admin", "MOBILE_DEVICE_DELETE"), ("admin", "MOBILE_DEVICE_WIPE"),
+             ("admin", "MOBILE_ACCOUNT_WIPE"), ("admin", "MOBILE_DEVICE_CANCEL_WIPE_THEN_BLOCK"):
+            return false
+        case ("admin", "MOBILE_DEVICE_APPROVE"), ("admin", "MOBILE_DEVICE_CANCEL_WIPE_THEN_APPROVE"): return true
+        default: return nil
+        }
+    }
 
     /// A registered device as people say it, mid-sentence: "a Windows computer (Virtual Machine, Windows 10.0.19045)".
     static func deviceWords(_ event: Event) -> String {

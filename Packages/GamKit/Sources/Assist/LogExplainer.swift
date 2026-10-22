@@ -97,7 +97,7 @@ public enum LogExplainer {
         case .removeAdded: "remove the passkey or 2-Step Verification method the attacker added to the account"
         case .clearRecovery: "clear the recovery email and phone the attacker changed"
         case .unblockSender: "have the person unblock the sender the attacker blocked in Gmail"
-        case .deleteDevice: "delete the computer that joined the account at the attacker's sign-in"
+        case .deleteDevice: "block the computer that joined the account at the attacker's sign-in, or take the account off it"
         case .pullEmail: "pull the email the attacker sent from every mailbox"
         case .signOutApp: "sign the person out of another app reached through Google"
         case .warnContacts: "warn the people in the account's contacts, printed while the attacker had it"

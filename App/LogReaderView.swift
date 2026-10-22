@@ -4,6 +4,14 @@ import GamEngine
 import Stores
 import SwiftUI
 
+/// What a to-do item's "Do It Here" hands Incident to pick once it has read the person: a computer the attacker's sign-in
+/// joined (by the Devices log's ID for it, else by when it registered), or clearing the recovery details. The screen's own
+/// type, so the screens that can run gam never name the reader's module.
+enum SecurePick: Equatable {
+    case computer(resourceID: String, registeredAt: Date?)
+    case clearRecovery
+}
+
 /// "Read the logs" (docs/plans/2026-10-19-on-device-log-reader.md): what a pull of the incident logs shows, found by
 /// rules in code (`LogReading`), each finding with the fixes it points to, and on request the on-device model's
 /// explanation (`LogExplainer`). It changes nothing and reaches no change: a fix only hands an address or a Message-ID
@@ -11,8 +19,8 @@ import SwiftUI
 /// own preview, confirmed there. Its own file, apart from anything that can run gam (invariant 10, `WriteRouteTests`).
 struct LogReaderView: View {
     let pull: IncidentLogs.Pull
-    /// Opens Incident for a person and checks them.
-    let secure: (String) -> Void
+    /// Opens Incident for a person and checks them, with one thing picked when a "Do It Here" asked for it.
+    let secure: (String, SecurePick?) -> Void
     /// Opens Phishing with a Message-ID and finds who has the email.
     let pullEmail: (String) -> Void
     /// Sign-ins marked as the person's own on this domain ("That was them"): the reader makes no suspect of them.
@@ -268,7 +276,7 @@ private struct StatusRow: View {
 /// One finding: its sentence, said with what kind it is, and a button for each fix it points to.
 private struct FindingRow: View {
     let finding: LogReading.Finding
-    let secure: (String) -> Void
+    let secure: (String, SecurePick?) -> Void
     let pullEmail: (String) -> Void
     /// Sign-ins can be marked as theirs (the store opened).
     let canMark: Bool
@@ -314,7 +322,8 @@ private struct FindingRow: View {
                     ForEach(finding.drafts, id: \.self) { draft in
                         Button(draft.title) {
                             switch draft {
-                            case .secureAccount(let person): secure(person)
+                            case .secureAccount(let person): secure(person, nil)
+                            case .undo(let person, let pick): secure(person, SecurePick(pick))
                             case .pullEmail(let id, _): pullEmail(id)
                             }
                         }
@@ -331,6 +340,7 @@ private struct FindingRow: View {
     private func hint(_ draft: LogReading.Draft) -> String {
         switch draft {
         case .secureAccount: "Opens Incident and checks them. Nothing changes until you preview and confirm there."
+        case .undo: "Opens Incident, checks them and picks only this. Nothing changes until you preview and confirm there."
         case .pullEmail: "Opens Phishing and finds who has the email. Nothing changes until you preview and confirm there."
         }
     }
@@ -403,7 +413,7 @@ private struct MomentRow: View {
 /// One thing still to do: its number, the sentence, and a button for each fix it points to (the screen that does it).
 private struct TaskRow: View {
     let task: LogReading.Task
-    let secure: (String) -> Void
+    let secure: (String, SecurePick?) -> Void
     let pullEmail: (String) -> Void
 
     var body: some View {
@@ -419,7 +429,8 @@ private struct TaskRow: View {
                     ForEach(task.drafts, id: \.self) { draft in
                         Button(draft.title) {
                             switch draft {
-                            case .secureAccount(let person): secure(person)
+                            case .secureAccount(let person): secure(person, nil)
+                            case .undo(let person, let pick): secure(person, SecurePick(pick))
                             case .pullEmail(let id, _): pullEmail(id)
                             }
                         }
@@ -428,6 +439,15 @@ private struct TaskRow: View {
                 }
                 .padding(.leading, 28)
             }
+        }
+    }
+}
+
+extension SecurePick {
+    init(_ pick: LogReading.Pick) {
+        switch pick {
+        case .computer(let resourceID, let registeredAt): self = .computer(resourceID: resourceID, registeredAt: registeredAt)
+        case .clearRecovery: self = .clearRecovery
         }
     }
 }

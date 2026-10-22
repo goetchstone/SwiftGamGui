@@ -50,6 +50,55 @@ struct DevicesTests {
         #expect(try await computers("bob@example.com").1.isEmpty)
     }
 
+    /// Blocking or removing an account's sign-in on a computer: one device user by its own name, which GAM acts on without
+    /// `doit`; anything GAM would read as more than that one name (a query, a list, another shape) is refused before it runs.
+    @Test func aComputersSignInIsBlockedOrRemovedByItsName() throws {
+        let name = "devices/0vmcarol01/deviceUsers/u1"
+        let block = try GamCommands.blockDeviceUser(name: name), remove = try GamCommands.deleteDeviceUser(name: name)
+        #expect(block.argv == ["block", "deviceuser", name] && block.action == .blockDeviceUser)
+        #expect(remove.argv == ["delete", "deviceuser", name] && remove.action == .deleteDeviceUser)
+        for bad in ["query:email:carol@example.com", "devices/a/deviceUsers/b,devices/c/deviceUsers/d", "devices/a/deviceUsers/b/c",
+                    "devices//deviceUsers/b", "devices/a b/deviceUsers/c", "devices/å/deviceUsers/b", "id", "devices/a/users/b", "",
+                    "devices/-/deviceUsers/-", "devices/a/deviceUsers/-"] {
+            #expect(throws: GamCommands.Invalid.self, "\(bad)") { try GamCommands.blockDeviceUser(name: bad) }
+            #expect(throws: GamCommands.Invalid.self, "\(bad)") { try GamCommands.deleteDeviceUser(name: bad) }
+        }
+        #expect((try? GamCommands.printDevices(user: "carol@example.com"))?.argv.contains { $0.hasPrefix("name,") } == true,
+                "the read asks for the person's sign-in's name, which a block acts on")
+    }
+
+    /// The mock blocks or removes as GAM does: a device user in the fixture, then a read shows it blocked or the person
+    /// gone; one not there, or deleted already, "Does not exist" (56); a name of another shape is GAM's usage error (2); a
+    /// refusal is GAM's failure (50); the scope's absence as `print devices`.
+    @Test func theMockBlocksAndRemovesAsGamDoes() async throws {
+        let state = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-devices-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: state) }
+        let vm = "devices/0vmcarol01/deviceUsers/u1"
+        let blocked = try await run(try GamCommands.blockDeviceUser(name: vm).argv, state: state)
+        #expect(blocked.exitCode == 0 && blocked.stdout.contains("Device User: \(vm), Blocked"), "\(blocked.stderr)")
+        let (_, after) = try await computers("carol@example.com", state: state)
+        #expect(after.first { $0.id == "devices/0vmcarol01" }.map { !$0.isActive && $0.state == "blocked" } == true)
+        let removed = try await run(try GamCommands.deleteDeviceUser(name: vm).argv, state: state)
+        #expect(removed.exitCode == 0 && removed.stdout.contains("Deleted"))
+        let (_, gone) = try await computers("carol@example.com", state: state)
+        #expect(!gone.contains { $0.id == "devices/0vmcarol01" }, "the person is gone from it")
+        #expect(try await run(try GamCommands.deleteDeviceUser(name: vm).argv, state: state).exitCode == 56, "deleted already")
+        #expect(try await run(try GamCommands.blockDeviceUser(name: "devices/nope/deviceUsers/u9").argv, state: state).exitCode == 56)
+        #expect(try await run(["block", "deviceuser", "devices/0vmcarol01"]).exitCode == 2, "not a device user's name")
+        try FileManager.default.createDirectory(at: state.appending(path: "refused/deviceusers"), withIntermediateDirectories: true)
+        let refused = try await run(try GamCommands.blockDeviceUser(name: "devices/0maccarol01/deviceUsers/u2").argv, state: state)
+        #expect(refused.exitCode == 50 && refused.stderr.contains("Block Failed"))
+        // The service before the argument, as GAM: a dead key or a missing scope fails a block as it fails the print.
+        for (file, exit) in [("badkey", Int32(12)), ("denied", 12), ("noscope", 73)] {
+            let refusedFirst = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-devices-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: refusedFirst.appending(path: "\(file)/devices"), withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: refusedFirst) }
+            #expect(try await run(try GamCommands.blockDeviceUser(name: vm).argv, state: refusedFirst).exitCode == exit, "\(file)")
+            #expect(try await run(["block", "deviceuser", "devices/0vmcarol01"], state: refusedFirst).exitCode == exit, "\(file) first")
+        }
+    }
+
     /// Without the devices scope GAM refuses before it reads an argument, each cause with its own fix: delegation not
     /// granted is the admin's "Service/App not enabled" (73), granted in the Admin console; a service account scope list
     /// without the API is "API access Denied" (12), which delegating can't fix, and wins when both are missing. A dead key is
@@ -113,7 +162,7 @@ struct DevicesTests {
         let said = Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,
                                         computers: carol)
         #expect(said == ["2 computers are signed in with carol@example.com's account, 1 of them a virtual machine: one they don't use "
-                         + "may be the attacker's. The sign-out ends its session; block or delete it in the Admin console's Devices."])
+                         + "may be the attacker's. The sign-out ends its session; block it or take the account off it below."])
         // One already blocked is said as such, and alone needs nothing.
         let dana = try await computers("dana@example.com").1
         #expect(Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,

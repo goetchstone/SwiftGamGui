@@ -45,6 +45,7 @@ public enum WriteAction: String, Sendable, CaseIterable {
     // Native: no GamGUI builder (`GamCommands`' native section).
     case clearRecovery, hideFromDirectory, transferCalendarOwnership, deleteFilters, imapOff, popOff, deleteSendAs
     case trashMessage, deleteMessages, setPassword
+    case blockDeviceUser, deleteDeviceUser
 }
 
 /// Permission to run one `GamWrite`, minted only by ChangeCore's executor once a held preview has passed

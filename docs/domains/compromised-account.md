@@ -275,7 +275,7 @@ the same second as the sign-in), and the phones list never shows a computer. Rea
   registration) and last synced it, whose it is, its serial number, its state (blocked, wiped, waiting for approval), and a
   virtual machine (by model or maker: Hyper-V, VMware, VirtualBox, Parallels, QEMU and KVM, Xen, the clouds') or a
   compromised report in words. The findings count only those still signed in; one blocked or wiped stays listed until
-  it's deleted, said as such. Block or delete one in the Admin console's Devices.
+  it's deleted, said as such. Block it, or take the account off it, in the plan ("Undo from the app" below).
 - **The scope:** GAM reads devices as the admin through the service account, so domain-wide delegation needs
   `https://www.googleapis.com/auth/cloud-identity.devices` (GAM's default service account scope, or its `.readonly` form
   when the service account was set up read-only; Setup's check doesn't test it). Each cause has its own fix
@@ -419,7 +419,8 @@ read as one on a later day. Code decides what's done and what's left; the model 
   for every account that hit its cap, with its oldest event), remove what the attacker added, clear recovery, unblock a
   sender, delete a computer, pull an email, sign out of another app, warn contacts or Chat recipients, treat exported data
   as taken, confirm a new address, check a password, look at what was done, check a shared address. An item leaves once
-  the logs show it done: a lock, a device unregistered or acted on, recovery removed by an admin. What the logs can't show
+  the logs show it done: a lock, a device unregistered or blocked, wiped or deleted by an admin (`deviceWord`), recovery
+  removed by an admin. What the logs can't show
   (a warning sent) stays until the incident record can tick it. A finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
@@ -438,6 +439,42 @@ read as one on a later day. Code decides what's done and what's left; the model 
   or the model must be an address's shape (`isAccount`): a Chrome event's account is what the browser reports.
 - **Live check (L1t, read-only):** pull an incident's logs by the affected accounts and check each timeline against the
   Admin console's admin and login logs for that account.
+
+## Undo from the app: the attacker's computers, and Do It Here (incidents plan)
+Asked for after the operator found three attacker computers still joined to accounts (2026-10-22): block them or take the
+account off them from the plan, and a to-do item's fix one press away.
+- **The writes** (`GamCommands.blockDeviceUser`, `deleteDeviceUser`): `block deviceuser <name>` and `delete deviceuser
+  <name>`, the name exactly `devices/<id>/deviceUsers/<id>` (ids `[A-Za-z0-9_-]`, checked before any argv). A name is one
+  computer's sign-in for one person; GAM acts on it without `doit` (that's for a query). Taking the account off is
+  destructive (`minimumRisk`); a block is undone in the Admin console. GAM always prints a device user's `name` (and the
+  print names it too); a name that fails the check leaves that computer unpickable, never the whole plan refused. `-` is
+  never an id: it's the API's wildcard for every device.
+- **The plan** (`Form.computers`, `Compromised.steps(computers:)`): each computer still signed in has Keep it, Block it or
+  Take the account off it; its step comes after the send-as steps, and a check again after a run drops the picks of what's
+  no longer active.
+- **Do It Here** (`Draft.undo`, `Form.pickOnly`): a computer's and a recovery detail's to-do item opens Check Account for
+  that person and, after the check, picks only that fix with the lock steps off (the lock is a to-do item of its own).
+  The computer is matched by the Devices log's `RESOURCE_ID` as Google's device ID; one found that way but no longer
+  signed in picks nothing. With no ID match, the computer first signed in within two minutes of the registration. When
+  nothing matches, nothing is picked and the computers say so, to pick by hand. A pick waits only for its own check: a
+  check by hand, another person, or a run going on drops it.
+- **Done** (`LogReading.deviceWord`): the item leaves once the account's latest word on the device is an unregistration,
+  a Devices-log block, wipe, unenroll or refused access that's `EXECUTED`, Google's "blocked by the admin", or the Admin
+  log's `MOBILE_DEVICE_BLOCK`, `_DELETE`, `_WIPE` or `MOBILE_ACCOUNT_WIPE` for that device and account. Pending, sent to
+  the device, a lock or a sign-out isn't gone; approved (either log) or registered again is back, from any address, and
+  gone never counts from a suspect's. Names from the Reports API's references (failure log 2026-10-22, a guessed
+  device-action status).
+- **The scope:** these write through Cloud Identity's devices API, so the delegation needs
+  `https://www.googleapis.com/auth/cloud-identity.devices` itself; the `.readonly` form reads but can't block.
+- **The mock:** `block|delete deviceuser` builds the service first, as GAM does (`denied` 12, `badkey` 12, `noscope` 73,
+  before any argument), then checks the name's shape (usage, exit 2), not found 56 ("Device User … Does not exist"), `refused/deviceusers` 50 ("Block Failed" / "Delete Failed"); a block
+  makes the computer `BLOCKED` to the next print and a removal drops that person from it.
+- **Not modelled, for the live check to tell:** whether the Devices log's `RESOURCE_ID` is Google's device ID (else the
+  match falls back to time); what Google logs for a block or removal done through the API, and whether a Windows
+  computer's block shows `EXECUTED` while the computer is off; how GAM words a scope refusal for a write.
+- **Live check (L1u, a write: the operator's yes for each one):** block one attacker computer from the plan; the Admin
+  console shows it blocked, and Read the logs drops it from Still to do. The operator's own Admin-console blocks of
+  2026-10-22 check the Done rule first, read-only: read the logs again and the three should leave the list.
 
 ## That was them (incidents plan, moved up at the operator's ask)
 A sign-in Google marked that was the person, closed as theirs: on a suspect address's finding, "That Was Them…" (or a
@@ -469,7 +506,7 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   point cites a finding shown, and nothing names an account or address the findings don't.
 
 ## Next
-- The live checks L1, L1c, L1d, L1r, L1s, L1l and L2.
+- The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u and L2.
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): findings first, the incident record,
   the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
