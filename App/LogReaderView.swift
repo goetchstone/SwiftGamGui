@@ -48,7 +48,8 @@ struct LogReaderView: View {
             ((try? log.rows.get()) ?? []).map { row in
                 LogReading.Event(log: row.application.rawValue, time: row.date, who: row.who, event: row.event, ip: row.ip,
                                  flagged: row.flagged,
-                                 parameters: Dictionary(row.parameters.map { ($0.name, $0.value) }, uniquingKeysWith: { first, _ in first }))
+                                 parameters: Dictionary(row.parameters.map { ($0.name, $0.value) }, uniquingKeysWith: { first, _ in first }),
+                                 agent: row.agent, app: row.app)
             }
         }
     }
@@ -141,8 +142,10 @@ private struct FindingRow: View {
 
     private var symbol: String {
         switch finding.kind {
-        case .signedInFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock: "exclamationmark.octagon.fill"
+        case .signedInFromSuspect, .appFromSuspect, .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock:
+            "exclamationmark.octagon.fill"
         case .mailFromSuspect, .failedFromSuspect, .chatFromSuspect, .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
+        case .agentActed: "sparkles"
         case .passwordOnOtherSite, .sharedAddress, .suspectAddress: "info.circle"
         }
     }

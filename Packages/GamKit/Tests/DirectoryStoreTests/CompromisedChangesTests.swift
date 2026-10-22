@@ -99,6 +99,8 @@ final class CompromisedChangesTests {
         try await connect()
         let check = try await checked()
         #expect(try check.devices.get().count == 2)
+        #expect(try check.apps.get().map(\.name) == ["Mail Sync Pro", "Google Chrome"], "the broadest first")
+        #expect(check.findings.contains { $0.hasPrefix("2 apps have access to carol@example.com's account (broad: Mail Sync Pro). The sign-out revokes them all") })
         #expect(check.findings.contains { $0.hasPrefix("2 phones or tablets sync carol@example.com's account") })
         #expect(writes().isEmpty)
         #expect(check.user.primaryEmail == "carol@example.com" && !check.isConnectedAdmin)
@@ -214,6 +216,23 @@ final class CompromisedChangesTests {
         #expect(searches.state(for: "alice@example.com") == nil && writes().isEmpty)
     }
 
+    /// Every account's connected apps, read from Incident: AI assistants and agents first, never a suspended account's grants,
+    /// kept for the tenant; a refusal is GAM's words.
+    @Test func everyAccountsConnectedAppsAreRead() async throws {
+        try await connect()
+        let reads = ConnectedAppsRead(setup: setup, access: access)
+        await reads.read()
+        guard case .read(.success(let apps), _)? = reads.state else { Issue.record("\(String(describing: reads.state))"); return }
+        #expect(apps.map(\.name) == ["ChatGPT", "Read AI Notetaker", "Mail Sync Pro", "Zoom", "macOS"])
+        #expect(apps.first { $0.name == "Zoom" }?.users == ["alice@example.com", "dana@example.com"], "bob@ is suspended")
+        try FileManager.default.createDirectory(at: state.appending(path: "denied"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "denied/tokens").path, contents: Data())
+        await reads.read()
+        guard case .read(.failure(let problem), _)? = reads.state else { Issue.record("not refused"); return }
+        #expect(problem.summary.contains("exit=12"), "\(problem.summary)")
+        #expect(writes().isEmpty)
+    }
+
     /// A person's Chrome profiles read from their page: reads only, kept per person on this tenant, a failure in GAM's words.
     @Test func aPersonsChromeProfilesAreTheirOwn() async throws {
         try await connect()
@@ -271,7 +290,7 @@ final class CompromisedChangesTests {
         #expect(try domain.logs[1].rows.get().map(\.event) == ["recovery_phone_edit"])
         #expect(writes().isEmpty)
         let csv = IncidentLogs.csv(domain.logs[0])
-        #expect(csv.hasPrefix("log,time,actor,event,ip_address,flagged,parameters\r\nlogin,") && csv.contains("198.51.100.23"))
+        #expect(csv.hasPrefix("log,time,actor,event,ip_address,flagged,via,parameters\r\nlogin,") && csv.contains("198.51.100.23"))
         await logs.pull(IncidentLogs.Query(applications: [.login], users: [], hours: 72, ip: "198.51.100"))
         guard case .failure(let problem)? = logs.pull?.logs.first?.rows else { Issue.record("not refused"); return }
         #expect(problem.summary.contains("isn't one IP address"))

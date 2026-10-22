@@ -460,8 +460,13 @@ fi
 # <address>`, and `user all filter PROFILE_USER_NAME==<address>`, the account signed in to the profile, the one filter
 # modelled, for Chrome with `user all`; a Chrome `select` isn't modelled. An event without an IP address column is never
 # one `ip` keeps.
-if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome|saml|calendar|calendars|groups|group|rules|contextawareaccess|vault) true ;; *) false ;; esac; then
-  case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; calendars) app=calendar ;; group) app=groups ;; *) app=$2 ;; esac
+if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome|saml|calendar|calendars|groups|group|rules|contextawareaccess|vault|\
+geminiinworkspaceapps|gemini|geminiforworkspace|meet|hangoutsmeet|contacts|keep|tasks|admindataaction|accesstransparency|access|datastudio|lookerstudio|\
+groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsearch|classroom|datamigration|meethardware|assignments|graduation) true ;;
+  *) false ;; esac; then
+  case "$2" in logins) app=login ;; tokens|oauthtoken) app=token ;; doc|docs) app=drive ;; devices) app=mobile ;; calendars) app=calendar ;;
+    group) app=groups ;; gemini|geminiforworkspace) app=geminiinworkspaceapps ;; hangoutsmeet) app=meet ;; access) app=accesstransparency ;;
+    lookerstudio) app=datastudio ;; enterprisegroups) app=groupsenterprise ;; cloud) app=gcp ;; *) app=$2 ;; esac
   shift 2; who=""; start=""; end=""; ip=""; max=""; events=""; actor=""; filter=""; selected=""
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -487,7 +492,8 @@ if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthto
   [ -z "$actor" ] || [ "$app" = admin ] || not_modelled "report $app userisactor"
   match=""
   # doReport's REPORT_ACTIVITIES_UPPERCASE_EVENTS: these logs' event names are capitals; the rest, lower case.
-  case "$app" in admin|chrome|contextawareaccess|mobile|takeout) events=$(printf '%s' "$events" | tr '[:lower:]' '[:upper:]') ;; esac
+  case "$app" in admin|chrome|contextawareaccess|mobile|takeout|accesstransparency|cloudsearch|datamigration|datastudio|directorysync|\
+    gcp|meethardware|profile) events=$(printf '%s' "$events" | tr '[:lower:]' '[:upper:]') ;; esac
   if [ "$app" = chrome ]; then
     [ -z "$selected" ] || not_modelled "report chrome select users"
     if [ -n "$filter" ]; then
@@ -1256,6 +1262,38 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
   while IFS= read -r record; do
     case "$record" in *"\"$owner"*) gam_row "$(json_text resourceId "$record")" "$record" ;; esac   # a prefix, as the API's
   done < "$GAM_MOCK_FIXTURES/mobile_devices.json"
+  exit 0
+fi
+
+# `gam print tokens` and `gam user <u> print tokens` -> GAM's CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`
+# (_printShowTokens, gam/__init__.py:74326-74533 at 7.48.30; Incident's connected apps and Check Account): the grants in
+# mock_gam/tokens.csv, for every account but the suspended ones (GAM's default entity, all users), or that account's,
+# a row per grant, the scopes space-joined (csv_output_field_delimiter's default); an account with none writes no row. An
+# address that isn't a user is entityUnknownWarning: "User: <u>, Does not exist", ENTITY_DOES_NOT_EXIST_RC 56, outside the
+# domain "Service not applicable", 73. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. No option is modelled.
+if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token" ]; }; } \
+    || { [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "tokens" ] || [ "${4:-}" = "token" ]; }; }; then
+  if [ "$1" = "user" ]; then owner=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); [ $# -eq 4 ] || not_modelled "print tokens with $5"
+  else owner=""; [ $# -eq 2 ] || not_modelled "print tokens with $3"; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/tokens" ]; then
+    printf '\nERROR: Not Authorized to access this resource/api\n\nERROR: Reauthentication is needed, please run\n\ngam oauth create\n' 1>&2
+    exit 12
+  fi
+  if [ -n "$owner" ] && ! in_directory "$owner"; then
+    echo "user,clientId,displayText,anonymous,nativeApp,userKey,scopes"
+    case "$owner" in
+      *@example.com) printf 'User: %s, Does not exist\n' "$owner" 1>&2; exit 56 ;;
+      *) printf 'User: %s, Service not applicable\n' "$owner" 1>&2; exit 73 ;;
+    esac
+  fi
+  suspended=$(grep -F '"suspended": true' "$GAM_MOCK_FIXTURES/print_users.json" | sed -n 's/.*"primaryEmail": "\([^"]*\)".*/\1/p')
+  head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"
+  tail -n +2 "$GAM_MOCK_FIXTURES/tokens.csv" | while IFS= read -r line; do
+    user=${line%%,*}
+    if [ -n "$owner" ]; then [ "$user" = "$owner" ] || continue
+    else case " $suspended " in *" $user "*) continue ;; esac; fi
+    printf '%s\n' "$line"
+  done
   exit 0
 fi
 

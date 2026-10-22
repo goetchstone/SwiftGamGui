@@ -15,8 +15,13 @@ public enum LogReading {
         public let ip: String
         public let flagged: Bool
         public let parameters: [String: String]
+        /// The AI agent that acted, in words ("the AI agent Inbox Helper, made by dana@…"); empty when none.
+        public let agent: String
+        /// The app that acted for the person ("Mail Sync Pro"); empty when they acted themselves.
+        public let app: String
 
-        public init(log: String, time: Date?, who: String, event: String, ip: String, flagged: Bool, parameters: [String: String]) {
+        public init(log: String, time: Date?, who: String, event: String, ip: String, flagged: Bool, parameters: [String: String],
+                    agent: String = "", app: String = "") {
             self.log = log
             self.time = time
             self.who = who
@@ -24,6 +29,8 @@ public enum LogReading {
             self.ip = ip
             self.flagged = flagged
             self.parameters = parameters
+            self.agent = agent
+            self.app = app
         }
     }
 
@@ -60,8 +67,9 @@ public enum LogReading {
     /// the drafts it points to. `id` ("F1") is what the model's points cite.
     public struct Finding: Sendable, Equatable, Identifiable {
         public enum Kind: String, Sendable, CaseIterable {
-            case signedInFromSuspect, exportedFromSuspect, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect,
-                 chatFromSuspect, afterLock, pastPhishingWarning, passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
+            case signedInFromSuspect, appFromSuspect, actedFromSuspect, exportedFromSuspect, mailFromSuspect, passwordOnPhishingSite,
+                 failedFromSuspect, chatFromSuspect, agentActed, afterLock, pastPhishingWarning, passwordOnOtherSite, breachedPassword,
+                 sharedAddress, suspectAddress
         }
         public let id: String
         public let kind: Kind
@@ -161,6 +169,39 @@ public enum LogReading {
                                  [.secureAccount(account)]))
         }
 
+        // An app acting for an account from a suspect address: the attacker's app, or theirs through the person's grant.
+        let throughApp = events.filter { acting.contains($0.ip) && !$0.app.isEmpty && isAccount($0.who) }
+        for (account, theirs) in grouped(throughApp) {
+            let apps = unique(theirs.map(\.app)), logs = unique(theirs.map { logName($0.log) })
+            found.append(Pending(.appFromSuspect, "\(list(apps)) acted for \(account) from \(list(unique(theirs.map(\.ip)))) (\(list(logs))).",
+                                 [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
+        }
+
+        // Anything else a suspect address did as an account: Gemini asked to search a mailbox, Drive, Contacts, Calendar…
+        // Not the logs other rules read, nor access evaluation, whose token checks come with every sign-in.
+        let covered: Set = ["login", "token", "saml", "useraccounts", "gmail", "chat", "takeout", "chrome", "accessevaluation"]
+        let other = events.filter { acting.contains($0.ip) && $0.app.isEmpty && isAccount($0.who) && !covered.contains($0.log) }
+        for (account, theirs) in grouped(other) {
+            let logs = unique(theirs.map { logName($0.log) })
+            found.append(Pending(.actedFromSuspect, "\(account) used \(list(logs)) from \(list(unique(theirs.map(\.ip)))): see what was "
+                                 + "searched, opened or changed.", [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
+        }
+
+        // AI agents acting for people: said, by agent, and called out when the account is one the attacker had.
+        var agents: [String: [Event]] = [:], agentOrder: [String] = []
+        for event in events where !event.agent.isEmpty && isAccount(event.who) {
+            if agents[event.agent] == nil { agentOrder.append(event.agent) }
+            agents[event.agent, default: []].append(event)
+        }
+        for agent in agentOrder {
+            let theirs = agents[agent] ?? [], accounts = unique(theirs.map(\.who))
+            let attacked = accounts.filter { inside.contains($0.lowercased()) }
+            found.append(Pending(.agentActed, "\(agent.prefix(1).uppercased() + agent.dropFirst()) acted for \(list(accounts)) "
+                                 + "(\(theirs.count) event\(theirs.count == 1 ? "" : "s"): \(list(unique(theirs.map { logName($0.log) }))))"
+                                 + (attacked.isEmpty ? "." : ", including \(list(attacked)), whom the attacker had: check what it did."),
+                                 accounts, unique(theirs.map(\.ip).filter { !$0.isEmpty }), theirs.count, []))
+        }
+
         // Chat messages from a suspect address: phishing can go out in Chat too.
         let chatted = events.filter { $0.log == "chat" && $0.event == "message_posted" && acting.contains($0.ip) && isAccount($0.who) }
         for (account, theirs) in grouped(chatted) {
@@ -239,6 +280,25 @@ public enum LogReading {
         let kind: Finding.Kind, words: String, accounts: [String], addresses: [String], events: Int, drafts: [Draft]
         init(_ kind: Finding.Kind, _ words: String, _ accounts: [String], _ addresses: [String], _ events: Int, _ drafts: [Draft]) {
             (self.kind, self.words, self.accounts, self.addresses, self.events, self.drafts) = (kind, words, accounts, addresses, events, drafts)
+        }
+    }
+
+    /// A log's name as people say it.
+    static func logName(_ log: String) -> String {
+        switch log {
+        case "geminiinworkspaceapps": "Gemini"
+        case "drive": "Drive"
+        case "calendar": "Calendar"
+        case "contacts": "Contacts"
+        case "meet": "Meet"
+        case "keep": "Keep"
+        case "tasks": "Tasks"
+        case "gmail": "Gmail"
+        case "chat": "Chat"
+        case "mobile": "a phone"
+        case "datastudio": "Looker Studio"
+        case "accessevaluation": "Google's access checks"
+        default: log
         }
     }
 
