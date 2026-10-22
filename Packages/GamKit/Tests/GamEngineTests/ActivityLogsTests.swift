@@ -32,14 +32,17 @@ struct ActivityLogsTests {
         let result = try await report(try GamCommands.reportActivity(.login, users: ["carol@example.com"], hours: 720, maxActivities: 1000))
         #expect(result.exitCode == 0 && result.stderr.contains("Getting all Activities for carol@example.com"), "\(result.stderr)")
         let read = rows(result, .login)
-        #expect(read.map(\.who).allSatisfy { $0 == "carol@example.com" } && read.count == 5)
+        #expect(read.map(\.who).allSatisfy { $0 == "carol@example.com" } && read.count == 7)
         #expect(read.map(\.time) == read.map(\.time).sorted(by: >))
-        #expect(read[0].words == "Signed in" && read[0].ip == "198.51.100.23" && read[0].flagged, "is_suspicious")
-        #expect(read[0].details == ["by password", "Google marked it suspicious"])
-        #expect(read[1].words == "Google flagged a suspicious sign-in" && read[1].flagged)
-        #expect(read[3].words == "Asked to prove it's them" && read[3].details == ["by password", "challenge: google authenticator",
-                                                                                  "challenge passed"] && !read[3].flagged)
-        #expect(read[0].date == Date(timeIntervalSince1970: 1_792_419_160), "2026-10-19T14:12:40Z")
+        // After the lock the attacker's address tried her old password; before it, it added a passkey.
+        #expect(read[0].words == "Sign-in failed" && read[0].ip == "198.51.100.23" && !read[0].flagged)
+        #expect(read[1].words == "Added a passkey" && read[1].ip == "198.51.100.23")
+        #expect(read[2].words == "Signed in" && read[2].ip == "198.51.100.23" && read[2].flagged, "is_suspicious")
+        #expect(read[2].details == ["by password", "Google marked it suspicious"])
+        #expect(read[3].words == "Google flagged a suspicious sign-in" && read[3].flagged)
+        #expect(read[5].words == "Asked to prove it's them" && read[5].details == ["by password", "challenge: google authenticator",
+                                                                                  "challenge passed"] && !read[5].flagged)
+        #expect(read[2].date == Date(timeIntervalSince1970: 1_792_419_160), "2026-10-19T14:12:40Z")
         #expect(ActivityLogs.addresses(in: read) == ["198.51.100.23", "203.0.113.10"], "the flagged address first")
     }
 
@@ -51,7 +54,7 @@ struct ActivityLogsTests {
         #expect(try await read(.token, ip: attacker).map(\.event) == ["authorize"])
         #expect(try await read(.gmail, ip: attacker).count == 1)
         #expect(try await read(.accessEvaluation, ip: attacker).map(\.event) == ["deny_cookie_validation_request", "allow_token_request"])
-        #expect(try await read(.userAccounts, ip: attacker).map(\.words) == ["Recovery phone edit"])
+        #expect(try await read(.userAccounts, ip: attacker).map(\.words) == ["Changed the recovery phone"])
         #expect(try await read(.chat, ip: attacker).map(\.words) == ["Posted a Chat message"])
         #expect(try await read(.saml, ip: attacker).map(\.words) == ["Signed in to an app through Google"])
         #expect(try await read(.takeout, ip: attacker).map(\.words) == ["Started a Takeout export of the account's data"])
@@ -113,9 +116,32 @@ struct ActivityLogsTests {
         #expect(outside.exitCode == 73 && outside.stderr.contains("Service not applicable"))
         let twice = try await report(GamRead(["report", "login", "select", "users", "carol@example.com,carol@example.com", "start", "-3h",
                                               "end", "now", "maxactivities", "1000"]))
-        #expect(rows(twice, .login).count == 5)
+        #expect(rows(twice, .login).count == 7)
         #expect(try await report(GamRead(["report", "login", "user", "carol@example.com", "userisactor", "start", "-3h", "end", "now",
                                           "maxactivities", "5"])).exitCode == 2, "userisactor is the admin log's")
+    }
+
+    /// The admin log reads an account two ways, as doReport does: with `userisactor` what it did as an admin; without, the
+    /// events naming it (USER_EMAIL), read as `user all` with a filter, so an address that isn't a user reads none, never
+    /// "Does not exist". Another person's reset isn't hers.
+    @Test func theAdminLogReadsWhatWasDoneToAnAccount() async throws {
+        func admin(_ users: [String], _ match: GamCommands.AdminMatch) async throws -> GamResult {
+            try await report(try GamCommands.reportActivity(.admin, users: users, hours: 72, maxActivities: 1000, admin: match))
+        }
+        let done = try await admin(["carol@example.com"], .affected)
+        #expect(done.exitCode == 0, "\(done.stderr)")
+        let lock = rows(done, .admin)
+        #expect(lock.map(\.event) == ["RESET_SIGNIN_COOKIES", "REVOKE_3LO_TOKEN", "DELETE_2SV_SCRATCH_CODES", "CHANGE_PASSWORD"])
+        #expect(lock.map(\.words) == ["Signed a person out of every session", "Revoked an app's access",
+                                      "Deleted 2-Step Verification backup codes", "Changed a person's password"])
+        #expect(lock.allSatisfy { $0.who == "alice@example.com" && $0.ip == "203.0.113.50" })
+        #expect(lock[1].details == ["to carol@example.com", "APP_ID: 123456-abc.apps.googleusercontent.com"])
+        let acted = try await admin(["carol@example.com"], .actor)
+        #expect(acted.exitCode == 0 && rows(acted, .admin).isEmpty, "she did nothing as an admin")
+        let stranger = try await admin(["nobody@example.com"], .affected)
+        #expect(stranger.exitCode == 0 && rows(stranger, .admin).isEmpty && !stranger.stderr.contains("Does not exist"))
+        let notUser = try await admin(["nobody@example.com"], .actor)
+        #expect(notUser.exitCode == 56, "as the actor, the API is asked for the account and refuses it")
     }
 
     /// One account at the cap is capped though another has none; with no accounts the whole read is one.

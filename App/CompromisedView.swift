@@ -966,8 +966,8 @@ private struct AfterwardsSection: View {
         ("lock.shield", "Turn on 2-Step Verification for anyone who doesn't have it (the check says who)."),
         ("globe", "Check their Chrome profiles (Users → their page → Security → Check Chrome): passwords saved in a Chrome "
             + "signed in with the work account were within the attacker's reach; change the important ones."),
-        ("clock.arrow.circlepath", "Pull the logs again later, with the lock time set in Read the logs: nothing from the "
-            + "attacker's address should come after it."),
+        ("clock.arrow.circlepath", "Pull the logs again later, by the accounts: Read the logs says where each one stands, "
+            + "whether the lock is holding, and any sign-in after it."),
         ("folder", "Export All the logs into a folder, for the record."),
     ]
 

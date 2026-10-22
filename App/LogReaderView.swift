@@ -14,11 +14,9 @@ struct LogReaderView: View {
     let secure: (String) -> Void
     /// Opens Phishing with a Message-ID and finds who has the email.
     let pullEmail: (String) -> Void
-    @State private var knowsLockTime = false
-    @State private var lockedAt = Date.now
     @State private var explained: (reading: LogReading.Reading, state: Explaining)?
-    /// The pull's rows as the reader sees them, made once per pull rather than on every redraw.
-    @State private var cached: (key: String, events: [LogReading.Event])?
+    /// The pull's reading, made once per pull rather than on every redraw: the rules scan every event.
+    @State private var cached: (key: String, reading: LogReading.Reading)?
 
     /// What identifies the pull read: its query and each log's outcome.
     private var key: String {
@@ -33,8 +31,13 @@ struct LogReaderView: View {
     }
 
     private var reading: LogReading.Reading {
-        let events = cached.flatMap { $0.key == key ? $0.events : nil } ?? Self.events(pull)
-        return LogReading.read(events, context: LogReading.Context(pulledBy: pull.query.ip, lockedAt: knowsLockTime ? lockedAt : nil))
+        cached.flatMap { $0.key == key ? $0.reading : nil } ?? Self.reading(pull)
+    }
+
+    /// What the rules find in `pull`, told the address it was pulled by and the logs it read.
+    static func reading(_ pull: IncidentLogs.Pull) -> LogReading.Reading {
+        let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
+        return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read))
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -57,10 +60,9 @@ struct LogReaderView: View {
     var body: some View {
         let reading = reading
         Section {
-            Toggle("I know when the account was locked", isOn: $knowsLockTime)
-            if knowsLockTime {
-                DatePicker("Locked at", selection: $lockedAt)
-                    .accessibilityHint("Activity from a suspect address after this time is called out.")
+            if !reading.statuses.isEmpty {
+                Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
             }
             if !unread.isEmpty {
                 Label("Not read, so not in these findings: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
@@ -77,7 +79,7 @@ struct LogReaderView: View {
             explanation(reading)
         } header: {
             Text("Read the logs").accessibilityAddTraits(.isHeader)
-                .onChange(of: key, initial: true) { _, key in cached = (key, Self.events(pull)) }
+                .onChange(of: key, initial: true) { _, key in cached = (key, Self.reading(pull)) }
         } footer: {
             Text("Found by rules in code, from the logs above. A fix opens its screen with the person or the email filled in; "
                  + "nothing changes until you preview and confirm it there.")
@@ -134,6 +136,35 @@ struct LogReaderView: View {
     }
 }
 
+/// An account the attacker had, and where it stands: the lock as the logs show it, in words, with a symbol that never says
+/// it alone.
+private struct StatusRow: View {
+    let status: LogReading.Status
+
+    private var symbol: String {
+        switch status.state {
+        case .stillIn: "exclamationmark.octagon.fill"
+        case .notLocked, .partlyLocked: "exclamationmark.triangle.fill"
+        case .locked: "lock.fill"
+        }
+    }
+
+    var body: some View {
+        let words = status.words { $0.formatted(date: .abbreviated, time: .shortened) }
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(status.account).fontWeight(.semibold)
+                Text(words)
+            }
+            .textSelection(.enabled)
+        } icon: {
+            Image(systemName: symbol).symbolRenderingMode(.multicolor)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(status.account): \(words)")
+    }
+}
+
 /// One finding: its sentence, said with what kind it is, and a button for each fix it points to.
 private struct FindingRow: View {
     let finding: LogReading.Finding
@@ -142,9 +173,11 @@ private struct FindingRow: View {
 
     private var symbol: String {
         switch finding.kind {
-        case .signedInFromSuspect, .deviceAtSuspectSignIn, .appFromSuspect, .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite, .afterLock:
+        case .signedInAfterLock, .signedInFromSuspect, .partlyLocked, .leftInPlace, .deviceAtSuspectSignIn, .appFromSuspect,
+             .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite:
             "exclamationmark.octagon.fill"
-        case .mailFromSuspect, .failedFromSuspect, .chatFromSuspect, .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
+        case .mailFromSuspect, .failedFromSuspect, .otherAppSession, .newAddressAfterLock, .chatFromSuspect, .pastPhishingWarning,
+             .breachedPassword: "exclamationmark.triangle.fill"
         case .agentActed: "sparkles"
         case .passwordOnOtherSite, .sharedAddress, .suspectAddress: "info.circle"
         }

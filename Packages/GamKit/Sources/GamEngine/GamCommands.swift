@@ -291,6 +291,12 @@ public enum GamCommands {
         case profile, device
     }
 
+    /// How the admin log reads an account: what it did as an admin (`userisactor`), or what admins did to it (doReport
+    /// otherwise maps each account to the filter `USER_EMAIL==<account>`, :14779-14788): a password reset, a sign-out.
+    public enum AdminMatch: Sendable, CaseIterable {
+        case actor, affected
+    }
+
     /// An activity report's application (4690-4729), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
     /// "Access" log (cookie validation, access-token requests) is `access_evaluation`.
     public enum ActivityApplication: String, CaseIterable, Sendable {
@@ -322,21 +328,27 @@ public enum GamCommands {
     /// `select users` for several, `user all` for none); `start -<hours>h end now` (getDeltaTime: now less that many
     /// hours; the end named so Gmail's 30-day rule doesn't move it); `ip` keeps the events from that address
     /// (actorIpAddress, server-side); `events` only those names; `maxactivities` bounds each read (invariant 9). CSV, a row
-    /// per event. The admin log is read with `userisactor`, what the accounts did (doReport otherwise reads the events
-    /// that affected them). Chrome's is read one account at a time, by `chrome` (`ChromeMatch`): the profile's account
+    /// per event. The admin log reads the accounts by `admin` (`AdminMatch`): with `userisactor`, what they did as admins,
+    /// or without it what admins did to them. Chrome's is read one account at a time, by `chrome` (`ChromeMatch`): the profile's account
     /// (`user all filter PROFILE_USER_NAME==<account>`, the filter passed as given, so the address lowercased as Google
     /// keeps it), or GAM's own `user <account>`, which doReport turns into `DEVICE_USER==<account>`. Throws for a window
     /// outside 1 hour to 180 days (30 for Gmail, the API's limit), more than 20 accounts (Chrome: more than one, and only
     /// Google's address characters) or one that isn't one address, an `ip` that isn't one IP address, or an event name
     /// that isn't letters and `_`.
     public static func reportActivity(_ application: ActivityApplication, users: [String] = [], hours: Int, ip: String = "",
-                                      events: [String] = [], maxActivities: Int, chrome: ChromeMatch = .profile) throws -> GamRead {
+                                      events: [String] = [], maxActivities: Int, chrome: ChromeMatch = .profile,
+                                      admin: AdminMatch = .actor) throws -> GamRead {
         guard (1...4_320).contains(hours), maxActivities > 0 else { throw Invalid.argument("a report reads 1 hour to 180 days") }
         guard application != .gmail || hours <= 720 else { throw Invalid.argument("the Gmail log reads at most 30 days") }
         guard users.count <= 20, users.allSatisfy(isOneAddress) else {
             throw Invalid.argument("each account is one email address, and at most 20 at once")
         }
         guard application != .chrome || users.count <= 1 else { throw Invalid.argument("the Chrome log reads one account at a time") }
+        // What was done to an account is read through a filter GAM builds from it (`USER_EMAIL==<account>`): only Google's
+        // address characters, as Chrome's filter is held to.
+        guard application != .admin || admin == .actor || users.allSatisfy({ filterAddress($0) != nil }) else {
+            throw Invalid.argument("an account the admin log reads what was done to is one plain address")
+        }
         let chromeAccount = application == .chrome ? users.first.map(filterAddress) : nil
         guard chromeAccount != .some(nil) else { throw Invalid.argument("“\(users[0])” isn't an address the Chrome log can match") }
         guard ip.isEmpty || Address.isIP(ip) else { throw Invalid.argument("“\(ip)” isn't one IP address") }
@@ -350,7 +362,7 @@ public enum GamCommands {
         } else {
             who = users.count == 1 ? ["user", users[0]] : ["select", "users", users.joined(separator: ",")]
         }
-        return GamRead(["report", application.rawValue] + who + (application == .admin && !users.isEmpty ? ["userisactor"] : [])
+        return GamRead(["report", application.rawValue] + who + (application == .admin && !users.isEmpty && admin == .actor ? ["userisactor"] : [])
             + ["start", "-\(hours)h", "end", "now"] + optional("ip", ip)
             + (events.isEmpty ? [] : ["events", events.joined(separator: ",")]) + ["maxactivities", String(maxActivities)])
     }

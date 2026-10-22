@@ -34,15 +34,88 @@ public enum LogReading {
         }
     }
 
-    /// What the operator knows that the logs don't: the address they pulled by (theirs to call the attacker's), and when
-    /// the account was locked.
+    /// What the pull says that its events don't: the address it was pulled by (the operator's to call the attacker's), and
+    /// the logs it read, by name (nil: not said). A lock is seen only where the admin log was read, by the accounts.
     public struct Context: Sendable, Equatable {
         public let pulledBy: String
-        public let lockedAt: Date?
+        public let read: Set<String>?
 
-        public init(pulledBy: String = "", lockedAt: Date? = nil) {
+        public init(pulledBy: String = "", read: Set<String>? = nil) {
             self.pulledBy = pulledBy
-            self.lockedAt = lockedAt
+            self.read = read
+        }
+    }
+
+    /// Where an account the attacker had stands, read from the logs in time order: the lock (a password reset and a
+    /// sign-out, or a suspension, each the first since the attacker's first event, by an admin or by Google), and what
+    /// came after it. Its dates are said by the caller's `when`, so the words read in the operator's own time.
+    public struct Status: Sendable, Equatable {
+        public enum State: Sendable, Equatable {
+            /// No lock seen since the attack.
+            case notLocked
+            /// A password reset or a sign-out, not both.
+            case partlyLocked
+            case locked
+            /// A sign-in from a suspect address after the lock: the attacker may still be in.
+            case stillIn
+        }
+        /// A step of the lock: when, and who did it (an admin's address, or Google).
+        public struct Step: Sendable, Equatable {
+            public let at: Date
+            public let by: String
+        }
+        public let account: String
+        public let state: State
+        public let reset: Step?
+        public let signOut: Step?
+        public let suspended: Step?
+        /// When the lock was whole, or its one half was done.
+        public let lockedAt: Date?
+        /// The first sign-in from a suspect address after the lock, and its address.
+        public let backInAt: Date?
+        public let backInFrom: String
+        /// The last failed sign-in from a suspect address after the lock: the lock holding.
+        public let triedAt: Date?
+        /// Addresses it signed in from after the lock that these logs didn't show before the attack.
+        public let newAddresses: [String]
+        /// Why no lock could be seen, when that's known: the pull's way of reading couldn't show it.
+        public let unseen: String?
+        /// With no lock since the attack: the last lock step these logs show before it, which may be the lock, the window
+        /// starting after the attack began.
+        public let earlierLockAt: Date?
+
+        public func words(_ when: (Date) -> String) -> String {
+            switch state {
+            case .stillIn:
+                guard let backInAt, let lockedAt else { return "" }
+                return "Signed in from \(backInFrom) at \(when(backInAt)), after the lock at \(when(lockedAt)): the attacker may still be in."
+            case .locked:
+                guard let lockedAt else { return "" }
+                return "Locked at \(when(lockedAt)): \(how)."
+                    + (triedAt.map { " The attacker's address tried again at \(when($0)) and failed: the lock is holding." }
+                        ?? " No sign-in from a suspect address since.")
+            case .partlyLocked:
+                if let reset {
+                    return "Password reset at \(when(reset.at)) by \(reset.by), but no sign-out seen: the attacker's open sessions may still work."
+                }
+                guard let signOut else { return "" }
+                return "Signed out at \(when(signOut.at)) by \(signOut.by), but no password reset seen: whoever has the password can "
+                    + "sign in again."
+            case .notLocked:
+                if let unseen { return "No lock seen: \(unseen)." }
+                if let earlierLockAt {
+                    return "No lock since the first sign-in from a suspect address in these logs; one came at \(when(earlierLockAt)), "
+                        + "before it. If the attack began earlier, pull from before it began."
+                }
+                return "No lock seen in these logs."
+            }
+        }
+
+        private var how: String {
+            if let suspended, suspended.at == lockedAt { return "suspended by \(suspended.by)" }
+            guard let reset, let signOut else { return "" }
+            return reset.by == signOut.by ? "password reset and signed out by \(reset.by)"
+                : "password reset by \(reset.by) and signed out by \(signOut.by)"
         }
     }
 
@@ -67,9 +140,10 @@ public enum LogReading {
     /// the drafts it points to. `id` ("F1") is what the model's points cite.
     public struct Finding: Sendable, Equatable, Identifiable {
         public enum Kind: String, Sendable, CaseIterable {
-            case signedInFromSuspect, deviceAtSuspectSignIn, appFromSuspect, actedFromSuspect, exportedFromSuspect, mailFromSuspect,
-                 passwordOnPhishingSite, failedFromSuspect, chatFromSuspect, agentActed, afterLock, pastPhishingWarning,
-                 passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
+            case signedInAfterLock, signedInFromSuspect, partlyLocked, leftInPlace, deviceAtSuspectSignIn, appFromSuspect,
+                 actedFromSuspect, exportedFromSuspect, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect, otherAppSession,
+                 newAddressAfterLock, chatFromSuspect, agentActed, pastPhishingWarning, passwordOnOtherSite, breachedPassword,
+                 sharedAddress, suspectAddress
         }
         public let id: String
         public let kind: Kind
@@ -81,9 +155,11 @@ public enum LogReading {
         public let drafts: [Draft]
     }
 
-    /// Every finding, most serious first, and each draft once in the order the findings point to them.
+    /// Every finding, most serious first, where each account the attacker had stands, and each draft once in the order the
+    /// findings point to them.
     public struct Reading: Sendable, Equatable {
         public let findings: [Finding]
+        public let statuses: [Status]
         public let events: Int
 
         public var drafts: [Draft] {
@@ -189,6 +265,58 @@ public enum LogReading {
                                  [.secureAccount(account)]))
         }
 
+        // Where each account the attacker had stands, and what to do when the lock is half done or didn't hold.
+        let statuses = grouped(entered).map { account, _ in status(account, events, acting: acting, context: context) }
+        for status in statuses {
+            let account = status.account
+            switch status.state {
+            case .stillIn:
+                found.append(Pending(.signedInAfterLock, "\(account) signed in from \(status.backInFrom) after the lock: the attacker may "
+                                     + "still be in. Secure it again, and look for a passkey or another way back.", [account],
+                                     [status.backInFrom], 1, [.secureAccount(account)]))
+            case .partlyLocked:
+                found.append(Pending(.partlyLocked, status.reset != nil
+                                     ? "\(account)'s password was reset, but no sign-out was seen: the attacker's open sessions may still work."
+                                     : "\(account) was signed out, but no password reset was seen: whoever has the password can sign in again.",
+                                     [account], [], 1, [.secureAccount(account)]))
+            case .locked, .notLocked:
+                break
+            }
+            if !status.newAddresses.isEmpty {
+                found.append(Pending(.newAddressAfterLock, "\(account) signed in after the lock from \(list(status.newAddresses)), not seen "
+                                     + "before the attack in these logs: check it's them.", [account], status.newAddresses,
+                                     status.newAddresses.count, []))
+            }
+        }
+
+        // What a lock leaves in place, done from a suspect address: a way back in (a passkey, a 2-Step Verification phone or
+        // app) or a way to take the account back (the recovery email or phone). A reset and a sign-out undo none of them.
+        let leftovers = events.filter { acting.contains($0.ip) && isAccount($0.who) && Self.leftovers[$0.event] != nil
+            && ["login", "useraccounts"].contains($0.log) }
+        for (account, theirs) in grouped(leftovers) {
+            let things = unique(theirs.compactMap { Self.leftovers[$0.event] })
+            let recovery = theirs.contains { $0.event.hasPrefix("recovery_") }
+            let others = theirs.contains { !$0.event.hasPrefix("recovery_") }
+            found.append(Pending(.leftInPlace, "From \(list(unique(theirs.map(\.ip)))), \(account)'s account got \(list(things)): a lock "
+                                 + "doesn't undo \(things.count == 1 ? "it" : "them")."
+                                 + (others ? " Remove what isn't theirs on the Admin console's page for them (Security), or with them in "
+                                    + "their Google Account." : "")
+                                 + (recovery ? " Check Account shows the recovery details, and its “Clear recovery email & phone” step "
+                                    + "removes them." : ""),
+                                 [account], unique(theirs.map(\.ip)), theirs.count, recovery ? [.secureAccount(account)] : []))
+        }
+
+        // Another app reached through Google from a suspect address: that app keeps its own session, which Google's
+        // sign-out doesn't end.
+        let reached = events.filter { $0.log == "saml" && $0.event == "login_success" && acting.contains($0.ip) && isAccount($0.who) }
+        for (account, theirs) in grouped(reached) {
+            let apps = unique(theirs.compactMap { $0.parameters["application_name"] }.filter { !$0.isEmpty })
+            let named = apps.isEmpty ? "another app" : list(apps)
+            found.append(Pending(.otherAppSession, "\(account) signed in to \(named) through Google from \(list(unique(theirs.map(\.ip)))): "
+                                 + "Google's sign-out doesn't end \(apps.count > 1 ? "those apps' sessions" : "that app's session"). "
+                                 + "Sign them out there too.", [account], unique(theirs.map(\.ip)), theirs.count, []))
+        }
+
         // The account's data exported with Google Takeout from a suspect address: it may be in the attacker's hands.
         let exported = events.filter { $0.log == "takeout" && acting.contains($0.ip) && isAccount($0.who)
             && ["STARTED_USER_TAKEOUT", "DOWNLOADED_USER_TAKEOUT", "SCHEDULED_USER_TAKEOUT"].contains($0.event) }
@@ -286,25 +414,90 @@ public enum LogReading {
                                  unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)]))
         }
 
-        // Anything a suspect address did after the lock.
-        if let locked = context.lockedAt {
-            let after = events.filter { acting.contains($0.ip) && ($0.time.map { $0 > locked } ?? false) }
-            if !after.isEmpty {
-                let accounts = unique(after.map(\.who).filter(isAccount))
-                found.append(Pending(.afterLock, "\(after.count) event\(after.count == 1 ? "" : "s") from a suspect address after the lock"
-                                     + (accounts.isEmpty ? "." : ", for " + list(accounts) + "."), accounts, unique(after.map(\.ip)),
-                                     after.count, []))
-            }
-        }
-
         let ranked = found.enumerated().sorted { a, b in
             (Finding.Kind.allCases.firstIndex(of: a.element.kind)!, a.offset) < (Finding.Kind.allCases.firstIndex(of: b.element.kind)!, b.offset)
         }.map(\.element)
         return Reading(findings: ranked.enumerated().map { index, item in
             Finding(id: "F\(index + 1)", kind: item.kind, words: item.words, accounts: item.accounts, addresses: item.addresses,
                     events: item.events, drafts: item.drafts)
-        }, events: events.count)
+        }, statuses: statuses, events: events.count)
     }
+
+    /// The lock's steps by event name: a password reset by an admin; a sign-out by an admin or by Google; a suspension by
+    /// an admin or Google's own disabling. GAM's `deprovision signout` also revokes apps, app passwords and backup codes,
+    /// which make no lock alone.
+    static let resets: Set = ["CHANGE_PASSWORD"]
+    static let signOuts: Set = ["RESET_SIGNIN_COOKIES", "user_signed_out_due_to_suspicious_session_cookie"]
+    static let suspensions: Set = ["SUSPEND_USER", "account_disabled_hijacked", "account_disabled_password_leak",
+                                   "account_disabled_generic", "account_disabled_spamming", "account_disabled_spamming_through_relay"]
+
+    /// What a lock leaves in place, by event (the sign-in log's passkeys; the account changes log's 2-Step Verification and
+    /// recovery), as said mid-sentence.
+    static let leftovers: [String: String] = [
+        "passkey_enrolled": "a new passkey",
+        "2sv_enroll": "2-Step Verification on a phone or app of the attacker's choosing",
+        "recovery_email_edit": "a changed recovery email",
+        "recovery_phone_edit": "a changed recovery phone",
+        "recovery_secret_qa_edit": "a changed recovery question",
+    ]
+
+    /// Where `account` stands: the first password reset, sign-out and suspension done to it since the attacker's first
+    /// event (by an admin, never from a suspect address, which would be an attacker with an admin's account; or by Google,
+    /// as the account's own sign-in log event), the lock they make, and the sign-ins after it. A sign-in from a suspect
+    /// address after a lock starts it over: a lock after that sign-in is a new one, read the same way.
+    static func status(_ account: String, _ events: [Event], acting: Set<String>, context: Context) -> Status {
+        let me = account.lowercased()
+        let theirs = events.filter { $0.who.lowercased() == me }
+        let attackedAt = theirs.filter { acting.contains($0.ip) }.compactMap(\.time).min()
+        // Done to the account, oldest first.
+        let done = events.filter { event in
+            event.time != nil && ((event.log == "admin" && event.parameters["USER_EMAIL"]?.lowercased() == me && !acting.contains(event.ip))
+                || (event.log == "login" && event.who.lowercased() == me))
+        }.sorted { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
+        let entries = theirs.filter { acting.contains($0.ip) && ["login", "saml"].contains($0.log) && $0.event == "login_success"
+            && $0.time != nil }.sorted { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
+        func first(_ names: Set<String>, since: Date?) -> Status.Step? {
+            guard let event = done.first(where: { event in names.contains(event.event) && (since.map { (event.time ?? .distantPast) >= $0 } ?? true) }),
+                  let at = event.time else { return nil }
+            return Status.Step(at: at, by: event.log == "admin" ? event.who : "Google")
+        }
+        var since = attackedAt
+        var reset: Status.Step?, signOut: Status.Step?, suspended: Status.Step?, whole: Date?, lockedAt: Date?, backIn: Event?
+        while true {
+            reset = first(resets, since: since)
+            signOut = first(signOuts, since: since)
+            suspended = first(suspensions, since: since)
+            whole = [suspended?.at, reset.flatMap { reset in signOut.map { max(reset.at, $0.at) } }].compactMap(\.self).min()
+            lockedAt = whole ?? (reset ?? signOut)?.at
+            guard let locked = lockedAt else { backIn = nil; break }
+            backIn = entries.first { ($0.time ?? .distantPast) > locked }
+            guard let back = backIn?.time, done.contains(where: { lockSteps.contains($0.event) && ($0.time ?? .distantPast) > back }) else { break }
+            since = back
+        }
+
+        let after = lockedAt.map { locked in theirs.filter { ($0.time.map { $0 > locked }) ?? false } } ?? []
+        let triedAt = after.filter { acting.contains($0.ip) && $0.log == "login"
+            && ($0.event == "login_failure" || $0.event.hasPrefix("suspicious_")) }.compactMap(\.time).max()
+        let before = Set(theirs.filter { event in
+            event.log == "login" && event.event == "login_success" && (event.time.map { at in attackedAt.map { at < $0 } ?? false } ?? false)
+        }.map(\.ip))
+        let newAddresses = unique(after.filter { $0.log == "login" && $0.event == "login_success" && !$0.ip.isEmpty
+            && !acting.contains($0.ip) && !before.contains($0.ip) }.map(\.ip))
+
+        let unseen: String? = if lockedAt != nil { nil }
+            else if !context.pulledBy.isEmpty { "a pull by one address doesn't show it (the lock is done from yours): pull by the accounts" }
+            else if let read = context.read, !read.contains("admin") { "the admin log, where it would be, wasn't read" }
+            else { nil }
+        // A lock before the first suspect event these logs hold: the window may start after the attack did.
+        let earlierLockAt = lockedAt == nil ? done.last(where: { lockSteps.contains($0.event) })?.time : nil
+        let state: Status.State = backIn != nil ? .stillIn : whole != nil ? .locked : lockedAt != nil ? .partlyLocked : .notLocked
+        return Status(account: account, state: state, reset: reset, signOut: signOut, suspended: suspended, lockedAt: lockedAt,
+                      backInAt: backIn?.time, backInFrom: backIn?.ip ?? "", triedAt: triedAt, newAddresses: newAddresses, unseen: unseen,
+                      earlierLockAt: earlierLockAt)
+    }
+
+    /// Every event that is a step of a lock.
+    static let lockSteps = resets.union(signOuts).union(suspensions)
 
     /// A finding before it has its place (and so its ID).
     private struct Pending {
