@@ -6,8 +6,8 @@ and "That was them" moved up from slice 3 at the operator's ask and built (runbo
 at the operator's ask after running a real incident through it: every account touched with its status and timeline, and
 Still to do worked out by code, the model only wording it (runbook "The rundown"; this pulls forward slice 2's findings
 first and slice 4's actions taken and next steps). Then undo from the app: block or take the account off the attacker's
-computers as planned steps, and Do It Here on a to-do item (runbook "Undo from the app"). Next: reading a capped log day
-by day so a pull for every account is whole, then slices 3 to 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+computers as planned steps, and Do It Here on a to-do item (runbook "Undo from the app"). Then a capped log read further
+back over the same window, in pages, so a pull for every account is whole (runbook "Past the cap"). Next: slices 3 to 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen

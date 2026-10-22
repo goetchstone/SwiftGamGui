@@ -189,6 +189,6 @@ struct DevicesTests {
         #expect(dana.details == ["iPhone or iPad (iPhone 16, iOS 26.0)", "through Gmail iOS App"])
         // Another event's own parameters are said beside the device, never its identifiers.
         let wipe = try #require(rows.first { $0.event == "DEVICE_ACTION_EVENT" })
-        #expect(wipe.details == ["iPhone or iPad (iPhone 16)", "ACTION_EXECUTION_STATUS: ACTION_SUCCESS", "ACTION_TYPE: ACCOUNT_WIPE"])
+        #expect(wipe.details == ["iPhone or iPad (iPhone 16)", "ACTION_EXECUTION_STATUS: EXECUTED", "ACTION_TYPE: ACCOUNT_WIPE"])
     }
 }

@@ -207,6 +207,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
 | Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
 | Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
+| Pull Incident Logs: a log at the 1,000-activity cap read further back, up to 10 reads (reads only) | not yet: new to both apps |
 | Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
 | Read the logs: findings, drafted fixes, the on-device model's explanation (Incident; changes nothing) | not yet: new to both apps |

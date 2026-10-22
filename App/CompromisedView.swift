@@ -1274,8 +1274,9 @@ private struct ActivityList: View {
                     .font(.callout)
             }
             if capped {
-                Label("The newest \(ActivityLogs.cap) per account were read: older \(what) weren't, and the CSV doesn't have them "
-                      + "either. Narrow the window to read further back.", systemImage: "exclamationmark.triangle.fill")
+                // A log reads further back until it's whole (IncidentLogs.paged), within a bound: past it, the rest is unread.
+                Label("Not all of the window was read: older \(what) weren't, and the CSV doesn't have them either. Narrow the "
+                      + "window, or pull just the accounts that matter.", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor).font(.callout)
             }
         }

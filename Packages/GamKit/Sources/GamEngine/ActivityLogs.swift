@@ -14,6 +14,8 @@ public enum ActivityLogs {
     public static let defaultHours = 72
     /// Bounds each read (invariant 9): the newest this many activities per account.
     public static let cap = 1_000
+    /// A log at the cap is read on further back, at most this many reads in all (`IncidentLogs`): `cap` times this bounds it.
+    public static let pages = 10
     /// The Reports API reads the Gmail log at most this far back (GAM's doReport says so, init.py:14767).
     public static let gmailMaxHours = 720
     /// One read's time: GAM reads one account after another, and twenty accounts' Gmail is slow.
@@ -26,7 +28,7 @@ public enum ActivityLogs {
 
     /// Some account's events reached the cap, so its older ones weren't read: counted per account (none given: the
     /// whole read is one).
-    public static func capped(_ rows: [Row], accounts: [String]) -> Bool {
+    public static func capped(_ rows: [Row], accounts: [String], cap: Int = cap) -> Bool {
         guard !accounts.isEmpty else { return rows.count >= cap }
         var counts: [String: Int] = [:]
         for row in rows { counts[row.who.lowercased(), default: 0] += 1 }

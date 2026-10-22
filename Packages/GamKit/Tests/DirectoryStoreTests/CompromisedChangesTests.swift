@@ -370,6 +370,68 @@ final class CompromisedChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// A log at the cap is read on further back over the same window until it's whole: every account's sign-ins, three at
+    /// a time, come back all ten, none twice, newest first, and not capped; named accounts each go on by themselves.
+    @Test func aCappedLogIsReadFurtherBack() async throws {
+        try await connect()
+        // The mock's events are on fixed dates: a pull just after them, so the window's fixed start is before them all.
+        let logs = IncidentLogs(setup: setup, access: access, cap: 3, clock: { Date(timeIntervalSince1970: 1_792_454_400) })
+        await logs.pull(IncidentLogs.Query(applications: [.login], users: [], hours: 72, ip: ""))
+        let every = try #require(logs.pull?.logs.first)
+        let rows = try every.rows.get()
+        #expect(rows.count == 10 && Set(rows.map(\.identity)).count == 10 && !every.capped, "\(rows.map(\.time))")
+        #expect(rows.map(\.time) == rows.map(\.time).sorted(by: >))
+        await logs.pull(IncidentLogs.Query(applications: [.login], users: ["carol@example.com", "dana@example.com"], hours: 72, ip: ""))
+        let named = try #require(logs.pull?.logs.first)
+        #expect(try named.rows.get().filter { $0.who == "carol@example.com" }.count == 7 && !named.capped)
+        #expect(try named.rows.get().filter { $0.who == "dana@example.com" }.count == 1)
+        #expect(writes().isEmpty)
+    }
+
+    /// Reading further back stays bounded (invariant 9): at most `ActivityLogs.pages` reads, from one fixed start, then
+    /// capped. A later read that fails keeps what came back, said as capped; a first read that fails is the failure.
+    @Test func readingFurtherBackStaysBounded() async throws {
+        let base = Date(timeIntervalSince1970: 1_792_400_000)
+        // Forty sign-ins a minute apart, newest first, as GAM prints them.
+        let events = (0..<40).map { base.addingTimeInterval(Double(-60 * $0)) }
+        func page(before end: String) -> [ActivityLogs.Row] {
+            let kept = events.filter { end.isEmpty || IncidentLogs.time($0) < end }.prefix(3)
+            return ActivityLogs.rows("name,actor.email,id.time,id.uniqueQualifier\n" + kept.map {
+                "login_success,carol@example.com,\(IncidentLogs.time($0)),q\(Int($0.timeIntervalSince1970))"
+            }.joined(separator: "\n"), application: .login)
+        }
+        let window = (start: IncidentLogs.time(base.addingTimeInterval(-72 * 3_600)), end: IncidentLogs.time(base))
+        var reads = 0, starts: Set<String> = []
+        let (rows, capped) = await IncidentLogs.paged(users: [], window: window, cap: 3) { _, start, end in
+            reads += 1
+            starts.insert(start)
+            return .success(page(before: end))
+        }
+        // Each read after the first repeats the one it ended on, and brings two more.
+        #expect(reads == ActivityLogs.pages && capped && starts == [window.start])
+        #expect(try rows.get().count == 3 + (ActivityLogs.pages - 1) * 2)
+        reads = 0
+        let (kept, cut) = await IncidentLogs.paged(users: [], window: window, cap: 3) { _, _, end in
+            reads += 1
+            return reads == 1 ? .success(page(before: end)) : .failure(UserAccess.Problem(summary: "timed out"))
+        }
+        #expect(try kept.get().count == 3 && cut)
+        let (failed, _) = await IncidentLogs.paged(users: [], window: window, cap: 3) { _, _, _ in
+            .failure(UserAccess.Problem(summary: "timed out"))
+        }
+        guard case .failure = failed else { Issue.record("a failed read passed"); return }
+        // One account read by an alias: every row is that read's, though each names the primary address. Several accounts,
+        // one of them by an alias: the primary's rows at the cap can't be gone on with, so the log is capped.
+        let (_, byAlias) = await IncidentLogs.paged(users: ["carol.alias@example.com"], window: window, cap: 3) { _, _, end in
+            .success(page(before: end))
+        }
+        #expect(byAlias)
+        let (_, mixed) = await IncidentLogs.paged(users: ["carol.alias@example.com", "dana@example.com"], window: window, cap: 3) { _, _, end in
+            .success(page(before: end))
+        }
+        #expect(mixed)
+    }
+
     /// Pull Incident Logs reads and changes nothing: the person's logs, then every account's by the address on their
     /// flagged sign-in, where another account signed in from it too; each log in the query's order, and as a CSV. An
     /// address that isn't one is refused in words, in every log.

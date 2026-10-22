@@ -39,7 +39,7 @@ public final class IncidentLogs {
         public let rows: Result<[ActivityLogs.Row], UserAccess.Problem>
         /// The window it was read for: the query's, or Gmail's at most 30 days.
         public let hours: Int
-        /// Some account reached the cap: its older events weren't read.
+        /// Some account was still at the cap when the reads ran out (`paged`): its older events weren't read.
         public let capped: Bool
         public var id: ActivityLogs.Application { application }
     }
@@ -69,10 +69,20 @@ public final class IncidentLogs {
     private let access: UserAccess
     /// At most this many `gam` reads at once.
     static let concurrent = 3
+    /// Each read's bound (`ActivityLogs.cap`; a test's smaller one pages through the mock's few rows).
+    private let cap: Int
+    /// Now, when each log's first read fixes its window (a test's own, for the mock's fixed dates).
+    private let clock: @Sendable () -> Date
 
-    public init(setup: SetupModel, access: UserAccess) {
+    public convenience init(setup: SetupModel, access: UserAccess) {
+        self.init(setup: setup, access: access, cap: ActivityLogs.cap, clock: { .now })
+    }
+
+    init(setup: SetupModel, access: UserAccess, cap: Int, clock: @escaping @Sendable () -> Date) {
         self.setup = setup
         self.access = access
+        self.cap = cap
+        self.clock = clock
     }
 
     /// Reads each of `query`'s logs, a few at once; a newer pull replaces an older one still reading.
@@ -82,12 +92,12 @@ public final class IncidentLogs {
         let request = asked, generation = setup.generation
         kept = (Pull(query: query, logs: [], ended: false), tenant, generation)
         var results: [ActivityLogs.Application: Log] = [:]
-        let access = access
+        let access = access, cap = cap, clock = clock
         await withTaskGroup(of: Log.self) { group in
             var waiting = query.applications.makeIterator()
             for _ in 0..<Self.concurrent {
                 guard let application = waiting.next() else { break }
-                group.addTask { await Self.read(application, query, access, tenant) }
+                group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant) }
             }
             for await log in group {
                 results[log.application] = log
@@ -95,7 +105,9 @@ public final class IncidentLogs {
                     kept = (Pull(query: query, logs: query.applications.compactMap { results[$0] }, ended: false), tenant, generation)
                 }
                 // A newer pull replaced this one: what's still reading finishes, nothing more starts.
-                if request == asked, let application = waiting.next() { group.addTask { await Self.read(application, query, access, tenant) } }
+                if request == asked, let application = waiting.next() {
+                    group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant) }
+                }
             }
         }
         guard request == asked, setup.active == tenant, setup.generation == generation else { return }
@@ -103,37 +115,94 @@ public final class IncidentLogs {
     }
 
     /// One log, on the tenant the pull began on: a queued read never goes to a domain switched to since.
-    private static func read(_ application: ActivityLogs.Application, _ query: Query, _ access: UserAccess, _ tenant: Domain) async -> Log {
+    private static func read(_ application: ActivityLogs.Application, _ query: Query, cap: Int, now: Date, _ access: UserAccess,
+                             _ tenant: Domain) async -> Log {
         let hours = ActivityLogs.window(application, asked: query.hours)
-        if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, access, tenant) }
-        if application == .admin, !query.users.isEmpty { return await admin(query, hours: hours, access, tenant) }
+        if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, cap: cap, access, tenant) }
+        if application == .admin, !query.users.isEmpty { return await admin(query, hours: hours, cap: cap, access, tenant) }
         // The Devices log records no address, so a pull by one would drop it whole: its registrations instead, for the
         // accounts asked, which the reader ties to a suspect sign-in by time (syncs say nothing of an address either).
-        let rows = application == .mobile && !query.ip.isEmpty
-            ? await access.activity(.mobile, users: query.users, hours: hours, events: ["DEVICE_REGISTER_UNREGISTER_EVENT"],
-                                    cap: ActivityLogs.cap, in: tenant)
-            : await access.activity(application, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap, in: tenant)
-        return Log(application: application, rows: rows, hours: hours,
-                   capped: (try? rows.get()).map { ActivityLogs.capped($0, accounts: query.users) } ?? false)
+        // One event name at most: GAM caps each name's read on its own, so paging on the oldest of several would skip one's.
+        let events = application == .mobile && !query.ip.isEmpty ? ["DEVICE_REGISTER_UNREGISTER_EVENT"] : []
+        let ip = events.isEmpty ? query.ip : ""
+        let window = (start: time(now.addingTimeInterval(-Double(hours) * 3_600)), end: time(now))
+        let (rows, capped) = await paged(users: query.users, window: window, cap: cap) { users, start, end in
+            await access.activity(application, users: users, hours: hours, start: start, end: end, ip: ip, events: events, cap: cap,
+                                  in: tenant)
+        }
+        return Log(application: application, rows: rows, hours: hours, capped: capped)
+    }
+
+    /// A log read past its cap, still bounded (invariant 9: at most `ActivityLogs.pages` reads of `cap` each). The window
+    /// is fixed once, as times, when the log's first read runs (GAM's `-<hours>h` would move with each read, and round to
+    /// the minute). A read at the cap is read again over that window up to where it stopped: its oldest event's second and
+    /// one more (Google may leave the end's own second out). The events already read are dropped, and it goes on until a
+    /// read comes back short or the reads run out; for accounts, each one at the cap goes on by itself. Capped when a last
+    /// read was still at the cap, a later read failed, or some address reached the cap that isn't one of the accounts asked
+    /// (an alias, an old name: no telling which to go on with). What did come back is kept, said as capped, never passed as
+    /// the whole. Newest first, as one read gives them. GAM's cap counts activities and these are events, so a read can look
+    /// full sooner: an extra read, never a missed one.
+    static func paged(users: [String], window: (start: String, end: String), cap: Int,
+                      _ read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>)
+        async -> (rows: Result<[ActivityLogs.Row], UserAccess.Problem>, capped: Bool) {
+        let first = await read(users, window.start, window.end)
+        guard case .success(var rows) = first else { return (first, false) }
+        let start = window.start
+        var seen = Set(rows.map(\.identity)), reads = 1, capped = false
+        var open: [(users: [String], page: [ActivityLogs.Row])]
+        if users.count <= 1 {
+            // Every row of one read is that read's, whatever address it carries.
+            open = rows.count >= cap ? [(users, rows)] : []
+        } else {
+            open = users.map { account in ([account], rows.filter { $0.who.lowercased() == account.lowercased() }) }
+                .filter { $0.page.count >= cap }
+            let going = Set(open.flatMap(\.users).map { $0.lowercased() })
+            capped = Dictionary(grouping: rows) { $0.who.lowercased() }.contains { !going.contains($0.key) && $0.value.count >= cap }
+        }
+        while !open.isEmpty {
+            let (who, page) = open.removeFirst()
+            guard reads < ActivityLogs.pages, let oldest = page.compactMap(\.date).min() else {
+                capped = true
+                continue
+            }
+            reads += 1
+            guard case .success(let next) = await read(who, start, time(oldest.addingTimeInterval(1))) else {
+                capped = true
+                continue
+            }
+            rows += next.filter { seen.insert($0.identity).inserted }
+            guard next.count >= cap else { continue }
+            // At the cap again: on from its own oldest, unless a whole read fell in that one second (no way further back).
+            if let older = next.compactMap(\.date).min(), older < oldest { open.append((who, next)) } else { capped = true }
+        }
+        let newest = rows.enumerated().sorted { a, b in
+            (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+        }.map(\.element)
+        return (.success(newest), capped)
+    }
+
+    /// `date` as the report's time (`GamCommands.isReportTime`): UTC, to the second, rounded down.
+    static func time(_ date: Date) -> String {
+        Date(timeIntervalSince1970: date.timeIntervalSince1970.rounded(.down)).formatted(.iso8601)
     }
 
     /// Chrome's log for some accounts: each account read both ways at once (`GamCommands.ChromeMatch`: by the profile's
     /// account, and by GAM's own device match, which finds a Chromebook's sign-ins), an event the second read repeats
     /// dropped, newest first. One read that fails fails the log in GAM's words, never a part passed as the whole; one at the
     /// cap marks it capped.
-    private static func chrome(_ query: Query, hours: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
+    private static func chrome(_ query: Query, hours: Int, cap: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
         var rows: [ActivityLogs.Row] = [], capped = false
         for user in query.users {
-            async let profile = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+            async let profile = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: cap,
                                                 chrome: .profile, in: tenant)
-            async let device = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+            async let device = access.activity(.chrome, users: [user], hours: hours, ip: query.ip, cap: cap,
                                                chrome: .device, in: tenant)
             let reads = await [profile, device]
             var seen: Set<String> = []
             for read in reads {
                 switch read {
                 case .success(let read):
-                    capped = capped || read.count >= ActivityLogs.cap
+                    capped = capped || read.count >= cap
                     rows += read.filter { !seen.contains($0.identity) }
                     seen.formUnion(read.map(\.identity))
                 case .failure(let problem):
@@ -152,10 +221,10 @@ public final class IncidentLogs {
     /// password reset, a sign-out: the lock the reader looks for) and what they did as admins (an attacker with an admin's
     /// account). An event in both is kept once; newest first. One read that fails fails the log in GAM's words; either
     /// read at the cap for an account marks it capped.
-    private static func admin(_ query: Query, hours: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
-        async let affected = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+    private static func admin(_ query: Query, hours: Int, cap: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
+        async let affected = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: cap,
                                              admin: .affected, in: tenant)
-        async let actor = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+        async let actor = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: cap,
                                           admin: .actor, in: tenant)
         let reads = await [affected, actor]
         var rows: [ActivityLogs.Row] = [], seen: Set<String> = []
@@ -174,8 +243,7 @@ public final class IncidentLogs {
         for row in (try? reads[0].get()) ?? [] {
             toEach[(row.parameters.first { $0.name == "USER_EMAIL" }?.value ?? "").lowercased(), default: 0] += 1
         }
-        let capped = toEach.values.contains { $0 >= ActivityLogs.cap }
-            || ActivityLogs.capped((try? reads[1].get()) ?? [], accounts: query.users)
+        let capped = toEach.values.contains { $0 >= cap } || ActivityLogs.capped((try? reads[1].get()) ?? [], accounts: query.users, cap: cap)
         let newest = rows.enumerated().sorted { a, b in
             (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
         }.map(\.element)

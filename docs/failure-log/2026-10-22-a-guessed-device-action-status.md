@@ -14,8 +14,9 @@
   delete or wipe of that device for that account; approved (`MOBILE_DEVICE_APPROVE`, or the Devices log's `APPROVE` or
   `ALLOW_ACCESS` executed) or registered again is back, from any address. The Admin log's device steps say themselves in
   the timeline.
-- **Prevention** — `LogReadingTests.eachLooseEndStaysUntilItsOwnFix` and `whatsDoneLeavesTheList` use Google's documented
-  values: pending, sent and a lock stay; executed blocks and wipes, and each Admin-log step, leave. The live check is the
+- **Prevention** — The mock's own Devices fixture carried the same guess (`ACTION_SUCCESS`, and `type` `device_actions`
+  where Google files the event under `device_updates`): corrected with the next slice, "Past the cap".
+  `LogReadingTests.eachLooseEndStaysUntilItsOwnFix` and `whatsDoneLeavesTheList` use Google's documented values: pending, sent and a lock stay; executed blocks and wipes, and each Admin-log step, leave. The live check is the
   operator's own block: read the logs again and see the three computers leave Still to do. Lesson, again: a value the
   reader matches comes from Google's reference or a real row, never from memory (see
   [2026-10-22-googles-account-warnings-have-no-actor](2026-10-22-googles-account-warnings-have-no-actor.md)).
