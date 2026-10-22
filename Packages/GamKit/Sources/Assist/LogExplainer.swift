@@ -97,7 +97,13 @@ public enum LogExplainer {
         case .mailFromSuspect: "an email went through Gmail from a suspect address (its subject is shown to the administrator)"
         case .passwordOnPhishingSite: "Chrome saw these accounts' passwords typed on a phishing site"
         case .failedFromSuspect: "a suspect address tried these accounts' passwords and failed: they may have typed them into a fake page"
-        case .afterLock: "a suspect address was active after the account was locked"
+        case .signedInAfterLock: "these accounts were signed in to from a suspect address after they were locked: the attacker may still be in"
+        case .partlyLocked: "these accounts had their password reset or their sessions ended, not both"
+        case .leftInPlace: "a suspect address added a passkey, a 2-Step Verification method or recovery details to these accounts, "
+            + "which a lock doesn't remove"
+        case .otherAppSession: "these accounts reached another app through Google from a suspect address; that app's session outlives "
+            + "Google's sign-out"
+        case .newAddressAfterLock: "these accounts signed in after the lock from addresses not seen before the attack"
         case .pastPhishingWarning: "these people went past Chrome's phishing warning"
         case .passwordOnOtherSite: "Chrome saw these accounts' passwords used on another website"
         case .breachedPassword: "Chrome found one of these people's passwords in a data breach"
@@ -123,6 +129,16 @@ public enum LogExplainer {
             }
             if !fixes.isEmpty { line += " Drafted fix: " + fixes.joined(separator: "; ") + "." }
             lines.append(line)
+        }
+        // Where each account the attacker had stands, as the logs show the lock: context for the findings, never cited.
+        for status in reading.statuses.prefix(20) {
+            let stands = switch status.state {
+            case .notLocked: "no lock seen"
+            case .partlyLocked: "partly locked: a password reset or a sign-out, not both"
+            case .locked: status.triedAt == nil ? "locked" : "locked, and the attacker's address tried again and failed"
+            case .stillIn: "signed in to from a suspect address after the lock"
+            }
+            lines.append("Where \(status.account) stands: \(stands).")
         }
         return lines.joined(separator: "\n")
     }

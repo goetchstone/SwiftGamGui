@@ -1,4 +1,6 @@
 name,actor.callerType,actor.email,actor.profileId,id.applicationName,id.customerId,id.time,id.uniqueQualifier,ipAddress,is_second_factor,is_suspicious,login_challenge_method,login_challenge_status,login_type,type
+login_failure,USER,carol@example.com,1003,login,C0demo,2026-10-19T15:20:10Z,-61008,198.51.100.23,,False,,,google_password,login
+passkey_enrolled,USER,carol@example.com,1003,login,C0demo,2026-10-19T14:21:00Z,-61009,198.51.100.23,,,,,,login
 login_success,USER,carol@example.com,1003,login,C0demo,2026-10-19T14:12:40Z,-61001,198.51.100.23,False,True,,,google_password,login
 suspicious_login,USER,carol@example.com,1003,login,C0demo,2026-10-19T14:12:39Z,-61002,198.51.100.23,,,,,google_password,login
 login_success,USER,dana@example.com,1004,login,C0demo,2026-10-19T13:58:02Z,-61003,198.51.100.23,False,False,,,google_password,login

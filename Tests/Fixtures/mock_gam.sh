@@ -448,7 +448,8 @@ fi
 # fixture is the titles alone ("name"): no events. An account that isn't a user is the API's badRequest,
 # entityUnknownWarning: "User: <u>, Does not exist", exit 56, after the others' rows; outside the domain (example.com)
 # it is "Service not applicable", exit 73. The admin log's accounts are the actor only with `userisactor` (without it GAM
-# filters USER_EMAIL==<u>: the events affecting them). Gmail over 30 days is the API's bad request (doReport's own
+# filters USER_EMAIL==<u>, the events affecting them, read as `user all`, :14779-14788: the API sees no account to refuse,
+# so one that isn't a user reads none). Gmail over 30 days is the API's bad request (doReport's own
 # comment: no more than 30 days apart): exit 56 for a named account, "ERROR: Bad Request" exit 53 for all. With
 # GAM_MOCK_STATE/nolog/<application>, the edition doesn't keep that log: systemErrorExit(GOOGLE_API_ERROR_RC), exit 4
 # (Google's words approximate). A known lie: every fixture event is answered whatever the window (the dates are fixed).
@@ -523,13 +524,14 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
   if [ -f "$file" ]; then head -n 1 "$file"; else printf 'name\n'; fi
   missing=""; rc=56; seen=" "
   # The admin log without userisactor reads the events that affected the account (USER_EMAIL), not what it did.
-  if [ "$app" = admin ] && [ -z "$actor" ]; then by=USER_EMAIL; elif [ -z "$match" ]; then by=actor.email; fi
+  filtered=""
+  if [ "$app" = admin ] && [ -z "$actor" ]; then by=USER_EMAIL; filtered=1; elif [ -z "$match" ]; then by=actor.email; fi
   for account in $(printf '%s' "$who" | tr ',' ' '); do
     case "$seen" in *" $account "*) continue ;; esac
     seen="$seen$account "
     if [ "$account" != all ]; then
       printf 'Getting all Activities for %s\n' "$account" 1>&2
-      if ! in_directory "$account"; then
+      if [ -z "$filtered" ] && ! in_directory "$account"; then
         case "$account" in
           *@example.com) printf 'User: %s, Does not exist\n' "$account" 1>&2; rc=56 ;;   # setSysExitRC: the last one wins
           *) printf 'User: %s, Service not applicable\n' "$account" 1>&2; rc=73 ;;

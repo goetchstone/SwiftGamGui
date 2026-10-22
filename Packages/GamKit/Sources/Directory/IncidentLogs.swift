@@ -106,6 +106,7 @@ public final class IncidentLogs {
     private static func read(_ application: ActivityLogs.Application, _ query: Query, _ access: UserAccess, _ tenant: Domain) async -> Log {
         let hours = ActivityLogs.window(application, asked: query.hours)
         if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, access, tenant) }
+        if application == .admin, !query.users.isEmpty { return await admin(query, hours: hours, access, tenant) }
         // The Devices log records no address, so a pull by one would drop it whole: its registrations instead, for the
         // accounts asked, which the reader ties to a suspect sign-in by time (syncs say nothing of an address either).
         let rows = application == .mobile && !query.ip.isEmpty
@@ -145,6 +146,40 @@ public final class IncidentLogs {
             (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
         }.map(\.element)
         return Log(application: .chrome, rows: .success(newest), hours: hours, capped: capped)
+    }
+
+    /// The admin log for some accounts, read both ways at once (`GamCommands.AdminMatch`): what admins did to them (a
+    /// password reset, a sign-out: the lock the reader looks for) and what they did as admins (an attacker with an admin's
+    /// account). An event in both is kept once; newest first. One read that fails fails the log in GAM's words; either
+    /// read at the cap for an account marks it capped.
+    private static func admin(_ query: Query, hours: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
+        async let affected = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+                                             admin: .affected, in: tenant)
+        async let actor = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: ActivityLogs.cap,
+                                          admin: .actor, in: tenant)
+        let reads = await [affected, actor]
+        var rows: [ActivityLogs.Row] = [], seen: Set<String> = []
+        for (read, what) in zip(reads, ["What admins did to these accounts", "What these accounts did as admins"]) {
+            switch read {
+            case .success(let read):
+                rows += read.filter { !seen.contains($0.identity) }
+                seen.formUnion(read.map(\.identity))
+            case .failure(let problem):
+                return Log(application: .admin, rows: .failure(UserAccess.Problem(summary: "\(what): \(problem.summary)")), hours: hours,
+                           capped: false)
+            }
+        }
+        // What was done to an account is counted by the account it names, not by the admin who did it.
+        var toEach: [String: Int] = [:]
+        for row in (try? reads[0].get()) ?? [] {
+            toEach[(row.parameters.first { $0.name == "USER_EMAIL" }?.value ?? "").lowercased(), default: 0] += 1
+        }
+        let capped = toEach.values.contains { $0 >= ActivityLogs.cap }
+            || ActivityLogs.capped((try? reads[1].get()) ?? [], accounts: query.users)
+        let newest = rows.enumerated().sorted { a, b in
+            (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+        }.map(\.element)
+        return Log(application: .admin, rows: .success(newest), hours: hours, capped: capped)
     }
 
     public func clear() {

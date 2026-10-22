@@ -309,7 +309,11 @@ final class CompromisedChangesTests {
         await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: ["carol@example.com"], hours: 72, ip: ""))
         let person = try #require(logs.pull)
         #expect(person.ended && person.logs.map(\.application) == ActivityLogs.incidentDefault)
-        #expect(try person.logs[0].rows.get().count == 5 && !person.logs[0].capped)
+        #expect(try person.logs[0].rows.get().count == 7 && !person.logs[0].capped)
+        // The admin log read both ways: what was done to her (the lock), and what she did as an admin (nothing).
+        let admin = try #require(person.logs.first { $0.application == .admin }).rows.get()
+        #expect(admin.map(\.event) == ["RESET_SIGNIN_COOKIES", "REVOKE_3LO_TOKEN", "DELETE_2SV_SCRATCH_CODES", "CHANGE_PASSWORD"]
+                && admin.allSatisfy { $0.who == "alice@example.com" && $0.details.first == "to carol@example.com" })
         let address = try #require(person.addresses.first)
         await logs.pull(IncidentLogs.Query(applications: [.login, .userAccounts], users: [], hours: 72, ip: address))
         let domain = try #require(logs.pull)

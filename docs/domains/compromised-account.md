@@ -69,6 +69,7 @@ let only `requires` stop a step; it may not tolerate failures).
 | `user P delete delegate D` | 7919 | processDelegates: Gmail's notFound for one they don't have, exit 50 |
 | `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5780-5810 | USER_FIELDS_CHOICE_MAP |
 | `user P show vacation`, `user P vacation off` | 8283-8286 | GamGUI's builders (Users' auto-reply), held to argv.json |
+| `report admin user P start -Nh end now maxactivities M` (no `userisactor`) | 4730-4744 | doReport :14779-14788: read as `user all` with the filter `USER_EMAIL==P`, what admins did to P; a non-user reads none |
 | `print mobile query email:P fields resourceid,… formatjson` | 4555-4562 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
 | `user P print filelist showmimetype gscript fields … formatjson` | 7793-7822 | printFileList: the type put in Drive's query beside `'me' in owners`, My Drive only, the bin included; CSV `Owner,id,name,JSON`; exit 60 whenever no row was printed, none and every failure alike (`ScriptProject.list` reads none only from GAM's "Got 0 … for P") |
 | `print devices query email:P fields … userfields … formatjson` | 4359-4367 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
@@ -336,6 +337,47 @@ one that reads or forwards mail. Reads only.
 - **Live check (L1s, read-only):** Check Account on an account with a known script: it's listed with its dates, matching
   the person's Drive filtered to Apps Script.
 
+## Where each account stands (incidents plan, slice 1)
+Read the logs opens with each account the attacker had and where it stands, read from the logs in time order
+([docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md)). Nothing is typed: the "I know when the account
+was locked" switch is gone. Reads only.
+- **The lock** (`LogReading.status`): since the account's first event from a suspect address, the first password reset
+  (`CHANGE_PASSWORD`), sign-out (`RESET_SIGNIN_COOKIES`, or Google's `user_signed_out_due_to_suspicious_session_cookie`)
+  and suspension (`SUSPEND_USER`, or Google's `account_disabled_*`). A reset and a sign-out, or a suspension, is the lock;
+  one half alone is *partly locked*, said with what's missing and Secure drafted. An admin's event done from a suspect
+  address isn't a lock (an attacker with an admin's account), nor is a reset from before the attack, nor the attacker's own
+  `password_edit`.
+- **After it:** a sign-in from a suspect address is *still in* (the first finding, Secure drafted again); a failed one is
+  the lock holding, said in the status. A sign-in from an address these logs didn't show before the attack is said, to
+  check: attackers change addresses. A lock after such a sign-in is a new lock, read the same way, so securing again
+  clears *still in* (review 2026-10-22: the first version read only the first lock, and said "still in" forever). No lock
+  seen says why when the pull couldn't show one: pulled by an address (the lock is done from the operator's), without the
+  admin log, or a lock that came before the window's first suspect sign-in (the window may start after the attack did).
+- **What a lock leaves in place**, from a suspect address: `passkey_enrolled` (the sign-in log), `2sv_enroll` and the
+  `recovery_*_edit` events (account changes), each said with how to remove it; the recovery ones draft Secure for its
+  "Clear recovery email & phone" step. The same event from the person's own address is theirs: that is a rule on the
+  address, never a guess.
+- **Another app's session:** a SAML sign-in from a suspect address recommends signing the person out of that app too.
+- **The admin log is read both ways** for typed accounts (`GamCommands.AdminMatch`, merged as Chrome's two reads are):
+  what admins did to them (`report admin user P`, which doReport turns into `user all` with the filter `USER_EMAIL==P`,
+  :14779-14788) and what they did as admins (`userisactor`). It is on by default now. A row's person is the admin who
+  acted; its details start "to <account>".
+- **The words carry no time of their own:** `Status.words(_:)` takes the caller's date formatting (the screen's
+  abbreviated date and time; the tests' "minute N").
+- **The mock:** `report_admin.csv`: alice@ (from 203.0.113.50) resets carol@'s password, deletes her backup codes, revokes
+  Mail Sync Pro and signs her out at 15:05 on 2026-10-19, and reset bob@'s a week before. `report_login.csv`: the attacker's
+  address added a passkey to carol@ at 14:21 and tried her old password at 15:20, after the lock. The admin read without
+  `userisactor` never refuses an address (GAM reads `user all` with a filter); with it, a non-user is "Does not exist".
+  The builder holds that read's accounts to `filterAddress`, as Chrome's filter is. A known lie, older than this slice
+  (review 2026-10-22): with `select users` the mock prints each account's rows in turn, where GAM sorts them all newest
+  first (`SortRows('id.time')`, :14948); the app's merges sort by date, so nothing here depends on it.
+- **Not modelled, for the live check to tell:** which admin events GAM's `update user … password random` and `deprovision
+  signout` leave (assumed `CHANGE_PASSWORD` and `RESET_SIGNIN_COOKIES`, Google's names for the Admin console's own); whether
+  those events name the person in `USER_EMAIL`; the `type` Google gives `passkey_enrolled`; how far the admin log lags.
+- **Live check (L1l, read-only):** on the real incident, pull by the affected accounts over a window from before the
+  attack: each status matches what was done and when (the audit log and the Admin console's admin log), and the lock
+  events named above are the ones Google recorded.
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
@@ -353,5 +395,7 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   point cites a finding shown, and nothing names an account or address the findings don't.
 
 ## Next
-- The live checks L1, L1c, L1r and L2.
+- The live checks L1, L1c, L1d, L1r, L1s, L1l and L2.
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): findings first, the incident record,
+  the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

@@ -33,10 +33,10 @@ public enum ActivityLogs {
         return counts.values.contains { $0 >= cap }
     }
     /// The logs an incident needs first: sign-ins, OAuth, Gmail, Access, Chat and account changes, the other ways in and out
-    /// an attacker uses (sign-ins to other apps through Google, Takeout exports, phones syncing the account), and Gemini (an
-    /// assistant an attacker can ask to search a mailbox).
+    /// an attacker uses (sign-ins to other apps through Google, Takeout exports, phones syncing the account), Gemini (an
+    /// assistant an attacker can ask to search a mailbox), and the admin log, where the lock is (a password reset, a sign-out).
     public static let incidentDefault: [Application] = [.login, .token, .saml, .gmail, .accessEvaluation, .chat, .userAccounts,
-                                                        .takeout, .mobile, .gemini]
+                                                        .takeout, .mobile, .gemini, .admin]
 
     /// One parameter of an event: a nested one is named by its chain, `message_info.source.address`.
     public struct Parameter: Sendable, Equatable {
@@ -175,6 +175,11 @@ public enum ActivityLogs {
                 let rest = parameters.filter { !hidden.contains($0.name) && !isWarning($0.name) && !$0.name.hasPrefix("resource") }
                     .prefix(4).map { "\($0.name): \($0.value)" }
                 return (device.isEmpty ? [] : [device]) + warnings + rest
+            case .admin:
+                // Whose account it was done to first: the admin who did it is the row's person.
+                let target = value("USER_EMAIL")
+                return (target.isEmpty ? [] : ["to \(target)"])
+                    + parameters.filter { !["type", "USER_EMAIL"].contains($0.name) }.prefix(3).map { "\($0.name): \($0.value)" }
             default:
                 return parameters.filter { !["type", "is_suspicious"].contains($0.name) }.prefix(4).map { "\($0.name): \($0.value)" }
             }
@@ -259,6 +264,22 @@ public enum ActivityLogs {
         case "account_disabled_password_leak": "Google disabled the account: password leaked"
         case "account_disabled_spamming", "account_disabled_spamming_through_relay": "Google disabled the account: sending spam"
         case "account_disabled_generic": "Google disabled the account"
+        case "user_signed_out_due_to_suspicious_session_cookie": "Google signed the person out: a suspicious session cookie"
+        case "passkey_enrolled": "Added a passkey"
+        case "passkey_removed": "Removed a passkey"
+        case "2sv_enroll": "Turned on 2-Step Verification"
+        case "2sv_disable": "Turned off 2-Step Verification"
+        case "password_edit": "Changed their password"
+        case "recovery_email_edit": "Changed the recovery email"
+        case "recovery_phone_edit": "Changed the recovery phone"
+        case "recovery_secret_qa_edit": "Changed the recovery question"
+        case "CHANGE_PASSWORD": "Changed a person's password"
+        case "RESET_SIGNIN_COOKIES": "Signed a person out of every session"
+        case "REVOKE_3LO_TOKEN": "Revoked an app's access"
+        case "REVOKE_3LO_DEVICE_TOKENS": "Revoked a device's access"
+        case "REVOKE_ASP": "Deleted an app password"
+        case "DELETE_2SV_SCRATCH_CODES": "Deleted 2-Step Verification backup codes"
+        case "SUSPEND_USER": "Suspended a person"
         case "risky_sensitive_action_allowed": "A risky sensitive action was allowed"
         case "risky_sensitive_action_blocked": "A risky sensitive action was blocked"
         case "authorize": "Granted an app access"
@@ -416,7 +437,7 @@ extension GamCommands.ActivityApplication {
         case .userAccounts: "Password, 2-Step Verification and recovery changes."
         case .drive: "Files viewed, downloaded, shared and deleted."
         case .takeout: "Exports of the account's data."
-        case .admin: "What admins changed in the Admin console."
+        case .admin: "What admins did to these accounts (a password reset, a sign-out: the lock), and what they did as admins."
         case .mobile: "Phones, tablets and computers registering or syncing: an attacker's computer can join the account as it "
             + "signs in. It records no address, so a pull by address reads its registrations for the accounts asked."
         case .saml: "Sign-ins to other apps through Google (single sign-on): which apps the account reached."

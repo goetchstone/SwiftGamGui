@@ -41,7 +41,8 @@ it in plain words; the fixes it points to are drafts the operator confirms.
   from that address: whose mailbox a Gmail row is isn't certain from the row alone.
 - **Apps and agents:** an app acting from a suspect address, or anything else done from it (Gemini, Drive, Contacts…) →
   Secure Account; an AI agent acting for someone → said, called out when the attacker had that account.
-- **After the lock:** a suspect address's events after a time the operator gives → said.
+- **After the lock:** read from the logs since 2026-10-22, never typed: where each account stands, a sign-in after the
+  lock, half a lock, what a lock leaves in place (docs/plans/2026-10-22-incidents.md, slice 1).
 
 ## Not built unless asked
 A sender's volume (until the Gmail log's sent and received events are told apart live), Admin console CSV import, IP

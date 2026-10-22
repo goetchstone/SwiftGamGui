@@ -188,6 +188,15 @@ struct NativeArgvTests {
         #expect(try GamCommands.reportActivity(.admin, users: ["p@example.com"], hours: 3, maxActivities: 1).argv
                 == ["report", "admin", "user", "p@example.com", "userisactor", "start", "-3h", "end", "now", "maxactivities", "1"])
         #expect(!(try GamCommands.reportActivity(.admin, hours: 3, maxActivities: 1).argv.contains("userisactor")))
+        // …or, read the other way, what admins did to them: the lock.
+        #expect(try GamCommands.reportActivity(.admin, users: ["p@example.com", "q@example.com"], hours: 3, maxActivities: 1,
+                                               admin: .affected).argv
+                == ["report", "admin", "select", "users", "p@example.com,q@example.com", "start", "-3h", "end", "now", "maxactivities", "1"])
+        // That read goes through a filter GAM builds from the account: only Google's address characters (review 2026-10-22).
+        #expect(throws: GamCommands.Invalid.self) {
+            try GamCommands.reportActivity(.admin, users: ["x@example.com=="], hours: 3, maxActivities: 1, admin: .affected)
+        }
+        #expect(try GamCommands.reportActivity(.admin, users: ["x@example.com=="], hours: 3, maxActivities: 1).argv.contains("userisactor"))
         #expect(try GamCommands.reportActivity(.login, hours: 3, ip: "2001:db8::1", maxActivities: 1).argv.contains("2001:db8::1"))
         // Chrome's by the profile's account, one at a time (doReport would match a named user to the computer's login name).
         #expect(try GamCommands.reportActivity(.chrome, users: ["p@example.com"], hours: 3, maxActivities: 1).argv

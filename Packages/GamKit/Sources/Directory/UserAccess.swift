@@ -314,10 +314,10 @@ public final class UserAccess {
     /// given, the newest `cap` per account; GAM's own words when the read fails, as when an edition doesn't keep the log.
     public func activity(_ application: ActivityLogs.Application, users: [String], hours: Int, ip: String = "",
                          events: [String] = [], cap: Int, chrome: GamCommands.ChromeMatch = .profile,
-                         in domain: Domain? = nil) async -> Result<[ActivityLogs.Row], Problem> {
+                         admin: GamCommands.AdminMatch = .actor, in domain: Domain? = nil) async -> Result<[ActivityLogs.Row], Problem> {
         do {
             let read = try GamCommands.reportActivity(application, users: users, hours: hours, ip: ip, events: events, maxActivities: cap,
-                                                      chrome: chrome)
+                                                      chrome: chrome, admin: admin)
             // GAM reads one account after another: twenty accounts' Gmail takes far longer than one read.
             return await readNow(read, in: domain, timeout: ActivityLogs.timeout) { ActivityLogs.rows($0, application: application) }
         } catch GamCommands.Invalid.argument(let why) {

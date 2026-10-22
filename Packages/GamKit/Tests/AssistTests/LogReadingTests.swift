@@ -177,12 +177,151 @@ struct LogReadingTests {
         #expect(!reading.findings.contains { $0.accounts == ["alice@example.com"] }, "an app at the office is no finding")
     }
 
-    @Test func activityAfterTheLockIsSaid() {
-        let locked = Date(timeIntervalSince1970: 1_792_400_000 + 15 * 60)
-        let reading = LogReading.read(Self.incident, context: LogReading.Context(lockedAt: locked))
-        let after = reading.findings.first { $0.kind == .afterLock }
-        #expect(after?.events == 3 && after?.accounts == ["dana@example.com", "erin@example.com", "carol@example.com"])
-        #expect(LogReading.read(Self.incident, context: LogReading.Context(lockedAt: .distantFuture)).findings.allSatisfy { $0.kind != .afterLock })
+    /// A status's times, said as the minute of the test's clock.
+    static func minute(_ date: Date) -> String { "minute \(Int((date.timeIntervalSince1970 - 1_792_400_000) / 60))" }
+
+    static func done(_ name: String, to account: String = "carol@example.com", ip: String = office, at minute: Int) -> LogReading.Event {
+        event("admin", "alice@example.com", name, ip: ip, at: minute, ["USER_EMAIL": account])
+    }
+
+    /// The lock read from the logs in time order: a password reset and a sign-out by an admin since the attack lock
+    /// carol@ (the account named in any case), and the attacker's address trying her password after it is the lock holding,
+    /// not a new victim. dana@, whom nothing locked, isn't locked.
+    @Test func theLockIsReadFromTheLogs() {
+        let reading = LogReading.read(Self.incident + [
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", to: "Carol@example.com", at: 61),
+            Self.event("login", "carol@example.com", "login_failure", ip: Self.attacker, at: 70),
+        ])
+        #expect(reading.statuses.map(\.account) == ["carol@example.com", "dana@example.com"])
+        let carol = reading.statuses[0], dana = reading.statuses[1]
+        #expect(carol.state == .locked && carol.lockedAt == Self.event("", "", "", at: 61).time)
+        #expect(carol.words(Self.minute) == "Locked at minute 61: password reset and signed out by alice@example.com. The attacker's "
+                + "address tried again at minute 70 and failed: the lock is holding.")
+        #expect(dana.state == .notLocked && dana.words(Self.minute) == "No lock seen in these logs.")
+        #expect(!reading.findings.contains { [.signedInAfterLock, .partlyLocked, .newAddressAfterLock].contains($0.kind) })
+        #expect(!reading.findings.contains { $0.kind == .failedFromSuspect && $0.accounts == ["carol@example.com"] })
+    }
+
+    /// What isn't a lock: a reset before the attack, a sign-out from the attacker's own address (an admin's account they
+    /// had), another person's, and the attacker changing the password. Half a lock is said with what's missing, the lock
+    /// drafted; Google's own disabling is a whole one.
+    @Test func halfALockOrNoneIsSaid() {
+        let notLocks = LogReading.read(Self.incident + [
+            Self.done("CHANGE_PASSWORD", at: 1), Self.done("RESET_SIGNIN_COOKIES", ip: Self.attacker, at: 60),
+            Self.done("RESET_SIGNIN_COOKIES", to: "bob@example.com", at: 60),
+            Self.event("useraccounts", "carol@example.com", "password_edit", ip: Self.attacker, at: 13),
+        ])
+        #expect(notLocks.statuses[0].state == .notLocked)
+        let reset = LogReading.read(Self.incident + [Self.done("CHANGE_PASSWORD", at: 60)])
+        #expect(reset.statuses[0].state == .partlyLocked)
+        #expect(reset.statuses[0].words(Self.minute) == "Password reset at minute 60 by alice@example.com, but no sign-out seen: the "
+                + "attacker's open sessions may still work.")
+        let half = reset.findings.first { $0.kind == .partlyLocked }
+        #expect(half?.words == "carol@example.com's password was reset, but no sign-out was seen: the attacker's open sessions may still work.")
+        #expect(half?.drafts == [.secureAccount("carol@example.com")])
+        let signedOut = LogReading.read(Self.incident + [Self.done("RESET_SIGNIN_COOKIES", at: 60)]).statuses[0]
+        #expect(signedOut.words(Self.minute) == "Signed out at minute 60 by alice@example.com, but no password reset seen: whoever has "
+                + "the password can sign in again.")
+        let google = LogReading.read(Self.incident + [Self.event("login", "carol@example.com", "account_disabled_hijacked", at: 50)])
+        #expect(google.statuses[0].state == .locked)
+        #expect(google.statuses[0].words(Self.minute) == "Locked at minute 50: suspended by Google. No sign-in from a suspect address since.")
+    }
+
+    /// A sign-in from the attacker's address after the lock is the worst news, said first with the lock drafted again. One
+    /// from an address the person used before the attack is theirs; one these logs never showed before it is said, to check.
+    @Test func aSignInAfterTheLockIsSaid() {
+        let home = "203.0.113.10", away = "192.0.2.44"
+        let back = LogReading.read(Self.incident + [
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
+            Self.event("login", "carol@example.com", "login_success", ip: home, at: 2),
+            Self.event("login", "carol@example.com", "login_success", ip: home, at: 80),
+            Self.event("login", "carol@example.com", "login_success", ip: away, at: 85),
+            Self.event("login", "carol@example.com", "login_success", ip: Self.attacker, at: 90),
+        ])
+        #expect(back.statuses[0].state == .stillIn)
+        #expect(back.statuses[0].words(Self.minute) == "Signed in from 198.51.100.23 at minute 90, after the lock at minute 61: the "
+                + "attacker may still be in.")
+        #expect(back.findings.first?.kind == .signedInAfterLock && back.findings.first?.drafts == [.secureAccount("carol@example.com")])
+        let new = back.findings.first { $0.kind == .newAddressAfterLock }
+        #expect(new?.addresses == [away])
+        #expect(new?.words == "carol@example.com signed in after the lock from 192.0.2.44, not seen before the attack in these logs: check it's them.")
+    }
+
+    /// Securing again after the attacker got back in is a new lock, read the same way: the status is locked again, from the
+    /// second lock, and the sign-in between the two no longer says they're still in. A second lock that's only half done is
+    /// half a lock.
+    @Test func aLockAfterTheAttackerGotBackInIsANewLock() {
+        let first = [Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
+                     Self.event("login", "carol@example.com", "login_success", ip: Self.attacker, at: 90)]
+        let relocked = LogReading.read(Self.incident + first + [Self.done("CHANGE_PASSWORD", at: 100), Self.done("RESET_SIGNIN_COOKIES", at: 101)])
+        #expect(relocked.statuses[0].state == .locked)
+        #expect(relocked.statuses[0].words(Self.minute) == "Locked at minute 101: password reset and signed out by alice@example.com. "
+                + "No sign-in from a suspect address since.")
+        #expect(!relocked.findings.contains { $0.kind == .signedInAfterLock })
+        let half = LogReading.read(Self.incident + first + [Self.done("RESET_SIGNIN_COOKIES", at: 100)]).statuses[0]
+        #expect(half.state == .partlyLocked && half.signOut?.at == Self.event("", "", "", at: 100).time && half.reset == nil)
+    }
+
+    /// A window that starts after the attack began can hold the lock before its first suspect sign-in: said, with when, so
+    /// the operator reads further back rather than taking "no lock".
+    @Test func aLockBeforeTheWindowsFirstSuspectSignInIsSaid() {
+        let late = Self.incident.filter { ($0.time ?? .distantPast) > Self.event("", "", "", at: 40).time! } + [
+            Self.done("CHANGE_PASSWORD", at: 50), Self.done("RESET_SIGNIN_COOKIES", at: 51),
+            Self.event("login", "carol@example.com", "suspicious_login", ip: Self.attacker, flagged: true, at: 89),
+            Self.event("login", "carol@example.com", "login_success", ip: Self.attacker, at: 90),
+        ]
+        let carol = LogReading.read(late).statuses[0]
+        #expect(carol.state == .notLocked && carol.earlierLockAt == Self.event("", "", "", at: 51).time)
+        #expect(carol.words(Self.minute) == "No lock since the first sign-in from a suspect address in these logs; one came at minute 51, "
+                + "before it. If the attack began earlier, pull from before it began.")
+    }
+
+    /// The model is told where each account stands, in words without times or anything an attacker wrote.
+    @Test func thePromptSaysWhereEachAccountStands() {
+        let prompt = LogExplainer.prompt(LogReading.read(Self.incident + [
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
+            Self.event("login", "carol@example.com", "login_failure", ip: Self.attacker, at: 70),
+        ]))
+        #expect(prompt.contains("Where carol@example.com stands: locked, and the attacker's address tried again and failed."))
+        #expect(prompt.contains("Where dana@example.com stands: no lock seen."))
+    }
+
+    /// No lock seen says why when the pull couldn't show one: pulled by the attacker's address (the lock is done from the
+    /// operator's), or without the admin log.
+    @Test func noLockSaysWhyWhenThePullCouldntShowIt() {
+        func words(_ context: LogReading.Context) -> String { LogReading.read(Self.incident, context: context).statuses[0].words(Self.minute) }
+        #expect(words(LogReading.Context(pulledBy: Self.attacker))
+                == "No lock seen: a pull by one address doesn't show it (the lock is done from yours): pull by the accounts.")
+        #expect(words(LogReading.Context(read: ["login", "token"])) == "No lock seen: the admin log, where it would be, wasn't read.")
+        #expect(words(LogReading.Context(read: ["login", "admin"])) == "No lock seen in these logs.")
+    }
+
+    /// What a lock leaves in place, from the attacker's address: a passkey and a changed recovery phone, said with what to
+    /// do, the recovery step drafted. The person's own passkey from their own address isn't one: the same event means the
+    /// opposite from there. Another app reached through Google keeps its own session; the same from the office is no finding.
+    @Test func whatALockLeavesInPlace() {
+        let reading = LogReading.read(Self.incident + [
+            Self.event("login", "carol@example.com", "passkey_enrolled", ip: Self.attacker, at: 13),
+            Self.event("useraccounts", "carol@example.com", "recovery_phone_edit", ip: Self.attacker, at: 14),
+            Self.event("login", "alice@example.com", "passkey_enrolled", ip: Self.office, at: 15),
+            Self.event("saml", "carol@example.com", "login_success", ip: Self.attacker, at: 16, ["application_name": "Payroll Portal"]),
+            Self.event("saml", "alice@example.com", "login_success", ip: Self.office, at: 17, ["application_name": "Payroll Portal"]),
+        ])
+        let left = reading.findings.filter { $0.kind == .leftInPlace }
+        #expect(left.map(\.accounts) == [["carol@example.com"]])
+        #expect(left.first?.words == "From 198.51.100.23, carol@example.com's account got a new passkey and a changed recovery phone: a "
+                + "lock doesn't undo them. Remove what isn't theirs on the Admin console's page for them (Security), or with them in "
+                + "their Google Account. Check Account shows the recovery details, and its “Clear recovery email & phone” step removes them.")
+        #expect(left.first?.drafts == [.secureAccount("carol@example.com")])
+        let passkeyOnly = LogReading.read(Self.incident + [Self.event("login", "carol@example.com", "passkey_enrolled", ip: Self.attacker, at: 13)])
+        #expect(passkeyOnly.findings.first { $0.kind == .leftInPlace }?.drafts.isEmpty == true, "a passkey is removed by hand")
+        let session = reading.findings.filter { $0.kind == .otherAppSession }
+        #expect(session.map(\.accounts) == [["carol@example.com"]])
+        #expect(session.first?.words == "carol@example.com signed in to Payroll Portal through Google from 198.51.100.23: Google's sign-out "
+                + "doesn't end that app's session. Sign them out there too.")
+        #expect(session.first?.drafts.isEmpty == true)
+        let kinds = reading.findings.map(\.kind)
+        #expect(kinds.firstIndex(of: .leftInPlace)! < kinds.firstIndex(of: .mailFromSuspect)!)
     }
 
     struct Stub: LogExplainer.Asking {

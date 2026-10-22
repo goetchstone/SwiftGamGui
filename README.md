@@ -215,6 +215,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Read the logs: a device registered at a sign-in from a suspect address | not yet: new to both apps |
 | Incident: a person's Apps Script projects (reads only) | not yet: new to both apps |
 | Incident: connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
+| Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 | Find and trash the copies of an email in Spam (Phishing) | not yet: new to both apps |
 
