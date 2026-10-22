@@ -501,6 +501,68 @@ public enum Compromised {
         }
     }
 
+    /// One Apps Script project the person owns (`GamCommands.printScriptProjects`). A script someone authorized keeps
+    /// acting for them, on triggers, for as long as that access lasts: one made or changed during an incident is worth a
+    /// look.
+    public struct ScriptProject: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let created: String
+        public let createdAt: Date?
+        public let modified: String
+        public let modifiedAt: Date?
+        /// Who changed it last, by address when Drive gives one.
+        public let lastChangedBy: String
+        public let inTrash: Bool
+
+        public init(record: GamOutput.Record) {
+            func text(_ key: String, in object: GamOutput.Record? = nil) -> String { Fields.text((object ?? record)[key]) }
+            id = text("id")
+            name = text("name")
+            created = text("createdTime")
+            createdAt = ChromeProfiles.date(created)
+            modified = text("modifiedTime")
+            modifiedAt = ChromeProfiles.date(modified)
+            let by = record["lastModifyingUser"]?.object
+            lastChangedBy = by.map { text("emailAddress", in: $0).isEmpty ? text("displayName", in: $0) : text("emailAddress", in: $0) } ?? ""
+            inTrash = Fields.flag(record["trashed"])
+        }
+
+        /// Made or changed in the two weeks before `now`: in an incident, the ones to look at first.
+        public func isRecent(at now: Date) -> Bool {
+            [createdAt, modifiedAt].contains { $0.map { now.timeIntervalSince($0) <= Self.recent } ?? false }
+        }
+
+        public static let recent: TimeInterval = 14 * 24 * 60 * 60
+
+        /// The latest changed first; one Drive gives no time for, last.
+        public static func sorted(_ projects: [ScriptProject]) -> [ScriptProject] {
+            projects.enumerated().sorted { a, b in
+                (a.element.modifiedAt ?? .distantPast, b.offset) > (b.element.modifiedAt ?? .distantPast, a.offset)
+            }.map(\.element)
+        }
+
+        /// A finished `GamCommands.printScriptProjects` for `user`: their projects, the latest changed first. printFileList
+        /// exits 60 whenever it printed no row (`if not csvPF.rows: setSysExitRC(NO_ENTITIES_FOUND_RC)`, 7.48.30), which
+        /// overwrites a failure's own code (Drive off, a refused token, one refusal that prints nothing at all), so 60 is
+        /// "none" only on GAM's own word that Drive answered with nothing for this person, "Got 0 Drive Files/Folders … for
+        /// <user>…" (written once `files.list` returned; `show_gettings` is on in the app's fresh config), with no other
+        /// line. Anything else throws the `GamError`, never read as "no project".
+        public static func list(_ result: GamResult, argv: [String], user: String) throws -> [ScriptProject] {
+            let records = GamOutput.records(result.stdout)
+            if result.exitCode == 0 { return sorted(records.map(ScriptProject.init(record:))) }
+            let lines = PythonText.lines(result.stderr).map { PythonText.strip($0) }.filter { !$0.isEmpty }
+            let wanted = PythonText.lower(user)
+            let answered = lines.contains { line in
+                line.hasPrefix("Got 0 Drive Files/Folders ") && PythonText.lower(line).hasSuffix(" for \(wanted)...")
+            }
+            guard result.exitCode == 60, records.isEmpty, answered, lines.allSatisfy(GamError.isProgress) else {
+                throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv, stdout: result.stdout)
+            }
+            return []
+        }
+    }
+
     /// The account as `info user … fields accountFields` has it: the facts the panel shows.
     public struct Account: Sendable, Equatable {
         public let primaryEmail: String
@@ -531,7 +593,7 @@ public enum Compromised {
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
                                 sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil, autoReply: Vacation? = nil,
                                 devices: [MobileDevice]? = nil, computers: [Computer]? = nil,
-                                apps: [ConnectedApps.App]? = nil) -> [String] {
+                                apps: [ConnectedApps.App]? = nil, scripts: [ScriptProject]? = nil, now: Date = Date()) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
@@ -579,6 +641,13 @@ public enum Compromised {
                 + "they don't use may be the attacker's. The sign-out ends its session; block or delete it in the Admin console's Devices."
                 + (active.contains(where: \.reportsCompromise) ? " One reports it's compromised." : "")
                 + (stopped == 0 ? "" : " \(stopped) more \(stopped == 1 ? "is" : "are") already blocked or wiped."))
+        }
+        if let scripts, case let recent = scripts.filter({ $0.isRecent(at: now) }), !recent.isEmpty {
+            let names = recent.map { "“\($0.name.isEmpty ? "Untitled" : $0.name)”" }.joined(separator: ", ")
+            said.append("\(recent.count == 1 ? "An Apps Script project" : "\(recent.count) Apps Script projects") in \(user)'s Drive "
+                + "\(recent.count == 1 ? "was" : "were") made or changed in the last two weeks (\(names)): a script someone authorized keeps "
+                + "acting for them on its triggers. The sign-out revokes its access; ask \(user) whether they wrote "
+                + (recent.count == 1 ? "it, and delete it from their Drive if not." : "them, and delete any they didn't from their Drive."))
         }
         if let drafts, !drafts.isEmpty {
             said.append("\(user) has \(drafts.count == Draft.cap ? "at least \(Draft.cap)" : "\(drafts.count)") draft\(drafts.count == 1 ? "" : "s"): "

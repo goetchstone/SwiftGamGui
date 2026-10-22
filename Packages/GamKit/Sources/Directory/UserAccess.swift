@@ -212,6 +212,28 @@ public final class UserAccess {
         }
     }
 
+    /// The Apps Script projects the person owns (`GamCommands.printScriptProjects`), the latest changed first. GAM's exit
+    /// 60 is "none" only as `Compromised.ScriptProject.list` reads it; any other failure is said in GAM's words.
+    public func scriptProjects(of email: String) async -> Result<[Compromised.ScriptProject], Problem> {
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        guard let read = try? GamCommands.printScriptProjects(user: email) else {
+            return .failure(Problem(summary: "Couldn't read the Apps Script projects: “\(email)” isn't one email address."))
+        }
+        do {
+            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
+            guard !result.stdoutTruncated else {
+                return .failure(Problem(summary: "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so this wasn't all read."))
+            }
+            return .success(try Compromised.ScriptProject.list(result, argv: read.argv, user: email))
+        } catch let error as GamError {
+            return .failure(Problem(summary: error.message))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// The auto-reply as it is now (`show vacation`), read on its own: Check Account's, never a page's cached lists.
     public func autoReply(of email: String) async -> Result<Vacation, Problem> {
         await readNow(GamCommands.showVacation(email: email)) { Vacation(showText: $0) }

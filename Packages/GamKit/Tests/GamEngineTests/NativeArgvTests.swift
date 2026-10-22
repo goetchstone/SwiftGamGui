@@ -60,6 +60,11 @@ struct NativeArgvTests {
           "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,compromisedstate,createtime,"
             + "lastsynctime",
           "userfields", "useremail,createtime,firstsynctime,lastsynctime,managementstate", "formatjson"]),
+        // 7793-7822 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] … (fields <DriveFieldNameList>) …
+        // [formatjson]`, 223 `gscript`: the person's own Apps Script projects (GAM's default `'me' in owners`).
+        ("print_script_projects", try! GamCommands.printScriptProjects(user: "p@example.com"),
+         ["user", "p@example.com", "print", "filelist", "showmimetype", "gscript", "fields",
+          "id,name,createdtime,modifiedtime,trashed,lastmodifyinguser", "formatjson"]),
         // 9076-9085 `[<UserTypeEntity>] print tokens|token …`: no entity is GAM's default, every account but the suspended.
         ("print_tokens", try! GamCommands.printTokens(), ["print", "tokens"]),
         ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
@@ -204,6 +209,13 @@ struct NativeArgvTests {
         }
         #expect(try GamCommands.reportActivity(.chrome, users: ["o'neil.x_y-z@mail.example.co.uk"], hours: 3, maxActivities: 1).argv[5]
                 == "PROFILE_USER_NAME==o'neil.x_y-z@mail.example.co.uk")
+    }
+
+    /// One person's Apps Script projects: the entity is one address GAM acts on as given; anything else is refused.
+    @Test func onePersonsScriptProjectsAreOneAddress() throws {
+        for user in ["a@example.com,b@example.com", "all", "id:123", "", "Name <a@example.com>", " a@example.com"] {
+            #expect(throws: GamCommands.Invalid.self, "\(user)") { try GamCommands.printScriptProjects(user: user) }
+        }
     }
 
     /// One person's grants are `user <address> print tokens`; anything but one address is refused.
