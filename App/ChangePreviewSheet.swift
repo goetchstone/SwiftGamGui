@@ -632,8 +632,8 @@ struct CompromisedConfirmSheet: View {
     }
 }
 
-/// Phishing's confirm step: the email by its Message-ID, every mailbox it is trashed from with its count, the
-/// commands as GAM gets them, what trashing means, and the number of mailboxes typed to run it (from ten, the word
+/// Phishing's confirm step: the email by its Message-ID, each trash with its count (a mailbox's copies, or its copies in
+/// Spam), the commands as GAM gets them, what trashing means, and the number of steps typed to run it (from ten, the word
 /// `confirm` too); the executor checks both, not only these fields. Trash is the destructive action and never the
 /// default button, so Return alone doesn't start it. Confirming runs exactly this preview, once; Cancel drops it.
 struct PhishingConfirmSheet: View {
@@ -642,12 +642,15 @@ struct PhishingConfirmSheet: View {
     @State private var typedCount = ""
     @State private var word = ""
 
-    private var count: Int { pending.mailboxes.count }
+    /// The steps, the number typed: one a mailbox, and one more for a mailbox with copies in Spam as well.
+    private var count: Int { pending.trashes.count }
     private var countMatches: Bool { typedCount.trimmingCharacters(in: .whitespacesAndNewlines) == pending.typedCount }
     private var wordMatches: Bool {
         !pending.needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord
     }
-    private var mailboxes: String { "\(count) mailbox\(count == 1 ? "" : "es")" }
+    private var mailboxes: String { "\(pending.mailboxes.count) mailbox\(pending.mailboxes.count == 1 ? "" : "es")" }
+    /// What the typed number counts, in words.
+    private var counted: String { count == pending.mailboxes.count ? "mailboxes" : "steps" }
 
     private func confirm() {
         let pending = pending, changes = changes, confirmation = OperatorConfirmation(
@@ -665,12 +668,13 @@ struct PhishingConfirmSheet: View {
                     LabeledContent("From") { Text(sample.copy.from).textSelection(.enabled) }
                     LabeledContent("Subject") { Text(sample.copy.subject).textSelection(.enabled) }
                 }
-                ForEach(pending.mailboxes.filter { $0.copies > 2 }) { mailbox in
-                    Label("\(mailbox.email) has \(mailbox.copies) copies: one email rarely arrives more than twice.",
+                ForEach(pending.trashes.filter { $0.copies > 2 }) { trash in
+                    Label("\(trash.name) has \(trash.copies) copies: one email rarely arrives more than twice.",
                           systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
                 }
-                ForEach(pending.preview.steps, id: \.target) { step in
+                // By position: a mailbox with copies in Spam as well has two steps.
+                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
                     Text(step.summary)
                 }
                 DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
@@ -685,17 +689,33 @@ struct PhishingConfirmSheet: View {
             Section {
                 Label("Each person stops seeing it at once. It stays in their Trash for 30 days, where it can be put back.",
                       systemImage: "trash")
-                Label("Only the copies found: a mailbox that holds more by now is left as it is and shown as failed.",
-                      systemImage: "info.circle")
-                Label("Stop takes effect between mailboxes: the one in progress finishes first.", systemImage: "info.circle")
-                ForEach(pending.preview.decision.warnings, id: \.self) { warning in
-                    Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                if pending.trashes.contains(where: { !$0.inSpam }) {
+                    Label("Outside Spam, only the copies found: a mailbox that holds more by now is left as it is and shown as failed.",
+                          systemImage: "info.circle")
+                }
+                if pending.trashes.contains(where: \.inSpam) {
+                    Label("Copies in Spam are trashed by their IDs: exactly those found, nothing that arrived since.",
+                          systemImage: "info.circle")
+                }
+                Label("Stop takes effect between steps: the one in progress finishes first, and later ones, a mailbox's Spam "
+                      + "among them, don't run.", systemImage: "info.circle")
+                // The guard's over-cap warning counts steps as accounts; a mailbox with copies in Spam too is two steps.
+                if pending.mailboxes.count > Guard.hardCap {
+                    Label("This trashes from \(mailboxes) (over the \(Guard.hardCap) safety threshold). Double-check the target set.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
                 }
             }
-            Section("Type \(count) to run it") {
-                TextField("Number of mailboxes", text: $typedCount, prompt: Text(verbatim: pending.typedCount))
+            Section {
+                TextField("Number of \(counted)", text: $typedCount, prompt: Text(verbatim: pending.typedCount))
                     .autocorrectionDisabled()
-                    .accessibilityLabel("Type the number of mailboxes, \(count), to trash the email from them")
+                    .accessibilityLabel("Type the number of \(counted), \(count), to trash the email from \(mailboxes)")
+            } header: {
+                Text("Type \(count) to run it")
+            } footer: {
+                if count != pending.mailboxes.count {
+                    Text("One for each step above: a mailbox with copies in Spam as well has two.")
+                }
             }
             if pending.needsWord {
                 Section {
@@ -705,7 +725,7 @@ struct PhishingConfirmSheet: View {
                 } header: {
                     Text("Type \(Guard.typedWord) too")
                 } footer: {
-                    Text("Ten mailboxes or more: a change this wide is confirmed in words as well.")
+                    Text("Ten steps or more: a change this wide is confirmed in words as well.")
                 }
             }
         }

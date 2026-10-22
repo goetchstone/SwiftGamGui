@@ -84,6 +84,14 @@ struct NativeArgvTests {
         ("trash_message", try! GamCommands.trashMessage(email: "<email>", phish, copies: 2),
          ["user", "<email>", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent",
           "notquick", "max_to_trash", "2", "doit"]),
+        // 8232-8241 `<UserTypeEntity> print messages … query <QueryGmail> … [includespamtrash] … [headers <SMTPHeaderList>] …
+        // [showlabels]`: the copies in Spam, which the dry run's list leaves out; 8186-8190 `trash messages … (ids
+        // <MessageIDEntity>)`, 770 `<MessageIDList>`: one mailbox's of them by ID, with no list to leave Spam out.
+        ("find_spam_copies", GamCommands.findSpamCopies(phish),
+         ["all", "users", "print", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam",
+          "includespamtrash", "headers", "message-id", "showlabels"]),
+        ("trash_messages", try! GamCommands.trashMessages(email: "<email>", ids: ["19a0c0ffee000002", "19a0c0ffee000008"]),
+         ["user", "<email>", "trash", "messages", "ids", "19a0c0ffee000002,19a0c0ffee000008"]),
     ]
 
     static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
@@ -269,12 +277,14 @@ struct NativeArgvTests {
     }
 
     /// The message IDs are one element GAM splits on commas: any ID that would split or isn't ASCII, and a lone list selector
-    /// word (GAM would read a file), are refused, as deleteFilters' are.
-    @Test func eachMessageDeletedIsOneID() throws {
+    /// word (GAM would read a file), are refused, as deleteFilters' are; for a delete and for a trash of copies in Spam.
+    @Test func eachMessageDeletedOrTrashedIsOneID() throws {
         for bad in [[], [""], ["a,b"], ["a b"], ["a\u{0600}"], ["ok", "x y"], ["file"], ["CSV_File"], ["csv-kmd"], ["csvdata"]] {
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.deleteMessages(email: "c@example.com", ids: bad) }
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.trashMessages(email: "c@example.com", ids: bad) }
         }
         #expect(try GamCommands.deleteMessages(email: "c@example.com", ids: ["19a0c0ffee000011"]).action == .deleteMessages)
+        #expect(try GamCommands.trashMessages(email: "c@example.com", ids: ["19a0c0ffee000002"]).action == .trashMessage)
     }
 
     @Test func clearingRecoveryIsDestructiveAndMasked() {
