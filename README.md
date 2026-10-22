@@ -217,6 +217,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Incident: connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
 | Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | partly: the lock's admin events seen in a real tenant's export (2026-10-22); the reader not yet run live |
 | Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
+| Read the logs: each account's timeline and Still to do (reads only) | partly: run over a real tenant's export (2026-10-22), not yet in the app live |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
 | Find and trash the copies of an email in Spam (Phishing) | not yet: new to both apps |
 
