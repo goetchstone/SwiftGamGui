@@ -173,7 +173,8 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                logs: services.incidentLogs, apps: services.connectedApps, hasGam: services.executor != nil,
+                                logs: services.incidentLogs, apps: services.connectedApps, known: services.knownSignIns,
+                                hasGam: services.executor != nil,
                                 requested: $compromisedPerson) { id in
                     // An empty ID only opens the screen: what the operator pasted there stays.
                     if !id.isEmpty { phishingMessage = id }

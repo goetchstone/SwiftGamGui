@@ -276,6 +276,95 @@ struct LogReadingTests {
                 + "before it. If the attack began earlier, pull from before it began.")
     }
 
+    /// Google's mark on one sign-in, as a real tenant's log showed it (2026-10-22): the attacker's were password sign-ins;
+    /// the false ones were re-sign-ins, one proved with a passkey through a relay's address, one at the person's usual
+    /// address. A passkey or security key proves the person; a re-sign-in from an address they use unmarked is theirs; a
+    /// re-sign-in from a new address by password alone still marks it (a stolen session re-proving itself).
+    @Test func aPasskeyOrAnOrdinaryReSignInIsntTheAttacker() {
+        let relay = "2001:db8:1::15", hotel = "192.0.2.80"
+        func marked(_ method: String, _ type: String, at ip: String) -> LogReading.Event {
+            Self.event("login", "alice@example.com", "login_success", ip: ip, flagged: true, at: 50,
+                       ["is_suspicious": "True", "login_challenge_method": method, "login_type": type])
+        }
+        let passkey = LogReading.read([marked("passkey", "reauth", at: relay)])
+        #expect(passkey.findings.isEmpty && passkey.statuses.isEmpty, "a passkey re-sign-in is the person")
+        let usual = LogReading.read([Self.event("login", "alice@example.com", "login_success", ip: Self.office, at: 1),
+                                     marked("password device_prompt", "reauth", at: Self.office)])
+        #expect(usual.findings.isEmpty, "re-proving themselves at their usual address")
+        let stolen = LogReading.read([Self.event("login", "alice@example.com", "login_success", ip: Self.office, at: 1),
+                                      marked("password", "reauth", at: hotel)])
+        #expect(stolen.findings.contains { $0.kind == .suspectAddress && $0.addresses == [hotel] })
+        let attacker = LogReading.read([marked("password device_prompt", "google_password", at: Self.attacker)])
+        #expect(attacker.statuses.map(\.account) == ["alice@example.com"], "a marked password sign-in is the attacker's")
+        // A passkey added in these logs before it proves nothing: the attacker can enroll their own (review 2026-10-22).
+        let enrolled = LogReading.read([Self.event("login", "alice@example.com", "passkey_enrolled", ip: Self.attacker, at: 10),
+                                        marked("passkey", "google_password", at: relay)])
+        #expect(enrolled.findings.contains { $0.kind == .suspectAddress && $0.addresses == [relay] })
+    }
+
+    /// "That was them": a flagged sign-in the operator marked as the person's own makes no suspect, and the finding that
+    /// offered it says who can be marked. The address they pulled by is theirs to call the attacker's: nothing to mark.
+    @Test func aSignInMarkedAsTheirsMakesNoSuspect() {
+        let hotel = "192.0.2.80"
+        let flagged = [Self.event("login", "bob@example.com", "login_success", ip: hotel, flagged: true, at: 50,
+                                  ["is_suspicious": "True", "login_challenge_method": "password", "login_type": "google_password"])]
+        let suspect = LogReading.read(flagged).findings.first { $0.kind == .suspectAddress }
+        #expect(suspect?.markable == ["bob@example.com"])
+        let theirs = LogReading.read(flagged, context: LogReading.Context(theirs: [LogReading.key(account: "Bob@example.com", address: hotel)]))
+        #expect(theirs.findings.isEmpty && theirs.statuses.isEmpty)
+        let pulled = LogReading.read(flagged, context: LogReading.Context(pulledBy: hotel)).findings.first { $0.kind == .suspectAddress }
+        #expect(pulled?.markable.isEmpty == true)
+        let others = LogReading.read(Self.incident).findings.filter { $0.kind != .suspectAddress }
+        #expect(others.allSatisfy { $0.markable.isEmpty })
+        // Google's warning that it blocked a sign-in (no sign-in of the person's) is never theirs to mark.
+        let blocked = LogReading.read([Self.event("login", "erin@example.com", "suspicious_login", ip: hotel, flagged: true, at: 50)])
+        #expect(blocked.findings.first { $0.kind == .suspectAddress }?.markable.isEmpty == true)
+    }
+
+    /// A person changing their own password from an address they signed in from before the attack is a reset (a real
+    /// tenant's people did, 2026-10-22); the attacker's change isn't, from their known address or from a new one.
+    @Test func aPersonsOwnPasswordChangeIsAReset() {
+        let usual = Self.event("login", "carol@example.com", "login_success", ip: Self.office, at: 2)
+        let own = LogReading.read(Self.incident + [
+            usual, Self.event("useraccounts", "carol@example.com", "password_edit", ip: Self.office, at: 55),
+            Self.done("RESET_SIGNIN_COOKIES", at: 60),
+        ]).statuses[0]
+        #expect(own.state == .locked && own.words(Self.minute).hasPrefix("Locked at minute 60: password reset by carol@example.com and signed "
+                                                                          + "out by alice@example.com."))
+        let theirs = LogReading.read(Self.incident + [
+            Self.event("useraccounts", "carol@example.com", "password_edit", ip: Self.attacker, at: 55), Self.done("RESET_SIGNIN_COOKIES", at: 60),
+        ]).statuses[0]
+        #expect(theirs.state == .partlyLocked, "the attacker changing it locks nobody out but the owner")
+        let elsewhere = LogReading.read(Self.incident + [
+            usual, Self.event("useraccounts", "carol@example.com", "password_edit", ip: "192.0.2.99", at: 55),
+            Self.done("RESET_SIGNIN_COOKIES", at: 60),
+        ]).statuses[0]
+        #expect(elsewhere.state == .partlyLocked, "a change from an address not hers before the attack may be the attacker's")
+    }
+
+    /// A blocked sender from the attacker's address is something a lock leaves in place (a real tenant's attacker blocked
+    /// the bounce address before a mass send); contacts printed while the attacker had the account are who gets the phish
+    /// next. A print before the attack, or after the lock, is the person's.
+    @Test func aBlockedSenderAndContactsPrintedDuringTheAttack() {
+        let reading = LogReading.read(Self.incident + [
+            Self.event("login", "carol@example.com", "blocked_sender", ip: Self.attacker, at: 29, ["affected_email_address": "mailer-daemon@googlemail.com"]),
+            Self.event("contacts", "carol@example.com", "print_contacts", at: 20, ["CONTACTS_COUNT": "1405"]),
+            Self.event("contacts", "carol@example.com", "print_contacts", at: 40, ["CONTACTS_COUNT": "1406"]),
+            Self.event("contacts", "carol@example.com", "print_contacts", at: 5, ["CONTACTS_COUNT": "1400"]),
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
+            Self.event("contacts", "carol@example.com", "print_contacts", at: 70, ["CONTACTS_COUNT": "1406"]),
+        ])
+        let left = reading.findings.first { $0.kind == .leftInPlace }
+        #expect(left?.words.hasPrefix("From 198.51.100.23, carol@example.com's account got a blocked sender (mailer-daemon@googlemail.com): ") == true)
+        #expect(left?.words.contains("unblock it in their Gmail settings (Filters and Blocked Addresses)") == true && left?.drafts.isEmpty == true)
+        let contacts = reading.findings.filter { $0.kind == .contactsTaken }
+        #expect(contacts.map(\.accounts) == [["carol@example.com"]] && contacts.first?.events == 2)
+        #expect(contacts.first?.words == "carol@example.com's contacts (1,406) were printed 2 times while the attacker had the account: "
+                + "the people on that list may get the phish next. Warn them not to act on it.")
+        #expect(!LogReading.read(Self.incident + [Self.event("contacts", "alice@example.com", "print_contacts", at: 20)])
+            .findings.contains { $0.kind == .contactsTaken }, "not an account the attacker had")
+    }
+
     /// The model is told where each account stands, in words without times or anything an attacker wrote.
     @Test func thePromptSaysWhereEachAccountStands() {
         let prompt = LogExplainer.prompt(LogReading.read(Self.incident + [

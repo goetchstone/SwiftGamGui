@@ -16,6 +16,8 @@ struct CompromisedView: View {
     let logs: IncidentLogs
     /// Every account's connected apps and AI agents.
     let apps: ConnectedAppsRead
+    /// Sign-ins marked as the person's own ("That was them"), which the log reader makes no suspect of.
+    let known: KnownSignIns
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
     /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
@@ -60,10 +62,13 @@ struct CompromisedView: View {
                         IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
                         if let pull = logs.pull, pull.ended {
                             // A fix the reader found is an address for this screen's own check, or a Message-ID for Phishing.
+                            let domain = setup.active?.name ?? ""
                             LogReaderView(pull: pull, secure: { person in
                                 requested = person
                                 withAnimation { scroller.scrollTo(Self.checkAnchor, anchor: .top) }
-                            }, pullEmail: openPhishing)
+                            }, pullEmail: openPhishing, marks: known.marks(for: domain), marksProblem: known.openProblem,
+                            markTheirs: { account, address, note in known.mark(domain: domain, account: account, address: address, note: note) },
+                            unmark: { known.unmark($0) })
                             .id(Self.readerAnchor)
                         }
                         ConnectedAppsSection(reads: apps).id(Self.appsAnchor)

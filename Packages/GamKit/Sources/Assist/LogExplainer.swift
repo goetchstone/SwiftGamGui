@@ -89,6 +89,7 @@ public enum LogExplainer {
         case .signedInFromSuspect: "these accounts signed in (to Google or another app through it), granted an app or changed "
             + "settings from a suspect address"
         case .exportedFromSuspect: "these accounts' data was exported with Google Takeout from a suspect address"
+        case .contactsTaken: "these accounts' contact lists were printed while the attacker had them: those people may get the phish next"
         case .deviceAtSuspectSignIn: "a computer or phone joined these accounts as they were signed in to from a suspect address"
         case .appFromSuspect: "an app acted for these accounts from a suspect address"
         case .actedFromSuspect: "these accounts used other Google services (Gemini, Drive, Contacts…) from a suspect address"

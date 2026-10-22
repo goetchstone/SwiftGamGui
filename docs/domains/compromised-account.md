@@ -341,8 +341,17 @@ one that reads or forwards mail. Reads only.
 Read the logs opens with each account the attacker had and where it stands, read from the logs in time order
 ([docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md)). Nothing is typed: the "I know when the account
 was locked" switch is gone. Reads only.
+- **Who is a suspect** (`LogReading.marksAttacker`, a real tenant's export, 2026-10-22): Google's `suspicious_*`
+  warnings, an account disabled as hijacked, and a sign-in it marked `is_suspicious`, unless that sign-in was proved with a
+  passkey or security key (only when the account added no passkey in these logs before it: an attacker can enroll their
+  own, security review 2026-10-22), or re-proves a session (`login_type` `reauth`) from an address the account signs in from
+  unmarked. Every one of that attacker's sign-ins was a password one; the false ones were a passkey re-sign-in through a
+  relay's address and a person re-proving themselves at the office. **Google's account warnings have no actor**: the
+  account is `affected_email_address`, which `ActivityLogs.Row.who` takes for a sign-in log row with no actor (failure
+  log 2026-10-22).
 - **The lock** (`LogReading.status`): since the account's first event from a suspect address, the first password reset
-  (`CHANGE_PASSWORD`), sign-out (`RESET_SIGNIN_COOKIES`, or Google's `user_signed_out_due_to_suspicious_session_cookie`)
+  (`CHANGE_PASSWORD`, or the person's own `password_edit` from an address they signed in from before the attack; one
+  from a new address may be the attacker's, review 2026-10-22), sign-out (`RESET_SIGNIN_COOKIES`, or Google's `user_signed_out_due_to_suspicious_session_cookie`)
   and suspension (`SUSPEND_USER`, or Google's `account_disabled_*`). A reset and a sign-out, or a suspension, is the lock;
   one half alone is *partly locked*, said with what's missing and Secure drafted. An admin's event done from a suspect
   address isn't a lock (an attacker with an admin's account), nor is a reset from before the attack, nor the attacker's own
@@ -353,10 +362,14 @@ was locked" switch is gone. Reads only.
   clears *still in* (review 2026-10-22: the first version read only the first lock, and said "still in" forever). No lock
   seen says why when the pull couldn't show one: pulled by an address (the lock is done from the operator's), without the
   admin log, or a lock that came before the window's first suspect sign-in (the window may start after the attack did).
-- **What a lock leaves in place**, from a suspect address: `passkey_enrolled` (the sign-in log), `2sv_enroll` and the
-  `recovery_*_edit` events (account changes), each said with how to remove it; the recovery ones draft Secure for its
-  "Clear recovery email & phone" step. The same event from the person's own address is theirs: that is a rule on the
-  address, never a guess.
+- **What a lock leaves in place**, from a suspect address: `passkey_enrolled` and `blocked_sender` (the sign-in log; an
+  attacker blocks the bounce address before a mass send, and the blocked address is `affected_email_address` there),
+  `2sv_enroll` and the `recovery_*_edit` events (account changes), each said with how to remove it; the recovery ones
+  draft Secure for its "Clear recovery email & phone" step. The same event from the person's own address is theirs: that
+  is a rule on the address, never a guess.
+- **Contacts printed during the attack** (`print_contacts` in the Contacts log, now on by default, between the account's
+  first suspect event and its lock): said, with the count, as who gets the phish next. The Contacts log names no address,
+  so only the time ties it to the attack.
 - **Another app's session:** a SAML sign-in from a suspect address recommends signing the person out of that app too.
 - **The admin log is read both ways** for typed accounts (`GamCommands.AdminMatch`, merged as Chrome's two reads are):
   what admins did to them (`report admin user P`, which doReport turns into `user all` with the filter `USER_EMAIL==P`,
@@ -366,17 +379,35 @@ was locked" switch is gone. Reads only.
   abbreviated date and time; the tests' "minute N").
 - **The mock:** `report_admin.csv`: alice@ (from 203.0.113.50) resets carol@'s password, deletes her backup codes, revokes
   Mail Sync Pro and signs her out at 15:05 on 2026-10-19, and reset bob@'s a week before. `report_login.csv`: the attacker's
-  address added a passkey to carol@ at 14:21 and tried her old password at 15:20, after the lock. The admin read without
+  address added a passkey to carol@ at 14:21, blocked the bounce address at 14:30 and tried her old password at 15:20,
+  after the lock; its `suspicious_login` has no actor, as Google's real rows have none, so a read of carol@ alone leaves it
+  out (the strict guess). `report_contacts.csv`: carol@'s 312 contacts printed at 14:25. The admin read without
   `userisactor` never refuses an address (GAM reads `user all` with a filter); with it, a non-user is "Does not exist".
   The builder holds that read's accounts to `filterAddress`, as Chrome's filter is. A known lie, older than this slice
   (review 2026-10-22): with `select users` the mock prints each account's rows in turn, where GAM sorts them all newest
   first (`SortRows('id.time')`, :14948); the app's merges sort by date, so nothing here depends on it.
-- **Not modelled, for the live check to tell:** which admin events GAM's `update user … password random` and `deprovision
-  signout` leave (assumed `CHANGE_PASSWORD` and `RESET_SIGNIN_COOKIES`, Google's names for the Admin console's own); whether
-  those events name the person in `USER_EMAIL`; the `type` Google gives `passkey_enrolled`; how far the admin log lags.
+- **Seen in a real tenant's export (2026-10-22, read-only):** the lock as GAM ran it is `CHANGE_PASSWORD`, a
+  `REVOKE_3LO_TOKEN` per app, then `RESET_SIGNIN_COOKIES`, within seconds, each naming the person in `USER_EMAIL`; the
+  Admin console's reset adds `CHANGE_PASSWORD_ON_NEXT_LOGIN` beside `CHANGE_PASSWORD`; a person's own change is
+  `password_edit` in both the sign-in and account changes logs.
+- **Not modelled, for the live check to tell:** whether Google returns an account warning (no actor) to a read of that
+  one account; the event names for exporting contacts beyond `print_contacts`; how far the admin log lags.
 - **Live check (L1l, read-only):** on the real incident, pull by the affected accounts over a window from before the
-  attack: each status matches what was done and when (the audit log and the Admin console's admin log), and the lock
-  events named above are the ones Google recorded.
+  attack: each status matches what was done and when (the audit log and the Admin console's admin log), and Google's
+  "disabled the account: hijacked" appears in the taken-over account's own pull.
+
+## That was them (incidents plan, moved up at the operator's ask)
+A sign-in Google marked that was the person, closed as theirs: on a suspect address's finding, "That Was Them…" (or a
+menu when it marked several accounts there) asks how the operator knows, and the mark is kept. Reads and this Mac only.
+- **Files:** `Stores/KnownSignInStore.swift` (`known-sign-ins.json` beside the templates: domain, account, address,
+  note, when; the signature store's descriptor reads and atomic `0600` writes; at most 500; one account and one IP address
+  with a 1 to 500 character note, else refused in words, and a file holding anything else moved aside); `App/KnownSignIns.swift`
+  (the screen's model, as `OnboardRoles` is); `App/LogReaderView.swift` (the button, the note sheet, Marked as Theirs with
+  Undo). Tests: `StoresTests/KnownSignInStoreTests.swift`, `LogReadingTests.aSignInMarkedAsTheirsMakesNoSuspect`.
+- **What a mark does:** `LogReading.Context.theirs` (`LogReading.key(account:address:)`): that account's sign-ins from that
+  address make no suspect. The address can still be one through anyone else's. Only an account's own sign-in Google
+  marked is offered, never its warning that it blocked one (review 2026-10-22), and the operator's own pulled-by address
+  is never markable. A mark is never hidden: Marked as Theirs lists each with its note and an Undo.
 
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it

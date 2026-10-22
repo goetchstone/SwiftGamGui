@@ -453,6 +453,9 @@ fi
 # comment: no more than 30 days apart): exit 56 for a named account, "ERROR: Bad Request" exit 53 for all. With
 # GAM_MOCK_STATE/nolog/<application>, the edition doesn't keep that log: systemErrorExit(GOOGLE_API_ERROR_RC), exit 4
 # (Google's words approximate). A known lie: every fixture event is answered whatever the window (the dates are fixed).
+# Google's own account warnings in the sign-in log (suspicious_login, account_disabled_*) have no actor: the account is
+# `affected_email_address` (a real tenant's log, 2026-10-22). A named account's read is matched on the actor, so it
+# leaves them out, the strict guess: whether Google's per-account read returns them is for the live check.
 # The start is only the app's form, `-<N>h` or `-<N>d`. Only the app's shape.
 # Chrome (:14790-14797): doReport reads userKey all and maps a named user to the filter DEVICE_USER==<u>, the computer's
 # own login name ("carol"), so a work address finds none of a Mac's events, though a Chromebook's (its account) it does;

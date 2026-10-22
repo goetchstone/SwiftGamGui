@@ -34,9 +34,10 @@ public enum ActivityLogs {
     }
     /// The logs an incident needs first: sign-ins, OAuth, Gmail, Access, Chat and account changes, the other ways in and out
     /// an attacker uses (sign-ins to other apps through Google, Takeout exports, phones syncing the account), Gemini (an
-    /// assistant an attacker can ask to search a mailbox), and the admin log, where the lock is (a password reset, a sign-out).
+    /// assistant an attacker can ask to search a mailbox), the admin log, where the lock is (a password reset, a sign-out),
+    /// and Contacts (a contact list printed while the attacker had the account is who the phish goes to next).
     public static let incidentDefault: [Application] = [.login, .token, .saml, .gmail, .accessEvaluation, .chat, .userAccounts,
-                                                        .takeout, .mobile, .gemini, .admin]
+                                                        .takeout, .mobile, .gemini, .admin, .contacts]
 
     /// One parameter of an event: a nested one is named by its chain, `message_info.source.address`.
     public struct Parameter: Sendable, Equatable {
@@ -82,7 +83,11 @@ public enum ActivityLogs {
             // Chromebook's account, or on a Mac or PC the computer's login name, which is still who it was.
             let profile = parameters.first { $0.name == "PROFILE_USER_NAME" }?.value ?? ""
             let device = parameters.first { $0.name == "DEVICE_USER" }?.value ?? ""
-            who = application != .chrome ? text("actor.email") : !profile.isEmpty ? profile
+            // Google's own account warnings in the sign-in log (a suspicious sign-in it blocked, an account it disabled as
+            // hijacked) have no actor: the account they're about is `affected_email_address` (a real tenant's log,
+            // 2026-10-22). Where there is an actor, that parameter names someone else (a blocked sender).
+            let affected = application == .login ? parameters.first { $0.name == "affected_email_address" }?.value ?? "" : ""
+            who = application != .chrome ? (text("actor.email").isEmpty ? affected : text("actor.email")) : !profile.isEmpty ? profile
                 : !text("actor.email").isEmpty ? text("actor.email") : device
             let lowered = event.lowercased()
             flagged = ActivityLogs.flaggedEvents.contains(event) || ["suspicious", "blocked", "deny", "disabled", "leak", "attack"]
@@ -139,6 +144,7 @@ public enum ActivityLogs {
                     said.append(failure.replacingOccurrences(of: "login_failure_", with: "").replacingOccurrences(of: "_", with: " "))
                 }
                 if Fields.flag(.string(value("is_suspicious"))) { said.append("Google marked it suspicious") }
+                if event == "blocked_sender", !value("affected_email_address").isEmpty { said.append("blocked: \(value("affected_email_address"))") }
                 return said
             case .token:
                 var said: [String] = []
@@ -265,6 +271,8 @@ public enum ActivityLogs {
         case "account_disabled_spamming", "account_disabled_spamming_through_relay": "Google disabled the account: sending spam"
         case "account_disabled_generic": "Google disabled the account"
         case "user_signed_out_due_to_suspicious_session_cookie": "Google signed the person out: a suspicious session cookie"
+        case "blocked_sender": "Blocked a sender in Gmail"
+        case "print_contacts": "Printed their contacts"
         case "passkey_enrolled": "Added a passkey"
         case "passkey_removed": "Removed a passkey"
         case "2sv_enroll": "Turned on 2-Step Verification"
@@ -449,7 +457,7 @@ extension GamCommands.ActivityApplication {
         case .gemini: "Gemini in Gmail, Docs, Drive and the Gemini app: what was asked and done. An attacker can ask it to find invoices "
             + "or passwords in a mailbox."
         case .meet: "Meetings hosted and joined, and who took part."
-        case .contacts: "Contacts exported, imported and changed."
+        case .contacts: "Contacts printed, exported and changed: a list printed during an attack is who the phish goes to next."
         case .keep: "Notes made, shared and changed."
         case .tasks: "Tasks made and changed."
         case .adminDataAction: "Data actions admins ran, such as exports and deletions."

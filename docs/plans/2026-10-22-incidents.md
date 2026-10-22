@@ -1,7 +1,9 @@
 # Plan: an incident you can open, watch and report
 
-**Status (2026-10-22): slice 1 built (lock status from the logs; runbook: docs/domains/compromised-account.md, "Where
-each account stands"); slices 2 to 6 next, in order.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+**Status (2026-10-22): slice 1 built (#98: lock status from the logs; runbook: docs/domains/compromised-account.md,
+"Where each account stands"). Then, from a real tenant's export: the reader's rules corrected (failure log 2026-10-22),
+and "That was them" moved up from slice 3 at the operator's ask and built (runbook "That was them"). Slices 2 to 6
+next, in order.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen
@@ -79,7 +81,8 @@ rules).
    opened, in a lazy `Table`; the reading computed once per pull (today every redraw re-runs the rules).
 3. **Open an incident.** Open Incident from Read the logs (seeded from the findings: people, addresses, a window from
    just before the first suspect event) and New Incident by hand (a person or an alert). The incident's header on
-   the Incident screen: its status, each person's status, and what's done. "That was them…" on a finding. The pull's
+   the Incident screen: its status, each person's status, and what's done. ("That was them…" is built already: the
+   record lists the marks.) The pull's
    CSVs saved as evidence at opening (the Gmail log reaches back 30 days only). **This picks up an incident in
    progress:** New Incident with its people and a start before the attack, and the logs and the audit log fill in
    the rest.
