@@ -76,6 +76,8 @@ public final class CompromisedChanges {
         public let autoReply: Result<Vacation, UserAccess.Problem>
         /// The phones and tablets syncing the account.
         public let devices: Result<[Compromised.MobileDevice], UserAccess.Problem>
+        /// The computers signed in with it (Google's endpoint management), which the phones list never shows.
+        public let computers: Result<[Compromised.Computer], UserAccess.Problem>
         /// The apps and AI agents given access to the account (`print tokens`).
         public let apps: Result<[ConnectedApps.App], UserAccess.Problem>
 
@@ -311,21 +313,23 @@ public final class CompromisedChanges {
         async let drafts = access.drafts(of: email)
         async let autoReply = access.autoReply(of: email)
         async let devices = access.mobileDevices(of: email)
+        async let computers = access.computers(of: email)
         async let apps = access.connectedApps(of: email)
         let (readFilters, readForwarding, readAddresses, readDelegates, readSendAs, readRoles)
             = await (filters, forwarding, addresses, delegates, sendAs, roles)
-        let (readDrafts, readAutoReply, readDevices, readApps) = await (drafts, autoReply, devices, apps)
+        let (readDrafts, readAutoReply, readDevices, readComputers, readApps) = await (drafts, autoReply, devices, computers, apps)
         let account = Compromised.Account(user)
         let admin = setup.connectedAdmin ?? ""
         let check = Check(
             asked: person, user: user, account: account, filters: readFilters, forwarding: readForwarding,
             forwardingAddresses: readAddresses, delegates: readDelegates, sendAs: readSendAs, adminRoles: readRoles,
-            drafts: readDrafts, autoReply: readAutoReply, devices: readDevices, apps: readApps,
+            drafts: readDrafts, autoReply: readAutoReply, devices: readDevices, computers: readComputers, apps: readApps,
             findings: Compromised.findings(account: account, forwarding: (try? readForwarding.get()) ?? nil,
                                            filters: try? readFilters.get(), delegates: try? readDelegates.get(),
                                            sendAs: try? readSendAs.get(), roles: try? readRoles.get(),
                                            drafts: try? readDrafts.get(), autoReply: try? readAutoReply.get(),
-                                           devices: try? readDevices.get(), apps: try? readApps.get()),
+                                           devices: try? readDevices.get(), computers: try? readComputers.get(),
+                                           apps: try? readApps.get()),
             isConnectedAdmin: !admin.isEmpty && Guard.normalized(admin) == Guard.normalized(email))
         finish(.checked(check))
     }

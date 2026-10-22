@@ -96,7 +96,8 @@ public enum ActivityLogs {
                     + (agentType.isEmpty ? "" : " (\(agentType.lowercased().replacingOccurrences(of: "_", with: " ")))")
                     + (owner.isEmpty ? "" : ", made by \(owner)")
             let appName = text("actor.applicationInfo.applicationName"), client = text("actor.applicationInfo.oauthClientId")
-            app = appName.isEmpty && client.isEmpty ? ""
+            // The Devices log names the device itself "Device": no app acted.
+            app = (appName.isEmpty || (application == .mobile && appName == "Device")) && client.isEmpty ? ""
                 : (appName.isEmpty ? "app \(client)" : appName)
                     + (Fields.flag(record["actor.applicationInfo.impersonation"]) ? " (acting as the person)" : "")
         }
@@ -115,6 +116,8 @@ public enum ActivityLogs {
             case (.saml, "login_failure"): "A sign-in to an app through Google failed"
             case (.chat, "message_posted"): "Posted a Chat message"
             case (.gemini, "feature_utilization"): "Used Gemini"
+            case (.mobile, "DEVICE_REGISTER_UNREGISTER_EVENT"): value("ACCOUNT_STATE") == "UNREGISTERED" ? "Unregistered a device" : "Registered a device"
+            case (.mobile, "DEVICE_SYNC_EVENT"): "A device synced"
             default: ActivityLogs.words(event)
             }
         }
@@ -156,6 +159,22 @@ public enum ActivityLogs {
                 if !result.isEmpty { said.append(result == "BYPASSED" ? "warned, and went on anyway" : ActivityLogs.sentence(result).lowercased()) }
                 if !reason.isEmpty, reason != "EVENT_REASON_UNSPECIFIED" { said.append(ActivityLogs.chromeReason(reason)) }
                 return said
+            case .mobile:
+                // "Windows computer (Virtual Machine, Windows 10.0.19045)", its warnings in words ("is not encrypted"), then
+                // what else the event says (an action, a property changed), never its identifiers.
+                let type = value("DEVICE_TYPE"), about = [value("DEVICE_MODEL"), value("OS_VERSION")].filter { !$0.isEmpty }
+                let device = type.isEmpty ? about.joined(separator: ", ")
+                    : ActivityLogs.deviceKind(type) + (about.isEmpty ? "" : " (\(about.joined(separator: ", ")))")
+                let hidden: Set = ["DEVICE_TYPE", "DEVICE_MODEL", "OS_VERSION", "ACCOUNT_STATE", "type", "DEVICE_ID", "RESOURCE_ID",
+                                   "USER_EMAIL", "SERIAL_NUMBER", "IOS_VENDOR_ID", "LAST_SYNC_AUDIT_DATE"]
+                func isWarning(_ name: String) -> Bool {
+                    ["DEVICE_IS_", "DEVICE_HAS_", "DEVICE_OS_IS_", "DEVICE_SECURITY_PATCH_IS_"].contains { name.hasPrefix($0) }
+                }
+                let warnings = parameters.filter { isWarning($0.name) && Fields.flag(.string($0.value)) }
+                    .map { ActivityLogs.sentence(String($0.name.dropFirst(7))).lowercased() }
+                let rest = parameters.filter { !hidden.contains($0.name) && !isWarning($0.name) && !$0.name.hasPrefix("resource") }
+                    .prefix(4).map { "\($0.name): \($0.value)" }
+                return (device.isEmpty ? [] : [device]) + warnings + rest
             default:
                 return parameters.filter { !["type", "is_suspicious"].contains($0.name) }.prefix(4).map { "\($0.name): \($0.value)" }
             }
@@ -264,6 +283,20 @@ public enum ActivityLogs {
         let words = name.replacingOccurrences(of: "_", with: " ")
         let rest = words.dropFirst()
         return words.prefix(1).uppercased() + (words.uppercased() == words ? rest.lowercased() : String(rest))
+    }
+
+    /// The Devices log's `DEVICE_TYPE` as people say it.
+    static func deviceKind(_ type: String) -> String {
+        switch type.uppercased() {
+        case "WINDOWS": "Windows computer"
+        case "MAC", "MAC_OS": "Mac"
+        case "LINUX": "Linux computer"
+        case "CHROME_OS": "Chromebook"
+        case "IOS", "IOS_SYNC": "iPhone or iPad"
+        case "ANDROID": "Android device"
+        case "GOOGLE_SYNC": "device on Exchange sync"
+        default: type
+        }
     }
 
     /// Chrome's reason (`PASSWORD_REUSED_PHISHING_URL`, `UNSAFE_SITE_VISIT_SOCIAL_ENGINEERING`) in words.
@@ -384,7 +417,8 @@ extension GamCommands.ActivityApplication {
         case .drive: "Files viewed, downloaded, shared and deleted."
         case .takeout: "Exports of the account's data."
         case .admin: "What admins changed in the Admin console."
-        case .mobile: "Phones and tablets syncing the account: an attacker's may still get the mail."
+        case .mobile: "Phones, tablets and computers registering or syncing: an attacker's computer can join the account as it "
+            + "signs in. It records no address, so a pull by address reads its registrations for the accounts asked."
         case .saml: "Sign-ins to other apps through Google (single sign-on): which apps the account reached."
         case .calendar: "Events made, changed and shared: invitations can carry phishing too."
         case .groups: "Group settings and members: someone added to a group, a group opened to outsiders."

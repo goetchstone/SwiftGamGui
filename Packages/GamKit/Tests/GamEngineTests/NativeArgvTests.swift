@@ -53,6 +53,13 @@ struct NativeArgvTests {
         ("print_mobile_devices", try! GamCommands.printMobileDevices(user: "P@Example.com"),
          ["print", "mobile", "query", "email:p@example.com", "fields",
           "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "formatjson"]),
+        // 4359-4367 `print devices … [(query <QueryDevice>)…] … [fields <DeviceFieldNameList>] [userfields
+        // <DeviceUserFieldNameList>] … [formatjson]`, 4284-4329 the field names: every view (GAM's default), with users.
+        ("print_devices", try! GamCommands.printDevices(user: "P@Example.com"),
+         ["print", "devices", "query", "email:p@example.com", "fields",
+          "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,compromisedstate,createtime,"
+            + "lastsynctime",
+          "userfields", "useremail,createtime,firstsynctime,lastsynctime,managementstate", "formatjson"]),
         // 9076-9085 `[<UserTypeEntity>] print tokens|token …`: no entity is GAM's default, every account but the suspended.
         ("print_tokens", try! GamCommands.printTokens(), ["print", "tokens"]),
         ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
@@ -205,6 +212,15 @@ struct NativeArgvTests {
         for user in ["a@example.com,b@example.com", "all", "id:123", ""] {
             #expect(throws: GamCommands.Invalid.self, "\(user)") { try GamCommands.printTokens(user: user) }
         }
+    }
+
+    /// A person's devices: one address, so the query stays one `field:value` (_validateDeviceQuery) and means only them.
+    @Test func aDeviceQueryIsOnePersonsAddress() throws {
+        for user in ["a b@example.com", "a@example.com,b@example.com", "*@example.com", "a?@example.com", "", "a@example",
+                     "Name <a@example.com>", "a:b@example.com"] {
+            #expect(throws: GamCommands.Invalid.self, "\(user)") { try GamCommands.printDevices(user: user) }
+        }
+        #expect(try GamCommands.printDevices(user: "Carol@Example.com").argv[3] == "email:carol@example.com")
     }
 
     /// A person's Chrome profiles: one address, nothing that would change the filter's meaning (a quote or backslash

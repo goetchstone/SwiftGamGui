@@ -190,6 +190,28 @@ public final class UserAccess {
         }
     }
 
+    /// The computers signed in with the account (`GamCommands.printDevices`), only those that list the person exactly; a
+    /// refusal for want of the devices scope says how to grant it, by its cause (`Compromised.Computer.note(for:)`).
+    public func computers(of email: String) async -> Result<[Compromised.Computer], Problem> {
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        guard let read = try? GamCommands.printDevices(user: email) else {
+            return .failure(Problem(summary: "Couldn't read the computers: “\(email)” isn't one email address."))
+        }
+        do {
+            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
+            guard result.exitCode == 0 else { throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv) }
+            return Self.outcome(result, argv: read.argv) { stdout in
+                GamOutput.records(stdout).compactMap { Compromised.Computer(record: $0, owner: email) }
+            }
+        } catch let error as GamError {
+            return .failure(Problem(summary: error.message + (Compromised.Computer.note(for: error).map { " " + $0 } ?? "")))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// The auto-reply as it is now (`show vacation`), read on its own: Check Account's, never a page's cached lists.
     public func autoReply(of email: String) async -> Result<Vacation, Problem> {
         await readNow(GamCommands.showVacation(email: email)) { Vacation(showText: $0) }

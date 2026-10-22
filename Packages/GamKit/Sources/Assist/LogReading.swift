@@ -67,9 +67,9 @@ public enum LogReading {
     /// the drafts it points to. `id` ("F1") is what the model's points cite.
     public struct Finding: Sendable, Equatable, Identifiable {
         public enum Kind: String, Sendable, CaseIterable {
-            case signedInFromSuspect, appFromSuspect, actedFromSuspect, exportedFromSuspect, mailFromSuspect, passwordOnPhishingSite,
-                 failedFromSuspect, chatFromSuspect, agentActed, afterLock, pastPhishingWarning, passwordOnOtherSite, breachedPassword,
-                 sharedAddress, suspectAddress
+            case signedInFromSuspect, deviceAtSuspectSignIn, appFromSuspect, actedFromSuspect, exportedFromSuspect, mailFromSuspect,
+                 passwordOnPhishingSite, failedFromSuspect, chatFromSuspect, agentActed, afterLock, pastPhishingWarning,
+                 passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
         }
         public let id: String
         public let kind: Kind
@@ -147,6 +147,37 @@ public enum LogReading {
             })
             found.append(Pending(.signedInFromSuspect, "\(account) \(list(what)) from \(list(unique(theirs.map(\.ip)))).", [account],
                                  unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
+        }
+
+        // A device registered to an account in the minutes around its sign-in from a suspect address: the attacker's own
+        // computer joined to the account as it signed in. The Devices log has no address, so only the account and the time
+        // tie the two.
+        // The sign-in nearest the registration, from any address, decides: a person's own new computer beside their own
+        // sign-in isn't the attacker's, however near a suspect one; an even tie says nothing.
+        let signIns = events.filter { isAccount($0.who) && ["login", "saml"].contains($0.log) && $0.event == "login_success"
+            && $0.time != nil }
+        var joined: [(device: Event, signIn: Event, gap: TimeInterval)] = []
+        for device in events where device.log == "mobile" && device.event == "DEVICE_REGISTER_UNREGISTER_EVENT"
+            && device.parameters["ACCOUNT_STATE"] != "UNREGISTERED" && isAccount(device.who) {
+            guard let at = device.time else { continue }
+            // How long after each of the account's sign-ins it registered (negative: before), in the window.
+            let near = signIns.filter { $0.who.lowercased() == device.who.lowercased() }
+                .map { (signIn: $0, after: at.timeIntervalSince($0.time ?? at)) }
+                .filter { deviceWindow.contains($0.after) }
+            guard let nearest = near.min(by: { abs($0.after) < abs($1.after) }), acting.contains(nearest.signIn.ip),
+                  !near.contains(where: { abs($0.after) == abs(nearest.after) && !acting.contains($0.signIn.ip) })
+            else { continue }
+            joined.append((device, nearest.signIn, abs(nearest.after)))
+        }
+        for (account, theirs) in grouped(joined.map(\.device)) {
+            let mine = joined.filter { $0.device.who.lowercased() == account.lowercased() }
+            let ips = unique(mine.map(\.signIn.ip)), gap = mine.map(\.gap).max() ?? 0
+            let when = gap <= 60 ? "within a minute of" : "within \(Int((gap / 60).rounded(.up))) minutes of"
+            let devices = list(unique(theirs.map(deviceWords)))
+            found.append(Pending(.deviceAtSuspectSignIn, devices.prefix(1).uppercased() + devices.dropFirst() + " joined \(account)'s "
+                                 + "account \(when) its sign-in from \(list(ips)): likely the attacker's own. Check Account lists it; "
+                                 + "block or delete it in the Admin console's Devices.", [account], ips, theirs.count,
+                                 [.secureAccount(account)]))
         }
 
         // A failed sign-in from a suspect address: someone had that account's password, likely from the fake page.
@@ -283,6 +314,25 @@ public enum LogReading {
         }
     }
 
+    /// When a device's registration is tied to a sign-in: from a minute before it (the two logs' clocks) to ten minutes
+    /// after. The attacker's computer registers in the same second; the nearest sign-in from any address decides whose.
+    static let deviceWindow: ClosedRange<TimeInterval> = -60...(10 * 60)
+
+    /// A registered device as people say it, mid-sentence: "a Windows computer (Virtual Machine, Windows 10.0.19045)".
+    static func deviceWords(_ event: Event) -> String {
+        let kind = switch (event.parameters["DEVICE_TYPE"] ?? "").uppercased() {
+        case "WINDOWS": "a Windows computer"
+        case "MAC", "MAC_OS": "a Mac"
+        case "LINUX": "a Linux computer"
+        case "CHROME_OS": "a Chromebook"
+        case "IOS", "IOS_SYNC": "an iPhone or iPad"
+        case "ANDROID": "an Android device"
+        default: "a device"
+        }
+        let about = [event.parameters["DEVICE_MODEL"] ?? "", event.parameters["OS_VERSION"] ?? ""].filter { !$0.isEmpty }
+        return kind + (about.isEmpty ? "" : " (\(about.joined(separator: ", ")))")
+    }
+
     /// A log's name as people say it.
     static func logName(_ log: String) -> String {
         switch log {
@@ -295,7 +345,7 @@ public enum LogReading {
         case "tasks": "Tasks"
         case "gmail": "Gmail"
         case "chat": "Chat"
-        case "mobile": "a phone"
+        case "mobile": "Devices"
         case "datastudio": "Looker Studio"
         case "accessevaluation": "Google's access checks"
         default: log

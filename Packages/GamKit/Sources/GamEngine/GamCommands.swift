@@ -378,6 +378,27 @@ public enum GamCommands {
     /// What a device says: whose (`email`, which the formatjson row needs `resourceid` beside), what it is, and its syncs.
     static let mobileFields = "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus"
 
+    /// Every device signed in with `user`'s account that Google's endpoint management knows, computers among them, which
+    /// `printMobileDevices` never lists (4359-4367; doPrintCIDevices): `print devices query email:<user> fields …
+    /// userfields … formatjson`, the Cloud Identity Devices API's search by user (`email:`, Google's mobile device search
+    /// field, matching a prefix), the address as `filterAddress` gives it (so the query is one `field:value`, as
+    /// _validateDeviceQuery requires). Every view (GAM's default `all`), each device with its users. CSV `name,JSON`. The
+    /// service account impersonates the admin, so without the scope delegated it is "User: <admin>, Cloud Identity API -
+    /// Devices Service/App not enabled", exit 73; a scope list without the API is SvcAcctAPIAccessDeniedExit, exit 12.
+    public static func printDevices(user: String) throws -> GamRead {
+        guard let account = filterAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
+        return GamRead(["print", "devices", "query", "email:\(account)", "fields", deviceFields, "userfields", deviceUserFields,
+                        "formatjson"])
+    }
+
+    /// What an endpoint says (4284-4317): what it is, who made it and what it's called, whose company it is, its state, and
+    /// when it was imported and last synced.
+    static let deviceFields = "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,"
+        + "compromisedstate,createtime,lastsynctime"
+
+    /// What each of its users says (4319-4329): who, when they first signed in to it and last synced it, and their state on it.
+    static let deviceUserFields = "useremail,createtime,firstsynctime,lastsynctime,managementstate"
+
     /// What a person's Chrome profile says: whose, where, which browser, and when it was last used.
     static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"
         + "browserversion,browserchannel,deviceinfo,affiliationstate"
