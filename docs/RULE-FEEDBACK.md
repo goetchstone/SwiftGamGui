@@ -22,6 +22,18 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-22 — "The mock lies" covers mock_gam.sh, not the Google events the reader's tests build
+- **What happened:** twice in one day the log reader matched a Google value from memory, and its test built the event with
+  the same guess: an account warning's actor (failure log 2026-10-22, "Google's account warnings have no actor") and a
+  device action's status, `SUCCESS` where Google sends `EXECUTED` (failure log 2026-10-22, "A guessed device-action
+  status"). The second would have kept computers the operator had just blocked on Still to do.
+- **Invariant in force:** none by number; CLAUDE.md's "the mock lies" section names `Tests/Fixtures/mock_gam.sh` only.
+- **Why it didn't hold:** not covered. The reader's tests build `LogReading.Event`s in code, so no mock and no grammar file
+  stands between a guess and a green test.
+- **Would a rule have caught it?** yes but unworded: every event name, parameter and value the reader matches cites the
+  Reports API appendix or a real export row beside it, as `deviceWord` now does.
+- **Enforcement home if changed:** skill (`pre-commit`: "a Google value the reader matches names its source").
+
 ## 2026-10-22 — The mock gave a GAM read the wrong exit code: the function's last lines set it
 - **What happened:** the Apps Script read's mock exited 0 for a person with no projects, and 73 and 50 for Drive off and a
   refused token. GAM's printFileList ends with `if not csvPF.rows: setSysExitRC(NO_ENTITIES_FOUND_RC)`, so each of those is

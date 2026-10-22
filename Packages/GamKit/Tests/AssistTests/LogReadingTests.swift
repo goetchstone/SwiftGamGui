@@ -76,8 +76,8 @@ struct LogReadingTests {
         let found = reading.findings.filter { $0.kind == .deviceAtSuspectSignIn }
         #expect(found.map(\.accounts) == [["carol@example.com"], ["dana@example.com"], ["hank@example.com"]])
         #expect(found.first?.words == "A Windows computer (Virtual Machine, Windows 10.0.19045) joined carol@example.com's account within a "
-                + "minute of its sign-in from 198.51.100.23: likely the attacker's own. Check Account lists it; block or delete it in the "
-                + "Admin console's Devices.")
+                + "minute of its sign-in from 198.51.100.23: likely the attacker's own. Check Account lists it, to block or take the "
+                + "account off.")
         #expect(found[1].words.hasPrefix("A Mac joined dana@example.com's account within 6 minutes of its sign-in") == true)
         #expect(found[2].words.hasPrefix("A Mac joined hank@example.com's account within a minute of its sign-in") == true)
         // Two devices, one sentence: carol's VM and, a minute on (exactly 60 s: still "within a minute"), a Mac.
@@ -416,12 +416,38 @@ struct LogReadingTests {
         func deviceOpen(_ more: [LogReading.Event]) -> Bool { LogReading.read(joined + more).toDo.contains { $0.kind == .deleteDevice } }
         #expect(deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"]),
                             Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 80, vm)]), "registered again")
-        #expect(deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 70,
-                                       ["DEVICE_ID": "pc-1", "ACTION_TYPE": "ACCOUNT_WIPE", "ACTION_EXECUTION_STATUS": "ACTION_PENDING"])]), "a wipe not done")
+        // Google's own values (the Reports API's Devices and Admin mobile-settings events), not guesses.
+        func action(_ type: String, _ status: String) -> LogReading.Event {
+            Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 70,
+                       ["DEVICE_ID": "pc-1", "RESOURCE_ID": "r-1", "ACTION_TYPE": type, "ACTION_EXECUTION_STATUS": status])
+        }
+        #expect(deviceOpen([action("ACCOUNT_WIPE", "PENDING")]), "a wipe not done")
+        #expect(deviceOpen([action("BLOCK", "SENT_TO_DEVICE")]), "a block not done")
+        #expect(deviceOpen([action("LOCK_DEVICE", "EXECUTED")]), "locked isn't gone")
         #expect(deviceOpen([Self.event("mobile", "dana@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"])]),
                 "another account leaving it")
-        #expect(!deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 70,
-                                        ["DEVICE_ID": "pc-1", "ACTION_TYPE": "ACCOUNT_WIPE", "ACTION_EXECUTION_STATUS": "ACTION_SUCCESS"])]))
+        #expect(deviceOpen([Self.event("admin", "alice@example.com", "MOBILE_DEVICE_BLOCK", ip: Self.office, at: 70,
+                                       ["DEVICE_ID": "pc-1", "USER_EMAIL": "dana@example.com"])]), "another account's device")
+        #expect(deviceOpen([Self.event("admin", "alice@example.com", "MOBILE_DEVICE_BLOCK", ip: Self.office, at: 70,
+                                       ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"]),
+                            Self.event("admin", "alice@example.com", "MOBILE_DEVICE_APPROVE", ip: Self.office, at: 75,
+                                       ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"])]), "approved again")
+        // Approved again is back, even from a suspect address; blocked from one isn't gone.
+        #expect(deviceOpen([action("BLOCK", "EXECUTED"), Self.event("admin", "alice@example.com", "MOBILE_DEVICE_APPROVE", ip: Self.attacker,
+                                                                   at: 75, ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"])]), "approved by the attacker")
+        #expect(deviceOpen([Self.event("admin", "alice@example.com", "MOBILE_DEVICE_BLOCK", ip: Self.attacker, at: 70,
+                                       ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"])]), "blocked from a suspect address")
+        #expect(deviceOpen([action("BLOCK", "EXECUTED"),
+                            Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 75,
+                                       ["DEVICE_ID": "pc-1", "ACTION_TYPE": "APPROVE", "ACTION_EXECUTION_STATUS": "EXECUTED"])]), "approved in the Devices log")
+        #expect(!deviceOpen([action("ACCOUNT_WIPE", "EXECUTED")]))
+        #expect(!deviceOpen([action("BLOCK", "EXECUTED")]))
+        #expect(!deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_COMPLIANCE_CHANGED_EVENT", at: 70,
+                                        ["DEVICE_ID": "pc-1", "DEVICE_DEACTIVATION_REASON": "DEVICE_BLOCKED_BY_ADMIN"])]))
+        for name in ["MOBILE_DEVICE_BLOCK", "MOBILE_DEVICE_DELETE", "MOBILE_DEVICE_WIPE", "MOBILE_ACCOUNT_WIPE"] {
+            #expect(!deviceOpen([Self.event("admin", "alice@example.com", name, ip: Self.office, at: 70,
+                                            ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"])]), "\(name)")
+        }
         let phone = LogReading.read(Self.incident + [
             Self.event("useraccounts", "carol@example.com", "recovery_phone_edit", ip: Self.attacker, at: 14),
             Self.event("useraccounts", "carol@example.com", "recovery_secret_qa_edit", ip: Self.attacker, at: 15),
@@ -551,20 +577,28 @@ struct LogReadingTests {
     /// What's still to do leaves the list when the logs show it done: a computer unregistered, recovery details an admin
     /// removed. A log read for every account that stops short of the attack is to pull again, for just those accounts.
     @Test func whatsDoneLeavesTheList() {
-        let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_ID": "pc-1"]
+        let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_ID": "pc-1", "RESOURCE_ID": "r-1"]
         let attacked = Self.incident + [
             Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, vm),
             Self.event("useraccounts", "carol@example.com", "recovery_phone_edit", ip: Self.attacker, at: 14),
             Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
         ]
         let open = LogReading.read(attacked)
-        #expect(open.toDo.contains { $0.kind == .deleteDevice && $0.accounts == ["carol@example.com"] })
-        #expect(open.toDo.contains { $0.kind == .clearRecovery && $0.drafts == [.secureAccount("carol@example.com")] })
+        // Each carries its own "Do It Here": the computer by the log's ID and time, the recovery details cleared.
+        let joinedAt = Self.event("", "", "", at: 11).time
+        #expect(open.toDo.contains { $0.kind == .deleteDevice && $0.accounts == ["carol@example.com"]
+            && $0.drafts == [.undo(account: "carol@example.com", pick: .computer(resourceID: "r-1", registeredAt: joinedAt))] })
+        #expect(open.toDo.contains { $0.kind == .clearRecovery && $0.drafts == [.undo(account: "carol@example.com", pick: .clearRecovery)] })
         let done = LogReading.read(attacked + [
             Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"]),
             Self.done("REMOVE_RECOVERY_PHONE", at: 62),
         ])
         #expect(!done.toDo.contains { [.deleteDevice, .clearRecovery].contains($0.kind) })
+        // An admin's block of it, in the Admin log, is done too, and in the account's timeline in words.
+        let blocked = LogReading.read(attacked + [Self.event("admin", "alice@example.com", "MOBILE_DEVICE_BLOCK", ip: Self.office, at: 70,
+                                                             ["DEVICE_ID": "pc-1", "USER_EMAIL": "carol@example.com"])])
+        #expect(!blocked.toDo.contains { $0.kind == .deleteDevice })
+        #expect(blocked.statuses.first { $0.account == "carol@example.com" }?.timeline.contains { $0.words == "A device blocked by alice@example.com" } == true)
         // Gmail read for every account stopped at minute 40; the attack began at minute 10.
         let short = LogReading.read(attacked, context: LogReading.Context(capped: ["gmail": Self.event("", "", "", at: 40).time!,
                                                                                "mobile": Self.event("", "", "", at: 1).time!]))

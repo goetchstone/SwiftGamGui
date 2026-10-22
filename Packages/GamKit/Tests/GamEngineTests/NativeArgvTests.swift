@@ -59,7 +59,7 @@ struct NativeArgvTests {
          ["print", "devices", "query", "email:p@example.com", "fields",
           "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,compromisedstate,createtime,"
             + "lastsynctime",
-          "userfields", "useremail,createtime,firstsynctime,lastsynctime,managementstate", "formatjson"]),
+          "userfields", "name,useremail,createtime,firstsynctime,lastsynctime,managementstate", "formatjson"]),
         // 7793-7822 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] … (fields <DriveFieldNameList>) …
         // [formatjson]`, 223 `gscript`: the person's own Apps Script projects (GAM's default `'me' in owners`).
         ("print_script_projects", try! GamCommands.printScriptProjects(user: "p@example.com"),
@@ -81,6 +81,12 @@ struct NativeArgvTests {
         // 8293 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
         ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
          ["user", "<email>", "delete", "sendas", "a@example.net"]),
+        // 4375-4378 `delete|block deviceuser <DeviceUserEntity> [doit]`: one device user by its name, which GAM acts on
+        // without `doit` (getCIDeviceUserEntity).
+        ("block_deviceuser", try! GamCommands.blockDeviceUser(name: "devices/d1/deviceUsers/u1"),
+         ["block", "deviceuser", "devices/d1/deviceUsers/u1"]),
+        ("delete_deviceuser", try! GamCommands.deleteDeviceUser(name: "devices/d1/deviceUsers/u1"),
+         ["delete", "deviceuser", "devices/d1/deviceUsers/u1"]),
         // 8186-8190 `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]`.
         // The dry run has no `doit` (GAM 7.48.30's _processMessagesThreads then trashes nothing); the run is one mailbox's.
         ("find_message_copies", GamCommands.findMessageCopies(phish),
