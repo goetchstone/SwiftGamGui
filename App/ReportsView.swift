@@ -5,12 +5,15 @@ import SwiftUI
 
 /// Reports: GamGUI's directory reports (no 2SV, inactive, admins, no recovery, suspended, and the missing title,
 /// department, phone and location), each a list of people counted from the loaded directory with no GAM call of
-/// its own; and GamGUI's storage and mail usage, read with `gam report users` when its row is first shown for a
-/// tenant. A person opens on Users.
+/// its own; GamGUI's storage and mail usage, read with `gam report users` when its row is first shown for a
+/// tenant; and every account's connected apps and agents, read with `gam print tokens` when asked
+/// (`ConnectedAppsPanel`). A person opens on Users.
 struct ReportsView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let usage: UsageStore
+    /// Every account's connected apps and AI agents.
+    let apps: ConnectedAppsRead
     /// Opens a person's page on Users.
     let openPerson: (String) -> Void
     @State private var item: Item? = .report("no_2sv")
@@ -23,6 +26,7 @@ struct ReportsView: View {
     enum Item: Hashable {
         case report(String)
         case usage
+        case apps
     }
 
     var body: some View {
@@ -39,6 +43,13 @@ struct ReportsView: View {
             .onChange(of: usage.problem) { _, problem in
                 if let problem { announce("Couldn't load the usage. \(problem.summary)") }
             }
+            .onChange(of: apps.isReading) { _, reading in
+                guard !reading, case .read(let result, _)? = apps.state else { return }
+                switch result {
+                case .success(let read): announce("Connected apps read: \(read.count) app\(read.count == 1 ? "" : "s").")
+                case .failure(let problem): announce("Couldn't read the connected apps. \(problem.summary)")
+                }
+            }
             .onChange(of: item) {
                 person = nil
                 usagePerson = nil
@@ -46,16 +57,36 @@ struct ReportsView: View {
             .task { selectForSnapshot() }
             .toolbar {
                 ToolbarItem {
-                    Button(item == .usage ? "Refresh Usage" : "Refresh the Directory", systemImage: "arrow.clockwise") {
+                    Button(refreshTitle, systemImage: "arrow.clockwise") {
                         Task {
-                            if item == .usage { await usage.load() } else { await directory.load() }
+                            switch item {
+                            case .usage: await usage.load()
+                            case .apps: await apps.read()
+                            default: await directory.load()
+                            }
                         }
                     }
                     .keyboardShortcut("r")
-                    .disabled(setup.active == nil || (item == .usage ? usage.isLoading : directory.isLoading))
+                    .disabled(setup.active == nil || refreshing)
                     .accessibilityIdentifier("reports.refresh")
                 }
             }
+    }
+
+    private var refreshTitle: String {
+        switch item {
+        case .usage: "Refresh Usage"
+        case .apps: "Read Connected Apps Again"
+        default: "Refresh the Directory"
+        }
+    }
+
+    private var refreshing: Bool {
+        switch item {
+        case .usage: usage.isLoading
+        case .apps: apps.isReading
+        default: directory.isLoading
+        }
     }
 
     private func announce(_ text: String) {
@@ -63,11 +94,11 @@ struct ReportsView: View {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, or `usage`, for the snapshot of it.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, `usage` or `apps`, for the snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
         guard let key = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] else { return }
-        item = key == "usage" ? .usage : .report(key)
+        item = key == "usage" ? .usage : key == "apps" ? .apps : .report(key)
         #endif
     }
 
@@ -85,6 +116,11 @@ struct ReportsView: View {
                         Label("Storage and mail", systemImage: "internaldrive")
                             .tag(Item.usage)
                             .accessibilityHint("Reads the usage report from Google.")
+                    }
+                    Section("Access") {
+                        Label("Connected apps and agents", systemImage: "puzzlepiece.extension")
+                            .tag(Item.apps)
+                            .accessibilityHint("Every account's apps and AI agents, read from Google when you ask.")
                     }
                 }
                 .frame(width: 240)
@@ -156,6 +192,8 @@ struct ReportsView: View {
             }
         case .usage:
             UsagePanel(usage: usage, directory: directory, selection: $usagePerson, open: openPerson)
+        case .apps:
+            ConnectedAppsPanel(reads: apps)
         case nil:
             Text("Choose a report.").foregroundStyle(.secondary).padding()
         }

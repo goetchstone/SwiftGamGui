@@ -52,7 +52,7 @@ struct AppServices {
     let mailboxSearches: MailboxSearches
     /// A person's Chrome profiles, read from their page.
     let chromeProfiles: ChromeProfileReads
-    /// Every account's connected apps and AI agents, read from Incident.
+    /// Every account's connected apps and AI agents, read from Reports.
     let connectedApps: ConnectedAppsRead
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
     let knownSignIns: KnownSignIns

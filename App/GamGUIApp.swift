@@ -173,7 +173,7 @@ struct ContentView: View {
                     .navigationTitle("Offboard")
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                logs: services.incidentLogs, apps: services.connectedApps, known: services.knownSignIns,
+                                logs: services.incidentLogs, known: services.knownSignIns,
                                 hasGam: services.executor != nil,
                                 requested: $compromisedPerson) { id in
                     // An empty ID only opens the screen: what the operator pasted there stays.
@@ -186,7 +186,8 @@ struct ContentView: View {
                              requested: $phishingMessage)
                     .navigationTitle("Phishing")
             case .reports:
-                ReportsView(setup: services.setup, directory: services.directory, usage: services.usage) { email in
+                ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
+                            apps: services.connectedApps) { email in
                     usersPerson = email
                     screen = .users
                 }

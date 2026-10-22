@@ -125,6 +125,14 @@ struct WriteRouteTests {
             .contains("App/LogReaderView.swift"), "the scan must see the reader")
     }
 
+    /// Invariant 10 for the connected apps' summary: the model is worded from counts in one screen, which (with the log
+    /// reader's) is among `noIntentReachesAWrite`'s model files and reaches no write.
+    @Test func theAppsExplainerCanRunNothing() throws {
+        #expect(try Self.files(in: "App", matching: ["AppsExplainer"]) == ["App/ConnectedAppsView.swift"])
+        #expect(try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
+            .contains("App/ConnectedAppsView.swift"), "the scan must see the panel")
+    }
+
     /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
     /// "Secure Account…" hands over an address, never a preview.
     @Test func onlyItsScreenReachesTheCompromisedModel() throws {
