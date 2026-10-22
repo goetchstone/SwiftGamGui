@@ -171,6 +171,22 @@ struct NativeArgvTests {
     /// The window is 1 hour to the Reports API's six months; every account is one address and at most 20; `ip` is one IP
     /// address or nothing (no `ip` word then); none is `user all`.
     @Test func anActivityReportIsBounded() throws {
+        // A time is the one form the app writes, and a start as one needs an end as one.
+        let start = "2026-10-19T00:00:00Z"
+        for (start, end) in [(start, "2026-10-19 14:21:01"), (start, "-72h"), (start, "2026-10-19T14:21:01.000Z"), (start, "now"),
+                             (start, ""), ("", "2026-10-21T14:21:01Z"), ("2026-10-19T00:00:00+00:00", "2026-10-21T14:21:01Z"),
+                             ("2026-10-19T00:00:0Z", "2026-10-21T14:21:01Z"), (start, "２026-10-21T14:21:01Z"),
+                             (start, "2026-13-01T00:00:00Z"), (start, "2026-10-21T24:00:00Z"), (start, "2026-10-21T14:60:00Z"),
+                             (start, start), ("2026-10-21T14:21:01Z", start)] {
+            #expect(throws: GamCommands.Invalid.self, "\(start) \(end)") {
+                try GamCommands.reportActivity(.login, hours: 72, start: start, end: end, maxActivities: 1000)
+            }
+        }
+        // The same window read further back (`IncidentLogs.paged`): <Time> as `yyyy-mm-ddThh:mm:ssZ`, both ends fixed.
+        #expect(try GamCommands.reportActivity(.login, hours: 72, start: "2026-10-19T00:00:00Z", end: "2026-10-21T14:21:01Z",
+                                               maxActivities: 1000).argv
+                == ["report", "login", "user", "all", "start", "2026-10-19T00:00:00Z", "end", "2026-10-21T14:21:01Z", "maxactivities", "1000"])
+
         #expect(try GamCommands.reportActivity(.gmail, hours: 72, maxActivities: 1000).argv
                 == ["report", "gmail", "user", "all", "start", "-72h", "end", "now", "maxactivities", "1000"])
         #expect(try GamCommands.reportActivity(.accessEvaluation, users: ["a@example.com", "b@example.com"], hours: 24,

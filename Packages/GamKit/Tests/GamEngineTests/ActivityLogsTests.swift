@@ -84,6 +84,23 @@ struct ActivityLogsTests {
 
     /// Several accounts are `select users`: each one's rows; an account that isn't a user is GAM's entityUnknownWarning
     /// after the others' rows (exit 56); a log the edition lacks is GAM's systemErrorExit (exit 4); only the app's shape.
+    /// A window as two times keeps the events before its end, that second left out (the strict guess); a time that isn't one
+    /// (Feb 30, a 13th month) and an end before its start are GAM's usage errors; a relative start with an end time isn't
+    /// the app's form; Gmail's 30 days count between the two times.
+    @Test func aWindowAsTimesIsReadAsGamReadsIt() async throws {
+        func argv(_ start: String, _ end: String, _ application: String = "login") -> GamRead {
+            GamRead(["report", application, "user", "all", "start", start, "end", end, "maxactivities", "100"])
+        }
+        let before = try await report(argv("2026-10-17T00:00:00Z", "2026-10-19T14:21:00Z"))
+        let kept = rows(before, .login)
+        #expect(before.exitCode == 0 && kept.count == 7 && kept.allSatisfy { $0.time < "2026-10-19T14:21:00Z" }, "\(kept.map(\.time)) \(before.stderr)")
+        for (start, end) in [("2026-02-30T00:00:00Z", "2026-10-19T14:21:00Z"), ("2026-10-17T00:00:00Z", "2026-13-01T00:00:00Z"),
+                             ("2026-10-19T14:21:00Z", "2026-10-17T00:00:00Z"), ("-72h", "2026-10-19T14:21:00Z")] {
+            #expect(try await report(argv(start, end)).exitCode == 2, "\(start) \(end)")
+        }
+        #expect(try await report(argv("2026-09-01T00:00:00Z", "2026-10-19T14:21:00Z", "gmail")).exitCode == 53, "over 30 days")
+    }
+
     @Test func theMockAnswersOnlyAsGamDoes() async throws {
         let two = try await report(try GamCommands.reportActivity(.login, users: ["carol@example.com", "dana@example.com"], hours: 72,
                                                                   maxActivities: 1000))

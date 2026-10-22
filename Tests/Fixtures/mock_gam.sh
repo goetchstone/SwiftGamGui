@@ -456,7 +456,10 @@ fi
 # Google's own account warnings in the sign-in log (suspicious_login, account_disabled_*) have no actor: the account is
 # `affected_email_address` (a real tenant's log, 2026-10-22). A named account's read is matched on the actor, so it
 # leaves them out, the strict guess: whether Google's per-account read returns them is for the live check.
-# The start is only the app's form, `-<N>h` or `-<N>d`. Only the app's shape.
+# The start is only the app's forms: `-<N>h` or `-<N>d` with `end now`, or (a read further back) a start and an end as
+# `yyyy-mm-ddThh:mm:ssZ`. An end as a time keeps the events before it (`id.time`), the end's own second left out: the
+# strict guess, as whether Google's endTime includes it isn't documented (the app reads a second past and drops repeats).
+# Gmail's 30 days count between the two times. The start still keeps every event (the lie above). Only the app's shape.
 # Chrome (:14790-14797): doReport reads userKey all and maps a named user to the filter DEVICE_USER==<u>, the computer's
 # own login name ("carol"), so a work address finds none of a Mac's events, though a Chromebook's (its account) it does;
 # nothing checks the address, so a non-user isn't refused, and the value is compared exactly as Google may. Its
@@ -488,11 +491,29 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
     esac
   done
   [ -n "$who" ] && [ -n "$start" ] && [ -n "$max" ] || not_modelled "report $app without user, start and maxactivities"
-  span=${start#-}; unit=${span#"${span%?}"}; count=${span%?}
-  case "$start" in -*) ;; *) not_modelled "report start $start" ;; esac
-  case "$unit:$count" in [hHdD]:[0-9]*) case "$count" in *[!0-9]*) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac ;;
-    *) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac
-  case "$unit" in [dD]) hours=$((count * 24)) ;; *) hours=$count ;; esac
+  iso='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+  case "$end" in ""|now|NOW) before="" ;; *) printf '%s' "$end" | grep -Eq "$iso" || not_modelled "report end $end"; before=$end ;; esac
+  case "$start" in
+    -*)
+      span=${start#-}; unit=${span#"${span%?}"}; count=${span%?}
+      case "$unit:$count" in [hHdD]:[0-9]*) case "$count" in *[!0-9]*) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac ;;
+        *) usage_error "Invalid argument: Expected <(+|-)<Number>(m|h|d|w|y)>" ;; esac
+      case "$unit" in [dD]) hours=$((count * 24)) ;; *) hours=$count ;; esac
+      [ -z "$before" ] || not_modelled "report start $start with end $before" ;;
+    *)
+      # A window as two times, both or neither (the app's, fixed once and read page by page): the hours between them. A
+      # time that isn't one (a 13th month, Feb 30) is GAM's parse error; macOS's date rolls those over, so it must read
+      # back the same. An end before the start is GAM's usage error (StartEndTime); an end equal to it isn't modelled.
+      printf '%s' "$start" | grep -Eq "$iso" && [ -n "$before" ] || not_modelled "report start $start"
+      for t in "$start" "$before"; do
+        [ "$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$t" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" = "$t" ] \
+          || usage_error "Invalid argument: Expected <$(printf '%s' "$t" | tr '[:lower:]' '[:upper:]')>: not a valid date/time"
+      done
+      from=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$start" +%s); to=$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$before" +%s)
+      [ "$to" -ge "$from" ] || usage_error "Invalid argument: Expected <end time after start time>"
+      [ "$to" -gt "$from" ] || not_modelled "report end $before equal to start $start"
+      hours=$(( (to - from + 3599) / 3600 )) ;;
+  esac
   [ -z "$actor" ] || [ "$app" = admin ] || not_modelled "report $app userisactor"
   match=""
   # doReport's REPORT_ACTIVITIES_UPPERCASE_EVENTS: these logs' event names are capitals; the rest, lower case.
@@ -510,7 +531,6 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
   else
     [ -z "$filter" ] || not_modelled "report $app filter"
   fi
-  case "$end" in ""|now|NOW) ;; *) not_modelled "report end $end" ;; esac
   case "$max" in ""|*[!0-9]*) usage_error "Invalid argument: Expected <Number>" ;; esac
   case "$who" in *[[:space:]]*) not_modelled "an account list like $who" ;; esac
   if [ "$who" = all ]; then printf 'Getting all Activities for all users\n' 1>&2; fi
@@ -544,11 +564,12 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
     fi
     [ -f "$file" ] || continue
     tail -n +2 "$file" | awk -F, -v who="$account" -v ip="$ip" -v events="$events" -v by="$by" -v only="$match" \
-      -v header="$(head -n 1 "$file")" '
+      -v before="$before" -v header="$(head -n 1 "$file")" '
       BEGIN { n = split(header, h, ","); for (i = 1; i <= n; i++) col[h[i]] = i
               m = split(events, e, ","); for (i = 1; i <= m; i++) want[e[i]] = 1 }
       (only != "" ? ((by in col) && $col[by] == only) : (who == "all" || ((by in col) && $col[by] == who))) \
-        && (ip == "" || (("ipAddress" in col) && $col["ipAddress"] == ip)) && (m == 0 || ($1 in want))' \
+        && (ip == "" || (("ipAddress" in col) && $col["ipAddress"] == ip)) && (m == 0 || ($1 in want)) \
+        && (before == "" || (("id.time" in col) && $col["id.time"] < before))' \
       | head -n "$max"
   done
   [ -z "$missing" ] || exit "$rc"

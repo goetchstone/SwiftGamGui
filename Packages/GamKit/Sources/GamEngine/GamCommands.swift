@@ -282,6 +282,25 @@ public enum GamCommands {
         return GamWrite(["user", email, "delete", "sendas", address], action: .deleteSendAs)
     }
 
+    /// A time GAM reads as one (<Time>), in the one form the app writes: `yyyy-mm-ddThh:mm:ssZ`, UTC to the second, each
+    /// field in range (GAM's parser refuses a 13th month; a day past its month's end is GAM's to refuse).
+    static func isReportTime(_ time: String) -> Bool {
+        let scalars = Array(time.unicodeScalars)
+        guard scalars.count == 20 else { return false }
+        let shape = scalars.enumerated().allSatisfy { index, scalar in
+            switch index {
+            case 4, 7: scalar == "-"
+            case 10: scalar == "T"
+            case 13, 16: scalar == ":"
+            case 19: scalar == "Z"
+            default: ("0"..."9").contains(scalar)
+            }
+        }
+        func number(_ from: Int, _ to: Int) -> Int { scalars[from..<to].reduce(0) { $0 * 10 + Int($1.value - 48) } }
+        return shape && (1...12).contains(number(5, 7)) && (1...31).contains(number(8, 10)) && number(11, 13) < 24
+            && number(14, 16) < 60 && number(17, 19) < 60
+    }
+
     /// An address GAM acts on as given, in an <EmailAddressEntity> or <UserEntity>: no comma or whitespace to split on, an
     /// `@` (so never a list selector), nothing around it to strip, and no form GAM rewrites to another address
     /// (normalizeEmailAddressOrUID takes `Name <a@b>` as `a@b`; convertUIDtoEmailAddress reads `id:` and `uid:`, matched
@@ -351,7 +370,9 @@ public enum GamCommands {
 
     /// Activity events, newest first (4730-4744; doReport's activity form): `users` one address each (`user` for one,
     /// `select users` for several, `user all` for none); `start -<hours>h end now` (getDeltaTime: now less that many
-    /// hours; the end named so Gmail's 30-day rule doesn't move it); `ip` keeps the events from that address
+    /// hours; the end named so Gmail's 30-day rule doesn't move it), or `start` and `end` both given as times (`isReportTime`,
+    /// UTC to the second, which GAM passes on as they are: a window fixed once, read further back page by page); `ip` keeps
+    /// the events from that address
     /// (actorIpAddress, server-side); `events` only those names; `maxactivities` bounds each read (invariant 9). CSV, a row
     /// per event. The admin log reads the accounts by `admin` (`AdminMatch`): with `userisactor`, what they did as admins,
     /// or without it what admins did to them. Chrome's is read one account at a time, by `chrome` (`ChromeMatch`): the profile's account
@@ -360,10 +381,14 @@ public enum GamCommands {
     /// outside 1 hour to 180 days (30 for Gmail, the API's limit), more than 20 accounts (Chrome: more than one, and only
     /// Google's address characters) or one that isn't one address, an `ip` that isn't one IP address, or an event name
     /// that isn't letters and `_`.
-    public static func reportActivity(_ application: ActivityApplication, users: [String] = [], hours: Int, ip: String = "",
-                                      events: [String] = [], maxActivities: Int, chrome: ChromeMatch = .profile,
-                                      admin: AdminMatch = .actor) throws -> GamRead {
+    public static func reportActivity(_ application: ActivityApplication, users: [String] = [], hours: Int, start: String = "",
+                                      end: String = "", ip: String = "", events: [String] = [], maxActivities: Int,
+                                      chrome: ChromeMatch = .profile, admin: AdminMatch = .actor) throws -> GamRead {
         guard (1...4_320).contains(hours), maxActivities > 0 else { throw Invalid.argument("a report reads 1 hour to 180 days") }
+        // Both times or neither; the one form sorts as it reads, so the start must sort before the end.
+        guard start.isEmpty == end.isEmpty, start.isEmpty || (isReportTime(start) && isReportTime(end) && start < end) else {
+            throw Invalid.argument("a report's window is a start and an end, each yyyy-mm-ddThh:mm:ssZ, the start first")
+        }
         guard application != .gmail || hours <= 720 else { throw Invalid.argument("the Gmail log reads at most 30 days") }
         guard users.count <= 20, users.allSatisfy(isOneAddress) else {
             throw Invalid.argument("each account is one email address, and at most 20 at once")
@@ -388,7 +413,7 @@ public enum GamCommands {
             who = users.count == 1 ? ["user", users[0]] : ["select", "users", users.joined(separator: ",")]
         }
         return GamRead(["report", application.rawValue] + who + (application == .admin && !users.isEmpty && admin == .actor ? ["userisactor"] : [])
-            + ["start", "-\(hours)h", "end", "now"] + optional("ip", ip)
+            + ["start", start.isEmpty ? "-\(hours)h" : start, "end", end.isEmpty ? "now" : end] + optional("ip", ip)
             + (events.isEmpty ? [] : ["events", events.joined(separator: ",")]) + ["maxactivities", String(maxActivities)])
     }
 

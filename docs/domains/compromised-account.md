@@ -176,6 +176,27 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   30 days and says so; the admin log for an account reads what was done to it unless `userisactor`, so it's sent; one
   address that isn't a user fails the whole log in GAM, so the screen checks the accounts against the directory first.
   Each read is pinned to the tenant the pull began on and may take ten minutes (GAM reads one account after another).
+- **Past the cap** (`IncidentLogs.paged`; asked for after a real incident's pull for every account stopped at 1,000 events
+  and didn't reach the attack, 2026-10-22): a read at the cap (`ActivityLogs.cap`, per account when accounts are named) is
+  read again over the same window up to where it stopped. The window is fixed as times when the log's first read runs
+  (`start <now less the hours> end <now>`, `yyyy-mm-ddThh:mm:ssZ`, `GamCommands.isReportTime`, which GAM passes on as
+  given): GAM's `-72h` counts from each read and rounds to the minute, and a Gmail log queued behind others would drift
+  past 30 days. A later read is `start <the same> end <its oldest event's second, plus one>`: the end's own second is read
+  again, as Google doesn't say whether endTime includes it, and the repeats are dropped by event (`Row.identity`). It goes
+  on until a read comes back short, at most `ActivityLogs.pages` (10) reads a log (invariant 9); named accounts each go on
+  by themselves (GAM's `maxactivities` is per account), and an address at the cap that isn't one asked for (an alias, an
+  old name) is capped, as there's no telling which to go on with. Still at the cap after the reads, or a later read
+  failing, is capped: what came back is kept and said as such, never a failure of the whole nor a part passed as all.
+  GAM's cap counts activities and the rows are events, so a read can look full early: an extra read, never a missed one.
+  Not paged: Chrome's and the admin log's two-way reads for named accounts (1,000 activities an account each way, capped
+  past that), and a read of several event names (GAM caps each name on its own). A pull replaced mid-read lets its logs
+  finish their pages: read-only and bounded, their rows dropped.
+- **The mock:** a window as two times, both or neither (with `-<N>h`, only `end now`), each a real time (`date -j` must
+  read it back the same), the end after the start (before it is GAM's usage error, 2); the end keeps the events before it
+  (`id.time`), its own second left out, the strict guess; Gmail's 30 days counted between the two. The start still keeps
+  every fixture event (the mock's dates are fixed), so tests pull at a fixed time (`IncidentLogs(… clock:)`).
+- **Live check (L2p, read-only):** pull every account's sign-in log for 30 days; the capped note is gone (or says the
+  bound), and the oldest event is near the window's start; the Admin console's export for the same window has as many.
 
 ## Search a mailbox (slice 3)
 - Users → a person → Mail → **Search this mailbox**: GamGUI's `searchMessages` (`print messages query <q> includespamtrash
@@ -506,7 +527,7 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   point cites a finding shown, and nothing names an account or address the findings don't.
 
 ## Next
-- The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u and L2.
+- The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): findings first, the incident record,
   the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
