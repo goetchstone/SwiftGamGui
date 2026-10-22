@@ -1,46 +1,49 @@
 import Foundation
 import FoundationModels
 
-/// The on-device model's explanation of a reading (docs/plans/2026-10-19-on-device-log-reader.md, R2): a short overview,
-/// points that each cite the findings they're about, and checks to make, in words. The model is given the findings'
-/// kinds, accounts, addresses and counts only, never the text the logs carry (a subject, a URL), which an attacker
-/// writes; it never drafts a fix: the drafts are the reading's, made by code. A point citing no finding it was given is
-/// dropped. On-device only (`SystemLanguageModel`): nothing leaves the Mac.
+/// The on-device model's rundown of a reading (docs/plans/2026-10-19-on-device-log-reader.md, R2; the incidents plan): what
+/// happened, in order, what has been done, and what's left, each of those sentences citing the to-do items code worked
+/// out. Code decides what's done and what's left (`LogReading.Status`, `LogReading.Task`); the model only words it. It is
+/// given each account's state and the kinds of step in its timeline, counted, and each to-do item's kind and accounts:
+/// never the text the logs carry (a subject, a URL, an app's name), which an attacker writes, and never a fix to make
+/// up. A sentence about what's left citing no item it was given is dropped. On-device only (`SystemLanguageModel`):
+/// nothing leaves the Mac.
 public enum LogExplainer {
-    /// What the model wrote, its points kept only where they cite findings that exist.
+    /// What the model wrote: its sentences about what's left kept only where they cite to-do items that exist.
     public struct Explanation: Sendable, Equatable {
         public struct Point: Sendable, Equatable {
             public let text: String
             public let cites: [String]
         }
         public let overview: String
-        public let points: [Point]
-        public let checks: [String]
+        public let done: String
+        public let left: [Point]
     }
 
     /// The answer's shape, which guided generation holds the model to.
     @Generable
     public struct Answer: Sendable, Equatable {
-        @Guide(description: "Two or three plain sentences: what happened, as the findings show it.")
+        @Guide(description: "Three plain sentences telling what happened in time order: when and how the attacker got in, to which "
+               + "accounts, and when each was locked. Use the dates given.")
         public var overview: String
-        @Guide(description: "The findings that matter most, each explained in one sentence.", .maximumCount(8))
-        public var points: [AnswerPoint]
-        @Guide(description: "What the administrator should check next, each in a short sentence, in words, never a command.",
-               .maximumCount(5))
-        public var nextChecks: [String]
+        @Guide(description: "Two plain sentences: what has been done to secure the accounts, and whether the locks are holding.")
+        public var done: String
+        @Guide(description: "The most urgent things left, at most three sentences, each grouping tasks of the same kind and citing their IDs.",
+               .maximumCount(3))
+        public var left: [AnswerPoint]
 
-        public init(overview: String, points: [AnswerPoint], nextChecks: [String]) {
+        public init(overview: String, done: String, left: [AnswerPoint]) {
             self.overview = overview
-            self.points = points
-            self.nextChecks = nextChecks
+            self.done = done
+            self.left = left
         }
     }
 
     @Generable
     public struct AnswerPoint: Sendable, Equatable {
-        @Guide(description: "One sentence about the findings cited.")
+        @Guide(description: "One sentence about the tasks cited.")
         public var text: String
-        @Guide(description: "The IDs of the findings this sentence is about, such as F1.")
+        @Guide(description: "The IDs of the tasks this sentence is about, such as T1.")
         public var cites: [String]
 
         public init(text: String, cites: [String]) {
@@ -77,84 +80,142 @@ public enum LogExplainer {
 
     /// The model's standing instructions.
     static let instructions = """
-        You explain the findings of a security log review to an IT administrator, in plain English. The findings were \
-        found by rules in code; use only them, and never invent an account, an address, an event or a fix. Each point \
-        cites the IDs of the findings it is about. Suggest checks in words; never write a command. Fixes are already \
-        drafted for the administrator to review: say which finding each is for, nothing more.
+        You write a short rundown of a security incident for an IT administrator, in plain English, as a colleague briefing \
+        them. Every fact was found by code from the logs: use only those facts, and never invent an account, an address, an \
+        event, a step or a task. Tell what happened as a story in time order, then what has been done, then the most urgent \
+        things left, grouping alike tasks and citing their IDs. Don't repeat the task list word for word, never write a \
+        command, and never add a task that isn't listed.
         """
 
-    /// What each kind of finding means, for the model.
-    static func meaning(_ kind: LogReading.Finding.Kind) -> String {
+    /// What each kind of to-do item means, for the model.
+    static func meaning(_ kind: LogReading.Task.Kind) -> String {
         switch kind {
-        case .signedInFromSuspect: "these accounts signed in (to Google or another app through it), granted an app or changed "
-            + "settings from a suspect address"
-        case .exportedFromSuspect: "these accounts' data was exported with Google Takeout from a suspect address"
-        case .contactsTaken: "these accounts' contact lists were printed while the attacker had them: those people may get the phish next"
-        case .deviceAtSuspectSignIn: "a computer or phone joined these accounts as they were signed in to from a suspect address"
-        case .appFromSuspect: "an app acted for these accounts from a suspect address"
-        case .actedFromSuspect: "these accounts used other Google services (Gemini, Drive, Contacts…) from a suspect address"
-        case .agentActed: "an AI agent acted on these people's behalf"
-        case .chatFromSuspect: "these accounts posted Chat messages from a suspect address"
-        case .mailFromSuspect: "an email went through Gmail from a suspect address (its subject is shown to the administrator)"
-        case .passwordOnPhishingSite: "Chrome saw these accounts' passwords typed on a phishing site"
-        case .failedFromSuspect: "a suspect address tried these accounts' passwords and failed: they may have typed them into a fake page"
-        case .signedInAfterLock: "these accounts were signed in to from a suspect address after they were locked: the attacker may still be in"
-        case .partlyLocked: "these accounts had their password reset or their sessions ended, not both"
-        case .leftInPlace: "a suspect address added a passkey, a 2-Step Verification method or recovery details to these accounts, "
-            + "which a lock doesn't remove"
-        case .otherAppSession: "these accounts reached another app through Google from a suspect address; that app's session outlives "
-            + "Google's sign-out"
-        case .newAddressAfterLock: "these accounts signed in after the lock from addresses not seen before the attack"
-        case .pastPhishingWarning: "these people went past Chrome's phishing warning"
-        case .passwordOnOtherSite: "Chrome saw these accounts' passwords used on another website"
-        case .breachedPassword: "Chrome found one of these people's passwords in a data breach"
-        case .sharedAddress: "many accounts signed in from a flagged address, which may be an office's or a VPN's"
-        case .suspectAddress: "an address Google flagged, or the one the administrator named"
+        case .secureAgain: "secure the account again: the attacker signed in after it was locked"
+        case .secure: "secure the account: it hasn't been locked since the attack"
+        case .finishLock: "finish the lock: only the password reset or only the sign-out was done"
+        case .pullAgain: "pull some logs again for just these accounts: read for every account, they don't reach back to the attack"
+        case .removeAdded: "remove the passkey or 2-Step Verification method the attacker added to the account"
+        case .clearRecovery: "clear the recovery email and phone the attacker changed"
+        case .unblockSender: "have the person unblock the sender the attacker blocked in Gmail"
+        case .deleteDevice: "delete the computer that joined the account at the attacker's sign-in"
+        case .pullEmail: "pull the email the attacker sent from every mailbox"
+        case .signOutApp: "sign the person out of another app reached through Google"
+        case .warnContacts: "warn the people in the account's contacts, printed while the attacker had it"
+        case .warnChat: "ask who got the account's Chat messages not to open their links"
+        case .treatAsTaken: "treat the account's exported data as the attacker's"
+        case .confirmAddress: "ask the person whether a new address they signed in from after the lock is theirs"
+        case .checkPassword: "have the person check or change a password Chrome saw at risk"
+        case .look: "see what was done in the account from the attacker's address"
+        case .checkShared: "check whether a flagged address is the office's or a VPN's before securing anyone"
         }
     }
 
-    /// The prompt: each finding's ID, meaning, accounts, addresses, count and drafted fixes. Never its words, which can
-    /// hold a subject or URL an attacker wrote.
-    static func prompt(_ reading: LogReading.Reading) -> String {
-        var lines = ["Findings from \(reading.events) log events:"]
-        for finding in reading.findings.prefix(30) {
-            var line = "\(finding.id): \(meaning(finding.kind))."
-            if !finding.accounts.isEmpty { line += " Accounts: " + finding.accounts.prefix(10).joined(separator: ", ") + "." }
-            if !finding.addresses.isEmpty { line += " Addresses: " + finding.addresses.prefix(5).joined(separator: ", ") + "." }
-            line += " Events: \(finding.events)."
-            let fixes = finding.drafts.map { draft -> String in
-                switch draft {
-                case .secureAccount(let person): "secure \(person)"
-                case .pullEmail: "pull that email from every mailbox"
-                }
-            }
-            if !fixes.isEmpty { line += " Drafted fix: " + fixes.joined(separator: "; ") + "." }
-            lines.append(line)
+    /// What happened at an account's lock time, as its state says it: a whole lock, half of one, a suspension.
+    static func lock(_ status: LogReading.Status) -> String {
+        switch status.state {
+        case .partlyLocked: status.reset != nil ? "password reset, but no sign-out seen" : "signed out, but the password not reset"
+        case .locked, .stillIn: status.suspended.map { $0.at == status.lockedAt } == true ? "locked (suspended)"
+            : "locked (signed out and the password reset)"
+        case .notLocked: "no lock"
         }
-        // Where each account the attacker had stands, as the logs show the lock: context for the findings, never cited.
+    }
+
+    /// An account's state, for the model.
+    static func stands(_ status: LogReading.Status) -> String {
+        switch status.state {
+        case .notLocked: "not locked since the attack"
+        case .partlyLocked: "partly locked: only the password reset or only the sign-out was done"
+        case .locked: status.triedAt == nil ? "locked" : "locked, and the attacker tried again afterwards and failed"
+        case .stillIn: "the attacker signed in after the lock"
+        }
+    }
+
+    /// A timeline step's kind as people say it, counted ("3 forced sign-outs"), for the model.
+    static func counted(_ kind: LogReading.Moment.Kind, _ count: Int) -> String {
+        let one = count == 1
+        return switch kind {
+        case .attackerSignedIn: one ? "the attacker signed in once" : "the attacker signed in \(count) times"
+        case .attackerFailed: one ? "one failed sign-in by the attacker" : "\(count) failed sign-ins by the attacker"
+        case .googleBlocked: one ? "Google blocked one suspicious sign-in" : "Google blocked \(count) suspicious sign-ins"
+        case .attackerChanged: one ? "one change by the attacker" : "\(count) changes by the attacker"
+        case .deviceJoined: one ? "the attacker's computer joined the account" : "\(count) of the attacker's computers joined the account"
+        case .attackerActivity: "other activity from the attacker's address"
+        case .contactsPrinted: one ? "the contacts were printed" : "the contacts were printed \(count) times"
+        case .signedOut: one ? "one forced sign-out by an admin" : "\(count) forced sign-outs by an admin"
+        case .passwordReset: one ? "one password reset by an admin" : "\(count) password resets by an admin"
+        case .appsRevoked: one ? "one app's access revoked" : "\(count) apps' access revoked"
+        case .appPasswordsDeleted: "app passwords deleted"
+        case .backupCodesDeleted: "backup codes deleted"
+        case .recoveryRemoved: "recovery details removed"
+        case .suspended: "suspended by an admin"
+        case .unsuspended: "unsuspended by an admin"
+        case .adminChange: one ? "one other admin change" : "\(count) other admin changes"
+        case .googleDisabled: "Google disabled the account"
+        case .googleSignedOut: "Google signed the person out"
+        case .ownPassword: one ? "the person changed their own password" : "the person changed their own password \(count) times"
+        case .own2SV: "the person turned on 2-Step Verification"
+        case .ownPasskey: "the person added a passkey"
+        case .ownRecovery: "the person changed their recovery details"
+        }
+    }
+
+    /// The moments that tell the story, from every account's timeline: the attacker's sign-ins and changes, the computers
+    /// that joined, contacts printed, Google's own actions, and each account's lock and the tries after it. The admin's
+    /// many single steps are counted under what's been done instead.
+    static let storyKinds: Set<LogReading.Moment.Kind> = [.attackerSignedIn, .attackerChanged, .deviceJoined, .contactsPrinted, .googleDisabled,
+                                                          .googleSignedOut]
+    /// The steps counted under what's been done: an admin's and the person's own.
+    static let doneKinds: Set<LogReading.Moment.Kind> = [.signedOut, .passwordReset, .appsRevoked, .appPasswordsDeleted, .backupCodesDeleted,
+                                                         .recoveryRemoved, .suspended, .unsuspended, .adminChange, .ownPassword, .own2SV,
+                                                         .ownPasskey, .ownRecovery]
+
+    /// The prompt: what happened in time order (each moment's plain words, with its time said by `when`), each account's
+    /// state and the steps taken counted by kind, then each to-do item's ID, meaning and accounts. Never a word the logs
+    /// carry as text: a moment's plain words leave out names an attacker can set.
+    static func prompt(_ reading: LogReading.Reading, when: @Sendable (Date) -> String = { $0.formatted(.iso8601) }) -> String {
+        // Each moment of the story, and whether it always stays: the locks, the tries after them and Google's own actions do;
+        // the attacker's moves are capped, the earliest 30 kept.
+        var story: [(at: Date, line: String, stays: Bool)] = []
         for status in reading.statuses.prefix(20) {
-            let stands = switch status.state {
-            case .notLocked: "no lock seen"
-            case .partlyLocked: "partly locked: a password reset or a sign-out, not both"
-            case .locked: status.triedAt == nil ? "locked" : "locked, and the attacker's address tried again and failed"
-            case .stillIn: "signed in to from a suspect address after the lock"
+            let failed = status.timeline.filter { $0.kind == .attackerFailed }
+            if !status.attackerGotIn, let first = failed.first {
+                story.append((first.at, "\(status.account): the attacker tried the password and failed", false))
             }
-            lines.append("Where \(status.account) stands: \(stands).")
+            story += status.timeline.filter { storyKinds.contains($0.kind) }
+                .map { ($0.at, "\(status.account): \($0.plain)", [.googleDisabled, .googleSignedOut].contains($0.kind)) }
+            if let locked = status.lockedAt { story.append((locked, "\(status.account): \(lock(status))", true)) }
+            if let tried = status.triedAt { story.append((tried, "\(status.account): the attacker tried again after the lock and failed", true)) }
+        }
+        let moves = Set(story.enumerated().filter { !$0.element.stays }.sorted { $0.element.at < $1.element.at }.prefix(30).map(\.offset))
+        var lines = ["What happened, in time order:"]
+        lines += story.enumerated().filter { $0.element.stays || moves.contains($0.offset) }.map(\.element)
+            .sorted { $0.at < $1.at }.map { "- \(when($0.at)): \($0.line)." }
+        lines.append("Where each account stands, and what was done:")
+        for status in reading.statuses.prefix(20) {
+            var counts: [LogReading.Moment.Kind: Int] = [:]
+            for moment in status.timeline { counts[moment.kind, default: 0] += moment.kind == .appsRevoked ? moment.count : 1 }
+            let steps = LogReading.Moment.Kind.allCases.filter(doneKinds.contains).compactMap { kind in counts[kind].map { counted(kind, $0) } }
+            lines.append("\(status.account): \(stands(status))" + (steps.isEmpty ? "." : ". Done: " + steps.joined(separator: "; ") + "."))
+        }
+        lines.append(reading.toDo.isEmpty ? "Nothing is left to do." : "Left to do:")
+        for task in reading.toDo.prefix(30) {
+            lines.append("\(task.id): \(meaning(task.kind))." + (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + "."))
         }
         return lines.joined(separator: "\n")
     }
 
-    /// The model's explanation of `reading`, each point kept only if it cites findings that exist (citing unknown ones
-    /// dropped from it), and every text trimmed.
-    public static func explain(_ reading: LogReading.Reading, using model: some Asking = OnDevice()) async throws -> Explanation {
-        let answer = try await model.answer(instructions: instructions, prompt: prompt(reading))
-        let known = Set(reading.findings.map(\.id))
+    /// The model's rundown of `reading`, each sentence about what's left kept only if it cites to-do items that exist
+    /// (citing unknown ones dropped from it), and every text trimmed.
+    public static func explain(_ reading: LogReading.Reading, when: @Sendable (Date) -> String = { $0.formatted(.iso8601) },
+                               using model: some Asking = OnDevice()) async throws -> Explanation {
+        let answer = try await model.answer(instructions: instructions, prompt: prompt(reading, when: when))
+        let known = Set(reading.toDo.map(\.id))
         func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
-        let points = answer.points.compactMap { point -> Explanation.Point? in
+        let left = answer.left.compactMap { point -> Explanation.Point? in
             let cites = point.cites.map(trimmed).filter(known.contains)
             guard !cites.isEmpty, !trimmed(point.text).isEmpty else { return nil }
             return Explanation.Point(text: trimmed(point.text), cites: cites)
         }
-        return Explanation(overview: trimmed(answer.overview), points: points, checks: answer.nextChecks.map(trimmed).filter { !$0.isEmpty })
+        return Explanation(overview: trimmed(answer.overview), done: trimmed(answer.done), left: left)
     }
 }

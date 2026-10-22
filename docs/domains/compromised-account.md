@@ -397,6 +397,48 @@ was locked" switch is gone. Reads only.
   attack: each status matches what was done and when (the audit log and the Admin console's admin log), and Google's
   "disabled the account: hijacked" appears in the taken-over account's own pull.
 
+## The rundown: where each account stands, its timeline, what's left (incidents plan)
+Read the logs opens with every account the attacker touched, each with its status and a timeline, then **Still to do**,
+then the findings ("What the logs show"). Asked for after the operator ran a real incident through it (2026-10-22): the
+first version gave a status only to accounts the attacker got into, and only its first reset and sign-out, so four
+accounts whose passwords were tried showed no lock and still offered Secure, and three forced sign-outs on one account
+read as one on a later day. Code decides what's done and what's left; the model only words it.
+- **Every account touched** (`LogReading.read`): an event from a suspect address in the sign-in, SAML, OAuth or account
+  changes logs (a sign-in, a failed one, Google's warning), or a password Chrome saw typed on a phishing site. Never a Gmail
+  row's account (whose mailbox it is isn't certain). In the order each was first touched.
+- **The status says each step at its own time** ("Locked: signed out by … at …, then password reset by … at …").
+- **The timeline** (`Status.timeline`, `Moment`, at most 200): the attacker's sign-ins with how each got past Google's
+  challenge (a prompt approved, a phone code entered, a previous password answered), failures, Google's blocks and the
+  attacker's changes; the computer that joined at a sign-in; contacts printed; every admin step done to the account
+  (each forced sign-out and reset, apps revoked in the same minute said once, recovery removed, suspended, unsuspended;
+  `CHANGE_PASSWORD_ON_NEXT_LOGIN` folded into its reset); Google's disabling; the person's own changes, said with the
+  address when it isn't one they used before the attack. An IPv6 address counts by its /64 (`LogReading.network`): a
+  home's devices change the rest.
+- **Still to do** (`Reading.toDo`, `Task`, most urgent first): secure an account not locked, secure it again after a
+  sign-in past the lock, finish half a lock, pull logs again that stopped short of the attack (`Context.capped`: a log read
+  for every account that hit its cap, with its oldest event), remove what the attacker added, clear recovery, unblock a
+  sender, delete a computer, pull an email, sign out of another app, warn contacts or Chat recipients, treat exported data
+  as taken, confirm a new address, check a password, look at what was done, check a shared address. An item leaves once
+  the logs show it done: a lock, a device unregistered or acted on, recovery removed by an admin. What the logs can't show
+  (a warning sent) stays until the incident record can tick it. A finding about a locked account drafts no lock again.
+- **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
+  an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
+  to-do item's fixed meaning by kind. It answers three sentences on what happened, two on what's done, and at most three
+  on what's most urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task. Tried on the real
+  export (2026-10-22): the first prompt's answer listed one account's steps and repeated the to-do list; the time-ordered
+  story gave a readable account, and a vague "undo what was left" task let it claim a passkey that wasn't there, so the
+  leftover task is three kinds.
+- **What may never count as done** (security review 2026-10-22): a lock from before the account's attack (an account
+  phished through Chrome only is attacked from when Chrome saw its password, and with no attack time nothing is a lock); a
+  suspension later undone; an admin step done through an account the attacker held at the time (statuses are read twice to
+  know those); the person's password change from anywhere but the very address they used before the attack, or from a
+  suspect's (a later sign-in is theirs by its /64 only when no suspect address shares it); a device's task cleared by
+  another account's word or an action not done (that account's latest word decides); a recovery detail cleared by another
+  detail's removal (the question is its own item). Two emails with one subject are two items. An account reaching a status
+  or the model must be an address's shape (`isAccount`): a Chrome event's account is what the browser reports.
+- **Live check (L1t, read-only):** pull an incident's logs by the affected accounts and check each timeline against the
+  Admin console's admin and login logs for that account.
+
 ## That was them (incidents plan, moved up at the operator's ask)
 A sign-in Google marked that was the person, closed as theirs: on a suspect address's finding, "That Was Them…" (or a
 menu when it marked several accounts there) asks how the operator knows, and the mark is kept. Reads and this Mac only.

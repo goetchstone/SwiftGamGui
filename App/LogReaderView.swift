@@ -52,11 +52,17 @@ struct LogReaderView: View {
         cached.flatMap { $0.key == key ? $0.reading : nil } ?? Self.reading(pull, marks: marks)
     }
 
-    /// What the rules find in `pull`, told the address it was pulled by, the logs it read, and the sign-ins marked as theirs.
+    /// What the rules find in `pull`, told the address it was pulled by, the logs it read, the sign-ins marked as theirs, and
+    /// the logs that stopped at their cap with the oldest event each read (one read for every account can stop short of the
+    /// attack: what's still to do says so).
     static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark]) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
-        return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs))
+        var capped: [String: Date] = [:]
+        for log in pull.logs where log.capped {
+            if let oldest = ((try? log.rows.get()) ?? []).compactMap(\.date).min() { capped[log.application.rawValue] = oldest }
+        }
+        return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs, capped: capped))
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -83,6 +89,13 @@ struct LogReaderView: View {
                 Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
                 ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
             }
+            if !reading.statuses.isEmpty || !reading.toDo.isEmpty {
+                Text("Still to do").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                if reading.toDo.isEmpty {
+                    Text("Nothing left that these logs can show.").foregroundStyle(.secondary)
+                }
+                ForEach(reading.toDo) { task in TaskRow(task: task, secure: secure, pullEmail: pullEmail) }
+            }
             if !unread.isEmpty {
                 Label("Not read, so not in these findings: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
@@ -91,6 +104,9 @@ struct LogReaderView: View {
                 Text("Nothing in these logs matches a rule: no address Google flagged, and none named. Pull every account's logs "
                      + "by the attacker's address to see more.")
                     .foregroundStyle(.secondary)
+            }
+            if !reading.findings.isEmpty {
+                Text("What the logs show").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
             }
             ForEach(reading.findings) { finding in
                 FindingRow(finding: finding, secure: secure, pullEmail: pullEmail, canMark: marksProblem == nil) { account, address in
@@ -157,28 +173,32 @@ struct LogReaderView: View {
         let current = explained.flatMap { $0.reading == reading ? $0.state : nil }
         if let unavailable = LogExplainer.unavailable {
             Label(unavailable, systemImage: "sparkles").foregroundStyle(.secondary)
-        } else if !reading.findings.isEmpty {
+        } else if !reading.statuses.isEmpty || !reading.findings.isEmpty {
             HStack {
-                Text("Have the on-device model explain these findings in plain words. Nothing leaves this Mac.")
+                Text("Have the on-device model sum this up in plain words: what happened, what's done, what's most urgent. Nothing "
+                     + "leaves this Mac.")
                     .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 if case .asking? = current { ProgressView().controlSize(.small) }
                 Button("Explain") { explain(reading) }
                     .disabled({ if case .asking? = current { return true } else { return false } }())
-                    .accessibilityLabel("Explain the findings with the on-device model")
+                    .accessibilityLabel("Sum up the incident with the on-device model")
             }
         }
         switch current {
         case .done(let explanation)?:
             VStack(alignment: .leading, spacing: 6) {
-                Label("Written by the on-device model from the findings above: check each against them.", systemImage: "sparkles")
+                Label("Written by the on-device model from what's above: check it against the timelines and the list.", systemImage: "sparkles")
                     .font(.callout).foregroundStyle(.secondary)
                 if !explanation.overview.isEmpty { Text(explanation.overview) }
-                ForEach(Array(explanation.points.enumerated()), id: \.offset) { _, point in
-                    Text("• \(point.text) (about \(point.cites.joined(separator: ", ")))")
+                if !explanation.done.isEmpty {
+                    Text("Done so far").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                    Text(explanation.done)
                 }
-                if !explanation.checks.isEmpty {
-                    Text("To check next").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
-                    ForEach(Array(explanation.checks.enumerated()), id: \.offset) { _, check in Text("• \(check)") }
+                if !explanation.left.isEmpty {
+                    Text("Most urgent").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                    ForEach(Array(explanation.left.enumerated()), id: \.offset) { _, point in
+                        Text("• \(point.text) (\(point.cites.joined(separator: ", ")))")
+                    }
                 }
             }
             .textSelection(.enabled)
@@ -194,7 +214,7 @@ struct LogReaderView: View {
         explained = (reading, .asking)
         Task {
             do {
-                let explanation = try await LogExplainer.explain(reading)
+                let explanation = try await LogExplainer.explain(reading, when: { $0.formatted(date: .abbreviated, time: .shortened) })
                 if explained?.reading == reading { explained = (reading, .done(explanation)) }
             } catch {
                 if explained?.reading == reading { explained = (reading, .failed(error.localizedDescription)) }
@@ -218,6 +238,19 @@ private struct StatusRow: View {
 
     var body: some View {
         let words = status.words { $0.formatted(date: .abbreviated, time: .shortened) }
+        VStack(alignment: .leading, spacing: 4) {
+            summary(words)
+            if !status.timeline.isEmpty {
+                DisclosureGroup("Timeline: \(status.timeline.count) step\(status.timeline.count == 1 ? "" : "s")") {
+                    ForEach(Array(status.timeline.enumerated()), id: \.offset) { _, moment in MomentRow(moment: moment) }
+                }
+                .padding(.leading, 28)
+                .accessibilityLabel("\(status.account)'s timeline, \(status.timeline.count) steps")
+            }
+        }
+    }
+
+    private func summary(_ words: String) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(status.account).fontWeight(.semibold)
@@ -244,11 +277,11 @@ private struct FindingRow: View {
 
     private var symbol: String {
         switch finding.kind {
-        case .signedInAfterLock, .signedInFromSuspect, .partlyLocked, .leftInPlace, .deviceAtSuspectSignIn, .appFromSuspect,
-             .actedFromSuspect, .exportedFromSuspect, .passwordOnPhishingSite:
+        case .signedInFromSuspect, .leftInPlace, .deviceAtSuspectSignIn, .appFromSuspect, .actedFromSuspect, .exportedFromSuspect,
+             .passwordOnPhishingSite:
             "exclamationmark.octagon.fill"
-        case .contactsTaken, .mailFromSuspect, .failedFromSuspect, .otherAppSession, .newAddressAfterLock, .chatFromSuspect,
-             .pastPhishingWarning, .breachedPassword: "exclamationmark.triangle.fill"
+        case .contactsTaken, .mailFromSuspect, .failedFromSuspect, .otherAppSession, .chatFromSuspect, .pastPhishingWarning,
+             .breachedPassword: "exclamationmark.triangle.fill"
         case .agentActed: "sparkles"
         case .passwordOnOtherSite, .sharedAddress, .suspectAddress: "info.circle"
         }
@@ -333,5 +366,68 @@ private struct MarkSheet: View {
         }
         .padding(20)
         .frame(width: 440)
+    }
+}
+
+/// One step of an account's timeline: when, who acted (said, and marked by a symbol that never says it alone), and what.
+private struct MomentRow: View {
+    let moment: LogReading.Moment
+
+    private var symbol: String {
+        switch moment.who {
+        case .attacker: "exclamationmark.octagon.fill"
+        case .admin: "lock.shield"
+        case .google: "shield.lefthalf.filled"
+        case .person: "person.fill"
+        case .unknown: "questionmark.circle"
+        }
+    }
+
+    var body: some View {
+        let when = moment.at.formatted(date: .abbreviated, time: .shortened)
+            + (moment.until.map { " to " + $0.formatted(date: .abbreviated, time: .shortened) } ?? "")
+        Label {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(moment.words)
+                Text(when).font(.callout).foregroundStyle(.secondary)
+            }
+            .textSelection(.enabled)
+        } icon: {
+            Image(systemName: symbol).symbolRenderingMode(.multicolor)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(when): \(moment.words)")
+    }
+}
+
+/// One thing still to do: its number, the sentence, and a button for each fix it points to (the screen that does it).
+private struct TaskRow: View {
+    let task: LogReading.Task
+    let secure: (String) -> Void
+    let pullEmail: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label {
+                Text("\(task.id). \(task.words)").textSelection(.enabled)
+            } icon: {
+                Image(systemName: "circle")
+            }
+            .accessibilityLabel("To do \(task.id): \(task.words)")
+            if !task.drafts.isEmpty {
+                HStack {
+                    ForEach(task.drafts, id: \.self) { draft in
+                        Button(draft.title) {
+                            switch draft {
+                            case .secureAccount(let person): secure(person)
+                            case .pullEmail(let id, _): pullEmail(id)
+                            }
+                        }
+                        .accessibilityHint("Opens its screen with this filled in. Nothing changes until you preview and confirm there.")
+                    }
+                }
+                .padding(.leading, 28)
+            }
+        }
     }
 }

@@ -2,8 +2,11 @@
 
 **Status (2026-10-22): slice 1 built (#98: lock status from the logs; runbook: docs/domains/compromised-account.md,
 "Where each account stands"). Then, from a real tenant's export: the reader's rules corrected (failure log 2026-10-22),
-and "That was them" moved up from slice 3 at the operator's ask and built (runbook "That was them"). Slices 2 to 6
-next, in order.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+and "That was them" moved up from slice 3 at the operator's ask and built (runbook "That was them"). Then the rundown,
+at the operator's ask after running a real incident through it: every account touched with its status and timeline, and
+Still to do worked out by code, the model only wording it (runbook "The rundown"; this pulls forward slice 2's findings
+first and slice 4's actions taken and next steps). Next: reading a capped log day by day so a pull for every account is
+whole, then slices 3 to 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen
