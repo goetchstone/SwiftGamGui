@@ -281,6 +281,21 @@ public enum GamCommands {
         case takeout, mobile, chrome, drive, calendar, groups, admin, rules
         case contextAwareAccess = "contextawareaccess"
         case vault
+        /// The rest of GAM's activity logs (REPORT_CHOICE_MAP; not `gplus` or `jamboard`, whose services have ended).
+        case gemini = "geminiinworkspaceapps"
+        case meet, contacts, keep, tasks
+        case adminDataAction = "admindataaction"
+        case accessTransparency = "accesstransparency"
+        case dataStudio = "datastudio"
+        case groupsEnterprise = "groupsenterprise"
+        case profile, ldap
+        case directorySync = "directorysync"
+        case gcp
+        case cloudSearch = "cloudsearch"
+        case classroom
+        case dataMigration = "datamigration"
+        case meetHardware = "meethardware"
+        case assignments, graduation
     }
 
     /// Activity events, newest first (4730-4744; doReport's activity form): `users` one address each (`user` for one,
@@ -346,6 +361,14 @@ public enum GamCommands {
     /// What a person's Chrome profile says: whose, where, which browser, and when it was last used.
     static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"
         + "browserversion,browserchannel,deviceinfo,affiliationstate"
+
+    /// The apps people have given access to their account (9076-9085; _printShowTokens): every account but the suspended
+    /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
+    /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
+    public static func printTokens(user: String? = nil) throws -> GamRead {
+        guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
+        return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])
+    }
 
     /// The admin role assignments `user` holds directly (1579-1582; doPrintShowAdmins), CSV with `role` and `scopeType`.
     /// Without `recursive`, a role held through a group isn't listed.

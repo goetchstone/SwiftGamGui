@@ -164,7 +164,40 @@ struct ActivityLogsTests {
         #expect(row(["name": "titanium_enroll"]).words == "Titanium enroll", "an event not named here is shown as Google names it")
         let table = ActivityLogs.table([row(["name": "login_success", "id.time": "2026-10-19T14:12:40Z", "actor.email": "c@example.com",
                                              "ipAddress": "198.51.100.23", "login_type": "google_password"])])
-        #expect(table == [["log", "time", "actor", "event", "ip_address", "flagged", "parameters"],
-                          ["login", "2026-10-19T14:12:40Z", "c@example.com", "login_success", "198.51.100.23", "", "login_type: google_password"]])
+        #expect(table == [["log", "time", "actor", "event", "ip_address", "flagged", "via", "parameters"],
+                          ["login", "2026-10-19T14:12:40Z", "c@example.com", "login_success", "198.51.100.23", "", "",
+                           "login_type: google_password"]])
+    }
+
+    /// Who acted besides the person: an app (`actor.applicationInfo`) or an AI agent (`isAgenticAction`,
+    /// `actor.agentAttributionInfo`), each in words, never among the event's parameters.
+    @Test func appsAndAgentsActingAreSaid() async throws {
+        let drive = try await read(.drive)
+        let download = try #require(drive.first { $0.event == "download" })
+        #expect(download.app == "Mail Sync Pro" && download.agent.isEmpty && download.via == "through Mail Sync Pro")
+        #expect(download.details.last == "through Mail Sync Pro")
+        #expect(!download.parameters.contains { $0.name.hasPrefix("actor.") || $0.name == "isAgenticAction" })
+        #expect(drive.first { $0.event == "view" }?.via == "", "the person acted themselves")
+        let gemini = try await read(.gemini)
+        let agentic = try #require(gemini.first { $0.who == "dana@example.com" })
+        #expect(agentic.agent == "the AI agent Inbox Helper (workspace flow), made by dana@example.com" && agentic.words == "Used Gemini")
+        #expect(gemini.first { $0.who == "carol@example.com" }?.agent == "")
+        let table = ActivityLogs.table([agentic])
+        #expect(table[1][6] == "by the AI agent Inbox Helper (workspace flow), made by dana@example.com")
+    }
+
+    /// Every log GAM reads the app offers, but Currents' and Jamboard's, whose services have ended; the mock answers each.
+    @Test func everyLogGamReadsIsOffered() async throws {
+        let offered = Set(ActivityLogs.Application.allCases.map(\.rawValue))
+        let gams: Set = ["accessevaluation", "accesstransparency", "admin", "admindataaction", "assignments", "calendar", "chat", "chrome",
+                         "classroom", "cloudsearch", "contacts", "contextawareaccess", "datamigration", "datastudio", "directorysync",
+                         "drive", "gcp", "geminiinworkspaceapps", "gmail", "graduation", "groups", "groupsenterprise", "keep", "ldap",
+                         "login", "meet", "meethardware", "mobile", "profile", "rules", "saml", "takeout", "tasks", "token",
+                         "useraccounts", "vault"]
+        #expect(offered == gams)
+        for application in ActivityLogs.Application.allCases {
+            let result = try await report(try GamCommands.reportActivity(application, hours: 24, maxActivities: 5))
+            #expect(result.exitCode == 0, "\(application): \(result.stderr)")
+        }
     }
 }

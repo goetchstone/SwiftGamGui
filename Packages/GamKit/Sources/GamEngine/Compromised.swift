@@ -412,7 +412,7 @@ public enum Compromised {
     /// read that failed (said beside its list, not here).
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
                                 sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil, autoReply: Vacation? = nil,
-                                devices: [MobileDevice]? = nil) -> [String] {
+                                devices: [MobileDevice]? = nil, apps: [ConnectedApps.App]? = nil) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
@@ -436,6 +436,14 @@ public enum Compromised {
         if let autoReply, autoReply.enabled {
             said.append("An auto-reply is on (“\(autoReply.subject)”): an attacker's sends their message, a link say, to everyone "
                 + "who writes. Tick “\(Step.autoReply.name)” unless it's \(user)'s own.")
+        }
+        if let apps, !apps.isEmpty {
+            let ai = apps.filter(\.looksLikeAI).map(\.name), broad = apps.filter { $0.reach == .broad && !$0.looksLikeAI }.map(\.name)
+            let notes = [broad.isEmpty ? "" : "broad: \(broad.joined(separator: ", "))",
+                         ai.isEmpty ? "" : "an AI assistant or agent by its name: \(ai.joined(separator: ", "))"].filter { !$0.isEmpty }
+            said.append("\(apps.count == 1 ? "1 app has" : "\(apps.count) apps have") access to \(user)'s account"
+                + (notes.isEmpty ? "" : " (\(notes.joined(separator: "; ")))")
+                + ". The sign-out revokes them all; ask \(user) which they use before they grant them again.")
         }
         if let devices, !devices.isEmpty {
             said.append("\(devices.count == 1 ? "A phone or tablet syncs" : "\(devices.count) phones or tablets sync") \(user)'s account: "

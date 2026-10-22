@@ -39,6 +39,8 @@ it in plain words; the fixes it points to are drafts the operator confirms.
   Chrome's phishing warning → said.
 - **Mail through Gmail from a suspect address** → pull that email from everyone. Its sender is secured by their sign-in
   from that address: whose mailbox a Gmail row is isn't certain from the row alone.
+- **Apps and agents:** an app acting from a suspect address, or anything else done from it (Gemini, Drive, Contacts…) →
+  Secure Account; an AI agent acting for someone → said, called out when the attacker had that account.
 - **After the lock:** a suspect address's events after a time the operator gives → said.
 
 ## Not built unless asked

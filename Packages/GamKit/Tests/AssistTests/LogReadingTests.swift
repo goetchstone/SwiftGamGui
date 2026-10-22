@@ -105,6 +105,32 @@ struct LogReadingTests {
         #expect(!reading.findings.contains { $0.accounts.contains("alice@example.com") })
     }
 
+    /// An app acting from the attacker's address, anything else done from it (Gemini asked to search the mailbox), and an AI
+    /// agent acting for someone: each found; the same from the office is not suspect, and an agent is said, not fixed.
+    @Test func appsAgentsAndOtherServicesFromTheAttackersAddress() {
+        let more = Self.incident + [
+            LogReading.Event(log: "drive", time: nil, who: "carol@example.com", event: "download", ip: Self.attacker, flagged: false,
+                             parameters: [:], app: "Mail Sync Pro"),
+            Self.event("geminiinworkspaceapps", "carol@example.com", "feature_utilization", ip: Self.attacker, at: 45, ["action": "conversation"]),
+            LogReading.Event(log: "geminiinworkspaceapps", time: nil, who: "dana@example.com", event: "feature_utilization", ip: Self.office,
+                             flagged: false, parameters: [:], agent: "the AI agent Inbox Helper, made by dana@example.com"),
+            LogReading.Event(log: "drive", time: nil, who: "alice@example.com", event: "view", ip: Self.office, flagged: false,
+                             parameters: [:], app: "Zoom"),
+            Self.event("accessevaluation", "carol@example.com", "allow_token_request", ip: Self.attacker, at: 46),
+        ]
+        let reading = LogReading.read(more)
+        let app = reading.findings.first { $0.kind == .appFromSuspect }
+        #expect(app?.words == "Mail Sync Pro acted for carol@example.com from 198.51.100.23 (Drive).")
+        #expect(app?.drafts == [.secureAccount("carol@example.com")])
+        #expect(reading.findings.first { $0.kind == .actedFromSuspect }?.words.hasPrefix("carol@example.com used Gemini from 198.51.100.23:") == true,
+                "a sign-in's own token checks are no other service")
+        let agent = reading.findings.first { $0.kind == .agentActed }
+        #expect(agent?.words.hasPrefix("The AI agent Inbox Helper, made by dana@example.com acted for dana@example.com") == true)
+        #expect(agent?.words.contains("whom the attacker had") == true, "dana@ signed in from the attacker's address")
+        #expect(agent?.drafts.isEmpty == true)
+        #expect(!reading.findings.contains { $0.accounts == ["alice@example.com"] }, "an app at the office is no finding")
+    }
+
     @Test func activityAfterTheLockIsSaid() {
         let locked = Date(timeIntervalSince1970: 1_792_400_000 + 15 * 60)
         let reading = LogReading.read(Self.incident, context: LogReading.Context(lockedAt: locked))
