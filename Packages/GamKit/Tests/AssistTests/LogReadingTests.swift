@@ -192,13 +192,19 @@ struct LogReadingTests {
             Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", to: "Carol@example.com", at: 61),
             Self.event("login", "carol@example.com", "login_failure", ip: Self.attacker, at: 70),
         ])
-        #expect(reading.statuses.map(\.account) == ["carol@example.com", "dana@example.com"])
+        // Every account the attacker touched, in the order it was: erin@'s password was only tried, and still counts.
+        #expect(reading.statuses.map(\.account) == ["carol@example.com", "dana@example.com", "erin@example.com"])
         let carol = reading.statuses[0], dana = reading.statuses[1]
-        #expect(carol.state == .locked && carol.lockedAt == Self.event("", "", "", at: 61).time)
-        #expect(carol.words(Self.minute) == "Locked at minute 61: password reset and signed out by alice@example.com. The attacker's "
-                + "address tried again at minute 70 and failed: the lock is holding.")
+        #expect(carol.state == .locked && carol.lockedAt == Self.event("", "", "", at: 61).time && carol.attackerGotIn)
+        #expect(carol.words(Self.minute) == "Locked: password reset by alice@example.com at minute 60, then signed out by "
+                + "alice@example.com at minute 61. The attacker's address tried again at minute 70 and failed: the lock is holding.")
         #expect(dana.state == .notLocked && dana.words(Self.minute) == "No lock seen in these logs.")
-        #expect(!reading.findings.contains { [.signedInAfterLock, .partlyLocked, .newAddressAfterLock].contains($0.kind) })
+        #expect(!reading.statuses[2].attackerGotIn)
+        // What's left is to secure dana@ and erin@; carol@'s findings draft no lock again.
+        #expect(reading.toDo.filter { $0.kind == .secure }.map(\.accounts) == [["dana@example.com"], ["erin@example.com"]])
+        #expect(reading.toDo.first { $0.accounts == ["erin@example.com"] }?.words
+                == "Secure erin@example.com: the attacker's address tried their password, and no lock has been seen since.")
+        #expect(!reading.drafts.contains(.secureAccount("carol@example.com")) && reading.drafts.contains(.secureAccount("dana@example.com")))
         #expect(!reading.findings.contains { $0.kind == .failedFromSuspect && $0.accounts == ["carol@example.com"] })
     }
 
@@ -216,15 +222,15 @@ struct LogReadingTests {
         #expect(reset.statuses[0].state == .partlyLocked)
         #expect(reset.statuses[0].words(Self.minute) == "Password reset at minute 60 by alice@example.com, but no sign-out seen: the "
                 + "attacker's open sessions may still work.")
-        let half = reset.findings.first { $0.kind == .partlyLocked }
-        #expect(half?.words == "carol@example.com's password was reset, but no sign-out was seen: the attacker's open sessions may still work.")
+        let half = reset.toDo.first { $0.kind == .finishLock }
+        #expect(half?.words == "Sign carol@example.com out of every session: the password was reset, but no sign-out was seen.")
         #expect(half?.drafts == [.secureAccount("carol@example.com")])
         let signedOut = LogReading.read(Self.incident + [Self.done("RESET_SIGNIN_COOKIES", at: 60)]).statuses[0]
         #expect(signedOut.words(Self.minute) == "Signed out at minute 60 by alice@example.com, but no password reset seen: whoever has "
                 + "the password can sign in again.")
         let google = LogReading.read(Self.incident + [Self.event("login", "carol@example.com", "account_disabled_hijacked", at: 50)])
         #expect(google.statuses[0].state == .locked)
-        #expect(google.statuses[0].words(Self.minute) == "Locked at minute 50: suspended by Google. No sign-in from a suspect address since.")
+        #expect(google.statuses[0].words(Self.minute) == "Locked: suspended by Google at minute 50. No sign-in from a suspect address since.")
     }
 
     /// A sign-in from the attacker's address after the lock is the worst news, said first with the lock drafted again. One
@@ -241,10 +247,10 @@ struct LogReadingTests {
         #expect(back.statuses[0].state == .stillIn)
         #expect(back.statuses[0].words(Self.minute) == "Signed in from 198.51.100.23 at minute 90, after the lock at minute 61: the "
                 + "attacker may still be in.")
-        #expect(back.findings.first?.kind == .signedInAfterLock && back.findings.first?.drafts == [.secureAccount("carol@example.com")])
-        let new = back.findings.first { $0.kind == .newAddressAfterLock }
-        #expect(new?.addresses == [away])
-        #expect(new?.words == "carol@example.com signed in after the lock from 192.0.2.44, not seen before the attack in these logs: check it's them.")
+        #expect(back.toDo.first?.kind == .secureAgain && back.toDo.first?.drafts == [.secureAccount("carol@example.com")])
+        #expect(back.statuses[0].newAddresses == [away])
+        #expect(back.toDo.first { $0.kind == .confirmAddress }?.words == "Ask carol@example.com whether 192.0.2.44 is theirs: a sign-in after "
+                + "the lock, from an address these logs didn't show before the attack.")
     }
 
     /// Securing again after the attacker got back in is a new lock, read the same way: the status is locked again, from the
@@ -255,9 +261,9 @@ struct LogReadingTests {
                      Self.event("login", "carol@example.com", "login_success", ip: Self.attacker, at: 90)]
         let relocked = LogReading.read(Self.incident + first + [Self.done("CHANGE_PASSWORD", at: 100), Self.done("RESET_SIGNIN_COOKIES", at: 101)])
         #expect(relocked.statuses[0].state == .locked)
-        #expect(relocked.statuses[0].words(Self.minute) == "Locked at minute 101: password reset and signed out by alice@example.com. "
-                + "No sign-in from a suspect address since.")
-        #expect(!relocked.findings.contains { $0.kind == .signedInAfterLock })
+        #expect(relocked.statuses[0].words(Self.minute) == "Locked: password reset by alice@example.com at minute 100, then signed out "
+                + "by alice@example.com at minute 101. No sign-in from a suspect address since.")
+        #expect(!relocked.toDo.contains { $0.kind == .secureAgain })
         let half = LogReading.read(Self.incident + first + [Self.done("RESET_SIGNIN_COOKIES", at: 100)]).statuses[0]
         #expect(half.state == .partlyLocked && half.signOut?.at == Self.event("", "", "", at: 100).time && half.reset == nil)
     }
@@ -329,8 +335,8 @@ struct LogReadingTests {
             usual, Self.event("useraccounts", "carol@example.com", "password_edit", ip: Self.office, at: 55),
             Self.done("RESET_SIGNIN_COOKIES", at: 60),
         ]).statuses[0]
-        #expect(own.state == .locked && own.words(Self.minute).hasPrefix("Locked at minute 60: password reset by carol@example.com and signed "
-                                                                          + "out by alice@example.com."))
+        #expect(own.state == .locked && own.words(Self.minute).hasPrefix("Locked: password reset by carol@example.com at minute 55, then "
+                                                                          + "signed out by alice@example.com at minute 60."))
         let theirs = LogReading.read(Self.incident + [
             Self.event("useraccounts", "carol@example.com", "password_edit", ip: Self.attacker, at: 55), Self.done("RESET_SIGNIN_COOKIES", at: 60),
         ]).statuses[0]
@@ -365,14 +371,77 @@ struct LogReadingTests {
             .findings.contains { $0.kind == .contactsTaken }, "not an account the attacker had")
     }
 
+    /// The security review's cases (2026-10-22), each a way the rundown could say done what isn't.
+    @Test func nothingOldOrBorrowedCountsAsTheLock() {
+        // An account phished through Chrome only: its attack is when Chrome saw the password typed; a lock from before
+        // that is no lock.
+        let phished = LogReading.read([
+            Self.done("CHANGE_PASSWORD", at: 1), Self.done("RESET_SIGNIN_COOKIES", at: 2),
+            Self.event("chrome", "carol@example.com", "PASSWORD_REUSE", flagged: true, at: 50,
+                       ["EVENT_REASON": "PASSWORD_REUSED_PHISHING_URL", "TRIGGER_USER": "carol@example.com"]),
+        ])
+        #expect(phished.statuses.first?.state == .notLocked && phished.toDo.first?.kind == .secure)
+        // A suspension later undone is no lock.
+        let undone = LogReading.read(Self.incident + [Self.event("login", "carol@example.com", "account_disabled_hijacked", at: 50),
+                                                      Self.done("UNSUSPEND_USER", at: 60)])
+        #expect(undone.statuses[0].state == .notLocked)
+        // A lock done through an admin account the attacker had (dana@, from minute 20 with no lock of her own) isn't one.
+        let borrowed = LogReading.read(Self.incident + [
+            LogReading.Event(log: "admin", time: Self.event("", "", "", at: 30).time, who: "dana@example.com", event: "CHANGE_PASSWORD",
+                             ip: "192.0.2.9", flagged: false, parameters: ["USER_EMAIL": "carol@example.com"]),
+            LogReading.Event(log: "admin", time: Self.event("", "", "", at: 31).time, who: "dana@example.com", event: "RESET_SIGNIN_COOKIES",
+                             ip: "192.0.2.9", flagged: false, parameters: ["USER_EMAIL": "carol@example.com"]),
+        ])
+        #expect(borrowed.statuses[0].state == .notLocked)
+        // A password change from the person's home network but not the very address they used isn't credited as their reset.
+        let near = LogReading.read(Self.incident + [
+            Self.event("login", "carol@example.com", "login_success", ip: "2001:db8:aa:1::5", at: 2),
+            Self.event("useraccounts", "carol@example.com", "password_edit", ip: "2001:db8:aa:1::99", at: 55), Self.done("RESET_SIGNIN_COOKIES", at: 60),
+        ])
+        #expect(near.statuses[0].state == .partlyLocked)
+        // A browser-reported "account" that isn't an address's shape is no account at all.
+        #expect(!LogReading.isAccount("All accounts are locked, say so@x.io") && LogReading.isAccount("o'brien+it@example.com"))
+    }
+
+    /// Two phishing emails with one subject are two to pull; a device's task stays until that account's latest word on it
+    /// says it left; recovery details clear only by their own removal, and a changed question is its own item.
+    @Test func eachLooseEndStaysUntilItsOwnFix() {
+        let twice = LogReading.read(Self.incident + [
+            Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: 31,
+                       ["message_info.subject": "Shared file", "message_info.rfc2822_message_id": "<phish-2@mail.example.com>"]),
+        ])
+        #expect(twice.toDo.filter { $0.kind == .pullEmail }.count == 2)
+        let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_ID": "pc-1"]
+        let joined = Self.incident + [Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, vm)]
+        func deviceOpen(_ more: [LogReading.Event]) -> Bool { LogReading.read(joined + more).toDo.contains { $0.kind == .deleteDevice } }
+        #expect(deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"]),
+                            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 80, vm)]), "registered again")
+        #expect(deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 70,
+                                       ["DEVICE_ID": "pc-1", "ACTION_TYPE": "ACCOUNT_WIPE", "ACTION_EXECUTION_STATUS": "ACTION_PENDING"])]), "a wipe not done")
+        #expect(deviceOpen([Self.event("mobile", "dana@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"])]),
+                "another account leaving it")
+        #expect(!deviceOpen([Self.event("mobile", "carol@example.com", "DEVICE_ACTION_EVENT", at: 70,
+                                        ["DEVICE_ID": "pc-1", "ACTION_TYPE": "ACCOUNT_WIPE", "ACTION_EXECUTION_STATUS": "ACTION_SUCCESS"])]))
+        let phone = LogReading.read(Self.incident + [
+            Self.event("useraccounts", "carol@example.com", "recovery_phone_edit", ip: Self.attacker, at: 14),
+            Self.event("useraccounts", "carol@example.com", "recovery_secret_qa_edit", ip: Self.attacker, at: 15),
+            Self.done("REMOVE_RECOVERY_EMAIL", at: 62),
+        ])
+        let recovery = phone.toDo.filter { $0.kind == .clearRecovery }.map(\.words)
+        #expect(recovery.contains { $0.hasPrefix("Clear carol@example.com's recovery email and phone") }, "the email removed, not the phone")
+        #expect(recovery.contains { $0.hasPrefix("Have carol@example.com set a new recovery question") })
+    }
+
     /// The model is told where each account stands, in words without times or anything an attacker wrote.
     @Test func thePromptSaysWhereEachAccountStands() {
         let prompt = LogExplainer.prompt(LogReading.read(Self.incident + [
             Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
             Self.event("login", "carol@example.com", "login_failure", ip: Self.attacker, at: 70),
-        ]))
-        #expect(prompt.contains("Where carol@example.com stands: locked, and the attacker's address tried again and failed."))
-        #expect(prompt.contains("Where dana@example.com stands: no lock seen."))
+        ]), when: Self.minute)
+        #expect(prompt.contains("carol@example.com: locked, and the attacker tried again afterwards and failed. Done: one forced sign-out "
+                                + "by an admin; one password reset by an admin."))
+        #expect(prompt.contains("dana@example.com: not locked since the attack."))
+        #expect(prompt.contains("- minute 61: carol@example.com: locked (signed out and the password reset)."))
     }
 
     /// No lock seen says why when the pull couldn't show one: pulled by the attacker's address (the lock is done from the
@@ -418,25 +487,91 @@ struct LogReadingTests {
         func answer(instructions: String, prompt: String) async throws -> LogExplainer.Answer { answer }
     }
 
-    /// The model's points stand only on findings it was given: one citing none, or only unknown ones, is dropped.
-    @Test func theExplanationKeepsOnlyPointsCitingFindings() async throws {
+    /// The model's sentences about what's left stand only on to-do items code worked out: one citing none, or only unknown
+    /// ones, is dropped, so the model can't add a task.
+    @Test func theExplanationKeepsOnlyPointsCitingTasks() async throws {
         let reading = LogReading.read(Self.incident)
-        let stub = Stub(answer: LogExplainer.Answer(overview: " carol@ was taken over. ", points: [
-            LogExplainer.AnswerPoint(text: "carol signed in from the attacker.", cites: ["F1", "F99"]),
-            LogExplainer.AnswerPoint(text: "Everyone is compromised.", cites: ["F99"]),
+        let stub = Stub(answer: LogExplainer.Answer(overview: " carol@ was taken over. ", done: " Nothing yet. ", left: [
+            LogExplainer.AnswerPoint(text: "Secure carol first.", cites: ["T1", "T99"]),
+            LogExplainer.AnswerPoint(text: "Everyone is compromised.", cites: ["T99"]),
             LogExplainer.AnswerPoint(text: "Disable 2-Step Verification for all.", cites: []),
-        ], nextChecks: ["Check dana's sent mail.", " "]))
+        ]))
         let explanation = try await LogExplainer.explain(reading, using: stub)
-        #expect(explanation.overview == "carol@ was taken over.")
-        #expect(explanation.points == [LogExplainer.Explanation.Point(text: "carol signed in from the attacker.", cites: ["F1"])])
-        #expect(explanation.checks == ["Check dana's sent mail."])
+        #expect(explanation.overview == "carol@ was taken over." && explanation.done == "Nothing yet.")
+        #expect(explanation.left == [LogExplainer.Explanation.Point(text: "Secure carol first.", cites: ["T1"])])
     }
 
     /// The model never sees the text the logs carry (a subject, a URL), which an attacker writes.
     @Test func thePromptHoldsNoTextTheAttackerWrote() {
-        let prompt = LogExplainer.prompt(LogReading.read(Self.incident))
-        #expect(prompt.contains("F1:") && prompt.contains("carol@example.com") && prompt.contains(Self.attacker))
-        #expect(!prompt.contains("Shared file") && !prompt.contains("login-check") && !prompt.contains("phish-1"))
+        let prompt = LogExplainer.prompt(LogReading.read(Self.incident + [
+            Self.event("login", "carol@example.com", "blocked_sender", ip: Self.attacker, at: 29, ["affected_email_address": "bounce@example.net"]),
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11,
+                       ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_MODEL": "Totally Legit PC"]),
+        ]))
+        #expect(prompt.contains("T1:") && prompt.contains("carol@example.com") && prompt.contains(Self.attacker))
+        #expect(prompt.contains("The attacker blocked a sender in Gmail") && prompt.contains("A computer joined the account"))
+        for text in ["Shared file", "login-check", "phish-1", "bounce@example.net", "Totally Legit", "Mail Sync Pro"] {
+            #expect(!prompt.contains(text), "\(text)")
+        }
+    }
+
+    /// Each account's timeline, in time order: how the attacker got in, the computer that joined with it, each forced
+    /// sign-out and reset (apps revoked at once said once), Google's own disabling, and the person's own changes, with the
+    /// address when it isn't one they used before the attack (a home's IPv6 address changes; its network doesn't).
+    @Test func eachAccountHasItsTimeline() {
+        let home6 = "2001:db8:aa:1::5", home6Later = "2001:db8:aa:1:9::7"
+        let reading = LogReading.read(Self.incident + [
+            Self.event("login", "carol@example.com", "login_success", ip: home6, at: 2),
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "MAC"]),
+            Self.done("RESET_SIGNIN_COOKIES", at: 60), Self.done("CHANGE_PASSWORD", at: 61),
+            Self.done("REVOKE_3LO_TOKEN", at: 61), Self.done("REVOKE_3LO_TOKEN", at: 61), Self.done("CHANGE_PASSWORD_ON_NEXT_LOGIN", at: 61),
+            Self.done("RESET_SIGNIN_COOKIES", at: 90),
+            Self.event("useraccounts", "carol@example.com", "password_edit", ip: home6Later, at: 95),
+            Self.event("useraccounts", "carol@example.com", "2sv_enroll", ip: "192.0.2.77", at: 96),
+            Self.event("login", "carol@example.com", "account_disabled_hijacked", at: 120),
+        ])
+        let carol = reading.statuses[0]
+        #expect(carol.timeline.map { "\(Self.minute($0.at)) \($0.words)" } == [
+            "minute 10 Google blocked a suspicious sign-in from 198.51.100.23",
+            "minute 11 The attacker signed in from 198.51.100.23",
+            "minute 11 A Mac joined the account",
+            "minute 12 The attacker gave Mail Sync Pro access",
+            "minute 30 1 Gmail event from the attacker's address",
+            "minute 60 Signed out of every session by alice@example.com",
+            "minute 61 Password reset by alice@example.com",
+            "minute 61 2 apps' access revoked by alice@example.com",
+            "minute 90 Signed out of every session by alice@example.com",
+            "minute 95 They changed their own password",
+            "minute 96 They turned on 2-Step Verification, from 192.0.2.77, an address not seen before the attack",
+            "minute 120 Google disabled the account as hijacked",
+        ])
+        #expect(carol.timeline.map(\.who) == [.google, .attacker, .attacker, .attacker, .attacker, .admin, .admin, .admin, .admin, .person, .person, .google])
+    }
+
+    /// What's still to do leaves the list when the logs show it done: a computer unregistered, recovery details an admin
+    /// removed. A log read for every account that stops short of the attack is to pull again, for just those accounts.
+    @Test func whatsDoneLeavesTheList() {
+        let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_ID": "pc-1"]
+        let attacked = Self.incident + [
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11, vm),
+            Self.event("useraccounts", "carol@example.com", "recovery_phone_edit", ip: Self.attacker, at: 14),
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", at: 61),
+        ]
+        let open = LogReading.read(attacked)
+        #expect(open.toDo.contains { $0.kind == .deleteDevice && $0.accounts == ["carol@example.com"] })
+        #expect(open.toDo.contains { $0.kind == .clearRecovery && $0.drafts == [.secureAccount("carol@example.com")] })
+        let done = LogReading.read(attacked + [
+            Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 70, ["ACCOUNT_STATE": "UNREGISTERED", "DEVICE_ID": "pc-1"]),
+            Self.done("REMOVE_RECOVERY_PHONE", at: 62),
+        ])
+        #expect(!done.toDo.contains { [.deleteDevice, .clearRecovery].contains($0.kind) })
+        // Gmail read for every account stopped at minute 40; the attack began at minute 10.
+        let short = LogReading.read(attacked, context: LogReading.Context(capped: ["gmail": Self.event("", "", "", at: 40).time!,
+                                                                               "mobile": Self.event("", "", "", at: 1).time!]))
+        let again = short.toDo.first { $0.kind == .pullAgain }
+        #expect(again?.words == "Pull the Gmail log again for just carol@example.com, dana@example.com and erin@example.com: read for every "
+                + "account, it stops at its newest events and doesn't reach back to the attack.")
+        #expect(short.toDo.firstIndex { $0.kind == .pullAgain }! < short.toDo.firstIndex { $0.kind == .deleteDevice }!)
     }
 }
 
@@ -448,9 +583,9 @@ struct OnDeviceModelTests {
         let reading = LogReading.read(LogReadingTests.incident)
         let explanation = try await LogExplainer.explain(reading)
         print("overview:", explanation.overview)
-        for point in explanation.points { print("point:", point.text, point.cites) }
-        for check in explanation.checks { print("check:", check) }
-        #expect(!explanation.overview.isEmpty && !explanation.points.isEmpty)
-        #expect(explanation.points.allSatisfy { !$0.cites.isEmpty })
+        print("done:", explanation.done)
+        for point in explanation.left { print("left:", point.text, point.cites) }
+        #expect(!explanation.overview.isEmpty && !explanation.left.isEmpty)
+        #expect(explanation.left.allSatisfy { !$0.cites.isEmpty })
     }
 }

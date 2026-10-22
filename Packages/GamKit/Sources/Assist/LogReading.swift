@@ -35,17 +35,20 @@ public enum LogReading {
     }
 
     /// What the pull says that its events don't: the address it was pulled by (the operator's to call the attacker's), the
-    /// logs it read, by name (nil: not said; a lock is seen only where the admin log was read, by the accounts), and the
-    /// sign-ins the operator marked as the person's own (`key(account:address:)`).
+    /// logs it read, by name (nil: not said; a lock is seen only where the admin log was read, by the accounts), the
+    /// sign-ins the operator marked as the person's own (`key(account:address:)`), and the logs that stopped at their cap,
+    /// each with its oldest event read (a log read for every account can stop short of the attack).
     public struct Context: Sendable, Equatable {
         public let pulledBy: String
         public let read: Set<String>?
         public let theirs: Set<String>
+        public let capped: [String: Date]
 
-        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = []) {
+        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:]) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
+            self.capped = capped
         }
     }
 
@@ -72,6 +75,9 @@ public enum LogReading {
         }
         public let account: String
         public let state: State
+        /// The attacker signed in to it (to Google or another app through it); else they only tried its password, or Google
+        /// warned of it.
+        public let attackerGotIn: Bool
         /// The account's first event from a suspect address in these logs.
         public let attackedAt: Date?
         public let reset: Step?
@@ -91,6 +97,9 @@ public enum LogReading {
         /// With no lock since the attack: the last lock step these logs show before it, which may be the lock, the window
         /// starting after the attack began.
         public let earlierLockAt: Date?
+        /// What happened to it, in time order: the attacker's sign-ins and changes, each step of every lock (a forced
+        /// sign-out, a reset, apps revoked), what Google did, and the person's own changes.
+        public let timeline: [Moment]
 
         public func words(_ when: (Date) -> String) -> String {
             switch state {
@@ -98,8 +107,11 @@ public enum LogReading {
                 guard let backInAt, let lockedAt else { return "" }
                 return "Signed in from \(backInFrom) at \(when(backInAt)), after the lock at \(when(lockedAt)): the attacker may still be in."
             case .locked:
-                guard let lockedAt else { return "" }
-                return "Locked at \(when(lockedAt)): \(how)."
+                // Each step at its own time: a sign-out days before the reset is said as days before.
+                let steps = suspended.flatMap { $0.at == lockedAt ? [($0.at, "suspended by \($0.by) at \(when($0.at))")] : nil }
+                    ?? [reset.map { ($0.at, "password reset by \($0.by) at \(when($0.at))") },
+                        signOut.map { ($0.at, "signed out by \($0.by) at \(when($0.at))") }].compactMap(\.self).sorted { $0.0 < $1.0 }
+                return "Locked: " + steps.map(\.1).joined(separator: ", then ") + "."
                     + (triedAt.map { " The attacker's address tried again at \(when($0)) and failed: the lock is holding." }
                         ?? " No sign-in from a suspect address since.")
             case .partlyLocked:
@@ -119,12 +131,53 @@ public enum LogReading {
             }
         }
 
-        private var how: String {
-            if let suspended, suspended.at == lockedAt { return "suspended by \(suspended.by)" }
-            guard let reset, let signOut else { return "" }
-            return reset.by == signOut.by ? "password reset and signed out by \(reset.by)"
-                : "password reset by \(reset.by) and signed out by \(signOut.by)"
+    }
+
+    /// One thing that happened to an account, in its timeline: what, in words without its time (the caller says it), and
+    /// for several alike, how many and until when.
+    public struct Moment: Sendable, Equatable {
+        public enum Kind: String, Sendable, CaseIterable {
+            case attackerSignedIn, attackerFailed, googleBlocked, attackerChanged, deviceJoined, attackerActivity, contactsPrinted,
+                 signedOut, passwordReset, appsRevoked, appPasswordsDeleted, backupCodesDeleted, recoveryRemoved, suspended,
+                 unsuspended, adminChange, googleDisabled, googleSignedOut, ownPassword, own2SV, ownPasskey, ownRecovery
         }
+        /// Who did it, as the timeline marks it.
+        public enum Who: String, Sendable { case attacker, admin, google, person, unknown }
+        public let at: Date
+        public let until: Date?
+        public let kind: Kind
+        public let words: String
+        public let count: Int
+        /// The words with nothing the logs carry as text (an app's or a device's name, a blocked address), which an
+        /// attacker can set: what the model is given.
+        public let plain: String
+
+        public var who: Who {
+            switch kind {
+            case .attackerSignedIn, .attackerFailed, .attackerChanged, .deviceJoined, .attackerActivity: .attacker
+            case .googleBlocked, .googleDisabled, .googleSignedOut: .google
+            case .ownPassword, .own2SV, .ownPasskey, .ownRecovery: .person
+            case .contactsPrinted: .unknown
+            default: .admin
+            }
+        }
+    }
+
+    /// Something left to do, worked out by code from where each account stands and what the logs show; the model only
+    /// words it. `id` ("T1") is what the model's sentences cite. It leaves the list once the logs show it done (a lock, a
+    /// device removed, recovery details cleared); what the logs can't show stays until the incident record can tick it.
+    public struct Task: Sendable, Equatable, Identifiable {
+        /// Most urgent first.
+        public enum Kind: String, Sendable, CaseIterable {
+            case secureAgain, secure, finishLock, pullAgain, removeAdded, clearRecovery, unblockSender, deleteDevice, pullEmail,
+                 signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look, checkShared
+        }
+        public let id: String
+        public let kind: Kind
+        /// The sentence shown: it may hold what the logs carry as text (a subject), which the model is never given.
+        public let words: String
+        public let accounts: [String]
+        public let drafts: [Draft]
     }
 
     /// A fix a finding points to: a value for a screen, never a command. Secure Account opens for the person and checks
@@ -148,11 +201,9 @@ public enum LogReading {
     /// the drafts it points to. `id` ("F1") is what the model's points cite.
     public struct Finding: Sendable, Equatable, Identifiable {
         public enum Kind: String, Sendable, CaseIterable {
-            case signedInAfterLock, signedInFromSuspect, partlyLocked, leftInPlace, deviceAtSuspectSignIn, appFromSuspect,
-                 actedFromSuspect, exportedFromSuspect, contactsTaken, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect,
-                 otherAppSession,
-                 newAddressAfterLock, chatFromSuspect, agentActed, pastPhishingWarning, passwordOnOtherSite, breachedPassword,
-                 sharedAddress, suspectAddress
+            case signedInFromSuspect, leftInPlace, deviceAtSuspectSignIn, appFromSuspect, actedFromSuspect, exportedFromSuspect,
+                 contactsTaken, mailFromSuspect, passwordOnPhishingSite, failedFromSuspect, otherAppSession, chatFromSuspect,
+                 agentActed, pastPhishingWarning, passwordOnOtherSite, breachedPassword, sharedAddress, suspectAddress
         }
         public let id: String
         public let kind: Kind
@@ -167,11 +218,12 @@ public enum LogReading {
         public let markable: [String]
     }
 
-    /// Every finding, most serious first, where each account the attacker had stands, and each draft once in the order the
-    /// findings point to them.
+    /// Every finding, most serious first; where each account the attacker touched stands, with its timeline; what's left
+    /// to do; and each draft once in the order the findings point to them.
     public struct Reading: Sendable, Equatable {
         public let findings: [Finding]
         public let statuses: [Status]
+        public let toDo: [Task]
         public let events: Int
 
         public var drafts: [Draft] {
@@ -240,7 +292,8 @@ public enum LogReading {
             if address != context.pulledBy, signedIn.count > shared {
                 found.append(Pending(.sharedAddress, "\(signedIn.count) accounts signed in from \(address), where Google saw a suspicious "
                                      + "sign-in: it may be "
-                                     + "shared (an office or a VPN). Check it before securing anyone.", signedIn, [address], here.count, []))
+                                     + "shared (an office or a VPN). Check it before securing anyone.", signedIn, [address], here.count, [],
+                                     todo: [(.checkShared, "Check whether \(address) is your office or a VPN before securing anyone behind it.", [])]))
                 continue
             }
             acting.insert(address)
@@ -292,10 +345,26 @@ public enum LogReading {
             let ips = unique(mine.map(\.signIn.ip)), gap = mine.map(\.gap).max() ?? 0
             let when = gap <= 60 ? "within a minute of" : "within \(Int((gap / 60).rounded(.up))) minutes of"
             let devices = list(unique(theirs.map(deviceWords)))
+            // Still there unless that account's latest word on the device says it left: unregistered, or an admin's action on
+            // it that succeeded. Registered again is there again (security review 2026-10-22).
+            let left = theirs.filter { device in
+                let id = device.parameters["DEVICE_ID"] ?? device.parameters["RESOURCE_ID"] ?? ""
+                guard !id.isEmpty, let at = device.time else { return true }
+                let latest = events.filter { later in
+                    later.log == "mobile" && later.who.lowercased() == account.lowercased() && (later.time ?? .distantPast) > at
+                        && (later.parameters["DEVICE_ID"] ?? later.parameters["RESOURCE_ID"]) == id
+                        && (later.event == "DEVICE_REGISTER_UNREGISTER_EVENT"
+                            || (later.event == "DEVICE_ACTION_EVENT" && (later.parameters["ACTION_EXECUTION_STATUS"] ?? "").uppercased().contains("SUCCESS")))
+                }.max { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
+                guard let latest else { return true }
+                return latest.event == "DEVICE_REGISTER_UNREGISTER_EVENT" && latest.parameters["ACCOUNT_STATE"] != "UNREGISTERED"
+            }
             found.append(Pending(.deviceAtSuspectSignIn, devices.prefix(1).uppercased() + devices.dropFirst() + " joined \(account)'s "
                                  + "account \(when) its sign-in from \(list(ips)): likely the attacker's own. Check Account lists it; "
                                  + "block or delete it in the Admin console's Devices.", [account], ips, theirs.count,
-                                 [.secureAccount(account)]))
+                                 [.secureAccount(account)],
+                                 todo: left.isEmpty ? [] : [(.deleteDevice, "Delete \(list(unique(left.map(deviceWords)))) that joined \(account) "
+                                                             + "at the attacker's sign-in: the Admin console's Devices.", [])]))
         }
 
         // A failed sign-in from a suspect address: someone had that account's password, likely from the fake page.
@@ -307,22 +376,53 @@ public enum LogReading {
                                  [.secureAccount(account)]))
         }
 
-        // Where each account the attacker had stands, and what to do when the lock is half done or didn't hold.
-        let statuses = grouped(entered).map { account, _ in status(account, events, acting: acting, context: context) }
+        // Every account the attacker touched: signed in to, tried the password of, or warned of by Google, from a suspect
+        // address, or whose password Chrome saw typed on a phishing site. Each one's status and timeline, and its lock if
+        // it's still to do. Not a Gmail row's account: whose mailbox that is isn't certain from the row alone.
+        let touched = events.filter { acting.contains($0.ip) && isAccount($0.who) && ["login", "saml", "token", "useraccounts"].contains($0.log) }
+            .sorted { ($0.time ?? .distantFuture) < ($1.time ?? .distantFuture) }
+        var phishedAt: [String: Date] = [:]
+        for event in events where event.log == "chrome" && event.event == "PASSWORD_REUSE" && event.parameters["EVENT_REASON"] == "PASSWORD_REUSED_PHISHING_URL" {
+            let account = isAccount(event.parameters["TRIGGER_USER"] ?? "") ? event.parameters["TRIGGER_USER"] ?? "" : event.who
+            guard isAccount(account), let at = event.time else { continue }
+            phishedAt[account.lowercased()] = min(at, phishedAt[account.lowercased()] ?? at)
+        }
+        let accounts = unique(touched.map(\.who) + phishedAt.keys.sorted())
+        func statuses(held: [String: ClosedRange<Date>]) -> [Status] {
+            accounts.map { status($0, events, acting: acting, context: context, joined: joined.map(\.device), phishedAt: phishedAt[$0.lowercased()],
+                                 held: held) }
+        }
+        // An account the attacker got into, from then until its own lock: what it did as an admin meanwhile is no lock
+        // (security review 2026-10-22). Read once to know those, then again without them.
+        var held: [String: ClosedRange<Date>] = [:]
+        for status in statuses(held: [:]) where status.attackerGotIn {
+            if let from = status.attackedAt { held[status.account.lowercased()] = from...max(from, status.lockedAt ?? .distantFuture) }
+        }
+        let statuses = statuses(held: held)
+        var statusTasks: [(Task.Kind, String, [String], [Draft])] = []
         for status in statuses {
             let account = status.account
             switch status.state {
             case .stillIn:
-                found.append(Pending(.signedInAfterLock, "\(account) signed in from \(status.backInFrom) after the lock: the attacker may "
-                                     + "still be in. Secure it again, and look for a passkey or another way back.", [account],
-                                     [status.backInFrom], 1, [.secureAccount(account)]))
+                statusTasks.append((.secureAgain, "Secure \(account) again: the attacker signed in from \(status.backInFrom) after the lock. Look "
+                                    + "for a passkey or another way back.", [account], [.secureAccount(account)]))
             case .partlyLocked:
-                found.append(Pending(.partlyLocked, status.reset != nil
-                                     ? "\(account)'s password was reset, but no sign-out was seen: the attacker's open sessions may still work."
-                                     : "\(account) was signed out, but no password reset was seen: whoever has the password can sign in again.",
-                                     [account], [], 1, [.secureAccount(account)]))
-            case .locked, .notLocked:
+                statusTasks.append((.finishLock, status.reset != nil
+                                    ? "Sign \(account) out of every session: the password was reset, but no sign-out was seen."
+                                    : "Reset \(account)'s password: they were signed out, but the password the attacker may have wasn't changed.",
+                                    [account], [.secureAccount(account)]))
+            case .notLocked:
+                statusTasks.append((.secure, "Secure \(account): " + (status.attackerGotIn ? "the attacker got in" : "the attacker's address tried their password")
+                                    + (status.unseen.map { ", and no lock could be seen (\($0))." }
+                                        ?? (status.earlierLockAt != nil ? ", and no lock is seen after it; one came earlier, so pull from before "
+                                            + "the attack began to tell." : ", and no lock has been seen since.")),
+                                    [account], [.secureAccount(account)]))
+            case .locked:
                 break
+            }
+            if !status.newAddresses.isEmpty {
+                statusTasks.append((.confirmAddress, "Ask \(account) whether \(list(status.newAddresses)) \(status.newAddresses.count == 1 ? "is" : "are") "
+                                    + "theirs: a sign-in after the lock, from an address these logs didn't show before the attack.", [account], []))
             }
             // The account's contacts printed between the attacker's first event and the lock: who the phish goes to next.
             // The Contacts log names no address, so the time ties it to the attack.
@@ -334,14 +434,11 @@ public enum LogReading {
             }
             if !printed.isEmpty {
                 let count = printed.compactMap { Int($0.parameters["CONTACTS_COUNT"] ?? "") }.max()
-                found.append(Pending(.contactsTaken, "\(account)'s contacts" + (count.map { " (\($0.formatted(.number.locale(Locale(identifier: "en_US")))))" } ?? "") + " were printed "
-                                     + (printed.count == 1 ? "" : "\(printed.count) times ") + "while the attacker had the account: the "
-                                     + "people on that list may get the phish next. Warn them not to act on it.", [account], [], printed.count, []))
-            }
-            if !status.newAddresses.isEmpty {
-                found.append(Pending(.newAddressAfterLock, "\(account) signed in after the lock from \(list(status.newAddresses)), not seen "
-                                     + "before the attack in these logs: check it's them.", [account], status.newAddresses,
-                                     status.newAddresses.count, []))
+                found.append(Pending(.contactsTaken, "\(account)'s contacts" + (count.map { " (\($0.formatted(.number.locale(Locale(identifier: "en_US")))))" } ?? "")
+                                     + " were printed " + (printed.count == 1 ? "" : "\(printed.count) times ") + "while the attacker had the account: "
+                                     + "the people on that list may get the phish next. Warn them not to act on it.", [account], [], printed.count, [],
+                                     todo: [(.warnContacts, "Warn the people in \(account)'s contacts not to act on email from \(account) sent while the "
+                                             + "attacker had it.", [])]))
             }
         }
 
@@ -358,6 +455,35 @@ public enum LogReading {
             let recovery = theirs.contains { $0.event.hasPrefix("recovery_") }
             let blocked = theirs.contains { $0.event == "blocked_sender" }
             let others = theirs.contains { !$0.event.hasPrefix("recovery_") && $0.event != "blocked_sender" }
+            // Each recovery detail the attacker changed stays to clear unless an admin, not from a suspect address, removed that
+            // same detail after the change (security review 2026-10-22). The question no admin step removes.
+            func stillSet(_ edit: String, removedBy removal: String) -> Bool {
+                guard let changed = theirs.filter({ $0.event == edit }).compactMap(\.time).max() else { return false }
+                return !events.contains { $0.log == "admin" && $0.event == removal && $0.parameters["USER_EMAIL"]?.lowercased() == account.lowercased()
+                    && !acting.contains($0.ip) && ($0.time ?? .distantPast) > changed }
+            }
+            let cleared = !stillSet("recovery_email_edit", removedBy: "REMOVE_RECOVERY_EMAIL")
+                && !stillSet("recovery_phone_edit", removedBy: "REMOVE_RECOVERY_PHONE")
+            let question = theirs.contains { $0.event == "recovery_secret_qa_edit" }
+            var todo: [(Task.Kind, String, [Draft])] = []
+            if others {
+                todo.append((.removeAdded, "Remove what the attacker added to \(account): "
+                             + list(unique(theirs.filter { !$0.event.hasPrefix("recovery_") && $0.event != "blocked_sender" }.compactMap { Self.leftovers[$0.event] }))
+                             + ", on the Admin console's page for them (Security), or with them in their Google Account.", []))
+            }
+            if question {
+                todo.append((.clearRecovery, "Have \(account) set a new recovery question in their Google Account: the attacker changed it, "
+                             + "and no admin step resets it.", []))
+            }
+            if theirs.contains(where: { ["recovery_email_edit", "recovery_phone_edit"].contains($0.event) }), !cleared {
+                todo.append((.clearRecovery, "Clear \(account)'s recovery email and phone: Check Account's “Clear recovery email & phone” step.",
+                             [.secureAccount(account)]))
+            }
+            if blocked {
+                let senders = unique(theirs.filter { $0.event == "blocked_sender" }.compactMap { $0.parameters["affected_email_address"] })
+                todo.append((.unblockSender, "Have \(account) unblock \(senders.isEmpty ? "the blocked sender" : list(senders)) in Gmail: Settings, "
+                             + "Filters and Blocked Addresses.", []))
+            }
             found.append(Pending(.leftInPlace, "From \(list(unique(theirs.map(\.ip)))), \(account)'s account got \(list(things)): a lock "
                                  + "doesn't undo \(things.count == 1 ? "it" : "them")."
                                  + (others ? " Remove what isn't theirs on the Admin console's page for them (Security), or with them in "
@@ -366,7 +492,7 @@ public enum LogReading {
                                     + "removes them." : "")
                                  + (blocked ? " A blocked sender's mail goes to Spam, and blocking the bounce address hides a mass send: "
                                     + "unblock it in their Gmail settings (Filters and Blocked Addresses)." : ""),
-                                 [account], unique(theirs.map(\.ip)), theirs.count, recovery ? [.secureAccount(account)] : []))
+                                 [account], unique(theirs.map(\.ip)), theirs.count, recovery ? [.secureAccount(account)] : [], todo: todo))
         }
 
         // Another app reached through Google from a suspect address: that app keeps its own session, which Google's
@@ -377,7 +503,8 @@ public enum LogReading {
             let named = apps.isEmpty ? "another app" : list(apps)
             found.append(Pending(.otherAppSession, "\(account) signed in to \(named) through Google from \(list(unique(theirs.map(\.ip)))): "
                                  + "Google's sign-out doesn't end \(apps.count > 1 ? "those apps' sessions" : "that app's session"). "
-                                 + "Sign them out there too.", [account], unique(theirs.map(\.ip)), theirs.count, []))
+                                 + "Sign them out there too.", [account], unique(theirs.map(\.ip)), theirs.count, [],
+                                 todo: [(.signOutApp, "Sign \(account) out of \(named) too: Google's sign-out doesn't end that session.", [])]))
         }
 
         // The account's data exported with Google Takeout from a suspect address: it may be in the attacker's hands.
@@ -388,7 +515,8 @@ public enum LogReading {
             found.append(Pending(.exportedFromSuspect, "\(account)'s data was exported with Google Takeout from "
                                  + list(unique(theirs.map(\.ip))) + (products.isEmpty ? "" : " (\(list(products)))")
                                  + ": treat it as in the attacker's hands.", [account], unique(theirs.map(\.ip)), theirs.count,
-                                 [.secureAccount(account)]))
+                                 [.secureAccount(account)],
+                                 todo: [(.treatAsTaken, "Treat \(account)'s exported data as the attacker's, and decide who must be told.", [])]))
         }
 
         // An app acting for an account from a suspect address: the attacker's app, or theirs through the person's grant.
@@ -396,7 +524,8 @@ public enum LogReading {
         for (account, theirs) in grouped(throughApp) {
             let apps = unique(theirs.map(\.app)), logs = unique(theirs.map { logName($0.log) })
             found.append(Pending(.appFromSuspect, "\(list(apps)) acted for \(account) from \(list(unique(theirs.map(\.ip)))) (\(list(logs))).",
-                                 [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
+                                 [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)],
+                                 todo: [(.look, "See what \(list(apps)) did for \(account) from the attacker's address.", [])]))
         }
 
         // Anything else a suspect address did as an account: Gemini asked to search a mailbox, Drive, Contacts, Calendar…
@@ -406,7 +535,8 @@ public enum LogReading {
         for (account, theirs) in grouped(other) {
             let logs = unique(theirs.map { logName($0.log) })
             found.append(Pending(.actedFromSuspect, "\(account) used \(list(logs)) from \(list(unique(theirs.map(\.ip)))): see what was "
-                                 + "searched, opened or changed.", [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
+                                 + "searched, opened or changed.", [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)],
+                                 todo: [(.look, "See what was searched, opened or changed in \(account)'s \(list(logs)) from the attacker's address.", [])]))
         }
 
         // AI agents acting for people: said, by agent, and called out when the account is one the attacker had.
@@ -421,7 +551,8 @@ public enum LogReading {
             found.append(Pending(.agentActed, "\(agent.prefix(1).uppercased() + agent.dropFirst()) acted for \(list(accounts)) "
                                  + "(\(theirs.count) event\(theirs.count == 1 ? "" : "s"): \(list(unique(theirs.map { logName($0.log) }))))"
                                  + (attacked.isEmpty ? "." : ", including \(list(attacked)), whom the attacker had: check what it did."),
-                                 accounts, unique(theirs.map(\.ip).filter { !$0.isEmpty }), theirs.count, []))
+                                 accounts, unique(theirs.map(\.ip).filter { !$0.isEmpty }), theirs.count, [],
+                                 todo: attacked.isEmpty ? [] : [(.look, "See what \(agent) did for \(list(attacked)).", [])]))
         }
 
         // Chat messages from a suspect address: phishing can go out in Chat too.
@@ -429,7 +560,8 @@ public enum LogReading {
         for (account, theirs) in grouped(chatted) {
             found.append(Pending(.chatFromSuspect, "\(account) posted \(theirs.count) Chat message\(theirs.count == 1 ? "" : "s") from "
                                  + list(unique(theirs.map(\.ip))) + ": ask who got them not to open their links.", [account],
-                                 unique(theirs.map(\.ip)), theirs.count, []))
+                                 unique(theirs.map(\.ip)), theirs.count, [],
+                                 todo: [(.warnChat, "Ask who got \(account)'s Chat messages not to open their links.", [])]))
         }
 
         // Chrome's own warnings, by the account whose password it was (the trigger's), else the profile's.
@@ -450,15 +582,18 @@ public enum LogReading {
         }
         for (account, theirs) in chrome("PASSWORD_REUSE", { $0.parameters["EVENT_REASON"] != "PASSWORD_REUSED_PHISHING_URL" }) {
             found.append(Pending(.passwordOnOtherSite, "\(account) used their password on \(sites(theirs)) (Chrome): if that site is "
-                                 + "breached, so is this account.", [account], [], theirs.count, []))
+                                 + "breached, so is this account.", [account], [], theirs.count, [],
+                                 todo: [(.checkPassword, "Have \(account) change that password wherever else they use it.", [])]))
         }
         for (account, theirs) in chrome("PASSWORD_BREACH") {
             found.append(Pending(.breachedPassword, "Chrome found a password of \(account)'s in a data breach, on \(sites(theirs)).",
-                                 [account], [], theirs.count, []))
+                                 [account], [], theirs.count, [],
+                                 todo: [(.checkPassword, "Have \(account) change the password Chrome found in a breach.", [])]))
         }
         for (account, theirs) in chrome("UNSAFE_SITE_VISIT", { $0.parameters["EVENT_RESULT"] == "BYPASSED" }) {
             found.append(Pending(.pastPhishingWarning, "\(account) went past Chrome's warning to \(sites(theirs)): check whether they "
-                                 + "typed a password there.", [account], [], theirs.count, []))
+                                 + "typed a password there.", [account], [], theirs.count, [],
+                                 todo: [(.checkPassword, "Ask \(account) whether they typed a password at \(sites(theirs)).", [])]))
         }
 
         // Mail from a suspect address: the message to pull from everyone. Its sender is secured by their sign-in from that
@@ -474,16 +609,46 @@ public enum LogReading {
             let subject = theirs.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
             found.append(Pending(.mailFromSuspect, "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) went through Gmail from "
                                  + list(unique(theirs.map(\.ip))) + ".", unique(theirs.map(\.who).filter(isAccount)),
-                                 unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)]))
+                                 unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)],
+                                 todo: [(.pullEmail, "Pull “\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) from every mailbox: it went out "
+                                         + "from the attacker's address.", [.pullEmail(messageID: id, subject: subject)])]))
         }
 
         let ranked = found.enumerated().sorted { a, b in
             (Finding.Kind.allCases.firstIndex(of: a.element.kind)!, a.offset) < (Finding.Kind.allCases.firstIndex(of: b.element.kind)!, b.offset)
         }.map(\.element)
+        // A finding about an account already locked drafts no lock again: what's left is in the to-do list.
+        let locked = Set(statuses.filter { $0.state == .locked }.map { $0.account.lowercased() })
+        func stillToDraft(_ draft: Draft) -> Bool {
+            if case .secureAccount(let account) = draft { return !locked.contains(account.lowercased()) }
+            return true
+        }
+
+        // Logs read for every account that stop short of the attack: pull them again for just these accounts.
+        var coverage: [(Task.Kind, String, [String], [Draft])] = []
+        if let first = statuses.compactMap(\.attackedAt).min() {
+            let short = context.capped.filter { $0.value > first }.map(\.key).sorted()
+            let accounts = statuses.map(\.account)
+            if !short.isEmpty {
+                coverage.append((.pullAgain, "Pull the \(list(short.map(logName))) \(short.count == 1 ? "log" : "logs") again for just "
+                                 + (accounts.count <= 20 ? list(accounts) : "the accounts above, 20 at a time") + ": read for every account, "
+                                 + (short.count == 1 ? "it stops at its newest events and doesn't" : "they stop at their newest events and don't")
+                                 + " reach back to the attack.", accounts, []))
+            }
+        }
+        // Most urgent first, each once.
+        let todos = statusTasks + coverage + ranked.flatMap { item in item.todo.map { ($0.0, $0.1, item.accounts, $0.2) } }
+        var said: Set<String> = []
+        let ordered = todos.enumerated().filter { said.insert($0.element.1 + "|" + $0.element.3.map(\.title).joined()).inserted }.sorted { a, b in
+            (Task.Kind.allCases.firstIndex(of: a.element.0)!, a.offset) < (Task.Kind.allCases.firstIndex(of: b.element.0)!, b.offset)
+        }.map(\.element)
+
         return Reading(findings: ranked.enumerated().map { index, item in
             Finding(id: "F\(index + 1)", kind: item.kind, words: item.words, accounts: item.accounts, addresses: item.addresses,
-                    events: item.events, drafts: item.drafts, markable: item.markable)
-        }, statuses: statuses, events: events.count)
+                    events: item.events, drafts: item.drafts.filter(stillToDraft), markable: item.markable)
+        }, statuses: statuses, toDo: ordered.enumerated().map { index, item in
+            Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3)
+        }, events: events.count)
     }
 
     /// The lock's steps by event name: a password reset by an admin, or by the person from an address they signed in from
@@ -510,20 +675,36 @@ public enum LogReading {
     /// event (by an admin, never from a suspect address, which would be an attacker with an admin's account; or by Google,
     /// as the account's own sign-in log event), the lock they make, and the sign-ins after it. A sign-in from a suspect
     /// address after a lock starts it over: a lock after that sign-in is a new one, read the same way.
-    static func status(_ account: String, _ events: [Event], acting: Set<String>, context: Context) -> Status {
+    static func status(_ account: String, _ events: [Event], acting: Set<String>, context: Context, joined: [Event] = [],
+                       phishedAt: Date? = nil, held: [String: ClosedRange<Date>] = [:]) -> Status {
         let me = account.lowercased()
         let theirs = events.filter { $0.who.lowercased() == me }
-        let attackedAt = theirs.filter { acting.contains($0.ip) }.compactMap(\.time).min()
-        // The addresses it signed in from before the attack: the person's own.
-        let before = Set(theirs.filter { event in
+        // When the attack on it began: its first event from a suspect address, or Chrome seeing its password typed on a
+        // phishing site. Nothing before counts as its lock, and without it nothing does (security review 2026-10-22).
+        let attackedAt = (theirs.filter { acting.contains($0.ip) }.compactMap(\.time) + [phishedAt].compactMap(\.self)).min()
+        // The addresses it signed in from before the attack: the person's own. A later sign-in counts as theirs by network
+        // (`network`: a home's IPv6 address changes), unless a suspect address shares that network; a password change only
+        // from the very address.
+        let beforeExact = Set(theirs.filter { event in
             event.log == "login" && event.event == "login_success" && (event.time.map { at in attackedAt.map { at < $0 } ?? false } ?? false)
         }.map(\.ip))
-        // Done to the account, oldest first. The person's own password change counts only from an address they used before
-        // the attack: one from a new address may be the attacker's, from an address not yet known as theirs.
+        let suspectNetworks = Set(acting.map(network))
+        let knownNetworks = Set(beforeExact.map(network)).subtracting(suspectNetworks)
+        let known = { (ip: String) in beforeExact.contains(ip) || knownNetworks.contains(network(ip)) }
+        // A suspension later undone isn't a lock.
+        let unsuspended = events.filter { $0.log == "admin" && $0.event == "UNSUSPEND_USER" && $0.parameters["USER_EMAIL"]?.lowercased() == me }
+            .compactMap(\.time)
+        // Done to the account, oldest first: by an admin, never from a suspect address nor through an account the attacker
+        // held at the time; by Google; or the person's own password change from the very address they used before the attack.
         let done = events.filter { event in
-            event.time != nil && ((event.log == "admin" && event.parameters["USER_EMAIL"]?.lowercased() == me && !acting.contains(event.ip))
-                || (["login", "useraccounts"].contains(event.log) && event.who.lowercased() == me
-                    && (event.event != "password_edit" || before.contains(event.ip))))
+            guard let at = event.time else { return false }
+            if suspensions.contains(event.event), unsuspended.contains(where: { $0 > at }) { return false }
+            if event.log == "admin" {
+                return event.parameters["USER_EMAIL"]?.lowercased() == me && !acting.contains(event.ip)
+                    && !(held[event.who.lowercased()]?.contains(at) ?? false)
+            }
+            guard ["login", "useraccounts"].contains(event.log), event.who.lowercased() == me else { return false }
+            return event.event != "password_edit" || (!acting.contains(event.ip) && beforeExact.contains(event.ip))
         }.sorted { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
         let entries = theirs.filter { acting.contains($0.ip) && ["login", "saml"].contains($0.log) && $0.event == "login_success"
             && $0.time != nil }.sorted { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) }
@@ -534,7 +715,7 @@ public enum LogReading {
         }
         var since = attackedAt
         var reset: Status.Step?, signOut: Status.Step?, suspended: Status.Step?, whole: Date?, lockedAt: Date?, backIn: Event?
-        while true {
+        while attackedAt != nil {
             reset = first(resets, since: since)
             signOut = first(signOuts, since: since)
             suspended = first(suspensions, since: since)
@@ -549,8 +730,9 @@ public enum LogReading {
         let after = lockedAt.map { locked in theirs.filter { ($0.time.map { $0 > locked }) ?? false } } ?? []
         let triedAt = after.filter { acting.contains($0.ip) && $0.log == "login"
             && ($0.event == "login_failure" || $0.event.hasPrefix("suspicious_")) }.compactMap(\.time).max()
-        let newAddresses = unique(after.filter { $0.log == "login" && $0.event == "login_success" && !$0.ip.isEmpty
-            && !acting.contains($0.ip) && !before.contains($0.ip) }.map(\.ip))
+        var newPlaces: Set<String> = []
+        let newAddresses = after.filter { $0.log == "login" && $0.event == "login_success" && !$0.ip.isEmpty && !acting.contains($0.ip)
+            && !known($0.ip) }.map(\.ip).filter { newPlaces.insert(suspectNetworks.contains(network($0)) ? $0 : network($0)).inserted }
 
         let unseen: String? = if lockedAt != nil { nil }
             else if !context.pulledBy.isEmpty { "a pull by one address doesn't show it (the lock is done from yours): pull by the accounts" }
@@ -559,9 +741,160 @@ public enum LogReading {
         // A lock before the first suspect event these logs hold: the window may start after the attack did.
         let earlierLockAt = lockedAt == nil ? done.last(where: { lockSteps.contains($0.event) })?.time : nil
         let state: Status.State = backIn != nil ? .stillIn : whole != nil ? .locked : lockedAt != nil ? .partlyLocked : .notLocked
-        return Status(account: account, state: state, attackedAt: attackedAt, reset: reset, signOut: signOut, suspended: suspended, lockedAt: lockedAt,
-                      backInAt: backIn?.time, backInFrom: backIn?.ip ?? "", triedAt: triedAt, newAddresses: newAddresses, unseen: unseen,
-                      earlierLockAt: earlierLockAt)
+        return Status(account: account, state: state, attackerGotIn: !entries.isEmpty, attackedAt: attackedAt, reset: reset, signOut: signOut,
+                      suspended: suspended, lockedAt: lockedAt, backInAt: backIn?.time, backInFrom: backIn?.ip ?? "", triedAt: triedAt,
+                      newAddresses: newAddresses, unseen: unseen, earlierLockAt: earlierLockAt,
+                      timeline: timeline(me, events, acting: acting, since: attackedAt, known: known, joined: joined))
+    }
+
+    /// At most this many moments in an account's timeline (invariant 9): the earliest kept.
+    static let timelineCap = 200
+
+    /// `me`'s timeline, from the attack on: each attacker sign-in (with how it got past the challenge), failure and change
+    /// from a suspect address, the device that joined at one, and the rest the attacker did a line per log; each step of
+    /// every lock an admin took (a forced sign-out, a reset, apps revoked at once, recovery removed, a suspension); what
+    /// Google did; and the person's own changes, said with the address when it's not one they used before the attack.
+    static func timeline(_ me: String, _ events: [Event], acting: Set<String>, since: Date?, known: (String) -> Bool, joined: [Event]) -> [Moment] {
+        let from = since ?? .distantPast
+        var moments: [Moment] = []
+        func add(_ at: Date?, _ kind: Moment.Kind, _ words: String, until: Date? = nil, count: Int = 1, plain: String? = nil) {
+            guard let at else { return }
+            moments.append(Moment(at: at, until: until, kind: kind, words: words, count: count, plain: plain ?? words))
+        }
+        var activity: [String: [Event]] = [:]
+        for event in events where event.who.lowercased() == me && acting.contains(event.ip) {
+            switch (event.log, event.event) {
+            case ("login", "login_success"):
+                add(event.time, .attackerSignedIn, "The attacker signed in from \(event.ip)" + proof(event))
+            case ("saml", "login_success"):
+                add(event.time, .attackerSignedIn, "The attacker signed in to \(event.parameters["application_name"] ?? "another app") through Google "
+                    + "from \(event.ip)", plain: "The attacker signed in to another app through Google from \(event.ip)")
+            case ("login", "login_failure"):
+                add(event.time, .attackerFailed, "The attacker's sign-in from \(event.ip) failed")
+            case ("login", let name) where name.hasPrefix("suspicious_"):
+                add(event.time, .googleBlocked, "Google blocked a suspicious sign-in from \(event.ip)")
+            case ("token", "authorize"):
+                add(event.time, .attackerChanged, "The attacker gave \(event.parameters["app_name"] ?? "an app") access",
+                    plain: "The attacker gave an app access")
+            case (_, let name) where changeWords[name] != nil:
+                let sender = event.parameters["affected_email_address"].map { " \($0)" } ?? " a sender"
+                add(event.time, .attackerChanged, "The attacker " + (changeWords[name] ?? "").replacingOccurrences(of: "{sender}", with: sender),
+                    plain: "The attacker " + (changeWords[name] ?? "").replacingOccurrences(of: "{sender}", with: " a sender"))
+            case ("login", _), ("accessevaluation", _):
+                break   // a sign-in's challenges and token checks are part of the sign-in
+            default:
+                activity[event.log, default: []].append(event)
+            }
+        }
+        for (log, theirs) in activity.sorted(by: { $0.key < $1.key }) {
+            let times = theirs.compactMap(\.time).sorted()
+            add(times.first, .attackerActivity, "\(theirs.count) \(logName(log)) event\(theirs.count == 1 ? "" : "s") from the attacker's address",
+                until: times.count > 1 ? times.last : nil, count: theirs.count)
+        }
+        for device in joined where device.who.lowercased() == me {
+            let words = deviceWords(device)
+            add(device.time, .deviceJoined, words.prefix(1).uppercased() + words.dropFirst() + " joined the account",
+                plain: "A computer joined the account at the attacker's sign-in")
+        }
+        for event in events where event.log == "contacts" && event.event == "print_contacts" && event.who.lowercased() == me
+            && (event.time ?? .distantPast) >= from {
+            let count = Int(event.parameters["CONTACTS_COUNT"] ?? "").map { " (\($0.formatted(.number.locale(Locale(identifier: "en_US")))))" } ?? ""
+            add(event.time, .contactsPrinted, "Their contacts\(count) were printed")
+        }
+        // An admin's steps, never from a suspect address; an app's access revoked many at once is said once.
+        var revoked: [(at: Date, count: Int, by: String)] = []
+        for event in events where event.log == "admin" && event.parameters["USER_EMAIL"]?.lowercased() == me && !acting.contains(event.ip)
+            && (event.time ?? .distantPast) >= from {
+            let by = event.who.isEmpty ? "an admin" : event.who
+            switch event.event {
+            case "CHANGE_PASSWORD": add(event.time, .passwordReset, "Password reset by \(by)")
+            case "RESET_SIGNIN_COOKIES": add(event.time, .signedOut, "Signed out of every session by \(by)")
+            case "REVOKE_3LO_TOKEN", "REVOKE_3LO_DEVICE_TOKENS":
+                guard let at = event.time else { continue }
+                revoked.append((at, 1, by))
+            case "REVOKE_ASP": add(event.time, .appPasswordsDeleted, "An app password deleted by \(by)")
+            case "DELETE_2SV_SCRATCH_CODES": add(event.time, .backupCodesDeleted, "2-Step Verification backup codes deleted by \(by)")
+            case "REMOVE_RECOVERY_EMAIL": add(event.time, .recoveryRemoved, "Recovery email removed by \(by)")
+            case "REMOVE_RECOVERY_PHONE": add(event.time, .recoveryRemoved, "Recovery phone removed by \(by)")
+            case "SUSPEND_USER": add(event.time, .suspended, "Suspended by \(by)")
+            case "UNSUSPEND_USER": add(event.time, .unsuspended, "Unsuspended by \(by)")
+            case "CHANGE_PASSWORD_ON_NEXT_LOGIN": break   // said with the reset beside it
+            default: add(event.time, .adminChange, "\(sentence(event.event)) by \(by)")
+            }
+        }
+        // One batch: the same admin's revocations within a minute of the batch's first.
+        var batches: [(at: Date, count: Int, by: String)] = []
+        for revoke in revoked.sorted(by: { $0.at < $1.at }) {
+            if let last = batches.indices.last(where: { batches[$0].by == revoke.by }), revoke.at.timeIntervalSince(batches[last].at) <= 60 {
+                batches[last].count += 1
+            } else {
+                batches.append(revoke)
+            }
+        }
+        for batch in batches {
+            add(batch.at, .appsRevoked, "\(batch.count) app\(batch.count == 1 ? "'s" : "s'") access revoked by \(batch.by)", count: batch.count)
+        }
+        // Google, and the person: their own changes from addresses that aren't a suspect's.
+        for event in events where ["login", "useraccounts"].contains(event.log) && event.who.lowercased() == me && !acting.contains(event.ip)
+            && (event.time ?? .distantPast) >= from {
+            let from = event.ip.isEmpty || known(event.ip) ? "" : ", from \(event.ip), an address not seen before the attack"
+            switch event.event {
+            case let name where name.hasPrefix("account_disabled_"):
+                add(event.time, .googleDisabled, "Google disabled the account" + (name == "account_disabled_hijacked" ? " as hijacked"
+                    : name == "account_disabled_password_leak" ? ": its password leaked" : ""))
+            case "user_signed_out_due_to_suspicious_session_cookie":
+                add(event.time, .googleSignedOut, "Google signed them out: a suspicious session cookie")
+            // From an address not theirs before the attack it may not be them: said without saying who.
+            case "password_edit": add(event.time, .ownPassword, from.isEmpty ? "They changed their own password" : "The password was changed" + from)
+            case "2sv_enroll": add(event.time, .own2SV, "They turned on 2-Step Verification" + from)
+            case "passkey_enrolled": add(event.time, .ownPasskey, "They added a passkey" + from)
+            case "recovery_phone_edit": add(event.time, .ownRecovery, "They changed their recovery phone" + from)
+            case "recovery_email_edit": add(event.time, .ownRecovery, "They changed their recovery email" + from)
+            default: break
+            }
+        }
+        // Once each (a password change is in both the sign-in and account changes logs), in time order.
+        var seen: Set<String> = []
+        let rank = { (kind: Moment.Kind) in Moment.Kind.allCases.firstIndex(of: kind) ?? 0 }
+        return Array(moments.sorted { ($0.at, rank($0.kind), $0.words) < ($1.at, rank($1.kind), $1.words) }
+            .filter { seen.insert("\($0.at.timeIntervalSince1970)|\($0.words)").inserted }.prefix(timelineCap))
+    }
+
+    /// The network an address is in, to tell a person's own from a new one: an IPv4 address itself; an IPv6 address's
+    /// first 64 bits, which a home keeps while its devices change the rest (privacy addresses).
+    static func network(_ ip: String) -> String {
+        guard ip.contains(":") else { return ip }
+        let halves = ip.lowercased().components(separatedBy: "::")
+        let head = halves[0].split(separator: ":", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
+        let groups = head.count >= 4 || halves.count == 1 ? head : head + Array(repeating: "0", count: 4 - head.count)
+        return groups.prefix(4).map { String(Int($0, radix: 16) ?? 0, radix: 16) }.joined(separator: ":")
+    }
+
+    /// How an attacker's sign-in got past Google's challenge, mid-sentence: the means of the takeover.
+    static func proof(_ event: Event) -> String {
+        let methods = (event.parameters["login_challenge_method"] ?? "").split(separator: " ").map(String.init)
+        if methods.contains("knowledge_historical_password") { return ", answering Google's question for a previous password" }
+        if methods.contains("device_prompt") { return ": someone approved the sign-in prompt on the person's phone" }
+        if methods.contains(where: { $0.hasPrefix("idv_") }) { return ": someone entered the code sent to the person's phone" }
+        if methods.contains("passkey") { return ", with a passkey" }
+        return ""
+    }
+
+    /// What an attacker's change was, mid-sentence ("{sender}": the address blocked).
+    static let changeWords: [String: String] = [
+        "passkey_enrolled": "added a passkey",
+        "2sv_enroll": "turned on 2-Step Verification with a phone or app of their choosing",
+        "recovery_email_edit": "changed the recovery email",
+        "recovery_phone_edit": "changed the recovery phone",
+        "recovery_secret_qa_edit": "changed the recovery question",
+        "blocked_sender": "blocked{sender} in Gmail",
+        "password_edit": "changed the password",
+    ]
+
+    /// `CHANGE_TWO_STEP_VERIFICATION_FREQUENCY` as "Change two step verification frequency".
+    static func sentence(_ name: String) -> String {
+        let words = name.replacingOccurrences(of: "_", with: " ").lowercased()
+        return words.prefix(1).uppercased() + words.dropFirst()
     }
 
     /// Every event that is a step of a lock.
@@ -570,10 +903,12 @@ public enum LogReading {
     /// A finding before it has its place (and so its ID).
     private struct Pending {
         let kind: Finding.Kind, words: String, accounts: [String], addresses: [String], events: Int, drafts: [Draft], markable: [String]
+        /// What's left to do about it, if anything: each its kind, its sentence, and its drafts.
+        let todo: [(Task.Kind, String, [Draft])]
         init(_ kind: Finding.Kind, _ words: String, _ accounts: [String], _ addresses: [String], _ events: Int, _ drafts: [Draft],
-             markable: [String] = []) {
-            (self.kind, self.words, self.accounts, self.addresses, self.events, self.drafts, self.markable)
-                = (kind, words, accounts, addresses, events, drafts, markable)
+             markable: [String] = [], todo: [(Task.Kind, String, [Draft])] = []) {
+            (self.kind, self.words, self.accounts, self.addresses, self.events, self.drafts, self.markable, self.todo)
+                = (kind, words, accounts, addresses, events, drafts, markable, todo)
         }
     }
 
@@ -599,6 +934,12 @@ public enum LogReading {
     /// A log's name as people say it.
     static func logName(_ log: String) -> String {
         switch log {
+        case "login": "Sign-ins"
+        case "token": "OAuth"
+        case "admin": "Admin"
+        case "useraccounts": "Account changes"
+        case "saml": "SAML"
+        case "takeout": "Takeout"
         case "geminiinworkspaceapps": "Gemini"
         case "drive": "Drive"
         case "calendar": "Calendar"
@@ -610,15 +951,20 @@ public enum LogReading {
         case "chat": "Chat"
         case "mobile": "Devices"
         case "datastudio": "Looker Studio"
-        case "accessevaluation": "Google's access checks"
+        case "accessevaluation": "Access evaluation"
         default: log
         }
     }
 
     /// An account's address: a Chrome event's computer login name ("carol") is not one, and drafts nothing.
     static func isAccount(_ who: String) -> Bool {
+        // Strictly an address's shape: a Chrome event's account is what the browser reports, so nothing else (no space, no
+        // sentence) reaches a status, a draft or the model (security review 2026-10-22).
         let parts = who.split(separator: "@", omittingEmptySubsequences: false)
-        return parts.count == 2 && !parts[0].isEmpty && parts[1].contains(".")
+        guard who.count <= 254, parts.count == 2, !parts[0].isEmpty, parts[1].contains("."), !parts[1].hasPrefix("."), !parts[1].hasSuffix(".")
+        else { return false }
+        return parts[0].unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "._%+-'".unicodeScalars.contains($0)) }
+            && parts[1].unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || ".-".unicodeScalars.contains($0)) }
     }
 
     /// Events by their account (case aside), in the order each account first appears.
