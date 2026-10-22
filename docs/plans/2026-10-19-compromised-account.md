@@ -1,6 +1,6 @@
 # Compromised account: lock it, see what changed, undo it
 
-**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built; slice 7 (apps and AI agents, every log) built; slice 8 (computers, and a device joined at a sign-in) built.** When an account is taken over and sends phishing from Gmail, signing the person
+**Status (2026-10-21): slice 1 merged (#79: the check, the lock and the picks, and Secure Account… on a person's page); slice 2 merged (#82: Pull Incident Logs); slice 3 (search a mailbox) merged (#83); slice 4 (leftover drafts) merged (#85); slice 5 (Chrome: its log by profile, a person's Chrome profiles) built; slice 6 (the Incident screen) built; slice 7 (apps and AI agents, every log) built; slice 8 (computers, and a device joined at a sign-in) built; slice 9 (Apps Script projects) built.** When an account is taken over and sends phishing from Gmail, signing the person
 out and resetting the password are in this app, but the rest needed the Admin console or GAM in Terminal; the
 operator asked for all of it in GAM GUI.
 This is that response, for a person who **stays employed**: no manager, no hand-over. Each default is below, for the
@@ -123,6 +123,11 @@ Found in a review: an attacker's sign-in can register their own computer to the 
 and the log reader didn't call out. Check Account lists the person's computers (Google's endpoint management), and Read
 the logs says a device registered at the moment of a sign-in from a suspect address. Reads only. Runbook:
 docs/domains/compromised-account.md, "Computers, and a device joined at a sign-in".
+
+## Slice 9: Apps Script projects
+Asked for (2026-10-22): whether Apps Script is checked. A script someone authorized keeps acting for them on its triggers.
+Check Account lists the person's own Apps Script projects, the latest changed first, and calls out one made or changed in
+the last two weeks. Reads only. Runbook: docs/domains/compromised-account.md, "Apps Script projects".
 
 ## Done means
 Each new builder in `NativeArgvTests` with a strict mock handler that fails as GAM's source does; the screen

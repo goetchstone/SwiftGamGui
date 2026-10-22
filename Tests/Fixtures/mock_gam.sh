@@ -1605,10 +1605,64 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "resources" ]; then
   exit 0
 fi
 
+# `<user> print filelist showmimetype gscript fields <DriveFieldNameList> formatjson` -> GAM's CSV, `Owner`, `id`, `name` and a
+# `JSON` column per file (printFileList, gam/__init__.py:61056-61700 at 7.48.30; the compromised-account check's Apps Script
+# projects): the projects in mock_gam/script_projects.tsv the user owns (an owner, a tab, the file as GAM's JSON prints it),
+# exit 0. GAM puts the MIME type into Drive's query beside its default `'me' in owners`, so only the user's own files of that
+# type, the bin's included (no excludetrashed). printFileList exits 60 whenever it printed no row (`if not csvPF.rows:
+# setSysExitRC(NO_ENTITIES_FOUND_RC)`), overwriting each failure's own code: none is "Got 0 Drive Files/Folders … for <u>…"
+# (written once files.list returned) and the titles alone; a refused token is its warning before any listing ("User: <u>, User
+# Print Failed: …"); Drive off is GAM_MOCK_STATE/nodrive/<user>, the listing begun and then userDriveServiceNotEnabledWarning;
+# GAM_MOCK_STATE/quiet/<user> a refresh error handleOAuthTokenError drops without a word (REFRESH_PERM_ERRORS); all 60. Only
+# this form: that MIME type, the app's fields (GAM fetches only those named; any other isn't modelled), formatjson; any other
+# option is refused as not modelled, and any other `print filelist` falls to the refusal below. Header order approximate.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "filelist" ] \
+   && [ "$(printf '%s' "${5:-}" | tr '[:upper:]' '[:lower:]' | tr -d '_')" = showmimetype ]; then
+  user=$2; shift 4; mime=""; fields=""; fj=""
+  while [ $# -gt 0 ]; do
+    word=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -d '_')
+    case "$word" in
+      showmimetype) need_value $# "MimeTypeList"; mime=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift 2 ;;
+      fields) need_value $# "DriveFieldNameList"; fields=$2; shift 2 ;;
+      formatjson) fj=1; shift ;;
+      *) not_modelled "print filelist with $1" ;;
+    esac
+  done
+  [ "$mime" = gscript ] || not_modelled "print filelist other than the Apps Script projects (showmimetype gscript)"
+  [ -n "$fj" ] || not_modelled "print filelist without formatjson"
+  for field in $(printf '%s' "$fields" | tr ',' ' '); do
+    case "$field" in id|name|createdtime|modifiedtime|trashed|lastmodifyinguser) ;; *) not_modelled "print filelist field $field" ;; esac
+  done
+  for field in id name createdtime modifiedtime trashed lastmodifyinguser; do
+    case ",$fields," in *",$field,"*) ;; *) not_modelled "print filelist without field $field (the fixture holds it; GAM fetches only the fields named)" ;; esac
+  done
+  none="Owner,id,name,owners.emailAddress,JSON"
+  if ! known_user "$user"; then
+    printf 'User: %s, User Print Failed: invalid_grant: Invalid email or User ID\n' "$user" 1>&2; echo "$none"; exit 60
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/$user" ]; then echo "$none"; exit 60; fi
+  query="'me' in owners and (mimeType = 'application/vnd.google-apps.script')"
+  printf 'Getting all Drive Files/Folders that match query (%s) for %s\n' "$query" "$user" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nodrive/$user" ]; then
+    printf 'User: %s, Drive Service/App not enabled\n' "$user" 1>&2; echo "$none"; exit 60
+  fi
+  owned=$(awk -F '\t' -v who="$user" '$1 == who { print substr($0, length($1) + 2) }' "$GAM_MOCK_FIXTURES/script_projects.tsv")
+  n=$(printf '%s' "$owned" | grep -c . || true)
+  if [ "$n" -eq 1 ]; then noun="Drive File/Folder"; else noun="Drive Files/Folders"; fi
+  printf '\rGot %s %s that matched query (%s) for %s...\r\n' "$n" "$noun" "$query" "$user" 1>&2
+  if [ "$n" -eq 0 ]; then echo "$none"; exit 60; fi
+  echo "Owner,id,name,JSON"
+  printf '%s\n' "$owned" | while IFS= read -r record; do
+    gam_row "$user" "$(json_text id "$record")" "$(json_text name "$record")" "$record"
+  done
+  exit 0
+fi
+
 # Reads whose GAM shape this mock doesn't model, refused rather than answered in a guessed one: they printed
 # NDJSON, which GAM never prints for them. No app screen reads them yet. Their CSV, read at 7.48.22, for
 # whoever models one (in GAM's dialect, gam_row; the data from git history):
-# - `user <u> print filelist … formatjson`: an `Owner` column, then Drive's own (printFileList, :60674).
+# - `user <u> print filelist … formatjson`: an `Owner` column, then Drive's own (printFileList, :60674). Its Apps Script form
+#   (showmimetype gscript) is modelled above.
 # - `all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own calendars
 #   (printShowCalendars, :55691, :55800-55818); a person with Calendar off exits 73 (the C3 index).
 # - `calendars <cal> print events … formatjson`: calendarId,id,JSON, only the events the query or event ID

@@ -103,6 +103,7 @@ final class CompromisedChangesTests {
         #expect(check.findings.contains { $0.hasPrefix("2 apps have access to carol@example.com's account (broad: Mail Sync Pro). The sign-out revokes them all") })
         #expect(check.findings.contains { $0.hasPrefix("2 phones or tablets sync carol@example.com's account") })
         #expect(try check.computers.get().map(\.model) == ["Virtual Machine", "MacBook Pro"], "her own, never the prefix's other account's")
+        #expect(try check.scripts.get().map(\.name) == ["Inbox Helper", "Untitled project", "Timesheet export"], "the latest changed first")
         #expect(check.findings.contains { $0.hasPrefix("2 computers are signed in with carol@example.com's account, 1 of them a virtual machine") })
         #expect(writes().isEmpty)
         #expect(check.user.primaryEmail == "carol@example.com" && !check.isConnectedAdmin)
@@ -216,6 +217,17 @@ final class CompromisedChangesTests {
         let found = try result.get()
         #expect(query == "in:sent newer_than:3d" && found.first?.bcc.count == 7)
         #expect(searches.state(for: "alice@example.com") == nil && writes().isEmpty)
+    }
+
+    /// Apps Script through the real read: someone with none reads as none (GAM's 60 with its own "Got 0"); a refusal GAM
+    /// prints no word for is a failure, never "none".
+    @Test func scriptsOfSomeoneWithNoneAreNoneAndARefusalIsSaid() async throws {
+        try await connect()
+        #expect(try await checked("dana@example.com").scripts.get().isEmpty)
+        try FileManager.default.createDirectory(at: state.appending(path: "quiet"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "quiet/carol@example.com").path, contents: Data())
+        guard case .failure(let problem) = try await checked().scripts else { Issue.record("not refused"); return }
+        #expect(problem.summary.contains("exit=60"), "\(problem.summary)")
     }
 
     /// A domain whose service account can't read devices: the computers say how to grant the scope, and the rest of the check

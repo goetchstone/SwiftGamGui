@@ -40,7 +40,8 @@ let only `requires` stop a step; it may not tolerate failures).
    `print forwardingaddresses`, `print delegates`, `print sendas verifyonly`, `print admins user P`, the drafts, `show
    vacation` (an attacker's auto-reply phishes everyone who writes), `print mobile query email:P` (a phone that syncs
    the mail may be the attacker's; shown, not changed: the wipe is the Admin console's) and `print devices query email:P`
-   (a computer signed in with the account, which an attacker's sign-in can leave behind; slice 8). Each failure is said
+   (a computer signed in with the account, which an attacker's sign-in can leave behind; slice 8) and `print filelist
+   showmimetype gscript` (the person's Apps Script projects; slice 9). Each failure is said
    beside its list, never taken as "none". `findings` says what to look at first. The connected admin as P is shown and
    blocks the plan.
 2. **Pick:** a box per filter (delete), delegate (remove) and send-as address but the primary (remove), the auto-reply
@@ -70,6 +71,7 @@ let only `requires` stop a step; it may not tolerate failures).
 | `user P show vacation`, `user P vacation off` | 8283-8286 | GamGUI's builders (Users' auto-reply), held to argv.json |
 | `report admin user P start -Nh end now maxactivities M` (no `userisactor`) | 4730-4744 | doReport :14779-14788: read as `user all` with the filter `USER_EMAIL==P`, what admins did to P; a non-user reads none |
 | `print mobile query email:P fields resourceid,… formatjson` | 4555-4562 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
+| `user P print filelist showmimetype gscript fields … formatjson` | 7793-7822 | printFileList: the type put in Drive's query beside `'me' in owners`, My Drive only, the bin included; CSV `Owner,id,name,JSON`; exit 60 whenever no row was printed, none and every failure alike (`ScriptProject.list` reads none only from GAM's "Got 0 … for P") |
 | `print devices query email:P fields … userfields … formatjson` | 4359-4367 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
 
 ## Gotchas / mock-lies traps
@@ -307,6 +309,34 @@ the same second as the sign-in), and the phones list never shows a computer. Rea
   console's Devices › Endpoints for that user; without the scope, the note. Pull Incident Logs with Devices for an
   account that just registered a computer: the registration is said in words.
 
+## Apps Script projects (slice 9)
+A script someone authorized keeps acting for them, on its triggers, for as long as that access lasts: an attacker can leave
+one that reads or forwards mail. Reads only.
+- **Check Account's Apps Script projects** (`GamCommands.printScriptProjects`, `Compromised.ScriptProject`,
+  `UserAccess.scriptProjects`): the person's own standalone projects, Drive files of type `gscript`, the latest changed
+  first, each with when it was made and changed and by whom, and whether it's in the bin. One made or changed in the two
+  weeks before the check is called out, and the findings name those. The person can open one at script.google.com; one
+  they don't recognise can be deleted from their Drive.
+- **Exit 60 is "none" only on GAM's word:** printFileList exits 60 whenever it printed no row, which overwrites a
+  failure's own code (Drive off, a refused token, a refresh error it drops without a word). So `ScriptProject.list` reads
+  60 as no project only with GAM's "Got 0 Drive Files/Folders … for P…" (written once Drive answered; `show_gettings` is on
+  in the app's fresh config) and no other line; anything else is said as a failure. Found by review before commit: the
+  first cut read GAM's exit as 0 for none, and a fix by exit code alone would have read every failure as none.
+- **What GAM can't show:** GAM has no Apps Script commands, so nothing here lists a project's triggers or deployments. A
+  script bound inside a Sheet or Doc isn't a Drive file, and one in a shared drive isn't the person's, so neither shows;
+  once authorized each is a connected app (slice 7), often named "Untitled project", and the lock's sign-out revokes it.
+- **Not built:** a Read the logs finding for a script made from a suspect address. The Drive log's word for a script file
+  (`doc_type`) hasn't been seen in a real log yet; add it once it has.
+- **The mock:** `script_projects.tsv` (carol@'s "Inbox Helper" made at the incident's sign-in, an untitled one in the bin,
+  an old timesheet script; alice@'s expenses script; none for dana@, GAM's 60 with "Got 0"). `nodrive/<user>` is Drive off
+  and `quiet/<user>` a refusal with no word, both 60, as is an address that isn't a user. Any other `print filelist` is
+  refused as not modelled.
+- **Not modelled, for the live check to tell:** whether a revoked grant stops a project's triggers at once, and whether a
+  real run puts anything but progress on stderr for none (which would read as a failure). Times are GAM's UTC with whole
+  seconds on a fresh config (formatLocalTime), as the fixture holds.
+- **Live check (L1s, read-only):** Check Account on an account with a known script: it's listed with its dates, matching
+  the person's Drive filtered to Apps Script.
+
 ## Where each account stands (incidents plan, slice 1)
 Read the logs opens with each account the attacker had and where it stands, read from the logs in time order
 ([docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md)). Nothing is typed: the "I know when the account
@@ -344,7 +374,7 @@ was locked" switch is gone. Reads only.
 - **Not modelled, for the live check to tell:** which admin events GAM's `update user … password random` and `deprovision
   signout` leave (assumed `CHANGE_PASSWORD` and `RESET_SIGNIN_COOKIES`, Google's names for the Admin console's own); whether
   those events name the person in `USER_EMAIL`; the `type` Google gives `passkey_enrolled`; how far the admin log lags.
-- **Live check (L1s, read-only):** on the real incident, pull by the affected accounts over a window from before the
+- **Live check (L1l, read-only):** on the real incident, pull by the affected accounts over a window from before the
   attack: each status matches what was done and when (the audit log and the Admin console's admin log), and the lock
   events named above are the ones Google recorded.
 
@@ -365,7 +395,7 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   point cites a finding shown, and nothing names an account or address the findings don't.
 
 ## Next
-- The live checks L1, L1c, L1r, L1s and L2.
+- The live checks L1, L1c, L1d, L1r, L1s, L1l and L2.
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): findings first, the incident record,
   the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

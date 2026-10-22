@@ -81,6 +81,7 @@ struct CompromisedView: View {
                             AdminRolesSection(check: check)
                             DevicesSection(check: check)
                             AppsSection(check: check)
+                            ScriptsSection(check: check)
                             StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
                             previewSection
                         }
@@ -745,6 +746,46 @@ private struct DevicesSection: View {
             Text("Computers")
         } footer: {
             Text("Shown, not changed here: block or delete one in the Admin console's Devices.")
+        }
+        .textSelection(.enabled)
+    }
+}
+
+/// The Apps Script projects the person owns, the latest changed first: one made or changed lately may be the attacker's.
+private struct ScriptsSection: View {
+    let check: CompromisedChanges.Check
+
+    var body: some View {
+        let now = Date()
+        Section {
+            switch check.scripts {
+            case .success(let scripts) where scripts.isEmpty:
+                Text("No Apps Script project in this person's Drive.").foregroundStyle(.secondary)
+            case .success(let scripts):
+                ForEach(scripts) { script in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(script.name.isEmpty ? "Untitled" : script.name).fontWeight(.semibold)
+                        Text("Changed " + (script.modifiedAt?.formatted(date: .abbreviated, time: .shortened) ?? script.modified)
+                             + (script.lastChangedBy.isEmpty ? "" : " by \(script.lastChangedBy)")
+                             + (script.created.isEmpty ? "" : " · made "
+                                + (script.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? script.created))
+                             + (script.inTrash ? " · in the bin" : ""))
+                            .font(.callout).foregroundStyle(.secondary)
+                        if script.isRecent(at: now) {
+                            Label("Made or changed in the last two weeks", systemImage: "exclamationmark.triangle.fill")
+                                .symbolRenderingMode(.multicolor)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            case .failure(let problem): Unread(what: "the Apps Script projects", problem: problem)
+            }
+        } header: {
+            Text("Apps Script projects")
+        } footer: {
+            Text("Shown, not changed here. A script inside a Sheet or Doc, or in a shared drive, isn't listed: once authorized it "
+                 + "shows as a connected app. The person can open one at script.google.com, and delete one they don't recognise "
+                 + "from their Drive.")
         }
         .textSelection(.enabled)
     }

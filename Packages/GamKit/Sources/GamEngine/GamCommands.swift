@@ -411,6 +411,22 @@ public enum GamCommands {
     /// What each of its users says (4319-4329): who, when they first signed in to it and last synced it, and their state on it.
     static let deviceUserFields = "useremail,createtime,firstsynctime,lastsynctime,managementstate"
 
+    /// The Apps Script projects `user` owns (7793-7822 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] …
+    /// (fields <DriveFieldNameList>) … [formatjson]`; printFileList): Drive files of type `gscript`
+    /// (application/vnd.google-apps.script), which GAM puts in Drive's own query beside its default `'me' in owners`, so
+    /// only the person's own projects in their My Drive are listed, a binned one too (`trashed` says so). A project bound
+    /// inside a Sheet or Doc isn't a Drive file, and one in a shared drive isn't the person's, so neither shows; GAM has no
+    /// command for a project's triggers. CSV `Owner,id,name,JSON`. GAM exits 60 whenever it printed no row, for none and
+    /// for a failure alike (`Compromised.ScriptProject.list` tells them apart).
+    public static func printScriptProjects(user: String) throws -> GamRead {
+        guard isOneAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
+        return GamRead(["user", user, "print", "filelist", "showmimetype", "gscript", "fields", scriptFields, "formatjson"])
+    }
+
+    /// What a project says (7591-7700 <DriveFieldName>): its name, when it was made and last changed and by whom, and
+    /// whether it's in the bin.
+    static let scriptFields = "id,name,createdtime,modifiedtime,trashed,lastmodifyinguser"
+
     /// What a person's Chrome profile says: whose, where, which browser, and when it was last used.
     static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"
         + "browserversion,browserchannel,deviceinfo,affiliationstate"

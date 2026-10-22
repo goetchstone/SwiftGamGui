@@ -22,6 +22,20 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-22 — The mock gave a GAM read the wrong exit code: the function's last lines set it
+- **What happened:** the Apps Script read's mock exited 0 for a person with no projects, and 73 and 50 for Drive off and a
+  refused token. GAM's printFileList ends with `if not csvPF.rows: setSysExitRC(NO_ENTITIES_FOUND_RC)`, so each of those is
+  60: live, everyone without a script would have read as a failure, and the obvious fix (take 60 as none) would have read
+  every failure as "no project". The gam-command-reviewer found it before commit (docs/domains/compromised-account.md,
+  "Apps Script projects").
+- **Invariant in force:** "the mock lies" (CLAUDE.md), where a result is read by its exit code.
+- **Why it didn't hold:** the per-user failure paths were read from GAM's source; the function's tail, after the loop,
+  wasn't. GAM's exit code is the last `setSysExitRC` it runs, wherever that is.
+- **Would a rule have caught it?** only if enforced differently: when modelling a GAM printer, read to the end of the
+  function for `setSysExitRC`; when one code means both "none" and a failure, read "none" from GAM's own words ("Got 0 …
+  for <who>"), never from the code.
+- **Enforcement home if changed:** skill (the gam-command-reviewer agent's checklist and the pre-commit skill's mock item).
+
 ## 2026-10-21 — A limit the runbook recorded was a hole in the one job the screen exists for
 - **What happened:** the Phishing screen's pull by query couldn't reach the copies Gmail had filed to Spam (GAM's
   `trash` lists without Spam). The runbook recorded it (P6), the screen said it in small print, and a test held the
