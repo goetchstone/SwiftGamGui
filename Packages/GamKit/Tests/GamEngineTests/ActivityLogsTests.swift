@@ -34,15 +34,17 @@ struct ActivityLogsTests {
         let read = rows(result, .login)
         #expect(read.map(\.who).allSatisfy { $0 == "carol@example.com" } && read.count == 7)
         #expect(read.map(\.time) == read.map(\.time).sorted(by: >))
-        // After the lock the attacker's address tried her old password; before it, it added a passkey.
+        // After the lock the attacker's address tried her old password; before it, it blocked the bounce address and added a
+        // passkey. Google's own warning has no actor, so a read of her account leaves it out (the mock's strict guess).
         #expect(read[0].words == "Sign-in failed" && read[0].ip == "198.51.100.23" && !read[0].flagged)
-        #expect(read[1].words == "Added a passkey" && read[1].ip == "198.51.100.23")
-        #expect(read[2].words == "Signed in" && read[2].ip == "198.51.100.23" && read[2].flagged, "is_suspicious")
-        #expect(read[2].details == ["by password", "Google marked it suspicious"])
-        #expect(read[3].words == "Google flagged a suspicious sign-in" && read[3].flagged)
+        #expect(read[1].words == "Blocked a sender in Gmail" && read[1].details == ["blocked: mailer-daemon@googlemail.com"])
+        #expect(read[2].words == "Added a passkey" && read[2].ip == "198.51.100.23")
+        #expect(read[3].words == "Signed in" && read[3].ip == "198.51.100.23" && read[3].flagged, "is_suspicious")
+        #expect(read[3].details == ["by password", "Google marked it suspicious"])
+        #expect(!read.contains { $0.event == "suspicious_login" })
         #expect(read[5].words == "Asked to prove it's them" && read[5].details == ["by password", "challenge: google authenticator",
                                                                                   "challenge passed"] && !read[5].flagged)
-        #expect(read[2].date == Date(timeIntervalSince1970: 1_792_419_160), "2026-10-19T14:12:40Z")
+        #expect(read[3].date == Date(timeIntervalSince1970: 1_792_419_160), "2026-10-19T14:12:40Z")
         #expect(ActivityLogs.addresses(in: read) == ["198.51.100.23", "203.0.113.10"], "the flagged address first")
     }
 
@@ -142,6 +144,16 @@ struct ActivityLogsTests {
         #expect(stranger.exitCode == 0 && rows(stranger, .admin).isEmpty && !stranger.stderr.contains("Does not exist"))
         let notUser = try await admin(["nobody@example.com"], .actor)
         #expect(notUser.exitCode == 56, "as the actor, the API is asked for the account and refuses it")
+    }
+
+    /// Google's own account warnings have no actor (a real tenant's log, 2026-10-22): the account they're about is
+    /// `affected_email_address`, and the row is that account's. A row with an actor keeps it: there the parameter names
+    /// someone else, a blocked sender.
+    @Test func googlesOwnWarningIsTheAccountsItsAbout() async throws {
+        let all = try await read(.login)
+        let warning = try #require(all.first { $0.event == "suspicious_login" })
+        #expect(warning.who == "carol@example.com" && warning.words == "Google flagged a suspicious sign-in" && warning.flagged)
+        #expect(all.first { $0.event == "blocked_sender" }?.who == "carol@example.com")
     }
 
     /// One account at the cap is capped though another has none; with no accounts the whole read is one.
