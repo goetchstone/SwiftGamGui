@@ -38,8 +38,9 @@ Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail,
 accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder;
 Read the logs then says what they show (by rules in code, with the on-device model's explanation on request) and drafts
 the fixes, each opening Secure Account or Phishing with the person or the email filled in. Every log row says when an app
-or an AI agent acted for someone, and Incident lists every account's connected apps and agents. Reports lists the people behind each of the directory's counts and
-reads the storage and mail usage; Audit shows this app's audit log, searched, paged and exported to CSV.
+or an AI agent acted for someone. Reports lists the people behind each of the directory's counts,
+reads the storage and mail usage, and lists every account's connected apps and AI agents with a summary counted by code (the
+on-device model rewords it on request); Audit shows this app's audit log, searched, paged and exported to CSV.
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing, and a read of the copies in Spam, which the dry run can't see) and, from the sender's own copy, who it was addressed to, outside the domain first
 (its Bcc too when it was sent from Gmail; Google's Email Log Search has the full record); then, with the number of steps typed (a mailbox, and its Spam when it has copies there), it moves each copy to that person's Trash, keeping the
@@ -91,8 +92,8 @@ saved template (Hand-over by default), and every step's exact command before it 
 |---|---|---|---|
 | ![Onboard: the new hire, their role, its checklist, org unit, signature and groups](docs/screenshots/onboard.png) | ![The sign-in card after the account is made, made-up password, and each step's result](docs/screenshots/onboard-result.png) | ![Offboard: the template, the leaver and manager, and the steps, the lock's three marked Always runs](docs/screenshots/offboard.png) | ![The plan: each step, what it does and its exact gam command](docs/screenshots/offboard-plan.png) |
 
-Reports: the people behind each of the directory's counts, and the storage and mail usage. Audit: this app's
-audit log, searched, paged and exported to CSV.
+Reports: the people behind each of the directory's counts, the storage and mail usage, and every account's connected
+apps and AI agents. Audit: this app's audit log, searched, paged and exported to CSV.
 
 | Reports | Usage | Audit |
 |---|---|---|
@@ -214,7 +215,8 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Incident: the computers signed in with an account (reads only; needs the Cloud Identity devices scope) | not yet: new to both apps |
 | Read the logs: a device registered at a sign-in from a suspect address | not yet: new to both apps |
 | Incident: a person's Apps Script projects (reads only) | not yet: new to both apps |
-| Incident: connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
+| Incident: a person's connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
+| Reports: every account's connected apps and AI agents, its summary, and the on-device model's wording (reads only) | not yet: new to both apps |
 | Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | partly: the lock's admin events seen in a real tenant's export (2026-10-22); the reader not yet run live |
 | Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
 | Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |

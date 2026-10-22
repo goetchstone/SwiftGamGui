@@ -43,6 +43,8 @@ enum Spikes {
                     if Screen.initial == .calendars { await services.calendarReads.load(.rooms) }
                     // Reports' usage row (`SWIFTGAMGUI_SELECT=usage`): the mock's report, read before the picture.
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "usage" { await services.usage.load() }
+                    // …and its connected apps (`apps`): every account's, from the mock's tokens.
+                    if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "apps" { await services.connectedApps.read() }
                 } else {
                     await setup.checkAccess(Domain("example.org")!)
                 }

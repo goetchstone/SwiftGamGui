@@ -14,8 +14,6 @@ struct CompromisedView: View {
     let directory: DirectoryStore
     let changes: CompromisedChanges
     let logs: IncidentLogs
-    /// Every account's connected apps and AI agents.
-    let apps: ConnectedAppsRead
     /// Sign-ins marked as the person's own ("That was them"), which the log reader makes no suspect of.
     let known: KnownSignIns
     /// This build has GAM: a plan can run. Without it the plan is only shown.
@@ -30,9 +28,8 @@ struct CompromisedView: View {
     @State private var debugApplied = false
     /// Debug snapshots of the reports: scrolled into view once read.
     @State private var scrollToReports = false
-    /// …and to the log reader (`reading`), or to every account's connected apps (`apps`).
+    /// …and to the log reader (`reading`).
     @State private var scrollToReader = false
-    @State private var scrollToApps = false
     @Environment(\.appearsActive) private var appearsActive
 
     private var check: CompromisedChanges.Check? { changes.check.flatMap { $0.isFor(form.person) ? $0 : nil } }
@@ -71,7 +68,6 @@ struct CompromisedView: View {
                             unmark: { known.unmark($0) })
                             .id(Self.readerAnchor)
                         }
-                        ConnectedAppsSection(reads: apps).id(Self.appsAnchor)
                     }
                     Group {
                         whoSection.id(Self.checkAnchor)
@@ -109,7 +105,7 @@ struct CompromisedView: View {
                     withAnimation { scroller.scrollTo(Self.runAnchor, anchor: .top) }
                 }
                 .onChange(of: scrollToReports) { _, wanted in
-                    if wanted { scroller.scrollTo(scrollToApps ? Self.appsAnchor : scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
+                    if wanted { scroller.scrollTo(scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
                 }
             }
         }
@@ -157,7 +153,6 @@ struct CompromisedView: View {
     private static let runAnchor = "compromised.run"
     private static let reportsAnchor = "compromised.reports"
     private static let readerAnchor = "compromised.reader"
-    private static let appsAnchor = "compromised.apps"
     private static let checkAnchor = "compromised.check"
 
     private var planShown: Bool {
@@ -275,12 +270,6 @@ struct CompromisedView: View {
                 if let ip = logs.pull?.addresses.first {
                     await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: 72, ip: ip))
                 }
-                scrollToReports = true
-                return
-            }
-            if tab == "apps" {
-                await apps.read()
-                scrollToApps = true
                 scrollToReports = true
                 return
             }
@@ -614,76 +603,6 @@ private struct AppsSection: View {
             Text("The sign-out step revokes every one. Ask the person which they use before they grant them again.")
         }
         .textSelection(.enabled)
-    }
-}
-
-/// One app: its name, whether it looks like an AI assistant or agent, what it may do in words, and (for everyone's list) who
-/// granted it. Read whole by VoiceOver.
-struct AppRow: View {
-    let app: ConnectedApps.App
-    let showsUsers: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(app.name).fontWeight(.semibold)
-                if app.looksLikeAI { Label("AI assistant or agent, by its name", systemImage: "sparkles").font(.callout) }
-                if app.reach == .broad { Label("Broad access", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor).font(.callout) }
-            }
-            Text(app.access.isEmpty ? "No scopes listed" : app.access.joined(separator: ", ")).font(.callout)
-            if showsUsers {
-                Text((app.users.count == 1 ? "1 person: " : "\(app.users.count) people: ") + app.users.prefix(6).joined(separator: ", ")
-                     + (app.users.count > 6 ? " and \(app.users.count - 6) more" : ""))
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Every account's connected apps and AI agents, read when asked: who has what, AI assistants and agents first, then the
-/// broadest access. Reads only.
-private struct ConnectedAppsSection: View {
-    let reads: ConnectedAppsRead
-
-    var body: some View {
-        Section {
-            HStack {
-                Text(summary).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                if reads.isReading { ProgressView().controlSize(.small) }
-                Button(reads.state == nil ? "Read Connected Apps" : "Read Again") {
-                    let reads = reads
-                    Task { await reads.read() }
-                }
-                .disabled(reads.isReading)
-                .accessibilityLabel("Read every account's connected apps and agents")
-            }
-            if case .read(.failure(let problem), _)? = reads.state {
-                Label("Couldn't read the connected apps: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.multicolor).textSelection(.enabled)
-            }
-            if case .read(.success(let apps), _)? = reads.state {
-                ForEach(apps) { app in AppRow(app: app, showsUsers: true) }
-            }
-        } header: {
-            Text("Connected apps and agents").accessibilityAddTraits(.isHeader)
-        } footer: {
-            Text("Every account's app grants (not suspended accounts'). An attacked account's are revoked by its sign-out; to take an app "
-                 + "away from everyone, block it in the Admin console (Security → API controls → App access control).")
-        }
-        .textSelection(.enabled)
-    }
-
-    private var summary: String {
-        switch reads.state {
-        case nil: "Not read: who has which apps and AI agents connected."
-        case .reading?: "Reading every account's apps…"
-        case .read(.failure, _)?: "Not read."
-        case .read(.success(let apps), let at)?:
-            "\(apps.count) app\(apps.count == 1 ? "" : "s"), \(apps.filter(\.looksLikeAI).count) of them AI assistants or agents by name, "
-                + "read \(at.formatted(date: .omitted, time: .shortened))."
-        }
     }
 }
 

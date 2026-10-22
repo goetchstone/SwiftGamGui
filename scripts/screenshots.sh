@@ -38,9 +38,10 @@ status=0
 # and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its Bcc list);
 # person-chrome, her Security tab with her Chrome profiles read; person-password, her Security tab with Set Temporary
 # Password's preview (the password masked; it shows once, after a run); compromised-reading, her and dana's logs with
-# Chrome's, read by the log reader (its findings and their fixes); compromised-apps, every account's connected apps and agents.
+# Chrome's, read by the log reader (its findings and their fixes).
 # Reports opens on its first report, then on its
-# usage row (`usage`, the mock's report); Audit on a demo log AppServices writes fresh in the temporary folder.
+# usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
+# summary; CI has no on-device model, so Explain says why); Audit on a demo log AppServices writes fresh in the temporary folder.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs).
 for spec in home:home users:users groups:groups setup:setup \
@@ -62,7 +63,6 @@ for spec in home:home users:users groups:groups setup:setup \
             person-chrome:users:carol@example.com:chrome narrow-person-chrome:users:carol@example.com:chrome:smallest \
             compromised-reports:incident:carol@example.com:reports \
             compromised-reading:incident:carol@example.com:reading narrow-compromised-reading:incident:carol@example.com:reading:smallest \
-            compromised-apps:incident:carol@example.com:apps \
             narrow-compromised-reports:incident:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
@@ -71,8 +71,9 @@ for spec in home:home users:users groups:groups setup:setup \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
-            reports:reports reports-usage:reports:usage audit:audit \
-            narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-audit:audit:::smallest \
+            reports:reports reports-usage:reports:usage reports-apps:reports:apps audit:audit \
+            narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
+            narrow-audit:audit:::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \
             onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \

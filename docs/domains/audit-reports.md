@@ -2,17 +2,21 @@
 
 **One line:** two read-only screens ported from GamGUI. **Audit** shows this app's audit log on this Mac,
 25 records a page, searched and narrowed to failures, with GamGUI's CSV export; it runs no `gam`. **Reports**
-lists GamGUI's directory reports from the loaded directory, and reads the storage and mail usage with one
-`gam report users` walk.
+lists GamGUI's directory reports from the loaded directory, reads the storage and mail usage with one
+`gam report users` walk, and (new to this app) every account's connected apps and AI agents with `gam print tokens`,
+counted by code, worded on request by the on-device model.
 
 **Owns invariants:** #9 (the log is read a page at a time; the usage output is refused past the runner's
 cap and only the top 25 kept), #11 (the page, the filter, the CSV bytes and the usage parsing are GamGUI's,
 held to fixtures), #4 by not widening it (the screen shows records as they were written, already masked),
-and the tenant generation for the usage report.
+#10 for the connected apps' wording (the model is given counts only and reaches no change), and the tenant
+generation for the usage report and the apps.
 
 **Enforcement home:** `Tests/ChangeCoreTests/AuditScreenTests.swift` (`audit_screen.json`),
 `Tests/DirectoryStoreTests/UsageReportTests.swift` (`usage_report.json` and the strict mock),
-`Tests/GamEngineTests/MockReportTests.swift` (the mock's `report users`).
+`Tests/GamEngineTests/MockReportTests.swift` (the mock's `report users`), `Tests/GamEngineTests/ConnectedAppsTests.swift`
+and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summary, from the mock's `tokens.csv`),
+`Tests/AssistTests/AppsExplainerTests.swift` (the prompt, the miscount check), `WriteRouteTests.theAppsExplainerCanRunNothing`.
 
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`), `AuditEntry` (a
@@ -21,8 +25,12 @@ and the tenant generation for the usage report.
 - `Packages/GamKit/Sources/GamEngine/PythonStr.swift`: Python's `str()` of a JSON value (`pythonText`).
 - `Packages/GamKit/Sources/Directory/UsageReport.swift`: `UsageReport` (`parse_usage`, `_csv_from`, the walk's
   dates) and `UsageStore` (GroupStore's shape: a snapshot, a load and a problem, each tagged with the tenant).
-- `App/AuditView.swift`, `App/ReportsView.swift`, `App/DemoAudit.swift` (the Audit screenshot's log, debug
-  only), `App/UsersView.swift` (`requested`: Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
+- `Packages/GamKit/Sources/GamEngine/ConnectedApps.swift`: the grants grouped by app (`apps`), broad access by kind (`Area`),
+  and `Summary` (the counts and their sentences); `Packages/GamKit/Sources/Directory/ConnectedAppsRead.swift` (the read, kept
+  for the tenant); `Packages/GamKit/Sources/Assist/AppsExplainer.swift` (the model's wording).
+- `App/AuditView.swift`, `App/ReportsView.swift`, `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
+  Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
+  Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
 - `scripts/gen_fixtures.py` (`audit_screen_fixture`, `usage_fixture`), `Tests/Fixtures/mock_gam.sh` (`report users`).
 
 ## Audit: how it works
@@ -72,6 +80,31 @@ and the tenant generation for the usage report.
   beside it (a refused report: "The authorized account lacks permission for this action. Check the admin
   role and scopes.").
 
+## Reports: connected apps and agents
+A check of the whole tenant, not of an incident (the operator, 2026-10-22: it was on Incident's step 1 until then). New to
+this app; GamGUI has no such page. Reads only.
+- **The read** is `gam print tokens` for every account but the suspended ones (GAM's default), with the long timeout, when
+  the operator asks (Read Connected Apps, or ⌘R on its row): never on its own, as it is one Directory API call per account.
+  Kept for the tenant and generation it was read on (`ConnectedAppsRead`).
+- **The list** is grouped as Incident had it: AI assistants and agents (by name: `looksLikeAI`), then the broadest access,
+  then the rest, each app with what it may do in words and who granted it (six names, then "and N more"). The per-person
+  list stays in Incident's Check Account.
+- **The summary** is code's (`ConnectedApps.Summary`): how many apps and people, the apps that look like AI and who granted
+  them, broad access by kind (all of Gmail or reading and changing mail, forwarding and delegates, all of Drive, admin, Google
+  Cloud), the apps only one person granted (and the AI and broad ones among them), and the most people who granted one app.
+- **Explain** (`AppsExplainer`) has the on-device model reword the summary. It is given counts and kinds only: `Facts` holds
+  numbers and an `Area` enum, so an app's name or scopes (its maker's words, or an attacker's) can't reach it. The answer is at
+  most three sentences, greedy (the same counts word the same way) and capped at 400 tokens; a sentence holding a number the
+  counts don't, in digits or words ("Nine"), is dropped. Without the model (no Apple Intelligence, a Mac that can't run it,
+  CI), the button is replaced by why, in words.
+- **What the model taught us** (2026-10-22, sampled on this Mac): left to compose from bare counts it tied them to the wrong
+  group about half the time ("1 of those was granted by only one person"; "one of them with broad access" where none had),
+  which a number check can't catch; an instruction to lead with "AI apps with broad access" made it claim some existed; the
+  most people who granted one app read as other things; its own suggested checks were nonsense; and unbounded, one answer ran
+  until its 8,192-token context was full (198 s). What works: the counts as whole sentences, one group each, a zero said as
+  "None", and the model told to reword them and add nothing. It then rewords faithfully, which adds little over the code's
+  sentences: the code's summary is the one to trust, and the screen says to check the model's against it.
+
 ## Deviations from GamGUI, and why
 - **The usage date** shown is the day GAM's rows are for (their `date` column), not the day asked for. GAM
   walks back to the newest day with data on its own (doReport, `_checkDataRequiredServices`, and
@@ -95,6 +128,8 @@ and the tenant generation for the usage report.
   approximate. The walk back past an empty day is exercised by a wrapper in `UsageReportTests`, not the mock:
   real GAM walks back itself and prints a header alone only when it gives up.
 - **Not live yet:** the usage report has never run on the operator's tenant from this app. It is a read.
+- **The mock's `tokens.csv`** (carol@'s Mail Sync Pro with all of Gmail, dana@'s ChatGPT and Read AI, Zoom for several, bob@
+  suspended so left out) is what the apps' summary and screenshot count.
 - The fixture generator reads `report users` through the mock: re-run it after changing that handler.
 - **A page's text set the window's height.** Audit's header and a report's description were
   `fixedSize(vertical: true)` in a page that may shrink to zero width, so SwiftUI measured them one character
@@ -104,10 +139,15 @@ and the tenant generation for the usage report.
 
 ## Testing / live-verification status
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's
-  screenshots: `reports`, `reports-usage`, `audit`, and their `narrow-` runs in the smallest window.
+  screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, and their `narrow-` runs in the smallest window.
+- **The model** is checked by hand on a Mac that has it: `SWIFTGAMGUI_MODEL=1 swift test --package-path Packages/GamKit
+  --filter OnDeviceAppsModel` prints its wording for three tenants' counts.
 - **Audit needs no tenant.** **Live check of the usage report** (read-only): open Reports, choose Storage and
   mail; it should list up to 25 people with the day the counts are for, matching the Admin console's
   reports for that day.
+- **Live check of the connected apps** (read-only): open Reports, choose Connected apps and agents, Read Connected Apps; the
+  apps should match the Admin console's Security → API controls → App access control (Accessed apps), and the summary's
+  counts the list beneath it. Explain on a Mac with Apple Intelligence: its sentences should say only what the summary does.
 
 ## To do common tasks here
 - **Another usage column:** GamGUI's `USAGE_PARAMS` first (argv parity), then `UsageRow`, the table, and the
