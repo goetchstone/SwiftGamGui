@@ -7,10 +7,11 @@ import Vault
 
 /// The Phishing screen: one email taken out of every mailbox, for a phishing email sent from a compromised account
 /// (docs/domains/phishing.md). The operator pastes its Message-ID. Find runs GAM's own dry run over every active
-/// user, a read (without `doit` GAM trashes nothing), and shows who has a copy. Trash holds one ChangeCore step per
-/// mailbox with copies, each capped at the copies Find showed there, so the preview is exactly what can run; the
-/// operator confirms it by typing the number of mailboxes, and each step is audited. Nothing here runs a write
-/// itself: every one goes through `Executor`.
+/// user, a read (without `doit` GAM trashes nothing), and beside it a read of the copies in Spam, which the dry run
+/// can't see; it shows who has a copy where. Trash holds one ChangeCore step per mailbox with copies, capped at the
+/// copies Find showed there, and one per mailbox with copies in Spam, naming exactly those copies by ID, so the preview
+/// is exactly what can run; the operator confirms it by typing the number of steps, and each step is audited. Nothing
+/// here runs a write itself: every one goes through `Executor`.
 @MainActor
 @Observable
 public final class PhishingChanges {
@@ -25,10 +26,44 @@ public final class PhishingChanges {
         public let sample: (mailbox: String, copy: MessageRecipients)?
         /// Why the sample couldn't be read, in words.
         public let sampleProblem: String?
-        /// The dry run as the `gam` line an admin would type.
+        /// The copies in Spam, each by its ID; nil when that read failed (`spamProblem` says why), which leaves the rest
+        /// of the search as it is.
+        public let spam: SpamCopies?
+        public let spamProblem: String?
+        /// The dry run and the Spam read as the `gam` lines an admin would type.
         public let commandLine: String
+        public let spamCommandLine: String
         let domain: Domain
         let generation: Int
+
+        /// Every mailbox with a copy anywhere it could be trashed from: outside Spam, or in it.
+        public var mailboxesWithCopies: [String] {
+            var seen: Set<String> = []
+            return (copies.withCopies.map(\.email) + (spam?.mailboxes.map(\.email) ?? []))
+                .filter { seen.insert(PythonText.lower($0)).inserted }
+        }
+    }
+
+    /// One trash a held preview runs: a mailbox's copies outside Spam, at most the count Find saw, or its copies in Spam,
+    /// by their IDs.
+    public struct Trash: Sendable, Equatable, Identifiable {
+        public enum Place: Sendable, Equatable {
+            case mailbox(copies: Int)
+            case spam(ids: [String])
+        }
+
+        public let email: String
+        public let place: Place
+        public var id: String { inSpam ? email + " spam" : email }
+        public var inSpam: Bool { if case .spam = place { true } else { false } }
+        public var copies: Int {
+            switch place {
+            case .mailbox(let copies): copies
+            case .spam(let ids): ids.count
+            }
+        }
+        /// "alice@example.com", or "alice@example.com's Spam".
+        public var name: String { inSpam ? "\(email)'s Spam" : email }
     }
 
     public enum State: Sendable {
@@ -43,11 +78,17 @@ public final class PhishingChanges {
     public struct Pending: Sendable, Identifiable {
         public let preview: HeldPreview
         public let search: Search
-        /// The mailboxes it trashes from, in the steps' order.
-        public let mailboxes: [MessageCopies.Mailbox]
+        /// What each step trashes, in the steps' order.
+        public let trashes: [Trash]
         public var id: UUID { preview.id }
-        /// The words the executor asks for: the number of mailboxes, and from ten up `confirm` as well.
-        public var typedCount: String { String(mailboxes.count) }
+        /// The mailboxes it trashes from, each once.
+        public var mailboxes: [String] {
+            var seen: Set<String> = []
+            return trashes.map(\.email).filter { seen.insert(PythonText.lower($0)).inserted }
+        }
+        /// The words the executor asks for: the number of steps (a mailbox with copies in Spam as well is two), and from
+        /// ten up `confirm` as well.
+        public var typedCount: String { String(trashes.count) }
         public var needsWord: Bool { preview.decision.requiresTypedConfirmation }
     }
 
@@ -57,18 +98,23 @@ public final class PhishingChanges {
         /// One per mailbox, nil until its step ends.
         public internal(set) var results: [RunOutcome.Step?]
         public internal(set) var ended = false
-        /// Stop was asked: the mailbox in flight finishes, no later one begins.
+        /// Stop was asked: the step in flight finishes, no later one begins (a mailbox's Spam step among them).
         public internal(set) var stopping = false
         public internal(set) var auditProblem: String?
 
         public var trashed: Int { results.filter { $0?.isSucceeded == true }.count }
 
-        /// "Trashed from 3 of 4 mailboxes", then what failed or didn't run.
+        /// "Trashed from 3 of 4 mailboxes" (and "1 of 1 Spam folder"), then what failed or didn't run.
         public var summary: String {
-            let total = results.count
             let failed = results.filter { if case .failed? = $0 { true } else { false } }.count
             let notRun = results.filter { if case .skipped? = $0 { true } else { false } }.count
-            var text = "\(ended ? "Trashed" : "Trashing") from \(trashed) of \(total) mailbox\(total == 1 ? "" : "es")"
+            func part(spam: Bool) -> String? {
+                let theirs = zip(pending.trashes, results).filter { $0.0.inSpam == spam }
+                guard !theirs.isEmpty else { return nil }
+                let done = theirs.filter { $0.1?.isSucceeded == true }.count, total = theirs.count
+                return "\(done) of \(total) " + (spam ? "Spam folder\(total == 1 ? "" : "s")" : "mailbox\(total == 1 ? "" : "es")")
+            }
+            var text = "\(ended ? "Trashed" : "Trashing") from " + [part(spam: false), part(spam: true)].compactMap { $0 }.joined(separator: " and ")
             if failed > 0 { text += "; \(failed) failed" }
             if notRun > 0 { text += "; \(notRun) not run" }
             return text + "."
@@ -98,7 +144,7 @@ public final class PhishingChanges {
         public func unnamed(in search: Search) -> [String] {
             guard search.message == message, copy != nil else { return [] }
             let named = Set((inside + outside).map(PythonText.lower))
-            return search.copies.withCopies.map(\.email).filter { !named.contains(PythonText.lower($0)) }
+            return search.mailboxesWithCopies.filter { !named.contains(PythonText.lower($0)) }
         }
         public var inTrash: Bool { copy?.labels.contains("TRASH") ?? false }
     }
@@ -151,8 +197,8 @@ public final class PhishingChanges {
     /// What quitting now would cut short, for the quit alert; nil when nothing would.
     public var interruptible: (what: String, consequence: String)? {
         guard isRunning, let ran else { return nil }
-        return ("An email is still being trashed from \(ran.results.count) mailboxes.",
-                "The mailboxes not yet reached won't be, and the one in progress may stop partway: find the email again before trashing it again.")
+        return ("An email is still being trashed from \(ran.pending.mailboxes.count) mailboxes.",
+                "The steps not yet reached won't run, a mailbox's Spam among them, and the one in progress may stop partway: find the email again before trashing it again.")
     }
 
     private var shown: (state: State, domain: Domain?, generation: Int)?
@@ -178,8 +224,8 @@ public final class PhishingChanges {
 
     // MARK: finding
 
-    /// GAM's dry run for the pasted Message-ID over every active user. Replaces the search, problem or held trash
-    /// shown; refused while a run goes on.
+    /// GAM's dry run for the pasted Message-ID over every active user, and beside it the read of its copies in Spam.
+    /// Replaces the search, problem or held trash shown; refused while a run goes on.
     public func find(_ pasted: String) async {
         guard !isRunning else { return }
         asked += 1
@@ -206,26 +252,32 @@ public final class PhishingChanges {
             return
         }
         shown = (.finding(message), domain, generation)
-        let read = GamCommands.findMessageCopies(message)
+        let read = GamCommands.findMessageCopies(message), spamRead = GamCommands.findSpamCopies(message)
+        let environment = environment
+        // The copies in Spam, read at the same time: its failure is said beside the rest and never blocks them.
+        async let spamFound = Self.spamCopies(spamRead, of: message, runner: runner, domain: domain, environment: environment)
         let found: State
         do {
             let result = try await runner.run(read, as: domain, timeout: GamRunner.domainWideTimeout, extraEnvironment: environment)
             // A domain's worth of lines: not on the main actor.
             let copies = try await Task.detached { try MessageCopies(result, argv: read.argv) }.value
-            // What the ID matched, from the first mailbox with a copy: a read, and not one that blocks the search.
+            let (spam, spamProblem) = await spamFound
+            // What the ID matched, from the first mailbox with a copy, in Spam when that's the only place (the read includes
+            // Spam): a read, and not one that blocks the search.
             var sample: (mailbox: String, copy: MessageRecipients)?, sampleProblem: String?
-            if let first = copies.withCopies.first {
-                let look = GamCommands.searchMessages(email: first.email, query: message.anyCopyQuery, detail: .headers)
+            if let first = copies.withCopies.first?.email ?? spam?.mailboxes.first?.email {
+                let look = GamCommands.searchMessages(email: first, query: message.anyCopyQuery, detail: .headers)
                 do {
                     let copy = try MessageRecipients.read(try await runner.run(look, as: domain, extraEnvironment: environment),
                                                           argv: look.argv)
-                    if let copy { sample = (first.email, copy) } else { sampleProblem = "\(first.email)'s copy was gone when it was read." }
+                    if let copy { sample = (first, copy) } else { sampleProblem = "\(first)'s copy was gone when it was read." }
                 } catch {
                     sampleProblem = DirectoryStore.problem(for: error, argv: look.argv).summary
                 }
             }
-            found = .found(Search(message: message, copies: copies, sample: sample, sampleProblem: sampleProblem,
-                                  commandLine: GamCommandLine.text(read.argv), domain: domain, generation: generation))
+            found = .found(Search(message: message, copies: copies, sample: sample, sampleProblem: sampleProblem, spam: spam,
+                                  spamProblem: spamProblem, commandLine: GamCommandLine.text(read.argv),
+                                  spamCommandLine: GamCommandLine.text(spamRead.argv), domain: domain, generation: generation))
         } catch let incomplete as MessageCopies.Incomplete {
             found = .problem(Problem(summary: "Not every mailbox could be checked, so none are listed rather than some: "
                                          + incomplete.reason + " Find again.", detail: nil))
@@ -235,6 +287,20 @@ public final class PhishingChanges {
         // A newer search, or a switch while this one ran: it no longer speaks for what's shown.
         guard ask == asked, setup.active == domain, setup.generation == generation else { return }
         shown = (found, domain, generation)
+    }
+
+    /// The copies in Spam, or why they couldn't be read: off the main actor, a domain's worth of lines.
+    private nonisolated static func spamCopies(
+        _ read: GamRead, of message: GamCommands.MessageID, runner: AuthenticatedRunner, domain: Domain, environment: [String: String]
+    ) async -> (SpamCopies?, String?) {
+        do {
+            let result = try await runner.run(read, as: domain, timeout: GamRunner.domainWideTimeout, extraEnvironment: environment)
+            return (try SpamCopies(result, argv: read.argv, message: message), nil)
+        } catch let incomplete as MessageCopies.Incomplete {
+            return (nil, "Not every mailbox's Spam could be checked, so none is listed rather than some: " + incomplete.reason)
+        } catch {
+            return (nil, DirectoryStore.problem(for: error, argv: read.argv).summary)
+        }
     }
 
     // MARK: who it was sent to
@@ -308,33 +374,46 @@ public final class PhishingChanges {
             + copy.unreadableRecipients.map { [$0.address, "unreadable: check by hand", $0.header] }
     }
 
-    public nonisolated static let copiesColumns = ["mailbox", "found", "copies", "trash"]
+    public nonisolated static let copiesColumns = ["mailbox", "found", "copies", "in spam", "trash"]
 
-    /// Every mailbox the search read, in its order, with what it found and, when `run` trashed from this search, the
-    /// outcome for each mailbox it reached.
+    /// Every mailbox the search read, in its order, with what it found outside Spam and in it and, when `run` trashed from
+    /// this search, the outcome of each of its steps ("trashed", "spam: trashed").
     public nonisolated static func copiesRows(_ search: Search, run: Run?) -> [[String]] {
-        var outcomes: [String: String] = [:]
-        if let run, run.pending.search.message == search.message, run.pending.search.copies == search.copies {
-            for (mailbox, result) in zip(run.pending.mailboxes, run.results) {
-                outcomes[PythonText.lower(mailbox.email)] = switch result {
+        var outcomes: [String: [String]] = [:]
+        if let run, run.pending.search.message == search.message, run.pending.search.copies == search.copies,
+           run.pending.search.spam == search.spam {
+            for (trash, result) in zip(run.pending.trashes, run.results) {
+                let outcome = switch result {
                 case nil: run.ended ? "not run" : "waiting"
                 case .succeeded?: "trashed"
                 case .failed(let message, _)?: "failed: \(message)"
                 case .skipped(let reason)?: reason.hasPrefix("Not run") ? reason : "not run: \(reason)"
                 case .waiting(let message)?: "waiting: \(message)"
                 }
+                outcomes[PythonText.lower(trash.email), default: []].append(trash.inSpam ? "spam: \(outcome)" : outcome)
             }
         }
+        // In Spam: a count only for a mailbox the Spam read reported searching, never a 0 for one it didn't.
+        var spam: [String: String] = [:]
+        for email in search.spam?.searched ?? [] { spam[PythonText.lower(email)] = "0" }
+        for mailbox in search.spam?.mailboxes ?? [] { spam[PythonText.lower(mailbox.email)] = String(mailbox.ids.count) }
+        for mailbox in search.spam?.unsearched ?? [] { spam[PythonText.lower(mailbox.email)] = "not searched: \(mailbox.why)" }
+        func row(_ email: String, _ found: String, _ copies: String) -> [String] {
+            let key = PythonText.lower(email)
+            return [email, found, copies, spam[key] ?? "not searched", outcomes[key]?.joined(separator: "; ") ?? ""]
+        }
+        let listed = Set(search.copies.mailboxes.map { PythonText.lower($0.email) })
         return search.copies.mailboxes.map { mailbox in
-            let found: String, copies: String
             switch mailbox.finding {
-            case .copies(let count): (found, copies) = ("copies", String(count))
-            case .none: (found, copies) = ("none", "0")
-            case .gmailOff: (found, copies) = ("not searched: Gmail is off", "")
-            case .failed(let why): (found, copies) = ("not searched: \(why)", "")
+            case .copies(let count): row(mailbox.email, "copies", String(count))
+            case .none: row(mailbox.email, "none", "0")
+            case .gmailOff: row(mailbox.email, "not searched: Gmail is off", "")
+            case .failed(let why): row(mailbox.email, "not searched: \(why)", "")
             }
-            return [mailbox.email, found, copies, outcomes[PythonText.lower(mailbox.email)] ?? ""]
         }
+        // A mailbox only the Spam read reported (one made between the two reads): never dropped.
+        + ((search.spam?.mailboxes.map(\.email) ?? []) + (search.spam?.unsearched.map(\.email) ?? []))
+            .filter { !listed.contains(PythonText.lower($0)) }.map { row($0, "", "") }
     }
 
     /// A dated name for a saved list: "phishing-recipients-2026-10-19.csv".
@@ -344,14 +423,16 @@ public final class PhishingChanges {
 
     // MARK: previewing
 
-    /// Holds the trash for every mailbox the search shown found copies in: one step each, at most the copies found
-    /// there, on the tenant it was read on. The executor refuses it on any other.
+    /// Holds the trash for every mailbox the search shown found copies in: one step for its copies outside Spam, at most
+    /// the count found there, and one for its copies in Spam, exactly those by ID; on the tenant it was read on. The
+    /// executor refuses it on any other.
     public func previewTrash() async {
         guard !isRunning, case .found(let search) = state else { return }
         refusal = nil
         dropHeld()
-        let mailboxes = search.copies.withCopies
-        guard !mailboxes.isEmpty else {
+        let trashes = search.copies.withCopies.map { Trash(email: $0.email, place: .mailbox(copies: $0.copies)) }
+            + (search.spam?.mailboxes.map { Trash(email: $0.email, place: .spam(ids: $0.ids)) } ?? [])
+        guard !trashes.isEmpty else {
             refusal = "No mailbox has a copy to trash."
             return
         }
@@ -361,17 +442,22 @@ public final class PhishingChanges {
         }
         let steps: [WriteStep]
         do {
-            steps = try mailboxes.map { mailbox in
-                WriteStep(try GamCommands.trashMessage(email: mailbox.email, search.message, copies: mailbox.copies),
-                          target: mailbox.email,
-                          summary: mailbox.copies == 1 ? "Move the copy in \(mailbox.email)'s mailbox to its Trash."
-                                                       : "Move the \(mailbox.copies) copies in \(mailbox.email)'s mailbox to its Trash.")
+            steps = try trashes.map { trash in
+                let copies = trash.copies == 1 ? "the copy" : "the \(trash.copies) copies"
+                switch trash.place {
+                case .mailbox(let count):
+                    return WriteStep(try GamCommands.trashMessage(email: trash.email, search.message, copies: count),
+                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s mailbox to its Trash.")
+                case .spam(let ids):
+                    return WriteStep(try GamCommands.trashMessages(email: trash.email, ids: ids),
+                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s Spam to Trash.")
+                }
             }
         } catch {
-            refusal = "A mailbox's count can't be trashed: find again."
+            refusal = "A mailbox's copies can't be trashed as found: find again."
             return
         }
-        // The number of mailboxes typed, however few: each trash empties out of someone's inbox at once.
+        // The number of steps typed, however few: each trash empties out of someone's inbox at once.
         let ask = asked
         previewsAsked += 1
         let previewAsk = previewsAsked
@@ -382,7 +468,7 @@ public final class PhishingChanges {
                 await executor.discard(preview.id)
                 return
             }
-            held = Pending(preview: preview, search: search, mailboxes: mailboxes)
+            held = Pending(preview: preview, search: search, trashes: trashes)
         case .failure(let why):
             refusal = why.message
         }
@@ -408,7 +494,7 @@ public final class PhishingChanges {
         refusal = nil
         held = nil
         isRunning = true
-        ran = Run(pending: pending, results: Array(repeating: nil, count: pending.mailboxes.count))
+        ran = Run(pending: pending, results: Array(repeating: nil, count: pending.trashes.count))
         let activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
                                                              reason: "Trashing an email from \(pending.mailboxes.count) mailboxes")
         defer {
@@ -436,7 +522,7 @@ public final class PhishingChanges {
         shown = nil
     }
 
-    /// Stop between mailboxes: the one in flight finishes, no later one begins.
+    /// Stop between steps: the one in flight finishes, no later one begins.
     public func stop() async {
         guard isRunning, let id = ran?.pending.id, let executor else { return }
         guard await executor.stopAfterCurrentStep(id) else { return }
@@ -456,11 +542,11 @@ public final class PhishingChanges {
     }
 
     #if DEBUG
-    /// Debug builds' screenshots only: the held trash's run, finished, every mailbox trashed. Nothing runs.
+    /// Debug builds' screenshots only: the held trash's run, finished, every step trashed. Nothing runs.
     public func showDemoRun() {
         guard let pending else { return }
         dropHeld()
-        ran = Run(pending: pending, results: pending.mailboxes.map { _ in .succeeded(output: "") }, ended: true)
+        ran = Run(pending: pending, results: pending.trashes.map { _ in .succeeded(output: "") }, ended: true)
         shown = nil
     }
     #endif

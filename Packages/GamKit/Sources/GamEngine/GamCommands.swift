@@ -217,6 +217,26 @@ public enum GamCommands {
                         action: .trashMessage)
     }
 
+    /// Who has a copy of the email in Spam, each by Gmail's ID: `print messages` over every active user (8232-8241
+    /// `… query <QueryGmail> … [includespamtrash] … [headers <SMTPHeaderList>] … [showlabels]`), which lists Spam and Trash
+    /// as the dry run above never does (printShowMessagesThreads, 7.48.30). Only the Message-ID header (GAM's default set
+    /// has To, hundreds of addresses a mailbox for a mass phish) and the labels: `SpamCopies` checks each copy is this
+    /// email, in Spam and not Trash.
+    public static func findSpamCopies(_ message: MessageID) -> GamRead {
+        GamRead(["all", "users", "print", "messages", "query", message.spamQuery, "includespamtrash", "headers", "message-id",
+                 "showlabels"])
+    }
+
+    /// One mailbox's copies in Spam moved to its Trash, by the IDs `findSpamCopies` read (8186-8190 `trash messages …
+    /// (ids <MessageIDEntity>)`; _processMessagesThreads: with ids nothing is listed, so Spam is no bar, no `doit` is needed
+    /// and no count is checked; Gmail's `messages.trash` runs on each ID). Exactly those copies, so never more than the
+    /// preview showed; one gone since is GAM's "Does not exist" for that ID (exit 50), the rest trashed. The list is one
+    /// element GAM splits on commas (`idList`, 770 `<MessageIDList>`).
+    public static func trashMessages(email: String, ids: [String]) throws -> GamWrite {
+        guard let list = idList(ids) else { throw Invalid.argument("each message to trash is one message ID") }
+        return GamWrite(["user", email, "trash", "messages", "ids", list], action: .trashMessage)
+    }
+
     /// Auto-forwarding as Gmail has it now (8003; printShowForward): CSV `User,forwardEnabled,forwardTo,disposition`, the
     /// address and what happens to the kept copy only while it's on.
     public static func printForward(email: String) -> GamRead {

@@ -3,8 +3,9 @@ import Testing
 @testable import GamEngine
 import TestSupport
 
-/// The strict mock runs the Phishing screen's two commands the way GAM 7.48.30's `_processMessagesThreads` runs them
-/// (read from its source, not a tenant): the dry run over every active user, then one mailbox's trash. The fixture
+/// The strict mock runs the Phishing screen's commands the way GAM 7.48.30 runs them (read from its source, not a
+/// tenant): the dry run over every active user and one mailbox's trash (`_processMessagesThreads`), and the read of the
+/// copies in Spam (printShowMessagesThreads) with one mailbox's trash of them by ID. The fixture
 /// mailboxes (`mock_gam/messages.csv`): alice has the phish in her inbox and in Spam, bob (suspended) in his inbox,
 /// carol sent it (her Sent copy only), dana has two copies; alice also has another email.
 @Suite("Mock phishing")
@@ -25,7 +26,10 @@ struct MockPhishingTests {
         defer { try? FileManager.default.removeItem(at: config) }
         var environment = Fixtures.mockEnvironment
         if let state { environment["GAM_MOCK_STATE"] = state.path }
-        return try await mock.runRaw(argv, configDirectory: config, extraEnvironment: environment)
+        let raw = try await mock.runRaw(argv, configDirectory: config, extraEnvironment: environment)
+        // As the app's runner hands it on: without the first-run banner naming this call's config folder.
+        return GamResult(exitCode: raw.exitCode, stdout: AuthenticatedRunner.withoutConfigNoise(raw.stdout, configDirectory: config),
+                         stderr: raw.stderr, stdoutTruncated: raw.stdoutTruncated, stderrTruncated: raw.stderrTruncated)
     }
 
     private func find(state: URL? = nil) async throws -> GamResult {
@@ -161,6 +165,161 @@ struct MockPhishingTests {
                      base + ["query", Self.query, "matchlabel", "inbox"], ["user", "bob@example.com", "trash", "messages", "query", Self.query]] {
             let refused = try await run(argv)
             #expect(refused.exitCode == 2 && refused.stderr.contains("isn't modelled"), "\(argv): \(refused.stderr)")
+        }
+    }
+
+    private func spam(state: URL? = nil) async throws -> GamResult {
+        try await run(GamCommands.findSpamCopies(Self.phish).argv, state: state)
+    }
+
+    /// The copies in Spam: every active user searched, numbered, Spam and Trash listed (includespamtrash) and the query
+    /// keeping Spam; each copy a CSV row with its ID, Message-ID and labels once all are read; the last user's code.
+    @Test func theSpamReadListsEachCopyInSpam() async throws {
+        let result = try await spam()
+        #expect(lines(result.stdout) == ["User,threadId,id,Message-ID,LabelsCount,Labels",
+                                         "alice@example.com,19a0c0ffee000002,19a0c0ffee000002,<CAPh1sh+Notice=0001@mail.example.com>,1,SPAM"])
+        #expect(lines(result.stderr).isEmpty && result.exitCode == 60, "carol and dana have none; dana is last")
+        let spamQuery = "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam"
+        #expect(result.stderr.contains("Getting all Messages that match query ((\(spamQuery))) for carol@example.com (2/3)"))
+        let copies = try SpamCopies(result, argv: [], message: Self.phish)
+        #expect(copies.mailboxes == [.init(email: "alice@example.com", ids: ["19a0c0ffee000002"])] && copies.total == 1)
+        #expect(copies.searched == ["alice@example.com", "carol@example.com", "dana@example.com"] && copies.unsearched.isEmpty)
+    }
+
+    /// Gmail off is GAM's warning before that user's search (the labels are read first), numbered as the others are.
+    @Test func aMailboxWithGmailOffIsUnsearchedInSpam() async throws {
+        try await withState { state in
+            try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+            FileManager.default.createFile(atPath: state.appending(path: "nogmail/carol@example.com").path, contents: Data())
+            let result = try await spam(state: state)
+            #expect(lines(result.stderr) == ["User: carol@example.com, Gmail Service/App not enabled (2/3)"] && result.exitCode == 60)
+            #expect(!result.stderr.contains("for carol@example.com (2/3)"), "no search for carol")
+            let copies = try SpamCopies(result, argv: [], message: Self.phish)
+            #expect(copies.unsearched == [.init(email: "carol@example.com", why: "Gmail is off")])
+            #expect(copies.searched == ["alice@example.com", "dana@example.com"] && copies.mailboxes.count == 1)
+        }
+    }
+
+    /// One mailbox's copies trashed by ID: no list, so Spam is no bar; GAM's "Trash N Messages" and each "Trashed", exit 0.
+    /// The copy, in Trash, still shows in the Spam read with TRASH beside SPAM, and is no copy to trash; an ID the mailbox
+    /// hasn't got is GAM's "Does not exist" for it (50), the rest trashed.
+    @Test func aSpamCopyIsTrashedByItsID() async throws {
+        try await withState { state in
+            let alice = try await run(try GamCommands.trashMessages(email: "alice@example.com", ids: ["19a0c0ffee000002"]).argv, state: state)
+            #expect(alice.exitCode == 0, "\(alice.stderr)")
+            #expect(lines(alice.stdout) == ["User: alice@example.com, Trash 1 Message",
+                                            "  User: alice@example.com, Message: 19a0c0ffee000002, Trashed"])
+            let after = try await spam(state: state)
+            #expect(lines(after.stdout).last == "alice@example.com,19a0c0ffee000002,19a0c0ffee000002,<CAPh1sh+Notice=0001@mail.example.com>,2,SPAM TRASH")
+            #expect(try SpamCopies(after, argv: [], message: Self.phish).mailboxes.isEmpty)
+            // The dry run never saw it, and still counts alice's inbox copy.
+            #expect(try MessageCopies(try await find(state: state), argv: []).mailboxes.first?.finding == .copies(1))
+            let mixed = try await run(try GamCommands.trashMessages(email: "dana@example.com", ids: ["19a0c0ffee000002", "19a0c0ffee000004"]).argv,
+                                      state: state)
+            #expect(mixed.exitCode == 50)
+            #expect(lines(mixed.stderr) == ["  User: dana@example.com, Message: 19a0c0ffee000002, Trash Failed: Does not exist (1/2)"])
+            #expect(lines(mixed.stdout) == ["User: dana@example.com, Trash 2 Messages", "  User: dana@example.com, Message: 19a0c0ffee000004, Trashed (2/2)"])
+        }
+    }
+
+    /// Forms the app never sends are refused: another query or detail for the Spam read, a list selector or a word more
+    /// for the trash by ID, and a trash by ID as a user with no token.
+    @Test func otherSpamFormsAreRefused() async throws {
+        let spamQuery = "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam"
+        let read = ["all", "users", "print", "messages", "query", spamQuery, "includespamtrash", "headers", "message-id", "showlabels"]
+        #expect(read == GamCommands.findSpamCopies(Self.phish).argv)
+        for argv in [Array(read.prefix(6)) + ["headers", "message-id", "showlabels"], Array(read.prefix(8)) + ["all", "showlabels"],
+                     Array(read.prefix(5)) + [Self.query] + Array(read.suffix(4)), read + ["showdate"],
+                     ["user", "alice@example.com", "trash", "messages", "ids", "file"], ["user", "alice@example.com", "trash", "messages", "ids", "a b"]] {
+            let refused = try await run(argv)
+            #expect(refused.exitCode == 2 && refused.stderr.contains("isn't modelled"), "\(argv): \(refused.stderr)")
+        }
+        // GAM takes `doit` after ids (it's a word of the selection), which the app never sends: not modelled; a word GAM
+        // doesn't know is its invalid argument.
+        let extra = try await run(["user", "alice@example.com", "trash", "messages", "ids", "19a0c0ffee000002", "doit"])
+        #expect(extra.exitCode == 2 && extra.stderr.contains("isn't modelled"), "\(extra.stderr)")
+        let nonsense = try await run(["user", "alice@example.com", "trash", "messages", "ids", "19a0c0ffee000002", "now"])
+        #expect(nonsense.exitCode == 2 && nonsense.stderr.contains("ERROR: Invalid argument"), "\(nonsense.stderr)")
+        let suspended = try await run(["user", "bob@example.com", "trash", "messages", "ids", "19a0c0ffee000006"])
+        #expect(suspended.exitCode == 2 && suspended.stderr.contains("isn't modelled"), "\(suspended.stderr)")
+        let nobody = try await run(["user", "nobody@example.com", "trash", "messages", "ids", "19a0c0ffee000002"])
+        #expect(nobody.exitCode == 50 && nobody.stderr == "User: nobody@example.com, User Trash Failed: invalid_grant: Invalid email or User ID\n")
+    }
+}
+
+/// `SpamCopies` reads GAM's lines and rows: every user GAM listed accounted for, and only a copy that is plainly this email
+/// in Spam kept to trash.
+@Suite("Spam copies")
+struct SpamCopiesTests {
+    static let phish = try! GamCommands.MessageID(validating: "<a@b.example>")
+    static let header = "User,threadId,id,Message-ID,LabelsCount,Labels\n"
+
+    private func result(_ stderr: String, _ stdout: String = header, exit: Int32 = 60, truncated: Bool = false) -> GamResult {
+        GamResult(exitCode: exit, stdout: stdout, stderr: stderr, stdoutTruncated: truncated, stderrTruncated: false)
+    }
+
+    private func getting(_ user: String, _ at: String = "") -> String {
+        "Getting all Messages that match query ((rfc822msgid:a@b.example in:spam)) for \(user)@example.com\(at)\n"
+    }
+
+    @Test func eachSearchedUserAndTheirCopies() throws {
+        let copies = try SpamCopies(result("Got 4 Users...\n" + getting("a", " (1/4)") + "User: b@example.com, Gmail Service/App not enabled (2/4)\n"
+                + getting("c", " (3/4)") + "User: c@example.com, Message: 19ab, Print Failed: Does not exist (1/1)\n"
+                + getting("d", " (4/4)") + "WARNING: something GAM said\n",
+            Self.header + "a@example.com,t1,19aa,<a@b.example>,2,SPAM UNREAD\n" + "a@example.com,t2,19ac,<a@b.example>,1,SPAM\n"
+                + "a@example.com,t1,19aa,<a@b.example>,2,SPAM UNREAD\n" + "c@example.com,t3,19ad,<a@b.example>,1,SPAM\n"
+                + "d@example.com,t4,19ae,<a@b.example>,2,SPAM TRASH\n", exit: 50), argv: [], message: Self.phish)
+        #expect(copies.mailboxes == [.init(email: "a@example.com", ids: ["19aa", "19ac"])], "a copy printed twice is one; d's is in Trash")
+        #expect(copies.unsearched == [.init(email: "b@example.com", why: "Gmail is off"),
+                                      .init(email: "c@example.com", why: "Message: 19ab, Print Failed: Does not exist")])
+        #expect(copies.searched == ["a@example.com", "d@example.com"] && copies.otherLines == ["WARNING: something GAM said"])
+        // The sender's own Sent copy, if Gmail ever files it to Spam, is kept as evidence (D2), as the dry run keeps it.
+        let sent = try SpamCopies(result(getting("a"), Self.header + "a@example.com,t1,19aa,<a@b.example>,2,SENT SPAM\n", exit: 0),
+                                  argv: [], message: Self.phish)
+        #expect(sent.mailboxes.isEmpty && sent.unsearched.isEmpty && sent.searched == ["a@example.com"])
+        // One user: GAM numbers nothing.
+        let one = try SpamCopies(result(getting("a")), argv: [], message: Self.phish)
+        #expect(one.searched == ["a@example.com"] && one.mailboxes.isEmpty)
+    }
+
+    /// A copy that isn't plainly this email in Spam (another Message-ID, no SPAM label, an ID GAM couldn't be handed back)
+    /// leaves its mailbox unsearched: never trashed, never clear.
+    @Test func aCopyNotPlainlyThisEmailInSpamIsLeftAlone() throws {
+        for row in ["a@example.com,t1,19aa,<other@b.example>,1,SPAM\n", "a@example.com,t1,19aa,<a@b.example>,1,INBOX\n",
+                    "a@example.com,t1,,<a@b.example>,1,SPAM\n", "a@example.com,t1,19 aa,<a@b.example>,1,SPAM\n",
+                    "a@example.com,t1,19aa,<A@B.EXAMPLE>,1,SPAM\n", "a@example.com,t1,19aa,<a@b.example>,2,SPAM Old TRASH\n",
+                    "a@example.com,t1,19aa,<a@b.example>,,SPAM\n"] {
+            let copies = try SpamCopies(result(getting("a"), Self.header + row, exit: 0), argv: [], message: Self.phish)
+            #expect(copies.mailboxes.isEmpty && copies.unsearched.map(\.email) == ["a@example.com"], "\(row)")
+            #expect(copies.unsearched.first?.why.hasSuffix("that isn't plainly this email in Spam: look at it by hand.") == true)
+        }
+    }
+
+    /// A read that isn't whole is never shown as whole: a user missing, counted twice, numbered against another total,
+    /// fewer than listed, a copy for a user never reported, or output past the runner's cap.
+    @Test func aReadThatIsntWholeIsRefused() {
+        for (stderr, stdout) in [(getting("a", " (1/3)") + getting("c", " (3/3)"), Self.header),
+                                 (getting("a", " (1/2)") + getting("a", " (2/2)"), Self.header),
+                                 (getting("a", " (1/2)") + getting("b", " (2/3)"), Self.header),
+                                 (getting("a", " (1/2)") + getting("b", " (1/2)"), Self.header),
+                                 (getting("a", " (1/2)") + getting("b"), Self.header),
+                                 ("", Self.header), ("Got 2 Users...\n" + getting("a"), Self.header),
+                                 (getting("a"), Self.header + "z@example.com,t,19aa,<a@b.example>,1,SPAM\n")] {
+            #expect(throws: MessageCopies.Incomplete.self, "\(stderr)") {
+                try SpamCopies(result(stderr, stdout), argv: [], message: Self.phish)
+            }
+        }
+        #expect(throws: MessageCopies.Incomplete.self) {
+            try SpamCopies(result(getting("a"), Self.header, truncated: true), argv: [], message: Self.phish)
+        }
+    }
+
+    /// The command itself failing (a usage error, the admin's sign-in, a missing scope) is GAM's error.
+    @Test func aFailedCommandIsItsError() {
+        for (stderr, exit) in [("Command: gam all users print messages\n\nERROR: Invalid argument: x\n", Int32(2)),
+                               ("ERROR: invalid_grant: Token has been expired or revoked\n", 18),
+                               ("ERROR: 403: Request had insufficient authentication scopes\n" + getting("a", " (1/2)"), 50)] {
+            #expect(throws: GamError.self) { try SpamCopies(result(stderr, exit: exit), argv: [], message: Self.phish) }
         }
     }
 }

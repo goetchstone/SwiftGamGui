@@ -68,7 +68,7 @@ struct PhishingView: View {
                         .onSubmit { if canFind { find() } }
                         .accessibilityHint("The email's Message-ID header. Press Return to find its copies.")
                     Text("In Gmail, open the email, choose More › Show original, and copy the Message-ID line. The sender's own "
-                         + "Sent copy is kept as evidence. Copies already in Spam, and suspended users' mailboxes, aren't searched.")
+                         + "Sent copy is kept as evidence. Copies in Spam are found too; suspended users' mailboxes aren't searched.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     HStack {
@@ -239,12 +239,12 @@ struct PhishingView: View {
         if let run = changes.run {
             if run.ended { return run.summary }
             let done = run.results.compactMap { $0 }.count
-            guard done > 0, done <= run.pending.mailboxes.count else { return nil }
-            return "\(run.pending.mailboxes[done - 1].email): \(PhishingStatus(run.results[done - 1]).words)."
+            guard done > 0, done <= run.pending.trashes.count else { return nil }
+            return "\(run.pending.trashes[done - 1].name): \(PhishingStatus(run.results[done - 1]).words)."
         }
         if let refusal = changes.refusal { return refusal }
         return switch changes.state {
-        case .found(let search): FoundSection.headline(search.copies)
+        case .found(let search): FoundSection.headline(search)
         case .problem(let problem): problem.summary
         case .finding, .idle: nil
         }
@@ -296,8 +296,8 @@ struct PhishingStatus {
     }
 }
 
-/// Who has a copy: each mailbox with its count, then those GAM couldn't search and those without one, GAM's command
-/// for an admin who wants it, and Trash from N Mailboxes.
+/// Who has a copy: each mailbox with its count, then those with copies in Spam, those GAM couldn't search and those
+/// without one, GAM's commands for an admin who wants them, and Trash from N Mailboxes.
 private struct FoundSection: View {
     let search: PhishingChanges.Search
     let changes: PhishingChanges
@@ -310,14 +310,35 @@ private struct FoundSection: View {
         copies.mailboxes.compactMap { if case .failed(let why) = $0.finding { ($0.email, why) } else { nil } }
     }
     private var gmailOff: [String] { copies.mailboxes.filter { $0.finding == .gmailOff }.map(\.email) }
-    private var without: [String] { copies.mailboxes.filter { $0.finding == .none }.map(\.email) }
+    private var inSpam: [SpamCopies.Mailbox] { search.spam?.mailboxes ?? [] }
+    /// No copy anywhere: none outside Spam, and the Spam read searched it and found none.
+    private var without: [String] { noCopyOutsideSpam(spamChecked: true) }
+    /// No copy outside Spam, but its Spam wasn't checked (the read failed, or couldn't read this mailbox's): never "no copy".
+    private var withoutOutsideSpam: [String] { noCopyOutsideSpam(spamChecked: false) }
 
-    /// Never "no copy" while a mailbox went unsearched: a copy there is unknown (review of 2026-10-19).
-    static func headline(_ copies: MessageCopies) -> String {
-        let count = copies.withCopies.count, total = copies.totalCopies, unsearched = copies.unsearched.count
-        var text = count == 0 ? (unsearched == 0 ? "No mailbox has a copy" : "No copy found")
-            : "\(count) mailbox\(count == 1 ? " has a copy" : "es have a copy")" + (total > count ? " (\(total) copies in all)" : "")
+    private func noCopyOutsideSpam(spamChecked: Bool) -> [String] {
+        let clear = Set((search.spam?.searched ?? []).map { $0.lowercased() }), spam = Set(inSpam.map { $0.email.lowercased() })
+        return copies.mailboxes.filter { $0.finding == .none && !spam.contains($0.email.lowercased())
+            && clear.contains($0.email.lowercased()) == spamChecked }.map(\.email)
+    }
+    /// Spam unread for a mailbox the dry run did search: one it couldn't is said once, above.
+    private var spamUnsearched: [SpamCopies.Unsearched] { Self.spamUnsearched(search) }
+
+    private static func spamUnsearched(_ search: PhishingChanges.Search) -> [SpamCopies.Unsearched] {
+        let said = Set(search.copies.unsearched.map { $0.email.lowercased() })
+        return (search.spam?.unsearched ?? []).filter { !said.contains($0.email.lowercased()) }
+    }
+
+    /// Never "no copy" while a mailbox, or its Spam, went unsearched: a copy there is unknown (review of 2026-10-19).
+    static func headline(_ search: PhishingChanges.Search) -> String {
+        let copies = search.copies, count = search.mailboxesWithCopies.count, spam = search.spam?.total ?? 0
+        let total = copies.totalCopies + spam, unsearched = copies.unsearched.count
+        let spamUnread = search.spam == nil || !spamUnsearched(search).isEmpty
+        let counts = (total > count ? ["\(total) copies in all"] : []) + (spam > 0 ? ["\(spam) in Spam"] : [])
+        var text = count == 0 ? (unsearched == 0 && !spamUnread ? "No mailbox has a copy" : "No copy found")
+            : "\(count) mailbox\(count == 1 ? " has a copy" : "es have a copy")" + (counts.isEmpty ? "" : " (\(counts.joined(separator: ", ")))")
         if unsearched > 0 { text += "; \(unsearched) mailbox\(unsearched == 1 ? "" : "es") couldn't be searched" }
+        if spamUnread { text += "; Spam couldn't be checked everywhere" }
         return text
     }
 
@@ -363,6 +384,28 @@ private struct FoundSection: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(mailbox.email), \(Self.copiesText(mailbox.copies))")
             }
+            ForEach(inSpam) { mailbox in
+                LabeledContent {
+                    Text("\(Self.copiesText(mailbox.ids.count)) in Spam")
+                } label: {
+                    Label(mailbox.email, systemImage: "xmark.bin.fill").textSelection(.enabled)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(mailbox.email), \(Self.copiesText(mailbox.ids.count)) in Spam")
+            }
+            if let problem = search.spamProblem {
+                Label("Spam couldn't be checked, so copies there aren't listed or trashed: \(problem)",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .textSelection(.enabled)
+            }
+            ForEach(spamUnsearched) { mailbox in
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("\(mailbox.email)'s Spam: couldn't be checked", systemImage: "xmark.octagon.fill").symbolRenderingMode(.multicolor)
+                    Text(mailbox.why).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                .accessibilityElement(children: .combine)
+            }
             ForEach(failed, id: \.email) { mailbox in
                 VStack(alignment: .leading, spacing: 2) {
                     Label("\(mailbox.email): couldn't be searched", systemImage: "xmark.octagon.fill").symbolRenderingMode(.multicolor)
@@ -381,14 +424,22 @@ private struct FoundSection: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            if !copies.otherLines.isEmpty {
-                DisclosureGroup("GAM also said") {
-                    Text(copies.otherLines.joined(separator: "\n")).font(.caption.monospaced()).textSelection(.enabled)
+            if !withoutOutsideSpam.isEmpty {
+                DisclosureGroup("No copy outside Spam in \(withoutOutsideSpam.count) mailbox\(withoutOutsideSpam.count == 1 ? "" : "es"), "
+                                + "whose Spam couldn't be checked") {
+                    Text(withoutOutsideSpam.joined(separator: "\n")).font(.callout).textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            DisclosureGroup("Show command") {
-                Text(search.commandLine).font(.caption.monospaced()).textSelection(.enabled)
+            if !(copies.otherLines + (search.spam?.otherLines ?? [])).isEmpty {
+                DisclosureGroup("GAM also said") {
+                    Text((copies.otherLines + (search.spam?.otherLines ?? [])).joined(separator: "\n"))
+                        .font(.caption.monospaced()).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            DisclosureGroup("Show commands") {
+                Text(search.commandLine + "\n" + search.spamCommandLine).font(.caption.monospaced()).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let refusal = changes.refusal {
@@ -402,10 +453,11 @@ private struct FoundSection: View {
                 .accessibilityLabel("Export the \(copies.mailboxes.count) mailboxes searched as a CSV file")
                 .help("Each mailbox, what was found and how many copies")
             }
-            if !withCopies.isEmpty {
+            if !search.mailboxesWithCopies.isEmpty {
+                let count = search.mailboxesWithCopies.count
                 HStack {
                     Spacer()
-                    Button("Trash from \(withCopies.count) Mailbox\(withCopies.count == 1 ? "" : "es")…", role: .destructive) {
+                    Button("Trash from \(count) Mailbox\(count == 1 ? "" : "es")…", role: .destructive) {
                         let changes = changes
                         Task { await changes.previewTrash() }
                     }
@@ -414,7 +466,7 @@ private struct FoundSection: View {
                 }
             }
         } header: {
-            Text(Self.headline(copies)).font(.headline).accessibilityAddTraits(.isHeader)
+            Text(Self.headline(search)).font(.headline).accessibilityAddTraits(.isHeader)
         }
     }
 }
@@ -536,15 +588,15 @@ private struct PhishingRunSection: View {
 
     var body: some View {
         Section {
-            ForEach(Array(run.pending.mailboxes.enumerated()), id: \.element.id) { index, mailbox in
+            ForEach(Array(run.pending.trashes.enumerated()), id: \.element.id) { index, trash in
                 let status = PhishingStatus(run.results[index], running: !run.ended && index == done)
                 VStack(alignment: .leading, spacing: 2) {
-                    Label(mailbox.email, systemImage: status.symbol).symbolRenderingMode(.multicolor)
+                    Label(trash.name, systemImage: status.symbol).symbolRenderingMode(.multicolor)
                     Text(detail(run.results[index]) ?? status.words).font(.callout).foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(mailbox.email): \(status.words)")
+                .accessibilityLabel("\(trash.name): \(status.words)")
             }
             if run.ended {
                 if let problem = run.auditProblem {
@@ -567,29 +619,31 @@ private struct PhishingRunSection: View {
             } else {
                 HStack {
                     ProgressView().controlSize(.small)
-                    Text(run.stopping ? "Stopping after this mailbox…"
+                    Text(run.stopping ? "Stopping after this step…"
                          : "Trashing… \(done) of \(run.results.count)"
-                            + (done < run.pending.mailboxes.count ? " · \(run.pending.mailboxes[done].email)" : ""))
+                            + (done < run.pending.trashes.count ? " · \(run.pending.trashes[done].name)" : ""))
                     Spacer()
-                    Button("Stop After This Mailbox…") { askingStop = true }
+                    Button("Stop After This Step…") { askingStop = true }
                         .disabled(run.stopping)
                 }
                 .accessibilityElement(children: .contain)
             }
         } header: {
-            Text(run.ended ? run.summary : "Trashing from \(run.results.count) mailbox\(run.results.count == 1 ? "" : "es")")
+            Text(run.ended ? run.summary
+                 : "Trashing from \(run.pending.mailboxes.count) mailbox\(run.pending.mailboxes.count == 1 ? "" : "es")")
                 .font(.headline)
                 .textSelection(.enabled)
                 .accessibilityAddTraits(.isHeader)
         }
-        .confirmationDialog("Stop after this mailbox?", isPresented: $askingStop) {
-            Button("Stop After This Mailbox", role: .destructive) {
+        .confirmationDialog("Stop after this step?", isPresented: $askingStop) {
+            Button("Stop After This Step", role: .destructive) {
                 let changes = changes
                 Task { await changes.stop() }
             }
             Button("Keep Going", role: .cancel) {}
         } message: {
-            Text("The mailbox in progress finishes; the ones after it keep their copy. Find Again shows which.")
+            Text("The step in progress finishes; the ones after it don't run, a mailbox's Spam among them, so those copies stay. "
+                 + "Find Again shows which.")
         }
     }
 
