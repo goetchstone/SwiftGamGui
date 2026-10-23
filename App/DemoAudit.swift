@@ -1,5 +1,6 @@
 #if DEBUG
 import ChangeCore
+import Directory
 import Foundation
 import GamEngine
 
@@ -7,11 +8,40 @@ import GamEngine
 /// `AppServices.demo()` hands it, never anywhere else: example changes as this app records them (a begin, then
 /// an end), one that failed, one the app stopped in the middle of, and two records GamGUI wrote. Enough for two pages.
 enum DemoAudit {
-    static func write(to url: URL) {
-        guard url.standardizedFileURL.path.hasPrefix(FileManager.default.temporaryDirectory.standardizedFileURL.path) else { return }
+    /// Empties the demo log, every generation, when it's in the temporary folder: false (and nothing touched) otherwise.
+    @discardableResult
+    static func reset(_ url: URL) -> Bool {
+        guard url.standardizedFileURL.path.hasPrefix(FileManager.default.temporaryDirectory.standardizedFileURL.path) else { return false }
         for suffix in [""] + (1...AuditLog.retainedGenerations).map({ ".\($0)" }) {
             try? FileManager.default.removeItem(at: URL(filePath: url.path + suffix))
         }
+        return true
+    }
+
+    /// Respond's picture: Phishing's finished run on the demo's phish (the mock's Gmail log shows carol sending it from the
+    /// attacker's address), trashed from alice's and dana's mailboxes with every mailbox searched, as `PhishingChanges`
+    /// records it, so Still to do lists it done.
+    static func writePulled(to url: URL) {
+        guard reset(url), let message = try? GamCommands.MessageID(validating: "<phish-1@mail.example.com>") else { return }
+        let log = AuditLog(url: url), preview = UUID().uuidString
+        let about = PhishingAudit.about(message, on: "example.com", steps: 2, searchedEverywhere: true)
+        for (index, mailbox) in ["alice@example.com", "dana@example.com"].enumerated() {
+            guard let write = try? GamCommands.trashMessage(email: mailbox, message, copies: 1) else { return }
+            var extra: JSONObject = ["preview": .string(preview), "origin": .string("form"), "step": .number(String(index))]
+            for (key, value) in about { extra[key] = .string(value) }
+            // 2026-10-19 15:30 UTC, an hour after it was sent, two seconds a step.
+            let at = Date(timeIntervalSince1970: 1_792_423_800 + Double(index) * 2)
+            var begin = extra, end = extra
+            begin["phase"] = .string("begin")
+            end["phase"] = .string("end")
+            _ = try? log.record(write.action.rawValue, target: mailbox, argv: write.argv, actor: "admin@example.com", extra: begin, now: at)
+            _ = try? log.record(write.action.rawValue, target: mailbox, argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
+                                extra: end, now: at + 1)
+        }
+    }
+
+    static func write(to url: URL) {
+        guard reset(url) else { return }
         let log = AuditLog(url: url)
         var minutes = 0.0
         /// 2026-10-08 09:00 UTC, a minute later each record.

@@ -17,6 +17,8 @@ Then the fix for a whole pull stopping the app: the reader linear in the events 
 parse, sorting, merge and saving (failure log 2026-10-23; runbook "Nothing a pull's size runs on the main thread"); then
 progress after every read, each step after a pull said under the logs, and a pull saved to the open incident added to its
 evidence in memory, never by reading every saved pull back (failure log 2026-10-23, "each pull re-read every saved pull").
+Then, from the real incident, the checklist's first piece: an email Phishing trashed from every mailbox shows done on
+Respond, with when and by whom, from this app's audit log (runbook "Done from the audit log"; phishing.md D13).
 Next, in this order: the incoming phish, a pull anchored on the attack, and who to warn (and whether they were); the
 checklist (done from the logs where they show it, else ticked by hand) and the report (slice 4); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add

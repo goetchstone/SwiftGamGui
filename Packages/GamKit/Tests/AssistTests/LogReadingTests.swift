@@ -438,6 +438,56 @@ struct LogReadingTests {
         #expect(!reading.drafts.contains { if case .pullEmail(let id, _) = $0 { !id.contains("phish") } else { false } })
     }
 
+    /// An email Phishing trashed from every mailbox, as this app's audit log shows its latest run (`Context.pulled`), is done:
+    /// listed with when and by whom, drafted nowhere again and left out of Pull All, while the finding that it was sent
+    /// stays. A step failed, one that never ended (a Stop), or a mailbox Find couldn't search leaves it to do, saying so.
+    @Test func anEmailPhishingPulledIsDoneWithWhenAndByWhom() {
+        let two = Self.incident + [
+            Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: 31,
+                       ["event_info.mail_event_type": "1", "message_info.subject": "Invoice",
+                        "message_info.rfc2822_message_id": "<phish-2@mail.example.com>"]),
+        ]
+        let at = Date(timeIntervalSince1970: 1_792_403_600), phish = "<phish-1@mail.example.com>"
+        func pulled(_ id: String = "phish-1@mail.example.com", steps: Int = 3, trashed: Int = 3, failed: Int = 0, searched: Bool = true,
+                    at: Date = at) -> LogReading.Pulled {
+            LogReading.Pulled(messageID: id, at: at, by: "admin@example.com", steps: steps, trashed: trashed, failed: failed, mailboxes: 2,
+                              searchedEverywhere: searched)
+        }
+        let before = LogReading.read(two)
+        #expect(before.done.isEmpty && before.emailsToPull == [phish, "<phish-2@mail.example.com>"])
+
+        let reading = LogReading.read(two, context: LogReading.Context(pulled: [pulled()]))
+        #expect(reading.done.map(\.id) == ["D1"] && reading.done[0].kind == .pullEmail && reading.done[0].drafts.isEmpty)
+        #expect(reading.done[0].words == "Pulled “Shared file” (\(phish)): trashed from the 2 mailboxes that had it, every mailbox searched first.")
+        #expect(reading.done[0].done == LogReading.Status.Step(at: at, by: "admin@example.com"))
+        #expect(reading.emailsToPull == ["<phish-2@mail.example.com>"], "Pull All offers only what's left")
+        #expect(!reading.drafts.contains(.pullEmail(messageID: phish, subject: "Shared file")), "drafted nowhere again")
+        #expect(reading.findings.map(\.words) == before.findings.map(\.words), "it was still sent")
+        #expect(reading.toDo.map(\.words) == before.toDo.map(\.words).filter { !$0.contains(phish) })
+        #expect(reading.toDo.allSatisfy { $0.done == nil })
+        // Another email's run changes nothing.
+        #expect(LogReading.read(two, context: LogReading.Context(pulled: [pulled("other@mail.example.com")])) == before)
+
+        func left(_ runs: LogReading.Pulled...) -> String? {
+            let reading = LogReading.read(two, context: LogReading.Context(pulled: runs))
+            #expect(reading.done.isEmpty && reading.emailsToPull.contains(phish))
+            return reading.toDo.first { $0.drafts.contains(.pullEmail(messageID: phish, subject: "Shared file")) }?.words
+        }
+        let ask = "Pull “Shared file” (\(phish)) from every mailbox: it went out from the attacker's address. Phishing's last run by "
+            + "admin@example.com trashed "
+        let again = ": find it again there to see what's left."
+        #expect(left(pulled(trashed: 2, failed: 1)) == ask + "2 of its 3 steps, but 1 failed" + again)
+        #expect(left(pulled(trashed: 1)) == ask + "1 of its 3 steps, but 2 didn't finish" + again)
+        #expect(left(pulled(searched: false)) == ask + "it from every mailbox it found, but Find couldn't search every mailbox for it" + again)
+        #expect(left(pulled(trashed: 0, failed: 1, searched: false))
+                == ask + "0 of its 3 steps, but 1 failed, 2 didn't finish and Find couldn't search every mailbox for it" + again)
+        // The latest run decides, and a Message-ID matches with its angle brackets or without.
+        let later = at.addingTimeInterval(600)
+        #expect(left(pulled(trashed: 1, at: later), pulled()) == ask + "1 of its 3 steps, but 2 didn't finish" + again)
+        let whole = LogReading.read(two, context: LogReading.Context(pulled: [pulled(trashed: 1), pulled(phish, steps: 1, trashed: 1, at: later)]))
+        #expect(whole.done.map(\.done) == [LogReading.Status.Step(at: later, by: "admin@example.com")])
+    }
+
     /// Two phishing emails with one subject are two to pull; a device's task stays until that account's latest word on it
     /// says it left; recovery details clear only by their own removal, and a changed question is its own item.
     @Test func eachLooseEndStaysUntilItsOwnFix() {

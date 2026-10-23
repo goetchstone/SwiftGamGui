@@ -23,7 +23,8 @@ This is native: GamGUI has no builder for it; the recipients read is GamGUI's `s
 - `MessageCopiesTests`: the lines are read and a partial list is refused.
 - `SpamCopiesTests`: the Spam read's lines and rows; a partial read refused, a copy not plainly this email in Spam left
   alone.
-- `PhishingChangesTests`: end to end through the executor, one email and several (D12).
+- `PhishingChangesTests`: end to end through the executor, one email and several (D12), and what the audit says of each
+  email's latest run (D13).
 - `WriteRouteTests`: only `ChangePreviewSheet.swift` confirms.
 
 ## Files
@@ -37,6 +38,8 @@ This is native: GamGUI has no builder for it; the recipients read is GamGUI's `s
 - `Packages/GamKit/Sources/GamEngine/MessageRecipients.swift`: the sender's copy's To, Cc and Bcc
   (`MessageRecipients`), and the tenant's domains and aliases (`TenantDomains`) for inside and outside.
 - `Packages/GamKit/Sources/Directory/PhishingChanges.swift`: the model (find, preview, run, stop).
+- `Packages/GamKit/Sources/Directory/PhishingAudit.swift`: what each trash step's audit record says of its email, and
+  each email's latest run read back for the log reader (D13).
 - `App/PhishingView.swift`: the screen.
 - `App/ChangePreviewSheet.swift`: `PhishingConfirmSheet`.
 - Wiring: `App/GamGUIApp.swift` (the sidebar's Phishing, and the quit guard) and `App/AppServices.swift`.
@@ -199,13 +202,35 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
     while a mailbox or its Spam went unsearched is unsure, never clear (`unsure`), and shown with its search.
   - Trash holds one preview of every step of every email listed, each as D4, D5 and D11 build it (no new argv): the
     number of steps typed once, `confirm` from ten (the guard's rule), the guard's over-200 warning. Each step's summary
-    names its email (`of <id>`), so the audit log says which; Stop between steps; Find Again searches them all again.
+    names its email (`of <id>`), and its audit record names it too (D13); Stop between steps; Find Again searches them all
+    again.
   - The CSV (`allCopiesRows`) is each email's `copiesRows` with its Message-ID first; an email that couldn't be searched
     is a row saying why. One email keeps D10's columns.
   - Read the logs' Respond tab has "Pull All N Emails…" with two or more emails to pull: it opens Phishing with their
     Message-IDs, a line each, and finds them (a read). Who it was sent to stays one email at a time.
 
+- **D13, Read the logs shows an email pulled (2026-10-23, from the real incident: after Pull All, Still to do still listed
+  every email, so what was left couldn't be told).** Each trash step's audit record names its email in `extra`:
+  `message_id` (bare), `domain`, `message_steps` (the steps this run holds for that email) and `searched_everywhere` (Find
+  searched every mailbox and its Spam for it: `Search.searchedEverywhere`, the test `nobodyHasIt` makes).
+  `PhishingAudit.latestRuns` reads each email's latest run on the open domain back, newest first, at most 100,000 records:
+  the log is the app's for every domain, and one phish can reach two tenants (review before merge). The log reader then lists the email as done,
+  with when the run's last record was written and who ran it, once every step that run held for it ended trashed and Find
+  had searched everywhere; otherwise it stays to do, saying what the run left (compromised-account.md, "Done from the audit
+  log").
+  - New fields, not the argv: a Spam step's argv names Gmail's IDs, not the email, and the executor writes nothing for a
+    step it never began, so a run stopped part way looks whole from its records alone. The count is what tells.
+  - The latest run decides: a partial run, then Find Again and a trash of what's left, is done.
+  - A mailbox Find couldn't search (Gmail off counts, as Find never calls such a search clear) keeps the email to do.
+  - Never shown done: a run from before this build (no `message_steps`: passed over, never guessed); an email Find shows
+    no mailbox has (nothing to trash, so no record); anything done outside this app. The checklist's hand tick is for those.
+  - Pull All N Emails… offers only the emails still to do (`Reading.emailsToPull`), and a done email's finding drafts no
+    pull again.
+
 ## Gotchas / mock-lies traps
+- A step's summary isn't audited: only its action, target, masked argv and `about` reach the record. D12 said "the audit
+  log says which" email a step was for, true only for steps outside Spam (the query in the argv); D13 put it in `about`.
+  Before claiming the log says something, find the field that writes it.
 - The mock models only the query the app sends, matching the ID exactly. Whether Gmail's `rfc822msgid:`
   matches case-insensitively or by part isn't modelled. The live check must show it finds the one email
   (D5's cap limits what a broader match could trash).

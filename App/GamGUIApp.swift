@@ -174,7 +174,7 @@ struct ContentView: View {
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
                                 logs: services.incidentLogs, known: services.knownSignIns, incidents: services.incidents,
-                                hasGam: services.executor != nil,
+                                auditURL: services.auditURL, hasGam: services.executor != nil,
                                 requested: $compromisedPerson) { id in
                     // An empty ID only opens the screen: what the operator pasted there stays.
                     if !id.isEmpty { phishingMessage = id }

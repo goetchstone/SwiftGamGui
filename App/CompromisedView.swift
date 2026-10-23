@@ -18,6 +18,8 @@ struct CompromisedView: View {
     let known: KnownSignIns
     /// The incidents kept on this Mac, and the one open here.
     let incidents: Incidents
+    /// This app's audit log, which the log reader reads for the emails Phishing pulled.
+    let auditURL: URL
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
     /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
@@ -227,7 +229,7 @@ struct CompromisedView: View {
     /// Phishing; Show the Events narrows Investigate's logs; Pull Again reads more.
     private func reader(_ part: LogReaderView.Part, _ pull: IncidentLogs.Pull, _ scroller: ScrollViewProxy) -> some View {
         let domain = setup.active?.name ?? ""
-        return LogReaderView(part: part, pull: pull, memory: readerMemory, secure: { person, pick in
+        return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
             requested = person
             go(.respond, to: Self.checkAnchor, scroller)

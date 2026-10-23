@@ -476,7 +476,8 @@ read as one on a later day. Code decides what's done and what's left; the model 
   sender, delete a computer, pull an email, sign out of another app, warn contacts or Chat recipients, treat exported data
   as taken, confirm a new address, check a password, look at what was done, check a shared address. An item leaves once
   the logs show it done: a lock, a device unregistered or blocked, wiped or deleted by an admin (`deviceWord`), recovery
-  removed by an admin. What the logs can't show
+  removed by an admin. An email to pull leaves once this app's audit log shows Phishing trashed it from every mailbox,
+  and is listed under Done ("Done from the audit log", below). What neither can show
   (a warning sent) stays until the incident record can tick it. A finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
@@ -622,6 +623,29 @@ Asked for (2026-10-23): the screen organized better, a button for each recommend
   parts (`LogReaderView.Part`: `.findings` on Investigate, `.toDo` on Respond) and hands the screen a `Filter` and log names,
   never its own types; the screen names `LogReaderView.Memory`, never the model's module.
 
+## Done from the audit log (incidents plan, the checklist's first piece)
+Asked for (2026-10-23, from the real incident): after Pull All trashed the attacker's emails, Still to do still listed
+every one, so what was left couldn't be told. The plan's "a step already done shows done, with its time and who did it",
+first for the emails pulled. Reads only: the audit log is read, never written here.
+- **Done** (`LogReading.Pulled.isDone`, from `PhishingAudit.latestRuns`; phishing.md D13): the email's latest Phishing
+  run ended trashed on every step it held for that email, and Find had searched every mailbox and its Spam for it. Respond
+  lists it under **Done** after Still to do (`Reading.done`, "D1"): "Pulled “…” (id): trashed from the 2 mailboxes that had
+  it, every mailbox searched first", then "Done <time> by <admin>, as this app's audit log shows". The check mark is
+  beside those words, never alone, and VoiceOver reads the whole row. Pull All N Emails… counts only what's left
+  (`Reading.emailsToPull`), and the finding on Investigate drafts no pull again.
+- **Still to do, said in words** on the item: a step failed, a step never ended (a Stop, a quit, a run still going), or
+  Find couldn't search a mailbox: "Phishing's last run by … trashed 2 of its 3 steps, but 1 failed: find it again there to
+  see what's left."
+- **Pure, as the reader is:** `LogReaderView.Memory` reads the audit log with the pull, off the main thread, and hands
+  the reader values (`Context.pulled`) as it hands it events. Incident makes a new reading each time it opens, so coming
+  back from Phishing reads the run; a second window left open on Respond doesn't, until Incident is opened again.
+- **Never shown done:** a run made before this build (its records have no step count), an email no mailbox has any more
+  (nothing to trash, so nothing audited), and anything done outside this app. The checklist's hand tick is for those.
+- `LogReaderView.swift` names `PhishingAudit`, a reader of the log: still no changes model or executor (`WriteRouteTests`).
+- Tests: `LogReadingTests.anEmailPhishingPulledIsDoneWithWhenAndByWhom`; `PhishingChangesTests.theAuditShowsEachEmailsLatestRun`,
+  `.theAuditSaysAFailedStepAndAnUnsearchedMailbox` and `.aRecordThatCantSayItsRunIsPassedOver`, on the records the
+  executor wrote.
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
@@ -647,5 +671,6 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the incoming phish and who to warn,
-  the checklist and the report, watching, Look for Trouble.
+  the rest of the checklist (the hand tick, kept with the incident, for what no log shows: an email trashed before this
+  build or that no mailbox has, a warning sent) and the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

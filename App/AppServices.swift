@@ -147,8 +147,11 @@ struct AppServices {
             try? store.write(Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8), as: .oauth2, for: domain)
         }
         let auditURL = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl")
-        // The Audit screen's picture: example records, written fresh in the temporary folder, never the real log.
+        // The Audit screen's picture, and Respond's email pulled: example records, written fresh in the temporary folder,
+        // never the real log. Empty for every other screen, so no picture shows what an earlier launch left.
+        DemoAudit.reset(auditURL)
         if Screen.initial == .audit { DemoAudit.write(to: auditURL) }
+        if Screen.initial == .compromised, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "todo" { DemoAudit.writePulled(to: auditURL) }
         let mock = mockGam()
         if let mock {
             setenv("GAM_MOCK_FIXTURES", mock.deletingLastPathComponent().appending(path: "mock_gam").path, 0)

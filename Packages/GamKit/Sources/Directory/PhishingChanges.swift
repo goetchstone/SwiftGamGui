@@ -43,15 +43,18 @@ public final class PhishingChanges {
                 .filter { seen.insert(PythonText.lower($0)).inserted }
         }
 
-        /// No mailbox has a copy, and every mailbox and its Spam was searched: never said while any went unsearched, where
-        /// a copy is unknown (review of 2026-10-19), nor while the Spam read missed a mailbox the dry run listed (one made
-        /// between the two reads) or GAM said something neither reader knows (review of 2026-10-23).
-        public var nobodyHasIt: Bool {
-            guard mailboxesWithCopies.isEmpty, copies.unsearched.isEmpty, copies.otherLines.isEmpty,
-                  let spam, spam.unsearched.isEmpty, spam.otherLines.isEmpty else { return false }
+        /// Every mailbox and its Spam was searched: none went unsearched, where a copy is unknown (review of 2026-10-19),
+        /// the Spam read missed no mailbox the dry run listed (one made between the two reads), and GAM said nothing
+        /// neither reader knows (review of 2026-10-23).
+        public var searchedEverywhere: Bool {
+            guard copies.unsearched.isEmpty, copies.otherLines.isEmpty, let spam, spam.unsearched.isEmpty, spam.otherLines.isEmpty
+            else { return false }
             let searched = Set(spam.searched.map(PythonText.lower))
             return copies.mailboxes.allSatisfy { searched.contains(PythonText.lower($0.email)) }
         }
+
+        /// No mailbox has a copy, and every mailbox and its Spam was searched.
+        public var nobodyHasIt: Bool { mailboxesWithCopies.isEmpty && searchedEverywhere }
     }
 
     /// A Find's results, in the order the Message-IDs were pasted: each email's search, or why it couldn't be searched,
@@ -577,19 +580,24 @@ public final class PhishingChanges {
             refusal = "This build has no GAM. Build the app again after running scripts/fetch_gam.sh."
             return
         }
-        // Several emails: each step names its email, in the preview and the audit log.
+        // Several emails: each step's summary names its email. Every step's audit record names it, how many steps this
+        // run holds for it, the domain, and whether Find searched everywhere for it: what the log reader needs to show it pulled (D13).
         let several = searches.count > 1
+        let stepsFor = Dictionary(grouping: trashes, by: \.message.id).mapValues(\.count)
+        let searchedEverywhere = Set(searches.filter(\.searchedEverywhere).map(\.message.id))
         let steps: [WriteStep]
         do {
             steps = try trashes.map { trash in
                 let copies = (trash.copies == 1 ? "the copy" : "the \(trash.copies) copies") + (several ? " of <\(trash.message.id)>" : "")
+                let about = PhishingAudit.about(trash.message, on: searches[0].domain.name, steps: stepsFor[trash.message.id] ?? 0,
+                                                searchedEverywhere: searchedEverywhere.contains(trash.message.id))
                 switch trash.place {
                 case .mailbox(let count):
                     return WriteStep(try GamCommands.trashMessage(email: trash.email, trash.message, copies: count),
-                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s mailbox to its Trash.")
+                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s mailbox to its Trash.", about: about)
                 case .spam(let ids):
                     return WriteStep(try GamCommands.trashMessages(email: trash.email, ids: ids),
-                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s Spam to Trash.")
+                                     target: trash.email, summary: "Move \(copies) in \(trash.email)'s Spam to Trash.", about: about)
                 }
             }
         } catch {

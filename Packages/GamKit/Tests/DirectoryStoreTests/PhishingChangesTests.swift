@@ -1,4 +1,4 @@
-import ChangeCore
+@testable import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
@@ -478,5 +478,85 @@ final class PhishingChangesTests {
         #expect(await executor.isHeld(pending.id) == false && changes.pending == nil)
         await changes.confirm(pending, typed("3"))
         #expect(changes.run == nil && trashCalls().count == 2, "two searches, no trash")
+    }
+
+    /// What the log reader is told (D13), from the records the executor wrote: each email's latest run. A Pull All stopped
+    /// part way leaves the email it was in short of its steps and the next with no record at all, which no argv could
+    /// show; trashing what Find finds again is the latest run, whole.
+    @Test func theAuditShowsEachEmailsLatestRun() async throws {
+        try await connect()
+        await changes.find([Self.pasted, Self.other].joined(separator: "\n"))
+        await changes.previewTrash()
+        let pending = try #require(changes.pending, "\(changes.refusal ?? "")")
+        // Stop asked as the second step begins: it finishes, the other two never begin.
+        let id = pending.preview.id, began = StepCounter()
+        await executor.setBeforeEachStep { [executor] in
+            if await began.next() == 2 { _ = await executor.stopAfterCurrentStep(id) }
+        }
+        await changes.confirm(pending, typed("4"))
+        #expect(try #require(changes.run).trashed == 2)
+        let stopped = PhishingAudit.latestRuns(in: auditURL, on: "example.com")
+        #expect(stopped.map(\.messageID) == [Self.message.id], "the other email's step never began")
+        #expect(stopped.map { [$0.steps, $0.trashed, $0.failed, $0.mailboxes] } == [[3, 2, 0, 2]])
+        #expect(stopped.allSatisfy { $0.searchedEverywhere && $0.by == "admin@example.com" })
+
+        await executor.setBeforeEachStep(nil)
+        await changes.find(Self.pasted)
+        await changes.previewTrash()
+        let rest = try #require(changes.pending, "\(changes.refusal ?? "")")
+        #expect(rest.trashes == [.init(message: Self.message, email: "alice@example.com", place: .spam(ids: ["19a0c0ffee000002"]))])
+        await changes.confirm(rest, typed("1"))
+        let latest = PhishingAudit.latestRuns(in: auditURL, on: "example.com")
+        #expect(latest.map { [$0.steps, $0.trashed, $0.failed, $0.mailboxes] } == [[1, 1, 0, 1]] && latest[0].searchedEverywhere)
+        #expect(latest[0].at > stopped[0].at)
+    }
+
+    /// A step that failed counts as failed, and a Find that couldn't search a mailbox (Gmail off) is said by the run, so
+    /// neither reads as done.
+    @Test func theAuditSaysAFailedStepAndAnUnsearchedMailbox() async throws {
+        try await connect()
+        await changes.find(Self.pasted)
+        await changes.previewTrash()
+        try FileManager.default.createDirectory(at: state.appending(path: "trashed"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "trashed/19a0c0ffee000001").path, contents: Data())
+        await changes.confirm(try #require(changes.pending), typed("3"))
+        let failed = PhishingAudit.latestRuns(in: auditURL, on: "example.com")
+        #expect(failed.map { [$0.steps, $0.trashed, $0.failed] } == [[3, 2, 1]] && failed[0].searchedEverywhere)
+
+        try FileManager.default.removeItem(at: state)
+        try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "nogmail/alice@example.com").path, contents: Data())
+        await changes.find(Self.pasted)
+        #expect(try search().searchedEverywhere == false)
+        await changes.previewTrash()
+        await changes.confirm(try #require(changes.pending), typed("1"))
+        let unsearched = PhishingAudit.latestRuns(in: auditURL, on: "example.com")
+        #expect(unsearched.map { [$0.steps, $0.trashed, $0.failed] } == [[1, 1, 0]] && !unsearched[0].searchedEverywhere)
+    }
+
+    /// A trash record from before Phishing named its email (no `message_steps`) is passed over: its argv names the email,
+    /// but not how many steps its run held, so it can never show a run whole. A run is its domain's alone: one phish can
+    /// reach two tenants the app connects, and trashing it from one leaves the other's copies.
+    @Test func aRecordThatCantSayItsRunIsPassedOver() throws {
+        let log = AuditLog(url: auditURL), write = try GamCommands.trashMessage(email: "alice@example.com", Self.message, copies: 1)
+        let extra: JSONObject = ["preview": .string(UUID().uuidString), "step": .number("0"), "phase": .string("end")]
+        try log.record(write.action.rawValue, target: "alice@example.com", argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
+                       extra: extra)
+        #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.com").isEmpty)
+        var named = extra
+        for (key, value) in PhishingAudit.about(Self.message, on: "example.com", steps: 1, searchedEverywhere: true) { named[key] = .string(value) }
+        try log.record(write.action.rawValue, target: "alice@example.com", argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
+                       extra: named)
+        #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.com").map { [$0.steps, $0.trashed] } == [[1, 1]])
+        #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.org").isEmpty, "another domain's run is its own")
+    }
+}
+
+/// Counts the steps a run begins, for a test that stops one part way.
+private actor StepCounter {
+    private var count = 0
+    func next() -> Int {
+        count += 1
+        return count
     }
 }
