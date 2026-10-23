@@ -48,7 +48,9 @@ on-device model rewords it on request); Audit shows this app's audit log, search
 Phishing takes one email out of every mailbox by its Message-ID: it lists who has a copy (GAM's own dry run,
 which changes nothing, and a read of the copies in Spam, which the dry run can't see) and, from the sender's own copy, who it was addressed to, outside the domain first
 (its Bcc too when it was sent from Gmail; Google's Email Log Search has the full record); then, with the number of steps typed (a mailbox, and its Spam when it has copies there), it moves each copy to that person's Trash, keeping the
-sender's Sent copy. Both lists save as CSV.
+sender's Sent copy. Both lists save as CSV. Pull All takes several Message-IDs at once (Read the logs fills them in): each
+is found the same way, only those some mailbox has are listed, and every copy of every one is trashed from one preview,
+the number of steps typed once, each step audited.
 Sharing a calendar with a group, deleting a calendar or an event, a signature for many people at once
 and deleting a leaver's account are still GamGUI's. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).

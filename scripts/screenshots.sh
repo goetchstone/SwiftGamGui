@@ -47,7 +47,8 @@ status=0
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
 # demo log AppServices writes fresh in the temporary folder.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
-# sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs).
+# sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
+# then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
 for spec in home:home users:users groups:groups setup:setup \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
@@ -88,6 +89,8 @@ for spec in home:home users:users groups:groups setup:setup \
             phishing-recipients:phishing:CAPh1sh+Notice=0001@mail.example.com:recipients:1100x1100 \
             phishing-confirm:phishing:CAPh1sh+Notice=0001@mail.example.com:confirm \
             phishing-result:phishing:CAPh1sh+Notice=0001@mail.example.com:result \
+            phishing-all:phishing:CAPh1sh+Notice=0001@mail.example.com,CAOther+Note=0002@mail.example.com,nobody-sent-this@mail.example.com::1100x1100 \
+            phishing-all-confirm:phishing:CAPh1sh+Notice=0001@mail.example.com,CAOther+Note=0002@mail.example.com,nobody-sent-this@mail.example.com:confirm:1100x1100 \
             narrow-phishing:phishing:CAPh1sh+Notice=0001@mail.example.com::smallest; do
   IFS=: read -r name screen person tab window template calendar <<< "$spec"
   file="$out/$name.png"

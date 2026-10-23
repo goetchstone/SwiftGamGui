@@ -6,10 +6,11 @@ import Setup
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Phishing: one email taken out of every mailbox (docs/domains/phishing.md). The operator pastes the email's
-/// Message-ID; Find Copies runs GAM's own dry run over every active user, which changes nothing, and lists who has a
-/// copy; Trash holds one step per mailbox, confirmed on `PhishingConfirmSheet` with the number of mailboxes typed;
-/// then each mailbox's result as it ends, Stop between mailboxes, and Find Again to see that none are left.
+/// Phishing: an email taken out of every mailbox (docs/domains/phishing.md). The operator pastes the email's
+/// Message-ID, or several one per line (Pull All, D12); Find Copies runs GAM's own dry run over every active user for
+/// each, which changes nothing, and lists who has a copy; Trash holds one step per email and mailbox, confirmed once on
+/// `PhishingConfirmSheet` with the number of steps typed; then each step's result as it ends, Stop between steps, and
+/// Find Again to see that none are left.
 struct PhishingView: View {
     let setup: SetupModel
     let changes: PhishingChanges
@@ -29,8 +30,13 @@ struct PhishingView: View {
             && !pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// More than one Message-ID pasted: who it was sent to is read for one at a time.
+    private var several: Bool {
+        ((try? PhishingChanges.messages(pasted))?.count ?? 0) > 1
+    }
+
     private var canList: Bool {
-        hasGam && setup.active != nil && !changes.isReadingRecipients
+        hasGam && setup.active != nil && !changes.isReadingRecipients && !several
             && !pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !sender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -63,12 +69,18 @@ struct PhishingView: View {
                          + "lists every active user who has it and changes nothing; Trash then moves those copies to each person's "
                          + "Trash, where they stay for 30 days and can be put back.")
                         .foregroundStyle(.secondary)
-                    TextField("Message-ID", text: $pasted, prompt: Text(verbatim: "<…@mail.example.com>"))
+                    TextField("Message-ID", text: $pasted, prompt: Text(verbatim: "<…@mail.example.com>"), axis: .vertical)
+                        .lineLimit(1...8)
                         .autocorrectionDisabled()
                         .onSubmit { if canFind { find() } }
-                        .accessibilityHint("The email's Message-ID header. Press Return to find its copies.")
-                    Text("In Gmail, open the email, choose More › Show original, and copy the Message-ID line. The sender's own "
-                         + "Sent copy is kept as evidence. Copies in Spam are found too; suspended users' mailboxes aren't searched.")
+                        .accessibilityLabel("Message-IDs, one per line")
+                        .accessibilityHint("The email's Message-ID header, or several pasted one per line. Return finds their copies; "
+                                           + "Option-Return starts a new line.")
+                    Text("In Gmail, open the email, choose More › Show original, and copy the Message-ID line. For several emails "
+                         + "at once, paste one per line (Option-Return starts a new one), up to \(PhishingChanges.mostAtOnce): "
+                         + "Read the logs' Pull All fills them in. The "
+                         + "sender's own Sent copy is kept as evidence. Copies in Spam are found too; suspended users' mailboxes "
+                         + "aren't searched.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     HStack {
@@ -97,6 +109,11 @@ struct PhishingView: View {
                         .autocorrectionDisabled()
                         .onSubmit { if canList { listRecipients() } }
                         .accessibilityHint("The address that sent the email. Press Return to list who it went to.")
+                    if several {
+                        Text("Who it was sent to is read for one email at a time: leave one Message-ID above.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                     HStack {
                         Spacer()
                         Button("List Recipients", action: listRecipients)
@@ -141,13 +158,21 @@ struct PhishingView: View {
         switch changes.state {
         case .idle:
             EmptyView()
-        case .finding:
+        case .finding(let messages, let searched):
             Section {
                 HStack {
                     ProgressView().controlSize(.small)
-                    Text("Searching every active user's mailbox… In a large domain this takes several minutes.")
+                    Text(messages.count == 1 ? "Searching every active user's mailbox… In a large domain this takes several minutes."
+                         : "Searching every active user's mailbox for \(messages.count) emails: \(searched) done. Each takes a "
+                            + "minute or more in a large domain.")
+                    if messages.count > 1 {
+                        Spacer()
+                        Button("Stop") { changes.stopFinding() }
+                            .accessibilityHint("Stops searching: the emails being searched finish, no more start, and nothing is "
+                                               + "shown. Nothing has changed.")
+                    }
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
             }
         case .problem(let problem):
             Section {
@@ -158,8 +183,16 @@ struct PhishingView: View {
             } header: {
                 Text("Couldn't search").accessibilityAddTraits(.isHeader)
             }
-        case .found(let search):
-            FoundSection(search: search, changes: changes, canTrash: hasGam && !changes.isRunning, export: export)
+        case .found(let found):
+            if found.results.count == 1, let search = found.searches.first {
+                FoundSection(search: search, changes: changes, canTrash: hasGam && !changes.isRunning, export: export)
+            } else {
+                AllFoundSection(found: found, changes: changes, canTrash: hasGam && !changes.isRunning, export: export)
+                // Each email someone has, or that a mailbox couldn't be searched for: never one that nobody has.
+                ForEach(found.withCopies + found.unsure, id: \.message.id) { search in
+                    FoundSection(search: search, changes: changes, canTrash: false, export: export, single: false)
+                }
+            }
         }
     }
 
@@ -187,7 +220,10 @@ struct PhishingView: View {
             // The anchor on the section itself: a Form scrolls to a row's id, not to a conditional builder's.
             .id(Self.recipientsAnchor)
         case .read(let recipients):
-            let unnamed: [String] = if case .found(let search) = changes.state { recipients.unnamed(in: search) } else { [] }
+            let unnamed: [String] = if case .found(let found) = changes.state,
+                                        let search = found.searches.first(where: { $0.message == recipients.message }) {
+                recipients.unnamed(in: search)
+            } else { [] }
             RecipientsSection(recipients: recipients, unnamed: unnamed, export: export)
                 .id(Self.recipientsAnchor)
         }
@@ -240,11 +276,12 @@ struct PhishingView: View {
             if run.ended { return run.summary }
             let done = run.results.compactMap { $0 }.count
             guard done > 0, done <= run.pending.trashes.count else { return nil }
-            return "\(run.pending.trashes[done - 1].name): \(PhishingStatus(run.results[done - 1]).words)."
+            return "\(PhishingRunSection.name(run.pending.trashes[done - 1], in: run.pending)): \(PhishingStatus(run.results[done - 1]).words)."
         }
         if let refusal = changes.refusal { return refusal }
         return switch changes.state {
-        case .found(let search): FoundSection.headline(search)
+        case .found(let found):
+            found.results.count == 1 && found.searches.count == 1 ? FoundSection.headline(found.searches[0]) : AllFoundSection.headline(found)
         case .problem(let problem): problem.summary
         case .finding, .idle: nil
         }
@@ -258,7 +295,8 @@ struct PhishingView: View {
         }
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` pastes that Message-ID and finds its copies in the mock, and `SWIFTGAMGUI_TAB`
+    /// Debug builds: `SWIFTGAMGUI_SELECT` pastes that Message-ID (or several, between commas) and finds its copies in the
+    /// mock, and `SWIFTGAMGUI_TAB`
     /// shows, for the snapshots, who the mock's sender sent it to (`recipients`), the confirm sheet over the copies
     /// (`confirm`) or a finished run's results (`result`, made up: nothing runs).
     private func fillForSnapshot() {
@@ -303,6 +341,8 @@ private struct FoundSection: View {
     let changes: PhishingChanges
     let canTrash: Bool
     let export: (String, [String], [[String]]) -> Void
+    /// The one email searched: its own Export and Trash. One of several shares Pull All's (`AllFoundSection`).
+    var single = true
 
     private var copies: MessageCopies { search.copies }
     private var withCopies: [MessageCopies.Mailbox] { copies.withCopies }
@@ -442,18 +482,20 @@ private struct FoundSection: View {
                 Text(search.commandLine + "\n" + search.spamCommandLine).font(.caption.monospaced()).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if let refusal = changes.refusal {
+            if single, let refusal = changes.refusal {
                 Label(refusal, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
             }
-            HStack {
-                Spacer()
-                Button("Export CSV…") {
-                    export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns, PhishingChanges.copiesRows(search, run: nil))
+            if single {
+                HStack {
+                    Spacer()
+                    Button("Export CSV…") {
+                        export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns, PhishingChanges.copiesRows(search, run: nil))
+                    }
+                    .accessibilityLabel("Export the \(copies.mailboxes.count) mailboxes searched as a CSV file")
+                    .help("Each mailbox, what was found and how many copies")
                 }
-                .accessibilityLabel("Export the \(copies.mailboxes.count) mailboxes searched as a CSV file")
-                .help("Each mailbox, what was found and how many copies")
             }
-            if !search.mailboxesWithCopies.isEmpty {
+            if single, !search.mailboxesWithCopies.isEmpty {
                 let count = search.mailboxesWithCopies.count
                 HStack {
                     Spacer()
@@ -467,6 +509,81 @@ private struct FoundSection: View {
             }
         } header: {
             Text(Self.headline(search)).font(.headline).accessibilityAddTraits(.isHeader)
+        }
+    }
+}
+
+/// Pull All (D12): several emails searched at once. How many some mailbox still has, those nobody has (sent and since
+/// removed, or never delivered: bounced, limited), any a mailbox couldn't be searched for (never clear), any that
+/// couldn't be searched at all, every email's rows as one CSV, and one Trash for every copy of every email listed below.
+private struct AllFoundSection: View {
+    let found: PhishingChanges.Found
+    let changes: PhishingChanges
+    let canTrash: Bool
+    let export: (String, [String], [[String]]) -> Void
+
+    private var mailboxes: Int {
+        Set(found.withCopies.flatMap(\.mailboxesWithCopies).map { $0.lowercased() }).count
+    }
+
+    /// Each group counted on its own: never "in none" for an email a mailbox, or the whole search, couldn't read (review
+    /// of 2026-10-23).
+    static func headline(_ found: PhishingChanges.Found) -> String {
+        let groups = [(found.withCopies.count, "still in a mailbox here"), (found.nobodyHas.count, "in no mailbox here"),
+                      (found.unsure.count, "not checked everywhere"), (found.failed.count, "couldn't be searched")]
+        let said = groups.enumerated().filter { $0.offset == 0 || $0.element.0 > 0 }.map { "\($0.element.0) \($0.element.1)" }
+        return "\(found.results.count) emails: " + said.joined(separator: ", ")
+    }
+
+    var body: some View {
+        Section {
+            if !found.withCopies.isEmpty {
+                Text("Each one below, with who has it. Trash moves every copy listed to each person's Trash, the sender's Sent "
+                     + "copy kept, from one preview.")
+                    .foregroundStyle(.secondary)
+            }
+            if !found.nobodyHas.isEmpty {
+                DisclosureGroup("No mailbox here has \(found.nobodyHas.count) of them: sent only outside, removed since, or never "
+                                + "delivered (bounced or limited)") {
+                    Text(found.nobodyHas.map { "<\($0.message.id)>" }.joined(separator: "\n"))
+                        .font(.callout).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            if !found.unsure.isEmpty {
+                Label("\(found.unsure.count) found in no mailbox searched, but a mailbox or its Spam couldn't be searched, so "
+                      + "they aren't clear: each is below.", systemImage: "questionmark.circle")
+            }
+            ForEach(found.failed, id: \.message.id) { failed in
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("<\(failed.message.id)>: couldn't be searched", systemImage: "xmark.octagon.fill").symbolRenderingMode(.multicolor)
+                    Text(failed.problem.summary).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if let refusal = changes.refusal {
+                Label(refusal, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+            HStack {
+                Spacer()
+                Button("Export CSV…") {
+                    export(PhishingChanges.exportName("copies"), PhishingChanges.allCopiesColumns,
+                           PhishingChanges.allCopiesRows(found.results, run: nil))
+                }
+                .accessibilityLabel("Export every email's mailboxes searched as a CSV file")
+                .help("Each email, each mailbox, what was found and how many copies")
+                if !found.withCopies.isEmpty {
+                    Button("Trash \(found.withCopies.count) Email\(found.withCopies.count == 1 ? "" : "s") from \(mailboxes) "
+                           + "Mailbox\(mailboxes == 1 ? "" : "es")…", role: .destructive) {
+                        let changes = changes
+                        Task { await changes.previewTrash() }
+                    }
+                    .disabled(!canTrash)
+                    .help("Shows exactly what will be trashed, every email's, to confirm once")
+                }
+            }
+        } header: {
+            Text(Self.headline(found)).font(.headline).accessibilityAddTraits(.isHeader)
         }
     }
 }
@@ -586,17 +703,25 @@ private struct PhishingRunSection: View {
 
     private var done: Int { run.results.compactMap { $0 }.count }
 
+    /// A step as said: its mailbox, and for several emails which one ("alice@example.com · “Shared file”").
+    static func name(_ trash: PhishingChanges.Trash, in pending: PhishingChanges.Pending) -> String {
+        guard pending.messages.count > 1 else { return trash.name }
+        let subject = pending.search(of: trash.message)?.sample?.copy.subject ?? ""
+        return trash.name + " · " + (subject.isEmpty ? "<\(trash.message.id)>" : "“\(subject)”")
+    }
+
     var body: some View {
         Section {
             ForEach(Array(run.pending.trashes.enumerated()), id: \.element.id) { index, trash in
                 let status = PhishingStatus(run.results[index], running: !run.ended && index == done)
+                let name = Self.name(trash, in: run.pending)
                 VStack(alignment: .leading, spacing: 2) {
-                    Label(trash.name, systemImage: status.symbol).symbolRenderingMode(.multicolor)
+                    Label(name, systemImage: status.symbol).symbolRenderingMode(.multicolor)
                     Text(detail(run.results[index]) ?? status.words).font(.callout).foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(trash.name): \(status.words)")
+                .accessibilityLabel("\(name): \(status.words)")
             }
             if run.ended {
                 if let problem = run.auditProblem {
@@ -608,12 +733,18 @@ private struct PhishingRunSection: View {
                     .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
+                    // Every email of the Find, the ones not trashed (unsure, not searched) among them.
                     Button("Export CSV…") {
-                        export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns,
-                               PhishingChanges.copiesRows(run.pending.search, run: run))
+                        if run.pending.found.results.count == 1 {
+                            export(PhishingChanges.exportName("copies"), PhishingChanges.copiesColumns,
+                                   PhishingChanges.copiesRows(run.pending.searches[0], run: run))
+                        } else {
+                            export(PhishingChanges.exportName("copies"), PhishingChanges.allCopiesColumns,
+                                   PhishingChanges.allCopiesRows(run.pending.found.results, run: run))
+                        }
                     }
                     .accessibilityLabel("Export each mailbox searched and what the trash did as a CSV file")
-                    Button("Find Again") { findAgain(run.pending.search.message.id) }
+                    Button("Find Again") { findAgain(run.pending.found.results.map(\.message.id).joined(separator: "\n")) }
                     Button("Done") { changes.dismissRun() }
                 }
             } else {
@@ -621,7 +752,7 @@ private struct PhishingRunSection: View {
                     ProgressView().controlSize(.small)
                     Text(run.stopping ? "Stopping after this step…"
                          : "Trashing… \(done) of \(run.results.count)"
-                            + (done < run.pending.trashes.count ? " · \(run.pending.trashes[done].name)" : ""))
+                            + (done < run.pending.trashes.count ? " · \(Self.name(run.pending.trashes[done], in: run.pending))" : ""))
                     Spacer()
                     Button("Stop After This Step…") { askingStop = true }
                         .disabled(run.stopping)
@@ -630,7 +761,8 @@ private struct PhishingRunSection: View {
             }
         } header: {
             Text(run.ended ? run.summary
-                 : "Trashing from \(run.pending.mailboxes.count) mailbox\(run.pending.mailboxes.count == 1 ? "" : "es")")
+                 : (run.pending.messages.count > 1 ? "Trashing \(run.pending.messages.count) emails from " : "Trashing from ")
+                    + "\(run.pending.mailboxes.count) mailbox\(run.pending.mailboxes.count == 1 ? "" : "es")")
                 .font(.headline)
                 .textSelection(.enabled)
                 .accessibilityAddTraits(.isHeader)

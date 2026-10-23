@@ -650,7 +650,15 @@ struct PhishingConfirmSheet: View {
     }
     private var mailboxes: String { "\(pending.mailboxes.count) mailbox\(pending.mailboxes.count == 1 ? "" : "es")" }
     /// What the typed number counts, in words.
-    private var counted: String { count == pending.mailboxes.count ? "mailboxes" : "steps" }
+    private var counted: String { count == pending.mailboxes.count && emails == 1 ? "mailboxes" : "steps" }
+    /// Pull All (D12): several emails in one preview, each shown with its own steps.
+    private var emails: Int { pending.messages.count }
+    /// "the email", or "4 emails".
+    private var what: String { emails == 1 ? "the email" : "\(emails) emails" }
+    /// Each email's step summaries, in order, grouped once (by position: a step is its trash's).
+    private var stepsByEmail: [String: [String]] {
+        Dictionary(grouping: zip(pending.trashes, pending.preview.steps), by: { $0.0.message.id }).mapValues { $0.map(\.1.summary) }
+    }
 
     private func confirm() {
         let pending = pending, changes = changes, confirmation = OperatorConfirmation(
@@ -659,24 +667,35 @@ struct PhishingConfirmSheet: View {
     }
 
     var body: some View {
+        let stepsByEmail = stepsByEmail
         Form {
+            // Each email with its own steps: one section for one email, as before Pull All.
+            ForEach(Array(pending.searches.enumerated()), id: \.element.message.id) { index, search in
+                Section {
+                    LabeledContent("Message-ID") {
+                        Text(search.message.id).textSelection(.enabled)
+                    }
+                    if let sample = search.sample {
+                        LabeledContent("From") { Text(sample.copy.from).textSelection(.enabled) }
+                        LabeledContent("Subject") { Text(sample.copy.subject).textSelection(.enabled) }
+                    } else if emails > 1 {
+                        Label("Couldn't read a copy to show what it is: check the Message-ID.", systemImage: "questionmark.circle")
+                    }
+                    ForEach(pending.trashes.filter { $0.message == search.message && $0.copies > 2 }) { trash in
+                        Label("\(trash.name) has \(trash.copies) copies: one email rarely arrives more than twice.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .symbolRenderingMode(.multicolor)
+                    }
+                    // A mailbox with copies in Spam as well has two steps.
+                    ForEach(Array((stepsByEmail[search.message.id] ?? []).enumerated()), id: \.offset) { _, summary in
+                        Text(summary)
+                    }
+                } header: {
+                    Text(emails == 1 ? "Trash this email from \(mailboxes)" : "Email \(index + 1) of \(emails)")
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
             Section {
-                LabeledContent("Message-ID") {
-                    Text(pending.search.message.id).textSelection(.enabled)
-                }
-                if let sample = pending.search.sample {
-                    LabeledContent("From") { Text(sample.copy.from).textSelection(.enabled) }
-                    LabeledContent("Subject") { Text(sample.copy.subject).textSelection(.enabled) }
-                }
-                ForEach(pending.trashes.filter { $0.copies > 2 }) { trash in
-                    Label("\(trash.name) has \(trash.copies) copies: one email rarely arrives more than twice.",
-                          systemImage: "exclamationmark.triangle.fill")
-                        .symbolRenderingMode(.multicolor)
-                }
-                // By position: a mailbox with copies in Spam as well has two steps.
-                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
-                    Text(step.summary)
-                }
                 DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
                     Text(pending.preview.steps.map(\.commandLine).joined(separator: "\n"))
                         .font(.caption.monospaced())
@@ -684,7 +703,7 @@ struct PhishingConfirmSheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } header: {
-                Text("Trash this email from \(mailboxes)").accessibilityAddTraits(.isHeader)
+                if emails > 1 { Text("Trash \(what) from \(mailboxes): \(count) steps").accessibilityAddTraits(.isHeader) }
             }
             Section {
                 Label("Each person stops seeing it at once. It stays in their Trash for 30 days, where it can be put back.",
@@ -704,16 +723,22 @@ struct PhishingConfirmSheet: View {
                     Label("This trashes from \(mailboxes) (over the \(Guard.hardCap) safety threshold). Double-check the target set.",
                           systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
+                } else if emails > 1, count > Guard.hardCap {
+                    Label("This runs \(count) steps for \(what) (over the \(Guard.hardCap) safety threshold). Double-check the emails "
+                          + "and mailboxes above.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
                 }
             }
             Section {
                 TextField("Number of \(counted)", text: $typedCount, prompt: Text(verbatim: pending.typedCount))
                     .autocorrectionDisabled()
-                    .accessibilityLabel("Type the number of \(counted), \(count), to trash the email from \(mailboxes)")
+                    .accessibilityLabel("Type the number of \(counted), \(count), to trash \(what) from \(mailboxes)")
             } header: {
                 Text("Type \(count) to run it")
             } footer: {
-                if count != pending.mailboxes.count {
+                if emails > 1 {
+                    Text("One for each step above: each email's own, and a mailbox with copies in Spam as well has two.")
+                } else if count != pending.mailboxes.count {
                     Text("One for each step above: a mailbox with copies in Spam as well has two.")
                 }
             }
@@ -721,7 +746,7 @@ struct PhishingConfirmSheet: View {
                 Section {
                     TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
                         .autocorrectionDisabled()
-                        .accessibilityLabel("Type the word confirm to trash the email from \(mailboxes)")
+                        .accessibilityLabel("Type the word confirm to trash \(what) from \(mailboxes)")
                 } header: {
                     Text("Type \(Guard.typedWord) too")
                 } footer: {
@@ -735,7 +760,7 @@ struct PhishingConfirmSheet: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.cancelPreview() } }
             // Not the confirmation action: Return in a field mustn't trash anything.
             ToolbarItem(placement: .primaryAction) {
-                Button("Trash from \(mailboxes)", role: .destructive) { confirm() }
+                Button(emails == 1 ? "Trash from \(mailboxes)" : "Trash \(what)", role: .destructive) { confirm() }
                     .disabled(!countMatches || !wordMatches)
                     .help(!countMatches ? "Type \(count) first" : !wordMatches ? "Type confirm first" : "Runs exactly these steps, once")
             }

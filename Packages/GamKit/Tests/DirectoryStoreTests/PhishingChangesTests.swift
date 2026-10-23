@@ -69,9 +69,16 @@ final class PhishingChangesTests {
         return calls.filter { $0.count > 3 && $0[2] == "trash" }
     }
 
+    /// The one email's search shown.
     private func search() throws -> PhishingChanges.Search {
-        guard case .found(let search) = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
+        guard case .found(let found) = changes.state, found.results.count == 1, let search = found.searches.first
+        else { throw NotPreviewing(state: "\(changes.state)") }
         return search
+    }
+
+    private func found() throws -> PhishingChanges.Found {
+        guard case .found(let found) = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
+        return found
     }
 
     private func typed(_ count: String, word: String = "") -> OperatorConfirmation {
@@ -211,7 +218,7 @@ final class PhishingChangesTests {
         #expect(search.copies.mailboxes.first?.finding == .gmailOff)
         #expect(search.spam?.unsearched == [.init(email: "alice@example.com", why: "Gmail is off")] && search.spam?.mailboxes.isEmpty == true)
         await changes.previewTrash()
-        #expect(try #require(changes.pending).trashes == [.init(email: "dana@example.com", place: .mailbox(copies: 2))])
+        #expect(try #require(changes.pending).trashes == [.init(message: Self.message, email: "dana@example.com", place: .mailbox(copies: 2))])
     }
 
     /// Every copy in Spam: the sample is read from a Spam copy (to check it's the phish before trashing), and Trash holds
@@ -225,7 +232,7 @@ final class PhishingChangesTests {
         #expect(sample.mailbox == "dana@example.com" && sample.copy.subject == "Invoice overdue")
         await changes.previewTrash()
         let pending = try #require(changes.pending)
-        #expect(pending.trashes == [.init(email: "dana@example.com", place: .spam(ids: ["19a0c0ffee000008"]))])
+        #expect(pending.trashes == [.init(message: search.message, email: "dana@example.com", place: .spam(ids: ["19a0c0ffee000008"]))])
         #expect(pending.preview.steps.map(\.summary) == ["Move the copy in dana@example.com's Spam to Trash."])
     }
 
@@ -317,11 +324,147 @@ final class PhishingChangesTests {
         await changes.previewTrash()
         await changes.confirm(try #require(changes.pending), typed("3"))
         let run = try #require(changes.run)
-        #expect(PhishingChanges.copiesRows(run.pending.search, run: run) == [
+        #expect(PhishingChanges.copiesRows(try #require(run.pending.search(of: search.message)), run: run) == [
             ["alice@example.com", "copies", "1", "1", "trashed; spam: trashed"],
             ["carol@example.com", "none", "0", "0", ""],
             ["dana@example.com", "copies", "2", "0", "trashed"],
         ])
+    }
+
+    static let other = "<CAOther+Note=0002@mail.example.com>", nobody = "<nobody-sent-this@mail.example.com>"
+
+    /// Pull All (D12): several Message-IDs, one per line, each searched as one is (its dry run and its Spam read), a
+    /// repeat once. Only the emails some mailbox has are held, every step of every one in one preview, the number of
+    /// steps typed once; confirmed, each runs exactly as held, audited, and Find shows none left.
+    @Test func pullAllHoldsEveryEmailSomeoneHasInOnePreview() async throws {
+        try await connect()
+        await changes.find([Self.pasted, Self.other, Self.nobody, "<CAPh1sh+Notice=0001@mail.example.com>"].joined(separator: "\n"))
+        let found = try found()
+        let notice = Self.message, other = try GamCommands.MessageID(validating: Self.other)
+        #expect(found.results.map(\.message.id) == [notice.id, other.id, "nobody-sent-this@mail.example.com"], "a repeat once")
+        #expect(found.withCopies.map(\.message) == [notice, other] && found.nobodyHas.map(\.message.id) == ["nobody-sent-this@mail.example.com"])
+        #expect(found.unsure.isEmpty && found.failed.isEmpty)
+        // Searched two at a time, so in either order: one dry run each.
+        let dryRuns = try [notice, other, GamCommands.MessageID(validating: Self.nobody)].map { GamCommands.findMessageCopies($0).argv }
+        #expect(trashCalls().count == 3 && Set(trashCalls()) == Set(dryRuns), "\(trashCalls())")
+
+        await changes.previewTrash()
+        let pending = try #require(changes.pending, "\(changes.refusal ?? "")")
+        #expect(pending.trashes == [.init(message: notice, email: "alice@example.com", place: .mailbox(copies: 1)),
+                                    .init(message: notice, email: "dana@example.com", place: .mailbox(copies: 2)),
+                                    .init(message: notice, email: "alice@example.com", place: .spam(ids: ["19a0c0ffee000002"])),
+                                    .init(message: other, email: "alice@example.com", place: .mailbox(copies: 1))])
+        #expect(pending.messages == [notice, other] && pending.mailboxes == ["alice@example.com", "dana@example.com"])
+        #expect(pending.typedCount == "4" && !pending.needsWord && pending.preview.decision.requiresTypedCount)
+        #expect(pending.preview.steps.map(\.summary) == [
+            "Move the copy of <CAPh1sh+Notice=0001@mail.example.com> in alice@example.com's mailbox to its Trash.",
+            "Move the 2 copies of <CAPh1sh+Notice=0001@mail.example.com> in dana@example.com's mailbox to its Trash.",
+            "Move the copy of <CAPh1sh+Notice=0001@mail.example.com> in alice@example.com's Spam to Trash.",
+            "Move the copy of <CAOther+Note=0002@mail.example.com> in alice@example.com's mailbox to its Trash."])
+        let held = pending.preview.steps.map(\.shownArgv)
+        #expect(held == [try GamCommands.trashMessage(email: "alice@example.com", notice, copies: 1).argv,
+                         try GamCommands.trashMessage(email: "dana@example.com", notice, copies: 2).argv,
+                         try GamCommands.trashMessages(email: "alice@example.com", ids: ["19a0c0ffee000002"]).argv,
+                         try GamCommands.trashMessage(email: "alice@example.com", other, copies: 1).argv])
+
+        await changes.confirm(pending, typed("4"))
+        let run = try #require(changes.run, "\(changes.refusal ?? "")")
+        #expect(run.ended && run.trashed == 4 && run.summary == "Trashed 4 of 4 steps for 2 emails.", "\(run.results)")
+        #expect(Array(trashCalls().dropFirst(3)) == held, "exactly the held commands, once each")
+        let ends = AuditLog.records(at: auditURL).reversed().filter { $0["extra"]?.object?["phase"]?.string == "end" }
+        #expect(ends.count == 4 && ends.allSatisfy { $0["action"]?.string == "trashMessage" && $0["ok"]?.bool == true })
+        #expect(PhishingChanges.allCopiesRows(found.results, run: run).map { $0[0] + " " + $0[1] + " " + $0[5] } == [
+            "CAPh1sh+Notice=0001@mail.example.com alice@example.com trashed; spam: trashed",
+            "CAPh1sh+Notice=0001@mail.example.com carol@example.com ",
+            "CAPh1sh+Notice=0001@mail.example.com dana@example.com trashed",
+            "CAOther+Note=0002@mail.example.com alice@example.com trashed",
+            "CAOther+Note=0002@mail.example.com carol@example.com ",
+            "CAOther+Note=0002@mail.example.com dana@example.com ",
+            "nobody-sent-this@mail.example.com alice@example.com ",
+            "nobody-sent-this@mail.example.com carol@example.com ",
+            "nobody-sent-this@mail.example.com dana@example.com ",
+        ])
+        #expect(PhishingChanges.allCopiesColumns == ["message_id", "mailbox", "found", "copies", "in spam", "trash"])
+
+        await changes.find([Self.pasted, Self.other].joined(separator: "\n"))
+        let again = try self.found()
+        #expect(again.withCopies.isEmpty && again.nobodyHas.count == 2, "none left, the Sent copy aside")
+    }
+
+    /// Several Message-IDs are checked line by line before GAM: one that isn't is refused with its line, and more than a
+    /// hundred at once are refused. Commas separate them too (no Message-ID holds one); the header line is taken.
+    @Test func pullAllChecksEveryLineBeforeGam() async throws {
+        try await connect()
+        await changes.find("<CAPh1sh+Notice=0001@mail.example.com>\n<a b@c>")
+        guard case .problem(let problem) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(problem.summary == "Line 2: A Message-ID has no spaces: paste only its value, like <…@mail.example.com>.")
+        await changes.find((1...101).map { "<n\($0)@mail.example.com>" }.joined(separator: "\n"))
+        guard case .problem(let many) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(many.summary == "At most 100 Message-IDs at once: find the rest after these.")
+        #expect(trashCalls().isEmpty, "nothing reached GAM")
+        #expect(try PhishingChanges.messages("Message-ID: <a@b.c>, <d@e.f>\n\n  <a@b.c>  ").map(\.id) == ["a@b.c", "d@e.f"])
+    }
+
+    /// An email no mailbox has a copy of while a mailbox couldn't be searched (Gmail off) is unsure, never "nobody has it";
+    /// an email that couldn't be searched at all is a CSV row of its own.
+    @Test func pullAllNeverCallsAnUnsearchedEmailClear() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "nogmail/alice@example.com").path, contents: Data())
+        await changes.find([Self.pasted, Self.other].joined(separator: "\n"))
+        let found = try found()
+        #expect(found.withCopies.map(\.message) == [Self.message] && found.unsure.map(\.message.id) == ["CAOther+Note=0002@mail.example.com"])
+        #expect(found.nobodyHas.isEmpty)
+        let failed = try GamCommands.MessageID(validating: "<gone@mail.example.com>")
+        let rows = PhishingChanges.allCopiesRows([(failed, .failure(PhishingChanges.Problem(summary: "GAM stopped.", detail: nil)))], run: nil)
+        #expect(rows == [["gone@mail.example.com", "", "not searched: GAM stopped.", "", "", ""]])
+    }
+
+    /// A tenant switch (here a credential import) or Stop during a Pull All: the emails being searched finish, no more
+    /// start, and nothing is shown for it (review of 2026-10-23: all eight went on, unseen, against the tenant left).
+    @Test func pullAllStopsStartingSearchesOnASwitchOrStop() async throws {
+        try await connect()
+        let ids = (1...8).map { "<n\($0)@mail.example.com>" }.joined(separator: "\n")
+        let switched = Task { await changes.find(ids) }
+        while !changes.isFinding { await Task.yield() }
+        await setup.importFolder(scratch.appending(path: "gamcfg"), as: "example.com")
+        let atSwitch = trashCalls().count
+        await switched.value
+        #expect(trashCalls().count <= atSwitch + PhishingChanges.searchedAtOnce, "\(trashCalls().count) dry runs, \(atSwitch) at the switch")
+
+        try await connect()
+        let before = trashCalls().count
+        let stopped = Task { await changes.find(ids) }
+        while !changes.isFinding { await Task.yield() }
+        changes.stopFinding()
+        await stopped.value
+        #expect(trashCalls().count - before <= PhishingChanges.searchedAtOnce && !changes.isFinding)
+        guard case .idle = changes.state else { Issue.record("\(changes.state)"); return }
+    }
+
+    /// After a run, Find Again and the CSV cover every email the Find had, the ones not trashed (unsure: a mailbox
+    /// couldn't be read) among them, never only those trashed (review of 2026-10-23).
+    @Test func pullAllKeepsEveryEmailAfterTheRun() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "nogmail/alice@example.com").path, contents: Data())
+        await changes.find([Self.pasted, Self.other, Self.nobody].joined(separator: "\n"))
+        await changes.previewTrash()
+        let pending = try #require(changes.pending)
+        #expect(pending.messages == [Self.message] && pending.found.results.count == 3)
+        await changes.confirm(pending, typed(pending.typedCount))
+        let run = try #require(changes.run)
+        #expect(run.pending.found.results.map(\.message.id)
+                == ["CAPh1sh+Notice=0001@mail.example.com", "CAOther+Note=0002@mail.example.com", "nobody-sent-this@mail.example.com"])
+        #expect(Set(PhishingChanges.allCopiesRows(run.pending.found.results, run: run).map { $0[0] }).count == 3)
+    }
+
+    /// A header folded onto two lines is one Message-ID, alone or among others, and the limit counts emails, not repeats.
+    @Test func aFoldedHeaderIsOneAndRepeatsDontCount() throws {
+        #expect(try PhishingChanges.messages("Message-ID:\n <CAPh1sh+Notice=0001@mail.example.com>").map(\.id)
+                == ["CAPh1sh+Notice=0001@mail.example.com"])
+        #expect(try PhishingChanges.messages("message-id:\n <a@b.c>\n<d@e.f>").map(\.id) == ["a@b.c", "d@e.f"])
+        #expect(try PhishingChanges.messages(Array(repeating: "<a@b.c>", count: 150).joined(separator: "\n")).map(\.id) == ["a@b.c"])
     }
 
     /// A new search drops the held trash: a confirm can't run a preview no longer shown.

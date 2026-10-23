@@ -163,6 +163,33 @@ struct LogReaderView: View {
                 ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
             }
             Text("Still to do").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+            // Every email to pull at once (Pull All): Phishing finds each and lists only those someone has. Only Message-IDs it
+            // can search by, at most its limit at a time: one it can't, or the rest past the limit, never blocks the others.
+            let pulls = Self.emailsToPull(reading)
+            let searchable = pulls.filter { (try? GamCommands.MessageID(validating: $0)) != nil }
+            let batch = Array(searchable.prefix(GamCommands.MessageID.mostPerFind))
+            if batch.count > 1 {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("\(pulls.count) emails to pull from every mailbox.").foregroundStyle(.secondary)
+                        Spacer()
+                        Button(batch.count < searchable.count ? "Pull the First \(batch.count) Emails…" : "Pull All \(batch.count) Emails…") {
+                            pullEmail(batch.joined(separator: "\n"))
+                        }
+                        .accessibilityHint("Opens Phishing with these emails and finds who has each. Nothing changes until you "
+                                           + "preview and confirm there.")
+                    }
+                    if batch.count < searchable.count {
+                        Text("Phishing searches \(GamCommands.MessageID.mostPerFind) at a time: pull these, then the rest from their "
+                             + "own items below.").font(.callout).foregroundStyle(.secondary)
+                    }
+                    if searchable.count < pulls.count {
+                        Text("\(pulls.count - searchable.count) of them \(pulls.count - searchable.count == 1 ? "has" : "have") a "
+                             + "Message-ID Phishing can't search by: left out, each still listed below.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+            }
             if reading.toDo.isEmpty {
                 Text(reading.statuses.isEmpty ? "Nothing to do that these logs show: no account the attacker touched."
                      : "Nothing left that these logs can show.").foregroundStyle(.secondary)
@@ -179,6 +206,14 @@ struct LogReaderView: View {
         } footer: {
             Text("Worked out by rules in code from the logs on Investigate. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
+        }
+    }
+
+    /// The Message-IDs of every email still to pull, each once, in the to-do list's order.
+    static func emailsToPull(_ reading: LogReading.Reading) -> [String] {
+        var seen: Set<String> = []
+        return reading.toDo.flatMap(\.drafts).compactMap { draft in
+            if case .pullEmail(let id, _) = draft, seen.insert(id).inserted { id } else { nil }
         }
     }
 
