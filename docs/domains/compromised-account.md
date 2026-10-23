@@ -630,7 +630,8 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   section; rows become `LogReading.Event`s there). Tests: `AssistTests/LogReadingTests.swift` (a stand-in model; CI has
   none), `WriteRouteTests.theLogReaderCanRunNothing`.
 - **A fix is a hand-off, never a change:** Secure sets this screen's `requested` (the same path as Users' Secure
-  Account…: a new form, checked, nothing ticked); Pull … from Every Mailbox opens Phishing with the Message-ID, which
+  Account…: a new form, checked, nothing ticked); Pull … from Every Mailbox opens Phishing with the Message-ID (and
+  Respond's Pull All N Emails…, with two or more, opens it with every one, a line each: phishing.md D12), which
   finds who has it (its dry run, a read). Each screen's preview and confirmation are where anything changes.
 - **Only mail sent is pulled** (2026-10-23, failure log "Every Gmail event read as a send"): every Gmail event is
   `delivery`, and its `event_info.mail_event_type` says what happened (Google's appendix "Gmail Activity Events"; GAM's

@@ -1,7 +1,7 @@
 # Phishing
 
-**One line:** take one email out of every mailbox that has it, by its Message-ID, for a phishing email sent from a
-compromised account. When a taken-over account Bcc's a phishing email, the operator can sign the person out and
+**One line:** take an email out of every mailbox that has it, by its Message-ID, or several at once (Pull All, D12),
+for phishing sent from a compromised account. When a taken-over account Bcc's a phishing email, the operator can sign the person out and
 reset the password in this app, but trashing the email everywhere meant going to Terminal. Find lists who has a copy, using GAM's own dry run, which is a read,
 and beside it who has one in Spam, which the dry run can't see (D11). Trash moves those copies
 to each person's Trash, where they stay for 30 days. It runs one ChangeCore step per mailbox (and one more per mailbox
@@ -23,7 +23,7 @@ This is native: GamGUI has no builder for it; the recipients read is GamGUI's `s
 - `MessageCopiesTests`: the lines are read and a partial list is refused.
 - `SpamCopiesTests`: the Spam read's lines and rows; a partial read refused, a copy not plainly this email in Spam left
   alone.
-- `PhishingChangesTests`: end to end through the executor.
+- `PhishingChangesTests`: end to end through the executor, one email and several (D12).
 - `WriteRouteTests`: only `ChangePreviewSheet.swift` confirms.
 
 ## Files
@@ -184,6 +184,27 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   - A mailbox with copies in both places has two steps; the screen says "mailboxes" and the sheet says "steps" when
     the two counts differ.
 
+- **D12, Pull All: several emails, one confirm (2026-10-23, operator: "find copies of every message first, list only
+  those someone has, and trash them all from one preview with one typed confirmation, each audited").** A real incident's
+  Read the logs listed many emails to pull, one Phishing run each.
+  - Find takes several Message-IDs, one per line or between commas (no Message-ID holds one, D1), at most
+    `PhishingChanges.mostAtOnce` (100), each checked by `MessageID(validating:)` and refused with its line; a repeat once.
+    One Message-ID is checked and said exactly as before.
+  - Each email is searched as one is (the dry run, the Spam read, the sample), two emails at a time
+    (`searchedAtOnce`), with "N done" shown. An email that can't be searched is said beside the rest and never blocks
+    them; with one Message-ID it's the screen's problem, as before.
+  - Only the emails some mailbox has are listed with their mailboxes (`Found.withCopies`). Those no mailbox here has,
+    every mailbox and Spam searched, fold into one line (`nobodyHas`): sent only outside, removed since, or never
+    delivered (bounced, limited). Never "not sent": that's the logs' and Email Log Search's to say. One found nowhere
+    while a mailbox or its Spam went unsearched is unsure, never clear (`unsure`), and shown with its search.
+  - Trash holds one preview of every step of every email listed, each as D4, D5 and D11 build it (no new argv): the
+    number of steps typed once, `confirm` from ten (the guard's rule), the guard's over-200 warning. Each step's summary
+    names its email (`of <id>`), so the audit log says which; Stop between steps; Find Again searches them all again.
+  - The CSV (`allCopiesRows`) is each email's `copiesRows` with its Message-ID first; an email that couldn't be searched
+    is a row saying why. One email keeps D10's columns.
+  - Read the logs' Respond tab has "Pull All N Emails…" with two or more emails to pull: it opens Phishing with their
+    Message-IDs, a line each, and finds them (a read). Who it was sent to stays one email at a time.
+
 ## Gotchas / mock-lies traps
 - The mock models only the query the app sends, matching the ID exactly. Whether Gmail's `rfc822msgid:`
   matches case-insensitively or by part isn't modelled. The live check must show it finds the one email
@@ -248,6 +269,19 @@ Third pass, on the copies in Spam (2026-10-21, four lenses and a skeptic each; a
 - **S7, the mock.** A trash by ID as a suspended user isn't modelled (as by query), and a word GAM takes after `ids` is
   "not modelled", never GAM's invalid argument.
 
+Fourth pass, on Pull All (2026-10-23, gam-command-reviewer; nothing could trash what a preview didn't show; fixed before
+merge, each with a test):
+- **P1, the headline called unchecked emails clear.** "None of the N emails is in a mailbox here" counted the unsure and
+  the unsearched. Each group is now counted on its own (`AllFoundSection.headline`).
+- **P2, a tenant switch didn't stop a Pull All.** Searches went on starting against a tenant the operator left, unseen,
+  up to every email's two reads. A switch or a credential import now stops new ones, as a newer Find did; `Stop` too.
+- **P3, a run dropped the emails it didn't trash.** Find Again and the run's CSV took only the trashed emails, so an unsure
+  one vanished. The held preview keeps the whole Find (`Pending.found`).
+- **P4, a folded `Message-ID:` header** (the ID on the next line) is one again, and the limit counts emails, not repeats.
+- **P5, bounds.** The log reader's Pull All passes at most `MessageID.mostPerFind` and only IDs Phishing can search by,
+  saying the rest; the sheet groups steps once and warns over 200 steps. "No mailbox here has it" also needs every
+  mailbox's Spam read and nothing GAM said that the readers don't know.
+
 Left as follow-ups: the shared mock helpers' older wording (`not_a_user`, `invalid_arg`, the sweep's "Got N Users:
 a - b"), which other suites and GamGUI's `gam_errors.json` rely on.
 
@@ -269,11 +303,9 @@ In Gmail: Trash › Move to Inbox. With GAM: `gam user <email> untrash messages 
 (untrash searches Trash, P6). An Untrash for the same mailboxes is a natural next slice if the operator wants it.
 
 ## To do common tasks here
-- **Several Message-IDs at once, or by sender and day** (operator). One phishing run can span many
-  Message-IDs: several mass sends, colleagues' forwards and replies carrying the same link, and the outside
-  email that started it. One Find over a list of IDs (each validated, then one `query` per ID or one OR'd query),
-  or over `from:<sender>` and a day, would replace the pastes. A sender-and-day search widens what can be trashed,
-  so it needs Find's sample to show every distinct email it matched.
+- **By sender and day** (operator). Several Message-IDs at once is built (D12, one dry run per ID; one OR'd query
+  would be fewer reads but a new shape for the mock to model). A search over `from:<sender>` and a day widens what can
+  be trashed, so it needs Find's sample to show every distinct email it matched.
 - **A Gmail search instead of a Message-ID** (`from:`, `subject:`), for an attack that sent many different
   emails: that needs its own validated type, and a mock that models those operators' meaning. Keep each
   mailbox's cap at what Find showed.

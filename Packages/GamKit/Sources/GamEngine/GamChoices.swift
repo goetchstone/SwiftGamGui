@@ -105,6 +105,9 @@ extension GamCommands {
         /// `id-left@id-right`, without the angle brackets: Gmail's `rfc822msgid:` takes it bare.
         public let id: String
 
+        /// At most this many emails in one Find on Phishing (Pull All, invariant 9): each is two domain-wide reads.
+        public static let mostPerFind = 100
+
         /// RFC 5322's `atext`, less Gmail's `{` and `}`, and `*`.
         static let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'+-/=?^_`|~".unicodeScalars)
         static let lineLimit = 998
