@@ -7,7 +7,12 @@ at the operator's ask after running a real incident through it: every account to
 Still to do worked out by code, the model only wording it (runbook "The rundown"; this pulls forward slice 2's findings
 first and slice 4's actions taken and next steps). Then undo from the app: block or take the account off the attacker's
 computers as planned steps, and Do It Here on a to-do item (runbook "Undo from the app"). Then a capped log read further
-back over the same window, in pages, so a pull for every account is whole (runbook "Past the cap"). Next: slices 3 to 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+back over the same window, in pages, so a pull for every account is whole (runbook "Past the cap"). Then (2026-10-23, at
+the operator's ask: it must work after the fact, as the app is rebuilt often) slice 3's record and evidence first: an
+incident kept on this Mac, made by hand or from an export, its saved pulls read back as the logs (runbook "A kept
+incident"). Next, in this order: the screen as tabs (Investigate, Respond, Report) with a button on every to-do item and
+Select All for the logs; the incoming phish, a pull anchored on the attack, and who to warn (and whether they were); the
+checklist (done from the logs where they show it, else ticked by hand) and the report (slice 4); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen

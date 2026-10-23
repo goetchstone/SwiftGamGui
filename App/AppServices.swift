@@ -56,6 +56,8 @@ struct AppServices {
     let connectedApps: ConnectedAppsRead
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
     let knownSignIns: KnownSignIns
+    /// The incidents kept on this Mac, and the one open on Incident.
+    let incidents: Incidents
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -79,13 +81,14 @@ struct AppServices {
                         // `onboarding.py:47`), is read only when the operator copies it once.
                         onboardRoles: OnboardRoles(root: SignatureStore.defaultRoot,
                                                    gamGUIFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json")),
-                        knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot))
+                        knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot),
+                        incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
-                                 lastDomain: LastDomain = .userDefaults,
+                                 incidents: Incidents, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -126,6 +129,7 @@ struct AppServices {
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            knownSignIns: knownSignIns,
+                           incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
     }
@@ -165,6 +169,10 @@ struct AppServices {
                         onboardRoles: demoRoles(beside: mock),
                         knownSignIns: KnownSignIns(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-known-\(UUID().uuidString)")),
+                        // The demo's incidents, in a fresh folder, never the operator's; none is remembered as open.
+                        incidents: Incidents(
+                            root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-incidents-\(UUID().uuidString)"),
+                            defaults: nil),
                         lastDomain: .memory())
     }
 

@@ -38,7 +38,8 @@ status=0
 # and checks her; person-search, her Mail tab searched for what she sent lately (the phish, with its Bcc list);
 # person-chrome, her Security tab with her Chrome profiles read; person-password, her Security tab with Set Temporary
 # Password's preview (the password masked; it shows once, after a run); compromised-reading, her and dana's logs with
-# Chrome's, read by the log reader (its findings and their fixes).
+# Chrome's, read by the log reader (its findings and their fixes); compromised-incident, her logs saved to a demo incident
+# (in the demo's temporary folder) with a note, and opened.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
@@ -64,6 +65,7 @@ for spec in home:home users:users groups:groups setup:setup \
             person-chrome:users:carol@example.com:chrome narrow-person-chrome:users:carol@example.com:chrome:smallest \
             compromised-reports:incident:carol@example.com:reports \
             compromised-reading:incident:carol@example.com:reading narrow-compromised-reading:incident:carol@example.com:reading:smallest \
+            compromised-incident:incident:carol@example.com:incident narrow-compromised-incident:incident:carol@example.com:incident:smallest \
             narrow-compromised-reports:incident:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \

@@ -386,10 +386,96 @@ public enum ActivityLogs {
     /// The rows as a table in the one shape, header first: the log, when, who, the event, the IP address, whether Google
     /// flagged it, and every parameter as `name: value`. For a CSV the caller makes safe to open in a spreadsheet.
     public static func table(_ rows: [Row]) -> [[String]] {
-        [["log", "time", "actor", "event", "ip_address", "flagged", "via", "parameters"]] + rows.map { row in
+        [tableHeader] + rows.map { row in
             [row.application.rawValue, row.time, row.who, row.event, row.ip, row.flagged ? "yes" : "", row.via,
              row.parameters.map { "\($0.name): \($0.value)" }.joined(separator: " | ")]
         }
+    }
+
+    public static let tableHeader = ["log", "time", "actor", "event", "ip_address", "flagged", "via", "parameters"]
+
+    /// One export of the logs, as text (`IncidentLogs.exportAll` writes it; an incident keeps each as its evidence): the
+    /// folder's name, its `about.txt`, and each log's CSV.
+    public struct Export: Sendable {
+        public let name: String
+        public let about: String
+        public let logs: [(application: Application, csv: String)]
+
+        public init(name: String, about: String, logs: [(application: Application, csv: String)]) {
+            self.name = name
+            self.about = about
+            self.logs = logs
+        }
+    }
+
+    /// `application`'s rows read back from this app's export of its log (`table`, as a CSV): nil when the text isn't one
+    /// (its header isn't `tableHeader`, or a row names another log). Read in the export's own dialect (no backslash
+    /// escape, unlike GAM's CSV), each cell's `'` before a spreadsheet formula's lead taken off (`AuditExport.safe`), in
+    /// the file's order (newest first, as exported).
+    public static func rows(exported text: String, application: Application) -> [Row]? {
+        var table = CSVReader.records(text, escaping: false)
+        guard !table.isEmpty, table.removeFirst() == tableHeader else { return nil }
+        var rows: [Row] = []
+        for (index, cells) in table.enumerated() where !cells.isEmpty {
+            guard cells.count == tableHeader.count, cells[0] == application.rawValue else { return nil }
+            rows.append(Row(exported: cells.map(unsafe), application: application, index: index))
+        }
+        return rows
+    }
+
+    /// A cell as it was before the export made it safe to open in a spreadsheet: `AuditExport.safe` puts a `'` before a
+    /// formula's lead (`=`, `+`, `-`, `@`, tab, CR). A value that itself began with `'` and one of those reads back
+    /// without its `'`: the export doesn't say which it was.
+    static func unsafe(_ cell: String) -> String {
+        let scalars = cell.unicodeScalars
+        guard scalars.first == "'", let second = scalars.dropFirst().first, "=+-@\t\r".unicodeScalars.contains(second) else { return cell }
+        return String(scalars.dropFirst())
+    }
+
+    /// The parameters cell back into parameters: `name: value` pieces joined by " | ". A piece that isn't `name: value` (a
+    /// name being letters, digits, `_`, `.` or `-`) is the rest of the value before it, which held " | " (a subject can).
+    static func parameters(exported cell: String) -> [Parameter] {
+        guard !cell.isEmpty else { return [] }
+        var parameters: [Parameter] = []
+        for piece in cell.components(separatedBy: " | ") {
+            if let colon = piece.range(of: ": "), !piece[..<colon.lowerBound].isEmpty,
+               piece[..<colon.lowerBound].unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.contains($0) || "_.-".unicodeScalars.contains($0) }) {
+                parameters.append(Parameter(name: String(piece[..<colon.lowerBound]), value: String(piece[colon.upperBound...])))
+            } else if let last = parameters.popLast() {
+                parameters.append(Parameter(name: last.name, value: last.value + " | " + piece))
+            }
+        }
+        return parameters
+    }
+}
+
+extension ActivityLogs.Row {
+    /// A row read back from this app's export (`ActivityLogs.table`), its cells as written: when, who, the event, the IP
+    /// address, flagged ("yes"), who acted besides the person (`via`: "by <agent>", "through <app>", or both joined by
+    /// "; "), and the parameters. Its identity is its content, the export keeping no unique qualifier: an incident's
+    /// evidence counts one event saved by two exports once.
+    init(exported cells: [String], application: ActivityLogs.Application, index: Int) {
+        self.application = application
+        time = cells[1]
+        date = try? Date(time, strategy: .iso8601)
+        who = cells[2]
+        event = cells[3]
+        ip = cells[4]
+        flagged = cells[5] == "yes"
+        let via = cells[6]
+        if via.hasPrefix("by "), let through = via.range(of: "; through ") {
+            agent = String(via[via.index(via.startIndex, offsetBy: 3)..<through.lowerBound])
+            app = String(via[through.upperBound...])
+        } else if via.hasPrefix("by ") {
+            agent = String(via.dropFirst(3))
+            app = ""
+        } else {
+            agent = ""
+            app = via.hasPrefix("through ") ? String(via.dropFirst(8)) : ""
+        }
+        parameters = ActivityLogs.parameters(exported: cells[7])
+        identity = ([application.rawValue, time, who, event, ip] + parameters.map { "\($0.name)=\($0.value)" }).joined(separator: "|")
+        id = [time, event, String(index)].joined(separator: "|")
     }
 }
 

@@ -110,8 +110,9 @@ enum CSVReader {
         case quoteInQuotedField, eatCRNL
     }
 
-    /// Every record, a blank line as `[]`.
-    static func records(_ text: String) -> [[String]] {
+    /// Every record, a blank line as `[]`. `escaping` off reads a backslash as data: Python's `excel` dialect, which this
+    /// app's own exports are written in (`AuditExport.row`), has no escape character; GAM's CSV does.
+    static func records(_ text: String, escaping: Bool = true) -> [[String]] {
         var records: [[String]] = [], fields: [String] = [], field = String.UnicodeScalarView()
         var state = State.startRecord
 
@@ -135,7 +136,7 @@ enum CSVReader {
                     state = scalar == nil ? .startRecord : .eatCRNL
                 } else if scalar == "\"" {
                     state = .inQuotedField
-                } else if scalar == "\\" {
+                } else if escaping && scalar == "\\" {
                     state = .escapedChar
                 } else if scalar == "," {
                     save()
@@ -159,7 +160,7 @@ enum CSVReader {
                 if isBreak || scalar == nil {
                     save()
                     state = scalar == nil ? .startRecord : .eatCRNL
-                } else if scalar == "\\" {
+                } else if escaping && scalar == "\\" {
                     state = .escapedChar
                 } else if scalar == "," {
                     save()
@@ -169,7 +170,7 @@ enum CSVReader {
                 }
             case .inQuotedField:
                 if let scalar {
-                    if scalar == "\\" {
+                    if escaping && scalar == "\\" {
                         state = .escapeInQuotedField
                     } else if scalar == "\"" {
                         state = .quoteInQuotedField

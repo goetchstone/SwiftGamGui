@@ -49,6 +49,8 @@ public final class IncidentLogs {
         /// In the query's order, each as it finishes.
         public internal(set) var logs: [Log]
         public internal(set) var ended: Bool
+        /// Made from an incident's saved evidence (`evidence(_:)`), not read from Google: never saved to it again.
+        public internal(set) var fromEvidence = false
 
         /// The sign-in log's IP addresses, the flagged ones first: what to filter every log by next.
         public var addresses: [String] {
@@ -253,6 +255,100 @@ public final class IncidentLogs {
     public func clear() {
         asked += 1
         kept = nil
+    }
+
+    /// Shows `pull` (an incident's evidence) as the last pull, on the connected tenant; one still reading stops counting.
+    public func show(_ pull: Pull) {
+        guard let tenant = setup.active else { return }
+        asked += 1
+        kept = (pull, tenant, setup.generation)
+    }
+
+    /// The pull an incident's saved exports make (each `ActivityLogs.Export`, oldest first): every log any of them holds,
+    /// its rows newest first, an event two exports both saved counted once (by its content: `Row(exported:)`), and a log
+    /// stopped at its cap only when every export of it did. Its window is the widest, its accounts every account if any
+    /// export was, and its address the first one given. An export that can't be read is named in `unreadable`.
+    public nonisolated static func evidence(_ exports: [ActivityLogs.Export]) -> (pull: Pull, unreadable: [String]) {
+        var rows: [ActivityLogs.Application: [ActivityLogs.Row]] = [:], seen: [ActivityLogs.Application: Set<String>] = [:]
+        var capped: [ActivityLogs.Application: Bool] = [:], hours: [ActivityLogs.Application: Int] = [:]
+        var users: Set<String> = [], everyAccount = false, widest = 0, ip = "", unreadable: [String] = []
+        for export in exports {
+            let about = About(export.about)
+            var read: [(ActivityLogs.Application, [ActivityLogs.Row])] = []
+            for (application, csv) in export.logs {
+                guard let these = ActivityLogs.rows(exported: csv, application: application) else { read = []; break }
+                read.append((application, these))
+            }
+            guard !read.isEmpty || export.logs.isEmpty else {
+                unreadable.append(export.name)
+                continue
+            }
+            widest = max(widest, about.hours)
+            if about.users.isEmpty { everyAccount = true } else { users.formUnion(about.users) }
+            if ip.isEmpty { ip = about.ip }
+            for (application, these) in read {
+                // Within one export every row stays (two events can match in every column); across them, a repeat goes.
+                let known = seen[application] ?? []
+                rows[application, default: []] += these.filter { !known.contains($0.identity) }
+                seen[application, default: []].formUnion(these.map(\.identity))
+                capped[application] = (capped[application] ?? true) && about.capped.contains(application)
+                hours[application] = max(hours[application] ?? 0, about.window[application] ?? about.hours)
+            }
+        }
+        let applications = ActivityLogs.Application.allCases.filter { rows[$0] != nil }
+        let logs = applications.map { application in
+            let newest = (rows[application] ?? []).enumerated().sorted { a, b in
+                (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+            }.map(\.element)
+            return Log(application: application, rows: .success(newest), hours: hours[application] ?? widest, capped: capped[application] ?? false)
+        }
+        let query = Query(applications: applications, users: everyAccount ? [] : users.sorted(), hours: widest, ip: ip)
+        return (Pull(query: query, logs: logs, ended: true, fromEvidence: true), unreadable)
+    }
+
+    /// What an export's `about.txt` (`about(_:read:unread:exported:)`) says: the window, the accounts, the address, and for
+    /// each log its own window (Gmail's at most 30 days) and whether it stopped at its cap. A line it doesn't know is
+    /// passed over; one missing leaves its default (every account, any address, no window).
+    struct About {
+        var hours = 0, users: [String] = [], ip = ""
+        var window: [ActivityLogs.Application: Int] = [:], capped: Set<ActivityLogs.Application> = []
+
+        init(_ text: String) {
+            func hoursIn(_ words: Substring) -> Int? {
+                let parts = words.split(separator: " ")
+                guard parts.count >= 2, let count = Int(parts[0]) else { return nil }
+                return parts[1].hasPrefix("day") ? count * 24 : parts[1].hasPrefix("hour") ? count : nil
+            }
+            for line in text.split(whereSeparator: \.isNewline) {
+                if line.hasPrefix("Over the last "), let found = hoursIn(line.dropFirst(14)) {
+                    hours = found
+                } else if line.hasPrefix("Accounts: ") {
+                    let list = line.dropFirst(10).trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                    users = list == "every account" ? [] : list.components(separatedBy: ", ")
+                } else if line.hasPrefix("From IP address: ") {
+                    let address = line.dropFirst(17).trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                    ip = address == "any" ? "" : address
+                } else if let dash = line.range(of: "-log.csv: "),
+                          let application = ActivityLogs.Application(rawValue: String(line[..<dash.lowerBound])) {
+                    if line.contains("older events past the cap weren't read") { capped.insert(application) }
+                    if let last = line.range(of: ", the last "), let found = hoursIn(line[last.upperBound...]) { window[application] = found }
+                }
+            }
+        }
+    }
+
+    /// The export's events come from `domain`'s accounts: some event's actor is at `domain`, or none has an actor (a pull
+    /// that found nothing). Keeps one tenant's logs out of another's incident.
+    public nonisolated static func export(_ export: ActivityLogs.Export, isFrom domain: String) -> Bool {
+        let suffix = "@" + domain.lowercased()
+        var anyone = false
+        for (application, csv) in export.logs {
+            for row in ActivityLogs.rows(exported: csv, application: application) ?? [] where !row.who.isEmpty {
+                if row.who.lowercased().hasSuffix(suffix) { return true }
+                anyone = true
+            }
+        }
+        return !anyone
     }
 
     /// `log`'s rows as a CSV in the one shape, every cell safe to open in a spreadsheet (`AuditExport.csv`).
