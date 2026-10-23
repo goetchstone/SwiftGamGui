@@ -674,28 +674,29 @@ struct LogReadingTests {
     }
 
     /// A whole pull's size (a real tenant's every-account Gmail runs about 12,600 events a day) read in seconds, not the
-    /// minutes it took when each account's status read every event (failure log 2026-10-23): 80 accounts the attacker had,
-    /// each from its own address, among 200,000 events. About 2 seconds in a debug build; reading every event per account,
-    /// 40 accounts took 23 and these 80 would take about 45, so the bound catches that and leaves a slow runner room.
+    /// minutes it took when each account's status read every event (failure log 2026-10-23): 200 accounts the attacker had,
+    /// each from its own address, among 200,000 events. A few seconds in a debug build; reading every event per account,
+    /// 40 accounts took 23 and these 200 would take about 110, so a generous bound still catches that and leaves a busy
+    /// runner room (failure logs 2026-10-16 and 2026-10-20: a tight timing test failed on one).
     @Test func aWholePullIsReadInSeconds() {
-        let accounts = (0..<80).map { "user\($0)@example.com" }
+        let accounts = (0..<200).map { "user\($0)@example.com" }
         var events: [LogReading.Event] = []
         for (n, account) in accounts.enumerated() {
-            events.append(Self.event("login", account, "suspicious_login", ip: "198.51.100.\(n + 1)", flagged: true, at: n))
-            events.append(Self.event("login", account, "login_success", ip: "198.51.100.\(n + 1)", at: n + 1, ["is_suspicious": "true"]))
+            events.append(Self.event("login", account, "suspicious_login", ip: "198.51.\(100 + n / 200).\(n % 200 + 1)", flagged: true, at: n))
+            events.append(Self.event("login", account, "login_success", ip: "198.51.\(100 + n / 200).\(n % 200 + 1)", at: n + 1, ["is_suspicious": "true"]))
             if n.isMultiple(of: 2) { events += [Self.done("CHANGE_PASSWORD", to: account, at: n + 60), Self.done("RESET_SIGNIN_COOKIES", to: account, at: n + 61)] }
         }
         let logs = ["gmail", "drive", "calendar", "login"]
         for index in events.count..<200_000 {
             let n = index % accounts.count
             events.append(Self.event(logs[index % logs.count], accounts[n], logs[index % logs.count] == "login" ? "login_success" : "view",
-                                     ip: index.isMultiple(of: 9) ? "198.51.100.\(n + 1)" : "203.0.113.\(index % 200)", at: index % 4_000))
+                                     ip: index.isMultiple(of: 9) ? "198.51.\(100 + n / 200).\(n % 200 + 1)" : "203.0.113.\(index % 200)", at: index % 4_000))
         }
         let clock = ContinuousClock(), started = clock.now
         let reading = LogReading.read(events)
         let took = clock.now - started
-        #expect(reading.statuses.count == 80 && reading.events == 200_000)
-        #expect(took < .seconds(20), "took \(took)")
+        #expect(reading.statuses.count == 200 && reading.events == 200_000)
+        #expect(took < .seconds(60), "took \(took)")
     }
 }
 

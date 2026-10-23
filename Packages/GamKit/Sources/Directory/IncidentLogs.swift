@@ -379,7 +379,6 @@ public final class IncidentLogs {
         async let actor = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: cap,
                                           admin: .actor, in: tenant)
         let reads = await [affected, actor]
-        await reported(reads.reduce(0) { $0 + ((try? $1.get().count) ?? 0) }, 2)
         var rows: [ActivityLogs.Row] = [], seen: Set<String> = []
         for (read, what) in zip(reads, ["What admins did to these accounts", "What these accounts did as admins"]) {
             switch read {
@@ -391,6 +390,7 @@ public final class IncidentLogs {
                            capped: false)
             }
         }
+        await reported(rows.count, 2)
         // What was done to an account is counted by the account it names, not by the admin who did it.
         var toEach: [String: Int] = [:]
         for row in (try? reads[0].get()) ?? [] {

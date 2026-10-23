@@ -99,7 +99,8 @@ final class Incidents {
             do {
                 let export = try IncidentLogs.exportAll(read, into: try store.evidenceFolder(of: id)).export
                 guard let shown, let base,
-                      IncidentStore.readsBackLast(export, after: shown.names, saved: shown.names.count + shown.unreadable.count)
+                      IncidentStore.readsBackLast(export, after: shown.names,
+                                                 saved: shown.names.count + shown.unreadable.filter { !shown.names.contains($0) }.count)
                 else { return .success((export.name, nil)) }
                 return .success((export.name, IncidentLogs.adding(export, to: base.pull)))
             } catch let problem as IncidentStore.Problem {

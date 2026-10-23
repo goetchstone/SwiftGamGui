@@ -59,7 +59,7 @@ struct LogReaderView: View {
 
         /// Reads `pull` for `key` in the background, once: either tab asking for the key being read waits on that read. A
         /// newer key's read replaces it, and the older one's reading is dropped when it ends.
-        fileprivate func read(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], key: String) {
+        fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], key: String) {
             guard read?.key != key, reading?.key != key else { return }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) { LogReaderView.reading(pull, marks: marks) }.value
@@ -131,7 +131,7 @@ struct LogReaderView: View {
                 readingNow
             }
         }
-        .onChange(of: key, initial: true) { memory.read(pull, marks: marks, key: key) }
+        .onChange(of: key, initial: true) { memory.begin(pull, marks: marks, key: key) }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in
                 markProblem = markTheirs(marking.account, marking.address, note)
