@@ -37,81 +37,63 @@ struct CompromisedView: View {
     @State private var pendingPick: (person: String, pick: SecurePick)?
     /// The computer a "Do It Here" named matched none still signed in: the computers say so.
     @State private var pickMissed = false
+    @State private var tab: Tab = .investigate
+    /// The pull's form, kept here so it survives a change of tab.
+    @State private var pullForm = PullForm()
+    /// The events a to-do item narrowed the logs to ("Show the Events"); nil for all.
+    @State private var filter: IncidentLogs.Filter?
+    /// The log reader's reading and explanation, kept here so they survive a change of tab.
+    @State private var readerMemory = LogReaderView.Memory()
+    /// Where to scroll once a change of tab has drawn the new tab (its sections don't exist before).
+    @State private var scrollAfterTab: String?
     @Environment(\.appearsActive) private var appearsActive
+
+    /// Incident's three tabs, in the order an incident is worked: find out who's affected, act, keep the record.
+    enum Tab: String, CaseIterable, Identifiable {
+        case investigate = "Investigate", respond = "Respond", report = "Report"
+        var id: Self { self }
+    }
 
     private var check: CompromisedChanges.Check? { changes.check.flatMap { $0.isFor(form.person) ? $0 : nil } }
 
     var body: some View {
         VStack(spacing: 0) {
             if !hasGam { NoGamBanner() }
+            Picker("Part of the incident", selection: $tab) {
+                ForEach(Tab.allCases) { tab in Text(tab.rawValue).tag(tab) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 420)
+            .padding(.top, 10)
+            .help("Investigate finds who's affected; Respond secures accounts and pulls email; Report keeps the record.")
             ScrollViewReader { scroller in
                 Form {
-                    if let run = changes.run {
-                        CompromisedRunSection(run: run, changes: changes) { rest in
-                            form = rest
-                            if let check = changes.check { form.keepPicks(in: check) }
-                            changes.dismissRun()
-                            let form = form, changes = changes
-                            Task { await changes.plan(form) }
-                        }
-                        .id(Self.runAnchor)
-                    }
-                    Section {
-                        Text("For an account taken over, in the order you work: find who's affected, secure each account, pull "
-                             + "the email from every mailbox, then the checklist. Reading changes nothing; every change is "
-                             + "previewed first and confirmed with the person's address.")
-                            .foregroundStyle(.secondary)
-                    }
+                    // The incident open, above every tab: its saved logs are what Investigate and Respond read.
                     if setup.active != nil {
-                        IncidentRecordSection(setup: setup, incidents: incidents, logs: logs).id(Self.incidentAnchor)
-                        IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
-                        if let pull = logs.pull, pull.ended {
-                            // A fix the reader found is an address for this screen's own check, or a Message-ID for Phishing.
-                            let domain = setup.active?.name ?? ""
-                            LogReaderView(pull: pull, secure: { person, pick in
-                                pendingPick = pick.map { (person, $0) }
-                                requested = person
-                                withAnimation { scroller.scrollTo(Self.checkAnchor, anchor: .top) }
-                            }, pullEmail: openPhishing, marks: known.marks(for: domain), marksProblem: known.openProblem,
-                            markTheirs: { account, address, note in known.mark(domain: domain, account: account, address: address, note: note) },
-                            unmark: { known.unmark($0) })
-                            .id(Self.readerAnchor)
-                        }
+                        IncidentRecordSection(part: .header, setup: setup, incidents: incidents, logs: logs).id(Self.incidentAnchor)
                     }
-                    Group {
-                        whoSection.id(Self.checkAnchor)
-                        if let check {
-                            FindingsSection(check: check)
-                            AccountSection(check: check)
-                            ForwardingSection(check: check, autoReplyOff: $form.autoReplyOff)
-                            FiltersSection(check: check, picked: $form.filters)
-                            DelegatesSection(check: check, picked: $form.delegates)
-                            SendAsSection(check: check, picked: $form.sendAs)
-                            DraftsSection(check: check, discard: $form.discardDrafts)
-                            AdminRolesSection(check: check)
-                            DevicesSection(check: check, picked: $form.computers, missed: pickMissed)
-                            AppsSection(check: check)
-                            ScriptsSection(check: check)
-                            StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
-                            previewSection
-                        }
+                    switch tab {
+                    case .investigate: investigate(scroller)
+                    case .respond: respond(scroller)
+                    case .report: report
                     }
-                    .disabled(changes.isRunning)
-                    if case .planned(let plan) = changes.planState, plan.form == form, check != nil {
-                        CompromisedPlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
-                            .id(Self.planAnchor)
-                    }
-                    PullEmailSection(openPhishing: openPhishing)
-                    AfterwardsSection()
                 }
                 .formStyle(.grouped)
                 .onChange(of: planShown) { _, shown in
                     guard shown else { return }
+                    tab = .respond
                     withAnimation { scroller.scrollTo(Self.planAnchor, anchor: .top) }
                 }
                 .onChange(of: changes.run != nil) { _, shown in
                     guard shown else { return }
+                    tab = .respond
                     withAnimation { scroller.scrollTo(Self.runAnchor, anchor: .top) }
+                }
+                .onChange(of: tab) {
+                    guard let anchor = scrollAfterTab else { return }
+                    scrollAfterTab = nil
+                    withAnimation { scroller.scrollTo(anchor, anchor: .top) }
                 }
                 .onChange(of: scrollToReports) { _, wanted in
                     if wanted { scroller.scrollTo(scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
@@ -154,6 +136,10 @@ struct CompromisedView: View {
         .onChange(of: requested, initial: true) { _, email in
             guard let email else { return }
             requested = nil
+            if tab != .respond {
+                scrollAfterTab = Self.checkAnchor
+                tab = .respond
+            }
             // Mid-run the form stays as it is: the check says why it can't start, and a "Do It Here" is dropped, never left
             // to pick on a later check.
             if changes.isRunning { pendingPick = nil } else { form = CompromisedChanges.Form(person: email) }
@@ -164,6 +150,9 @@ struct CompromisedView: View {
             form = CompromisedChanges.Form()
             changes.clear()
             logs.clear()
+            // Another tenant: the narrowing and the reader's memory were the last one's.
+            filter = nil
+            readerMemory = LogReaderView.Memory()
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }
         .onChange(of: announcement) { _, text in
@@ -171,7 +160,115 @@ struct CompromisedView: View {
         }
     }
 
+    /// Investigate: what the incident is (its order of work), the logs pulled, and what they show.
+    @ViewBuilder private func investigate(_ scroller: ScrollViewProxy) -> some View {
+        Section {
+            Text("For an account taken over: Investigate finds who's affected, Respond secures each account and pulls the email, "
+                 + "Report keeps the record. Reading changes nothing; every change is previewed first and confirmed with the "
+                 + "person's address.")
+                .foregroundStyle(.secondary)
+        }
+        if setup.active != nil {
+            IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter)
+                .id(Self.reportsAnchor)
+            if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller).id(Self.readerAnchor) }
+        } else {
+            Section { Text("Connect a domain on Setup first.").foregroundStyle(.secondary) }
+        }
+    }
+
+    /// Respond: a run under way, where each account stands and what's left to do, securing an account, and pulling the email.
+    @ViewBuilder private func respond(_ scroller: ScrollViewProxy) -> some View {
+        if let run = changes.run {
+            CompromisedRunSection(run: run, changes: changes) { rest in
+                form = rest
+                if let check = changes.check { form.keepPicks(in: check) }
+                changes.dismissRun()
+                let form = form, changes = changes
+                Task { await changes.plan(form) }
+            }
+            .id(Self.runAnchor)
+        }
+        if setup.active != nil, let pull = logs.pull, pull.ended { reader(.toDo, pull, scroller).id(Self.toDoAnchor) }
+        Group {
+            whoSection.id(Self.checkAnchor)
+            if let check {
+                FindingsSection(check: check)
+                AccountSection(check: check)
+                ForwardingSection(check: check, autoReplyOff: $form.autoReplyOff)
+                FiltersSection(check: check, picked: $form.filters)
+                DelegatesSection(check: check, picked: $form.delegates)
+                SendAsSection(check: check, picked: $form.sendAs)
+                DraftsSection(check: check, discard: $form.discardDrafts)
+                AdminRolesSection(check: check)
+                DevicesSection(check: check, picked: $form.computers, missed: pickMissed)
+                AppsSection(check: check)
+                ScriptsSection(check: check)
+                StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
+                previewSection
+            }
+        }
+        .disabled(changes.isRunning)
+        if case .planned(let plan) = changes.planState, plan.form == form, check != nil {
+            CompromisedPlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
+                .id(Self.planAnchor)
+        }
+        PullEmailSection(openPhishing: openPhishing)
+    }
+
+    /// Report: the incident's evidence and notes, and the checklist.
+    @ViewBuilder private var report: some View {
+        if setup.active != nil { IncidentRecordSection(part: .report, setup: setup, incidents: incidents, logs: logs) }
+        AfterwardsSection()
+    }
+
+    /// The log reader's part for a tab. A fix it found is an address for this screen's own check, or a Message-ID for
+    /// Phishing; Show the Events narrows Investigate's logs; Pull Again reads more.
+    private func reader(_ part: LogReaderView.Part, _ pull: IncidentLogs.Pull, _ scroller: ScrollViewProxy) -> some View {
+        let domain = setup.active?.name ?? ""
+        return LogReaderView(part: part, pull: pull, memory: readerMemory, secure: { person, pick in
+            pendingPick = pick.map { (person, $0) }
+            requested = person
+            go(.respond, to: Self.checkAnchor, scroller)
+        }, pullEmail: openPhishing, marks: known.marks(for: domain), marksProblem: known.openProblem,
+        markTheirs: { account, address, note in known.mark(domain: domain, account: account, address: address, note: note) },
+        unmark: { known.unmark($0) }, show: { shown in
+            filter = shown
+            go(.investigate, to: Self.reportsAnchor, scroller)
+        }, pullAgain: { applications, accounts in
+            pullAgain(applications, accounts)
+            go(.investigate, to: Self.reportsAnchor, scroller)
+        })
+    }
+
+    /// Shows `tab` scrolled to `anchor`: at once when it's shown already, else once it has drawn.
+    private func go(_ tab: Tab, to anchor: String, _ scroller: ScrollViewProxy) {
+        if self.tab == tab {
+            withAnimation { scroller.scrollTo(anchor, anchor: .top) }
+        } else {
+            scrollAfterTab = anchor
+            self.tab = tab
+        }
+    }
+
+    /// Reads `applications` again for `accounts` (those in the directory, 20 at most) over the window shown, and adds what
+    /// it finds to what's shown: an incident open saves the read and shows everything saved; otherwise the read is put
+    /// together with the pull shown (`IncidentLogs.pull(adding:)`). A read: nothing changes.
+    private func pullAgain(_ applications: [ActivityLogs.Application], _ accounts: [String]) {
+        let known = directory.users.map { Set($0.map { $0.primaryEmail.lowercased() }) }
+        let inDirectory = accounts.filter { known?.contains($0.lowercased()) ?? true }
+        let users = Array((inDirectory.isEmpty ? accounts : inDirectory).prefix(20))
+        guard !users.isEmpty, !applications.isEmpty else { return }
+        let shown = logs.pull?.query.hours ?? 0
+        let query = IncidentLogs.Query(applications: applications, users: users, hours: shown > 0 ? shown : pullForm.hours, ip: "")
+        filter = nil
+        let open = incidents.record(incidents.openID).map { $0.domain == setup.active?.name.lowercased() } ?? false
+        let logs = logs
+        Task { if open { await logs.pull(query) } else { await logs.pull(adding: query) } }
+    }
+
     private static let planAnchor = "compromised.plan"
+    private static let toDoAnchor = "compromised.todo"
     private static let runAnchor = "compromised.run"
     private static let reportsAnchor = "compromised.reports"
     private static let readerAnchor = "compromised.reader"
@@ -287,19 +384,20 @@ struct CompromisedView: View {
     /// the plan with every filter that hides or forwards mail, every delegate and every other send-as address ticked
     /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), the
     /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), the
-    /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`), or the person's logs saved to a demo
-    /// incident kept in the demo's temporary folder, with a note, and opened (`incident`).
+    /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`: Investigate's findings; `todo`: Respond's
+    /// Still to do), or the person's logs saved to a demo incident kept in the demo's temporary folder, with a note, opened
+    /// on Report (`incident`). A plan, the confirm sheet or a run shows on Respond.
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
         guard directory.users != nil, !debugApplied, let person = environment["SWIFTGAMGUI_SELECT"] else { return }
         debugApplied = true
         form.person = person
-        let tab = environment["SWIFTGAMGUI_TAB"] ?? ""
+        let asked = environment["SWIFTGAMGUI_TAB"] ?? ""
         let changes = changes
         Task {
             await changes.check(person)
-            if tab == "reports", let email = changes.check?.user.primaryEmail {
+            if asked == "reports", let email = changes.check?.user.primaryEmail {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
                 if let ip = logs.pull?.addresses.first {
                     await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: 72, ip: ip))
@@ -307,7 +405,7 @@ struct CompromisedView: View {
                 scrollToReports = true
                 return
             }
-            if tab == "incident", let email = changes.check?.user.primaryEmail {
+            if asked == "incident", let email = changes.check?.user.primaryEmail {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
                 if case .success(let record) = incidents.create(domain: setup.active?.name ?? "", title: "Account takeover",
                                                                  opened: Date(), openedBy: "Pat", reported: "A Google alert") {
@@ -315,16 +413,21 @@ struct CompromisedView: View {
                     _ = incidents.addNote("Told the person's manager.", at: Date(), to: record.id)
                     incidents.openID = record.id
                 }
+                self.tab = .report
                 return
             }
-            if tab == "reading", let email = changes.check?.user.primaryEmail {
+            if asked == "reading" || asked == "todo", let email = changes.check?.user.primaryEmail {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome], users: [email, "dana@example.com"],
                                                    hours: 72, ip: ""))
-                scrollToReader = true
-                scrollToReports = true
+                if asked == "todo" {
+                    self.tab = .respond
+                } else {
+                    scrollToReader = true
+                    scrollToReports = true
+                }
                 return
             }
-            guard ["plan", "confirm", "result"].contains(tab), let check = changes.check else { return }
+            guard ["plan", "confirm", "result"].contains(asked), let check = changes.check else { return }
             form.filters = Set(((try? check.filters.get()) ?? []).filter(\.hidesOrForwards).map(\.id))
             form.delegates = Set((try? check.delegates.get()) ?? [])
             form.sendAs = Set(((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary }.map(\.address))
@@ -332,8 +435,8 @@ struct CompromisedView: View {
             if let subject = (try? check.drafts.get())?.first?.subject { form.discardDrafts = .subjectContaining(subject) }
             await changes.plan(form)
             guard case .planned(let plan) = changes.planState else { return }
-            if tab == "confirm" { confirming = plan }
-            if tab == "result" { changes.showDemoRun() }
+            if asked == "confirm" { confirming = plan }
+            if asked == "result" { changes.showDemoRun() }
         }
         #endif
     }
@@ -1027,11 +1130,15 @@ private struct IncidentLogsSection: View {
     let person: String?
     let logs: IncidentLogs
     let directory: DirectoryStore
-    @State private var hours = ActivityLogs.defaultHours
-    @State private var accounts = ""
-    @State private var ip = ""
-    @State private var chosen = Set(ActivityLogs.incidentDefault)
-    @State private var flaggedOnly = false
+    /// The pull's form, the screen's: kept across its tabs.
+    @Binding var form: PullForm
+    /// The events a to-do item narrowed the logs to ("Show the Events"); nil for all.
+    @Binding var filter: IncidentLogs.Filter?
+    private var hours: Int { form.hours }
+    private var accounts: String { form.accounts }
+    private var ip: String { form.ip }
+    private var chosen: Set<ActivityLogs.Application> { form.chosen }
+    private var flaggedOnly: Bool { form.flaggedOnly }
     @State private var exported: (text: String, failed: Bool)?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -1059,24 +1166,32 @@ private struct IncidentLogsSection: View {
 
     var body: some View {
         Section {
-            Picker("Over the last", selection: $hours) {
+            Picker("Over the last", selection: $form.hours) {
                 ForEach(ActivityLogs.hours, id: \.self) { hours in Text(Self.window(hours)).tag(hours) }
             }
             .fixedSize()
-            TextField("Accounts (empty for every account)", text: $accounts, prompt: Text(verbatim: "person@example.com, other@example.com"))
+            TextField("Accounts (empty for every account)", text: $form.accounts, prompt: Text(verbatim: "person@example.com, other@example.com"))
                 .autocorrectionDisabled()
             HStack {
-                TextField("Only from IP address (optional)", text: $ip, prompt: Text(verbatim: "198.51.100.23"))
+                TextField("Only from IP address (optional)", text: $form.ip, prompt: Text(verbatim: "198.51.100.23"))
                     .autocorrectionDisabled()
                 if let addresses = logs.pull?.addresses, !addresses.isEmpty {
                     Menu("Seen in the sign-ins") {
-                        ForEach(addresses.prefix(20), id: \.self) { address in Button(address) { ip = address } }
+                        ForEach(addresses.prefix(20), id: \.self) { address in Button(address) { form.ip = address } }
                     }
                     .fixedSize()
                     .accessibilityLabel("Addresses seen in the last pull's sign-ins, flagged ones first")
                 }
             }
             DisclosureGroup("Logs: \(ActivityLogs.Application.allCases.filter(chosen.contains).map(\.name).joined(separator: ", "))") {
+                HStack {
+                    Button("All") { form.chosen = Set(ActivityLogs.Application.allCases) }
+                        .accessibilityLabel("Pick every log")
+                    Button("Recommended") { form.chosen = Set(ActivityLogs.incidentDefault) }
+                        .accessibilityLabel("Pick the recommended logs")
+                    Button("None") { form.chosen = [] }
+                        .accessibilityLabel("Pick no logs")
+                }
                 ForEach(ActivityLogs.Application.allCases, id: \.self) { application in
                     Toggle(isOn: pick(application)) {
                         Text(application.name)
@@ -1087,12 +1202,13 @@ private struct IncidentLogsSection: View {
             }
             if let problem { Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor) }
             HStack {
-                Toggle("Only what Google flagged", isOn: $flaggedOnly)
+                Toggle("Only what Google flagged", isOn: $form.flaggedOnly)
                 Spacer()
                 if logs.isPulling { ProgressView().controlSize(.small) }
                 Button("Pull Incident Logs") {
                     let query = IncidentLogs.Query(applications: ActivityLogs.Application.allCases.filter(chosen.contains), users: typedAccounts,
                                                    hours: hours, ip: ip.trimmingCharacters(in: .whitespaces))
+                    filter = nil
                     let logs = logs
                     Task { await logs.pull(query) }
                 }
@@ -1112,9 +1228,25 @@ private struct IncidentLogsSection: View {
                         .help("Save every log that was read as CSV files in a new folder, with a note of what was pulled")
                         .accessibilityLabel("Export every log as CSV files into a new folder")
                 }
-                ForEach(pull.logs) { log in
-                    LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login) {
-                        export(log, of: pull.query)
+                if let filter {
+                    let shown = pull.logs.compactMap(filter.applied)
+                    HStack(alignment: .firstTextBaseline) {
+                        Label("Showing only \(filter.words).", systemImage: "line.3.horizontal.decrease.circle")
+                            .textSelection(.enabled)
+                        Spacer()
+                        Button("Show All") { self.filter = nil }
+                            .accessibilityHint("Shows every event of every log again.")
+                    }
+                    if shown.isEmpty { Text("None of the logs shown has these events.").foregroundStyle(.secondary) }
+                    // Each log's Export CSV saves just these events: the evidence for what the to-do item was about.
+                    ForEach(shown) { log in
+                        LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: true) { export(log, of: pull.query) }
+                    }
+                } else {
+                    ForEach(pull.logs) { log in
+                        LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login) {
+                            export(log, of: pull.query)
+                        }
                     }
                 }
             }
@@ -1126,12 +1258,12 @@ private struct IncidentLogsSection: View {
                  + "their password into the fake page.")
         }
         .onChange(of: person, initial: true) { _, person in
-            if let person, accounts.isEmpty { accounts = person }
+            if let person, accounts.isEmpty { form.accounts = person }
         }
     }
 
     private func pick(_ application: ActivityLogs.Application) -> Binding<Bool> {
-        Binding(get: { chosen.contains(application) }, set: { if $0 { chosen.insert(application) } else { chosen.remove(application) } })
+        Binding(get: { chosen.contains(application) }, set: { if $0 { form.chosen.insert(application) } else { form.chosen.remove(application) } })
     }
 
     static func window(_ hours: Int) -> String { IncidentLogs.window(hours) }
@@ -1188,6 +1320,15 @@ private struct IncidentLogsSection: View {
         exported = (text, failed)
         if appearsActive { AccessibilityNotification.Announcement(text).post() }
     }
+}
+
+/// The pull's form (Pull Incident Logs), kept by the screen across its tabs.
+struct PullForm: Equatable {
+    var hours = ActivityLogs.defaultHours
+    var accounts = ""
+    var ip = ""
+    var chosen = Set(ActivityLogs.incidentDefault)
+    var flaggedOnly = false
 }
 
 /// One log of a pull: its name, how many events and how many flagged, the table, and Export CSV.

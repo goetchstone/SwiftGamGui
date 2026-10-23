@@ -18,7 +18,13 @@ enum SecurePick: Equatable {
 /// to its screen (Incident checks the person; Phishing finds who has the email), and that screen shows its
 /// own preview, confirmed there. Its own file, apart from anything that can run gam (invariant 10, `WriteRouteTests`).
 struct LogReaderView: View {
+    /// Which part this is: the findings (Investigate) or where each account stands and what's left to do (Respond).
+    enum Part { case findings, toDo }
+
+    let part: Part
     let pull: IncidentLogs.Pull
+    /// The reading and the model's explanation, kept by the screen across its tabs.
+    let memory: Memory
     /// Opens Incident for a person and checks them, with one thing picked when a "Do It Here" asked for it.
     let secure: (String, SecurePick?) -> Void
     /// Opens Phishing with a Message-ID and finds who has the email.
@@ -31,11 +37,21 @@ struct LogReaderView: View {
     let markTheirs: (_ account: String, _ address: String, _ note: String) -> String?
     /// Undoes a mark by its ID: the problem in words, or nil once saved.
     let unmark: (String) -> String?
+    /// Shows the logs narrowed to the events a to-do item is about ("Show the Events").
+    let show: (IncidentLogs.Filter) -> Void
+    /// Reads these logs again for these accounts, adding to what's shown ("Pull Again"): a read.
+    let pullAgain: (_ logs: [ActivityLogs.Application], _ accounts: [String]) -> Void
     @State private var marking: Marking?
     @State private var markProblem: String?
-    @State private var explained: (reading: LogReading.Reading, state: Explaining)?
-    /// The pull's reading, made once per pull rather than on every redraw: the rules scan every event.
-    @State private var cached: (key: String, reading: LogReading.Reading)?
+
+    /// What the reader keeps while the screen is open, whichever tab shows: the pull's reading, made once per pull rather
+    /// than on every redraw (the rules scan every event), and the model's explanation of it.
+    @MainActor
+    @Observable
+    final class Memory {
+        @ObservationIgnored fileprivate var cached: (key: String, reading: LogReading.Reading)?
+        fileprivate var explained: (reading: LogReading.Reading, state: Explaining)?
+    }
 
     /// What identifies the pull read: its query, each log's outcome, and the sign-ins marked as theirs.
     private var key: String {
@@ -57,7 +73,10 @@ struct LogReaderView: View {
     }
 
     private var reading: LogReading.Reading {
-        cached.flatMap { $0.key == key ? $0.reading : nil } ?? Self.reading(pull, marks: marks)
+        if let cached = memory.cached, cached.key == key { return cached.reading }
+        let reading = Self.reading(pull, marks: marks)
+        memory.cached = (key, reading)
+        return reading
     }
 
     /// What the rules find in `pull`, told the address it was pulled by, the logs it read, the sign-ins marked as theirs, and
@@ -92,18 +111,25 @@ struct LogReaderView: View {
 
     var body: some View {
         let reading = reading
+        Group {
+            switch part {
+            case .findings: findings(reading)
+            case .toDo: toDo(reading)
+            }
+        }
+        .sheet(item: $marking) { marking in
+            MarkSheet(marking: marking, problem: $markProblem) { note in
+                markProblem = markTheirs(marking.account, marking.address, note)
+                if markProblem == nil { self.marking = nil }
+            } cancel: {
+                self.marking = nil
+            }
+        }
+    }
+
+    /// Investigate: what the logs show, the sign-ins marked as theirs, and the model's explanation.
+    private func findings(_ reading: LogReading.Reading) -> some View {
         Section {
-            if !reading.statuses.isEmpty {
-                Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
-                ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
-            }
-            if !reading.statuses.isEmpty || !reading.toDo.isEmpty {
-                Text("Still to do").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
-                if reading.toDo.isEmpty {
-                    Text("Nothing left that these logs can show.").foregroundStyle(.secondary)
-                }
-                ForEach(reading.toDo) { task in TaskRow(task: task, secure: secure, pullEmail: pullEmail) }
-            }
             if !unread.isEmpty {
                 Label("Not read, so not in these findings: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
@@ -112,9 +138,6 @@ struct LogReaderView: View {
                 Text("Nothing in these logs matches a rule: no address Google flagged, and none named. Pull every account's logs "
                      + "by the attacker's address to see more.")
                     .foregroundStyle(.secondary)
-            }
-            if !reading.findings.isEmpty {
-                Text("What the logs show").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
             }
             ForEach(reading.findings) { finding in
                 FindingRow(finding: finding, secure: secure, pullEmail: pullEmail, canMark: marksProblem == nil) { account, address in
@@ -125,19 +148,37 @@ struct LogReaderView: View {
             marked
             explanation(reading)
         } header: {
-            Text("Read the logs").accessibilityAddTraits(.isHeader)
-                .onChange(of: key, initial: true) { _, key in cached = (key, Self.reading(pull, marks: marks)) }
+            Text("What the logs show").accessibilityAddTraits(.isHeader)
         } footer: {
             Text("Found by rules in code, from the logs above. A fix opens its screen with the person or the email filled in; "
                  + "nothing changes until you preview and confirm it there.")
         }
-        .sheet(item: $marking) { marking in
-            MarkSheet(marking: marking, problem: $markProblem) { note in
-                markProblem = markTheirs(marking.account, marking.address, note)
-                if markProblem == nil { self.marking = nil }
-            } cancel: {
-                self.marking = nil
+    }
+
+    /// Respond: where each account stands, and what's left to do, each with a button for what can be done from here.
+    private func toDo(_ reading: LogReading.Reading) -> some View {
+        Section {
+            if !reading.statuses.isEmpty {
+                Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
             }
+            Text("Still to do").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+            if reading.toDo.isEmpty {
+                Text(reading.statuses.isEmpty ? "Nothing to do that these logs show: no account the attacker touched."
+                     : "Nothing left that these logs can show.").foregroundStyle(.secondary)
+            }
+            ForEach(reading.toDo) { task in
+                TaskRow(task: task, secure: secure, pullEmail: pullEmail, show: show, pullAgain: pullAgain)
+            }
+            if !unread.isEmpty {
+                Label("Not read, so not in this list: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text("Where things stand").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("Worked out by rules in code from the logs on Investigate. Show the Events and Pull Again only read; a fix "
+                 + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
     }
 
@@ -178,7 +219,7 @@ struct LogReaderView: View {
     private static let marksShown = 20
 
     @ViewBuilder private func explanation(_ reading: LogReading.Reading) -> some View {
-        let current = explained.flatMap { $0.reading == reading ? $0.state : nil }
+        let current = memory.explained.flatMap { $0.reading == reading ? $0.state : nil }
         if let unavailable = LogExplainer.unavailable {
             Label(unavailable, systemImage: "sparkles").foregroundStyle(.secondary)
         } else if !reading.statuses.isEmpty || !reading.findings.isEmpty {
@@ -219,13 +260,14 @@ struct LogReaderView: View {
     }
 
     private func explain(_ reading: LogReading.Reading) {
-        explained = (reading, .asking)
+        let memory = memory
+        memory.explained = (reading, .asking)
         Task {
             do {
                 let explanation = try await LogExplainer.explain(reading, when: { $0.formatted(date: .abbreviated, time: .shortened) })
-                if explained?.reading == reading { explained = (reading, .done(explanation)) }
+                if memory.explained?.reading == reading { memory.explained = (reading, .done(explanation)) }
             } catch {
-                if explained?.reading == reading { explained = (reading, .failed(OnDeviceModel.failure(error))) }
+                if memory.explained?.reading == reading { memory.explained = (reading, .failed(OnDeviceModel.failure(error))) }
             }
         }
     }
@@ -415,6 +457,8 @@ private struct TaskRow: View {
     let task: LogReading.Task
     let secure: (String, SecurePick?) -> Void
     let pullEmail: (String) -> Void
+    let show: (IncidentLogs.Filter) -> Void
+    let pullAgain: ([ActivityLogs.Application], [String]) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -424,8 +468,14 @@ private struct TaskRow: View {
                 Image(systemName: "circle")
             }
             .accessibilityLabel("To do \(task.id): \(task.words)")
-            if !task.drafts.isEmpty {
+            if !task.drafts.isEmpty || task.shows != nil || !task.pullsAgain.isEmpty {
                 HStack {
+                    let logs = task.pullsAgain.compactMap(ActivityLogs.Application.init(rawValue:))
+                    if !logs.isEmpty {
+                        Button("Pull Again") { pullAgain(logs, task.accounts) }
+                            .accessibilityLabel("Pull the \(logs.map(\.name).joined(separator: ", ")) logs again for these accounts")
+                            .accessibilityHint("Reads them and adds what it finds to the logs shown. Nothing changes.")
+                    }
                     ForEach(task.drafts, id: \.self) { draft in
                         Button(draft.title) {
                             switch draft {
@@ -436,10 +486,22 @@ private struct TaskRow: View {
                         }
                         .accessibilityHint("Opens its screen with this filled in. Nothing changes until you preview and confirm there.")
                     }
+                    if let shown = task.shows {
+                        Button("Show the Events") { show(IncidentLogs.Filter(shown)) }
+                            .accessibilityHint("Opens Investigate with the logs narrowed to the events this is about. Nothing changes.")
+                    }
                 }
                 .padding(.leading, 28)
             }
         }
+    }
+}
+
+extension IncidentLogs.Filter {
+    /// The reader's word for what a to-do item is about, as the logs' filter: the log names read as the app's logs.
+    init(_ shown: LogReading.Shown) {
+        self.init(accounts: shown.accounts, addresses: shown.addresses,
+                  applications: shown.logs.compactMap(ActivityLogs.Application.init(rawValue:)), apps: shown.apps, agent: shown.agent)
     }
 }
 
