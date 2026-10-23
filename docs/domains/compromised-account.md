@@ -510,6 +510,49 @@ menu when it marked several accounts there) asks how the operator knows, and the
   marked is offered, never its warning that it blocked one (review 2026-10-22), and the operator's own pulled-by address
   is never markable. A mark is never hidden: Marked as Theirs lists each with its note and an Undo.
 
+## A kept incident (incidents plan, slice 3's record and evidence, first at the operator's ask)
+Asked for (2026-10-23): something that works after the fact, because the app is rebuilt often and everything a pull found
+was gone at each relaunch, and the Gmail log reaches back 30 days only. An incident is kept on this Mac with its details,
+notes and every pull of the logs; open, its saved evidence is what the logs and Read the logs show, with no pull needed.
+Reads and this Mac only: nothing here changes the tenant.
+- **Files:** `Stores/IncidentStore.swift` (each incident a folder in `<Application Support>/SwiftGamGui/incidents/`, named
+  by its ID, the day it was opened plus six hex digits: `incident.json` holds the title, opened (when it was identified,
+  which can be before it was saved), by whom, how it was reported, and notes; `evidence/` holds one folder per saved read,
+  exactly as Export All writes them); `App/Incidents.swift` (the screen's model; the open incident's ID, never its
+  contents, is remembered in the app's defaults, so it opens again after a relaunch or a rebuild);
+  `App/IncidentRecordView.swift` (the section at the top of Incident, and the details sheet). `ActivityLogs.rows(exported:)`
+  and `Row(exported:)` read an export back; `IncidentLogs.evidence(_:)` puts an incident's exports together as one pull;
+  `IncidentLogs.show(_:)` shows it. Tests: `StoresTests/IncidentStoreTests.swift`, `GamEngineTests/ExportedLogsTests.swift`,
+  `DirectoryStoreTests/IncidentEvidenceTests.swift`, `CompromisedChangesTests.savedEvidenceReadsBackAsThePull`.
+- **Make one:** New Incident…, or From an Export… (a folder Export All wrote: `about.txt` and a CSV a log, headed as the
+  export heads it; other files are left out). Its files are read by descriptor, never through a link, each a regular file of
+  at most 256 MB, and copied in byte for byte: the evidence is exactly what was exported, which is what to hand anyone. An
+  export whose events have an actor and none at the connected domain is refused (one tenant's logs never go into another's
+  incident). An incident opens only while connected to its domain.
+- **While it's open:** each pull of the logs that read something is exported into its evidence when it ends (Export All's
+  folder, named for when), then everything saved is read again and shown: the logs' tables, Read the logs, Still to do.
+  Add an Export… copies another in; Show in Finder opens the evidence folder; notes take a time, which can be earlier than
+  now ("told the insurer at 9").
+- **Reading the exports back** (the export's own format, not GAM's): the export's CSV dialect has no escape (GAM's has a
+  backslash: `CSVReader.records(_:escaping:)`), the `'` the export puts before a spreadsheet formula's lead is taken off,
+  `via` splits back into the agent ("by …") and the app ("through …"), and the parameters split on " | ", a piece that isn't
+  `name: value` joined back to the value before it (a subject can hold " | "). Not kept by the export, so not read back:
+  Google's unique qualifier, and whether a value began with `'` before a formula's lead.
+- **Put together:** rows newest first; the same event in two exports once (by its content, the qualifier being gone),
+  every row of one export kept; the widest window, every account if any export was, the first address given; a log stopped
+  at its cap only while every export of it was (a later read for just the accounts that matter reaches further back, which
+  clears Still to do's "pull again"). An export that can't be read is named, the rest still shown.
+- **Bounded** (invariant 9): 200 incidents, 500 notes each, 100 saved reads each, 256 MB a file and 1 GB an export.
+- **Gotchas** (review before commit): a new incident takes the pull just made (else New Incident… after a pull lost it);
+  showing the evidence waits for a pull still reading (`IncidentLogs.show` replaces the last pull, which drops one
+  reading); an ID is never one kept already (a save over it would replace that record); a note's time is now unless
+  changed. Each saved pull reads every export again: fine at a few, slow at many large ones (the next slice's to fix).
+- **Not built yet** (the plan's next): the tabs (Investigate, Respond, Report), a button on every to-do item and Select All
+  for the logs, the incoming phish and an attack-anchored pull, who to warn and whether they were, the checklist and the
+  report. Deleting a kept incident is the Finder's for now.
+- **Live check (L3k, reads and this Mac only):** From an Export… on a real export: the logs, Read the logs and Still to do
+  match what the pull showed; quit, rebuild and relaunch: the incident is open again with the same.
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
@@ -528,6 +571,6 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
-- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): findings first, the incident record,
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the tabs and buttons, findings first,
   the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

@@ -36,6 +36,8 @@ used), and Set Temporary Password (Actions, or their Security tab) gives them a 
 sign-in, shown once. Pull
 Incident Logs reads the activity logs an incident needs (sign-ins, OAuth, Gmail, Access, Chat, account changes, Chrome and more) for some
 accounts or all, filtered by an attacker's address, each a table with a CSV export, or all of them at once into one folder;
+An incident can be kept on this Mac (made by hand or from an export of the logs), so its details, notes and every pull are
+there again after the app restarts or is rebuilt, the logs read from what was saved.
 Read the logs then says what they show (by rules in code, with the on-device model's explanation on request) and drafts
 the fixes, each opening Secure Account or Phishing with the person or the email filled in. Every log row says when an app
 or an AI agent acted for someone. Reports lists the people behind each of the directory's counts,
@@ -220,6 +222,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Reports: every account's connected apps and AI agents, its summary, and the on-device model's wording (reads only) | not yet: new to both apps |
 | Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | partly: the lock's admin events seen in a real tenant's export (2026-10-22); the reader not yet run live |
 | Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
+| Incident: a kept incident, made from an export, its saved logs read back after a relaunch (reads; this Mac only) | not yet: new to both apps |
 | Read the logs: each account's timeline and Still to do (reads only) | partly: run over a real tenant's export (2026-10-22), not yet in the app live |
 | Incident: block a computer, or take the account off it (Incident) | not yet: new to both apps |
 | Read the logs: Do It Here on a to-do item (opens the plan with only that fix picked) | not yet: new to both apps |

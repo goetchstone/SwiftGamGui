@@ -16,6 +16,8 @@ struct CompromisedView: View {
     let logs: IncidentLogs
     /// Sign-ins marked as the person's own ("That was them"), which the log reader makes no suspect of.
     let known: KnownSignIns
+    /// The incidents kept on this Mac, and the one open here.
+    let incidents: Incidents
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
     /// A person another screen asked to secure (Users' "Secure Account…"): a new form for them, checked at once, with
@@ -61,6 +63,7 @@ struct CompromisedView: View {
                             .foregroundStyle(.secondary)
                     }
                     if setup.active != nil {
+                        IncidentRecordSection(setup: setup, incidents: incidents, logs: logs).id(Self.incidentAnchor)
                         IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory).id(Self.reportsAnchor)
                         if let pull = logs.pull, pull.ended {
                             // A fix the reader found is an address for this screen's own check, or a Message-ID for Phishing.
@@ -172,6 +175,7 @@ struct CompromisedView: View {
     private static let runAnchor = "compromised.run"
     private static let reportsAnchor = "compromised.reports"
     private static let readerAnchor = "compromised.reader"
+    private static let incidentAnchor = "compromised.incident"
     private static let checkAnchor = "compromised.check"
 
     private var planShown: Bool {
@@ -282,8 +286,9 @@ struct CompromisedView: View {
     /// Debug builds: `SWIFTGAMGUI_SELECT` checks that person once the directory is loaded; `SWIFTGAMGUI_TAB` then shows
     /// the plan with every filter that hides or forwards mail, every delegate and every other send-as address ticked
     /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), the
-    /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), or the
-    /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`).
+    /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), the
+    /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`), or the person's logs saved to a demo
+    /// incident kept in the demo's temporary folder, with a note, and opened (`incident`).
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -300,6 +305,16 @@ struct CompromisedView: View {
                     await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: 72, ip: ip))
                 }
                 scrollToReports = true
+                return
+            }
+            if tab == "incident", let email = changes.check?.user.primaryEmail {
+                await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
+                if case .success(let record) = incidents.create(domain: setup.active?.name ?? "", title: "Account takeover",
+                                                                 opened: Date(), openedBy: "Pat", reported: "A Google alert") {
+                    if let pull = logs.pull { _ = incidents.keep(pull, in: record.id) }
+                    _ = incidents.addNote("Told the person's manager.", at: Date(), to: record.id)
+                    incidents.openID = record.id
+                }
                 return
             }
             if tab == "reading", let email = changes.check?.user.primaryEmail {

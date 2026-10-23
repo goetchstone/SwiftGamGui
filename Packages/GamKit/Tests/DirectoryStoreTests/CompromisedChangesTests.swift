@@ -506,6 +506,52 @@ final class CompromisedChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// An incident's saved evidence reads back as what was pulled: the mock's logs exported, then read from their files, are
+    /// the same events (when, who, the event, the address, flagged, who acted, every parameter), in the same order; a second
+    /// export of the same events counts each once; the export is known as this domain's.
+    @Test func savedEvidenceReadsBackAsThePull() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome, .drive],
+                                           users: ["carol@example.com", "dana@example.com"], hours: 72, ip: ""))
+        let pull = try #require(logs.pull)
+        let parent = scratch.appending(path: "evidence")
+        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        let utc = try #require(TimeZone(identifier: "UTC"))
+        let first = try IncidentLogs.exportAll(pull, into: parent, at: Date(timeIntervalSince1970: 1_792_500_000), timeZone: utc)
+        let second = try IncidentLogs.exportAll(pull, into: parent, at: Date(timeIntervalSince1970: 1_792_500_060), timeZone: utc)
+        func export(_ folder: URL) throws -> ActivityLogs.Export {
+            let names = try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+            let logs = try names.compactMap { name -> (application: ActivityLogs.Application, csv: String)? in
+                guard name.hasSuffix("-log.csv"), let application = ActivityLogs.Application(rawValue: String(name.dropLast(8))) else { return nil }
+                return (application, try String(contentsOf: folder.appending(path: name), encoding: .utf8))
+            }
+            return ActivityLogs.Export(name: folder.lastPathComponent, about: try String(contentsOf: folder.appending(path: "about.txt"), encoding: .utf8),
+                                       logs: logs)
+        }
+        let once = IncidentLogs.evidence([try export(first.folder)])
+        #expect(once.unreadable.isEmpty && once.pull.fromEvidence && once.pull.ended)
+        #expect(once.pull.query.users == ["carol@example.com", "dana@example.com"] && once.pull.query.hours == 72 && once.pull.query.ip.isEmpty)
+        func shape(_ row: ActivityLogs.Row) -> [String] {
+            [row.application.rawValue, row.time, row.who, row.event, row.ip, String(row.flagged), row.agent, row.app]
+                + row.parameters.map { "\($0.name)=\($0.value)" }
+        }
+        var compared = 0
+        for log in pull.logs {
+            guard let original = try? log.rows.get() else { continue }
+            let saved = try #require(once.pull.logs.first { $0.application == log.application }, "\(log.application)").rows.get()
+            #expect(saved.map(shape) == original.map(shape), "\(log.application)")
+            compared += original.count
+        }
+        #expect(compared > 20, "the mock's events, every log")
+        #expect(pull.logs.contains { ((try? $0.rows.get()) ?? []).contains { !$0.agent.isEmpty || !$0.app.isEmpty } }, "who acted is covered")
+        let twice = IncidentLogs.evidence([try export(first.folder), try export(second.folder)])
+        #expect(twice.pull.logs.map { (try? $0.rows.get().count) ?? -1 } == once.pull.logs.map { (try? $0.rows.get().count) ?? -1 })
+        #expect(IncidentLogs.export(try export(first.folder), isFrom: "example.com"))
+        #expect(!IncidentLogs.export(try export(first.folder), isFrom: "example.org"))
+        #expect(writes().isEmpty)
+    }
+
     /// A read cut off at the runner's cap is a failure in words, never rows that pass as all there is (review 2026-10-19).
     @Test func aCutOffReadIsNeverTakenAsWhole() {
         let cut = GamResult(exitCode: 0, stdout: "name,actor.email\nlogin_success,dana@exa", stderr: "", stdoutTruncated: true,

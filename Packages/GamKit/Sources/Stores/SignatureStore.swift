@@ -234,9 +234,9 @@ public struct SignatureStore: Sendable {
     }
 
     /// The file `name` in the open folder `dir`, by descriptor: opened without following a link or
-    /// blocking on a FIFO, a regular file under `sizeCap`, read from that same descriptor. Nil when
+    /// blocking on a FIFO, a regular file of at most `cap` bytes, read from that same descriptor. Nil when
     /// there's no such file.
-    static func read(_ name: String, in dir: Int32) throws(Refusal) -> [UInt8]? {
+    static func read(_ name: String, in dir: Int32, cap: Int = sizeCap) throws(Refusal) -> [UInt8]? {
         let fd = openat(dir, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard fd >= 0 else {
             let code = errno
@@ -250,14 +250,14 @@ public struct SignatureStore: Sendable {
         var info = stat()
         guard fstat(fd, &info) == 0 else { throw .failed(errno) }
         guard info.st_mode & S_IFMT == S_IFREG else { throw .notAFile }
-        guard info.st_size <= sizeCap else { throw .tooLarge }
+        guard info.st_size <= cap else { throw .tooLarge }
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK)
         var bytes: [UInt8] = [], chunk = [UInt8](repeating: 0, count: 64 * 1024)
         while true {
             let count = chunk.withUnsafeMutableBytes { Darwin.read(fd, $0.baseAddress, $0.count) }
             if count > 0 {
                 bytes += chunk[..<count]
-                guard bytes.count <= sizeCap else { throw .tooLarge }
+                guard bytes.count <= cap else { throw .tooLarge }
             } else if count == 0 {
                 return bytes
             } else if errno != EINTR {
@@ -321,7 +321,7 @@ public struct SignatureStore: Sendable {
 
     /// The folder, opened for a save: made `0700` if it's new (its parents as the system makes them),
     /// set back to `0700` if it was loosened.
-    private static func privateFolder(_ root: URL) throws(Problem) -> Int32 {
+    static func privateFolder(_ root: URL) throws(Problem) -> Int32 {
         try? FileManager.default.createDirectory(at: root.deletingLastPathComponent(), withIntermediateDirectories: true)
         guard mkdir(root.path, 0o700) == 0 || errno == EEXIST else { throw .notSaved(errno) }
         let dir = open(root.path, O_RDONLY | O_DIRECTORY | O_CLOEXEC)
@@ -334,7 +334,7 @@ public struct SignatureStore: Sendable {
         return dir
     }
 
-    private static func writeAll(_ fd: Int32, _ bytes: ArraySlice<UInt8>) throws(Problem) {
+    static func writeAll(_ fd: Int32, _ bytes: ArraySlice<UInt8>) throws(Problem) {
         var rest = bytes
         while !rest.isEmpty {
             let count = rest.withUnsafeBytes { Darwin.write(fd, $0.baseAddress, $0.count) }
