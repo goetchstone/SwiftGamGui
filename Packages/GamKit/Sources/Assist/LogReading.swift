@@ -178,6 +178,26 @@ public enum LogReading {
         public let words: String
         public let accounts: [String]
         public let drafts: [Draft]
+        /// The events it's about, for the screen to show ("Show the Events"): nil when it names no account.
+        public let shows: Shown?
+        /// The logs to read again for its accounts ("Pull Again"), by their names in the logs (`login`, `gmail`); empty for
+        /// none. A read, never a change.
+        public let pullsAgain: [String]
+    }
+
+    /// Which events a to-do item is about: its accounts', from these addresses (none: any), in these logs, through these
+    /// apps, or by this agent (each empty for any). What the screen narrows the logs to; never given to the model (an
+    /// app's or agent's name is the logs' text).
+    public struct Shown: Sendable, Equatable {
+        public let accounts: [String]
+        public let addresses: [String]
+        public let logs: [String]
+        public let apps: [String]
+        public let agent: String
+
+        public init(accounts: [String], addresses: [String] = [], logs: [String] = [], apps: [String] = [], agent: String = "") {
+            (self.accounts, self.addresses, self.logs, self.apps, self.agent) = (accounts, addresses, logs, apps, agent)
+        }
     }
 
     /// A fix a finding points to: a value for a screen, never a command. Secure Account opens for the person and checks
@@ -409,30 +429,35 @@ public enum LogReading {
             if let from = status.attackedAt { held[status.account.lowercased()] = from...max(from, status.lockedAt ?? .distantFuture) }
         }
         let statuses = statuses(held: held)
-        var statusTasks: [(Task.Kind, String, [String], [Draft])] = []
+        var statusTasks: [(Task.Kind, String, [String], [Draft], Shown?)] = []
         for status in statuses {
             let account = status.account
+            // The account's events from the attacker's addresses: what "Show the Events" shows for its lock.
+            let theirs = Shown(accounts: [account], addresses: unique(events.filter {
+                $0.who.lowercased() == account.lowercased() && suspects.contains($0.ip)
+            }.map(\.ip)))
             switch status.state {
             case .stillIn:
                 statusTasks.append((.secureAgain, "Secure \(account) again: the attacker signed in from \(status.backInFrom) after the lock. Look "
-                                    + "for a passkey or another way back.", [account], [.secureAccount(account)]))
+                                    + "for a passkey or another way back.", [account], [.secureAccount(account)], theirs))
             case .partlyLocked:
                 statusTasks.append((.finishLock, status.reset != nil
                                     ? "Sign \(account) out of every session: the password was reset, but no sign-out was seen."
                                     : "Reset \(account)'s password: they were signed out, but the password the attacker may have wasn't changed.",
-                                    [account], [.secureAccount(account)]))
+                                    [account], [.secureAccount(account)], theirs))
             case .notLocked:
                 statusTasks.append((.secure, "Secure \(account): " + (status.attackerGotIn ? "the attacker got in" : "the attacker's address tried their password")
                                     + (status.unseen.map { ", and no lock could be seen (\($0))." }
                                         ?? (status.earlierLockAt != nil ? ", and no lock is seen after it; one came earlier, so pull from before "
                                             + "the attack began to tell." : ", and no lock has been seen since.")),
-                                    [account], [.secureAccount(account)]))
+                                    [account], [.secureAccount(account)], theirs))
             case .locked:
                 break
             }
             if !status.newAddresses.isEmpty {
                 statusTasks.append((.confirmAddress, "Ask \(account) whether \(list(status.newAddresses)) \(status.newAddresses.count == 1 ? "is" : "are") "
-                                    + "theirs: a sign-in after the lock, from an address these logs didn't show before the attack.", [account], []))
+                                    + "theirs: a sign-in after the lock, from an address these logs didn't show before the attack.", [account], [],
+                                    Shown(accounts: [account], addresses: status.newAddresses)))
             }
             // The account's contacts printed between the attacker's first event and the lock: who the phish goes to next.
             // The Contacts log names no address, so the time ties it to the attack.
@@ -535,7 +560,8 @@ public enum LogReading {
             let apps = unique(theirs.map(\.app)), logs = unique(theirs.map { logName($0.log) })
             found.append(Pending(.appFromSuspect, "\(list(apps)) acted for \(account) from \(list(unique(theirs.map(\.ip)))) (\(list(logs))).",
                                  [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)],
-                                 todo: [(.look, "See what \(list(apps)) did for \(account) from the attacker's address.", [])]))
+                                 todo: [(.look, "See what \(list(apps)) did for \(account) from the attacker's address.", [])],
+                                 shows: Shown(accounts: [account], addresses: unique(theirs.map(\.ip)), apps: apps)))
         }
 
         // Anything else a suspect address did as an account: Gemini asked to search a mailbox, Drive, Contacts, Calendar…
@@ -546,7 +572,8 @@ public enum LogReading {
             let logs = unique(theirs.map { logName($0.log) })
             found.append(Pending(.actedFromSuspect, "\(account) used \(list(logs)) from \(list(unique(theirs.map(\.ip)))): see what was "
                                  + "searched, opened or changed.", [account], unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)],
-                                 todo: [(.look, "See what was searched, opened or changed in \(account)'s \(list(logs)) from the attacker's address.", [])]))
+                                 todo: [(.look, "See what was searched, opened or changed in \(account)'s \(list(logs)) from the attacker's address.", [])],
+                                 shows: Shown(accounts: [account], addresses: unique(theirs.map(\.ip)), logs: unique(theirs.map(\.log)))))
         }
 
         // AI agents acting for people: said, by agent, and called out when the account is one the attacker had.
@@ -562,7 +589,8 @@ public enum LogReading {
                                  + "(\(theirs.count) event\(theirs.count == 1 ? "" : "s"): \(list(unique(theirs.map { logName($0.log) }))))"
                                  + (attacked.isEmpty ? "." : ", including \(list(attacked)), whom the attacker had: check what it did."),
                                  accounts, unique(theirs.map(\.ip).filter { !$0.isEmpty }), theirs.count, [],
-                                 todo: attacked.isEmpty ? [] : [(.look, "See what \(agent) did for \(list(attacked)).", [])]))
+                                 todo: attacked.isEmpty ? [] : [(.look, "See what \(agent) did for \(list(attacked)).", [])],
+                                 shows: Shown(accounts: attacked, agent: agent)))
         }
 
         // Chat messages from a suspect address: phishing can go out in Chat too.
@@ -635,7 +663,8 @@ public enum LogReading {
         }
 
         // Logs read for every account that stop short of the attack: pull them again for just these accounts.
-        var coverage: [(Task.Kind, String, [String], [Draft])] = []
+        var coverage: [(Task.Kind, String, [String], [Draft], Shown?)] = []
+        var pullsAgain: [String] = []
         if let first = statuses.compactMap(\.attackedAt).min() {
             let short = context.capped.filter { $0.value > first }.map(\.key).sorted()
             let accounts = statuses.map(\.account)
@@ -643,11 +672,14 @@ public enum LogReading {
                 coverage.append((.pullAgain, "Pull the \(list(short.map(logName))) \(short.count == 1 ? "log" : "logs") again for just "
                                  + (accounts.count <= 20 ? list(accounts) : "the accounts above, 20 at a time") + ": read for every account, "
                                  + (short.count == 1 ? "it stops at its newest events and doesn't" : "they stop at their newest events and don't")
-                                 + " reach back to the attack.", accounts, []))
+                                 + " reach back to the attack.", accounts, [], nil))
+                pullsAgain = short
             }
         }
         // Most urgent first, each once.
-        let todos = statusTasks + coverage + ranked.flatMap { item in item.todo.map { ($0.0, $0.1, item.accounts, $0.2) } }
+        let todos = statusTasks + coverage + ranked.flatMap { item in
+            item.todo.map { ($0.0, $0.1, item.accounts, $0.2, item.shows ?? Shown(accounts: item.accounts, addresses: item.addresses)) }
+        }
         var said: Set<String> = []
         let ordered = todos.enumerated().filter { said.insert($0.element.1 + "|" + $0.element.3.map(\.title).joined()).inserted }.sorted { a, b in
             (Task.Kind.allCases.firstIndex(of: a.element.0)!, a.offset) < (Task.Kind.allCases.firstIndex(of: b.element.0)!, b.offset)
@@ -657,7 +689,8 @@ public enum LogReading {
             Finding(id: "F\(index + 1)", kind: item.kind, words: item.words, accounts: item.accounts, addresses: item.addresses,
                     events: item.events, drafts: item.drafts.filter(stillToDraft), markable: item.markable)
         }, statuses: statuses, toDo: ordered.enumerated().map { index, item in
-            Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3)
+            Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3,
+                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.0 == .pullAgain ? pullsAgain : [])
         }, events: events.count)
     }
 
@@ -918,10 +951,12 @@ public enum LogReading {
         let kind: Finding.Kind, words: String, accounts: [String], addresses: [String], events: Int, drafts: [Draft], markable: [String]
         /// What's left to do about it, if anything: each its kind, its sentence, and its drafts.
         let todo: [(Task.Kind, String, [Draft])]
+        /// The events its to-do items are about, when narrower than its accounts from its addresses (an app's, a log's).
+        let shows: Shown?
         init(_ kind: Finding.Kind, _ words: String, _ accounts: [String], _ addresses: [String], _ events: Int, _ drafts: [Draft],
-             markable: [String] = [], todo: [(Task.Kind, String, [Draft])] = []) {
-            (self.kind, self.words, self.accounts, self.addresses, self.events, self.drafts, self.markable, self.todo)
-                = (kind, words, accounts, addresses, events, drafts, markable, todo)
+             markable: [String] = [], todo: [(Task.Kind, String, [Draft])] = [], shows: Shown? = nil) {
+            (self.kind, self.words, self.accounts, self.addresses, self.events, self.drafts, self.markable, self.todo, self.shows)
+                = (kind, words, accounts, addresses, events, drafts, markable, todo, shows)
         }
     }
 

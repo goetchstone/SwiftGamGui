@@ -50,4 +50,24 @@ struct IncidentEvidenceTests {
         let partly = IncidentLogs.evidence([broken, first])
         #expect(partly.unreadable == ["Broken"] && ((try? partly.pull.logs.first?.rows.get().count) ?? 0) == 1)
     }
+
+    /// Show the Events: an account's events, from some addresses, in some logs, through an app or by an agent; a log with
+    /// none of them is left out, and the narrowing is said in words.
+    @Test func aFilterKeepsWhatAToDoItemIsAbout() throws {
+        let rows = ActivityLogs.rows(exported: Self.header + [Self.early, Self.late,
+            "login,2026-10-19T13:05:00Z,dana@example.com,login_success,198.51.100.23,,through Mail Sync Pro,"].map { $0 + "\r\n" }.joined(),
+                                     application: .login) ?? []
+        let log = try #require(IncidentLogs.evidence([Self.export("e", about: "Over the last 3 days.\n", login: [Self.early, Self.late,
+            "login,2026-10-19T13:05:00Z,dana@example.com,login_success,198.51.100.23,,through Mail Sync Pro,"])]).pull.logs.first)
+        let carol = IncidentLogs.Filter(accounts: ["Carol@example.com"], addresses: ["198.51.100.23"])
+        #expect(rows.filter(carol.keeps).map(\.time) == ["2026-10-19T13:00:00Z"], "case aside, from that address only")
+        #expect(try carol.applied(to: log)?.rows.get().count == 1)
+        let app = IncidentLogs.Filter(accounts: ["dana@example.com"], apps: ["Mail Sync Pro"])
+        #expect(rows.filter(app.keeps).count == 1 && rows.filter(IncidentLogs.Filter(accounts: [], agent: "an AI agent").keeps).isEmpty)
+        #expect(IncidentLogs.Filter(accounts: ["carol@example.com"], applications: [.gmail]).applied(to: log) == nil, "another log")
+        #expect(IncidentLogs.Filter(accounts: ["erin@example.com"]).applied(to: log) == nil, "none of its rows")
+        #expect(carol.words == "Carol@example.com's events from 198.51.100.23")
+        #expect(IncidentLogs.Filter(accounts: ["carol@example.com", "dana@example.com"], applications: [.gmail, .login], apps: ["Zoom"]).words
+                == "carol@example.com and dana@example.com's events, in Gmail and Sign-ins (user log), through Zoom")
+    }
 }

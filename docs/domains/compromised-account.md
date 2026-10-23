@@ -553,6 +553,32 @@ Reads and this Mac only: nothing here changes the tenant.
 - **Live check (L3k, reads and this Mac only):** From an Export… on a real export: the logs, Read the logs and Still to do
   match what the pull showed; quit, rebuild and relaunch: the incident is open again with the same.
 
+## Tabs, and a button on every to-do item (incidents plan, at the operator's ask)
+Asked for (2026-10-23): the screen organized better, a button for each recommendation, and Select All for the logs.
+- **Three tabs**, in the order an incident is worked (the standard's steps): **Investigate** (the order of work, Pull
+  Incident Logs and the logs, What the logs show with Explain and Marked as Theirs), **Respond** (a run under way, Where
+  things stand: where each account stands and Still to do, then Secure an account and Pull the email), **Report** (the
+  incident's evidence and notes, then the checklist). The open incident's header is above every tab. A plan, a run, a
+  Secure or Do It Here from anywhere, and Users' Secure Account… switch to Respond; Show the Events and Pull Again to
+  Investigate. What a tab doesn't show is kept by the screen: the pull's form (`PullForm`), the narrowing, and the reader's
+  reading and explanation (`LogReaderView.Memory`), so a change of tab loses nothing but a half-typed note.
+- **Show the Events** on every to-do item that names an account (`LogReading.Task.shows`, a `Shown`): the account's events
+  from the attacker's addresses (a lock to do), from the new addresses (one to confirm), or, for "See what …", only the
+  app's, the logs' or the agent's. Investigate's logs narrow to them (`IncidentLogs.Filter`), said in words ("Showing only
+  carol@example.com's events from 198.51.100.23, through Mail Sync Pro"), with Show All; each log's Export CSV then saves just
+  those events.
+- **Pull Again** on "pull … again for just …" (`Task.pullsAgain`, the logs that stopped short): those logs for those accounts
+  (those in the directory, 20 at most) over the window shown. With an incident open the read is saved to it and everything
+  saved shown; otherwise it's put together with the pull shown (`IncidentLogs.pull(adding:)`, `merged`): a narrower read
+  never takes away what the wider one found. A read: nothing changes.
+- **Select All:** the logs' list has All, Recommended (`ActivityLogs.incidentDefault`) and None.
+- **One merge** (`IncidentLogs.merged`): an incident's exports and Pull Again's read are put together the same way: rows
+  newest first, an event both read once (`identity`), a log at its cap only while both reads were, a log one read couldn't
+  read taken from the other.
+- **WriteRouteTests still hold:** only `LogReaderView.swift` names the reader (`LogReading`), so the reader draws both its
+  parts (`LogReaderView.Part`: `.findings` on Investigate, `.toDo` on Respond) and hands the screen a `Filter` and log names,
+  never its own types; the screen names `LogReaderView.Memory`, never the model's module.
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
@@ -571,6 +597,6 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
-- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the tabs and buttons, findings first,
-  the report, watching, Look for Trouble.
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the incoming phish and who to warn,
+  the checklist and the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

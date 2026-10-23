@@ -17,6 +17,14 @@ final class Incidents {
     var openID: String? {
         didSet { if let defaults { defaults.set(openID, forKey: Self.openKey) } }
     }
+    /// The open incident's evidence as last read: each saved read's name, and those that couldn't be read.
+    var evidence: (id: String, names: [String], unreadable: [String])?
+    /// Reading the evidence, or an export picked.
+    var loading = false
+    /// Bumped to read the evidence again (a pull or an export was just saved to it).
+    var reload = 0
+    /// The last problem, in words, shown with the incident.
+    var problem: String?
     private let defaults: UserDefaults?
     private static let openKey = "incident.open"
 

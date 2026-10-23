@@ -175,6 +175,15 @@ struct LogReadingTests {
         #expect(agent?.words.contains("whom the attacker had") == true, "dana@ signed in from the attacker's address")
         #expect(agent?.drafts.isEmpty == true)
         #expect(!reading.findings.contains { $0.accounts == ["alice@example.com"] }, "an app at the office is no finding")
+        // Each "See what…" shows just the events it's about: the app's, the logs', the agent's.
+        let looks = reading.toDo.filter { $0.kind == .look }.compactMap(\.shows)
+        #expect(looks.contains(LogReading.Shown(accounts: ["carol@example.com"], addresses: [Self.attacker], apps: ["Mail Sync Pro"])))
+        #expect(looks.contains(LogReading.Shown(accounts: ["carol@example.com"], addresses: [Self.attacker], logs: ["geminiinworkspaceapps"])))
+        #expect(looks.contains { $0.agent == "the AI agent Inbox Helper, made by dana@example.com" && $0.accounts == ["dana@example.com"] })
+        // Every to-do item that names an account can show its events; none pulls again unless a log stopped short.
+        #expect(reading.toDo.allSatisfy { $0.accounts.isEmpty || $0.shows != nil } && reading.toDo.allSatisfy(\.pullsAgain.isEmpty))
+        let secure = reading.toDo.first { $0.kind == .secure && $0.accounts == ["carol@example.com"] }
+        #expect(secure?.shows == LogReading.Shown(accounts: ["carol@example.com"], addresses: [Self.attacker]), "the account's events from the attacker")
     }
 
     /// A status's times, said as the minute of the test's clock.
@@ -606,6 +615,7 @@ struct LogReadingTests {
         #expect(again?.words == "Pull the Gmail log again for just carol@example.com, dana@example.com and erin@example.com: read for every "
                 + "account, it stops at its newest events and doesn't reach back to the attack.")
         #expect(short.toDo.firstIndex { $0.kind == .pullAgain }! < short.toDo.firstIndex { $0.kind == .deleteDevice }!)
+        #expect(again?.pullsAgain == ["gmail"] && again?.shows == nil, "Pull Again reads the short log for those accounts")
     }
 }
 

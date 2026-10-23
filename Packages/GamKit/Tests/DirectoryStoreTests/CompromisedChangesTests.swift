@@ -552,6 +552,23 @@ final class CompromisedChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// Pull Again for the accounts that matter adds to what's shown: a narrower read never takes away what the wider one
+    /// found, and an event both read is there once.
+    @Test func pullingAgainAddsToWhatsShown() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: [.login, .token], users: [], hours: 72, ip: ""))
+        let wide = try #require(logs.pull)
+        await logs.pull(adding: IncidentLogs.Query(applications: [.login, .gmail], users: ["carol@example.com"], hours: 72, ip: ""))
+        let together = try #require(logs.pull)
+        #expect(together.ended && !together.fromEvidence && together.query.users.isEmpty, "every account, as the wider read was")
+        #expect(together.logs.map(\.application) == [.login, .token, .gmail])
+        let login = try together.logs[0].rows.get(), before = try wide.logs[0].rows.get()
+        #expect(login.count == before.count && Set(login.map(\.identity)) == Set(before.map(\.identity)), "carol@'s sign-ins once")
+        #expect(try together.logs[1].rows.get().count == wide.logs[1].rows.get().count)
+        #expect(writes().isEmpty)
+    }
+
     /// A read cut off at the runner's cap is a failure in words, never rows that pass as all there is (review 2026-10-19).
     @Test func aCutOffReadIsNeverTakenAsWhole() {
         let cut = GamResult(exitCode: 0, stdout: "name,actor.email\nlogin_success,dana@exa", stderr: "", stdoutTruncated: true,

@@ -264,46 +264,122 @@ public final class IncidentLogs {
         kept = (pull, tenant, setup.generation)
     }
 
-    /// The pull an incident's saved exports make (each `ActivityLogs.Export`, oldest first): every log any of them holds,
-    /// its rows newest first, an event two exports both saved counted once (by its content: `Row(exported:)`), and a log
-    /// stopped at its cap only when every export of it did. Its window is the widest, its accounts every account if any
-    /// export was, and its address the first one given. An export that can't be read is named in `unreadable`.
+    /// The pull an incident's saved exports make (each `ActivityLogs.Export`, oldest first), put together one after another
+    /// (`merged`). An export that can't be read is named in `unreadable`, the rest still read.
     public nonisolated static func evidence(_ exports: [ActivityLogs.Export]) -> (pull: Pull, unreadable: [String]) {
-        var rows: [ActivityLogs.Application: [ActivityLogs.Row]] = [:], seen: [ActivityLogs.Application: Set<String>] = [:]
-        var capped: [ActivityLogs.Application: Bool] = [:], hours: [ActivityLogs.Application: Int] = [:]
-        var users: Set<String> = [], everyAccount = false, widest = 0, ip = "", unreadable: [String] = []
+        var together: Pull?, unreadable: [String] = []
         for export in exports {
-            let about = About(export.about)
-            var read: [(ActivityLogs.Application, [ActivityLogs.Row])] = []
-            for (application, csv) in export.logs {
-                guard let these = ActivityLogs.rows(exported: csv, application: application) else { read = []; break }
-                read.append((application, these))
-            }
-            guard !read.isEmpty || export.logs.isEmpty else {
+            guard let pull = pull(of: export) else {
                 unreadable.append(export.name)
                 continue
             }
-            widest = max(widest, about.hours)
-            if about.users.isEmpty { everyAccount = true } else { users.formUnion(about.users) }
-            if ip.isEmpty { ip = about.ip }
-            for (application, these) in read {
-                // Within one export every row stays (two events can match in every column); across them, a repeat goes.
-                let known = seen[application] ?? []
-                rows[application, default: []] += these.filter { !known.contains($0.identity) }
-                seen[application, default: []].formUnion(these.map(\.identity))
-                capped[application] = (capped[application] ?? true) && about.capped.contains(application)
-                hours[application] = max(hours[application] ?? 0, about.window[application] ?? about.hours)
+            together = together.map { merged($0, pull) } ?? pull
+        }
+        let empty = Pull(query: Query(applications: [], users: [], hours: 0, ip: ""), logs: [], ended: true, fromEvidence: true)
+        return (together ?? empty, unreadable)
+    }
+
+    /// One export as the pull it saved, or nil when a log of it isn't readable as one: its window, accounts and address,
+    /// and each log's own window and cap, from its `about.txt`.
+    nonisolated static func pull(of export: ActivityLogs.Export) -> Pull? {
+        let about = About(export.about)
+        var logs: [Log] = []
+        for (application, csv) in export.logs {
+            guard let rows = ActivityLogs.rows(exported: csv, application: application) else { return nil }
+            logs.append(Log(application: application, rows: .success(rows), hours: about.window[application] ?? about.hours,
+                            capped: about.capped.contains(application)))
+        }
+        // In the app's order of the logs, as every pull put together is.
+        let order = ActivityLogs.Application.allCases
+        logs.sort { order.firstIndex(of: $0.application)! < order.firstIndex(of: $1.application)! }
+        return Pull(query: Query(applications: logs.map(\.application), users: about.users, hours: about.hours, ip: about.ip),
+                    logs: logs, ended: true, fromEvidence: true)
+    }
+
+    /// `older` with `newer` added: each log's rows newest first, an event both read once (by `identity`; within one pull every
+    /// row stays, as two events can match in every column), a log stopped at its cap only while both reads of it were (a
+    /// read for just the accounts that matter reaches further back), and a log one of them couldn't read taken from the
+    /// other. The widest window, every account if either was, and the first address given.
+    public nonisolated static func merged(_ older: Pull, _ newer: Pull) -> Pull {
+        var logs: [Log] = []
+        for application in ActivityLogs.Application.allCases {
+            let old = older.logs.first { $0.application == application }, new = newer.logs.first { $0.application == application }
+            switch (old, new) {
+            case (let old?, let new?):
+                switch (old.rows, new.rows) {
+                case (.success(let kept), .success(let read)):
+                    let known = Set(kept.map(\.identity))
+                    let rows = (kept + read.filter { !known.contains($0.identity) }).enumerated().sorted { a, b in
+                        (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+                    }.map(\.element)
+                    logs.append(Log(application: application, rows: .success(rows), hours: max(old.hours, new.hours),
+                                    capped: old.capped && new.capped))
+                case (.success, .failure): logs.append(old)
+                default: logs.append(new)
+                }
+            case (let only?, nil), (nil, let only?): logs.append(only)
+            case (nil, nil): break
             }
         }
-        let applications = ActivityLogs.Application.allCases.filter { rows[$0] != nil }
-        let logs = applications.map { application in
-            let newest = (rows[application] ?? []).enumerated().sorted { a, b in
-                (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
-            }.map(\.element)
-            return Log(application: application, rows: .success(newest), hours: hours[application] ?? widest, capped: capped[application] ?? false)
+        var seen: Set<String> = []
+        let users = older.query.users.isEmpty || newer.query.users.isEmpty ? []
+            : (older.query.users + newer.query.users).filter { seen.insert($0.lowercased()).inserted }
+        let query = Query(applications: logs.map(\.application), users: users, hours: max(older.query.hours, newer.query.hours),
+                          ip: older.query.ip.isEmpty ? newer.query.ip : older.query.ip)
+        return Pull(query: query, logs: logs, ended: older.ended && newer.ended, fromEvidence: older.fromEvidence && newer.fromEvidence)
+    }
+
+    /// Reads `query`'s logs and adds them to the pull shown (`merged`), as "Pull Again" does for the accounts that matter:
+    /// a narrower read never takes away what the wider one found. With nothing shown, a pull as any other.
+    public func pull(adding query: Query) async {
+        guard let shown = pull, shown.ended else { return await pull(query) }
+        await pull(query)
+        guard let read = pull, read.ended, read.query == query, !read.fromEvidence, let tenant = setup.active else { return }
+        kept = (Self.merged(shown, read), tenant, setup.generation)
+    }
+
+    /// Which events to show ("Show the Events" on a to-do item): some accounts', from some addresses, in some logs, through
+    /// some apps, or by an agent, each empty for any.
+    public struct Filter: Sendable, Equatable {
+        public let accounts: [String]
+        public let addresses: [String]
+        public let applications: [ActivityLogs.Application]
+        public let apps: [String]
+        public let agent: String
+
+        public init(accounts: [String], addresses: [String] = [], applications: [ActivityLogs.Application] = [], apps: [String] = [],
+                    agent: String = "") {
+            (self.accounts, self.addresses, self.applications, self.apps, self.agent) = (accounts, addresses, applications, apps, agent)
         }
-        let query = Query(applications: applications, users: everyAccount ? [] : users.sorted(), hours: widest, ip: ip)
-        return (Pull(query: query, logs: logs, ended: true, fromEvidence: true), unreadable)
+
+        public func keeps(_ row: ActivityLogs.Row) -> Bool {
+            (accounts.isEmpty || accounts.contains { $0.caseInsensitiveCompare(row.who) == .orderedSame })
+                && (addresses.isEmpty || addresses.contains(row.ip))
+                && (applications.isEmpty || applications.contains(row.application))
+                && (apps.isEmpty || apps.contains(row.app))
+                && (agent.isEmpty || row.agent == agent)
+        }
+
+        /// `log` with only the rows kept, or nil when it's a log this filter leaves out, or none of its rows is kept.
+        public func applied(to log: Log) -> Log? {
+            guard applications.isEmpty || applications.contains(log.application) else { return nil }
+            guard case .success(let rows) = log.rows else { return log }
+            let kept = rows.filter(keeps)
+            return kept.isEmpty ? nil : Log(application: log.application, rows: .success(kept), hours: log.hours, capped: log.capped)
+        }
+
+        /// "carol@example.com's events from 198.51.100.23, in Gemini, through Mail Sync Pro".
+        public var words: String {
+            func list(_ values: [String]) -> String {
+                values.count < 3 ? values.joined(separator: " and ") : values.dropLast().joined(separator: ", ") + " and " + values.last!
+            }
+            var words = accounts.isEmpty ? "Every account's events" : "\(list(accounts))'s events"
+            if !addresses.isEmpty { words += " from \(list(addresses))" }
+            if !applications.isEmpty { words += ", in \(list(applications.map(\.name)))" }
+            if !apps.isEmpty { words += ", through \(list(apps))" }
+            if !agent.isEmpty { words += ", by \(agent)" }
+            return words
+        }
     }
 
     /// What an export's `about.txt` (`about(_:read:unread:exported:)`) says: the window, the accounts, the address, and for
