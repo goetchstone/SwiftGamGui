@@ -54,7 +54,7 @@ struct ActivityLogsTests {
         let attacker = "198.51.100.23"
         #expect(Set(try await read(.login, ip: attacker).map(\.who)) == ["carol@example.com", "dana@example.com"])
         #expect(try await read(.token, ip: attacker).map(\.event) == ["authorize"])
-        #expect(try await read(.gmail, ip: attacker).count == 1)
+        #expect(try await read(.gmail, ip: attacker).map(\.words) == ["Sent a message", "Viewed a message"])
         #expect(try await read(.accessEvaluation, ip: attacker).map(\.event) == ["deny_cookie_validation_request", "allow_token_request"])
         #expect(try await read(.userAccounts, ip: attacker).map(\.words) == ["Changed the recovery phone"])
         #expect(try await read(.chat, ip: attacker).map(\.words) == ["Posted a Chat message"])
@@ -65,14 +65,25 @@ struct ActivityLogsTests {
         #expect(Set(all.map(\.who)) == ["carol@example.com", "dana@example.com", "alice@example.com"])
     }
 
-    /// Gmail's parameters are nested: each is named by its chain, as the one shape keeps them.
+    /// Gmail's parameters are nested: each is named by its chain, as the one shape keeps them. Every Gmail event is
+    /// `delivery`: its words are what `event_info.mail_event_type` says happened (Google's "Gmail Activity Events"), and
+    /// the type isn't said again in its details.
     @Test func gmailsNestedParametersAreNamedByTheirChain() async throws {
-        let send = try #require(try await read(.gmail, users: ["carol@example.com"]).first)
+        let read = try await read(.gmail, users: ["carol@example.com"])
+        #expect(read.map(\.words) == ["Sent a message", "Viewed a message", "Sent a message"])
+        let send = try #require(read.first)
+        #expect(send.parameters.contains(ActivityLogs.Parameter(name: "event_info.mail_event_type", value: "1")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.subject", value: "Shared file: Q4 invoices")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.num_message_attachments", value: "1")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "type", value: "email")))
         #expect(!send.parameters.contains { $0.name.hasPrefix("parameters") }, "never a raw flattened column")
         #expect(send.details.first == "message_info.subject: Shared file: Q4 invoices")
+        #expect(!send.details.contains { $0.contains("mail_event_type") })
+        // Each of Google's types in words of its own; one it adds later, or none, still reads.
+        #expect((0...35).allSatisfy { !ActivityLogs.gmailWords("\($0)").hasPrefix("A Gmail event") })
+        #expect(Set((0...35).map { ActivityLogs.gmailWords("\($0)") }).count == 36)
+        #expect(ActivityLogs.gmailWords("29") == "Saved a draft" && ActivityLogs.gmailWords("13") == "Moved a message to Trash")
+        #expect(ActivityLogs.gmailWords("36") == "A Gmail event (type 36)" && ActivityLogs.gmailWords("") == "A Gmail event")
     }
 
     @Test func appGrantsSayTheAppAndItsAccess() async throws {
