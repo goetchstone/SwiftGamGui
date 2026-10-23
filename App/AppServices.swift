@@ -56,6 +56,8 @@ struct AppServices {
     let connectedApps: ConnectedAppsRead
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
     let knownSignIns: KnownSignIns
+    /// The emails Phishing's Find showed nobody here has, which Incident's log reader shows done.
+    let nobodyHas: NobodyHasChecks
     /// The incidents kept on this Mac, and the one open on Incident.
     let incidents: Incidents
     /// The storage and mail usage report, read when Reports first shows it.
@@ -82,13 +84,14 @@ struct AppServices {
                         onboardRoles: OnboardRoles(root: SignatureStore.defaultRoot,
                                                    gamGUIFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json")),
                         knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot),
+                        nobodyHas: NobodyHasChecks(root: SignatureStore.defaultRoot),
                         incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
-                                 incidents: Incidents, lastDomain: LastDomain = .userDefaults,
+                                 nobodyHas: NobodyHasChecks, incidents: Incidents, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -103,6 +106,11 @@ struct AppServices {
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)
         let calendarReads = CalendarReads(setup: setup, runner: runner)
+        // What Find shows nobody has is kept, with who was connected, for the log reader (phishing.md D14).
+        let phishingChanges = PhishingChanges(setup: setup, runner: runner, executor: executor)
+        phishingChanges.keepNobodyHas = { [weak setup, weak nobodyHas] domain, messageIDs, at in
+            nobodyHas?.record(domain: domain, messageIDs: messageIDs, by: setup?.connectedAdmin ?? "", at: at)
+        }
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
@@ -124,11 +132,12 @@ struct AppServices {
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
                                                                   access: UserAccess(setup: setup, runner: runner)),
                            incidentLogs: IncidentLogs(setup: setup, access: UserAccess(setup: setup, runner: runner)),
-                           phishingChanges: PhishingChanges(setup: setup, runner: runner, executor: executor),
+                           phishingChanges: phishingChanges,
                            mailboxSearches: MailboxSearches(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            knownSignIns: knownSignIns,
+                           nobodyHas: nobodyHas,
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
                            auditURL: auditURL)
@@ -172,6 +181,8 @@ struct AppServices {
                         onboardRoles: demoRoles(beside: mock),
                         knownSignIns: KnownSignIns(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-known-\(UUID().uuidString)")),
+                        nobodyHas: NobodyHasChecks(
+                            root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-nobody-\(UUID().uuidString)")),
                         // The demo's incidents, in a fresh folder, never the operator's; none is remembered as open.
                         incidents: Incidents(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-incidents-\(UUID().uuidString)"),

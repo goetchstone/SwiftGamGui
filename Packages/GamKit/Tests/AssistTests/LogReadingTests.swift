@@ -459,7 +459,7 @@ struct LogReadingTests {
         let reading = LogReading.read(two, context: LogReading.Context(pulled: [pulled()]))
         #expect(reading.done.map(\.id) == ["D1"] && reading.done[0].kind == .pullEmail && reading.done[0].drafts.isEmpty)
         #expect(reading.done[0].words == "Pulled “Shared file” (\(phish)): trashed from the 2 mailboxes that had it, every mailbox searched first.")
-        #expect(reading.done[0].done == LogReading.Status.Step(at: at, by: "admin@example.com"))
+        #expect(reading.done[0].done == LogReading.Done(how: .trashed, at: at, by: "admin@example.com"))
         #expect(reading.emailsToPull == ["<phish-2@mail.example.com>"], "Pull All offers only what's left")
         #expect(!reading.drafts.contains(.pullEmail(messageID: phish, subject: "Shared file")), "drafted nowhere again")
         #expect(reading.findings.map(\.words) == before.findings.map(\.words), "it was still sent")
@@ -485,7 +485,20 @@ struct LogReadingTests {
         let later = at.addingTimeInterval(600)
         #expect(left(pulled(trashed: 1, at: later), pulled()) == ask + "1 of its 3 steps, but 2 didn't finish" + again)
         let whole = LogReading.read(two, context: LogReading.Context(pulled: [pulled(trashed: 1), pulled(phish, steps: 1, trashed: 1, at: later)]))
-        #expect(whole.done.map(\.done) == [LogReading.Status.Step(at: later, by: "admin@example.com")])
+        #expect(whole.done.map(\.done) == [LogReading.Done(how: .trashed, at: later, by: "admin@example.com")])
+
+        // Find showed nobody here has it (every mailbox and its Spam searched): done, said as checked, and the latest fact
+        // decides. A run after the check found copies again, so it's to do until that run is whole.
+        func nobody(_ id: String = phish, at: Date = later) -> LogReading.NobodyHas { LogReading.NobodyHas(messageID: id, at: at, by: "admin@example.com") }
+        let checked = LogReading.read(two, context: LogReading.Context(nobodyHas: [nobody("phish-1@mail.example.com")]))
+        #expect(checked.done.map(\.words) == ["Nobody here has “Shared file” (\(phish)): Phishing's Find searched every mailbox and its Spam."])
+        #expect(checked.done.map(\.done) == [LogReading.Done(how: .nobodyHasIt, at: later, by: "admin@example.com")])
+        #expect(checked.emailsToPull == ["<phish-2@mail.example.com>"] && !checked.drafts.contains(.pullEmail(messageID: phish, subject: "Shared file")))
+        let afterPartial = LogReading.read(two, context: LogReading.Context(pulled: [pulled(trashed: 1)], nobodyHas: [nobody()]))
+        #expect(afterPartial.done.map(\.done?.how) == [.nobodyHasIt], "the check after the run")
+        let runAfter = LogReading.read(two, context: LogReading.Context(pulled: [pulled(trashed: 1, at: later.addingTimeInterval(60))],
+                                                                       nobodyHas: [nobody()]))
+        #expect(runAfter.done.isEmpty && runAfter.emailsToPull.contains(phish), "a run after the check found copies again")
     }
 
     /// Two phishing emails with one subject are two to pull; a device's task stays until that account's latest word on it

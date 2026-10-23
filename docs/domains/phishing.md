@@ -222,10 +222,23 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
     step it never began, so a run stopped part way looks whole from its records alone. The count is what tells.
   - The latest run decides: a partial run, then Find Again and a trash of what's left, is done.
   - A mailbox Find couldn't search (Gmail off counts, as Find never calls such a search clear) keeps the email to do.
-  - Never shown done: a run from before this build (no `message_steps`: passed over, never guessed); an email Find shows
-    no mailbox has (nothing to trash, so no record); anything done outside this app. The checklist's hand tick is for those.
+  - Never shown done by a run: one from before this build (no `message_steps`: passed over, never guessed), or anything
+    done outside this app. An email no mailbox has gets no record at all: D14 is for that.
   - Pull All N Emails… offers only the emails still to do (`Reading.emailsToPull`), and a done email's finding drafts no
     pull again.
+
+- **D14, "nobody here has it" is kept (2026-10-23, from the operator's real audit export: only 4 emails were ever trashed,
+  while Pull All's usual result for an email is that no mailbox here has it, which a read never audits).** After each
+  Find, the emails it shows nobody has (`Found.nobodyHas`: every mailbox and its Spam searched, nothing GAM said unread) go
+  to `keepNobodyHas`, which the app keeps in `NobodyHasStore` (`nobody-has.json` beside the marked sign-ins: by domain and
+  bare Message-ID, with the time and the admin connected; read and written as that file is, at most 2,000, the oldest
+  dropped). The log reader shows each done, said as checked: "Nobody here has “…” (id): Phishing's Find searched every
+  mailbox and its Spam", then "Checked <time> by <admin>, as Phishing's Find showed".
+  - An email unsure (a mailbox or its Spam unsearched) or that couldn't be searched is never kept: it stays to do.
+  - The latest fact decides: a run after a check found copies again, so the email is to do until that run is whole; a
+    check after a partial run is done.
+  - This covers the runs from before D13 too: Find Again on those emails shows nobody has them.
+  - Kept on this Mac, not in the incident: the log reader reads pulls with or without an incident open.
 
 ## Gotchas / mock-lies traps
 - A step's summary isn't audited: only its action, target, masked argv and `about` reach the record. D12 said "the audit

@@ -476,8 +476,8 @@ read as one on a later day. Code decides what's done and what's left; the model 
   sender, delete a computer, pull an email, sign out of another app, warn contacts or Chat recipients, treat exported data
   as taken, confirm a new address, check a password, look at what was done, check a shared address. An item leaves once
   the logs show it done: a lock, a device unregistered or blocked, wiped or deleted by an admin (`deviceWord`), recovery
-  removed by an admin. An email to pull leaves once this app's audit log shows Phishing trashed it from every mailbox,
-  and is listed under Done ("Done from the audit log", below). What neither can show
+  removed by an admin. An email to pull leaves once this app's audit log shows Phishing trashed it from every mailbox, or
+  Phishing's Find showed nobody here has it, and is listed under Done ("Done from the audit log", below). What neither can show
   (a warning sent) stays until the incident record can tick it. A finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
@@ -639,12 +639,16 @@ first for the emails pulled. Reads only: the audit log is read, never written he
 - **Pure, as the reader is:** `LogReaderView.Memory` reads the audit log with the pull, off the main thread, and hands
   the reader values (`Context.pulled`) as it hands it events. Incident makes a new reading each time it opens, so coming
   back from Phishing reads the run; a second window left open on Respond doesn't, until Incident is opened again.
-- **Never shown done:** a run made before this build (its records have no step count), an email no mailbox has any more
-  (nothing to trash, so nothing audited), and anything done outside this app. The checklist's hand tick is for those.
+- **Nobody here has it** (phishing.md D14): an email Phishing's Find showed no mailbox has, every mailbox and its Spam
+  searched, is done too, said as checked: "Nobody here has “…” (id): …", then "Checked <time> by <admin>, as Phishing's
+  Find showed". Kept on this Mac (`NobodyHasStore`, through `NobodyHasChecks`), since a read is never audited. Unsure or
+  unsearched stays to do. The latest of a run and a check decides. If the check can't be kept, Respond says so.
+- **Never shown done:** a run made before this build that Find Again hasn't since shown gone, and anything done outside
+  this app. The checklist's hand tick is for those.
 - `LogReaderView.swift` names `PhishingAudit`, a reader of the log: still no changes model or executor (`WriteRouteTests`).
 - Tests: `LogReadingTests.anEmailPhishingPulledIsDoneWithWhenAndByWhom`; `PhishingChangesTests.theAuditShowsEachEmailsLatestRun`,
   `.theAuditSaysAFailedStepAndAnUnsearchedMailbox` and `.aRecordThatCantSayItsRunIsPassedOver`, on the records the
-  executor wrote.
+  executor wrote; `.findHandsOnWhatNobodyHas`, `.pullAllNeverCallsAnUnsearchedEmailClear`; `NobodyHasStoreTests`.
 
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
@@ -671,6 +675,5 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the incoming phish and who to warn,
-  the rest of the checklist (the hand tick, kept with the incident, for what no log shows: an email trashed before this
-  build or that no mailbox has, a warning sent) and the report, watching, Look for Trouble.
+  the rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent) and the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

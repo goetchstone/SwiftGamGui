@@ -37,23 +37,53 @@ public enum LogReading {
     /// What the pull says that its events don't: the address it was pulled by (the operator's to call the attacker's), the
     /// logs it read, by name (nil: not said; a lock is seen only where the admin log was read, by the accounts), the
     /// sign-ins the operator marked as the person's own (`key(account:address:)`), and the logs that stopped at their cap,
-    /// each with its oldest event read (a log read for every account can stop short of the attack). And what this app's
-    /// own audit log shows of the emails Phishing trashed (`pulled`): a fact beside the events, never one of them.
+    /// each with its oldest event read (a log read for every account can stop short of the attack). And what this app shows
+    /// of the emails to pull: Phishing's runs in its audit log (`pulled`), and the emails its Find showed nobody here has
+    /// (`nobodyHas`). Facts beside the events, never among them.
     public struct Context: Sendable, Equatable {
         public let pulledBy: String
         public let read: Set<String>?
         public let theirs: Set<String>
         public let capped: [String: Date]
         public let pulled: [Pulled]
+        public let nobodyHas: [NobodyHas]
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
-                    pulled: [Pulled] = []) {
+                    pulled: [Pulled] = [], nobodyHas: [NobodyHas] = []) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
             self.capped = capped
             self.pulled = pulled
+            self.nobodyHas = nobodyHas
         }
+    }
+
+    /// Phishing's Find showed no mailbox here has this email, every mailbox and its Spam searched, at `at`, with `by`
+    /// connected: kept on this Mac, since a read is never audited. Sent only outside, removed since, or never delivered: the
+    /// usual end of Pull All for an email.
+    public struct NobodyHas: Sendable, Equatable {
+        /// The Message-ID, with or without its angle brackets.
+        public let messageID: String
+        public let at: Date
+        public let by: String
+
+        public init(messageID: String, at: Date, by: String) {
+            (self.messageID, self.at, self.by) = (messageID, at, by)
+        }
+    }
+
+    /// How a to-do item was done, when, and by whom (an admin's address, or "" when none was known).
+    public struct Done: Sendable, Equatable {
+        public enum How: Sendable, Equatable {
+            /// Phishing's latest run trashed the email everywhere it was found (this app's audit log).
+            case trashed
+            /// Phishing's Find showed nobody here has the email (kept on this Mac).
+            case nobodyHasIt
+        }
+        public let how: How
+        public let at: Date
+        public let by: String
     }
 
     /// Phishing's latest run on one email, as this app's audit log shows it: when its newest record was written and by
@@ -214,8 +244,8 @@ public enum LogReading {
 
     /// Something left to do, worked out by code from where each account stands and what the logs show; the model only
     /// words it. `id` ("T1") is what the model's sentences cite. It leaves the list once the logs show it done (a lock, a
-    /// device removed, recovery details cleared), or once this app's audit log shows an email pulled, which then lists it
-    /// as done (`Reading.done`, "D1", with `done`); what neither can show stays until the incident record can tick it.
+    /// device removed, recovery details cleared), or once this app shows an email pulled or nobody here having it, which then
+    /// lists it as done (`Reading.done`, "D1", with `done`); what none can show stays until the incident record can tick it.
     public struct Task: Sendable, Equatable, Identifiable {
         /// Most urgent first.
         public enum Kind: String, Sendable, CaseIterable {
@@ -233,8 +263,8 @@ public enum LogReading {
         /// The logs to read again for its accounts ("Pull Again"), by their names in the logs (`login`, `gmail`); empty for
         /// none. A read, never a change.
         public let pullsAgain: [String]
-        /// When it was done and by whom, for an item on `Reading.done`; nil while it's still to do.
-        public let done: Status.Step?
+        /// How it was done, when and by whom, for an item on `Reading.done`; nil while it's still to do.
+        public let done: Done?
     }
 
     /// Which events a to-do item is about: its accounts', from these addresses (none: any), in these logs, through these
@@ -307,7 +337,8 @@ public enum LogReading {
         public let findings: [Finding]
         public let statuses: [Status]
         public let toDo: [Task]
-        /// The emails Phishing pulled from every mailbox, each with when and by whom (`Task.done`).
+        /// The emails Phishing pulled from every mailbox, or that its Find showed nobody here has, each with how, when and by
+        /// whom (`Task.done`).
         public let done: [Task]
         public let events: Int
 
@@ -717,8 +748,9 @@ public enum LogReading {
         // Mail sent from a suspect address: the message to pull from everyone. Only a send (`isSent`): what the attacker read,
         // drafted or trashed there is the person's own mail. Its sender is secured by their sign-in from that address, not
         // here: whose mailbox a Gmail row is isn't certain from the row alone.
-        // One Phishing has trashed from every mailbox, as this app's audit log shows (`Pulled`), is done: listed with when
-        // and by whom, and drafted nowhere again. A run that left any is still to do, saying what it left.
+        // One Phishing has trashed from every mailbox (its audit log, `Pulled`), or that its Find showed nobody here has
+        // (`NobodyHas`), is done: listed with how, when and by whom, and drafted nowhere again. The latest of the two decides:
+        // a run after a check found copies again. A run that left any is still to do, saying what it left.
         var messages: [String: [Event]] = [:], order: [String] = []
         for event in events where event.log == "gmail" && acting.contains(event.ip) && isSent(event) {
             guard let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { continue }
@@ -730,17 +762,26 @@ public enum LogReading {
             let id = bareMessageID(run.messageID)
             if runs[id].map({ $0.at < run.at }) ?? true { runs[id] = run }
         }
-        var pulledDone: Set<String> = [], doneTasks: [(String, [String], Status.Step)] = []
+        var checks: [String: NobodyHas] = [:]
+        for check in context.nobodyHas {
+            let id = bareMessageID(check.messageID)
+            if checks[id].map({ $0.at < check.at }) ?? true { checks[id] = check }
+        }
+        var pulledDone: Set<String> = [], doneTasks: [(String, [String], Done)] = []
         for id in order {
             let theirs = messages[id] ?? []
             let subject = theirs.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
             let named = "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id))"
-            let accounts = unique(theirs.map(\.who).filter(isAccount)), run = runs[bareMessageID(id)]
+            let accounts = unique(theirs.map(\.who).filter(isAccount)), run = runs[bareMessageID(id)], check = checks[bareMessageID(id)]
             var todo: [(Task.Kind, String, [Draft])] = []
-            if let run, run.isDone {
+            if let check, run.map({ $0.at <= check.at }) ?? true {
+                pulledDone.insert(id)
+                doneTasks.append(("Nobody here has \(named): Phishing's Find searched every mailbox and its Spam.", accounts,
+                                  Done(how: .nobodyHasIt, at: check.at, by: check.by)))
+            } else if let run, run.isDone {
                 pulledDone.insert(id)
                 doneTasks.append(("Pulled \(named): trashed from " + (run.mailboxes == 1 ? "the one mailbox" : "the \(run.mailboxes) mailboxes")
-                                  + " that had it, every mailbox searched first.", accounts, Status.Step(at: run.at, by: run.by)))
+                                  + " that had it, every mailbox searched first.", accounts, Done(how: .trashed, at: run.at, by: run.by)))
             } else {
                 todo = [(.pullEmail, "Pull \(named) from every mailbox: it went out from the attacker's address." + (run.map { " " + $0.left } ?? ""),
                          [.pullEmail(messageID: id, subject: subject)])]
