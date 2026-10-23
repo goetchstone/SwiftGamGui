@@ -191,6 +191,32 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   Not paged: Chrome's and the admin log's two-way reads for named accounts (1,000 activities an account each way, capped
   past that), and a read of several event names (GAM caps each name on its own). A pull replaced mid-read lets its logs
   finish their pages: read-only and bounded, their rows dropped.
+- **Read whole, oldest first** (`IncidentLogs.complete`; asked for 2026-10-23, after a 30-day pull for every account read
+  only Gmail's last 19 hours: "I need it all … the oldest first, then the newer"). This replaces the newest-first paging for
+  every log but the Chrome and admin logs' reads for accounts (low volume; still `paged`, newest first). One read of the
+  window first: most logs come back short of the cap and are whole. One at the cap is read a day at a time from the
+  window's start, each day read back from its end until it's whole (`paged`, its `pages` the day's budget), each day's end a
+  second past the next day's start, an event read twice kept once. Bounded (invariant 9): 100 reads a day and 200 a log
+  (`ActivityLogs.readsPerDay`, `readsPerLog`: 100,000 and 200,000 events). Past either, a read that fails, or a day still at
+  its cap, it stops at that day's start: the older days are whole and the newer unread, which is the order that matters
+  (the attack is the oldest part, and the newest is the easiest to read again). The log says "Read completely through
+  <time>" (`Log.through`) with **Read the Rest**, a pull of that log from there to now (`Query.from`/`to`), added to what's
+  shown or saved to the incident open. While it reads, each log says how far it's got (`IncidentLogs.readThrough`). The
+  export's `about.txt` says it ("read completely through …, later events weren't read"), and reading an export back
+  understands it; a merge is read through the later of two such reads, or whole when either read was.
+- **Windows:** 1, 3, 10, 15 and 30 days, and 6 months (`ActivityLogs.hours`; the Gmail log reads 30 days at most, so its
+  start is held there).
+- **What's realistic** (numbers from a real small tenant's export, 2026-10-23: its Gmail log runs about 12,600 events a day
+  for every account): every account's Gmail for 10 or 15 days fits one pull (about 130 and 190 reads); 30 days is two (the
+  oldest half, then Read the Rest). A large organisation's every-account Gmail runs to hundreds of thousands of events a day:
+  read whole by every account, only a day or so fits. There, filter by the attacker's address (`ip`, which Google applies
+  before it counts, so every account's events from that address are few) or name the accounts that matter (20 at once): both
+  stay whole over 30 days. Each read is one GAM call, and Google's API quotas slow very long reads.
+- **Mock lie, handled where it matters:** the mock ignores a read's start (its events are on fixed dates, and the tests read
+  at today's time). Paging back now stops once a read reaches the window's start (nothing earlier is in it, and an end
+  before the start is GAM's usage error), which real GAM never needs and the mock's extra rows did. A day's read in the
+  mock returns the older days too; they're dropped as repeats. `aLogIsReadWholeOldestFirst` holds the order and the bounds
+  with a stand-in that keeps the window as Google does.
 - **The mock:** a window as two times, both or neither (with `-<N>h`, only `end now`), each a real time (`date -j` must
   read it back the same), the end after the start (before it is GAM's usage error, 2); the end keeps the events before it
   (`id.time`), its own second left out, the strict guess; Gmail's 30 days counted between the two. The start still keeps

@@ -11,7 +11,9 @@ back over the same window, in pages, so a pull for every account is whole (runbo
 the operator's ask: it must work after the fact, as the app is rebuilt often) slice 3's record and evidence first: an
 incident kept on this Mac, made by hand or from an export, its saved pulls read back as the logs (runbook "A kept
 incident"). Then the screen as tabs (Investigate, Respond, Report), Show the Events and Pull Again on the to-do items,
-and Select All for the logs (runbook "Tabs, and a button on every to-do item"). Next, in this order: the incoming phish, a pull anchored on the attack, and who to warn (and whether they were); the
+and Select All for the logs (runbook "Tabs, and a button on every to-do item"). Then every pull read whole, oldest first, a
+day at a time, bounded, with Read the Rest, and windows of 1, 3, 10, 15 and 30 days (runbook "Read whole, oldest first").
+Next, in this order: the incoming phish, a pull anchored on the attack, and who to warn (and whether they were); the
 checklist (done from the logs where they show it, else ticked by hand) and the report (slice 4); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
