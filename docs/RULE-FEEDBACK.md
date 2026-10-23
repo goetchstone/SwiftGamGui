@@ -22,6 +22,17 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-23 — A cached build hides warnings, so a deprecated API shipped
+- **What happened:** PR #101 merged `GenerationOptions(sampling: .greedy, …)`, deprecated in macOS 27 (renamed
+  `samplingMode:`). Its pre-commit check grepped `swift test`'s output for warnings, but the module had already been
+  compiled, and an incremental build doesn't print a file's warnings again. Found the next day when a new file's warning
+  showed up; fixed in the follow-up PR.
+- **Invariant in force:** none: pre-commit's "Green" item ("warnings are errors in spirit: fix them").
+- **Why it didn't hold:** the item says to fix warnings, not how to see them; a build that compiles nothing new shows none.
+- **Would a rule have caught it?** only if enforced differently: `touch` the changed files (or build clean) before reading
+  warnings, or have CI build the package with warnings as errors.
+- **Enforcement home if changed:** skill (`pre-commit` item 1: how to see the warnings), or CI (hard).
+
 ## 2026-10-22 — "The mock lies" covers mock_gam.sh, not the Google events the reader's tests build
 - **What happened:** twice in one day the log reader matched a Google value from memory, and its test built the event with
   the same guess: an account warning's actor (failure log 2026-10-22, "Google's account warnings have no actor") and a

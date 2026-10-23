@@ -102,14 +102,21 @@ struct ReportsView: View {
         #endif
     }
 
+    /// The list and the chosen report whenever a domain is connected: only the directory's reports wait on the directory,
+    /// so the usage and the connected apps, which don't need it, open while it loads or after it failed.
     @ViewBuilder private var content: some View {
-        if let users = directory.users, let reports = directory.reports {
+        if setup.active != nil || directory.reports != nil {
             HStack(spacing: 0) {
                 List(selection: $item) {
                     Section("Directory") {
-                        ForEach(reports) { report in
-                            ReportRow(title: report.title, description: report.description, count: report.count)
-                                .tag(Item.report(report.key))
+                        if let reports = directory.reports {
+                            ForEach(reports) { report in
+                                ReportRow(title: report.title, description: report.description, count: report.count)
+                                    .tag(Item.report(report.key))
+                            }
+                        } else {
+                            Text(directory.isLoading ? "Loading the directory…" : "The directory isn't loaded.")
+                                .foregroundStyle(.secondary)
                         }
                     }
                     Section("Usage") {
@@ -125,56 +132,67 @@ struct ReportsView: View {
                 }
                 .frame(width: 240)
                 Divider()
-                detail(reports)
+                detail
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             // Long text wraps and a table clips rather than widen the screen past the smallest window (ColumnWidths).
             .frame(minWidth: 0, maxWidth: .infinity)
             .safeAreaInset(edge: .bottom) {
                 // A refresh of the directory shows here: running, or why it failed (the reports are the last good ones).
-                HStack(spacing: 12) {
-                    Text(across(users.count)).foregroundStyle(.secondary)
-                    if directory.isLoading {
-                        HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
-                            .accessibilityElement(children: .combine)
+                // Until the directory has loaded once, the reports' own pane says it's loading or why it failed.
+                if let users = directory.users {
+                    HStack(spacing: 12) {
+                        Text(across(users.count)).foregroundStyle(.secondary)
+                        if directory.isLoading {
+                            HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
+                                .accessibilityElement(children: .combine)
+                        }
+                        if let problem = directory.problem {
+                            Label(problem.summary, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange).lineLimit(2)
+                                .help(problem.detail ?? problem.summary)
+                        }
                     }
-                    if let problem = directory.problem {
-                        Label(problem.summary, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange).lineLimit(2)
-                            .help(problem.detail ?? problem.summary)
-                    }
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                    // Its own background: the list scrolls beneath it, and showed through.
+                    .background(.bar)
                 }
-                .font(.callout)
-                .frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
         } else {
-            VStack(spacing: 12) {
-                if directory.isLoading {
-                    ProgressView("Loading the directory…")
-                } else if let domain = setup.reconnecting {
-                    ProgressView("Connecting to \(domain.name)…")
-                } else if let failure = setup.reconnectFailure, setup.active == nil {
-                    Label("Couldn't reconnect to \(failure.domain.name)", systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text(failure.problem).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    Button("Try Again") { Task { await setup.reconnect() } }
-                        .disabled(setup.isBusy)
-                } else if setup.active == nil {
-                    Text("Connect a domain on Setup to see its reports.").foregroundStyle(.secondary)
-                } else {
-                    Text("The reports are counted from the directory, which isn't loaded yet.").foregroundStyle(.secondary)
-                    Button("Load the Directory") { Task { await directory.load() } }
-                }
-                if let problem = directory.problem {
-                    Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    if let detail = problem.detail {
-                        Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
-                    }
+            directoryStatus
+        }
+    }
+
+    /// Why there are no directory reports yet: connecting, the connection failed, no domain, or the directory loading or
+    /// not loaded (with why it failed, when it did).
+    private var directoryStatus: some View {
+        VStack(spacing: 12) {
+            if directory.isLoading {
+                ProgressView("Loading the directory…")
+            } else if let domain = setup.reconnecting {
+                ProgressView("Connecting to \(domain.name)…")
+            } else if let failure = setup.reconnectFailure, setup.active == nil {
+                Label("Couldn't reconnect to \(failure.domain.name)", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text(failure.problem).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Button("Try Again") { Task { await setup.reconnect() } }
+                    .disabled(setup.isBusy)
+            } else if setup.active == nil {
+                Text("Connect a domain on Setup to see its reports.").foregroundStyle(.secondary)
+            } else {
+                Text("The reports are counted from the directory, which isn't loaded yet.").foregroundStyle(.secondary)
+                Button("Load the Directory") { Task { await directory.load() } }
+            }
+            if let problem = directory.problem {
+                Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                if let detail = problem.detail {
+                    Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                 }
             }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// "Across 1,204 accounts · directory as of 9:41 AM".
@@ -184,16 +202,20 @@ struct ReportsView: View {
         return "\(counted) · directory as of \(loadedAt.formatted(date: .omitted, time: .shortened))"
     }
 
-    @ViewBuilder private func detail(_ reports: [DirectoryReport]) -> some View {
+    @ViewBuilder private var detail: some View {
         switch item {
         case .report(let key):
-            if let report = reports.first(where: { $0.key == key }) {
-                ReportPeople(report: report, selection: $person, open: openPerson)
+            if let reports = directory.reports {
+                if let report = reports.first(where: { $0.key == key }) {
+                    ReportPeople(report: report, selection: $person, open: openPerson)
+                }
+            } else {
+                directoryStatus
             }
         case .usage:
             UsagePanel(usage: usage, directory: directory, selection: $usagePerson, open: openPerson)
         case .apps:
-            ConnectedAppsPanel(reads: apps)
+            ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
         case nil:
             Text("Choose a report.").foregroundStyle(.secondary).padding()
         }

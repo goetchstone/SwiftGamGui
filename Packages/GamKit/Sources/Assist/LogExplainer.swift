@@ -68,15 +68,7 @@ public enum LogExplainer {
     }
 
     /// Whether the on-device model can answer now, and if not, why, in words.
-    public static var unavailable: String? {
-        switch SystemLanguageModel.default.availability {
-        case .available: nil
-        case .unavailable(.deviceNotEligible): "This Mac can't run Apple's on-device model."
-        case .unavailable(.appleIntelligenceNotEnabled): "Apple Intelligence is off: turn it on in System Settings to have the logs explained."
-        case .unavailable(.modelNotReady): "The on-device model is still being set up (downloading). Try again in a while."
-        case .unavailable: "The on-device model isn't available."
-        }
-    }
+    public static var unavailable: String? { OnDeviceModel.unavailable("the logs explained") }
 
     /// The model's standing instructions.
     static let instructions = """

@@ -27,7 +27,9 @@ and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summa
   dates) and `UsageStore` (GroupStore's shape: a snapshot, a load and a problem, each tagged with the tenant).
 - `Packages/GamKit/Sources/GamEngine/ConnectedApps.swift`: the grants grouped by app (`apps`), broad access by kind (`Area`),
   and `Summary` (the counts and their sentences); `Packages/GamKit/Sources/Directory/ConnectedAppsRead.swift` (the read, kept
-  for the tenant); `Packages/GamKit/Sources/Assist/AppsExplainer.swift` (the model's wording).
+  for the tenant); `Packages/GamKit/Sources/Assist/AppsExplainer.swift` (the model's wording);
+  `Packages/GamKit/Sources/Assist/OnDeviceModel.swift` (why the model can't answer, or why an answer failed, in words: shared
+  with the log reader's `LogExplainer`).
 - `App/AuditView.swift`, `App/ReportsView.swift`, `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
   Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
   Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
@@ -62,6 +64,12 @@ and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summa
   assembled. Neither app writes a record near it; a log with no line breaks would otherwise be read whole.
 
 ## Reports: how it works
+- **The list shows whenever a domain is connected.** Only the directory's reports wait on the directory: until it loads,
+  their row says so and their pane is the directory's status (loading, or not loaded with Load the Directory and why it
+  failed). Storage and mail and the connected apps need no directory and open meanwhile (they once sat behind it, so a
+  directory that failed to load hid them too); without a connected domain the apps' Read is off, saying why. The bottom line
+  (accounts, refreshing, a refresh's failure) shows once the directory has loaded, on its own background: the list scrolls
+  beneath it.
 - **The directory reports** are `DirectoryReport` (already held to `reports.json`), counted once per load. The
   screen lists them with their counts and descriptions; a report's people are a table (name, address, and
   "Admin" or "Suspended" in words outside the report about it, as GamGUI's badges). Show in Users (or a
@@ -91,12 +99,17 @@ this app; GamGUI has no such page. Reads only.
   list stays in Incident's Check Account.
 - **The summary** is code's (`ConnectedApps.Summary`): how many apps and people, the apps that look like AI and who granted
   them, broad access by kind (all of Gmail or reading and changing mail, forwarding and delegates, all of Drive, admin, Google
-  Cloud), the apps only one person granted (and the AI and broad ones among them), and the most people who granted one app.
+  Cloud; one kind is said without its count: "1 app has broad access, to all of Drive"), the apps only one person granted
+  (and the AI and broad ones among them), and the most people who granted one app.
 - **Explain** (`AppsExplainer`) has the on-device model reword the summary. It is given counts and kinds only: `Facts` holds
   numbers and an `Area` enum, so an app's name or scopes (its maker's words, or an attacker's) can't reach it. The answer is at
   most three sentences, greedy (the same counts word the same way) and capped at 400 tokens; a sentence holding a number the
   counts don't, in digits or words ("Nine"), is dropped. Without the model (no Apple Intelligence, a Mac that can't run it,
-  CI), the button is replaced by why, in words.
+  CI), the button is replaced by why, in words; a failed answer is said in words too (`OnDeviceModel.failure`: too long,
+  declined, busy, timed out).
+- **macOS 27's API:** `GenerationOptions(samplingMode:…)` (27 renamed `sampling:`) and `LanguageModelError` (27 deprecated
+  `LanguageModelSession.GenerationError`). Read from the SDK's `.swiftinterface`, not memory: PR #101 shipped the
+  deprecated `sampling:` unseen (RULE-FEEDBACK 2026-10-23).
 - **What the model taught us** (2026-10-22, sampled on this Mac): left to compose from bare counts it tied them to the wrong
   group about half the time ("1 of those was granted by only one person"; "one of them with broad access" where none had),
   which a number check can't catch; an instruction to lead with "AI apps with broad access" made it claim some existed; the
@@ -141,7 +154,7 @@ this app; GamGUI has no such page. Reads only.
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's
   screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, and their `narrow-` runs in the smallest window.
 - **The model** is checked by hand on a Mac that has it: `SWIFTGAMGUI_MODEL=1 swift test --package-path Packages/GamKit
-  --filter OnDeviceAppsModel` prints its wording for three tenants' counts.
+  --filter OnDeviceAppsModel` prints its wording for three tenants' counts (all three right on 2026-10-23).
 - **Audit needs no tenant.** **Live check of the usage report** (read-only): open Reports, choose Storage and
   mail; it should list up to 25 people with the day the counts are for, matching the Admin console's
   reports for that day.

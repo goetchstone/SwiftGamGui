@@ -115,8 +115,8 @@ tick. Runbook: docs/domains/compromised-account.md.
 
 ## Slice 7: apps and AI agents
 Asked for (2026-10-21): who has apps and agents connected and what they might be doing, and every log an incident might
-need. Each log row says when an AI agent or an app acted; GAM's whole list of activity logs is offered; Incident reads every
-account's connected apps, and Check Account the person's. Runbook: docs/domains/compromised-account.md, "Apps and AI agents".
+need. Each log row says when an AI agent or an app acted; GAM's whole list of activity logs is offered; Incident read every
+account's connected apps (moved to Reports on 2026-10-22: a check of the whole tenant), and Check Account the person's. Runbook: docs/domains/compromised-account.md, "Apps and AI agents".
 
 ## Slice 8: computers, and a device joined at a sign-in
 Found in a review: an attacker's sign-in can register their own computer to the account, which the phones list can't show

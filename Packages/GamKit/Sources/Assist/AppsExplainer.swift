@@ -63,20 +63,12 @@ public enum AppsExplainer {
         public func answer(instructions: String, prompt: String) async throws -> Answer {
             let session = LanguageModelSession(model: .default, instructions: instructions)
             return try await session.respond(to: prompt, generating: Answer.self,
-                                             options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 400)).content
+                                             options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 400)).content
         }
     }
 
     /// Whether the on-device model can answer now, and if not, why, in words.
-    public static var unavailable: String? {
-        switch SystemLanguageModel.default.availability {
-        case .available: nil
-        case .unavailable(.deviceNotEligible): "This Mac can't run Apple's on-device model."
-        case .unavailable(.appleIntelligenceNotEnabled): "Apple Intelligence is off: turn it on in System Settings to have the summary explained."
-        case .unavailable(.modelNotReady): "The on-device model is still being set up (downloading). Try again in a while."
-        case .unavailable: "The on-device model isn't available."
-        }
-    }
+    public static var unavailable: String? { OnDeviceModel.unavailable("the summary explained") }
 
     /// The model's standing instructions.
     static let instructions = """
@@ -93,6 +85,10 @@ public enum AppsExplainer {
     /// access"), the model tied them to the wrong group.
     static func prompt(_ facts: Facts) -> String {
         func count(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
+        // As the screen's summary says them (GamEngine's `Summary.kinds`): one kind without its count, else each with its own.
+        let present = Area.allCases.filter { facts.areas[$0] != nil }
+        let kinds = present.count > 1 ? ": " + present.map { "\(facts.areas[$0] ?? 0) to \($0.words)" }.joined(separator: ", ")
+            : present.first.map { ", to \($0.words)" } ?? ""
         var lines = ["\(count(facts.apps, "app is", "apps are")) connected, granted by \(count(facts.people, "person", "people")) in all."]
         if facts.ai == 0 {
             lines.append("No app's name looks like an AI assistant's or agent's.")
@@ -102,8 +98,7 @@ public enum AppsExplainer {
                          + (facts.aiBroad == 0 ? "None of them has broad access." : "\(facts.aiBroad) of them \(facts.aiBroad == 1 ? "has" : "have") broad access."))
         }
         lines.append(facts.broad == 0 ? "No app has broad access."
-                     : "\(count(facts.broad, "app has", "apps have")) broad access: "
-                        + Area.allCases.compactMap { area in facts.areas[area].map { "\($0) to \(area.words)" } }.joined(separator: ", ") + ".")
+                     : "\(count(facts.broad, "app has", "apps have")) broad access" + kinds + ".")
         if facts.onePerson > 0 {
             let among = [facts.onePersonAI > 0 ? "\(facts.onePersonAI) with a name like an AI's" : nil,
                          facts.onePersonBroad > 0 ? "\(facts.onePersonBroad) with broad access" : nil].compactMap { $0 }

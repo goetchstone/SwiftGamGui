@@ -190,6 +190,14 @@ public enum ConnectedApps {
             mostPeople = apps.map(\.users.count).max() ?? 0
         }
 
+        /// Broad access by kind, after "N apps have broad access": ", to all of Drive" when every one has the same kind,
+        /// else each kind with its count (an app can have more than one).
+        static func kinds(_ areas: [Area: Int]) -> String {
+            let kinds = Area.allCases.filter { areas[$0] != nil }
+            guard kinds.count > 1 else { return kinds.first.map { ", to \($0.words)" } ?? "" }
+            return ": " + kinds.map { "\(areas[$0] ?? 0) to \($0.words)" }.joined(separator: ", ")
+        }
+
         /// The summary in plain words, a sentence each.
         public var sentences: [String] {
             func count(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
@@ -199,8 +207,7 @@ public enum ConnectedApps {
                          : "\(count(ai, "app looks", "apps look")) like an AI assistant or agent by name, granted by "
                             + "\(count(aiPeople, "person", "people")); \(aiBroad == 0 ? "none" : "\(aiBroad)") with broad access.")
             lines.append(broad == 0 ? "No app has broad access (all of Gmail or Drive, forwarding, admin or Google Cloud)."
-                         : "\(count(broad, "app has", "apps have")) broad access: "
-                            + Area.allCases.compactMap { area in areas[area].map { "\($0) to \(area.words)" } }.joined(separator: ", ") + ".")
+                         : "\(count(broad, "app has", "apps have")) broad access" + Self.kinds(areas) + ".")
             if onePerson > 0 {
                 let among = [onePersonAI > 0 ? count(onePersonAI, "that looks like AI", "that look like AI") : nil,
                              onePersonBroad > 0 ? "\(onePersonBroad) with broad access" : nil].compactMap { $0 }
