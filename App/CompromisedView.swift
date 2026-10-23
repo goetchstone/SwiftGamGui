@@ -169,7 +169,8 @@ struct CompromisedView: View {
                 .foregroundStyle(.secondary)
         }
         if setup.active != nil {
-            IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter)
+            IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter,
+                                readMore: read)
                 .id(Self.reportsAnchor)
             if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller).id(Self.readerAnchor) }
         } else {
@@ -260,7 +261,12 @@ struct CompromisedView: View {
         let users = Array((inDirectory.isEmpty ? accounts : inDirectory).prefix(20))
         guard !users.isEmpty, !applications.isEmpty else { return }
         let shown = logs.pull?.query.hours ?? 0
-        let query = IncidentLogs.Query(applications: applications, users: users, hours: shown > 0 ? shown : pullForm.hours, ip: "")
+        read(IncidentLogs.Query(applications: applications, users: users, hours: shown > 0 ? shown : pullForm.hours, ip: ""))
+    }
+
+    /// Reads `query` and adds it to what's shown: with an incident open the read is saved to it and everything saved
+    /// shown; otherwise it's put together with the pull shown (`IncidentLogs.pull(adding:)`). A read: nothing changes.
+    private func read(_ query: IncidentLogs.Query) {
         filter = nil
         let open = incidents.record(incidents.openID).map { $0.domain == setup.active?.name.lowercased() } ?? false
         let logs = logs
@@ -1134,6 +1140,8 @@ private struct IncidentLogsSection: View {
     @Binding var form: PullForm
     /// The events a to-do item narrowed the logs to ("Show the Events"); nil for all.
     @Binding var filter: IncidentLogs.Filter?
+    /// Reads more and adds it to what's shown (Read the Rest), as the screen reads: saved to an incident open.
+    let readMore: (IncidentLogs.Query) -> Void
     private var hours: Int { form.hours }
     private var accounts: String { form.accounts }
     private var ip: String { form.ip }
@@ -1243,8 +1251,21 @@ private struct IncidentLogsSection: View {
                         LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: true) { export(log, of: pull.query) }
                     }
                 } else {
+                    if !pull.ended, !logs.readThrough.isEmpty {
+                        // A long read, a day at a time from the oldest: how far each log has got.
+                        ForEach(ActivityLogs.Application.allCases.filter { logs.readThrough[$0] != nil }, id: \.self) { application in
+                            Label("\(application.name): read through "
+                                  + (logs.readThrough[application]?.formatted(date: .abbreviated, time: .shortened) ?? ""),
+                                  systemImage: "clock.arrow.circlepath")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
+                    }
                     ForEach(pull.logs) { log in
-                        LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login) {
+                        LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login,
+                                 readRest: log.through.map { through in {
+                                     readMore(IncidentLogs.Query(applications: [log.application], users: pull.query.users, hours: pull.query.hours,
+                                                                 ip: pull.query.ip, from: through, to: .now))
+                                 } }) {
                             export(log, of: pull.query)
                         }
                     }
@@ -1269,7 +1290,8 @@ private struct IncidentLogsSection: View {
     static func window(_ hours: Int) -> String { IncidentLogs.window(hours) }
 
     static func describe(_ query: IncidentLogs.Query) -> String {
-        "Over the last \(window(query.hours)), "
+        (query.from.map { "From \($0.formatted(date: .abbreviated, time: .shortened)) to "
+            + "\((query.to ?? .now).formatted(date: .abbreviated, time: .shortened)), " } ?? "Over the last \(window(query.hours)), ")
             + (query.users.isEmpty ? "every account" : query.users.joined(separator: ", "))
             + (query.ip.isEmpty ? "" : ", from \(query.ip)") + ", newest first."
     }
@@ -1336,13 +1358,16 @@ private struct LogGroup: View {
     let log: IncidentLogs.Log
     let asked: Int
     let flaggedOnly: Bool
+    /// Reads the rest of a log that stopped at its bound, from where it stopped to now.
+    let readRest: (() -> Void)?
     let export: () -> Void
     @State private var open: Bool
 
-    init(log: IncidentLogs.Log, asked: Int, flaggedOnly: Bool, startsOpen: Bool, export: @escaping () -> Void) {
+    init(log: IncidentLogs.Log, asked: Int, flaggedOnly: Bool, startsOpen: Bool, readRest: (() -> Void)? = nil, export: @escaping () -> Void) {
         self.log = log
         self.asked = asked
         self.flaggedOnly = flaggedOnly
+        self.readRest = readRest
         self.export = export
         _open = State(initialValue: startsOpen)
     }
@@ -1361,7 +1386,20 @@ private struct LogGroup: View {
 
     var body: some View {
         DisclosureGroup(title, isExpanded: $open) {
-            ActivityList(result: log.rows.map { flaggedOnly ? $0.filter(\.flagged) : $0 }, capped: log.capped,
+            if let through = log.through {
+                // Read oldest first and stopped at its bound: the older part is whole, the newer part unread.
+                HStack(alignment: .firstTextBaseline) {
+                    Label("Read completely through \(through.formatted(date: .abbreviated, time: .shortened)): the later events "
+                          + "weren't read yet, and the CSV doesn't have them either.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor).font(.callout)
+                    Spacer()
+                    if let readRest {
+                        Button("Read the Rest", action: readRest)
+                            .accessibilityHint("Reads this log from there to now, oldest first, and adds it to what's shown. Nothing changes.")
+                    }
+                }
+            }
+            ActivityList(result: log.rows.map { flaggedOnly ? $0.filter(\.flagged) : $0 }, capped: log.capped && log.through == nil,
                          what: "\(log.application.name) events", showsWho: true)
             if case .success(let rows) = log.rows, !rows.isEmpty {
                 HStack {

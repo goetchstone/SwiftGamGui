@@ -17,12 +17,17 @@ public final class IncidentLogs {
         public let users: [String]
         public let hours: Int
         public let ip: String
+        /// A window from a time to a time instead of the last `hours` (Read the Rest: from where a read stopped to now).
+        public let from: Date?
+        public let to: Date?
 
-        public init(applications: [ActivityLogs.Application], users: [String], hours: Int, ip: String) {
+        public init(applications: [ActivityLogs.Application], users: [String], hours: Int, ip: String, from: Date? = nil, to: Date? = nil) {
             self.applications = applications
             self.users = users
             self.hours = hours
             self.ip = ip
+            self.from = from
+            self.to = to
         }
 
         /// The accounts as typed, split on commas, spaces and new lines, each once (case aside), as GAM reads a list.
@@ -39,8 +44,12 @@ public final class IncidentLogs {
         public let rows: Result<[ActivityLogs.Row], UserAccess.Problem>
         /// The window it was read for: the query's, or Gmail's at most 30 days.
         public let hours: Int
-        /// Some account was still at the cap when the reads ran out (`paged`): its older events weren't read.
+        /// Not all of the window was read: with `through`, everything up to that time was and the later events weren't (a
+        /// whole read stopped at its bound, oldest first); without, the older events weren't (the Chrome and admin logs' reads
+        /// for accounts, newest first).
         public let capped: Bool
+        /// When capped by a whole read: the time it was read completely through.
+        public internal(set) var through: Date? = nil
         public var id: ActivityLogs.Application { application }
     }
 
@@ -57,6 +66,9 @@ public final class IncidentLogs {
             ActivityLogs.addresses(in: logs.first { $0.application == .login }.flatMap { try? $0.rows.get() } ?? [])
         }
     }
+
+    /// While a pull reads: each log read whole so far, through when (oldest first, a day at a time).
+    public private(set) var readThrough: [ActivityLogs.Application: Date] = [:]
 
     /// The last pull, while it belongs to the connected tenant.
     public var pull: Pull? {
@@ -93,13 +105,17 @@ public final class IncidentLogs {
         asked += 1
         let request = asked, generation = setup.generation
         kept = (Pull(query: query, logs: [], ended: false), tenant, generation)
+        readThrough = [:]
         var results: [ActivityLogs.Application: Log] = [:]
         let access = access, cap = cap, clock = clock
+        let progress: @Sendable (ActivityLogs.Application, Date) async -> Void = { [weak self] application, through in
+            await self?.note(application, through: through, request: request)
+        }
         await withTaskGroup(of: Log.self) { group in
             var waiting = query.applications.makeIterator()
             for _ in 0..<Self.concurrent {
                 guard let application = waiting.next() else { break }
-                group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant) }
+                group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant, progress: progress) }
             }
             for await log in group {
                 results[log.application] = log
@@ -108,7 +124,7 @@ public final class IncidentLogs {
                 }
                 // A newer pull replaced this one: what's still reading finishes, nothing more starts.
                 if request == asked, let application = waiting.next() {
-                    group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant) }
+                    group.addTask { await Self.read(application, query, cap: cap, now: clock(), access, tenant, progress: progress) }
                 }
             }
         }
@@ -116,10 +132,19 @@ public final class IncidentLogs {
         kept = (Pull(query: query, logs: query.applications.compactMap { results[$0] }, ended: true), tenant, generation)
     }
 
+    private func note(_ application: ActivityLogs.Application, through: Date, request: Int) {
+        if request == asked { readThrough[application] = through }
+    }
+
     /// One log, on the tenant the pull began on: a queued read never goes to a domain switched to since.
     private static func read(_ application: ActivityLogs.Application, _ query: Query, cap: Int, now: Date, _ access: UserAccess,
-                             _ tenant: Domain) async -> Log {
-        let hours = ActivityLogs.window(application, asked: query.hours)
+                             _ tenant: Domain, progress: @escaping @Sendable (ActivityLogs.Application, Date) async -> Void) async -> Log {
+        // The window: the last `hours`, or from a time to a time; Gmail's at most 30 days back from its end.
+        let end = query.to ?? now
+        var start = query.from ?? end.addingTimeInterval(-Double(query.hours) * 3_600)
+        if application == .gmail { start = max(start, end.addingTimeInterval(-Double(ActivityLogs.gmailMaxHours) * 3_600)) }
+        let span = Int((end.timeIntervalSince(start) / 3_600).rounded(.up))
+        let hours = query.from == nil ? ActivityLogs.window(application, asked: query.hours) : min(max(span, 1), 4_320)
         if application == .chrome, !query.users.isEmpty { return await chrome(query, hours: hours, cap: cap, access, tenant) }
         if application == .admin, !query.users.isEmpty { return await admin(query, hours: hours, cap: cap, access, tenant) }
         // The Devices log records no address, so a pull by one would drop it whole: its registrations instead, for the
@@ -127,12 +152,57 @@ public final class IncidentLogs {
         // One event name at most: GAM caps each name's read on its own, so paging on the oldest of several would skip one's.
         let events = application == .mobile && !query.ip.isEmpty ? ["DEVICE_REGISTER_UNREGISTER_EVENT"] : []
         let ip = events.isEmpty ? query.ip : ""
-        let window = (start: time(now.addingTimeInterval(-Double(hours) * 3_600)), end: time(now))
-        let (rows, capped) = await paged(users: query.users, window: window, cap: cap) { users, start, end in
+        let (rows, through) = await complete(users: query.users, start: start, end: end, cap: cap) { through in
+            await progress(application, through)
+        } read: { users, start, end in
             await access.activity(application, users: users, hours: hours, start: start, end: end, ip: ip, events: events, cap: cap,
                                   in: tenant)
         }
-        return Log(application: application, rows: rows, hours: hours, capped: capped)
+        return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through)
+    }
+
+    /// Every event of the window, read oldest first (asked for after a real incident, 2026-10-23: "I need it all … the oldest
+    /// first, then the newer"). One read of the whole window first: most logs come back short of the cap, and are whole.
+    /// One at the cap is read a day at a time from the window's start, each day read back from its end until it's whole
+    /// (`paged`, at most `perDay` reads), each day's end a second past the next day's start (whether Google keeps an end's
+    /// own second isn't said), an event read twice kept once. Bounded (invariant 9): `budget` reads in all; past it, or a
+    /// day still at its cap, or a read that fails, it stops there, so what's unread is the newest: `through` is when it was
+    /// read completely through (nil: all of it). `progress` hears each day as it's done. A first read that fails is the
+    /// failure.
+    static func complete(users: [String], start: Date, end: Date, cap: Int, perDay: Int = ActivityLogs.readsPerDay,
+                         budget: Int = ActivityLogs.readsPerLog, progress: (Date) async -> Void,
+                         read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>)
+        async -> (rows: Result<[ActivityLogs.Row], UserAccess.Problem>, through: Date?) {
+        let first = await read(users, time(start), time(end))
+        guard case .success(let whole) = first else { return (first, nil) }
+        func full(_ rows: [ActivityLogs.Row]) -> Bool {
+            users.count <= 1 ? rows.count >= cap : Dictionary(grouping: rows) { $0.who.lowercased() }.contains { $0.value.count >= cap }
+        }
+        guard full(whole) else { return (.success(whole), nil) }
+        var rows: [ActivityLogs.Row] = [], seen: Set<String> = [], reads = 1, day = start
+        func newest() -> [ActivityLogs.Row] {
+            rows.enumerated().sorted { a, b in
+                (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+            }.map(\.element)
+        }
+        while day < end {
+            let next = min(day.addingTimeInterval(86_400), end)
+            let left = min(perDay, budget - reads)
+            guard left > 0 else { return (.success(newest()), day) }
+            var used = 0
+            let (these, dayCapped) = await paged(users: users, window: (time(day), time(next == end ? end : next.addingTimeInterval(1))),
+                                                 cap: cap, pages: left) { users, start, end in
+                used += 1
+                return await read(users, start, end)
+            }
+            reads += used
+            guard case .success(let read) = these else { return (.success(newest()), day) }
+            rows += read.filter { seen.insert($0.identity).inserted }
+            guard !dayCapped else { return (.success(newest()), day) }
+            day = next
+            await progress(day)
+        }
+        return (.success(newest()), nil)
     }
 
     /// A log read past its cap, still bounded (invariant 9: at most `ActivityLogs.pages` reads of `cap` each). The window
@@ -144,7 +214,7 @@ public final class IncidentLogs {
     /// (an alias, an old name: no telling which to go on with). What did come back is kept, said as capped, never passed as
     /// the whole. Newest first, as one read gives them. GAM's cap counts activities and these are events, so a read can look
     /// full sooner: an extra read, never a missed one.
-    static func paged(users: [String], window: (start: String, end: String), cap: Int,
+    static func paged(users: [String], window: (start: String, end: String), cap: Int, pages: Int = ActivityLogs.pages,
                       _ read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>)
         async -> (rows: Result<[ActivityLogs.Row], UserAccess.Problem>, capped: Bool) {
         let first = await read(users, window.start, window.end)
@@ -163,10 +233,12 @@ public final class IncidentLogs {
         }
         while !open.isEmpty {
             let (who, page) = open.removeFirst()
-            guard reads < ActivityLogs.pages, let oldest = page.compactMap(\.date).min() else {
+            guard reads < pages, let oldest = page.compactMap(\.date).min() else {
                 capped = true
                 continue
             }
+            // Read back to the window's start: nothing earlier is in it (and an end before the start is GAM's usage error).
+            if let from = try? Date(start, strategy: .iso8601), oldest <= from { continue }
             reads += 1
             guard case .success(let next) = await read(who, start, time(oldest.addingTimeInterval(1))) else {
                 capped = true
@@ -287,7 +359,7 @@ public final class IncidentLogs {
         for (application, csv) in export.logs {
             guard let rows = ActivityLogs.rows(exported: csv, application: application) else { return nil }
             logs.append(Log(application: application, rows: .success(rows), hours: about.window[application] ?? about.hours,
-                            capped: about.capped.contains(application)))
+                            capped: about.capped.contains(application), through: about.through[application]))
         }
         // In the app's order of the logs, as every pull put together is.
         let order = ActivityLogs.Application.allCases
@@ -312,8 +384,10 @@ public final class IncidentLogs {
                     let rows = (kept + read.filter { !known.contains($0.identity) }).enumerated().sorted { a, b in
                         (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
                     }.map(\.element)
+                    // Both stopped short: read through the later of the two; one read whole: whole.
                     logs.append(Log(application: application, rows: .success(rows), hours: max(old.hours, new.hours),
-                                    capped: old.capped && new.capped))
+                                    capped: old.capped && new.capped,
+                                    through: old.capped && new.capped ? [old.through, new.through].compactMap { $0 }.max() : nil))
                 case (.success, .failure): logs.append(old)
                 default: logs.append(new)
                 }
@@ -365,7 +439,8 @@ public final class IncidentLogs {
             guard applications.isEmpty || applications.contains(log.application) else { return nil }
             guard case .success(let rows) = log.rows else { return log }
             let kept = rows.filter(keeps)
-            return kept.isEmpty ? nil : Log(application: log.application, rows: .success(kept), hours: log.hours, capped: log.capped)
+            return kept.isEmpty ? nil : Log(application: log.application, rows: .success(kept), hours: log.hours, capped: log.capped,
+                                            through: log.through)
         }
 
         /// "carol@example.com's events from 198.51.100.23, in Gemini, through Mail Sync Pro".
@@ -388,6 +463,7 @@ public final class IncidentLogs {
     struct About {
         var hours = 0, users: [String] = [], ip = ""
         var window: [ActivityLogs.Application: Int] = [:], capped: Set<ActivityLogs.Application> = []
+        var through: [ActivityLogs.Application: Date] = [:]
 
         init(_ text: String) {
             func hoursIn(_ words: Substring) -> Int? {
@@ -398,6 +474,10 @@ public final class IncidentLogs {
             for line in text.split(whereSeparator: \.isNewline) {
                 if line.hasPrefix("Over the last "), let found = hoursIn(line.dropFirst(14)) {
                     hours = found
+                } else if line.hasPrefix("From "), let to = line.range(of: " to "),
+                          let from = try? Date(String(line[line.index(line.startIndex, offsetBy: 5)..<to.lowerBound]), strategy: .iso8601),
+                          let until = try? Date(String(line[to.upperBound...].dropLast(line.hasSuffix(".") ? 1 : 0)), strategy: .iso8601) {
+                    hours = max(1, Int((until.timeIntervalSince(from) / 3_600).rounded(.up)))
                 } else if line.hasPrefix("Accounts: ") {
                     let list = line.dropFirst(10).trimmingCharacters(in: CharacterSet(charactersIn: "."))
                     users = list == "every account" ? [] : list.components(separatedBy: ", ")
@@ -407,6 +487,11 @@ public final class IncidentLogs {
                 } else if let dash = line.range(of: "-log.csv: "),
                           let application = ActivityLogs.Application(rawValue: String(line[..<dash.lowerBound])) {
                     if line.contains("older events past the cap weren't read") { capped.insert(application) }
+                    if let read = line.range(of: "read completely through "),
+                       let at = try? Date(String(line[read.upperBound...].prefix { $0 != "," }), strategy: .iso8601) {
+                        capped.insert(application)
+                        through[application] = at
+                    }
                     if let last = line.range(of: ", the last "), let found = hoursIn(line[last.upperBound...]) { window[application] = found }
                 }
             }
@@ -472,15 +557,21 @@ public final class IncidentLogs {
 
     static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
         let query = pull.query
-        var lines = ["Incident logs exported \(exported).",
-                     "Over the last \(window(query.hours)).",
+        let span: String = if let from = query.from { "From \(time(from)) to \(time(query.to ?? .now))." } else {
+            "Over the last \(window(query.hours))."
+        }
+        var lines = ["Incident logs exported \(exported).", span,
                      "Accounts: " + (query.users.isEmpty ? "every account" : query.users.joined(separator: ", ")) + ".",
                      "From IP address: " + (query.ip.isEmpty ? "any" : query.ip) + ".", ""]
         for log in read {
             let count = (try? log.rows.get().count) ?? 0
+            let stopped: String = if !log.capped { "" } else if let through = log.through {
+                "; read completely through \(time(through)), later events weren't read"
+            } else {
+                "; older events past the cap weren't read"
+            }
             lines.append("\(log.application.rawValue)-log.csv: the \(log.application.name) log, \(count) events"
-                         + (log.hours < query.hours ? ", the last \(window(log.hours)) (the most it reads)" : "")
-                         + (log.capped ? "; older events past the cap weren't read" : "") + ".")
+                         + (log.hours < query.hours ? ", the last \(window(log.hours)) (the most it reads)" : "") + stopped + ".")
         }
         for log in unread {
             if case .failure(let problem) = log.rows { lines.append("Not exported, not read: the \(log.application.name) log: \(problem.summary)") }

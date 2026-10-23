@@ -9,13 +9,20 @@ import Foundation
 public enum ActivityLogs {
     public typealias Application = GamCommands.ActivityApplication
 
-    /// How far back a pull reads, in hours: a day, three, a week, a month, six months (the Reports API keeps about six).
-    public static let hours = [24, 72, 168, 720, 4_320]
+    /// How far back a pull reads, in hours: a day, 3, 10, 15 and 30 days, and six months (the Reports API keeps about six;
+    /// the Gmail log 30 days).
+    public static let hours = [24, 72, 240, 360, 720, 4_320]
     public static let defaultHours = 72
     /// Bounds each read (invariant 9): the newest this many activities per account.
     public static let cap = 1_000
-    /// A log at the cap is read on further back, at most this many reads in all (`IncidentLogs`): `cap` times this bounds it.
+    /// A read at the cap is read on further back, at most this many reads (`IncidentLogs.paged`): the Chrome and admin
+    /// logs' reads for accounts, and a test's own.
     public static let pages = 10
+    /// A log read whole (`IncidentLogs.complete`): at most this many reads for one day of it, and this many for the log in
+    /// all (invariant 9): `cap` times each, 100,000 events a day and 200,000 a log. Past them it stops, oldest first, so
+    /// what's left unread is the newest, said, with the time it was read through.
+    public static let readsPerDay = 100
+    public static let readsPerLog = 200
     /// The Reports API reads the Gmail log at most this far back (GAM's doReport says so, init.py:14767).
     public static let gmailMaxHours = 720
     /// One read's time: GAM reads one account after another, and twenty accounts' Gmail is slow.

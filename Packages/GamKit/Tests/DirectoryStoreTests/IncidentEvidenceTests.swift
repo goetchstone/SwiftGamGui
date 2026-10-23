@@ -31,6 +31,11 @@ struct IncidentEvidenceTests {
         #expect(about.capped == [.gmail] && about.window == [.gmail: 720])
         let every = IncidentLogs.About("Over the last 12 hours.\nAccounts: every account.\nFrom IP address: any.\n")
         #expect(every.hours == 12 && every.users.isEmpty && every.ip.isEmpty)
+        // A read stopped at its bound, oldest first: read completely through a time, the later events not; a window as times.
+        let rest = IncidentLogs.About("From 2026-10-13T00:00:00Z to 2026-10-23T00:00:00Z.\n"
+            + "gmail-log.csv: the Gmail log, 200000 events; read completely through 2026-10-16T00:00:00Z, later events weren't read.\n")
+        #expect(rest.hours == 240 && rest.capped == [.gmail])
+        #expect(rest.through[.gmail] == (try? Date("2026-10-16T00:00:00Z", strategy: .iso8601)))
     }
 
     /// Exports put together: rows newest first, an event both saved once, the widest window, every account when any export

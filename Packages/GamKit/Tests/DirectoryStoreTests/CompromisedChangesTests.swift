@@ -432,6 +432,42 @@ final class CompromisedChangesTests {
         #expect(mixed)
     }
 
+    /// A log read whole, oldest first (asked for after a real incident): one read of the window, and at the cap, a day at a
+    /// time from its start, each day read back until it's whole; every event once. Bounded: past its reads it stops at a
+    /// day's start, the older days whole, and says when it was read through.
+    @Test func aLogIsReadWholeOldestFirst() async throws {
+        let start = Date(timeIntervalSince1970: 1_792_400_400), end = start.addingTimeInterval(3 * 86_400)
+        // An event every 20 minutes for three days, newest first, as GAM gives them; the window kept as Google keeps it.
+        let events = stride(from: end.addingTimeInterval(-600), to: start, by: -1_200).map { $0 }
+        var starts: [String] = []
+        func read(_ from: String, _ to: String) -> Result<[ActivityLogs.Row], UserAccess.Problem> {
+            starts.append(from)
+            let kept = events.filter { IncidentLogs.time($0) >= from && IncidentLogs.time($0) < to }.prefix(50)
+            return .success(ActivityLogs.rows("name,actor.email,id.time,id.uniqueQualifier\n" + kept.map {
+                "login_success,carol@example.com,\(IncidentLogs.time($0)),q\(Int($0.timeIntervalSince1970))"
+            }.joined(separator: "\n"), application: .login))
+        }
+        var heard: [Date] = []
+        let whole = await IncidentLogs.complete(users: [], start: start, end: end, cap: 50) { heard.append($0) } read: { _, from, to in
+            read(from, to)
+        }
+        let rows = try whole.rows.get()
+        #expect(whole.through == nil && rows.count == events.count && Set(rows.map(\.identity)).count == events.count)
+        #expect(rows.map(\.time) == rows.map(\.time).sorted(by: >), "shown newest first")
+        let dayStarts = Array(starts.dropFirst()).reduce(into: [String]()) { if $0.last != $1 { $0.append($1) } }
+        #expect(dayStarts == [0, 1, 2].map { IncidentLogs.time(start.addingTimeInterval(Double($0) * 86_400)) }, "the oldest day first")
+        #expect(heard == [1, 2, 3].map { start.addingTimeInterval(Double($0) * 86_400) })
+
+        starts = []
+        let bounded = await IncidentLogs.complete(users: [], start: start, end: end, cap: 50, budget: 4) { _ in } read: { _, from, to in
+            read(from, to)
+        }
+        let dayTwo = start.addingTimeInterval(86_400)
+        #expect(bounded.through == dayTwo, "the first day whole, the second not")
+        let kept = try bounded.rows.get()
+        #expect(kept.filter { ($0.date ?? .distantFuture) < dayTwo }.count == 72 && starts.count == 4)
+    }
+
     /// Pull Incident Logs reads and changes nothing: the person's logs, then every account's by the address on their
     /// flagged sign-in, where another account signed in from it too; each log in the query's order, and as a CSV. An
     /// address that isn't one is refused in words, in every log.
