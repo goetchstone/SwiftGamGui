@@ -26,9 +26,9 @@ for what the later delete would lose (their secondary calendars) or a Vault hold
 command first, then, with the leaver's address typed, each step as it ends, Stop between steps, and what's
 left to finish. Incident is for an account taken over, in the order it's worked: find who's affected, secure each account,
 pull the email, then a checklist. It checks what an attacker commonly changes (filters, forwarding, an auto-reply,
-delegates, send-as addresses, recovery details, 2-Step Verification, admin roles, leftover drafts, the phones that sync
+delegates, send-as addresses, recovery details, 2-Step Verification, admin roles, emails scheduled to send, leftover drafts, the phones that sync
 the mail), then runs the lock (reset, sign-out, forwarding, IMAP and POP off; each a switch, so any one runs alone) with
-the filters, delegates and send-as addresses you tick removed, the auto-reply off and the leftover drafts (all, or by
+the filters, delegates and send-as addresses you tick removed, the auto-reply off, the scheduled emails and the leftover drafts (all, or by
 subject) deleted; a person's page in Users opens it for them
 (Actions → Secure Account…), their Mail tab searches their mailbox (what they sent, and to whom, Bcc included), their
 Security tab checks their Chrome profiles (whether Chrome is signed in with their work account, where, and when last
@@ -207,12 +207,13 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Offboarding: hand over secondary calendars (Offboard, added step) | not yet: new to both apps |
 | Offboarding: remove filters that forward (Offboard, added step) | not yet: new to both apps |
 | Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | **confirmed** (2026-10-16) |
-| Compromised account: reset, sign out, forwarding off, IMAP and POP off, clear recovery (Compromised) | not yet from this screen: Offboard's commands, confirmed there (2026-10-16) |
+| Compromised account: reset, sign out, forwarding off, IMAP and POP off, clear recovery (Compromised) | **confirmed** (2026-10-19): seven accounts in a real incident, each step exit 0 in the audit log; the same commands' effect checked on Offboard (2026-10-16) |
 | Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
 | Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
 | Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
 | Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
-| Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | not yet: never read live |
+| Compromised account: list and delete the emails scheduled to send (Compromised) | not yet: new to both apps; prove it on a test email you schedule to yourself |
+| Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | **confirmed** (2026-10-19): the check behind each of those seven locks, and the incident's logs pulled through 2026-10-23 |
 | Pull Incident Logs: a log at the 1,000-activity cap read further back, up to 10 reads (reads only) | not yet: new to both apps |
 | Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
 | Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
@@ -232,7 +233,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Read the logs: each account's timeline and Still to do (reads only) | partly: run over a real tenant's export (2026-10-22), not yet in the app live |
 | Incident: block a computer, or take the account off it (Incident) | not yet: new to both apps |
 | Read the logs: Do It Here on a to-do item (opens the plan with only that fix picked) | not yet: new to both apps |
-| Trash an email from each mailbox that has it (Phishing) | not yet: new to both apps |
+| Trash an email from each mailbox that has it (Phishing) | ran live (2026-10-19 and 2026-10-23): four emails from 48 mailboxes, each exit 0 in the audit log; a copy in Trash not yet seen in Gmail |
 | Find and trash the copies of an email in Spam (Phishing) | not yet: new to both apps |
 
 The Groups rows are checked on a scratch group the operator owns, with throwaway members or the

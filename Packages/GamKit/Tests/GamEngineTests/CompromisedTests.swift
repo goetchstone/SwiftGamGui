@@ -255,6 +255,62 @@ struct CompromisedDraftsTests {
         #expect(try await run(["user", "stranger@example.com", "delete", "messages", "ids", "19a0c0ffee000011"]).exitCode == 50)
     }
 
+    /// The scheduled sends: GamGUI's mailbox search for `in:scheduled`, every one, each with whom it goes to; a mailbox with
+    /// none is GAM's exit 60, read as none.
+    @Test func theScheduledSendsAreListedWithTheirRecipients() async throws {
+        let read = GamCommands.searchMessages(email: "carol@example.com", query: Compromised.ScheduledSend.query,
+                                              max: Compromised.ScheduledSend.cap)
+        #expect(read.argv == ["user", "carol@example.com", "print", "messages", "query", "in:scheduled", "includespamtrash",
+                              "max_to_print", "500", "headers", "all", "showlabels", "showdate"])
+        let listed = try MailboxSearch.messages(try await run(read.argv), argv: read.argv)
+        #expect(listed.map(\.id) == ["19a0c0ffee000014"] && listed[0].labels == ["SCHEDULED"])
+        #expect(listed[0].subject == "Reminder: Q4 invoices"
+                && listed[0].bcc == ["pat@partner.example", "guest@example.org", "alice@example.com"])
+        #expect(Compromised.ScheduledSend.recipients(listed + listed) == ["carol@example.com", "pat@partner.example", "guest@example.org",
+                                                                         "alice@example.com"])
+        let none = GamCommands.searchMessages(email: "alice@example.com", query: Compromised.ScheduledSend.query,
+                                              max: Compromised.ScheduledSend.cap)
+        #expect(try MailboxSearch.messages(try await run(none.argv), argv: none.argv).isEmpty)
+        // GAM stops at max_to_print, 0 no limit: carol@'s three drafts by the same search.
+        for (most, listed) in [(1, 1), (2, 2), (0, 3)] {
+            let read = GamCommands.searchMessages(email: "carol@example.com", query: "in:draft", max: most)
+            #expect(try MailboxSearch.messages(try await run(read.argv), argv: read.argv).count == listed, "max_to_print \(most)")
+        }
+    }
+
+    /// Only a message Gmail labels scheduled is deleted as one: the step refuses any other, whatever a search returned, and
+    /// the findings count only those. The step runs before the drafts', and says how many people it would have reached.
+    @Test func aScheduledSendIsDeletedOnlyWhenGmailLabelsIt() throws {
+        func message(_ id: String, _ labels: String, count: Int? = nil, bcc: String = "") -> MailboxSearch.Message {
+            MailboxSearch.Message(record: ["id": .string(id), "Subject": .string("Invoice"), "Labels": .string(labels),
+                                           "LabelsCount": .string(String(count ?? labels.split(separator: " ").count)),
+                                           "To": .string("x@example.org"), "Bcc": .string(bcc)])
+        }
+        let scheduled = [message("S1", "SCHEDULED", bcc: "y@example.org, X@example.org"), message("S2", "SCHEDULED")]
+        let draft = [Compromised.Draft(record: ["id": .string("D1"), "Subject": .string("Shared file")])]
+        let steps = try Compromised.steps(user: "carol@example.com", switchedOn: [.password, .revoke], scheduled: scheduled,
+                                          drafts: draft)
+        #expect(steps.map(\.key) == [.password, .scheduled, .revoke, .drafts], "right after the reset")
+        #expect(steps[1].write.argv == ["user", "carol@example.com", "delete", "messages", "ids", "S1,S2"])
+        #expect(steps[1].write.action == .deleteMessages && steps[1].label == "Delete 2 scheduled emails")
+        #expect(steps[1].summary.contains("(“Invoice”), to 2 recipients") && steps[1].summary.contains("can't be restored"))
+        // Not plainly Gmail's Scheduled: another label, a user label holding the word (GAM's count tells), a sent copy.
+        for other in [message("M1", "INBOX"), message("M2", "INBOX Q4 SCHEDULED", count: 2), message("M3", "SCHEDULED SENT"),
+                      MailboxSearch.Message(record: ["id": .string("M4"), "Labels": .string("SCHEDULED")])] {
+            #expect(!Compromised.ScheduledSend.isScheduled(other), "\(other.id)")
+            #expect(throws: GamCommands.Invalid.self, "\(other.id)") {
+                try Compromised.steps(user: "carol@example.com", switchedOn: [], scheduled: [other])
+            }
+        }
+        let account = Compromised.Account(GamUser(record: ["primaryEmail": .string("carol@example.com"), "isEnrolledIn2Sv": .bool(true)]))
+        let said = Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,
+                                        scheduled: scheduled + [message("M1", "INBOX")])
+        #expect(said == ["2 emails are scheduled to send from carol@example.com, to 2 recipients: Gmail sends them at their time on "
+                         + "its own, with nobody signed in. Delete them unless carol@example.com scheduled them."])
+        #expect(Compromised.findings(account: account, forwarding: nil, filters: nil, delegates: nil, sendAs: nil, roles: nil,
+                                     scheduled: [message("M1", "INBOX")]).isEmpty)
+    }
+
     @Test func theStepSaysWhatItDeletesAndTheFindingsSayHowMany() throws {
         let listed = [Compromised.Draft(record: ["id": .string("D1"), "Subject": .string("Shared file")]),
                       Compromised.Draft(record: ["id": .string("D2"), "Subject": .string("Shared file")])]

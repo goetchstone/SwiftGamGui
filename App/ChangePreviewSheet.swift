@@ -591,7 +591,7 @@ struct CompromisedConfirmSheet: View {
                 Text(plan.whatStopsWhat).font(.callout).foregroundStyle(.secondary)
             }
             Section {
-                let final = plan.runningRows.filter { [.password, .clearRecovery, .revoke, .filters, .sendAs, .drafts].contains($0.key) }
+                let final = plan.runningRows.filter { [.password, .clearRecovery, .revoke, .filters, .sendAs, .scheduled, .drafts].contains($0.key) }
                     .map { "“\($0.label)”" }
                 if !final.isEmpty {
                     Label("\(ListFormatter.localizedString(byJoining: final)) can't be undone.", systemImage: "exclamationmark.triangle.fill")

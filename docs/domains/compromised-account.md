@@ -139,6 +139,38 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
 - **Not modelled, for the live check to tell:** Gmail's words for a valid-looking but missing ID in a batch, and a draft
   that changes ID while it's listed (an autosave: GAM's 404 fails the listing; Check Again reads it again).
 
+## Scheduled sends (2026-10-23)
+Asked for in a real incident, after the attacker asked Gemini to "help schedule": "we need to find and stop anything that
+may have been scheduled to send." **A scheduled email is not a draft** (the drafts' listing never shows it), and Gmail sends
+it at its time on its own, with nobody signed in: the lock doesn't stop it. Slice 4 had left it out.
+- **The check** lists every one with its recipients: GamGUI's mailbox search (`searchMessages`, Spam and Trash included,
+  `headers all`, read by `MailboxSearch`) for `in:scheduled`, at most `Compromised.ScheduledSend.cap` (500, above the
+  100 guides to Gmail say one person can schedule; Gmail's own help doesn't say). A finding says it first, with how many
+  recipients: these go out on their own.
+- **The removal:** keep them (the start: one may be the person's own) or delete every one listed, one held step
+  `deleteMessages` (the drafts' command and action, destructive, needing the reset when it runs), run **right after the
+  reset**, before the sign-out and the rest: one comes due while the run goes on. Deleted, not trashed, as the drafts
+  are. **Only a message plainly in Gmail's Scheduled is deleted as one** (`Compromised.ScheduledSend.isScheduled`): the
+  `SCHEDULED` label, its labels told apart by GAM's own `LabelsCount` (a user label's name may hold the word: SpamCopies'
+  rule), and never `SENT`. `steps` refuses any other; the screen says how many it left alone. To keep one, the operator
+  cancels the others in the person's Gmail instead (Cancel send leaves each a draft, for the drafts' step after Check
+  Again).
+- **Read again at the confirm** (review 2026-10-23): the plan holds the check's IDs, and one Gmail sent since may be its
+  Sent copy under the same ID, the only copy with the whole Bcc list, which Phishing's List Recipients reads. The
+  preview's precondition lists the scheduled sends again; one held that isn't there any more refuses the run before
+  anything runs, and the screen checks the account again at once, so a preview after holds what's scheduled now (else
+  previewing the same check would hold the same IDs). The refusal says the lock can run without the delete meanwhile.
+- **Bounds:** at the cap, the screen says "at least" and that Check Again lists the rest. The mock's search stops at
+  `max_to_print` as GAM does (it once ignored it: review 2026-10-23).
+- **The mock:** the search's strict `in:<label>` term; carol@ has one scheduled phish (`19a0c0ffee000014`, three Bcc).
+- **Not modelled, for the live check to tell:** whether Gmail's API honours `in:scheduled` (a third party's support says it
+  does), that the label is named `SCHEDULED`, whether `showdate` is the send time or the time it was written (the screen
+  says "Gmail's time"), and that a batchDelete of a scheduled message stops the send. **The live check** (the operator's
+  yes for the delete): schedule a test email to yourself in Gmail from an account of yours that isn't the one this app
+  connects as (its plan is refused: the sign-out would delete the app's own authorization), Check Account on it (it
+  lists the test email, labelled), delete it alone (every switch off), then check Gmail's Scheduled no longer has it and
+  it never arrives.
+
 ## Pull Incident Logs (slice 2)
 - **The logs** (2026-10-21, "add any other logs that should be looked at"): sign-ins, OAuth, SAML (sign-ins to other apps
   through Google), Gmail, Access, Chat, account changes, Takeout and Devices on by default; Chrome, Drive, Calendar
