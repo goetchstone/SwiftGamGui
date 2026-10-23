@@ -44,13 +44,30 @@ struct LogReaderView: View {
     @State private var marking: Marking?
     @State private var markProblem: String?
 
-    /// What the reader keeps while the screen is open, whichever tab shows: the pull's reading, made once per pull rather
-    /// than on every redraw (the rules scan every event), and the model's explanation of it.
+    /// What the reader keeps while the screen is open, whichever tab shows: the pull's reading, made once per pull and off
+    /// the main thread (the rules scan every event, and a whole pull for every account holds hundreds of thousands: read in
+    /// a view's body, it stopped the app for minutes, failure log 2026-10-23), and the model's explanation of it.
     @MainActor
     @Observable
     final class Memory {
-        @ObservationIgnored fileprivate var cached: (key: String, reading: LogReading.Reading)?
+        fileprivate var read: (key: String, reading: LogReading.Reading)?
+        /// The read under way, by its pull's key.
+        @ObservationIgnored private var reading: (key: String, task: Task<Void, Never>)?
         fileprivate var explained: (reading: LogReading.Reading, state: Explaining)?
+        /// A reading has come: debug snapshots wait for it before they scroll to it.
+        var hasReading: Bool { read != nil }
+
+        /// Reads `pull` for `key` in the background, once: either tab asking for the key being read waits on that read. A
+        /// newer key's read replaces it, and the older one's reading is dropped when it ends.
+        fileprivate func read(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], key: String) {
+            guard read?.key != key, reading?.key != key else { return }
+            reading = (key, Task { [weak self] in
+                let found = await Task.detached(priority: .userInitiated) { LogReaderView.reading(pull, marks: marks) }.value
+                guard let self, self.reading?.key == key else { return }
+                self.read = (key, found)
+                self.reading = nil
+            })
+        }
     }
 
     /// What identifies the pull read: its query, each log's outcome, and the sign-ins marked as theirs.
@@ -72,17 +89,10 @@ struct LogReaderView: View {
         case failed(String)
     }
 
-    private var reading: LogReading.Reading {
-        if let cached = memory.cached, cached.key == key { return cached.reading }
-        let reading = Self.reading(pull, marks: marks)
-        memory.cached = (key, reading)
-        return reading
-    }
-
     /// What the rules find in `pull`, told the address it was pulled by, the logs it read, the sign-ins marked as theirs, and
     /// the logs that stopped at their cap with the oldest event each read (one read for every account can stop short of the
-    /// attack: what's still to do says so).
-    static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark]) -> LogReading.Reading {
+    /// attack: what's still to do says so). Off the main thread (`Memory`).
+    nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark]) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -98,7 +108,7 @@ struct LogReaderView: View {
     }
 
     /// Every row read, as the reader sees it.
-    static func events(_ pull: IncidentLogs.Pull) -> [LogReading.Event] {
+    nonisolated static func events(_ pull: IncidentLogs.Pull) -> [LogReading.Event] {
         pull.logs.flatMap { log in
             ((try? log.rows.get()) ?? []).map { row in
                 LogReading.Event(log: row.application.rawValue, time: row.date, who: row.who, event: row.event, ip: row.ip,
@@ -110,13 +120,18 @@ struct LogReaderView: View {
     }
 
     var body: some View {
-        let reading = reading
+        let key = key
         Group {
-            switch part {
-            case .findings: findings(reading)
-            case .toDo: toDo(reading)
+            if let read = memory.read, read.key == key {
+                switch part {
+                case .findings: findings(read.reading)
+                case .toDo: toDo(read.reading)
+                }
+            } else {
+                readingNow
             }
         }
+        .onChange(of: key, initial: true) { memory.read(pull, marks: marks, key: key) }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in
                 markProblem = markTheirs(marking.account, marking.address, note)
@@ -124,6 +139,21 @@ struct LogReaderView: View {
             } cancel: {
                 self.marking = nil
             }
+        }
+    }
+
+    /// While the rules read the pull: the section in its place, saying how many events they're reading.
+    private var readingNow: some View {
+        let events = pull.logs.reduce(0) { $0 + ((try? $1.rows.get().count) ?? 0) }
+        return Section {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Reading the logs (\(events.formatted()) event\(events == 1 ? "" : "s"))…").foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Reading the logs: \(events.formatted()) event\(events == 1 ? "" : "s")")
+        } header: {
+            Text(part == .findings ? "What the logs show" : "Where things stand").accessibilityAddTraits(.isHeader)
         }
     }
 

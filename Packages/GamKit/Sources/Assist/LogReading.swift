@@ -316,8 +316,10 @@ public enum LogReading {
         // Each suspect address and the accounts it touched; one many accounts signed in from (not the operator's) is set
         // aside as likely shared: securing everyone behind an office's address would lock the office out.
         var acting: Set<String> = []
+        let suspected = Set(suspects)
+        let fromSuspect = Dictionary(grouping: events.filter { suspected.contains($0.ip) }, by: \.ip)
         for address in suspects {
-            let here = events.filter { $0.ip == address }
+            let here = fromSuspect[address] ?? []
             let accounts = unique(here.map(\.who).filter(isAccount))
             let signedIn = unique(here.filter { $0.log == "login" && $0.event == "login_success" }.map(\.who).filter(isAccount))
             if address != context.pulledBy, signedIn.count > shared {
@@ -351,19 +353,22 @@ public enum LogReading {
                                  unique(theirs.map(\.ip)), theirs.count, [.secureAccount(account)]))
         }
 
+        // Each account's own events and the admin's done to it: what every rule about one account reads.
+        let about = Accounts(events)
+
         // A device registered to an account in the minutes around its sign-in from a suspect address: the attacker's own
         // computer joined to the account as it signed in. The Devices log has no address, so only the account and the time
         // tie the two.
         // The sign-in nearest the registration, from any address, decides: a person's own new computer beside their own
         // sign-in isn't the attacker's, however near a suspect one; an even tie says nothing.
-        let signIns = events.filter { isAccount($0.who) && ["login", "saml"].contains($0.log) && $0.event == "login_success"
-            && $0.time != nil }
+        let signIns = Dictionary(grouping: events.filter { ["login", "saml"].contains($0.log) && $0.event == "login_success"
+            && $0.time != nil && isAccount($0.who) }) { $0.who.lowercased() }
         var joined: [(device: Event, signIn: Event, gap: TimeInterval)] = []
         for device in events where device.log == "mobile" && device.event == "DEVICE_REGISTER_UNREGISTER_EVENT"
             && device.parameters["ACCOUNT_STATE"] != "UNREGISTERED" && isAccount(device.who) {
             guard let at = device.time else { continue }
             // How long after each of the account's sign-ins it registered (negative: before), in the window.
-            let near = signIns.filter { $0.who.lowercased() == device.who.lowercased() }
+            let near = (signIns[device.who.lowercased()] ?? [])
                 .map { (signIn: $0, after: at.timeIntervalSince($0.time ?? at)) }
                 .filter { deviceWindow.contains($0.after) }
             guard let nearest = near.min(by: { abs($0.after) < abs($1.after) }), acting.contains(nearest.signIn.ip),
@@ -381,7 +386,7 @@ public enum LogReading {
             let left = theirs.filter { device in
                 let ids = Set([device.parameters["DEVICE_ID"], device.parameters["RESOURCE_ID"]].compactMap { $0 }.filter { !$0.isEmpty })
                 guard !ids.isEmpty, let at = device.time else { return true }
-                let words = events.filter { ($0.time ?? .distantPast) > at }
+                let words = about[account].filter { ($0.time ?? .distantPast) > at }
                     .compactMap { event in Self.deviceWord(event, on: ids, of: account).map { (event, there: $0) } }
                     .filter { $0.there || !acting.contains($0.0.ip) }
                 return words.max { ($0.0.time ?? .distantPast) < ($1.0.time ?? .distantPast) }?.there ?? true
@@ -418,9 +423,12 @@ public enum LogReading {
             phishedAt[account.lowercased()] = min(at, phishedAt[account.lowercased()] ?? at)
         }
         let accounts = unique(touched.map(\.who) + phishedAt.keys.sorted())
+        let own = accounts.map { about[$0] }
         func statuses(held: [String: ClosedRange<Date>]) -> [Status] {
-            accounts.map { status($0, events, acting: acting, context: context, joined: joined.map(\.device), phishedAt: phishedAt[$0.lowercased()],
-                                 held: held) }
+            zip(accounts, own).map { account, own in
+                status(account, own, acting: acting, context: context, joined: joined.map(\.device), phishedAt: phishedAt[account.lowercased()],
+                       held: held)
+            }
         }
         // An account the attacker got into, from then until its own lock: what it did as an admin meanwhile is no lock
         // (security review 2026-10-22). Read once to know those, then again without them.
@@ -430,10 +438,10 @@ public enum LogReading {
         }
         let statuses = statuses(held: held)
         var statusTasks: [(Task.Kind, String, [String], [Draft], Shown?)] = []
-        for status in statuses {
+        for (status, own) in zip(statuses, own) {
             let account = status.account
             // The account's events from the attacker's addresses: what "Show the Events" shows for its lock.
-            let theirs = Shown(accounts: [account], addresses: unique(events.filter {
+            let theirs = Shown(accounts: [account], addresses: unique(own.filter {
                 $0.who.lowercased() == account.lowercased() && suspects.contains($0.ip)
             }.map(\.ip)))
             switch status.state {
@@ -461,7 +469,7 @@ public enum LogReading {
             }
             // The account's contacts printed between the attacker's first event and the lock: who the phish goes to next.
             // The Contacts log names no address, so the time ties it to the attack.
-            let printed = events.filter { event in
+            let printed = own.filter { event in
                 event.log == "contacts" && event.event == "print_contacts" && event.who.lowercased() == account.lowercased()
                     && (event.time.map { at in
                         (status.attackedAt.map { at >= $0 } ?? false) && (status.state == .stillIn || (status.lockedAt.map { at <= $0 } ?? true))
@@ -494,7 +502,7 @@ public enum LogReading {
             // same detail after the change (security review 2026-10-22). The question no admin step removes.
             func stillSet(_ edit: String, removedBy removal: String) -> Bool {
                 guard let changed = theirs.filter({ $0.event == edit }).compactMap(\.time).max() else { return false }
-                return !events.contains { $0.log == "admin" && $0.event == removal && $0.parameters["USER_EMAIL"]?.lowercased() == account.lowercased()
+                return !about[account].contains { $0.log == "admin" && $0.event == removal && $0.parameters["USER_EMAIL"]?.lowercased() == account.lowercased()
                     && !acting.contains($0.ip) && ($0.time ?? .distantPast) > changed }
             }
             let cleared = !stillSet("recovery_email_edit", removedBy: "REMOVE_RECOVERY_EMAIL")
@@ -717,7 +725,8 @@ public enum LogReading {
     /// Where `account` stands: the first password reset, sign-out and suspension done to it since the attacker's first
     /// event (by an admin, never from a suspect address, which would be an attacker with an admin's account; or by Google,
     /// as the account's own sign-in log event), the lock they make, and the sign-ins after it. A sign-in from a suspect
-    /// address after a lock starts it over: a lock after that sign-in is a new one, read the same way.
+    /// address after a lock starts it over: a lock after that sign-in is a new one, read the same way. It reads only the
+    /// account's own events and the admin's done to it, so `events` can be just those (`Accounts`), with the same result.
     static func status(_ account: String, _ events: [Event], acting: Set<String>, context: Context, joined: [Event] = [],
                        phishedAt: Date? = nil, held: [String: ClosedRange<Date>] = [:]) -> Status {
         let me = account.lowercased()
@@ -1041,6 +1050,28 @@ public enum LogReading {
         else { return false }
         return parts[0].unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "._%+-'".unicodeScalars.contains($0)) }
             && parts[1].unicodeScalars.allSatisfy { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || ".-".unicodeScalars.contains($0)) }
+    }
+
+    /// Each account's events, case aside, in `events`' order: its own (`who`) and the admin log's steps done to it
+    /// (`USER_EMAIL`), each once. Every rule about one account reads only these (`status` and its `timeline`, `deviceWord`, the
+    /// contacts printed, a recovery detail removed), so each reads its own rather than every event: a whole pull for every
+    /// account holds hundreds of thousands, and reading them all once per account took minutes (failure log 2026-10-23).
+    struct Accounts {
+        private let events: [Event]
+        private let indices: [String: [Int]]
+
+        init(_ events: [Event]) {
+            var indices: [String: [Int]] = [:]
+            for (index, event) in events.enumerated() {
+                let who = event.who.lowercased()
+                indices[who, default: []].append(index)
+                if let target = event.parameters["USER_EMAIL"]?.lowercased(), target != who { indices[target, default: []].append(index) }
+            }
+            self.events = events
+            self.indices = indices
+        }
+
+        subscript(_ account: String) -> [Event] { (indices[account.lowercased()] ?? []).map { events[$0] } }
     }
 
     /// Events by their account (case aside), in the order each account first appears.

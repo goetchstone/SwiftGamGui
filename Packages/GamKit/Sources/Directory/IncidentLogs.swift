@@ -136,7 +136,10 @@ public final class IncidentLogs {
         if request == asked { readThrough[application] = through }
     }
 
-    /// One log, on the tenant the pull began on: a queued read never goes to a domain switched to since.
+    /// One log, on the tenant the pull began on: a queued read never goes to a domain switched to since. Off the main actor,
+    /// with its paging, repeats dropped and sorting (a whole pull's reads are hundreds of thousands of rows; failure log
+    /// 2026-10-23); `complete`, `paged`, `chrome` and `admin` run where it does.
+    @concurrent nonisolated
     private static func read(_ application: ActivityLogs.Application, _ query: Query, cap: Int, now: Date, _ access: UserAccess,
                              _ tenant: Domain, progress: @escaping @Sendable (ActivityLogs.Application, Date) async -> Void) async -> Log {
         // The window: the last `hours`, or from a time to a time; Gmail's at most 30 days back from its end.
@@ -169,6 +172,7 @@ public final class IncidentLogs {
     /// day still at its cap, or a read that fails, it stops there, so what's unread is the newest: `through` is when it was
     /// read completely through (nil: all of it). `progress` hears each day as it's done. A first read that fails is the
     /// failure.
+    nonisolated(nonsending)
     static func complete(users: [String], start: Date, end: Date, cap: Int, perDay: Int = ActivityLogs.readsPerDay,
                          budget: Int = ActivityLogs.readsPerLog, progress: (Date) async -> Void,
                          read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>)
@@ -214,6 +218,7 @@ public final class IncidentLogs {
     /// (an alias, an old name: no telling which to go on with). What did come back is kept, said as capped, never passed as
     /// the whole. Newest first, as one read gives them. GAM's cap counts activities and these are events, so a read can look
     /// full sooner: an extra read, never a missed one.
+    nonisolated(nonsending)
     static func paged(users: [String], window: (start: String, end: String), cap: Int, pages: Int = ActivityLogs.pages,
                       _ read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>)
         async -> (rows: Result<[ActivityLogs.Row], UserAccess.Problem>, capped: Bool) {
@@ -256,7 +261,7 @@ public final class IncidentLogs {
     }
 
     /// `date` as the report's time (`GamCommands.isReportTime`): UTC, to the second, rounded down.
-    static func time(_ date: Date) -> String {
+    nonisolated static func time(_ date: Date) -> String {
         Date(timeIntervalSince1970: date.timeIntervalSince1970.rounded(.down)).formatted(.iso8601)
     }
 
@@ -264,6 +269,7 @@ public final class IncidentLogs {
     /// account, and by GAM's own device match, which finds a Chromebook's sign-ins), an event the second read repeats
     /// dropped, newest first. One read that fails fails the log in GAM's words, never a part passed as the whole; one at the
     /// cap marks it capped.
+    nonisolated(nonsending)
     private static func chrome(_ query: Query, hours: Int, cap: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
         var rows: [ActivityLogs.Row] = [], capped = false
         for user in query.users {
@@ -295,6 +301,7 @@ public final class IncidentLogs {
     /// password reset, a sign-out: the lock the reader looks for) and what they did as admins (an attacker with an admin's
     /// account). An event in both is kept once; newest first. One read that fails fails the log in GAM's words; either
     /// read at the cap for an account marks it capped.
+    nonisolated(nonsending)
     private static func admin(_ query: Query, hours: Int, cap: Int, _ access: UserAccess, _ tenant: Domain) async -> Log {
         async let affected = access.activity(.admin, users: query.users, hours: hours, ip: query.ip, cap: cap,
                                              admin: .affected, in: tenant)
@@ -409,7 +416,15 @@ public final class IncidentLogs {
         guard let shown = pull, shown.ended else { return await pull(query) }
         await pull(query)
         guard let read = pull, read.ended, read.query == query, !read.fromEvidence, let tenant = setup.active else { return }
-        kept = (Self.merged(shown, read), tenant, setup.generation)
+        // Put together off the main actor (two whole pulls are hundreds of thousands of rows to sort; failure log 2026-10-23),
+        // still reading until then: the read alone never shows as the pull, nor is saved to an incident as one.
+        let request = asked, generation = setup.generation
+        var reading = read
+        reading.ended = false
+        kept = (reading, tenant, generation)
+        let merged = await Task.detached { Self.merged(shown, read) }.value
+        guard request == asked, setup.active == tenant, setup.generation == generation else { return }
+        kept = (merged, tenant, generation)
     }
 
     /// Which events to show ("Show the Events" on a to-do item): some accounts', from some addresses, in some logs, through
@@ -513,12 +528,12 @@ public final class IncidentLogs {
     }
 
     /// `log`'s rows as a CSV in the one shape, every cell safe to open in a spreadsheet (`AuditExport.csv`).
-    public static func csv(_ log: Log) -> String {
+    public nonisolated static func csv(_ log: Log) -> String {
         AuditExport.csv(ActivityLogs.table((try? log.rows.get()) ?? []))
     }
 
     /// "12 hours", or "3 days" from two days up.
-    public static func window(_ hours: Int) -> String {
+    public nonisolated static func window(_ hours: Int) -> String {
         hours < 48 ? "\(hours) hours" : "\(hours / 24) days"
     }
 
@@ -533,7 +548,8 @@ public final class IncidentLogs {
     /// it was exported, with `about.txt` saying what was pulled: the CSVs alone don't say which window, accounts or
     /// address. A log that wasn't read is left out and said, never an empty CSV that would pass as no events. The folder
     /// is whole or gone: a file that can't be written removes it (each file is `AuditExport.writePrivately`'s).
-    public static func exportAll(_ pull: Pull, into parent: URL, at now: Date = .now, timeZone: TimeZone = .current) throws -> Exported {
+    public nonisolated static func exportAll(_ pull: Pull, into parent: URL, at now: Date = .now,
+                                             timeZone: TimeZone = .current) throws -> Exported {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
@@ -555,7 +571,7 @@ public final class IncidentLogs {
         return Exported(folder: folder, written: read.map(\.application), unread: unread.map(\.application))
     }
 
-    static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
+    nonisolated static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
         let query = pull.query
         let span: String = if let from = query.from { "From \(time(from)) to \(time(query.to ?? .now))." } else {
             "Over the last \(window(query.hours))."
@@ -580,7 +596,7 @@ public final class IncidentLogs {
     }
 
     /// A new folder, never an existing one (" (2)" and on when the name is taken), only its owner's (0700).
-    private static func newFolder(in parent: URL, named name: String) throws -> URL {
+    private nonisolated static func newFolder(in parent: URL, named name: String) throws -> URL {
         for n in 1...99 {
             let folder = parent.appending(path: n == 1 ? name : "\(name) (\(n))", directoryHint: .isDirectory)
             if mkdir(folder.path, 0o700) == 0 { return folder }

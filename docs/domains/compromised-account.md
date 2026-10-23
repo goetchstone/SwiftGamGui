@@ -212,6 +212,12 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   read whole by every account, only a day or so fits. There, filter by the attacker's address (`ip`, which Google applies
   before it counts, so every account's events from that address are few) or name the accounts that matter (20 at once): both
   stay whole over 30 days. Each read is one GAM call, and Google's API quotas slow very long reads.
+- **Nothing a pull's size runs on the main thread** (failure log 2026-10-23: a whole pull's reading stopped the app for
+  minutes). Each read's parse (`UserAccess.activity`), the paging, repeats dropped and sorts (`IncidentLogs.read`,
+  `@concurrent`), Pull Again's merge (the pull stays reading until it's done, so the read alone never shows or is saved),
+  saving a pull to the open incident (`Incidents.keep`), Export CSV and Export All, and Read the logs (`LogReaderView.Memory`, once per pull, "Reading
+  the logs (N events)…" meanwhile) all run off it. The reader is linear: each account's rules read only its own events and
+  the admin's done to it (`LogReading.Accounts`); 200,000 events read in about 2 seconds in a Debug build.
 - **Mock lie, handled where it matters:** the mock ignores a read's start (its events are on fixed dates, and the tests read
   at today's time). Paging back now stops once a read reaches the window's start (nothing earlier is in it, and an end
   before the start is GAM's usage error), which real GAM never needs and the mock's extra rows did. A day's read in the

@@ -401,7 +401,11 @@ struct CompromisedView: View {
         form.person = person
         let asked = environment["SWIFTGAMGUI_TAB"] ?? ""
         let changes = changes
+        // The log reader's pictures wait for its reading, which comes off the main thread after the pull, and for the scroll.
+        let reading = asked == "reading" || asked == "todo"
+        if reading { Spikes.snapshotWork += 1 }
         Task {
+            defer { if reading { Spikes.snapshotWork -= 1 } }
             await changes.check(person)
             if asked == "reports", let email = changes.check?.user.primaryEmail {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
@@ -415,22 +419,26 @@ struct CompromisedView: View {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
                 if case .success(let record) = incidents.create(domain: setup.active?.name ?? "", title: "Account takeover",
                                                                  opened: Date(), openedBy: "Pat", reported: "A Google alert") {
-                    if let pull = logs.pull { _ = incidents.keep(pull, in: record.id) }
+                    if let pull = logs.pull { _ = await incidents.keep(pull, in: record.id) }
                     _ = incidents.addNote("Told the person's manager.", at: Date(), to: record.id)
                     incidents.openID = record.id
                 }
                 self.tab = .report
                 return
             }
-            if asked == "reading" || asked == "todo", let email = changes.check?.user.primaryEmail {
+            if reading, let email = changes.check?.user.primaryEmail {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome], users: [email, "dana@example.com"],
                                                    hours: 72, ip: ""))
+                // Scroll once the findings are drawn: an anchor that first appears in the same update doesn't scroll.
+                for _ in 0..<100 where !readerMemory.hasReading { try? await Task.sleep(for: .milliseconds(50)) }
+                try? await Task.sleep(for: .milliseconds(300))
                 if asked == "todo" {
                     self.tab = .respond
                 } else {
                     scrollToReader = true
                     scrollToReports = true
                 }
+                try? await Task.sleep(for: .milliseconds(500))
                 return
             }
             guard ["plan", "confirm", "result"].contains(asked), let check = changes.check else { return }
@@ -1303,14 +1311,16 @@ private struct IncidentLogsSection: View {
         panel.allowedContentTypes = [.commaSeparatedText]
         panel.canCreateDirectories = true
         panel.message = "The \(log.application.name) log. " + Self.describe(query)
-        let text = IncidentLogs.csv(log)
         let finish: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let destination = panel.url else { return }
-            do {
-                try AuditExport.writePrivately(text, to: destination)
-                say("Exported the \(log.application.name) log to \(destination.lastPathComponent).", failed: false)
-            } catch {
-                say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+            // Made and written off the main thread: a whole log is hundreds of thousands of rows (failure log 2026-10-23).
+            Task {
+                do {
+                    try await Task.detached { try AuditExport.writePrivately(IncidentLogs.csv(log), to: destination) }.value
+                    say("Exported the \(log.application.name) log to \(destination.lastPathComponent).", failed: false)
+                } catch {
+                    say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+                }
             }
         }
         if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
@@ -1326,13 +1336,16 @@ private struct IncidentLogsSection: View {
         panel.message = "A new folder of every log that was read goes here. " + Self.describe(pull.query)
         let finish: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let parent = panel.url else { return }
-            do {
-                let exported = try IncidentLogs.exportAll(pull, into: parent)
-                let skipped = exported.unread.isEmpty ? ""
-                    : " Not read, so not exported: " + exported.unread.map(\.name).joined(separator: ", ") + "."
-                say("Exported \(exported.written.count) logs to “\(exported.folder.lastPathComponent)”.\(skipped)", failed: !exported.unread.isEmpty)
-            } catch {
-                say("Couldn't export to \(parent.lastPathComponent): \(error.localizedDescription). Nothing was left there.", failed: true)
+            // Off the main thread, as each log's Export CSV is.
+            Task {
+                do {
+                    let exported = try await Task.detached { try IncidentLogs.exportAll(pull, into: parent) }.value
+                    let skipped = exported.unread.isEmpty ? ""
+                        : " Not read, so not exported: " + exported.unread.map(\.name).joined(separator: ", ") + "."
+                    say("Exported \(exported.written.count) logs to “\(exported.folder.lastPathComponent)”.\(skipped)", failed: !exported.unread.isEmpty)
+                } catch {
+                    say("Couldn't export to \(parent.lastPathComponent): \(error.localizedDescription). Nothing was left there.", failed: true)
+                }
             }
         }
         if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }

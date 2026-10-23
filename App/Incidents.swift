@@ -83,18 +83,20 @@ final class Incidents {
         }
     }
 
-    /// A pull of the logs made while the incident is open, saved to its evidence as Export All writes one; the problem in
-    /// words, or nil.
-    func keep(_ pull: IncidentLogs.Pull, in id: String) -> String? {
+    /// A pull of the logs made while the incident is open, saved to its evidence as Export All writes one, off the main
+    /// actor (a whole pull's CSVs are hundreds of thousands of rows; failure log 2026-10-23); the problem in words, or nil.
+    func keep(_ pull: IncidentLogs.Pull, in id: String) async -> String? {
         guard let store else { return openProblem }
-        do {
-            _ = try IncidentLogs.exportAll(pull, into: try store.evidenceFolder(of: id))
-            return nil
-        } catch let problem as IncidentStore.Problem {
-            return problem.message
-        } catch {
-            return "Couldn't save the pull to the incident: \(error.localizedDescription)."
-        }
+        return await Task.detached { () -> String? in
+            do {
+                _ = try IncidentLogs.exportAll(pull, into: try store.evidenceFolder(of: id))
+                return nil
+            } catch let problem as IncidentStore.Problem {
+                return problem.message
+            } catch {
+                return "Couldn't save the pull to the incident: \(error.localizedDescription)."
+            }
+        }.value
     }
 
     struct Failure: Error {

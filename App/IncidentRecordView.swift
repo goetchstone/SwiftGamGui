@@ -70,7 +70,7 @@ struct IncidentRecordSection: View {
         .onChange(of: logs.pull?.ended) { _, ended in
             guard ended == true, let pull = logs.pull, !pull.fromEvidence, let record = open,
                   pull.logs.contains(where: { (try? $0.rows.get()) != nil }) else { return }
-            if let failed = incidents.keep(pull, in: record.id) { say(failed) } else { incidents.reload += 1 }
+            Task { if let failed = await incidents.keep(pull, in: record.id) { say(failed) } else { incidents.reload += 1 } }
         }
     }
 
@@ -209,7 +209,7 @@ struct IncidentRecordSection: View {
         if loaded.names.isEmpty {
             // A new incident takes the pull just made: pull, then New Incident… keeps what was found.
             if let pull = logs.pull, pull.ended, !pull.fromEvidence, pull.logs.contains(where: { (try? $0.rows.get()) != nil }) {
-                if let failed = incidents.keep(pull, in: id) { say(failed) } else { incidents.reload += 1 }
+                if let failed = await incidents.keep(pull, in: id) { say(failed) } else { incidents.reload += 1 }
             }
             return
         }

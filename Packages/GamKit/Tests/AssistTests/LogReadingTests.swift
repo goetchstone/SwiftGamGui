@@ -617,6 +617,59 @@ struct LogReadingTests {
         #expect(short.toDo.firstIndex { $0.kind == .pullAgain }! < short.toDo.firstIndex { $0.kind == .deleteDevice }!)
         #expect(again?.pullsAgain == ["gmail"] && again?.shows == nil, "Pull Again reads the short log for those accounts")
     }
+
+    /// Each account is read from its own events and the admin's done to it (`LogReading.Accounts`), never every event: a
+    /// whole pull holds hundreds of thousands (failure log 2026-10-23). A rule that reads more about an account must widen
+    /// `Accounts`, or this fails: every account's status is the same from its own events as from all of them.
+    @Test func anAccountsStatusReadsOnlyItsOwnEvents() {
+        let events = Self.incident + [
+            Self.done("CHANGE_PASSWORD", at: 60), Self.done("RESET_SIGNIN_COOKIES", to: "Carol@example.com", at: 61),
+            Self.event("login", "carol@example.com", "login_success", ip: Self.attacker, at: 80),
+            Self.event("contacts", "carol@example.com", "print_contacts", at: 20, ["CONTACTS_COUNT": "1405"]),
+            Self.event("drive", "carol@example.com", "view", ip: Self.attacker, at: 33),
+            Self.event("login", "dana@example.com", "login_success", ip: "203.0.113.9", at: 2),
+            Self.event("useraccounts", "dana@example.com", "password_edit", ip: "203.0.113.9", at: 50),
+            Self.done("SUSPEND_USER", to: "dana@example.com", at: 40), Self.done("UNSUSPEND_USER", to: "DANA@example.com", at: 45),
+            Self.event("login", "erin@example.com", "account_disabled_hijacked", at: 50),
+            Self.event("admin", "dana@example.com", "RESET_SIGNIN_COOKIES", ip: "192.0.2.9", at: 30, ["USER_EMAIL": "erin@example.com"]),
+            Self.event("admin", "alice@example.com", "CHANGE_PASSWORD", ip: Self.office, at: 3, ["USER_EMAIL": "alice@example.com"]),
+        ]
+        let about = LogReading.Accounts(events), acting: Set = [Self.attacker]
+        let held = ["dana@example.com": Self.event("", "", "", at: 20).time!...Date.distantFuture]
+        for account in ["carol@example.com", "Dana@example.com", "erin@example.com", "alice@example.com", "frank@example.com"] {
+            for held in [[:], held] {
+                #expect(LogReading.status(account, events, acting: acting, context: LogReading.Context(), held: held)
+                        == LogReading.status(account, about[account], acting: acting, context: LogReading.Context(), held: held), "\(account)")
+            }
+        }
+        #expect(LogReading.status("carol@example.com", about["carol@example.com"], acting: acting, context: LogReading.Context()).state == .stillIn)
+        #expect(about["CAROL@example.com"].count == 10 && about["alice@example.com"].count == 6, "its own, and the admin's done to it, each once")
+    }
+
+    /// A whole pull's size (a real tenant's every-account Gmail runs about 12,600 events a day) read in seconds, not the
+    /// minutes it took when each account's status read every event (failure log 2026-10-23): 80 accounts the attacker had,
+    /// each from its own address, among 200,000 events. About 2 seconds in a debug build; reading every event per account,
+    /// 40 accounts took 23 and these 80 would take about 45, so the bound catches that and leaves a slow runner room.
+    @Test func aWholePullIsReadInSeconds() {
+        let accounts = (0..<80).map { "user\($0)@example.com" }
+        var events: [LogReading.Event] = []
+        for (n, account) in accounts.enumerated() {
+            events.append(Self.event("login", account, "suspicious_login", ip: "198.51.100.\(n + 1)", flagged: true, at: n))
+            events.append(Self.event("login", account, "login_success", ip: "198.51.100.\(n + 1)", at: n + 1, ["is_suspicious": "true"]))
+            if n.isMultiple(of: 2) { events += [Self.done("CHANGE_PASSWORD", to: account, at: n + 60), Self.done("RESET_SIGNIN_COOKIES", to: account, at: n + 61)] }
+        }
+        let logs = ["gmail", "drive", "calendar", "login"]
+        for index in events.count..<200_000 {
+            let n = index % accounts.count
+            events.append(Self.event(logs[index % logs.count], accounts[n], logs[index % logs.count] == "login" ? "login_success" : "view",
+                                     ip: index.isMultiple(of: 9) ? "198.51.100.\(n + 1)" : "203.0.113.\(index % 200)", at: index % 4_000))
+        }
+        let clock = ContinuousClock(), started = clock.now
+        let reading = LogReading.read(events)
+        let took = clock.now - started
+        #expect(reading.statuses.count == 80 && reading.events == 200_000)
+        #expect(took < .seconds(20), "took \(took)")
+    }
 }
 
 /// The real on-device model, by hand on a Mac that has it (`SWIFTGAMGUI_MODEL=1 swift test --filter OnDeviceModel`): CI has
