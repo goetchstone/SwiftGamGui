@@ -213,6 +213,14 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   read whole by every account, only a day or so fits. There, filter by the attacker's address (`ip`, which Google applies
   before it counts, so every account's events from that address are few) or name the accounts that matter (20 at once): both
   stay whole over 30 days. Each read is one GAM call, and Google's API quotas slow very long reads.
+- **Nothing a pull's size runs on the main thread** (failure log 2026-10-23: a whole pull's reading stopped the app for
+  minutes). Each read's parse (`UserAccess.activity`), the paging, repeats dropped and sorts (`IncidentLogs.read`,
+  `@concurrent`), Pull Again's merge (the pull stays reading until it's done, so the read alone never shows or is saved),
+  saving a pull to the open incident (`Incidents.keep`), Export CSV and Export All, and Read the logs (`LogReaderView.Memory`, once per pull, "Reading
+  the logs (N events)…" meanwhile) all run off it. While a pull reads, each log says where it is after every GAM read
+  (`IncidentLogs.Progress`: waiting its turn, reading with its events so far and its reads, whole through a time, done or
+  couldn't be read), so a busy log reading a day in a dozen reads still moves. The reader is linear: each account's rules read only its own events and
+  the admin's done to it (`LogReading.Accounts`); 200,000 events read in about 2 seconds in a Debug build.
 - **Mock lie, handled where it matters:** the mock ignores a read's start (its events are on fixed dates, and the tests read
   at today's time). Paging back now stops once a read reaches the window's start (nothing earlier is in it, and an end
   before the start is GAM's usage error), which real GAM never needs and the mock's extra rows did. A day's read in the
@@ -550,14 +558,22 @@ Reads and this Mac only: nothing here changes the tenant.
   `App/IncidentRecordView.swift` (the section at the top of Incident, and the details sheet). `ActivityLogs.rows(exported:)`
   and `Row(exported:)` read an export back; `IncidentLogs.evidence(_:)` puts an incident's exports together as one pull;
   `IncidentLogs.show(_:)` shows it. Tests: `StoresTests/IncidentStoreTests.swift`, `GamEngineTests/ExportedLogsTests.swift`,
-  `DirectoryStoreTests/IncidentEvidenceTests.swift`, `CompromisedChangesTests.savedEvidenceReadsBackAsThePull`.
+  `DirectoryStoreTests/IncidentEvidenceTests.swift`, `CompromisedChangesTests.savedEvidenceReadsBackAsThePull`,
+  `.aPullAddedToAnIncidentIsWhatReadingItBackGives` (in memory is the read-back) and `.aPullIsKeptBeforeItEnds`.
 - **Make one:** New Incident…, or From an Export… (a folder Export All wrote: `about.txt` and a CSV a log, headed as the
   export heads it; other files are left out). Its files are read by descriptor, never through a link, each a regular file of
   at most 256 MB, and copied in byte for byte: the evidence is exactly what was exported, which is what to hand anyone. An
   export whose events have an actor and none at the connected domain is refused (one tenant's logs never go into another's
   incident). An incident opens only while connected to its domain.
-- **While it's open:** each pull of the logs that read something is exported into its evidence when it ends (Export All's
-  folder, named for when), then everything saved is read again and shown: the logs' tables, Read the logs, Still to do.
+- **While it's open:** each pull of the logs that read something is exported into its evidence before it ends (Export
+  All's folder, named for when; `IncidentLogs.keep`, `Incidents.add`): only what was read from Google, never what's shown
+  from the evidence again. It's then added to the evidence shown in memory (`IncidentLogs.adding`, the step reading the
+  exports back takes for each), from the very text written, and the pull ends as that: the logs' tables, Read the logs
+  (once), Still to do. No saved pull is read again (failure log 2026-10-23, "each pull re-read every saved pull"). Read
+  back whole instead, as when an incident opens, only when that could differ: the evidence wasn't read yet or is being
+  read, the new folder isn't last by name (an export added with a later name), or a cap would be reached
+  (`IncidentStore.readsBackLast`). Under the logs: "Saving this pull to the incident…", then Read the logs' "Reading the
+  logs…"; "Reading the incident's saved logs…" when one opens.
   Add an Export… copies another in; Show in Finder opens the evidence folder; notes take a time, which can be earlier than
   now ("told the insurer at 9").
 - **Reading the exports back** (the export's own format, not GAM's): the export's CSV dialect has no escape (GAM's has a
@@ -573,7 +589,7 @@ Reads and this Mac only: nothing here changes the tenant.
 - **Gotchas** (review before commit): a new incident takes the pull just made (else New Incident… after a pull lost it);
   showing the evidence waits for a pull still reading (`IncidentLogs.show` replaces the last pull, which drops one
   reading); an ID is never one kept already (a save over it would replace that record); a note's time is now unless
-  changed. Each saved pull reads every export again: fine at a few, slow at many large ones (the next slice's to fix).
+  changed. A saved pull is added in memory, not by reading every export again (2026-10-23).
 - **Not built yet** (the plan's next): the tabs (Investigate, Respond, Report), a button on every to-do item and Select All
   for the logs, the incoming phish and an attack-anchored pull, who to warn and whether they were, the checklist and the
   report. Deleting a kept incident is the Finder's for now.

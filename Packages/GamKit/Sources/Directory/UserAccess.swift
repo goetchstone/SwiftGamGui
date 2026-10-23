@@ -318,8 +318,10 @@ public final class UserAccess {
         do {
             let read = try GamCommands.reportActivity(application, users: users, hours: hours, start: start, end: end, ip: ip,
                                                       events: events, maxActivities: cap, chrome: chrome, admin: admin)
-            // GAM reads one account after another: twenty accounts' Gmail takes far longer than one read.
-            return await readNow(read, in: domain, timeout: ActivityLogs.timeout) { ActivityLogs.rows($0, application: application) }
+            // GAM reads one account after another: twenty accounts' Gmail takes far longer than one read. Parsed off the main
+            // actor: a whole pull is up to hundreds of reads of a thousand events each (failure log 2026-10-23).
+            let output = await readNow(read, in: domain, timeout: ActivityLogs.timeout) { $0 }
+            return await Task.detached { output.map { ActivityLogs.rows($0, application: application) } }.value
         } catch GamCommands.Invalid.argument(let why) {
             return .failure(Problem(summary: "Couldn't read the \(application.name) log: \(why)."))
         } catch {

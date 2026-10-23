@@ -118,4 +118,15 @@ struct IncidentStoreTests {
         try FileManager.default.createSymbolicLink(at: linked.appending(path: "login-log.csv"), withDestinationURL: elsewhere)
         #expect(throws: IncidentStore.Problem.self) { try IncidentStore.readExport(at: linked) }
     }
+
+    /// A pull just saved to an incident reads back last only when its name is after every other saved read's and the
+    /// incident is under its count of them: only then is adding it in memory what reading every one back gives.
+    @Test func aNewExportReadsBackLastOnlyWhenItWould() {
+        let export = ActivityLogs.Export(name: "Incident logs 2026-10-23 0910", about: "Incident logs exported 2026-10-23 0910 UTC.",
+                                         logs: [(.login, Self.login)])
+        #expect(IncidentStore.readsBackLast(export, after: [], saved: 0))
+        #expect(IncidentStore.readsBackLast(export, after: ["Incident logs 2026-10-22 1500", "Incident logs 2026-10-23 0909"], saved: 3))
+        #expect(!IncidentStore.readsBackLast(export, after: ["Incident logs 2026-10-23 0911"], saved: 1), "an export added with a later name")
+        #expect(!IncidentStore.readsBackLast(export, after: [], saved: IncidentStore.exportsCap), "past the count kept")
+    }
 }

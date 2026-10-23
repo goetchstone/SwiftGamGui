@@ -235,6 +235,16 @@ public struct IncidentStore: Sendable {
         return folder.lastPathComponent
     }
 
+    /// Whether `export`, just saved to an incident whose readable saved reads are named `names` and which keeps `saved`
+    /// reads in all, would read back last and whole: its name after every other (`exports(of:)` reads them by name), under
+    /// `exportsCap`, and each file and all of them under `fileCap` and `exportCap`. Then the evidence with it added in memory
+    /// is what reading every saved read back gives, and none need be read again (failure log 2026-10-23).
+    public static func readsBackLast(_ export: ActivityLogs.Export, after names: [String], saved: Int) -> Bool {
+        let sizes = [export.about.utf8.count] + export.logs.map(\.csv.utf8.count)
+        return names.allSatisfy { $0 < export.name } && saved < exportsCap && sizes.allSatisfy { $0 <= fileCap }
+            && sizes.reduce(0, +) <= exportCap
+    }
+
     /// Every read of the logs kept for the incident `id`, oldest first (by name: an export's name is when it was made), and
     /// the names of any that couldn't be read.
     public func exports(of id: String) -> (exports: [ActivityLogs.Export], unreadable: [String]) {

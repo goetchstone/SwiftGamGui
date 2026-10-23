@@ -19,6 +19,9 @@ final class Incidents {
     }
     /// The open incident's evidence as last read: each saved read's name, and those that couldn't be read.
     var evidence: (id: String, names: [String], unreadable: [String])?
+    /// The same evidence put together (`IncidentLogs.evidence`; nil when no saved read was readable): what a pull just
+    /// saved to it is added to, in memory (`add`).
+    var together: (id: String, pull: IncidentLogs.Pull?)?
     /// Reading the evidence, or an export picked.
     var loading = false
     /// Bumped to read the evidence again (a pull or an export was just saved to it).
@@ -83,17 +86,39 @@ final class Incidents {
         }
     }
 
-    /// A pull of the logs made while the incident is open, saved to its evidence as Export All writes one; the problem in
-    /// words, or nil.
-    func keep(_ pull: IncidentLogs.Pull, in id: String) -> String? {
-        guard let store else { return openProblem }
-        do {
-            _ = try IncidentLogs.exportAll(pull, into: try store.evidenceFolder(of: id))
+    /// A pull read while the incident `id` is open, saved to its evidence as Export All writes one (only what was read
+    /// from Google: what's shown from the evidence is there already), and what to show: the evidence with it added in
+    /// memory (`IncidentLogs.adding`), which is what reading every saved read back gives (`IncidentStore.readsBackLast`),
+    /// so none is read again (failure log 2026-10-23: each pull re-read and re-parsed every saved one). Off the main actor.
+    /// Nil to show the read as it is, the evidence then read back whole (`reload`): it wasn't read yet, or is being read,
+    /// or a read-back could differ. Throws when the pull couldn't be saved.
+    func add(_ read: IncidentLogs.Pull, to id: String) async throws(Failure) -> IncidentLogs.Pull? {
+        guard let store else { throw Failure(openProblem ?? "The incidents couldn't be opened.") }
+        let shown = !loading && evidence?.id == id ? evidence : nil, base = together?.id == id ? together : nil
+        let saved = await Task.detached { () -> Result<(name: String, added: (together: IncidentLogs.Pull?, readable: Bool)?), Failure> in
+            do {
+                let export = try IncidentLogs.exportAll(read, into: try store.evidenceFolder(of: id)).export
+                guard let shown, let base,
+                      IncidentStore.readsBackLast(export, after: shown.names,
+                                                 saved: shown.names.count + shown.unreadable.filter { !shown.names.contains($0) }.count)
+                else { return .success((export.name, nil)) }
+                return .success((export.name, IncidentLogs.adding(export, to: base.pull)))
+            } catch let problem as IncidentStore.Problem {
+                return .failure(Failure(problem.message))
+            } catch {
+                return .failure(Failure("Couldn't save the pull to the incident: \(error.localizedDescription)."))
+            }
+        }.value
+        switch saved {
+        case .failure(let failure):
+            throw failure
+        case .success((let name, let added?)) where evidence?.id == id && evidence?.names == shown?.names:
+            evidence = (id, (shown?.names ?? []) + [name], (shown?.unreadable ?? []) + (added.readable ? [] : [name]))
+            together = (id, added.together)
+            return added.together
+        case .success:
+            reload += 1
             return nil
-        } catch let problem as IncidentStore.Problem {
-            return problem.message
-        } catch {
-            return "Couldn't save the pull to the incident: \(error.localizedDescription)."
         }
     }
 

@@ -67,6 +67,10 @@ enum Spikes {
     }
 
     #if DEBUG
+    /// Work a screen's demo fill still has under way that the picture must show (a background reading, the scroll to it):
+    /// the snapshot waits until there's none, up to 20 seconds after its pause.
+    @MainActor static var snapshotWork = 0
+
     /// Renders the app's real window (AppKit-backed controls included) to a PNG and quits: how a
     /// screen is looked at from the command line. No screen-recording permission involved. Only the
     /// screen's own pane, below the toolbar: the sidebar's and toolbar's system materials don't draw
@@ -77,6 +81,8 @@ enum Spikes {
         // a signature preview compiles its rule list before it draws.
         let selecting = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] != nil
         try? await Task.sleep(for: .seconds(selecting ? 4 : 1.5))
+        // A screen still filling its demo (the log reader's reading comes off the main thread): wait for it, bounded.
+        for _ in 0..<200 where snapshotWork > 0 { try? await Task.sleep(for: .milliseconds(100)) }
         // The window, not a sheet over it (a sheet is a visible window too).
         let window = NSApp.windows.first { $0.isVisible && $0.sheetParent == nil }
         guard let content = window?.contentView else {
