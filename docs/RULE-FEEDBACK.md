@@ -22,6 +22,19 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-23 — A third Google field the reader matched came from the mock, not from Google
+- **What happened:** the log reader took every Gmail event from the attacker's address as a send ("pull from every
+  mailbox"): the mock's Gmail rows had no `event_info.mail_event_type`, which Google's appendix documents with 36 types.
+  The third in two days, after the device action status and the account warnings' actor (failure log 2026-10-23 "Every
+  Gmail event read as a send", and the two of 2026-10-22).
+- **Invariant in force:** "the mock lies" (CLAUDE.md): make the mock fail the way GAM fails, checked against the vendored
+  grammar; #11 for argv parity.
+- **Why it didn't hold:** not covered. The rule checks GAM's argv and failures against `GamCommands.txt`; the shape of
+  Google's data that a reader rule matches isn't in the grammar, and the fixture rows were written beside the rule.
+- **Would a rule have caught it?** only if enforced differently: a pre-commit item for `Assist/LogReading.swift` and the
+  `report_*.csv` fixtures: every field and value a rule matches cites Google's reference or a real row.
+- **Enforcement home if changed:** skill (pre-commit's item for those files).
+
 ## 2026-10-23 — A cached build hides warnings, so a deprecated API shipped
 - **What happened:** PR #101 merged `GenerationOptions(sampling: .greedy, …)`, deprecated in macOS 27 (renamed
   `samplingMode:`). Its pre-commit check grepped `swift test`'s output for warnings, but the module had already been

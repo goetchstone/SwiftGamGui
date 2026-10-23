@@ -161,7 +161,8 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
 - The builder: `reportActivity(_:users:hours:ip:events:maxActivities:)`. 1 hour to 180 days; at most 20 accounts, each
   `isOneAddress`, joined for `select users`; `ip` is `Address.isIP` (in Address.swift, which the fuzz build compiles).
 - **The mock's logs** (`report_<application>.csv`): carol@'s sign-ins include a flagged one from 198.51.100.23, dana@
-  signed in from it too, and the same address granted an app, sent the phish (Gmail), was denied a cookie validation
+  signed in from it too, and the same address granted an app, read a message of carol@'s and sent the phish (Gmail:
+  every event is `delivery`, `event_info.mail_event_type` says which, 31 and 1), was denied a cookie validation
   (access evaluation) and changed carol@'s recovery phone (account changes). A log without a fixture prints the titles
   alone. `nolog/<application>` is an edition without it (exit 4). Gmail over 30 days is exit 56 (an account) or 53
   (all); an address outside example.com is 73; the admin log's accounts are the actor only with `userisactor`. A known
@@ -621,6 +622,11 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 - **A fix is a hand-off, never a change:** Secure sets this screen's `requested` (the same path as Users' Secure
   Account…: a new form, checked, nothing ticked); Pull … from Every Mailbox opens Phishing with the Message-ID, which
   finds who has it (its dry run, a read). Each screen's preview and confirmation are where anything changes.
+- **Only mail sent is pulled** (2026-10-23, failure log "Every Gmail event read as a send"): every Gmail event is
+  `delivery`, and its `event_info.mail_event_type` says what happened (Google's appendix "Gmail Activity Events"; GAM's
+  `gmaileventtypes` reads the same field). A pull is drafted for 1 (sent) and 35 (send begun) only; what the attacker
+  viewed (31), opened (7), drafted (29) or trashed (13) from their address is the person's own mail. Each Gmail row says
+  its type in words (`ActivityLogs.gmailWords`, Google's 36 types); an event with no type is "A Gmail event", never a send.
 - **Gotchas:** `LogReaderView.swift` is model code to `WriteRouteTests`: it may not name the executor, a changes model,
   `AppServices` or a confirmation, even in a comment, and the screens it sits in may not name `Assist` or the model's
   framework. The model's answer is shown as the model's, beside the findings it cites; the findings and drafts are code's.

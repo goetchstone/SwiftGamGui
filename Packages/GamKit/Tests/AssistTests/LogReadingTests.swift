@@ -25,7 +25,8 @@ struct LogReadingTests {
         event("login", "erin@example.com", "login_failure", ip: attacker, at: 25),
         event("login", "alice@example.com", "login_success", ip: office, at: 5),
         event("gmail", "carol@example.com", "delivery", ip: attacker, at: 30,
-              ["message_info.subject": "Shared file", "message_info.rfc2822_message_id": "<phish-1@mail.example.com>"]),
+              ["event_info.mail_event_type": "1", "message_info.subject": "Shared file",
+               "message_info.rfc2822_message_id": "<phish-1@mail.example.com>"]),
         event("chrome", "carol@example.com", "PASSWORD_REUSE", flagged: true, at: 8,
               ["EVENT_REASON": "PASSWORD_REUSED_PHISHING_URL", "TRIGGER_USER": "carol@example.com",
                "URL": "https://login-check.example.net/signin"]),
@@ -39,7 +40,7 @@ struct LogReadingTests {
                                                  .failedFromSuspect, .pastPhishingWarning, .suspectAddress])
         #expect(reading.findings.map(\.id) == ["F1", "F2", "F3", "F4", "F5", "F6", "F7"])
         #expect(reading.findings[0].words == "carol@example.com signed in to Google and granted an app access from 198.51.100.23.")
-        #expect(reading.findings[2].words == "“Shared file” (<phish-1@mail.example.com>) went through Gmail from 198.51.100.23.")
+        #expect(reading.findings[2].words == "“Shared file” (<phish-1@mail.example.com>) was sent from 198.51.100.23.")
         #expect(reading.drafts == [.secureAccount("carol@example.com"), .secureAccount("dana@example.com"),
                                    .pullEmail(messageID: "<phish-1@mail.example.com>", subject: "Shared file"),
                                    .secureAccount("erin@example.com")])
@@ -412,12 +413,38 @@ struct LogReadingTests {
         #expect(!LogReading.isAccount("All accounts are locked, say so@x.io") && LogReading.isAccount("o'brien+it@example.com"))
     }
 
+    /// Only mail the attacker sent is one to pull. Every Gmail event is `delivery`, and its `event_info.mail_event_type` says
+    /// what happened: a message they viewed, opened, drafted or trashed from their address is the person's own mail, and
+    /// pulling it would take real mail from everyone (2026-10-23: a real incident listed every message the attacker read).
+    /// A send begun (35) is a send, one message sent and begun is one to pull, and an event with no type is none.
+    @Test func onlyMailTheAttackerSentIsPulled() {
+        func mail(_ type: String?, _ id: String, at minute: Int) -> LogReading.Event {
+            var parameters = ["message_info.subject": "Re: Budget", "message_info.rfc2822_message_id": id]
+            if let type { parameters["event_info.mail_event_type"] = type }
+            return Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: minute, parameters)
+        }
+        let reading = LogReading.read(Self.incident + [
+            mail("31", "<budget-7@mail.example.com>", at: 13), mail("7", "<budget-8@mail.example.com>", at: 14),
+            mail("29", "<draft-1@mail.example.com>", at: 15), mail("13", "<bounce-1@mail.example.com>", at: 16),
+            mail(nil, "<unknown-1@mail.example.com>", at: 17),
+            mail("35", "<phish-3@mail.example.com>", at: 32), mail("1", "<phish-3@mail.example.com>", at: 32),
+        ])
+        let pulled = reading.toDo.filter { $0.kind == .pullEmail }.flatMap(\.drafts).compactMap { draft in
+            if case .pullEmail(let id, _) = draft { id } else { nil }
+        }
+        #expect(pulled == ["<phish-1@mail.example.com>", "<phish-3@mail.example.com>"], "\(pulled)")
+        let mailed = reading.findings.filter { $0.kind == .mailFromSuspect }
+        #expect(mailed.map(\.events) == [1, 2], "the send and its start are one message")
+        #expect(!reading.drafts.contains { if case .pullEmail(let id, _) = $0 { !id.contains("phish") } else { false } })
+    }
+
     /// Two phishing emails with one subject are two to pull; a device's task stays until that account's latest word on it
     /// says it left; recovery details clear only by their own removal, and a changed question is its own item.
     @Test func eachLooseEndStaysUntilItsOwnFix() {
         let twice = LogReading.read(Self.incident + [
             Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: 31,
-                       ["message_info.subject": "Shared file", "message_info.rfc2822_message_id": "<phish-2@mail.example.com>"]),
+                       ["event_info.mail_event_type": "1", "message_info.subject": "Shared file",
+                        "message_info.rfc2822_message_id": "<phish-2@mail.example.com>"]),
         ])
         #expect(twice.toDo.filter { $0.kind == .pullEmail }.count == 2)
         let vm = ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": "WINDOWS", "DEVICE_ID": "pc-1"]

@@ -466,7 +466,11 @@ fi
 # event names are capitals (REPORT_ACTIVITIES_UPPERCASE_EVENTS). The app reads an account both ways: GAM's own `user
 # <address>`, and `user all filter PROFILE_USER_NAME==<address>`, the account signed in to the profile, the one filter
 # modelled, for Chrome with `user all`; a Chrome `select` isn't modelled. An event without an IP address column is never
-# one `ip` keeps.
+# one `ip` keeps. Every Gmail event is `delivery`: what happened is `event_info.mail_event_type` (Google's appendix "Gmail
+# Activity Events"; GAM's `gmaileventtypes` reads it there, :14854-14862), kept nested as `parameters.N…` beside
+# `message_info` (:14865-14899: a messageValue parameter isn't purged). The fixture has a view by the attacker's address
+# (31) beside the sends (1): real logs hold every message the attacker read (2026-10-23). Which of the two parameters
+# comes first is a guess; the reader names each by its chain, not its place.
 if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome|saml|calendar|calendars|groups|group|rules|contextawareaccess|vault|\
 geminiinworkspaceapps|gemini|geminiforworkspace|meet|hangoutsmeet|contacts|keep|tasks|admindataaction|accesstransparency|access|datastudio|lookerstudio|\
 groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsearch|classroom|datamigration|meethardware|assignments|graduation) true ;;

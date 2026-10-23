@@ -290,6 +290,16 @@ public enum LogReading {
     /// Google marked this one sign-in suspicious.
     static func isMarked(_ event: Event) -> Bool { ["true", "1"].contains(event.parameters["is_suspicious"]?.lowercased() ?? "") }
 
+    /// A Gmail event that is a message sent. Every Gmail event is `delivery`, and its `event_info.mail_event_type` says what
+    /// happened (Google's "Gmail Activity Events"): 1 sent, 35 the send begun. The rest (31 viewed, 7 opened, 29 a draft, 13
+    /// trashed…) aren't a send: from the attacker's address they are the person's own mail the attacker read, and pulling it
+    /// would take real mail from everyone who has it (2026-10-23, a real incident listed every message the attacker read).
+    static func isSent(_ event: Event) -> Bool {
+        Int(event.parameters["event_info.mail_event_type"] ?? "").map(sentTypes.contains) ?? false
+    }
+
+    static let sentTypes: Set = [1, 35]
+
     /// The findings in `events`. Suspect addresses are those of a sign-in Google called suspicious (`marksAttacker`), and
     /// the one the operator pulled by; never an address only because many accounts used it, which an office's does.
     public static func read(_ events: [Event], context: Context = Context()) -> Reading {
@@ -642,10 +652,11 @@ public enum LogReading {
                                  todo: [(.checkPassword, "Ask \(account) whether they typed a password at \(sites(theirs)).", [])]))
         }
 
-        // Mail from a suspect address: the message to pull from everyone. Its sender is secured by their sign-in from that
-        // address, not here: whose mailbox a Gmail row is isn't certain from the row alone.
+        // Mail sent from a suspect address: the message to pull from everyone. Only a send (`isSent`): what the attacker read,
+        // drafted or trashed there is the person's own mail. Its sender is secured by their sign-in from that address, not
+        // here: whose mailbox a Gmail row is isn't certain from the row alone.
         var messages: [String: [Event]] = [:], order: [String] = []
-        for event in events where event.log == "gmail" && acting.contains(event.ip) {
+        for event in events where event.log == "gmail" && acting.contains(event.ip) && isSent(event) {
             guard let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { continue }
             if messages[id] == nil { order.append(id) }
             messages[id, default: []].append(event)
@@ -653,7 +664,7 @@ public enum LogReading {
         for id in order {
             let theirs = messages[id] ?? []
             let subject = theirs.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
-            found.append(Pending(.mailFromSuspect, "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) went through Gmail from "
+            found.append(Pending(.mailFromSuspect, "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) was sent from "
                                  + list(unique(theirs.map(\.ip))) + ".", unique(theirs.map(\.who).filter(isAccount)),
                                  unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)],
                                  todo: [(.pullEmail, "Pull “\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) from every mailbox: it went out "
