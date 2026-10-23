@@ -170,7 +170,7 @@ struct CompromisedView: View {
         }
         if setup.active != nil {
             IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter,
-                                readMore: read)
+                                readMore: read, readingSaved: incidents.loading)
                 .id(Self.reportsAnchor)
             if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller).id(Self.readerAnchor) }
         } else {
@@ -419,7 +419,7 @@ struct CompromisedView: View {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [email], hours: 72, ip: ""))
                 if case .success(let record) = incidents.create(domain: setup.active?.name ?? "", title: "Account takeover",
                                                                  opened: Date(), openedBy: "Pat", reported: "A Google alert") {
-                    if let pull = logs.pull { _ = await incidents.keep(pull, in: record.id) }
+                    if let pull = logs.pull { _ = try? await incidents.add(pull, to: record.id) }
                     _ = incidents.addNote("Told the person's manager.", at: Date(), to: record.id)
                     incidents.openID = record.id
                 }
@@ -1150,6 +1150,8 @@ private struct IncidentLogsSection: View {
     @Binding var filter: IncidentLogs.Filter?
     /// Reads more and adds it to what's shown (Read the Rest), as the screen reads: saved to an incident open.
     let readMore: (IncidentLogs.Query) -> Void
+    /// The open incident's saved logs are being read: said with the logs.
+    let readingSaved: Bool
     private var hours: Int { form.hours }
     private var accounts: String { form.accounts }
     private var ip: String { form.ip }
@@ -1259,13 +1261,13 @@ private struct IncidentLogsSection: View {
                         LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: true) { export(log, of: pull.query) }
                     }
                 } else {
-                    if !pull.ended, !logs.readThrough.isEmpty {
-                        // A long read, a day at a time from the oldest: how far each log has got.
-                        ForEach(ActivityLogs.Application.allCases.filter { logs.readThrough[$0] != nil }, id: \.self) { application in
-                            Label("\(application.name): read through "
-                                  + (logs.readThrough[application]?.formatted(date: .abbreviated, time: .shortened) ?? ""),
-                                  systemImage: "clock.arrow.circlepath")
-                                .font(.callout).foregroundStyle(.secondary)
+                    if !pull.ended {
+                        // Where each log is, after every read: a busy log takes a dozen reads a day, oldest day first.
+                        ForEach(pull.query.applications, id: \.self) { application in
+                            if let progress = logs.progress[application] {
+                                Label(Self.words(application, progress), systemImage: Self.symbol(progress))
+                                    .font(.callout).foregroundStyle(.secondary)
+                            }
                         }
                     }
                     ForEach(pull.logs) { log in
@@ -1277,8 +1279,11 @@ private struct IncidentLogsSection: View {
                             export(log, of: pull.query)
                         }
                     }
+                    // Each step after the pull, under the logs: then Read the logs below says it's reading them.
+                    if logs.isKeeping { step("Saving this pull to the incident, and putting it together with what the incident holds…") }
                 }
             }
+            if readingSaved { step("Reading the incident's saved logs…") }
         } header: {
             Text("1. Find who's affected: pull the incident logs").accessibilityAddTraits(.isHeader)
         } footer: {
@@ -1289,6 +1294,37 @@ private struct IncidentLogsSection: View {
         .onChange(of: person, initial: true) { _, person in
             if let person, accounts.isEmpty { form.accounts = person }
         }
+    }
+
+    /// "Gmail: reading, 12,345 events so far in 37 reads, whole through 14 Oct 2026 at 9:05 AM".
+    static func words(_ application: ActivityLogs.Application, _ progress: IncidentLogs.Progress) -> String {
+        let events = "\(progress.events.formatted()) event\(progress.events == 1 ? "" : "s")"
+        switch progress.state {
+        case .waiting: return "\(application.name): waiting its turn"
+        case .reading where progress.reads == 0: return "\(application.name): reading…"
+        case .reading:
+            return "\(application.name): reading, \(events) so far in \(progress.reads) read\(progress.reads == 1 ? "" : "s")"
+                + (progress.through.map { ", whole through \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
+        case .done: return progress.failed ? "\(application.name): couldn't be read" : "\(application.name): done, \(events)"
+        }
+    }
+
+    static func symbol(_ progress: IncidentLogs.Progress) -> String {
+        switch progress.state {
+        case .waiting: "hourglass"
+        case .reading: "arrow.down.circle"
+        case .done: progress.failed ? "exclamationmark.triangle" : "checkmark.circle"
+        }
+    }
+
+    /// A step under way after a pull, said where the logs are.
+    private func step(_ words: String) -> some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text(words).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(words)
     }
 
     private func pick(_ application: ActivityLogs.Application) -> Binding<Bool> {

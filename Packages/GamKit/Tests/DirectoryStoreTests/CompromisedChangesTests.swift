@@ -4,6 +4,7 @@ import Foundation
 import GamEngine
 import Security
 import Setup
+import Stores
 import TestSupport
 import Testing
 import Vault
@@ -447,12 +448,14 @@ final class CompromisedChangesTests {
                 "login_success,carol@example.com,\(IncidentLogs.time($0)),q\(Int($0.timeIntervalSince1970))"
             }.joined(separator: "\n"), application: .login))
         }
-        var heard: [Date] = []
+        var heard: [Date] = [], counts: [Int] = []
         let whole = await IncidentLogs.complete(users: [], start: start, end: end, cap: 50) { heard.append($0) } read: { _, from, to in
             read(from, to)
-        }
+        } reading: { counts.append($0) }
         let rows = try whole.rows.get()
         #expect(whole.through == nil && rows.count == events.count && Set(rows.map(\.identity)).count == events.count)
+        // Heard after every read, each event once: the first read at the cap counts none (its days are read again).
+        #expect(counts.count == starts.count && counts.first == 0 && counts.last == events.count && counts == counts.sorted())
         #expect(rows.map(\.time) == rows.map(\.time).sorted(by: >), "shown newest first")
         let dayStarts = Array(starts.dropFirst()).reduce(into: [String]()) { if $0.last != $1 { $0.append($1) } }
         #expect(dayStarts == [0, 1, 2].map { IncidentLogs.time(start.addingTimeInterval(Double($0) * 86_400)) }, "the oldest day first")
@@ -585,6 +588,68 @@ final class CompromisedChangesTests {
         #expect(twice.pull.logs.map { (try? $0.rows.get().count) ?? -1 } == once.pull.logs.map { (try? $0.rows.get().count) ?? -1 })
         #expect(IncidentLogs.export(try export(first.folder), isFrom: "example.com"))
         #expect(!IncidentLogs.export(try export(first.folder), isFrom: "example.org"))
+        #expect(writes().isEmpty)
+    }
+
+    /// A pull made while an incident is open is added to the evidence shown in memory, never by reading every saved pull
+    /// back (failure log 2026-10-23): what Export All wrote is what the store reads back, the newer export reads back last
+    /// (by name, "(2)" within the same minute), and the evidence with it added is the read-back's, event for event, with
+    /// the same window, accounts and caps.
+    @Test func aPullAddedToAnIncidentIsWhatReadingItBackGives() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: [.login, .token, .admin], users: [], hours: 72, ip: ""))
+        let wide = try #require(logs.pull)
+        await logs.pull(IncidentLogs.Query(applications: [.login, .gmail], users: ["carol@example.com"], hours: 72, ip: ""))
+        let narrow = try #require(logs.pull)
+        var store = try IncidentStore(root: scratch.appending(path: "incidents"))
+        let record = try store.create(domain: "example.com", title: "Account takeover", opened: Date(), openedBy: "Pat", reported: "")
+        let folder = try store.evidenceFolder(of: record.id)
+        let utc = try #require(TimeZone(identifier: "UTC")), at = Date(timeIntervalSince1970: 1_792_500_000)
+        let first = try IncidentLogs.exportAll(wide, into: folder, at: at, timeZone: utc).export
+        let second = try IncidentLogs.exportAll(narrow, into: folder, at: at, timeZone: utc).export
+        let saved = store.exports(of: record.id)
+        #expect(saved.unreadable.isEmpty && saved.exports.map(\.name) == [first.name, second.name])
+        for (written, read) in zip([first, second], saved.exports) {
+            #expect(written.name == read.name && written.about == read.about)
+            #expect(Dictionary(written.logs.map { ($0.application, $0.csv) }) { a, _ in a }
+                    == Dictionary(read.logs.map { ($0.application, $0.csv) }) { a, _ in a })
+        }
+        #expect(IncidentStore.readsBackLast(second, after: [first.name], saved: 1))
+        let readBack = IncidentLogs.evidence(saved.exports).pull
+        let added = IncidentLogs.adding(second, to: IncidentLogs.evidence([first]).pull)
+        let inMemory = try #require(added.together)
+        #expect(added.readable && inMemory.fromEvidence && inMemory.ended)
+        #expect(inMemory.query == readBack.query && inMemory.logs.map(\.application) == readBack.logs.map(\.application))
+        for (mine, theirs) in zip(inMemory.logs, readBack.logs) {
+            #expect(mine.hours == theirs.hours && mine.capped == theirs.capped && mine.through == theirs.through)
+            #expect(try mine.rows.get() == theirs.rows.get(), "\(mine.application)")
+        }
+        #expect(try inMemory.logs[0].rows.get().count >= wide.logs[0].rows.get().count, "the wider read's sign-ins all kept")
+        #expect(writes().isEmpty)
+    }
+
+    /// With an incident open, a pull is saved before it ends (`keep`): the hook gets what was read while the pull still
+    /// reads, and what it gives back is the pull, read by the log reader once; nil (not saved) shows the read as it is.
+    /// Each log's progress ends done, with its events and the reads it took.
+    @Test func aPullIsKeptBeforeItEnds() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        var handed: [IncidentLogs.Query] = [], stillReading: [Bool] = []
+        logs.keep = { read in
+            handed.append(read.query)
+            stillReading.append(logs.isPulling && logs.isKeeping && read.ended)
+            return IncidentLogs.evidence([]).pull
+        }
+        let query = IncidentLogs.Query(applications: [.login, .token], users: [], hours: 72, ip: "")
+        await logs.pull(query)
+        #expect(handed == [query] && stillReading == [true])
+        #expect(logs.pull?.fromEvidence == true && logs.pull?.ended == true && !logs.isKeeping)
+        let login = try #require(logs.progress[.login])
+        #expect(login.state == .done && !login.failed && login.events > 0 && login.reads >= 1)
+        logs.keep = { _ in nil }
+        await logs.pull(query)
+        #expect(logs.pull?.fromEvidence == false && logs.pull?.logs.map(\.application) == [.login, .token])
         #expect(writes().isEmpty)
     }
 

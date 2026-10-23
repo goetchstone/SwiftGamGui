@@ -66,12 +66,6 @@ struct IncidentRecordSection: View {
             DetailsSheet(editing: editing) { title, opened, openedBy, reported in save(editing, title, opened, openedBy, reported) }
         }
         .task(id: "\(setup.generation)|\(domain)|\(incidents.openID ?? "")|\(incidents.reload)") { await showEvidence() }
-        // A pull made while an incident is open is saved to it, then everything saved is shown.
-        .onChange(of: logs.pull?.ended) { _, ended in
-            guard ended == true, let pull = logs.pull, !pull.fromEvidence, let record = open,
-                  pull.logs.contains(where: { (try? $0.rows.get()) != nil }) else { return }
-            Task { if let failed = await incidents.keep(pull, in: record.id) { say(failed) } else { incidents.reload += 1 } }
-        }
     }
 
     @ViewBuilder private func opened(_ record: IncidentStore.Record) -> some View {
@@ -94,6 +88,7 @@ struct IncidentRecordSection: View {
             Button("Close") {
                 incidents.openID = nil
                 incidents.evidence = nil
+                incidents.together = nil
                 logs.clear()
             }
             .accessibilityHint("Closes the incident on this screen. It stays kept, to open again.")
@@ -190,26 +185,41 @@ struct IncidentRecordSection: View {
 
     // MARK: actions
 
-    /// Reads the open incident's evidence off the main actor and shows it as the last pull.
+    /// Reads the open incident's evidence off the main actor and shows it as the last pull. A pull made while it's open is
+    /// saved to it before it ends, and shown with everything saved (`IncidentLogs.keep`, `Incidents.add`).
     private func showEvidence() async {
         guard let record = open, let store = incidents.store else {
             incidents.evidence = nil
+            incidents.together = nil
+            logs.keep = nil
             return
         }
-        incidents.loading = true
         let id = record.id
-        let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String]) in
+        logs.keep = { read in
+            do throws(Incidents.Failure) { return try await incidents.add(read, to: id) } catch {
+                say(error.message)
+                return nil
+            }
+        }
+        incidents.loading = true
+        let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String], readable: Bool) in
             let saved = store.exports(of: id)
             let merged = IncidentLogs.evidence(saved.exports)
-            return (merged.pull, saved.exports.map(\.name), saved.unreadable + merged.unreadable)
+            return (merged.pull, saved.exports.map(\.name), saved.unreadable + merged.unreadable,
+                    merged.unreadable.count < saved.exports.count)
         }.value
         incidents.loading = false
         guard incidents.openID == id else { return }
         incidents.evidence = (id, loaded.names, loaded.unreadable)
+        incidents.together = (id, loaded.readable ? loaded.pull : nil)
         if loaded.names.isEmpty {
             // A new incident takes the pull just made: pull, then New Incident… keeps what was found.
             if let pull = logs.pull, pull.ended, !pull.fromEvidence, pull.logs.contains(where: { (try? $0.rows.get()) != nil }) {
-                if let failed = await incidents.keep(pull, in: id) { say(failed) } else { incidents.reload += 1 }
+                do throws(Incidents.Failure) {
+                    if let shown = try await incidents.add(pull, to: id) { logs.show(shown) }
+                } catch {
+                    say(error.message)
+                }
             }
             return
         }
