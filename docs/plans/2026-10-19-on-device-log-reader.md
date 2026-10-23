@@ -37,8 +37,10 @@ it in plain words; the fixes it points to are drafts the operator confirms.
 - **A failed sign-in from a suspect address:** someone had that password, likely from the fake page → Secure Account.
 - **Chrome:** a password typed on a phishing site → Secure Account; on another site, a breached password, or past
   Chrome's phishing warning → said.
-- **Mail through Gmail from a suspect address** → pull that email from everyone. Its sender is secured by their sign-in
-  from that address: whose mailbox a Gmail row is isn't certain from the row alone.
+- **Mail sent from a suspect address** → pull that email from everyone. Only a send: the Gmail event's
+  `event_info.mail_event_type` 1 (sent) or 35 (send begun); a message the attacker viewed, opened, drafted or trashed
+  there is the person's own (2026-10-23). Its sender is secured by their sign-in from that address: whose mailbox a Gmail
+  row is isn't certain from the row alone.
 - **Apps and agents:** an app acting from a suspect address, or anything else done from it (Gemini, Drive, Contacts…) →
   Secure Account; an AI agent acting for someone → said, called out when the attacker had that account.
 - **After the lock:** read from the logs since 2026-10-22, never typed: where each account stands, a sign-in after the

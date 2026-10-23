@@ -132,6 +132,7 @@ public enum ActivityLogs {
             case (.gemini, "feature_utilization"): "Used Gemini"
             case (.mobile, "DEVICE_REGISTER_UNREGISTER_EVENT"): value("ACCOUNT_STATE") == "UNREGISTERED" ? "Unregistered a device" : "Registered a device"
             case (.mobile, "DEVICE_SYNC_EVENT"): "A device synced"
+            case (.gmail, "delivery"): ActivityLogs.gmailWords(value("event_info.mail_event_type"))
             default: ActivityLogs.words(event)
             }
         }
@@ -196,7 +197,9 @@ public enum ActivityLogs {
                 return (target.isEmpty ? [] : ["to \(target)"])
                     + parameters.filter { !["type", "USER_EMAIL"].contains($0.name) }.prefix(3).map { "\($0.name): \($0.value)" }
             default:
-                return parameters.filter { !["type", "is_suspicious"].contains($0.name) }.prefix(4).map { "\($0.name): \($0.value)" }
+                // A Gmail event's type is its words already.
+                return parameters.filter { !["type", "is_suspicious", "event_info.mail_event_type"].contains($0.name) }.prefix(4)
+                    .map { "\($0.name): \($0.value)" }
             }
         }
     }
@@ -313,6 +316,50 @@ public enum ActivityLogs {
         case "SCHEDULED_USER_TAKEOUT": "Scheduled repeating Takeout exports"
         default:
             sentence(event)
+        }
+    }
+
+    /// A Gmail event in words: every one is `delivery`, and its `event_info.mail_event_type` says what happened (Google's
+    /// "Gmail Activity Events", Reports API appendix). Said as the row's person did it, as the other logs' words are.
+    static func gmailWords(_ type: String) -> String {
+        switch Int(type) {
+        case 0: "A Gmail delivery step Google doesn't name"
+        case 1: "Sent a message"
+        case 2: "Received a message"
+        case 3: "Marked a message as spam, phishing or not spam"
+        case 4: "Gmail flagged a message as spam after delivery"
+        case 5: "A message was quarantined"
+        case 6: "A message was released from quarantine"
+        case 7: "Opened a message for the first time"
+        case 8: "Marked a message unread"
+        case 9: "Replied to a message for the first time"
+        case 10: "Forwarded a message for the first time"
+        case 11: "A message was forwarded by the account's forwarding setting"
+        case 12: "Moved a message to the Inbox"
+        case 13: "Moved a message to Trash"
+        case 14: "Took a message out of Trash"
+        case 15: "Clicked a link in a message"
+        case 16: "Clicked a link in an attachment's preview"
+        case 17: "Downloaded a message's attachments"
+        case 18: "Saved a message's attachments to Drive"
+        case 19: "Saved a message's Drive items to their Drive"
+        case 20: "A classification label was applied to a message"
+        case 21: "A message's classification label was changed"
+        case 22: "A message's classification label was removed"
+        case 23: "A classification label was applied to all of a message's attachments"
+        case 24: "The classification label on all of a message's attachments was changed"
+        case 25: "The classification label was removed from all of a message's attachments"
+        case 26: "Archived a message"
+        case 27: "Permanently deleted a message"
+        case 28: "Previewed a message's attachments"
+        case 29: "Saved a draft"
+        case 30: "A message bounced: it couldn't be delivered"
+        case 31: "Viewed a message"
+        case 32: "Downloaded a message"
+        case 33: "An app opened a message for them"
+        case 34: "A message was rejected or slowed: too much mail arriving at once"
+        case 35: "Started sending a message"
+        default: type.isEmpty ? "A Gmail event" : "A Gmail event (type \(type))"
         }
     }
 
@@ -534,7 +581,7 @@ extension GamCommands.ActivityApplication {
         switch self {
         case .login: "Sign-ins, failures and challenges, and Google's suspicious-sign-in warnings: the log that matters most."
         case .token: "Apps granted or using access to the account, by app and scope."
-        case .gmail: "Mail sent and received. Some editions don't keep it."
+        case .gmail: "Each message sent, received, read, drafted or deleted, and which it was. Some editions don't keep it."
         case .accessEvaluation: "The Admin console's “Access” log: cookie validation and access-token requests."
         case .chat: "Chat messages and spaces."
         case .userAccounts: "Password, 2-Step Verification and recovery changes."
