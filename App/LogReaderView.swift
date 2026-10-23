@@ -225,7 +225,7 @@ struct LogReaderView: View {
                 let explanation = try await LogExplainer.explain(reading, when: { $0.formatted(date: .abbreviated, time: .shortened) })
                 if explained?.reading == reading { explained = (reading, .done(explanation)) }
             } catch {
-                if explained?.reading == reading { explained = (reading, .failed(error.localizedDescription)) }
+                if explained?.reading == reading { explained = (reading, .failed(OnDeviceModel.failure(error))) }
             }
         }
     }

@@ -10,6 +10,8 @@ import SwiftUI
 /// from anything that can run gam (invariant 10, `WriteRouteTests`).
 struct ConnectedAppsPanel: View {
     let reads: ConnectedAppsRead
+    /// A domain is connected: without one there is nothing to read.
+    let connected: Bool
     @State private var explained: (facts: AppsExplainer.Facts, state: Explaining)?
 
     enum Explaining {
@@ -30,8 +32,10 @@ struct ConnectedAppsPanel: View {
             switch reads.state {
             case nil:
                 Button("Read Connected Apps") { read() }
+                    .disabled(!connected)
                     .padding(.horizontal)
                     .accessibilityHint("Reads every account's connected apps and agents. Nothing changes.")
+                if !connected { Text("Connect a domain on Setup first.").foregroundStyle(.secondary).padding(.horizontal) }
                 Spacer()
             case .reading?:
                 HStack { ProgressView().controlSize(.small); Text("Reading every account's apps…").foregroundStyle(.secondary) }
@@ -42,7 +46,7 @@ struct ConnectedAppsPanel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Couldn't read the connected apps: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor).textSelection(.enabled)
-                    Button("Try Again") { read() }
+                    Button("Try Again") { read() }.disabled(!connected)
                 }
                 .padding(.horizontal)
                 Spacer()
@@ -130,7 +134,7 @@ struct ConnectedAppsPanel: View {
                 let overview = try await AppsExplainer.explain(facts)
                 if explained?.facts == facts { explained = (facts, .done(overview)) }
             } catch {
-                if explained?.facts == facts { explained = (facts, .failed(error.localizedDescription)) }
+                if explained?.facts == facts { explained = (facts, .failed(OnDeviceModel.failure(error))) }
             }
         }
     }

@@ -1,4 +1,5 @@
 import Foundation
+import FoundationModels
 import GamEngine
 import Testing
 @testable import Assist
@@ -22,7 +23,7 @@ struct AppsExplainerTests {
             Every account's connected apps, counted by code (suspended accounts left out):
             5 apps are connected, granted by 3 people in all.
             2 apps have names that look like an AI assistant's or agent's, granted by 1 person in all. None of them has broad access.
-            1 app has broad access: 1 to all of Gmail or reading and changing mail.
+            1 app has broad access, to all of Gmail or reading and changing mail.
             3 apps were granted by just one person each: 2 with a name like an AI's and 1 with broad access.
             """)
     }
@@ -40,6 +41,18 @@ struct AppsExplainerTests {
             "Nine have admin access.", " "]))
         #expect(try await AppsExplainer.explain(Self.facts, using: stub)
                 == "5 apps are connected by 3 people. Two look like AI tools, used by one person.")
+    }
+}
+
+/// The model's failures in words (`OnDeviceModel`, both explanations'): an answer too long is said so; another error keeps its
+/// own description.
+@Suite("On-device model words")
+struct OnDeviceModelWordsTests {
+    @Test func aFailureIsSaidInWords() {
+        let tooLong = LanguageModelError.contextSizeExceeded(.init(contextSize: 8192, tokenCount: 8193, debugDescription: "too long"))
+        #expect(OnDeviceModel.failure(tooLong) == "its answer ran longer than the model allows. Try again.")
+        let other = URLError(.timedOut)
+        #expect(OnDeviceModel.failure(other) == other.localizedDescription)
     }
 }
 

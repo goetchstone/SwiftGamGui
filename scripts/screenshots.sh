@@ -41,7 +41,8 @@ status=0
 # Chrome's, read by the log reader (its findings and their fixes).
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
-# summary; CI has no on-device model, so Explain says why); Audit on a demo log AppServices writes fresh in the temporary folder.
+# summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
+# demo log AppServices writes fresh in the temporary folder.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs).
 for spec in home:home users:users groups:groups setup:setup \
@@ -71,7 +72,7 @@ for spec in home:home users:users groups:groups setup:setup \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
-            reports:reports reports-usage:reports:usage reports-apps:reports:apps audit:audit \
+            reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             narrow-audit:audit:::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \

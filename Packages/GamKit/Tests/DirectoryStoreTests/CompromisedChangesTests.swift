@@ -318,7 +318,7 @@ final class CompromisedChangesTests {
         #expect(ConnectedApps.Summary(apps).sentences == [
             "3 people have given 5 apps access.",
             "2 apps look like an AI assistant or agent by name, granted by 1 person; none with broad access.",
-            "1 app has broad access: 1 to all of Gmail or reading and changing mail.",
+            "1 app has broad access, to all of Gmail or reading and changing mail.",
             "3 apps were granted by one person only, among them 2 that look like AI and 1 with broad access.",
             "At most 2 people granted any one app.",
         ])
