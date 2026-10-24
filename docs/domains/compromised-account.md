@@ -697,28 +697,41 @@ check we did all the things". During the attack the list was made by hand from t
 (one row per recipient per Event: Send, Receive, Bounced; `To (Envelope)`, `Owner`, `Message ID`). The app reads the same
 log through GAM. Reads only: nothing is sent.
 - **The source** (Google's "Schema for Gmail logs in BigQuery", which says `mail_event_type` is the Gmail log events' Event):
-  `event_info.mail_event_type` 1 Send, 2 Receive, 30 Bounced; `message_info.flattened_destinations` every recipient as
-  `service:selector:address`, comma-separated (`LogReading.destinations`, an entry not ending in an address passed over);
-  `message_info.rfc2822_message_id` ties each to the email. The app names the field by its chain, as the real pulls show
-  (`ActivityLogsTests.gmailsNestedParametersAreNamedByTheirChain` on the mock's GAM CSV).
+  `event_info.mail_event_type` 1 Send, 35 send begun, 2 Receive, 6 released from quarantine, 30 Bounced, 5 quarantined, 34
+  rejected or slowed for too much mail, and `event_info.success` false; `message_info.flattened_destinations` every recipient
+  as `service:selector:address`, comma-separated; `message_info.rfc2822_message_id` ties each to the email. The app names the
+  field by its chain, as the real pulls show (`ActivityLogsTests.gmailsNestedParametersAreNamedByTheirChain`).
 - **The list** (`LogReading.Reach`, worked out with the reading for each email the attacker sent, pure): every address its
-  sends named, Bcc too, then any mailbox that received it unnamed (a group, a Bcc); each **received** (a Receive event in
-  that mailbox), **bounced** (a Bounced event names it) or **sent** (neither in the logs read: outside, the most Google's
-  log says; inside, that mailbox's Gmail log wasn't read). Inside at the connected domain or where a mailbox received it
-  (an alias domain with no receipt reads as outside). The model is never given it.
-- **The warning:** code offers the emails an account here sent after it, from an address that isn't the attacker's, to the
-  same people, most covered first (`candidatesShown`, 10); the operator picks (**Pick the Warning**), and the pick is kept
-  with the open incident (`IncidentStore.Record.warnings`, both bare Message-IDs; an incident file from before has none).
-  Picked, each recipient is warned or not. To do (`warnRecipients`): "Warn the N people … reached", until the picks cover
-  everyone reached (bounced aside); then Done, with the latest warning's sender and time. No incident open: nothing can be
-  kept, and the menu says so.
+  sends named (sends begun too), Bcc included, an alias as its person (the directory's `people`), then any mailbox that
+  received it unnamed; each **received** (a receipt, whatever a retry's bounce says), **bounced**, **quarantined or
+  rejected**, **sent** (nothing else in the logs read: outside, the most Google's log says), or inside **no one's mailbox** (a
+  group, or an address no account has: listed, never someone to warn; only with the directory read). Inside at any domain a
+  person here has an address at, or where a mailbox received it. Addresses are read loosely (`LogReading.address`: `&`, `#`,
+  letters beyond ASCII), never with `isAccount`; an entry that still isn't one is counted (`unreadable`), said, and keeps
+  the to-do from done (review 2026-10-24). The model is never given any of it.
+- **The warning:** code offers the emails an account here sent after it (type 1), from an address that isn't the attacker's,
+  by how many people it reached they went to (`candidatesShown`, 10). The operator picks (**Pick the Warning**); the pick is
+  kept with the open incident (`IncidentStore.Record.warnings`, bare Message-IDs) and checked again at every reading: the
+  attacker's own, one from before, one only begun or not in the logs read doesn't count, and says why. A warning that counts
+  marks someone here warned only on their mailbox's receipt of it, and outside where it went with nothing failing; with
+  none counting, warned is unknown, never "no".
+- **To do and done:** "Warn the N people … reached" until the warnings that count reach everyone it reached; "Pull the
+  Gmail log again for …" (Pull Again, Gmail only, 20 at a time) for the people here whose receipt is in their own unread log
+  (`Reach.unread`, from the pull's accounts); a pick that doesn't count and unreadable entries are their own items. Done,
+  with every warning that counted and the latest one's sender and time, only when nothing is to warn, unread or unreadable.
 - **Where:** Respond, a section per email under Where things stand (`LogReaderView`'s `ReachSection`): a line in numbers,
-  every address (300 shown), the warning picked, **Export CSV…** (`Reach.columns`: address, where, reached, when, warned;
-  private 0600, written off the main thread, in `LogReaderView` since only it may name the reader).
-- Tests: `LogReadingTests.whoThePhishReachedAndWhetherTheyWereWarned`, `IncidentStoreTests.theWarningsPickedAreKept`.
+  every address (300 shown), the warnings picked and whether they count, **Export CSV…** (`Reach.columns`: address, where,
+  reached, when, warned; private 0600, off the main thread, in `LogReaderView` since only it may name the reader). A pick
+  re-reads with the last reading kept on screen (`reachKey`), not swapped for "Reading the logs…". Each email in the log is
+  summed once, only its emails, the picks and what was sent after the first (`LogReading.Mail`), and the candidates found by
+  address; no email the attacker sent, no work.
+- **Known limits:** a build from before this one, saving an incident, drops its picks (its writer doesn't know them; bumping
+  the format would make it set the whole incident aside instead). A Details save writes onto the record as kept now, so a
+  pick made in another window stays.
+- Tests: `LogReadingTests.whoThePhishReached`, `.whetherTheyWereWarned`, `.whatTheLogsShowAndWhatTheyCant`,
+  `IncidentStoreTests.theWarningsPickedAreKept`.
 - **Live check (L3w, reads only):** on the real incident, Who it reached for the phish against the list made from the Admin
-  console's export on 10-19 (recipient, where, bounced): the same addresses, the same bounces. A warning sent to a group
-  address isn't expanded: its members show not warned.
+  console's export on 10-19 (recipient, where, bounced): the same addresses, the same bounces.
 
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it

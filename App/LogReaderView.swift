@@ -52,6 +52,8 @@ struct LogReaderView: View {
     let pullAgain: (_ logs: [ActivityLogs.Application], _ accounts: [String]) -> Void
     /// The tenant's domains, lowercased: an address at one is inside (Who it reached).
     let domains: Set<String>
+    /// Every person's address and alias here, lowercased, to their own; nil while the directory isn't read (Who it reached).
+    let people: [String: String]?
     /// The warnings picked for the emails the attacker sent, kept with the open incident (Who it reached).
     let warnings: [IncidentStore.Warning]
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
@@ -78,12 +80,13 @@ struct LogReaderView: View {
         /// for the key being read waits on that read. A newer key's read replaces it, and the older one's reading is dropped
         /// when it ends.
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
-                                nobodyHas: [NobodyHasStore.Check], domains: Set<String>, warnings: [IncidentStore.Warning], key: String) {
+                                nobodyHas: [NobodyHasStore.Check], domains: Set<String>, people: [String: String]?,
+                                warnings: [IncidentStore.Warning], key: String) {
             guard read?.key != key, reading?.key != key else { return }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
                     LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
-                                          domains: domains, warnings: warnings)
+                                          domains: domains, people: people, warnings: warnings)
                 }.value
                 guard let self, self.reading?.key == key else { return }
                 self.read = (key, found)
@@ -97,7 +100,14 @@ struct LogReaderView: View {
         "\(domain)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
-            + "|" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",") + "|" + domains.sorted().joined(separator: ",")
+            + "|" + Self.reachKey(warnings: warnings, domains: domains, people: people)
+    }
+
+    /// What only Who it reached reads: a change of these keeps the reading shown until the new one comes, rather than swap
+    /// both tabs for "Reading the logs…" at every pick (review 2026-10-24).
+    static func reachKey(warnings: [IncidentStore.Warning], domains: Set<String>, people: [String: String]?) -> String {
+        "reach:" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",") + "|" + domains.sorted().joined(separator: ",")
+            + "|" + (people.map { String($0.count) } ?? "-")
     }
 
     /// The sign-in a "That Was Them" asks a note for.
@@ -118,7 +128,8 @@ struct LogReaderView: View {
     /// attack: what's still to do says so), each email's latest Phishing run in the audit log, and the emails Phishing's
     /// Find showed nobody here has. Off the main thread (`Memory`).
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
-                                    nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
+                                    nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], people: [String: String]? = nil,
+                                    warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -135,7 +146,8 @@ struct LogReaderView: View {
         for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
-                                                                         domains: domains,
+                                                                         domains: domains, people: people,
+                                                                         accountsRead: pull.query.users.isEmpty ? nil : Set(pull.query.users.map { $0.lowercased() }),
                                                                          warnings: picked))
     }
 
@@ -159,7 +171,9 @@ struct LogReaderView: View {
     var body: some View {
         let key = key
         Group {
-            if let read = memory.read, read.key == key {
+            // The reading for this pull, or while only the picks or the directory changed, the last one until the new one comes.
+            if let read = memory.read, read.key == key
+                || read.key.hasPrefix(key.prefix(upTo: key.range(of: "|reach:")?.lowerBound ?? key.endIndex) + "|reach:") {
                 switch part {
                 case .findings: findings(read.reading)
                 case .toDo: toDo(read.reading)
@@ -169,7 +183,8 @@ struct LogReaderView: View {
             }
         }
         .onChange(of: key, initial: true) {
-            memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, warnings: warnings, key: key)
+            memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
+                         warnings: warnings, key: key)
         }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in
@@ -648,27 +663,26 @@ private struct ReachSection: View {
     private var named: String { "“\(reach.subject.isEmpty ? "(no subject)" : reach.subject)”" }
 
     private var summary: String {
-        let all = reach.recipients, received = all.filter { $0.outcome == .received }.count
-        let bounced = all.filter { $0.outcome == .bounced }.count
-        let outside = all.filter { $0.outcome == .sent && !$0.inside }.count, inside = all.filter { $0.outcome == .sent && $0.inside }.count
+        let all = reach.recipients
+        func count(_ test: (LogReading.Reach.Recipient) -> Bool) -> Int { all.filter(test).count }
         var parts: [String] = []
-        if received > 0 { parts.append("\(received) received it here") }
-        if outside > 0 { parts.append("\(outside) outside with no bounce in the logs read") }
-        if inside > 0 { parts.append("\(inside) here with no receipt in the logs read") }
-        if bounced > 0 { parts.append("\(bounced) bounced") }
-        let reached = "It went to \(all.count) \(all.count == 1 ? "address" : "addresses")" + (parts.isEmpty ? "." : ": " + parts.joined(separator: ", ") + ".")
-        guard !reach.warnings.isEmpty else { return reached + " No warning picked yet." }
+        func say(_ n: Int, _ words: String) { if n > 0 { parts.append("\(n) \(words)") } }
+        say(count { $0.outcome == .received }, "received it here")
+        say(count { $0.outcome == .sent && !$0.inside }, "outside with no bounce in the logs read")
+        say(count { $0.outcome == .sent && $0.inside }, "here with no receipt in the logs read")
+        say(count { $0.outcome == .bounced }, "bounced")
+        say(count { $0.outcome == .blocked }, "quarantined or rejected")
+        say(count { $0.outcome == .notAMailbox }, "no one's mailbox (a group, or an address no account has)")
+        var text = "It went to \(all.count) \(all.count == 1 ? "address" : "addresses")" + (parts.isEmpty ? "." : ": " + parts.joined(separator: ", ") + ".")
+        if reach.unreadable > 0 { text += " \(reach.unreadable) more the log names don't read as an address: see the Admin console's Gmail log events." }
+        let counted = reach.warnings.filter { $0.problem == nil }
+        if reach.warnings.isEmpty { return text + " No warning picked yet." }
+        if counted.isEmpty { return text + " No warning picked counts yet, so who was warned can't be told." }
         let left = reach.toWarn.count
-        return reached + (left == 0 ? " The warning picked went to everyone it reached." : " The warning picked didn't go to \(left) of them.")
+        return text + (left == 0 ? " The warnings picked reached everyone it reached." : " The warnings picked aren't shown reaching \(left) of them.")
     }
 
-    private func words(_ recipient: LogReading.Reach.Recipient) -> String {
-        switch recipient.outcome {
-        case .received: "received"
-        case .bounced: "bounced"
-        case .sent: recipient.inside ? "no receipt in the logs read" : "sent, no bounce in the logs read"
-        }
-    }
+    private func words(_ recipient: LogReading.Reach.Recipient) -> String { LogReading.Reach.words(recipient) }
 
     var body: some View {
         Section {
@@ -697,12 +711,21 @@ private struct ReachSection: View {
             }
             if !reach.warnings.isEmpty {
                 ForEach(reach.warnings) { warning in
-                    Label(warning.sender.isEmpty ? "The warning picked (\(warning.messageID)) isn't in the logs read: pull its sender's Gmail log."
-                          : "Warning picked: \(warning.sender)'s “\(warning.subject)”"
-                            + (warning.at.map { ", \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
-                            + ", to \(warning.covers) of the people it reached.", systemImage: "envelope.badge")
-                        .textSelection(.enabled)
+                    let named = warning.sender.isEmpty ? warning.messageID : "\(warning.sender)'s “\(warning.subject)”"
+                        + (warning.at.map { ", \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
+                    if let problem = warning.problem {
+                        Label("Warning picked, \(named), doesn't count: \(problem).", systemImage: "exclamationmark.triangle.fill")
+                            .symbolRenderingMode(.multicolor).textSelection(.enabled)
+                    } else {
+                        Label("Warning picked: \(named), to \(warning.covers) of the people it reached.", systemImage: "envelope.badge")
+                            .textSelection(.enabled)
+                    }
                 }
+            }
+            if !reach.unread.isEmpty {
+                Text("Whether \(reach.unread.count == 1 ? "1 person here" : "\(reach.unread.count) people here") received it, or a warning, is in "
+                     + "their own Gmail log, which wasn't read: Pull Again on the to-do item reads it.")
+                    .font(.callout).foregroundStyle(.secondary)
             }
             HStack {
                 Menu("Pick the Warning") {
@@ -743,9 +766,10 @@ private struct ReachSection: View {
         } header: {
             Text("Who \(named) reached").accessibilityAddTraits(.isHeader)
         } footer: {
-            Text("From the Gmail log's own events for this email: its sends (every address, Bcc too), a mailbox here receiving it, and "
-                 + "a bounce. A receipt shows only where that mailbox's Gmail log was read; outside, no bounce is the most Google's log "
-                 + "says. The warning's candidates are emails sent after it, from an account here, to the same people.")
+            Text("From the Gmail log's own events for this email: its sends (every address, Bcc too), a mailbox here receiving it, a "
+                 + "bounce, a quarantine or a rejection. Inside, only that mailbox's receipt says it arrived; outside, no failure is the "
+                 + "most Google's log says. The warning's candidates are emails sent after it, from an account here, to the same people; "
+                 + "a warning picked counts for someone here once their receipt of it is in the logs.")
         }
     }
 }

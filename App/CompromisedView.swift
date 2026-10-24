@@ -239,6 +239,12 @@ struct CompromisedView: View {
         // The domains people here have addresses at (primary and aliases, from the directory) and the connected one: inside.
         let domains = Set(((directory.users ?? []).flatMap { [$0.primaryEmail] + $0.aliases } + ["@" + domain])
             .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })
+        // Each person's address and alias to their own: an alias is its person, and an inside address that's neither is no
+        // one's mailbox (a group). Nil until the directory is read.
+        let people = directory.users.map { users in
+            Dictionary(users.flatMap { user in ([user.primaryEmail] + user.aliases).map { ($0.lowercased(), user.primaryEmail.lowercased()) } },
+                       uniquingKeysWith: { first, _ in first })
+        }
         return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
@@ -252,7 +258,7 @@ struct CompromisedView: View {
         }, pullAgain: { applications, accounts in
             pullAgain(applications, accounts)
             go(.investigate, to: Self.reportsAnchor, scroller)
-        }, domains: domains, warnings: open?.warnings ?? [], pickWarning: open.map { record in
+        }, domains: domains, people: people, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
         })
     }
