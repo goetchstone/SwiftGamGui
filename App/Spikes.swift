@@ -34,6 +34,9 @@ enum Spikes {
         let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
+            // The pointer up on the menu bar, off the window: on CI it rests mid-screen, over a control, and that
+            // control's tooltip came out in the whole-window picture (offboard-plan, 2026-10-24).
+            if let screen = NSScreen.screens.first { CGWarpMouseCursorPosition(CGPoint(x: screen.frame.midX, y: 1)) }
             await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
                 // Fill the demo screen. Home, Users and Groups: connected, and the directory loaded (Groups:
@@ -178,14 +181,13 @@ enum Spikes {
         NSApp.terminate(nil)
     }
 
-    /// The whole window as it's shown, title bar, toolbar and sidebar included, in front and active: ScreenCaptureKit's
-    /// picture of this app's own window, which needs no screen-recording permission (`SCShareableContent.currentProcess`,
-    /// "without user consent via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane instead.
+    /// The whole window as it's shown, title bar, toolbar and sidebar included: ScreenCaptureKit's picture of this app's
+    /// own window, which needs no screen-recording permission (`SCShareableContent.currentProcess`, "without user consent
+    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane instead. The window isn't made key
+    /// first: that focuses the page's first field and scrolls back to it, undoing a screen's scroll to what it shows
+    /// (compromised-reading came out at the top, 2026-10-24).
     @MainActor
     static func windowImage(_ window: NSWindow) async -> CGImage? {
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
-        try? await Task.sleep(for: .milliseconds(500))
         do {
             let content = try await SCShareableContent.currentProcess
             guard let shown = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
