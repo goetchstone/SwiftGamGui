@@ -454,7 +454,7 @@ fi
 # GAM_MOCK_STATE/nolog/<application>, the edition doesn't keep that log: systemErrorExit(GOOGLE_API_ERROR_RC), exit 4
 # (Google's words approximate). A known lie: every fixture event is answered whatever the window (the dates are fixed).
 # Google's own account warnings in the sign-in log (suspicious_login, account_disabled_*) have no actor: the account is
-# `affected_email_address` (a real tenant's log, 2026-10-22). A named account's read is matched on the actor, so it
+# `affected_email_address` (as Google's logs show). A named account's read is matched on the actor, so it
 # leaves them out, the strict guess: whether Google's per-account read returns them is for the live check.
 # The start is only the app's forms: `-<N>h` or `-<N>d` with `end now`, or (a read further back) a start and an end as
 # `yyyy-mm-ddThh:mm:ssZ`. An end as a time keeps the events before it (`id.time`), the end's own second left out: the

@@ -3,7 +3,7 @@
 **GamGUI as a native macOS app**: SwiftUI, macOS 27 only, driving the vendored GAM7 CLI exactly as the
 Python GamGUI does. On screen and to Siri the app is **GAM GUI** (operator, 2026-10-10: Siri hears
 "Gam Gooey" as "GAM GUI" and matches only the display name); its product, scheme and bundle stay
-**GamGUI**, and this repo and the Xcode project are **SwiftGamGui**. Public repo, MIT. The design and phases are in
+**GamGUI**, and this repo and the Xcode project are **SwiftGamGui**. Public repo, Apache-2.0 (as GAM). The design and phases are in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md); read its Status line
 first.
 

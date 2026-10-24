@@ -168,7 +168,7 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
 - **Writes:** argv-identical to GamGUI's (`add_group_member` as a member was confirmed live in GamGUI;
   `remove_group_member` too, and from this app's Users page on 2026-10-09). Adding as a manager or owner
   has never run live in either app. The live check needs a scratch group the operator owns, with
-  throwaway members or the operator's own account, and the operator's yes for each write (README).
+  throwaway members or the operator's own account, and the operator's yes for each write (docs/live-verification.md).
 - **Live (2026-10-10):** on the operator's real tenant the screen listed the groups (`print groups`)
   and a group's members (`print group-members`): GAM's real formatjson output read as the mock models
   it. Still approximate: the not-found wording and exit code for an address that isn't a group (the

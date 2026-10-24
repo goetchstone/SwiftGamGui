@@ -1,9 +1,9 @@
 # Plan: an incident you can open, watch and report
 
 **Status (2026-10-22): slice 1 built (#98: lock status from the logs; runbook: docs/domains/compromised-account.md,
-"Where each account stands"). Then, from a real tenant's export: the reader's rules corrected (failure log 2026-10-22),
+"Where each account stands"). Then, from real logs: the reader's rules corrected (failure log 2026-10-22),
 and "That was them" moved up from slice 3 at the operator's ask and built (runbook "That was them"). Then the rundown,
-at the operator's ask after running a real incident through it: every account touched with its status and timeline, and
+at the operator's ask after running real logs through it: every account touched with its status and timeline, and
 Still to do worked out by code, the model only wording it (runbook "The rundown"; this pulls forward slice 2's findings
 first and slice 4's actions taken and next steps). Then undo from the app: block or take the account off the attacker's
 computers as planned steps, and Do It Here on a to-do item (runbook "Undo from the app"). Then a capped log read further
@@ -17,7 +17,7 @@ Then the fix for a whole pull stopping the app: the reader linear in the events 
 parse, sorting, merge and saving (failure log 2026-10-23; runbook "Nothing a pull's size runs on the main thread"); then
 progress after every read, each step after a pull said under the logs, and a pull saved to the open incident added to its
 evidence in memory, never by reading every saved pull back (failure log 2026-10-23, "each pull re-read every saved pull").
-Then, from the real incident, the checklist's first piece: an email Phishing trashed from every mailbox shows done on
+Then the checklist's first piece: an email Phishing trashed from every mailbox shows done on
 Respond, with when and by whom, from this app's audit log, and one Phishing's Find showed nobody here has, kept on this
 Mac (runbook "Done from the audit log"; phishing.md D13, D14).
 Next, in this order: the incoming phish, a pull anchored on the attack, and who to warn (and whether they were); the
@@ -30,11 +30,11 @@ picked up as it stands, without redoing a step.** Built on the Incident screen
 Script projects) merges, as #96 (a person's computers) has: no stacked PRs.
 
 ## Why
-After a real takeover the logs were read by hand several times and still couldn't answer "are they still in?" with
-confidence. Google's alert came late. Nothing on the screen remembered what was done or said where the incident
-stood, and there was no document to hand anyone. The operator's incident response standard follows the SANS six
-steps (preparation, identification, containment, eradication, recovery, lessons learned) and lists what an incident's
-record must hold. The screen should walk those steps well enough that a backup admin or a hired MSP can run it.
+After a takeover, logs read by hand, several times over, still can't answer "are they still in?" with confidence,
+and Google's alert can come late. Nothing on the screen remembered what was done or said where the incident
+stood, and there was no document to hand anyone. Incident response standards such as SANS's six steps
+(preparation, identification, containment, eradication, recovery, lessons learned) list what an incident's record
+must hold. The screen should walk those steps well enough that a backup admin or a hired MSP can run it.
 
 ## The rules
 - **Reading never changes the tenant.** Opening, watching and reporting are reads (invariant 3). A fix is still a
@@ -93,7 +93,7 @@ rules).
 
 ## Slices
 1. **Lock status from the logs.** The Admin log read, the rules above, each person's status in Read the logs.
-   Live, read-only (L1): on a real incident, which events GAM's reset and sign-out leave, and whether
+   Live, read-only (L1): on an incident, which events GAM's reset and sign-out leave, and whether
    `report admin user P` reads what was done to P.
 2. **Findings first.** The findings and statuses at the top; the raw logs folded under Evidence, drawn only when
    opened, in a lazy `Table`; the reading computed once per pull (today every redraw re-runs the rules).

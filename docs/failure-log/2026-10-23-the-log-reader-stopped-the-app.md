@@ -1,6 +1,6 @@
 # 2026-10-23 — The log reader stopped the app for minutes after a whole pull
 
-- **Symptom** — During a real incident, the operator added the Gemini log to a pull (Pull Again) and the app showed the
+- **Symptom** — In use, the operator added the Gemini log to a pull (Pull Again) and the app showed the
   spinning wheel for minutes, with no `gam` running. `sample` of the running app (a Debug build) put almost every
   main-thread sample in `LogReaderView.body` → `LogReading.read` → each account's `status`; it ended by itself, after
   about 4½ minutes of CPU.

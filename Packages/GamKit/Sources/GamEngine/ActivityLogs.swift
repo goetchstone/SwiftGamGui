@@ -93,8 +93,8 @@ public enum ActivityLogs {
             let profile = parameters.first { $0.name == "PROFILE_USER_NAME" }?.value ?? ""
             let device = parameters.first { $0.name == "DEVICE_USER" }?.value ?? ""
             // Google's own account warnings in the sign-in log (a suspicious sign-in it blocked, an account it disabled as
-            // hijacked) have no actor: the account they're about is `affected_email_address` (a real tenant's log,
-            // 2026-10-22). Where there is an actor, that parameter names someone else (a blocked sender).
+            // hijacked) have no actor: the account they're about is `affected_email_address` (as Google's logs
+            // show). Where there is an actor, that parameter names someone else (a blocked sender).
             let affected = application == .login ? parameters.first { $0.name == "affected_email_address" }?.value ?? "" : ""
             who = application != .chrome ? (text("actor.email").isEmpty ? affected : text("actor.email")) : !profile.isEmpty ? profile
                 : !text("actor.email").isEmpty ? text("actor.email") : device

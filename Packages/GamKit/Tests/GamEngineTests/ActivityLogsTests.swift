@@ -174,7 +174,7 @@ struct ActivityLogsTests {
         #expect(notUser.exitCode == 56, "as the actor, the API is asked for the account and refuses it")
     }
 
-    /// Google's own account warnings have no actor (a real tenant's log, 2026-10-22): the account they're about is
+    /// Google's own account warnings have no actor (as Google's logs show): the account they're about is
     /// `affected_email_address`, and the row is that account's. A row with an actor keeps it: there the parameter names
     /// someone else, a blocked sender.
     @Test func googlesOwnWarningIsTheAccountsItsAbout() async throws {

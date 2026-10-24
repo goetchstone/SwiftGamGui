@@ -1,6 +1,6 @@
 # 2026-10-22 — Google's account warnings have no actor, and the mock gave them one
 
-- **Symptom** — Reading a real tenant's exported incident logs (read-only, the operator's export) against the reader
+- **Symptom** — Reading real exported logs (read-only) against the reader
   merged in #98: Google's `account_disabled_hijacked` for the taken-over account, and its three `suspicious_login`
   warnings, had an empty actor. The reader's per-account statuses look for an account's events by `who`, so Google's own
   disabling of the account would never have counted as a lock, and its warnings named no account. The same export showed

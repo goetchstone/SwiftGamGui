@@ -282,7 +282,7 @@ its `tolerated_kinds` (record those counts: the first real sweep either app has 
 Google, as GamGUI's runbook lists: the old password fails, no app passwords or connected apps, forwarding
 off, the manager's account switcher offers the mailbox, an outside sender gets the auto-reply, the transfer
 `completed`, a colleague's calendar no longer lists L, the reminder on M's calendar (and the invitee's
-email). Mark the README rows confirmed. A failed step: fix the cause, Preview the Rest (a new yes).
+email). Mark the rows confirmed in docs/live-verification.md. A failed step: fix the cause, Preview the Rest (a new yes).
 
 **L2 ran on 2026-10-16**, from the app on the operator's tenant: GamGUI's eight plus clear recovery, IMAP and POP off and
 hide from the directory, twelve steps in 66 s, every one succeeded. The sweep took 50 s and exited 50 on the leaver's

@@ -188,8 +188,8 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
     the two counts differ.
 
 - **D12, Pull All: several emails, one confirm (2026-10-23, operator: "find copies of every message first, list only
-  those someone has, and trash them all from one preview with one typed confirmation, each audited").** A real incident's
-  Read the logs listed many emails to pull, one Phishing run each.
+  those someone has, and trash them all from one preview with one typed confirmation, each audited").** Read the logs
+  can list many emails to pull, one Phishing run each.
   - Find takes several Message-IDs, one per line or between commas (no Message-ID holds one, D1), at most
     `PhishingChanges.mostAtOnce` (100), each checked by `MessageID(validating:)` and refused with its line; a repeat once.
     One Message-ID is checked and said exactly as before.
@@ -209,7 +209,7 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   - Read the logs' Respond tab has "Pull All N Emails…" with two or more emails to pull: it opens Phishing with their
     Message-IDs, a line each, and finds them (a read). Who it was sent to stays one email at a time.
 
-- **D13, Read the logs shows an email pulled (2026-10-23, from the real incident: after Pull All, Still to do still listed
+- **D13, Read the logs shows an email pulled (2026-10-23: after Pull All, Still to do still listed
   every email, so what was left couldn't be told).** Each trash step's audit record names its email in `extra`:
   `message_id` (bare), `domain`, `message_steps` (the steps this run holds for that email) and `searched_everywhere` (Find
   searched every mailbox and its Spam for it: `Search.searchedEverywhere`, the test `nobodyHasIt` makes).
