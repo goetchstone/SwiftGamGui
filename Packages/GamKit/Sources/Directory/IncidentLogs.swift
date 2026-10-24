@@ -221,7 +221,7 @@ public final class IncidentLogs {
         return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through)
     }
 
-    /// Every event of the window, read oldest first (asked for after a real incident, 2026-10-23: "I need it all … the oldest
+    /// Every event of the window, read oldest first (asked for 2026-10-23: "I need it all … the oldest
     /// first, then the newer"). One read of the whole window first: most logs come back short of the cap, and are whole.
     /// One at the cap is read a day at a time from the window's start, each day read back from its end until it's whole
     /// (`paged`, at most `perDay` reads), each day's end a second past the next day's start (whether Google keeps an end's

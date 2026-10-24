@@ -23,4 +23,4 @@
   `.aPullIsKeptBeforeItEnds`, `IncidentStoreTests.aNewExportReadsBackLastOnlyWhenItWould`, and
   `aLogIsReadWholeOldestFirst` (progress heard after every read). Lesson, with
   [2026-10-23-the-log-reader-stopped-the-app](2026-10-23-the-log-reader-stopped-the-app.md): "slow at many" written in a
-  runbook is a failure waiting for a real incident's size; and work the operator waits on is said where they're looking.
+  runbook is a failure waiting for a real pull's size; and work the operator waits on is said where they're looking.

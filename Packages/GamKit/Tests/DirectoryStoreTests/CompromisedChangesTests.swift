@@ -435,7 +435,7 @@ final class CompromisedChangesTests {
         #expect(mixed)
     }
 
-    /// A log read whole, oldest first (asked for after a real incident): one read of the window, and at the cap, a day at a
+    /// A log read whole, oldest first (as asked for): one read of the window, and at the cap, a day at a
     /// time from its start, each day read back until it's whole; every event once. Bounded: past its reads it stops at a
     /// day's start, the older days whole, and says when it was read through.
     @Test func aLogIsReadWholeOldestFirst() async throws {

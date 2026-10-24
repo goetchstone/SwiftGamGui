@@ -292,8 +292,8 @@ struct LogReadingTests {
                 + "before it. If the attack began earlier, pull from before it began.")
     }
 
-    /// Google's mark on one sign-in, as a real tenant's log showed it (2026-10-22): the attacker's were password sign-ins;
-    /// the false ones were re-sign-ins, one proved with a passkey through a relay's address, one at the person's usual
+    /// Google's mark on one sign-in, as real logs show it: an attacker's are password sign-ins;
+    /// the false ones are re-sign-ins, one proved with a passkey through a relay's address, one at the person's usual
     /// address. A passkey or security key proves the person; a re-sign-in from an address they use unmarked is theirs; a
     /// re-sign-in from a new address by password alone still marks it (a stolen session re-proving itself).
     @Test func aPasskeyOrAnOrdinaryReSignInIsntTheAttacker() {
@@ -358,7 +358,7 @@ struct LogReadingTests {
         #expect(elsewhere.state == .partlyLocked, "a change from an address not hers before the attack may be the attacker's")
     }
 
-    /// A blocked sender from the attacker's address is something a lock leaves in place (a real tenant's attacker blocked
+    /// A blocked sender from the attacker's address is something a lock leaves in place (an attacker may block
     /// the bounce address before a mass send); contacts printed while the attacker had the account are who gets the phish
     /// next. A print before the attack, or after the lock, is the person's.
     @Test func aBlockedSenderAndContactsPrintedDuringTheAttack() {
@@ -415,7 +415,7 @@ struct LogReadingTests {
 
     /// Only mail the attacker sent is one to pull. Every Gmail event is `delivery`, and its `event_info.mail_event_type` says
     /// what happened: a message they viewed, opened, drafted or trashed from their address is the person's own mail, and
-    /// pulling it would take real mail from everyone (2026-10-23: a real incident listed every message the attacker read).
+    /// pulling it would take real mail from everyone (in use it listed every message an attacker read).
     /// A send begun (35) is a send, one message sent and begun is one to pull, and an event with no type is none.
     @Test func onlyMailTheAttackerSentIsPulled() {
         func mail(_ type: String?, _ id: String, at minute: Int) -> LogReading.Event {
@@ -736,7 +736,7 @@ struct LogReadingTests {
         #expect(about["CAROL@example.com"].count == 10 && about["alice@example.com"].count == 6, "its own, and the admin's done to it, each once")
     }
 
-    /// A whole pull's size (a real tenant's every-account Gmail runs about 12,600 events a day) read in seconds, not the
+    /// A whole pull's size (a small domain's every-account Gmail runs to thousands of events a day) read in seconds, not the
     /// minutes it took when each account's status read every event (failure log 2026-10-23): 200 accounts the attacker had,
     /// each from its own address, among 200,000 events. A few seconds in a debug build; reading every event per account,
     /// 40 accounts took 23 and these 200 would take about 110, so a generous bound still catches that and leaves a busy
