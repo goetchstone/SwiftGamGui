@@ -124,7 +124,10 @@ public final class UserChanges {
     /// Google keeps a person's phones as one list, which GAM sends whole (`updatePhones`), so the others go as they are
     /// and a new one is the primary work phone. Setting it is LOW, as a title is; removing it is destructive (a Confirm
     /// click): the number is gone from Google. A phone GAM can't send back as it is refuses the change, never alters it.
-    public func previewPhone(of user: GamUser, phone: String, origin: Origin) async {
+    /// The list comes from the directory as it was read, so `current` reads the phones again just before the run: one
+    /// added or changed since refuses it ("preview again") rather than be deleted by a stale list (review 2026-10-24).
+    public func previewPhone(of user: GamUser, phone: String, origin: Origin,
+                             current: @escaping @Sendable () async throws -> [GamUser.Phone]) async {
         let phone = PythonText.strip(phone)
         subject = user.primaryEmail
         var phones = user.phones
@@ -159,10 +162,17 @@ public final class UserChanges {
             state = .problem("Couldn't change the phone.")
             return
         }
-        let kept = phones
+        let kept = phones, read = user.phones
+        let precondition: @Sendable () async throws -> Bool = {
+            do {
+                return try await current() == read
+            } catch let problem as UserAccess.Problem {
+                throw PreconditionFailure(problem.summary)
+            }
+        }
         let step = WriteStep(write, target: user.primaryEmail, summary: summary, risk: phone.isEmpty ? .destructive : .low)
         await hold(step, title: phone.isEmpty ? "Remove phone" : "Change phone", confirmLabel: phone.isEmpty ? "Remove" : "Save",
-                   email: user.primaryEmail, origin: origin) { $0.with(phones: kept) }
+                   email: user.primaryEmail, origin: origin, patch: { $0.with(phones: kept) }, precondition: precondition)
     }
 
     /// GamGUI's `plan_suspend`: suspending is destructive (a Confirm click), unsuspending LOW.

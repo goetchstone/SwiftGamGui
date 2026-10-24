@@ -107,11 +107,18 @@ public enum GamCommands {
             guard !phone.value.isEmpty, !phone.value.unicodeScalars.contains(where: { $0.properties.generalCategory == .control })
             else { throw Invalid.argument("each phone is a number on one line") }
             let type = PythonText.lower(phone.type)
+            // GAM strips a custom type's name (getKeywordAttribute) and keeps none on a phone that isn't `custom`.
+            guard type == "custom" || phone.customType.isEmpty else {
+                throw Invalid.argument("a phone of type “\(phone.type)” with its own name would lose the name")
+            }
             let typed: [String]
             if type.isEmpty {
                 typed = []
             } else if type == "custom" {
                 guard !PythonText.strip(phone.customType).isEmpty else { throw Invalid.argument("a custom phone type has a name") }
+                guard PythonText.strip(phone.customType) == phone.customType else {
+                    throw Invalid.argument("the custom phone type “\(phone.customType)” would come back without its spaces")
+                }
                 typed = ["type", "custom", phone.customType]
             } else {
                 guard phoneTypes.contains(type) else { throw Invalid.argument("“\(phone.type)” isn't a phone type GAM keeps as it is") }

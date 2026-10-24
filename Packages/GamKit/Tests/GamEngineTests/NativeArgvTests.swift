@@ -135,15 +135,16 @@ struct NativeArgvTests {
         }
     }
 
-    /// An operator value is one element, whatever it holds.
     /// A phone GAM wouldn't send back as it is never reaches it: two primaries (GAM's usage error), a type GAM would
-    /// keep as custom, `custom` with no name, no number, or a number over lines. Each number is one element, as typed.
+    /// keep as custom, `custom` with no name or one GAM would trim, a name on a phone that isn't `custom` (GAM keeps
+    /// none), no number, or a number over lines. Each number is one element, as typed.
     @Test func eachPhoneGoesBackAsItIs() throws {
         func phone(_ type: String, _ value: String = "1", primary: Bool = false, custom: String = "") -> GamUser.Phone {
             GamUser.Phone(type: type, customType: custom, value: value, primary: primary)
         }
         for bad in [[phone("work", primary: true), phone("home", primary: true)], [phone("google_voice")], [phone("custom")],
-                    [phone("custom", custom: "  ")], [phone("work", "")], [phone("work", "1\n2")], [phone("work", "1\u{0}")]] {
+                    [phone("custom", custom: "  ")], [phone("custom", custom: " Desk")], [phone("work", custom: "Desk")],
+                    [phone("", custom: "Desk")], [phone("work", "")], [phone("work", "1\n2")], [phone("work", "1\u{0}")]] {
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.updatePhones(email: "c@example.com", phones: bad) }
         }
         let write = try GamCommands.updatePhones(email: "c@example.com", phones: [phone("work", "x primary phone clear", primary: true)])
@@ -152,6 +153,7 @@ struct NativeArgvTests {
         #expect(try GamCommands.updatePhones(email: "c@example.com", phones: []).argv == ["update", "user", "c@example.com", "phone", "clear"])
     }
 
+    /// An operator value is one element, whatever it holds.
     @Test func anAddressIsOneElement() {
         let odd = "a b,c@example.com"
         #expect(GamCommands.clearRecovery(email: odd).argv[2] == odd && GamCommands.clearRecovery(email: odd).argv.count == 7)

@@ -107,7 +107,11 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   person's mobile and home numbers. A new one is the primary `work` phone; one emptied is removed, the last one
   `phone clear`. Setting is LOW, removing destructive (a Confirm click). A phone GAM can't send back unchanged (a type
   outside its words, which it would keep as a custom type, or `custom` with no name) refuses the change rather than
-  alter it. The patched user's `phone` is what `{phone}` reads, so a signature set next shows it.
+  alter it. The list is the directory's as read, so the run reads the phones again first (`UserAccess.phones`, a
+  precondition): one added since, in the Admin console or by the person, refuses it ("preview again") rather than be
+  deleted by the stale list (review 2026-10-24). The mock's `info user` serves changed phones from
+  `$GAM_MOCK_STATE/phones/<user>`; its `phone` stops as GAM does on an entry with no `value` (a KeyError). The patched
+  user's `phone` is what `{phone}` reads, so a signature set next shows it.
 - **On success** the cached user is patched (`GamUser.with`, `DirectoryStore.patch`: GamGUI's
   `patch_user`), only while the cache still belongs to the tenant and generation the write ran on;
   the reports are counted again. A failure patches nothing and says why, with GAM's remediation.

@@ -459,7 +459,7 @@ private struct UserDetail: View {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
         .sheet(isPresented: $editingPhone) {
-            PhoneEditor(user: user, changes: changes) { editingPhone = false }
+            PhoneEditor(user: user, changes: changes, access: access) { editingPhone = false }
         }
         .onChange(of: editingRole || editingPhone || editingAutoReply, initial: true) { _, open in editorOpen = open }
         .onDisappear { editorOpen = false }
@@ -991,12 +991,15 @@ private struct RoleEditor: View {
 private struct PhoneEditor: View {
     let user: GamUser
     let changes: UserChanges
+    /// Reads their phones again just before the run: one added since the directory was read refuses it.
+    let access: UserAccess
     let close: () -> Void
     @State private var phone: String
 
-    init(user: GamUser, changes: UserChanges, close: @escaping () -> Void) {
+    init(user: GamUser, changes: UserChanges, access: UserAccess, close: @escaping () -> Void) {
         self.user = user
         self.changes = changes
+        self.access = access
         self.close = close
         _phone = State(initialValue: user.phone)
     }
@@ -1022,9 +1025,9 @@ private struct PhoneEditor: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Preview") {
                     // Close first: the preview opens its own sheet.
-                    let user = user, phone = phone, changes = changes
+                    let user = user, phone = phone, changes = changes, access = access, email = user.primaryEmail
                     close()
-                    Task { await changes.previewPhone(of: user, phone: phone, origin: .form) }
+                    Task { await changes.previewPhone(of: user, phone: phone, origin: .form) { try await access.phones(of: email) } }
                 }
             }
         }
