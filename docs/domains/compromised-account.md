@@ -715,6 +715,8 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
-- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): the incoming phish and who to warn,
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): first slice 7 (narrow pulls first:
+  the reported accounts, then each attacker address across every account; and an every-account pull says after its first
+  read how far it will get, extending "What's realistic" above), then the incoming phish and who to warn,
   the rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent) and the report, watching, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
