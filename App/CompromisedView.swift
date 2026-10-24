@@ -101,6 +101,9 @@ struct CompromisedView: View {
                 }
                 .onChange(of: scrollToReports) { _, wanted in
                     if wanted { scroller.scrollTo(scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
+                    #if DEBUG
+                    if wanted, Spikes.isRequested { print("state: scrolled to \(scrollToReader ? "the reader" : "the logs")") }
+                    #endif
                 }
             }
         }
@@ -438,7 +441,9 @@ struct CompromisedView: View {
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome], users: [email, "dana@example.com"],
                                                    hours: 72, ip: ""))
                 // Scroll once the findings are drawn: an anchor that first appears in the same update doesn't scroll.
+                let pulled = ContinuousClock.now
                 for _ in 0..<100 where !readerMemory.hasReading { try? await Task.sleep(for: .milliseconds(50)) }
+                print("state: the reading \(readerMemory.hasReading ? "came" : "hadn't come") \(ContinuousClock.now - pulled) after the pull")
                 try? await Task.sleep(for: .milliseconds(300))
                 if asked == "todo" {
                     self.tab = .respond
