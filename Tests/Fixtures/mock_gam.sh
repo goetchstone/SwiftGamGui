@@ -2073,7 +2073,7 @@ check_user_attrs() {
   while [ $# -gt 0 ]; do
     case "$1" in
       phone|phones)
-        # Grammar 5874-5878, 5899: `phone clear`, or `phone [type <type>|custom <String>] [value <String>]
+        # Grammar 5881-5885, 5906: `phone clear`, or `phone [type <type>|custom <String>] [value <String>]
         # notprimary|primary`, as getUserAttributes reads it (gam/__init__.py:47476-47489, 47135-47171 at 7.48.30): a type
         # GAM doesn't know is kept as a custom type, so any word passes; `custom` needs a name that isn't blank; a second
         # primary is a usage error (appendItemToBodyList); an empty value is dropped, not refused, and none at all stops GAM.

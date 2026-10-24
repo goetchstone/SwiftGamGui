@@ -108,7 +108,7 @@ public enum GamCommands {
         }
     }
 
-    /// GAM's phone types (5874-5876 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
+    /// GAM's phone types (5881-5883 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
     /// keeps as a custom type of that name (getKeywordAttribute), so a phone goes back only with one of these, `custom`
     /// with its name, or no type.
     public static let phoneTypes: Set<String> = [
@@ -116,7 +116,7 @@ public enum GamCommands {
         "other", "other_fax", "pager", "radio", "telex", "tty_tdd", "work", "work_fax", "work_mobile", "work_pager",
     ]
 
-    /// The person's phones, every one of them (5874-5878 `phone [type …] [value <String>] notprimary|primary`, 5899
+    /// The person's phones, every one of them (5881-5885 `phone [type …] [value <String>] notprimary|primary`, 5906
     /// `phone clear`). GAM sends the phones it's given as the list Google keeps in place of the old one, and drops one
     /// with no value (getUserAttributes, updateUsers' users.update, gam/__init__.py:47476-47489 at 7.48.30), so a phone
     /// left out is deleted: the others go as they are, and none left is `phone clear`. Each number one line, at most one
