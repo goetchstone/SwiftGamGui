@@ -35,6 +35,8 @@ public final class CompromisedChanges {
         /// The computers signed in with the account to block or take the account off, by the person's sign-in on each
         /// (`Compromised.Computer.deviceUser`).
         public var computers: [String: Compromised.ComputerAction] = [:]
+        /// Every scheduled send the check listed is deleted (`Check.scheduledSends`).
+        public var deleteScheduled = false
         /// Which of the check's drafts are deleted: none, every one, or those whose subject holds some text.
         public var discardDrafts: Discard = .none
 
@@ -88,6 +90,7 @@ public final class CompromisedChanges {
             // A computer already blocked or the account gone from it needs nothing more.
             let active = Set(((try? check.computers.get()) ?? []).filter(\.isActive).map(\.deviceUser))
             computers = computers.filter { active.contains($0.key) }
+            if check.scheduledSends.isEmpty { deleteScheduled = false }
         }
     }
 
@@ -104,6 +107,8 @@ public final class CompromisedChanges {
         public let delegates: Result<[String], UserAccess.Problem>
         public let sendAs: Result<[Compromised.SendAs], UserAccess.Problem>
         public let adminRoles: Result<[Compromised.AdminRole], UserAccess.Problem>
+        /// What `in:scheduled` found (`Compromised.ScheduledSend`), every one.
+        public let scheduled: Result<[MailboxSearch.Message], UserAccess.Problem>
         /// The newest `Compromised.Draft.cap` drafts.
         public let drafts: Result<[Compromised.Draft], UserAccess.Problem>
         /// The auto-reply (`show vacation`).
@@ -116,6 +121,11 @@ public final class CompromisedChanges {
         public let scripts: Result<[Compromised.ScriptProject], UserAccess.Problem>
         /// The apps and AI agents given access to the account (`print tokens`).
         public let apps: Result<[ConnectedApps.App], UserAccess.Problem>
+
+        /// The scheduled sends this check found that Gmail labels scheduled: the only ones the step deletes.
+        public var scheduledSends: [MailboxSearch.Message] {
+            ((try? scheduled.get()) ?? []).filter(Compromised.ScheduledSend.isScheduled)
+        }
 
         /// The drafts `choice` picks from this check's list.
         public func drafts(_ choice: Form.Discard) -> [Compromised.Draft] {
@@ -237,6 +247,7 @@ public final class CompromisedChanges {
             for (row, result) in zip(plan.runningRows, results) where result?.isSucceeded == true {
                 switch row.key {
                 case .filters: form.filters = []
+                case .scheduled: form.deleteScheduled = false
                 case .drafts: form.discardDrafts = .none
                 case .autoReply: form.autoReplyOff = false
                 case .delegate, .sendAs, .computer: break   // the check again drops what's gone
@@ -346,6 +357,7 @@ public final class CompromisedChanges {
         async let delegates = access.delegates(of: email)
         async let sendAs = access.sendAs(of: email)
         async let roles = access.adminRoles(of: email)
+        async let scheduled = access.scheduledSends(of: email)
         async let drafts = access.drafts(of: email)
         async let autoReply = access.autoReply(of: email)
         async let devices = access.mobileDevices(of: email)
@@ -355,18 +367,18 @@ public final class CompromisedChanges {
         let (readFilters, readForwarding, readAddresses, readDelegates, readSendAs, readRoles)
             = await (filters, forwarding, addresses, delegates, sendAs, roles)
         let (readDrafts, readAutoReply, readDevices, readComputers, readApps) = await (drafts, autoReply, devices, computers, apps)
-        let readScripts = await scripts
+        let (readScripts, readScheduled) = await (scripts, scheduled)
         let account = Compromised.Account(user)
         let admin = setup.connectedAdmin ?? ""
         let check = Check(
             asked: person, user: user, account: account, filters: readFilters, forwarding: readForwarding,
             forwardingAddresses: readAddresses, delegates: readDelegates, sendAs: readSendAs, adminRoles: readRoles,
-            drafts: readDrafts, autoReply: readAutoReply, devices: readDevices, computers: readComputers, scripts: readScripts,
+            scheduled: readScheduled, drafts: readDrafts, autoReply: readAutoReply, devices: readDevices, computers: readComputers, scripts: readScripts,
             apps: readApps,
             findings: Compromised.findings(account: account, forwarding: (try? readForwarding.get()) ?? nil,
                                            filters: try? readFilters.get(), delegates: try? readDelegates.get(),
                                            sendAs: try? readSendAs.get(), roles: try? readRoles.get(),
-                                           drafts: try? readDrafts.get(), autoReply: try? readAutoReply.get(),
+                                           scheduled: try? readScheduled.get(), drafts: try? readDrafts.get(), autoReply: try? readAutoReply.get(),
                                            devices: try? readDevices.get(), computers: try? readComputers.get(),
                                            apps: try? readApps.get(), scripts: try? readScripts.get()),
             isConnectedAdmin: !admin.isEmpty && Guard.normalized(admin) == Guard.normalized(email))
@@ -404,6 +416,7 @@ public final class CompromisedChanges {
         let picked = (filters: ((try? check.filters.get()) ?? []).filter { form.filters.contains($0.id) },
                       delegates: ((try? check.delegates.get()) ?? []).filter { form.delegates.contains($0) },
                       sendAs: ((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary && form.sendAs.contains($0.address) }.map(\.address),
+                      scheduled: form.deleteScheduled ? check.scheduledSends : [],
                       drafts: check.drafts(form.discardDrafts),
                       computers: ((try? check.computers.get()) ?? []).filter { $0.isActive && !$0.deviceUser.isEmpty }
                         .compactMap { computer in form.computers[computer.deviceUser].map { (computer, $0) } })
@@ -415,7 +428,7 @@ public final class CompromisedChanges {
             planned = try Compromised.steps(user: user, switchedOn: form.switchedOn.intersection(Compromised.Step.switchable),
                                             filters: picked.filters, delegates: picked.delegates, sendAs: picked.sendAs,
                                             autoReplyOff: form.autoReplyOff && (try? check.autoReply.get())?.enabled == true,
-                                            computers: picked.computers, drafts: picked.drafts,
+                                            computers: picked.computers, scheduled: picked.scheduled, drafts: picked.drafts,
                                             recovery: (check.account.recoveryEmail, check.account.recoveryPhone))
         } catch GamCommands.Invalid.argument(let why) {
             return refuse("Couldn't plan this: \(why). Remove it in the Admin console or Gmail's settings instead.")
@@ -437,6 +450,9 @@ public final class CompromisedChanges {
                       requires: resetIndex.map { $0 == index ? [] : [$0] } ?? [], about: ["compromised": user],
                       timeout: step.key == .drafts ? Compromised.Draft.timeout : GamRunner.defaultTimeout)
         }
+        // The scheduled sends held, read again at the confirm: one Gmail sent since the check may now be its Sent copy
+        // under the same ID, the only one with the whole Bcc list (Phishing's List Recipients reads it).
+        let heldScheduled = running.contains { $0.key == .scheduled } ? picked.scheduled.map(\.id) : []
         var preview: HeldPreview?
         if let executor, let domain = tenant.domain {
             let seen = check.user, setup = setup
@@ -446,6 +462,15 @@ public final class CompromisedChanges {
                     now = try await access.account(user, in: domain)
                 } catch let problem as UserAccess.Problem {
                     throw PreconditionFailure(problem.summary)
+                }
+                if !heldScheduled.isEmpty {
+                    let still: Set<String>
+                    switch await access.scheduledSends(of: user, in: domain) {
+                    case .success(let read): still = Set(read.filter(Compromised.ScheduledSend.isScheduled).map(\.id))
+                    case .failure(let problem): throw PreconditionFailure(problem.summary)
+                    }
+                    // Changed since: the confirm checks the account again, so a preview after is of what's scheduled now.
+                    guard heldScheduled.allSatisfy(still.contains) else { return false }
                 }
                 guard let admin = await setup.connectedAdmin, !admin.isEmpty else { return false }
                 return OffboardChanges.unchanged(now, since: seen) && Guard.normalized(now.primaryEmail) != Guard.normalized(admin)
@@ -501,7 +526,16 @@ public final class CompromisedChanges {
         await watcher.value
         if let refusal = outcome.refusal {
             ran = nil
-            problem = refusal
+            // A scheduled email sent or cancelled since the check refuses the run before anything runs; previewing the same
+            // check again would hold the same IDs, so the account is checked again first (review 2026-10-23).
+            guard plan.runningRows.contains(where: { $0.key == .scheduled }) else {
+                problem = refusal
+                return
+            }
+            isRunning = false
+            await check(plan.person.primaryEmail)
+            problem = refusal + " The account has been checked again, as a scheduled email may have been sent or cancelled since: "
+                + "preview again, or turn off “Delete all scheduled emails” to run the rest now."
             return
         }
         guard var run = ran?.run else { return }

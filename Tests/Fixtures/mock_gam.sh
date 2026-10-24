@@ -797,19 +797,20 @@ fi
 # (gone), and nogmail/<user> Gmail off. As GAM does:
 #   - a token for the user (token_refused, "User Print Failed"); with showlabels the labels are read first, so Gmail off is
 #     userGmailServiceNotEnabledWarning (73) before any list;
-#   - the list ("Getting all Messages…" on stderr); none sets NO_ENTITIES_FOUND_RC (60);
+#   - the list ("Getting all Messages…" on stderr), at most max_to_print (0 is no limit); none sets NO_ENTITIES_FOUND_RC (60);
 #   - the CSV (_printMessage, SortTitles): User,threadId,id, GAM's default headers, LabelsCount,Labels, then every other
 #     header name sorted; each header under its own name, a repeat as "<name> 1"; Date is the message's own time
 #     (showdate overwrites the header); the header line is printed even with no row, after any failure.
 # The same read answers Users' "Search a mailbox" (MailboxSearch, docs/domains/compromised-account.md slice 3): a query of
 # space-separated Gmail terms, each modelled from the fixtures: `rfc822msgid:<id>`; `in:<label>` (the message's labels,
-# case aside); `from:<text>` (its From header) and `to:<text>` (To, Cc or Bcc), case aside, as part of the header;
+# case aside: the compromised-account check's `in:scheduled` is the SCHEDULED label, carol@'s one scheduled phish, a name
+# for the live check to confirm); `from:<text>` (its From header) and `to:<text>` (To, Cc or Bcc), case aside, as part of the header;
 # `newer_than:<N>d|h`, a known lie: every fixture message is newer (their dates are fixed). Any other term, or a message
 # whose headers the fixtures don't hold, is refused as not modelled, never answered more kindly than Gmail.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "query" ]; then
   user=$2; query=$6
   shift 6
-  spamtrash=""; all=""; labels=""; dates=""
+  spamtrash=""; all=""; labels=""; dates=""; most=0
   while [ $# -gt 0 ]; do
     word=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -d '_')
     case "$word" in
@@ -817,7 +818,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] 
       maxtoprint)
         [ $# -ge 2 ] || missing_arg "integer x>=0"
         case "$2" in ''|*[!0-9]*) usage_error "Invalid argument: Expected <integer x>=0>" ;; esac
-        shift 2 ;;
+        most=$2; shift 2 ;;
       headers)
         [ $# -ge 2 ] || missing_arg "String"
         [ "$2" = all ] || not_modelled "print messages with headers other than all"
@@ -886,6 +887,9 @@ Labels"
     ids="$ids $id"
     labels_of="$labels_of
 $id $tags"
+    # At most max_to_print (GAM's maxToProcess; 0 is no limit).
+    set -- $ids
+    if [ "$most" -gt 0 ] && [ "$#" -ge "$most" ]; then break; fi
   done < "$GAM_MOCK_FIXTURES/messages.csv"
   if [ -z "$ids" ]; then
     printf '\rGot 0 Messages that matched query ((%s)) for %s...\r\n' "$query" "$user" 1>&2

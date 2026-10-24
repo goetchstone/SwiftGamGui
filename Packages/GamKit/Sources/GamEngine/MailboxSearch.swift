@@ -23,6 +23,9 @@ public enum MailboxSearch {
         public let unreadable: [String]
         /// Gmail's labels (`SENT`, `INBOX`, `TRASH`…).
         public let labels: [String]
+        /// GAM's own count of them (`LabelsCount`): GAM joins label names with a space, and a user label's name may hold one,
+        /// so `labels` are told apart only when they're as many (`SpamCopies`' rule).
+        public let labelsCount: Int?
         public let messageID: String
 
         public init(record: GamOutput.Record) {
@@ -34,6 +37,7 @@ public enum MailboxSearch {
             subject = text("Subject")
             messageID = text("Message-ID")
             labels = MessageRecipients.words(text("Labels"))
+            labelsCount = Int(text("LabelsCount"))
             var unreadable: [String] = []
             func addresses(_ kind: String) -> [String] {
                 var found: [String] = [], seen: Set<String> = []

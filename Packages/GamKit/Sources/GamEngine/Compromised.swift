@@ -9,6 +9,8 @@ public enum Compromised {
     /// The steps, in run order. A delegate or send-as address removed is one step each.
     public enum Step: String, CaseIterable, Sendable {
         case password
+        /// Right after the reset (review 2026-10-23): one comes due while the run goes on, and once sent, its ID may be the Sent copy.
+        case scheduled
         case clearRecovery = "clear_recovery"
         case revoke, forward, filters, delegate
         case sendAs = "send_as"
@@ -30,6 +32,7 @@ public enum Compromised {
             case .sendAs: "Remove a send-as address"
             case .autoReply: "Turn off the auto-reply"
             case .computer: "Block or remove a computer"
+            case .scheduled: "Delete the scheduled emails"
             case .drafts: "Delete the drafts"
             case .imapOff: Offboarding.Step.imapOff.name
             case .popOff: Offboarding.Step.popOff.name
@@ -82,16 +85,22 @@ public enum Compromised {
 
     /// Every step in run order, for `user` (the account's primary address): the switched ones in `switchedOn`, and one
     /// removal per picked item. Any of them alone is a plan. `filters` are the filters to delete, as the
-    /// check read them; `delegates` and `sendAs` the addresses to remove. `recovery` is what the check read, said in the
-    /// clear-recovery step's words. Throws when a pick can't be one argv element (`GamCommands.Invalid`).
+    /// check read them; `delegates` and `sendAs` the addresses to remove; `scheduled` the scheduled sends to delete, each
+    /// one Gmail labels scheduled. `recovery` is what the check read, said in the clear-recovery step's words. Throws when
+    /// a pick can't be one argv element (`GamCommands.Invalid`).
     public static func steps(user: String, switchedOn: Set<Step>, filters: [Filter] = [], delegates: [String] = [],
                              sendAs: [String] = [], autoReplyOff: Bool = false, computers: [(Computer, ComputerAction)] = [],
-                             drafts: [Draft] = [], recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
+                             scheduled: [MailboxSearch.Message] = [], drafts: [Draft] = [],
+                             recovery: (email: String, phone: String) = ("", "")) throws -> [Planned] {
         guard switchedOn.isSubset(of: Step.switchable) else {
             throw GamCommands.Invalid.argument("only \(Step.switchable.map(\.rawValue).joined(separator: ", ")) are switched")
         }
         guard delegates.allSatisfy(GamCommands.isOneAddress) else {
             throw GamCommands.Invalid.argument("each delegate to remove is one email address")
+        }
+        // Whatever the search returned, only a message Gmail itself labels scheduled is deleted as one.
+        guard scheduled.allSatisfy(ScheduledSend.isScheduled) else {
+            throw GamCommands.Invalid.argument("only a message Gmail labels \(ScheduledSend.label) is deleted as a scheduled send")
         }
         let was = [recovery.email.isEmpty ? nil : "email \(recovery.email)", recovery.phone.isEmpty ? nil : "phone \(recovery.phone)"]
             .compactMap(\.self)
@@ -101,6 +110,14 @@ public enum Compromised {
                                  summary: "Set \(user)'s password to a random one nobody is shown, so the attacker's copy stops working. "
                                     + "The person can't sign in until you give them a new one (Admin console → Reset password)",
                                  write: GamCommands.resetPassword(email: user)))
+        }
+        if !scheduled.isEmpty {
+            let count = scheduled.count, people = ScheduledSend.recipients(scheduled).count
+            steps.append(Planned(key: .scheduled, label: "Delete \(count) scheduled email\(count == 1 ? "" : "s")",
+                                 summary: "Delete \(count) of \(user)'s emails scheduled to send (\(named(scheduled.map(\.subject)))), to "
+                                    + "\(people) recipient\(people == 1 ? "" : "s"), for good, before \(count == 1 ? "its" : "their") "
+                                    + "time comes. They can't be restored",
+                                 write: try GamCommands.deleteMessages(email: user, ids: scheduled.map(\.id))))
         }
         if switchedOn.contains(.clearRecovery) {
             steps.append(Planned(key: .clearRecovery, label: Step.clearRecovery.name,
@@ -158,11 +175,8 @@ public enum Compromised {
             }
         }
         if !drafts.isEmpty {
-            let subjects = drafts.map(\.subject).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
-            let named = subjects.prefix(3).map { "“\($0.isEmpty ? "(no subject)" : $0)”" }.joined(separator: ", ")
-                + (subjects.count > 3 ? " and \(subjects.count - 3) other subjects" : "")
             steps.append(Planned(key: .drafts, label: "Delete \(drafts.count) draft\(drafts.count == 1 ? "" : "s")",
-                                 summary: "Delete \(drafts.count) of \(user)'s drafts (\(named)) for good, as Gmail's Discard does, so "
+                                 summary: "Delete \(drafts.count) of \(user)'s drafts (\(named(drafts.map(\.subject)))) for good, as Gmail's Discard does, so "
                                     + "nobody signed in to the account can send them. They can't be restored",
                                  write: try GamCommands.deleteMessages(email: user, ids: drafts.map(\.id))))
         }
@@ -179,6 +193,13 @@ public enum Compromised {
                                  write: GamCommands.popOff(email: user)))
         }
         return steps
+    }
+
+    /// Up to three subjects in quotes, each once, and how many others: what a deleting step names.
+    private static func named(_ subjects: [String]) -> String {
+        let subjects = subjects.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        return subjects.prefix(3).map { "“\($0.isEmpty ? "(no subject)" : $0)”" }.joined(separator: ", ")
+            + (subjects.count > 3 ? " and \(subjects.count - 3) other subjects" : "")
     }
 
     /// "Securing carol@example.com — 6 steps", or how many of them run when some are ticked as already done.
@@ -618,12 +639,22 @@ public enum Compromised {
     /// What the check found worth saying, before the lists: each a sentence, in the order to deal with them. `nil` for a
     /// read that failed (said beside its list, not here).
     public static func findings(account: Account, forwarding: Forwarding?, filters: [Filter]?, delegates: [String]?,
-                                sendAs: [SendAs]?, roles: [AdminRole]?, drafts: [Draft]? = nil, autoReply: Vacation? = nil,
+                                sendAs: [SendAs]?, roles: [AdminRole]?, scheduled: [MailboxSearch.Message]? = nil,
+                                drafts: [Draft]? = nil, autoReply: Vacation? = nil,
                                 devices: [MobileDevice]? = nil, computers: [Computer]? = nil,
                                 apps: [ConnectedApps.App]? = nil, scripts: [ScriptProject]? = nil, now: Date = Date()) -> [String] {
         var said: [String] = []
         let user = account.primaryEmail
         if account.suspended { said.append("\(user) is suspended: nobody can sign in to it until it's restored.") }
+        // First of what to undo: these go out on their own, on Gmail's clock.
+        if let found = scheduled, case let scheduled = found.filter(ScheduledSend.isScheduled), !scheduled.isEmpty {
+            let count = scheduled.count, people = ScheduledSend.recipients(scheduled).count
+            let atLeast = found.count >= ScheduledSend.cap ? "At least " : ""
+            said.append("\(atLeast)\(count == 1 ? "1 email is" : "\(count) emails are") scheduled to send from \(user), to \(people) "
+                + "recipient\(people == 1 ? "" : "s"): Gmail sends \(count == 1 ? "it" : "them") at \(count == 1 ? "its" : "their") "
+                + "time on its own, with nobody signed in. Delete \(count == 1 ? "it" : "them") unless \(user) scheduled "
+                + "\(count == 1 ? "it" : "them").")
+        }
         if let forwarding, forwarding.enabled {
             said.append("Forwarding is on, to \(forwarding.to): every message goes there. “\(Step.forward.name)” turns it off.")
         }
@@ -698,6 +729,31 @@ public enum Compromised {
             said.append("\(user) holds an admin role: check the Admin console's audit log for what it was used for.")
         }
         return said
+    }
+
+    // MARK: scheduled sends
+
+    /// The emails waiting in Gmail's Scheduled to go out at their time: GamGUI's mailbox search (`GamCommands.searchMessages`,
+    /// Spam and Trash included) for `in:scheduled`, every one (`cap`), each with its recipients (`MailboxSearch`). Gmail
+    /// sends one at its time on its own, with nobody signed in, and it isn't a draft: the drafts' listing never shows it.
+    public enum ScheduledSend {
+        public static let query = "in:scheduled"
+        /// Gmail's label on a scheduled message. Only a message carrying it is deleted as one, whatever the search returned.
+        public static let label = "SCHEDULED"
+        /// Above the most Gmail lets one person schedule (100, as guides to Gmail say), so a check lists every one.
+        public static let cap = 500
+
+        /// Labelled `SCHEDULED` by Gmail: its labels told apart by GAM's own count (a user label's name may hold the word),
+        /// and never `SENT`, whose copy holds the only whole Bcc list (review 2026-10-23).
+        public static func isScheduled(_ message: MailboxSearch.Message) -> Bool {
+            message.labelsCount == message.labels.count && message.labels.contains(label) && !message.labels.contains("SENT")
+        }
+
+        /// Everyone the messages go to, each once (case aside), in their order.
+        public static func recipients(_ messages: [MailboxSearch.Message]) -> [String] {
+            var seen: Set<String> = []
+            return messages.flatMap(\.recipients).filter { seen.insert(PythonText.lower($0)).inserted }
+        }
     }
 
     // MARK: drafts

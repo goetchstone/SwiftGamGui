@@ -703,15 +703,17 @@ public enum GamCommands {
 
     /// Finds messages in one mailbox by a Gmail search. `headers all` shows `Return-Path` and
     /// `Received`, so a bounce sender is visible; spam and trash are included, since bounces land there.
-    /// The output is CSV: `print messages` refuses `formatjson`.
-    public static func searchMessages(email: String, query: String = "", detail: MessageDetail = .headers) -> GamRead {
+    /// The output is CSV: `print messages` refuses `formatjson`. `max` is GamGUI's `messageCap` but for the compromised-
+    /// account check's scheduled sends, which lists every one (`Compromised.ScheduledSend.cap`).
+    public static func searchMessages(email: String, query: String = "", detail: MessageDetail = .headers,
+                                      max: Int = messageCap) -> GamRead {
         let shown: [String] = switch detail {
         case .summary: ["showlabels", "showdate", "showsize", "showsnippet"]
         case .headersAndBody: ["headers", "all", "showbody", "showlabels", "showdate"]
         case .headers: ["headers", "all", "showlabels", "showdate"]
         }
         return GamRead(["user", email, "print", "messages"] + optional("query", query)
-            + ["includespamtrash", "max_to_print", String(messageCap)] + shown)
+            + ["includespamtrash", "max_to_print", String(max)] + shown)
     }
 
     // MARK: aliases

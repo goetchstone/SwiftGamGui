@@ -122,6 +122,7 @@ struct CompromisedView: View {
             // The switches too: a step turned off for one person's errand is never off for the next person's lock.
             form.switchedOn = Compromised.Step.onByDefault
             form.discardDrafts = .none
+            form.deleteScheduled = false
         }
         // A check again (after a run): the ticks on what's gone are dropped.
         .onChange(of: changes.check?.id) {
@@ -204,12 +205,14 @@ struct CompromisedView: View {
                 FiltersSection(check: check, picked: $form.filters)
                 DelegatesSection(check: check, picked: $form.delegates)
                 SendAsSection(check: check, picked: $form.sendAs)
+                ScheduledSection(check: check, delete: $form.deleteScheduled)
                 DraftsSection(check: check, discard: $form.discardDrafts)
                 AdminRolesSection(check: check)
                 DevicesSection(check: check, picked: $form.computers, missed: pickMissed)
                 AppsSection(check: check)
                 ScriptsSection(check: check)
-                StepsSection(form: $form, draftsChosen: check.drafts(form.discardDrafts).count)
+                StepsSection(form: $form, scheduledChosen: form.deleteScheduled ? check.scheduledSends.count : 0,
+                             draftsChosen: check.drafts(form.discardDrafts).count)
                 previewSection
             }
         }
@@ -450,6 +453,7 @@ struct CompromisedView: View {
             form.filters = Set(((try? check.filters.get()) ?? []).filter(\.hidesOrForwards).map(\.id))
             form.delegates = Set((try? check.delegates.get()) ?? [])
             form.sendAs = Set(((try? check.sendAs.get()) ?? []).filter { !$0.isPrimary }.map(\.address))
+            form.deleteScheduled = !check.scheduledSends.isEmpty
             // The drafts that share the newest one's subject: an attacker's batch.
             if let subject = (try? check.drafts.get())?.first?.subject { form.discardDrafts = .subjectContaining(subject) }
             await changes.plan(form)
@@ -651,6 +655,63 @@ private struct SendAsSection: View {
 
     private func pick(_ address: String) -> Binding<Bool> {
         Binding(get: { picked.contains(address) }, set: { if $0 { picked.insert(address) } else { picked.remove(address) } })
+    }
+}
+
+/// The emails scheduled to send from the account, each with whom it goes to, and whether to delete every one. Keeping them
+/// is the start: one may be the person's own. Only those Gmail labels scheduled are listed to delete.
+private struct ScheduledSection: View {
+    let check: CompromisedChanges.Check
+    @Binding var delete: Bool
+
+    var body: some View {
+        Section {
+            switch check.scheduled {
+            case .success(let found):
+                let sends = check.scheduledSends
+                if sends.isEmpty {
+                    Text("Gmail's search found nothing scheduled to send.").foregroundStyle(.secondary)
+                } else {
+                    if found.count >= Compromised.ScheduledSend.cap {
+                        Text("At least \(Compromised.ScheduledSend.cap) found: after the delete, Check Again lists the rest.").font(.callout)
+                    }
+                    Toggle("Delete all \(sends.count) scheduled email\(sends.count == 1 ? "" : "s")", isOn: $delete)
+                    if delete {
+                        Text("\(sends.count == 1 ? "It" : "All \(sends.count)") will be deleted for good.").fontWeight(.semibold)
+                    }
+                    ForEach(sends) { message in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(message.subject.isEmpty ? "(no subject)" : message.subject)
+                            Text(Self.recipients(message)).font(.callout).foregroundStyle(.secondary)
+                            Text("Gmail's time: \(message.when?.formatted(date: .abbreviated, time: .shortened) ?? message.date)")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                if found.count > sends.count {
+                    let other = found.count - sends.count
+                    Text("\(other) more the search found \(other == 1 ? "isn't" : "aren't") labelled \(Compromised.ScheduledSend.label) by "
+                         + "Gmail, so \(other == 1 ? "it's" : "they're") left alone.")
+                        .font(.callout)
+                }
+            case .failure(let problem): Unread(what: "the scheduled emails", problem: problem)
+            }
+        } header: {
+            Text("Scheduled to send")
+        } footer: {
+            Text("Gmail sends a scheduled email at its time on its own, with nobody signed in, and it isn't a draft. Deleting is "
+                 + "for good. Gmail's own Scheduled, in the person's Gmail, is the record. To keep one, cancel the others there "
+                 + "instead: Cancel send leaves each a draft, which Drafts below deletes after Check Again.")
+        }
+    }
+
+    /// "To carol@example.com · Bcc pat@partner.example, guest@example.org and 1 more": each header's first three.
+    private static func recipients(_ message: MailboxSearch.Message) -> String {
+        let headers = [("To", message.to), ("Cc", message.cc), ("Bcc", message.bcc)].filter { !$0.1.isEmpty }.map { name, addresses in
+            "\(name) " + addresses.prefix(3).joined(separator: ", ") + (addresses.count > 3 ? " and \(addresses.count - 3) more" : "")
+        } + (message.unreadable.isEmpty ? [] : ["as GAM printed: " + message.unreadable.joined(separator: ", ")])
+        return headers.isEmpty ? "No recipients in its headers." : headers.joined(separator: " · ")
     }
 }
 
@@ -910,7 +971,8 @@ private struct ScriptsSection: View {
 /// Every lock step a switch, the full lock on to start, and the picks above said in a line.
 private struct StepsSection: View {
     @Binding var form: CompromisedChanges.Form
-    /// How many drafts the form's choice moves to Trash.
+    /// How many scheduled emails and drafts the form's choices delete.
+    let scheduledChosen: Int
     let draftsChosen: Int
 
     var body: some View {
@@ -945,7 +1007,7 @@ private struct StepsSection: View {
                          (form.sendAs.count, "send-as address", "remove"), (form.autoReplyOff ? 1 : 0, "auto-reply", "turn off"),
                          (form.computers.values.filter { $0 == .block }.count, "computer", "block"),
                          (form.computers.values.filter { $0 == .delete }.count, "computer", "take the account off"),
-                         (draftsChosen, "draft", "delete")]
+                         (scheduledChosen, "scheduled email", "delete"), (draftsChosen, "draft", "delete")]
                 .filter { $0.0 > 0 }
             Text(picks.isEmpty ? "Nothing ticked to undo above."
                  : "Also: " + picks.map { "\($0.2) \($0.0) \($0.1)\($0.0 == 1 ? "" : ($0.1.hasSuffix("s") ? "es" : "s"))" }

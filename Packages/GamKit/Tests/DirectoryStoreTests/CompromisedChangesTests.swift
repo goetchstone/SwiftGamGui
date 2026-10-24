@@ -115,7 +115,9 @@ final class CompromisedChangesTests {
         #expect(try check.delegates.get() == ["helpdesk@example.com"])
         #expect(try check.sendAs.get().map(\.address) == ["carol@example.com", "billing.desk@example.net"])
         #expect(try check.adminRoles.get().isEmpty)
-        #expect(check.findings.first?.hasPrefix("Forwarding is on, to carol.home@example.org") == true, "\(check.findings)")
+        // What goes out on its own first, then what keeps going out.
+        #expect(check.findings.first?.hasPrefix("1 email is scheduled to send from carol@example.com") == true, "\(check.findings)")
+        #expect(check.findings.dropFirst().first?.hasPrefix("Forwarding is on, to carol.home@example.org") == true, "\(check.findings)")
         #expect(check.isFor("CAROL@example.com ") && !check.isFor("alice@example.com"))
     }
 
@@ -127,7 +129,7 @@ final class CompromisedChangesTests {
         try Data().write(to: state.appending(path: "nogmail/carol@example.com"))
         let check = try await checked()
         for result in [check.filters.map { _ in () }, check.forwarding.map { _ in () }, check.delegates.map { _ in () },
-                       check.sendAs.map { _ in () }, check.forwardingAddresses.map { _ in () }] {
+                       check.sendAs.map { _ in () }, check.forwardingAddresses.map { _ in () }, check.scheduled.map { _ in () }] {
             guard case .failure(let problem) = result else { Issue.record("a Gmail read passed with Gmail off"); continue }
             #expect(problem.summary.contains("Gmail"), "\(problem.summary)")
         }
@@ -709,6 +711,48 @@ final class CompromisedChangesTests {
         let again = try #require(changes.check)
         #expect(try again.drafts.get().map(\.id) == ["19a0c0ffee000013"])
         #expect(changes.run?.rest.discardDrafts == CompromisedChanges.Form.Discard.none)
+    }
+
+    /// The check lists the emails scheduled to send, with whom they go to, and says so first; deleting them is one step
+    /// through the executor, exactly as held, destructive and confirmed by the typed address; the check again lists none.
+    /// One no longer scheduled at the confirm stops the run before anything runs.
+    @Test func scheduledSendsAreDeletedInOneStepAndTheCheckAgainListsNone() async throws {
+        try await connect()
+        let check = try await checked()
+        #expect(check.scheduledSends.map(\.id) == ["19a0c0ffee000014"])
+        #expect(check.findings.first { $0.contains("scheduled") }
+                == "1 email is scheduled to send from carol@example.com, to 4 recipients: Gmail sends it at its time on its own, "
+                    + "with nobody signed in. Delete it unless carol@example.com scheduled it.")
+        var form = form()
+        form.done = [.password]
+        form.switchedOn = []
+        form.deleteScheduled = true
+        let first = try await plan(form)
+        #expect(first.steps.count == 1)
+        let step = try #require(first.steps.first)
+        #expect(step.commandLine == "gam user carol@example.com delete messages ids 19a0c0ffee000014")
+        #expect(step.action == .deleteMessages && step.risk == .destructive && first.preview?.typedAddress == "carol@example.com")
+        // Gone from Scheduled between the check and the confirm (sent, it may be the Sent copy under the same ID): nothing runs.
+        let gone = state.appending(path: "deleted/19a0c0ffee000014")
+        try FileManager.default.createDirectory(at: gone.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: gone)
+        await changes.confirm(first, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        #expect(changes.problem?.hasPrefix("What the preview showed has changed since") == true
+                && changes.problem?.contains("The account has been checked again") == true, "\(String(describing: changes.problem))")
+        #expect(!writes().contains(step.commandLine) && changes.run == nil)
+        #expect(changes.check?.id != check.id && changes.check?.scheduledSends.isEmpty == true, "checked again: nothing scheduled now")
+        try FileManager.default.removeItem(at: gone)
+        _ = try await checked()
+        let plan = try await self.plan(form)
+        await changes.confirm(plan, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        #expect(changes.run?.isComplete == true, "\(String(describing: changes.run?.results))")
+        #expect(writes().contains(step.commandLine))
+        let again = try #require(changes.check)
+        #expect(try again.scheduled.get().isEmpty && !again.findings.contains { $0.contains("scheduled") })
+        #expect(changes.run?.rest.deleteScheduled == false)
+        var kept = form
+        kept.keepPicks(in: again)
+        #expect(!kept.deleteScheduled, "nothing listed, nothing to delete")
     }
 
     /// An attacker's auto-reply sends their message to everyone who writes: the check reads it, says it, and "Turn off the

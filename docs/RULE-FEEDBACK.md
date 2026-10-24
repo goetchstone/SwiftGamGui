@@ -22,6 +22,18 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-23 — The mock's mailbox search accepted max_to_print and ignored it
+- **What happened:** reviewing scheduled sends (a delete capped at 500 found), the `gam-command-reviewer` agent found the
+  strict `print messages query` handler validated `max_to_print` and then listed every match, while GAM stops at it. No
+  test had asked for fewer than the fixtures hold, so a cap's "at least" path was never run. Fixed in the same PR, with a
+  test of 1, 2 and 0 (no limit).
+- **Invariant in force:** "the mock lies" (CLAUDE.md): a mock more permissive than GAM turns a live break into a green test.
+- **Why it didn't hold:** not a wording problem: the handler parsed the argument (so the argv check passed) without acting
+  on it; "fails the way GAM fails" was read as "refuses what GAM refuses", not "returns what GAM returns".
+- **Would a rule have caught it?** only if enforced differently: every option a mock handler accepts either changes its
+  output or is refused as not modelled, never parsed and dropped.
+- **Enforcement home if changed:** skill (`pre-commit` item 6, the mock).
+
 ## 2026-10-23 — A third Google field the reader matched came from the mock, not from Google
 - **What happened:** the log reader took every Gmail event from the attacker's address as a send ("pull from every
   mailbox"): the mock's Gmail rows had no `event_info.mail_event_type`, which Google's appendix documents with 36 types.

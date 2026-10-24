@@ -294,9 +294,15 @@ public final class UserAccess {
         }
     }
 
-    public func searchMailbox(of email: String, query: String, in pinned: Domain? = nil) async -> Result<[MailboxSearch.Message], Problem> {
+    /// The emails scheduled to send from `email` (`Compromised.ScheduledSend`): every one, with its recipients.
+    public func scheduledSends(of email: String, in pinned: Domain? = nil) async -> Result<[MailboxSearch.Message], Problem> {
+        await searchMailbox(of: email, query: Compromised.ScheduledSend.query, in: pinned, max: Compromised.ScheduledSend.cap)
+    }
+
+    public func searchMailbox(of email: String, query: String, in pinned: Domain? = nil,
+                              max: Int = GamCommands.messageCap) async -> Result<[MailboxSearch.Message], Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
-        let read = GamCommands.searchMessages(email: email, query: query, detail: .headers)
+        let read = GamCommands.searchMessages(email: email, query: query, detail: .headers, max: max)
         do {
             return .success(try MailboxSearch.messages(try await runner.run(read, as: domain, extraEnvironment: environment), argv: read.argv))
         } catch let error as GamError {
