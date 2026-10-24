@@ -78,5 +78,5 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
 
 - A guard can't prove that a GAM command does what you expect against *your* domain. Check the
   README's live-verification table, and rehearse anything unproven on a throwaway user first.
-- GamGUI is provided **as-is under the MIT License, with no warranty**. You are responsible for what
+- GAM GUI is provided **as-is under the Apache License 2.0, with no warranty**. You are responsible for what
   you run against your own tenant.

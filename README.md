@@ -3,7 +3,7 @@
 [![CI](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/goetchstone/SwiftGamGui/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/goetchstone/SwiftGamGui/badge)](https://scorecard.dev/viewer/?uri=github.com/goetchstone/SwiftGamGui)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 A native macOS version of [GamGUI](https://github.com/goetchstone/gamgui), the Google Workspace admin
 app built on [GAM7](https://github.com/GAM-team/GAM). It runs the same `gam` commands GamGUI runs, and
@@ -241,4 +241,4 @@ operator's own account, never someone's real group without their yes.
 
 ## License
 
-MIT. GAM is Apache-2.0 (`Vendor/gam7/LICENSE`).
+Apache License 2.0, the same as GAM ([LICENSE](LICENSE), [NOTICE](NOTICE)). Versions before the change were MIT.
