@@ -16,8 +16,8 @@ struct NativeArgvTests {
         // <Boolean>`: the temporary password, changed by the person at their next sign-in.
         ("set_password", GamCommands.setPassword(email: "<email>", password: "Abcd-Efgh-Jkmn"),
          ["update", "user", "<email>", "password", "Abcd-Efgh-Jkmn", "changepassword", "on"]),
-        // 5874-5878 `phone [type <type>|(custom <String>)] [value <String>] notprimary|primary`, one per phone: GAM sends
-        // them as the whole list (getUserAttributes, gam/__init__.py:47476-47489); 5899 `phone clear` when none is left.
+        // 5881-5885 `phone [type <type>|(custom <String>)] [value <String>] notprimary|primary`, one per phone: GAM sends
+        // them as the whole list (getUserAttributes, gam/__init__.py:47476-47489 at 7.48.30); 5906 `phone clear` when none is left.
         ("update_phones",
          try! GamCommands.updatePhones(email: "<email>", phones: [
             GamUser.Phone(type: "work", value: "+1 555 0100", primary: true), GamUser.Phone(type: "Mobile", value: "+1 555 0199", primary: false),
