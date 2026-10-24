@@ -16,7 +16,7 @@
  },
  "cases": [
   {
-   "stdout": "GAM 7.48.30 - mock",
+   "stdout": "GAM 7.48.34 - mock",
    "records": "[]"
   },
   {
@@ -72,12 +72,12 @@
    "records": "[{\"User\": \"alice@example.com\", \"delegateAddress\": \"assistant@example.com\", \"delegationStatus\": \"accepted\"}, {\"User\": \"alice@example.com\", \"delegateAddress\": \"backup@example.com\", \"delegationStatus\": \"accepted\"}]"
   },
   {
-   "stdout": "User,forwardingEmail,verificationStatus\nalice@example.com,fwd@example.com,accepted",
-   "records": "[{\"User\": \"alice@example.com\", \"forwardingEmail\": \"fwd@example.com\", \"verificationStatus\": \"accepted\"}]"
+   "stdout": "User,forwardingEmail,verificationStatus",
+   "records": "[]"
   },
   {
-   "stdout": "User,id,Subject,From,Date,Return-Path\nsomeone@example.com,msg_1001,Your receipt,billing@vendor.example,\"Mon, 23 Jun 2026 14:29:10 +0000\",<fixture-bounce-0001@bounces.vendor.example>\nsomeone@example.com,msg_1002,Weekly digest,news@vendor.example,\"Tue, 24 Jun 2026 09:00:00 +0000\",<bounce@vendor.example>",
-   "records": "[{\"User\": \"someone@example.com\", \"id\": \"msg_1001\", \"Subject\": \"Your receipt\", \"From\": \"billing@vendor.example\", \"Date\": \"Mon, 23 Jun 2026 14:29:10 +0000\", \"Return-Path\": \"<fixture-bounce-0001@bounces.vendor.example>\"}, {\"User\": \"someone@example.com\", \"id\": \"msg_1002\", \"Subject\": \"Weekly digest\", \"From\": \"news@vendor.example\", \"Date\": \"Tue, 24 Jun 2026 09:00:00 +0000\", \"Return-Path\": \"<bounce@vendor.example>\"}]"
+   "stdout": "User,threadId,id,Date,Subject,From,Reply-To,To,Delivered-To,Content-Type,Message-ID,LabelsCount,Labels,MIME-Version\nalice@example.com,19a0c0ffee000001,19a0c0ffee000001,2026-10-19T13:12:05+00:00,Shared file: Q4 invoices,Carol Clark <carol@example.com>,,carol@example.com,alice@example.com,\"multipart/alternative; boundary=\"\"0000000000001234\"\"\",<CAPh1sh+Notice=0001@mail.example.com>,2,INBOX UNREAD,1.0\nalice@example.com,19a0c0ffee000002,19a0c0ffee000002,2026-10-19T13:14:41+00:00,Shared file: Q4 invoices,Carol Clark <carol@example.com>,,carol@example.com,alice@example.com,\"multipart/alternative; boundary=\"\"0000000000005678\"\"\",<CAPh1sh+Notice=0001@mail.example.com>,1,SPAM,1.0\nalice@example.com,19a0c0ffee000007,19a0c0ffee000007,2026-10-18T16:02:10+00:00,Team lunch on Friday,Bob Brown <bob@example.com>,,alice@example.com,alice@example.com,\"text/plain; charset=\"\"UTF-8\"\"\",<CAOther+Note=0002@mail.example.com>,1,INBOX,1.0",
+   "records": "[{\"User\": \"alice@example.com\", \"threadId\": \"19a0c0ffee000001\", \"id\": \"19a0c0ffee000001\", \"Date\": \"2026-10-19T13:12:05+00:00\", \"Subject\": \"Shared file: Q4 invoices\", \"From\": \"Carol Clark <carol@example.com>\", \"Reply-To\": \"\", \"To\": \"carol@example.com\", \"Delivered-To\": \"alice@example.com\", \"Content-Type\": \"multipart/alternative; boundary=\\\"0000000000001234\\\"\", \"Message-ID\": \"<CAPh1sh+Notice=0001@mail.example.com>\", \"LabelsCount\": \"2\", \"Labels\": \"INBOX UNREAD\", \"MIME-Version\": \"1.0\"}, {\"User\": \"alice@example.com\", \"threadId\": \"19a0c0ffee000002\", \"id\": \"19a0c0ffee000002\", \"Date\": \"2026-10-19T13:14:41+00:00\", \"Subject\": \"Shared file: Q4 invoices\", \"From\": \"Carol Clark <carol@example.com>\", \"Reply-To\": \"\", \"To\": \"carol@example.com\", \"Delivered-To\": \"alice@example.com\", \"Content-Type\": \"multipart/alternative; boundary=\\\"0000000000005678\\\"\", \"Message-ID\": \"<CAPh1sh+Notice=0001@mail.example.com>\", \"LabelsCount\": \"1\", \"Labels\": \"SPAM\", \"MIME-Version\": \"1.0\"}, {\"User\": \"alice@example.com\", \"threadId\": \"19a0c0ffee000007\", \"id\": \"19a0c0ffee000007\", \"Date\": \"2026-10-18T16:02:10+00:00\", \"Subject\": \"Team lunch on Friday\", \"From\": \"Bob Brown <bob@example.com>\", \"Reply-To\": \"\", \"To\": \"alice@example.com\", \"Delivered-To\": \"alice@example.com\", \"Content-Type\": \"text/plain; charset=\\\"UTF-8\\\"\", \"Message-ID\": \"<CAOther+Note=0002@mail.example.com>\", \"LabelsCount\": \"1\", \"Labels\": \"INBOX\", \"MIME-Version\": \"1.0\"}]"
   },
   {
    "stdout": "User: alice@example.com, Vacation:\n  Enabled: True\n  Contacts Only: False\n  Domain Only: False\n  Subject: Out of office\n  Message:\n    I am away until next week.",

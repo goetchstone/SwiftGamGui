@@ -28,7 +28,9 @@ struct CommandKindTests {
     /// returns before any change). Each reviewed against the pinned version's source; nothing else may be added
     /// without the same.
     static let reviewedDryRuns: [String: (gam: String, why: String)] = [
-        "find_message_copies": ("7.48.30", "trash messages without doit: _processMessagesThreads lists and counts, then "
+        // 7.48.34: GAM's v7.48.30...v7.48.34 compare leaves _processMessagesThreads alone (its Gmail hunks are in
+        // printShowMessagesThreads: an unknownError on one message now a warning line, which Find reads as unsure).
+        "find_message_copies": ("7.48.34", "trash messages without doit: _processMessagesThreads lists and counts, then "
             + "continues past every user before a trash call"),
     ]
 

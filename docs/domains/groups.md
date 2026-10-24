@@ -122,7 +122,7 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
   (`xsales@` answered as sales, `SALES@` failed), printed a JSON array, and failed an unknown group as
   "400 … groupKey", exit 1; `print groups` printed NDJSON whatever it was asked. Now:
   - `print groups` takes `fields <GroupFieldNameList>` and `formatjson`; each field must be a
-    `<GroupFieldName>` (grammar line 3965), matched lowercased with underscores dropped as GAM matches
+    `<GroupFieldName>` (grammar line 3970), matched lowercased with underscores dropped as GAM matches
     it, else GAM's invalid choice (exit 2). Only the four the app asks for, together, are modelled;
     fewer, `quotechar`, no `formatjson` and any other word are refused. It prints GAM's formatjson
     shape, `email,JSON`, in GAM's CSV dialect (`gam_row`; see the runner runbook).
