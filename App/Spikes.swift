@@ -196,10 +196,15 @@ enum Spikes {
     static func printState(in content: NSView) {
         func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
         let shown = descendants(content).filter { !$0.isHiddenOrHasHiddenAncestor }
-        for popup in shown.compactMap({ $0 as? NSPopUpButton }) {
-            print("state: pop-up \"\(popup.titleOfSelectedItem ?? "(none)")\", item \(popup.indexOfSelectedItem) of "
-                  + "\(popup.itemTitles.prefix(5))")
+        // Pop-ups as VoiceOver reads them: SwiftUI's own pickers aren't AppKit's NSPopUpButton.
+        func popUps(in element: Any, depth: Int) {
+            guard depth < 40, let element = element as? NSAccessibilityProtocol else { return }
+            if element.accessibilityRole() == .popUpButton {
+                print("state: pop-up \"\(element.accessibilityLabel() ?? "")\" shows \"\(element.accessibilityValue().map { "\($0)" } ?? "")\"")
+            }
+            for child in element.accessibilityChildren() ?? [] { popUps(in: child, depth: depth + 1) }
         }
+        popUps(in: content, depth: 0)
         for scroll in shown.compactMap({ $0 as? NSScrollView }) {
             let document = scroll.documentView.map { "\(type(of: $0)) \(Int($0.frame.height)) tall" } ?? "no document"
             print("state: scroll at \(Int(scroll.contentView.bounds.minY)) of \(document), \(Int(scroll.frame.height)) shown")

@@ -180,7 +180,7 @@ struct CompromisedView: View {
             IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter,
                                 readMore: read, readingSaved: incidents.loading)
                 .id(Self.reportsAnchor)
-            if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller).id(Self.readerAnchor) }
+            if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller) }
         } else {
             Section { Text("Connect a domain on Setup first.").foregroundStyle(.secondary) }
         }
@@ -198,7 +198,7 @@ struct CompromisedView: View {
             }
             .id(Self.runAnchor)
         }
-        if setup.active != nil, let pull = logs.pull, pull.ended { reader(.toDo, pull, scroller).id(Self.toDoAnchor) }
+        if setup.active != nil, let pull = logs.pull, pull.ended { reader(.toDo, pull, scroller) }
         Group {
             whoSection.id(Self.checkAnchor)
             if let check {
@@ -250,7 +250,7 @@ struct CompromisedView: View {
         }, pullAgain: { applications, accounts in
             pullAgain(applications, accounts)
             go(.investigate, to: Self.reportsAnchor, scroller)
-        })
+        }, anchor: part == .findings ? Self.readerAnchor : Self.toDoAnchor)
     }
 
     /// Shows `tab` scrolled to `anchor`: at once when it's shown already, else once it has drawn.
