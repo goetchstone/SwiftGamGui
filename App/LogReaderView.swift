@@ -1,4 +1,6 @@
+import AppKit
 import Assist
+import ChangeCore
 import Directory
 import GamEngine
 import Stores
@@ -48,6 +50,11 @@ struct LogReaderView: View {
     let show: (IncidentLogs.Filter) -> Void
     /// Reads these logs again for these accounts, adding to what's shown ("Pull Again"): a read.
     let pullAgain: (_ logs: [ActivityLogs.Application], _ accounts: [String]) -> Void
+    /// The warnings picked for the emails the attacker sent, kept with the open incident (Who it reached).
+    let warnings: [IncidentStore.Warning]
+    /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
+    /// incident open, where a pick couldn't be kept.
+    let pickWarning: ((_ email: String, _ warning: String?) -> String?)?
     @State private var marking: Marking?
     @State private var markProblem: String?
 
@@ -69,11 +76,12 @@ struct LogReaderView: View {
         /// for the key being read waits on that read. A newer key's read replaces it, and the older one's reading is dropped
         /// when it ends.
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
-                                nobodyHas: [NobodyHasStore.Check], key: String) {
+                                nobodyHas: [NobodyHasStore.Check], warnings: [IncidentStore.Warning], key: String) {
             guard read?.key != key, reading?.key != key else { return }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
-                    LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas)
+                    LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
+                                          domain: domain, warnings: warnings)
                 }.value
                 guard let self, self.reading?.key == key else { return }
                 self.read = (key, found)
@@ -87,6 +95,7 @@ struct LogReaderView: View {
         "\(domain)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
+            + "|" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",")
     }
 
     /// The sign-in a "That Was Them" asks a note for.
@@ -107,7 +116,7 @@ struct LogReaderView: View {
     /// attack: what's still to do says so), each email's latest Phishing run in the audit log, and the emails Phishing's
     /// Find showed nobody here has. Off the main thread (`Memory`).
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
-                                    nobodyHas: [NobodyHasStore.Check]) -> LogReading.Reading {
+                                    nobodyHas: [NobodyHasStore.Check], domain: String = "", warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -119,8 +128,13 @@ struct LogReaderView: View {
                               failed: run.failed, mailboxes: run.mailboxes, searchedEverywhere: run.searchedEverywhere)
         }
         let checks = nobodyHas.map { LogReading.NobodyHas(messageID: $0.messageID, at: $0.at, by: $0.by) }
+        // The warnings picked, by the email they warn about (Who it reached).
+        var picked: [String: Set<String>] = [:]
+        for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
-                                                                         capped: capped, pulled: runs, nobodyHas: checks))
+                                                                         capped: capped, pulled: runs, nobodyHas: checks,
+                                                                         domains: domain.isEmpty ? [] : [domain.lowercased()],
+                                                                         warnings: picked))
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -152,7 +166,9 @@ struct LogReaderView: View {
                 readingNow
             }
         }
-        .onChange(of: key, initial: true) { memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, key: key) }
+        .onChange(of: key, initial: true) {
+            memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, warnings: warnings, key: key)
+        }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in
                 markProblem = markTheirs(marking.account, marking.address, note)
@@ -207,7 +223,7 @@ struct LogReaderView: View {
     }
 
     /// Respond: where each account stands, and what's left to do, each with a button for what can be done from here.
-    private func toDo(_ reading: LogReading.Reading) -> some View {
+    @ViewBuilder private func toDo(_ reading: LogReading.Reading) -> some View {
         Section {
             if !reading.statuses.isEmpty {
                 Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
@@ -268,6 +284,9 @@ struct LogReaderView: View {
             Text("Worked out by rules in code from the logs on Investigate, and for the emails to pull from Phishing: its runs in "
                  + "this app's audit log, and what its Find showed nobody has. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
+        }
+        ForEach(reading.reaches, id: \.messageID) { reach in
+            ReachSection(reach: reach, pick: pickWarning.map { pick in { warning in pick(reach.messageID, warning) } })
         }
     }
 
@@ -587,6 +606,148 @@ private struct TaskRow: View {
 }
 
 /// Something done: its sentence, then how, when and by whom in words beside the check mark, which never says it alone.
+/// Who one email the attacker sent reached (`LogReading.Reach`): a line said in numbers, every recipient with where they
+/// are, what the Gmail log shows reached them and whether a picked warning went to them, the warning to pick from code's
+/// candidates (kept with the open incident), and the list as a CSV. Reads only: nothing here sends anything.
+private struct ReachSection: View {
+    let reach: LogReading.Reach
+    /// Keeps a warning picked (nil clears them): the problem in words, or nil once kept. Nil with no incident open.
+    let pick: ((String?) -> String?)?
+    @State private var problem: String?
+    @State private var exported: (text: String, failed: Bool)?
+    @Environment(\.appearsActive) private var appearsActive
+    private static let shown = 300
+
+    /// The list as a CSV, to a file the operator picks: private (0600), whole or not at all, written off the main thread.
+    private func export() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "who-it-reached-\(reach.messageID.prefix(40).map { $0.isLetter || $0.isNumber ? String($0) : "-" }.joined()).csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.message = "Who \(named) reached, from the Gmail log's own events for it."
+        let rows = [LogReading.Reach.columns] + reach.rows
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task {
+                let text: String, failed: Bool
+                do {
+                    try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    (text, failed) = ("Exported who it reached to \(destination.lastPathComponent).", false)
+                } catch {
+                    (text, failed) = ("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", true)
+                }
+                exported = (text, failed)
+                if appearsActive { AccessibilityNotification.Announcement(text).post() }
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    private var named: String { "“\(reach.subject.isEmpty ? "(no subject)" : reach.subject)”" }
+
+    private var summary: String {
+        let all = reach.recipients, received = all.filter { $0.outcome == .received }.count
+        let bounced = all.filter { $0.outcome == .bounced }.count
+        let outside = all.filter { $0.outcome == .sent && !$0.inside }.count, inside = all.filter { $0.outcome == .sent && $0.inside }.count
+        var parts: [String] = []
+        if received > 0 { parts.append("\(received) received it here") }
+        if outside > 0 { parts.append("\(outside) outside with no bounce in the logs read") }
+        if inside > 0 { parts.append("\(inside) here with no receipt in the logs read") }
+        if bounced > 0 { parts.append("\(bounced) bounced") }
+        let reached = "It went to \(all.count) \(all.count == 1 ? "address" : "addresses")" + (parts.isEmpty ? "." : ": " + parts.joined(separator: ", ") + ".")
+        guard !reach.warnings.isEmpty else { return reached + " No warning picked yet." }
+        let left = reach.toWarn.count
+        return reached + (left == 0 ? " The warning picked went to everyone it reached." : " The warning picked didn't go to \(left) of them.")
+    }
+
+    private func words(_ recipient: LogReading.Reach.Recipient) -> String {
+        switch recipient.outcome {
+        case .received: "received"
+        case .bounced: "bounced"
+        case .sent: recipient.inside ? "no receipt in the logs read" : "sent, no bounce in the logs read"
+        }
+    }
+
+    var body: some View {
+        Section {
+            Text(summary)
+            if reach.recipients.isEmpty {
+                Text("The logs read have no send of it naming its recipients: pull the sender's Gmail log over the day it went out.")
+                    .foregroundStyle(.secondary)
+            } else {
+                DisclosureGroup("Every address it went to (\(reach.recipients.count))") {
+                    ForEach(reach.recipients.prefix(Self.shown)) { recipient in
+                        let warned = recipient.warned.map { $0 ? "warned" : "not warned" }
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(recipient.address).textSelection(.enabled)
+                            Spacer()
+                            Text([recipient.inside ? "inside" : "outside", words(recipient), warned].compactMap(\.self).joined(separator: " · "))
+                                .foregroundStyle(recipient.outcome == .bounced ? .secondary : .primary)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel([recipient.address, recipient.inside ? "inside" : "outside", words(recipient), warned]
+                            .compactMap(\.self).joined(separator: ", "))
+                    }
+                    if reach.recipients.count > Self.shown {
+                        Text("Showing \(Self.shown) of \(reach.recipients.count). Export the CSV for all of them.").font(.callout)
+                    }
+                }
+            }
+            if !reach.warnings.isEmpty {
+                ForEach(reach.warnings) { warning in
+                    Label(warning.sender.isEmpty ? "The warning picked (\(warning.messageID)) isn't in the logs read: pull its sender's Gmail log."
+                          : "Warning picked: \(warning.sender)'s “\(warning.subject)”"
+                            + (warning.at.map { ", \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
+                            + ", to \(warning.covers) of the people it reached.", systemImage: "envelope.badge")
+                        .textSelection(.enabled)
+                }
+            }
+            HStack {
+                Menu("Pick the Warning") {
+                    if reach.candidates.isEmpty {
+                        Text("No email sent after it, from an account here, went to these people in the logs read.")
+                    }
+                    ForEach(reach.candidates) { candidate in
+                        Button("\(candidate.sender): “\(candidate.subject)”"
+                               + (candidate.at.map { ", \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
+                               + ", to \(candidate.covers) of them") {
+                            problem = pick?(candidate.messageID)
+                        }
+                    }
+                    if !reach.warnings.isEmpty {
+                        Divider()
+                        Button("Clear the Warnings Picked") { problem = pick?(nil) }
+                    }
+                }
+                .fixedSize()
+                .disabled(pick == nil)
+                .accessibilityHint("Picks the email that warned the people this one reached: each of them then shows warned or not. "
+                                   + "Kept with the incident. Nothing is sent.")
+                Spacer()
+                Button("Export CSV…", action: export)
+                    .disabled(reach.recipients.isEmpty)
+                    .accessibilityLabel("Export who \(named) reached as a CSV file")
+            }
+            if pick == nil {
+                Text("Open an incident to keep the warning you pick.").font(.callout).foregroundStyle(.secondary)
+            }
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+            if let exported {
+                Label(exported.text, systemImage: exported.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                    .symbolRenderingMode(.multicolor).font(.callout)
+            }
+        } header: {
+            Text("Who \(named) reached").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("From the Gmail log's own events for this email: its sends (every address, Bcc too), a mailbox here receiving it, and "
+                 + "a bounce. A receipt shows only where that mailbox's Gmail log was read; outside, no bounce is the most Google's log "
+                 + "says. The warning's candidates are emails sent after it, from an account here, to the same people.")
+        }
+    }
+}
+
 private struct DoneRow: View {
     let task: LogReading.Task
 
@@ -596,6 +757,7 @@ private struct DoneRow: View {
             return switch done.how {
             case .trashed: "Trashed \(at), as this app's audit log shows."
             case .nobodyHasIt: "Checked \(at), as Phishing's Find showed."
+            case .warned: "Sent \(at), as the Gmail log shows."
             }
         } ?? "Done."
         Label {

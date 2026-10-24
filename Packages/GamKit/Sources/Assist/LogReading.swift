@@ -47,15 +47,21 @@ public enum LogReading {
         public let capped: [String: Date]
         public let pulled: [Pulled]
         public let nobodyHas: [NobodyHas]
+        /// The tenant's domains, lowercased: an address at one is inside (`Reach`).
+        public let domains: Set<String>
+        /// The warnings the operator picked for each email the attacker sent: its bare Message-ID to theirs (`Reach`).
+        public let warnings: [String: Set<String>]
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
-                    pulled: [Pulled] = [], nobodyHas: [NobodyHas] = []) {
+                    pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], warnings: [String: Set<String>] = [:]) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
             self.capped = capped
             self.pulled = pulled
             self.nobodyHas = nobodyHas
+            self.domains = domains
+            self.warnings = warnings
         }
     }
 
@@ -80,6 +86,8 @@ public enum LogReading {
             case trashed
             /// Phishing's Find showed nobody here has the email (kept on this Mac).
             case nobodyHasIt
+            /// A warning the operator picked went to everyone the email reached (the Gmail log's sends of it).
+            case warned
         }
         public let how: How
         public let at: Date
@@ -250,7 +258,7 @@ public enum LogReading {
         /// Most urgent first.
         public enum Kind: String, Sendable, CaseIterable {
             case secureAgain, secure, finishLock, pullAgain, removeAdded, clearRecovery, unblockSender, deleteDevice, pullEmail,
-                 signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look, checkShared
+                 warnRecipients, signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look, checkShared
         }
         public let id: String
         public let kind: Kind
@@ -333,6 +341,75 @@ public enum LogReading {
 
     /// Every finding, most serious first; where each account the attacker touched stands, with its timeline; what's left
     /// to do, and what this app's audit log shows done; and each draft once in the order the findings point to them.
+    /// Who one email the attacker sent reached, from the Gmail log's own events for it, as Google's Gmail log events say it
+    /// (the Admin console's Event): `event_info.mail_event_type` 1 Send, 2 Receive, 30 Bounced, and
+    /// `message_info.flattened_destinations` every recipient as `service:selector:address`, comma-separated (Google's schema
+    /// for Gmail logs). Every address its sends went to, Bcc included; inside when it's at one of the tenant's domains or a
+    /// mailbox here received it. Code works it out; the model is never given it (it holds addresses and a subject).
+    public struct Reach: Sendable, Equatable {
+        public enum Outcome: String, Sendable {
+            /// A mailbox here received it (a Receive event).
+            case received
+            /// A Bounced event names them.
+            case bounced
+            /// Its sends went to them, and the logs read show neither: outside, the most the log can say.
+            case sent
+        }
+
+        public struct Recipient: Sendable, Equatable, Identifiable {
+            public let address: String
+            public let inside: Bool
+            public let outcome: Outcome
+            public let at: Date?
+            /// A picked warning went to them; nil while none is picked.
+            public let warned: Bool?
+            public var id: String { address }
+        }
+
+        /// An email sent after this one by an account here, not from the attacker's address, to people it reached: what the
+        /// operator can pick as the warning. Or a picked one, as the logs read show it (`covers` 0, no sender: not in them).
+        public struct Candidate: Sendable, Equatable, Identifiable {
+            public let messageID: String
+            public let sender: String
+            public let subject: String
+            public let at: Date?
+            /// How many of the people this email reached it went to.
+            public let covers: Int
+            public var id: String { messageID }
+        }
+
+        /// Bare, as Phishing names it.
+        public let messageID: String
+        public let subject: String
+        /// The accounts whose sends of it the logs show.
+        public let senders: [String]
+        public let recipients: [Recipient]
+        /// At most `candidatesShown`, the most people covered first.
+        public let candidates: [Candidate]
+        public let warnings: [Candidate]
+
+        /// Reached (received, or sent with no bounce in the logs read) and not warned by a picked warning.
+        public var toWarn: [Recipient] { recipients.filter { $0.outcome != .bounced && $0.warned != true } }
+        public var reached: [Recipient] { recipients.filter { $0.outcome != .bounced } }
+
+        public static let candidatesShown = 10
+        public static let columns = ["address", "where", "reached", "when", "warned"]
+
+        /// The list as a CSV's rows, under `columns`: what it says, in words.
+        public var rows: [[String]] {
+            recipients.map { recipient in
+                let reached = switch recipient.outcome {
+                case .received: "received"
+                case .bounced: "bounced"
+                case .sent: recipient.inside ? "sent, no receipt in the logs read" : "sent, no bounce in the logs read"
+                }
+                return [recipient.address, recipient.inside ? "inside" : "outside", reached,
+                        recipient.at.map { $0.formatted(.iso8601) } ?? "",
+                        recipient.warned.map { $0 ? "yes" : "no" } ?? ""]
+            }
+        }
+    }
+
     public struct Reading: Sendable, Equatable {
         public let findings: [Finding]
         public let statuses: [Status]
@@ -341,6 +418,8 @@ public enum LogReading {
         /// whom (`Task.done`).
         public let done: [Task]
         public let events: Int
+        /// Who each email the attacker sent reached, in the to-do list's order of them.
+        public let reaches: [Reach]
 
         public var drafts: [Draft] {
             var seen: Set<Draft> = []
@@ -767,7 +846,7 @@ public enum LogReading {
             let id = bareMessageID(check.messageID)
             if checks[id].map({ $0.at < check.at }) ?? true { checks[id] = check }
         }
-        var pulledDone: Set<String> = [], doneTasks: [(String, [String], Done)] = []
+        var pulledDone: Set<String> = [], doneTasks: [(Task.Kind, String, [String], Done)] = []
         for id in order {
             let theirs = messages[id] ?? []
             let subject = theirs.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
@@ -776,11 +855,11 @@ public enum LogReading {
             var todo: [(Task.Kind, String, [Draft])] = []
             if let check, run.map({ $0.at <= check.at }) ?? true {
                 pulledDone.insert(id)
-                doneTasks.append(("Nobody here has \(named): Phishing's Find searched every mailbox and its Spam.", accounts,
+                doneTasks.append((.pullEmail, "Nobody here has \(named): Phishing's Find searched every mailbox and its Spam.", accounts,
                                   Done(how: .nobodyHasIt, at: check.at, by: check.by)))
             } else if let run, run.isDone {
                 pulledDone.insert(id)
-                doneTasks.append(("Pulled \(named): trashed from " + (run.mailboxes == 1 ? "the one mailbox" : "the \(run.mailboxes) mailboxes")
+                doneTasks.append((.pullEmail, "Pulled \(named): trashed from " + (run.mailboxes == 1 ? "the one mailbox" : "the \(run.mailboxes) mailboxes")
                                   + " that had it, every mailbox searched first.", accounts, Done(how: .trashed, at: run.at, by: run.by)))
             } else {
                 todo = [(.pullEmail, "Pull \(named) from every mailbox: it went out from the attacker's address." + (run.map { " " + $0.left } ?? ""),
@@ -788,6 +867,24 @@ public enum LogReading {
             }
             found.append(Pending(.mailFromSuspect, "\(named) was sent from " + list(unique(theirs.map(\.ip))) + ".", accounts,
                                  unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)], todo: todo))
+        }
+        // Who each reached, and whether a picked warning went to them all: warned is done, with whose warning and when.
+        let reaches = reaches(order, in: events, attacker: acting, context: context)
+        var warnTasks: [(Task.Kind, String, [String], [Draft], Shown?)] = []
+        for reach in reaches where !reach.reached.isEmpty {
+            let named = "“\(reach.subject.isEmpty ? "(no subject)" : reach.subject)” (\(reach.messageID))"
+            let outside = reach.toWarn.filter { !$0.inside }.count
+            if reach.toWarn.isEmpty, let warning = reach.warnings.max(by: { ($0.at ?? .distantPast) < ($1.at ?? .distantPast) }) {
+                doneTasks.append((.warnRecipients, "Warned everyone \(named) reached: \(reach.reached.count) "
+                                  + (reach.reached.count == 1 ? "person" : "people") + ", by \(warning.sender.isEmpty ? "the warning picked" : "\(warning.sender)'s “\(warning.subject)”").",
+                                  reach.senders, Done(how: .warned, at: warning.at ?? .distantPast, by: warning.sender)))
+            } else if !reach.toWarn.isEmpty {
+                let count = reach.toWarn.count
+                warnTasks.append((.warnRecipients, "Warn the \(count) \(count == 1 ? "person" : "people") \(named) reached"
+                                  + (reach.warnings.isEmpty ? "" : " that the warning picked didn't go to")
+                                  + (outside > 0 ? ", \(outside) of them outside" : "") + ": pick the warning sent to them under Who it reached, "
+                                  + "or send one.", reach.senders, [], nil))
+            }
         }
 
         let ranked = found.enumerated().sorted { a, b in
@@ -819,7 +916,7 @@ public enum LogReading {
         // Most urgent first, each once.
         let todos = statusTasks + coverage + ranked.flatMap { item in
             item.todo.map { ($0.0, $0.1, item.accounts, $0.2, item.shows ?? Shown(accounts: item.accounts, addresses: item.addresses)) }
-        }
+        } + warnTasks
         var said: Set<String> = []
         let ordered = todos.enumerated().filter { said.insert($0.element.1 + "|" + $0.element.3.map(\.title).joined()).inserted }.sorted { a, b in
             (Task.Kind.allCases.firstIndex(of: a.element.0)!, a.offset) < (Task.Kind.allCases.firstIndex(of: b.element.0)!, b.offset)
@@ -832,8 +929,84 @@ public enum LogReading {
             Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3,
                  shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.0 == .pullAgain ? pullsAgain : [], done: nil)
         }, done: doneTasks.enumerated().map { index, item in
-            Task(id: "D\(index + 1)", kind: .pullEmail, words: item.0, accounts: item.1, drafts: [], shows: nil, pullsAgain: [], done: item.2)
-        }, events: events.count)
+            Task(id: "D\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: [], shows: nil, pullsAgain: [], done: item.3)
+        }, events: events.count, reaches: reaches)
+    }
+
+    /// Who each email in `ids` (the attacker's sends, as the Gmail log names them) reached (`Reach`), and the emails an
+    /// account here sent after it to the same people, from an address that isn't the attacker's (`attacker`).
+    static func reaches(_ ids: [String], in events: [Event], attacker: Set<String>, context: Context) -> [Reach] {
+        // The Gmail log's events by their email, oldest first, so recipients come in the order the sends named them.
+        var byID: [String: [Event]] = [:]
+        for event in events where event.log == "gmail" {
+            guard let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { continue }
+            byID[bareMessageID(id), default: []].append(event)
+        }
+        for id in byID.keys { byID[id]?.sort { ($0.time ?? .distantPast) < ($1.time ?? .distantPast) } }
+        func type(_ event: Event) -> Int? { Int(event.parameters["event_info.mail_event_type"] ?? "") }
+        let attackers = Set(ids.map(bareMessageID))
+        return ids.map { pasted in
+            let id = bareMessageID(pasted), all = byID[id] ?? []
+            let sends = all.filter(isSent)
+            var order: [String] = [], received: [String: Date?] = [:], bounced: [String: Date?] = [:]
+            func add(_ address: String) { if !order.contains(address) { order.append(address) } }
+            for event in all {
+                switch type(event) {
+                case 2:
+                    let mailbox = event.who.lowercased()
+                    guard isAccount(mailbox) else { continue }
+                    add(mailbox)
+                    if received[mailbox] == nil { received[mailbox] = event.time }
+                case 30:
+                    for address in destinations(event) {
+                        add(address)
+                        if bounced[address] == nil { bounced[address] = event.time }
+                    }
+                default:
+                    if isSent(event) { destinations(event).forEach(add) }
+                }
+            }
+            let picked = context.warnings[id] ?? []
+            let warned = Set(picked.flatMap { (byID[$0] ?? []).filter(isSent).flatMap(destinations) })
+            let recipients = order.map { address in
+                let outcome: Reach.Outcome = bounced[address] != nil ? .bounced : received[address] != nil ? .received : .sent
+                let at: Date? = switch outcome {
+                case .bounced: bounced[address] ?? nil
+                case .received: received[address] ?? nil
+                case .sent: sends.first?.time
+                }
+                let domain = address.split(separator: "@").last.map { String($0) } ?? ""
+                return Reach.Recipient(address: address, inside: context.domains.contains(domain) || received[address] != nil,
+                                       outcome: outcome, at: at, warned: picked.isEmpty ? nil : warned.contains(address))
+            }
+            let reachedSet = Set(recipients.filter { $0.outcome != .bounced }.map(\.address))
+            func candidate(_ messageID: String, _ sent: [Event]) -> Reach.Candidate {
+                Reach.Candidate(messageID: messageID, sender: sent.first?.who ?? "",
+                                subject: sent.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? "",
+                                at: sent.first?.time, covers: Set(sent.flatMap(destinations)).intersection(reachedSet).count)
+            }
+            let after = sends.first?.time ?? .distantPast
+            let candidates = byID.compactMap { other, sent -> Reach.Candidate? in
+                guard !attackers.contains(other), !picked.contains(other) else { return nil }
+                let ours = sent.filter { isSent($0) && isAccount($0.who) && !attacker.contains($0.ip) && ($0.time ?? .distantPast) > after }
+                let made = candidate(other, ours)
+                return ours.isEmpty || made.covers == 0 ? nil : made
+            }.sorted { ($0.covers, $1.at ?? .distantPast) > ($1.covers, $0.at ?? .distantPast) }
+            let subject = all.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
+            return Reach(messageID: id, subject: subject, senders: unique(sends.map(\.who).filter(isAccount)), recipients: recipients,
+                         candidates: Array(candidates.prefix(Reach.candidatesShown)),
+                         warnings: picked.sorted().map { candidate($0, (byID[$0] ?? []).filter(isSent)) })
+        }
+    }
+
+    /// `message_info.flattened_destinations` as addresses: `service:selector:address` entries, comma-separated (Google's
+    /// schema for Gmail logs), each lowercased and once; an entry that doesn't end in an address is passed over.
+    static func destinations(_ event: Event) -> [String] {
+        unique((event.parameters["message_info.flattened_destinations"] ?? "").split(separator: ",").compactMap { entry in
+            let address = (entry.split(separator: ":", omittingEmptySubsequences: false).last.map(String.init) ?? "")
+                .trimmingCharacters(in: .whitespaces).lowercased()
+            return isAccount(address) ? address : nil
+        })
     }
 
     /// The lock's steps by event name: a password reset by an admin, or by the person from an address they signed in from

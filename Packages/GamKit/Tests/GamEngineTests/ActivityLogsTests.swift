@@ -70,8 +70,12 @@ struct ActivityLogsTests {
     /// the type isn't said again in its details.
     @Test func gmailsNestedParametersAreNamedByTheirChain() async throws {
         let read = try await read(.gmail, users: ["carol@example.com"])
-        #expect(read.map(\.words) == ["Sent a message", "Viewed a message", "Sent a message"])
+        #expect(read.map(\.words) == ["Sent a message", "Viewed a message", "Sent a message", "A message bounced: it couldn't be delivered"])
         let send = try #require(read.first)
+        // Who it went to, in Google's schema's form (`service:selector:address`, comma-separated): what Who it reached reads.
+        #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.flattened_destinations", value:
+            "gmail-ui:inbox:alice@example.com,gmail-ui:inbox:bob@example.com,gmail-ui:inbox:dana@example.com,smtp-out::pat@partner.example,"
+            + "smtp-out::guest@example.org")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "event_info.mail_event_type", value: "1")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.subject", value: "Shared file: Q4 invoices")))
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.num_message_attachments", value: "1")))

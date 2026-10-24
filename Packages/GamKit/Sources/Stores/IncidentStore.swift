@@ -34,6 +34,18 @@ public struct IncidentStore: Sendable {
         public var reported: String
         /// Oldest first.
         public var notes: [Note]
+        /// The warnings the operator picked for the emails the attacker sent (Respond's Who it reached).
+        public var warnings: [Warning] = []
+    }
+
+    /// A warning picked for an email the attacker sent: both bare Message-IDs, as the Gmail log names them.
+    public struct Warning: Sendable, Equatable {
+        public let email: String
+        public let warning: String
+
+        public init(email: String, warning: String) {
+            (self.email, self.warning) = (email, warning)
+        }
     }
 
     /// A saved read of the logs, read and checked, ready to be kept (`keep(_:in:)`): its files as read, and as text.
@@ -280,6 +292,11 @@ public struct IncidentStore: Sendable {
         guard record.notes.count <= notesCap, record.notes.allSatisfy({ (1...noteLength).contains($0.text.count) }) else {
             throw .invalid("A note must be 1 to \(noteLength) characters.")
         }
+        // A Message-ID is printable ASCII, at most a header line long.
+        func isMessageID(_ id: String) -> Bool { (1...998).contains(id.utf8.count) && id.utf8.allSatisfy { (0x21...0x7E).contains($0) } }
+        guard record.warnings.count <= notesCap, record.warnings.allSatisfy({ isMessageID($0.email) && isMessageID($0.warning) }) else {
+            throw .invalid("A warning picked isn't an email's Message-ID.")
+        }
         return record
     }
 
@@ -295,7 +312,14 @@ public struct IncidentStore: Sendable {
             guard let at = entry["at"]?.string.flatMap({ try? Date($0, strategy: .iso8601) }), let text = entry["text"]?.string else { return nil }
             notes.append(Note(at: at, text: text))
         }
-        return try? valid(Record(id: id, domain: domain, title: title, opened: opened, openedBy: openedBy, reported: reported, notes: notes))
+        // Kept since 2026-10-24: a file from before has none.
+        var warnings: [Warning] = []
+        for entry in file["warnings"]?.array ?? [] {
+            guard let email = entry["email"]?.string, let warning = entry["warning"]?.string else { return nil }
+            warnings.append(Warning(email: email, warning: warning))
+        }
+        return try? valid(Record(id: id, domain: domain, title: title, opened: opened, openedBy: openedBy, reported: reported, notes: notes,
+                                 warnings: warnings))
     }
 
     /// Writes `record` as the whole of its `incident.json`, making its folder (and `root`) `0700` first.
@@ -305,7 +329,8 @@ public struct IncidentStore: Sendable {
         let notes = record.notes.map { JSONValue.object(["at": .string($0.at.formatted(.iso8601)), "text": .string($0.text)]) }
         let file = JSONValue.object(["version": .number(String(Self.format)), "id": .string(record.id), "domain": .string(record.domain),
                                      "title": .string(record.title), "opened": .string(record.opened.formatted(.iso8601)),
-                                     "openedBy": .string(record.openedBy), "reported": .string(record.reported), "notes": .array(notes)])
+                                     "openedBy": .string(record.openedBy), "reported": .string(record.reported), "notes": .array(notes),
+                                     "warnings": .array(record.warnings.map { .object(["email": .string($0.email), "warning": .string($0.warning)]) })])
         do {
             try SignatureStore.writeFile(Array((JSONValue.dumps(file) + "\n").utf8), named: Self.fileName, in: folder, interrupt: nil)
         } catch {

@@ -441,6 +441,75 @@ struct LogReadingTests {
     /// An email Phishing trashed from every mailbox, as this app's audit log shows its latest run (`Context.pulled`), is done:
     /// listed with when and by whom, drafted nowhere again and left out of Pull All, while the finding that it was sent
     /// stays. A step failed, one that never ended (a Stop), or a mailbox Find couldn't search leaves it to do, saying so.
+    /// Who the phish reached, from the Gmail log's own events for it, in the shape Google's schema for Gmail logs gives them
+    /// (`event_info.mail_event_type` 1 Send, 2 Receive, 30 Bounced; `message_info.flattened_destinations` as
+    /// `service:selector:address`, comma-separated): every address its sends named, Bcc too, inside at the tenant's domain or
+    /// where a mailbox received it, and what the log shows reached them. The warning is picked from the emails an account here
+    /// sent after it to the same people, never one from the attacker's address or from before; picked, each recipient is
+    /// warned or not, and warning everyone it reached is done, with whose warning and when.
+    @Test func whoThePhishReachedAndWhetherTheyWereWarned() throws {
+        let phish = "<phish-1@mail.example.com>"
+        func gmail(_ who: String, _ type: Int, _ id: String, at minute: Int, ip: String = "", subject: String = "", to: [String] = []) -> LogReading.Event {
+            var parameters = ["event_info.mail_event_type": String(type), "message_info.rfc2822_message_id": id]
+            if !subject.isEmpty { parameters["message_info.subject"] = subject }
+            if !to.isEmpty { parameters["message_info.flattened_destinations"] = to.joined(separator: ",") }
+            return Self.event("gmail", who, "delivery", ip: ip, at: minute, parameters)
+        }
+        let events = Self.incident.filter { $0.log != "gmail" } + [
+            gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, subject: "Shared file",
+                  to: ["smtp-out::Pat@Partner.example", "gmail-ui:inbox:alice@example.com", "smtp-out::guest@example.org",
+                       "gmail-ui:inbox:dana@example.com", "not an address"]),
+            gmail("alice@example.com", 2, phish, at: 31, subject: "Shared file"),
+            gmail("carol@example.com", 30, phish, at: 32, to: ["smtp-out::guest@example.org"]),
+            gmail("bob@example.com", 2, phish, at: 33),   // a Bcc no send named, received here
+            // Emails sent after it: bob's warning to three of them, carol's own (from the attacker's address), one from before.
+            gmail("bob@example.com", 1, "<warn-1@mail.example.com>", at: 60, ip: Self.office, subject: "Don't open “Shared file”",
+                  to: ["gmail-ui:inbox:alice@example.com", "smtp-out::pat@partner.example", "gmail-ui:inbox:bob@example.com"]),
+            gmail("alice@example.com", 1, "<lunch@mail.example.com>", at: 61, ip: Self.office, subject: "Lunch", to: ["gmail-ui::dana@example.com"]),
+            gmail("carol@example.com", 1, "<more@mail.example.com>", at: 62, ip: Self.attacker, subject: "Re", to: ["smtp-out::pat@partner.example"]),
+            gmail("dana@example.com", 1, "<early@mail.example.com>", at: 1, ip: Self.office, subject: "Old", to: ["smtp-out::pat@partner.example"]),
+        ]
+        let context = LogReading.Context(domains: ["example.com"])
+        let reach = try #require(LogReading.read(events, context: context).reaches.first { $0.messageID == "phish-1@mail.example.com" })
+        #expect(reach.subject == "Shared file" && reach.senders == ["carol@example.com"])
+        #expect(reach.recipients.map(\.address) == ["pat@partner.example", "alice@example.com", "guest@example.org", "dana@example.com",
+                                                    "bob@example.com"], "the send's order, then the Bcc a mailbox received")
+        #expect(reach.recipients.map(\.outcome) == [.sent, .received, .bounced, .sent, .received])
+        #expect(reach.recipients.map(\.inside) == [false, true, false, true, true])
+        #expect(reach.recipients.allSatisfy { $0.warned == nil }, "no warning picked yet")
+        #expect(reach.candidates.map(\.messageID) == ["warn-1@mail.example.com", "lunch@mail.example.com"], "most covered first")
+        #expect(reach.candidates.map(\.covers) == [3, 1] && reach.candidates[0].sender == "bob@example.com")
+        let toWarn = try #require(LogReading.read(events, context: context).toDo.first { $0.kind == .warnRecipients })
+        #expect(toWarn.words == "Warn the 4 people “Shared file” (phish-1@mail.example.com) reached, 1 of them outside: pick the warning "
+                + "sent to them under Who it reached, or send one.")
+
+        // Picked: dana@ wasn't on it; the bounced address needs no warning.
+        let picked = LogReading.read(events, context: LogReading.Context(domains: ["example.com"],
+                                                                         warnings: ["phish-1@mail.example.com": ["warn-1@mail.example.com"]]))
+        let warned = try #require(picked.reaches.first)
+        #expect(warned.recipients.map(\.warned) == [true, true, false, false, true])
+        #expect(warned.toWarn.map(\.address) == ["dana@example.com"] && warned.warnings.map(\.covers) == [3])
+        #expect(!warned.candidates.contains { $0.messageID == "warn-1@mail.example.com" }, "a pick isn't offered again")
+        #expect(picked.toDo.first { $0.kind == .warnRecipients }?.words.hasPrefix("Warn the 1 person “Shared file” (phish-1@mail.example.com) reached that the warning picked didn't go to") == true)
+        #expect(warned.rows == [["pat@partner.example", "outside", "sent, no bounce in the logs read", warned.recipients[0].at!.formatted(.iso8601), "yes"],
+                                ["alice@example.com", "inside", "received", warned.recipients[1].at!.formatted(.iso8601), "yes"],
+                                ["guest@example.org", "outside", "bounced", warned.recipients[2].at!.formatted(.iso8601), "no"],
+                                ["dana@example.com", "inside", "sent, no receipt in the logs read", warned.recipients[3].at!.formatted(.iso8601), "no"],
+                                ["bob@example.com", "inside", "received", warned.recipients[4].at!.formatted(.iso8601), "yes"]])
+
+        // Lunch to dana@ picked too: everyone reached is warned, and that's done, with the latest warning's sender and time.
+        let all = LogReading.read(events, context: LogReading.Context(domains: ["example.com"], warnings: [
+            "phish-1@mail.example.com": ["warn-1@mail.example.com", "lunch@mail.example.com"]]))
+        #expect(!all.toDo.contains { $0.kind == .warnRecipients && $0.words.contains("phish-1@") })
+        // carol@'s "Re" went out from the attacker's address too: its own reach, still to warn about.
+        #expect(all.toDo.contains { $0.kind == .warnRecipients && $0.words.contains("more@mail.example.com") })
+        let done = try #require(all.done.first { $0.kind == .warnRecipients })
+        #expect(done.words == "Warned everyone “Shared file” (phish-1@mail.example.com) reached: 4 people, by alice@example.com's “Lunch”.")
+        #expect(done.done == LogReading.Done(how: .warned, at: Date(timeIntervalSince1970: 1_792_400_000 + 61 * 60), by: "alice@example.com"))
+        // No domain known: only a mailbox's receipt makes an address inside.
+        #expect(LogReading.read(events).reaches.first?.recipients.map(\.inside) == [false, true, false, false, true])
+    }
+
     @Test func anEmailPhishingPulledIsDoneWithWhenAndByWhom() {
         let two = Self.incident + [
             Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: 31,

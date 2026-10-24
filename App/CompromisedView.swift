@@ -234,6 +234,8 @@ struct CompromisedView: View {
     /// Phishing; Show the Events narrows Investigate's logs; Pull Again reads more.
     private func reader(_ part: LogReaderView.Part, _ pull: IncidentLogs.Pull, _ scroller: ScrollViewProxy) -> some View {
         let domain = setup.active?.name ?? ""
+        // The incident open on this domain keeps the warnings picked (Who it reached); with none open, a pick can't be kept.
+        let open = incidents.record(incidents.openID).flatMap { $0.domain == domain.lowercased() ? $0 : nil }
         return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
@@ -247,6 +249,8 @@ struct CompromisedView: View {
         }, pullAgain: { applications, accounts in
             pullAgain(applications, accounts)
             go(.investigate, to: Self.reportsAnchor, scroller)
+        }, warnings: open?.warnings ?? [], pickWarning: open.map { record in
+            { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
         })
     }
 

@@ -63,6 +63,34 @@ struct IncidentStoreTests {
         #expect(reopened.records.first?.reported == "The person" && reopened.records.first?.opened == Self.monday)
     }
 
+    /// The warnings picked (Who it reached) are kept with the incident and read back; a file from before has none and still
+    /// reads; one that isn't a Message-ID isn't kept.
+    @Test func theWarningsPickedAreKept() throws {
+        var store = try IncidentStore(root: root)
+        let made = try store.create(domain: "example.com", title: "Takeover", opened: Self.monday, openedBy: "", reported: "")
+        let file = root.appending(path: made.id).appending(path: IncidentStore.fileName)
+        let written = try String(contentsOf: file, encoding: .utf8)
+        #expect(made.warnings.isEmpty && written.contains("\"warnings\": []"))
+        var picked = made
+        picked.warnings = [IncidentStore.Warning(email: "phish-1@mail.example.com", warning: "warn-1@mail.example.com")]
+        try store.save(picked)
+        let saved = try IncidentStore(root: root)
+        #expect(saved.records.first?.warnings == picked.warnings)
+
+        // As it was written before 2026-10-24: no "warnings" at all.
+        let before = try String(contentsOf: file, encoding: .utf8)
+        let old = try #require(JSONValue.parse(before)?.object)
+        var stripped = GamOutput.Record()
+        for (key, value) in old where key != "warnings" { stripped[key] = value }
+        try Data(JSONValue.dumps(.object(stripped)).utf8).write(to: file)
+        let reread = try IncidentStore(root: root)
+        #expect(reread.unreadable.isEmpty && reread.records.first?.warnings == [] && reread.records.first?.title == "Takeover")
+
+        var bad = picked
+        bad.warnings = [IncidentStore.Warning(email: "phish 1", warning: "warn-1@mail.example.com")]
+        #expect(throws: IncidentStore.Problem.self) { try store.save(bad) }
+    }
+
     /// What isn't kept: no title, a title too long, an empty note, a domain that isn't one.
     @Test func whatIsntKept() throws {
         var store = try IncidentStore(root: root)

@@ -91,6 +91,7 @@ public enum LogExplainer {
         case .unblockSender: "have the person unblock the sender the attacker blocked in Gmail"
         case .deleteDevice: "block the computer that joined the account at the attacker's sign-in, or take the account off it"
         case .pullEmail: "pull the email the attacker sent from every mailbox"
+        case .warnRecipients: "warn the people the attacker's email reached that no warning has gone to yet"
         case .signOutApp: "sign the person out of another app reached through Google"
         case .warnContacts: "warn the people in the account's contacts, printed while the attacker had it"
         case .warnChat: "ask who got the account's Chat messages not to open their links"

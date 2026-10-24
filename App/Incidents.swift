@@ -76,6 +76,20 @@ final class Incidents {
         }
     }
 
+    /// Keeps `warning` (a bare Message-ID) as a warning picked for the email `email` in the incident `id`, or with nil clears
+    /// that email's: the problem in words, or nil once saved (Respond's Who it reached).
+    func pickWarning(email: String, warning: String?, in id: String) -> String? {
+        guard var record = record(id) else { return "That incident isn't kept any more." }
+        if let warning {
+            let picked = IncidentStore.Warning(email: email, warning: warning)
+            guard !record.warnings.contains(picked) else { return nil }
+            record.warnings.append(picked)
+        } else {
+            record.warnings.removeAll { $0.email == email }
+        }
+        return save(record)
+    }
+
     /// Keeps an export (read with `IncidentStore.readExport`) as the incident's evidence; the problem in words, or nil.
     func keep(_ export: IncidentStore.Export, in id: String) -> String? {
         do {
