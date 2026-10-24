@@ -103,7 +103,7 @@ struct WriteRouteTests {
                                                            "OffboardChanges", "offboardChanges", "CompromisedChanges", "compromisedChanges",
                                                            "Executor", "executor", ".confirm(",
                                                            "confirmed:", "WriteStep", "GamWrite", "AuthenticatedRunner",
-                                                           "previewOrganization", "AppServices", "HeldPreview", "Origin",
+                                                           "previewOrganization", "previewPhone", "AppServices", "HeldPreview", "Origin",
                                                            ".run("], orWord: "OperatorConfirmation")
         #expect(voiceOrModel.isDisjoint(with: writing), "\(voiceOrModel.intersection(writing))")
         #expect(voiceOrModel.contains { $0.hasSuffix("SiriIntents.swift") }, "the scan must see the intents")

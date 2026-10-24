@@ -120,6 +120,61 @@ public final class UserChanges {
         }
     }
 
+    /// The phone a signature shows (`GamUser.phone`: the primary, else the first) set, changed or, left empty, removed.
+    /// Google keeps a person's phones as one list, which GAM sends whole (`updatePhones`), so the others go as they are
+    /// and a new one is the primary work phone. Setting it is LOW, as a title is; removing it is destructive (a Confirm
+    /// click): the number is gone from Google. A phone GAM can't send back as it is refuses the change, never alters it.
+    /// The list comes from the directory as it was read, so `current` reads the phones again just before the run: one
+    /// added or changed since refuses it ("preview again") rather than be deleted by a stale list (review 2026-10-24).
+    public func previewPhone(of user: GamUser, phone: String, origin: Origin,
+                             current: @escaping @Sendable () async throws -> [GamUser.Phone]) async {
+        let phone = PythonText.strip(phone)
+        subject = user.primaryEmail
+        var phones = user.phones
+        let shown = phones.firstIndex(where: \.primary) ?? (phones.isEmpty ? nil : 0)
+        let was = shown.map { phones[$0].value } ?? ""
+        guard phone != was else {
+            state = .problem(phone.isEmpty ? "Nothing to remove: \(user.fullName) has no phone."
+                             : "Nothing to change: that's already \(user.fullName)'s phone.")
+            return
+        }
+        var summary: String
+        if let shown, phone.isEmpty {
+            phones.remove(at: shown)
+            summary = "Remove \(user.fullName)'s phone “\(was)”"
+        } else if let shown {
+            let old = phones[shown]
+            phones[shown] = GamUser.Phone(type: old.type, customType: old.customType, value: phone, primary: old.primary)
+            summary = "Change \(user.fullName)'s phone from “\(was)” to “\(phone)”"
+        } else {
+            phones.append(GamUser.Phone(type: "work", value: phone, primary: true))
+            summary = "Set \(user.fullName)'s work phone to “\(phone)”"
+        }
+        let others = phones.count - (phone.isEmpty ? 0 : 1)
+        if others > 0 { summary += ", keeping their other \(others == 1 ? "phone" : "\(others) phones") as they are" }
+        let write: GamWrite
+        do {
+            write = try GamCommands.updatePhones(email: user.primaryEmail, phones: phones)
+        } catch GamCommands.Invalid.argument(let why) {
+            state = .problem("Couldn't change the phone: \(why).")
+            return
+        } catch {
+            state = .problem("Couldn't change the phone.")
+            return
+        }
+        let kept = phones, read = user.phones
+        let precondition: @Sendable () async throws -> Bool = {
+            do {
+                return try await current() == read
+            } catch let problem as UserAccess.Problem {
+                throw PreconditionFailure(problem.summary)
+            }
+        }
+        let step = WriteStep(write, target: user.primaryEmail, summary: summary, risk: phone.isEmpty ? .destructive : .low)
+        await hold(step, title: phone.isEmpty ? "Remove phone" : "Change phone", confirmLabel: phone.isEmpty ? "Remove" : "Save",
+                   email: user.primaryEmail, origin: origin, patch: { $0.with(phones: kept) }, precondition: precondition)
+    }
+
     /// GamGUI's `plan_suspend`: suspending is destructive (a Confirm click), unsuspending LOW.
     public func previewSuspend(_ user: GamUser, suspend: Bool) async {
         let verb = suspend ? "Suspend" : "Unsuspend"

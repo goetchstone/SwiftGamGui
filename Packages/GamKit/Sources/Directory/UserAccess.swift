@@ -382,6 +382,14 @@ public final class UserAccess {
                                                                  as: domain, environment)))
     }
 
+    /// The person's phones as Google has them now, on the connected tenant (the executor has already held a run to the
+    /// tenant its preview was made on). Edit Phone's run checks with it that the list it sends back is still theirs: a
+    /// phone added since the directory was read (the Admin console, the person) would otherwise be deleted.
+    public func phones(of email: String) async throws -> [GamUser.Phone] {
+        guard let domain = setup.active else { throw Problem(summary: "Connect a domain on Setup first.") }
+        return try await account(email, in: domain, fields: ["phones"]).phones
+    }
+
     private static func read(_ read: GamRead, with runner: AuthenticatedRunner, as domain: Domain,
                              _ environment: [String: String]) async throws -> String {
         let result = try await runner.run(read, as: domain, extraEnvironment: environment)

@@ -79,6 +79,19 @@ final class UserChangesTests {
         try #require(directory.users?.first { $0.primaryEmail == email })
     }
 
+    /// Alice's phones as Google has them now, which Edit Phone reads again just before its run.
+    private var phonesNow: @Sendable () async throws -> [GamUser.Phone] {
+        let access = access
+        return { try await access.phones(of: "alice@example.com") }
+    }
+
+    /// Alice's phones in the mock's Google (no fixture record has any): what the run's re-read finds.
+    private func googleHas(_ json: String) throws {
+        let folder = scratch.appending(path: "mock-state/phones")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(json.utf8).write(to: folder.appending(path: "alice@example.com"))
+    }
+
     private func pending() throws -> UserChanges.Pending {
         guard case .previewing(let pending) = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
         return pending
@@ -139,6 +152,102 @@ final class UserChangesTests {
         await changes.previewOrganization(of: alice, title: alice.title, department: " \(alice.department) ", origin: .form)
         guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(message.hasPrefix("Nothing to change"))
+    }
+
+    /// The phone a signature shows, set for someone with none: a work phone and the primary, LOW, run as previewed, and
+    /// the list (and so the signature's `{phone}`) shows it without a reload.
+    @Test func aPhoneIsSetAndTheListShowsIt() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        #expect(alice.phones.isEmpty)
+        await changes.previewPhone(of: alice, phone: " +1 555 0100 ", origin: .form, current: phonesNow)
+        let pending = try pending()
+        #expect(!pending.isDestructive)
+        let argv = ["update", "user", "alice@example.com", "phone", "type", "work", "value", "+1 555 0100", "primary"]
+        #expect(pending.preview.steps.first?.shownArgv == argv)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(writes() == [argv])
+        #expect(try user("alice@example.com").phone == "+1 555 0100")
+        #expect(AuditLog.records(at: auditURL).first?["action"]?.string == "updatePhones")
+    }
+
+    /// Google keeps the phones as one list, which GAM sends whole: changing the shown one (the primary, else the first)
+    /// sends every other phone as it is, type and all.
+    @Test func changingThePhoneKeepsTheOthers() async throws {
+        try await connect()
+        let alice = try user("alice@example.com").with(phones: [
+            GamUser.Phone(type: "home", value: "+1 555 0111", primary: false),
+            GamUser.Phone(type: "mobile", value: "+1 555 0199", primary: true),
+            GamUser.Phone(type: "custom", customType: "Desk", value: "100", primary: false)])
+        #expect(alice.phone == "+1 555 0199")
+        try googleHas(#"[{"type": "home", "value": "+1 555 0111"}, {"primary": true, "type": "mobile", "value": "+1 555 0199"}, "#
+                      + #"{"customType": "Desk", "type": "custom", "value": "100"}]"#)
+        await changes.previewPhone(of: alice, phone: "+1 555 0100", origin: .form, current: phonesNow)
+        let pending = try pending()
+        #expect(pending.preview.steps.first?.shownArgv == ["update", "user", "alice@example.com",
+            "phone", "type", "home", "value", "+1 555 0111", "notprimary", "phone", "type", "mobile", "value", "+1 555 0100", "primary",
+            "phone", "type", "custom", "Desk", "value", "100", "notprimary"])
+        #expect(pending.preview.steps.first?.summary.contains("keeping their other 2 phones") == true)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
+        let after = try user("alice@example.com")
+        #expect(after.phone == "+1 555 0100" && after.phones.map(\.value) == ["+1 555 0111", "+1 555 0100", "100"])
+    }
+
+    /// Emptied, the shown phone is removed and the rest kept: destructive, so it needs the Confirm click. The last one
+    /// removed is `phone clear`. A phone GAM can't send back as it is refuses the change rather than alter it.
+    @Test func removingThePhoneIsDestructiveAndKeepsTheRest() async throws {
+        try await connect()
+        let alice = try user("alice@example.com").with(phones: [
+            GamUser.Phone(type: "work", value: "+1 555 0100", primary: true), GamUser.Phone(type: "mobile", value: "+1 555 0199", primary: false)])
+        try googleHas(#"[{"primary": true, "type": "work", "value": "+1 555 0100"}, {"type": "mobile", "value": "+1 555 0199"}]"#)
+        await changes.previewPhone(of: alice, phone: "  ", origin: .form, current: phonesNow)
+        let pending = try pending()
+        #expect(pending.isDestructive)
+        #expect(pending.preview.steps.first?.shownArgv
+                == ["update", "user", "alice@example.com", "phone", "type", "mobile", "value", "+1 555 0199", "notprimary"])
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(writes().isEmpty, "a removal ran without the Confirm click")
+        await changes.previewPhone(of: alice, phone: "", origin: .form, current: phonesNow)
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
+        guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(try user("alice@example.com").phone == "+1 555 0199", "the one left is the one a signature shows")
+
+        let one = try user("alice@example.com").with(phones: [GamUser.Phone(type: "work", value: "+1 555 0100", primary: true)])
+        await changes.previewPhone(of: one, phone: "", origin: .form, current: phonesNow)
+        #expect(try self.pending().preview.steps.first?.shownArgv == ["update", "user", "alice@example.com", "phone", "clear"])
+        changes.dismiss()
+
+        let odd = try user("alice@example.com").with(phones: [GamUser.Phone(type: "google_voice", value: "+1 555 0123", primary: true)])
+        await changes.previewPhone(of: odd, phone: "+1 555 0100", origin: .form, current: phonesNow)
+        guard case .problem(let refused) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(refused.contains("google_voice"))
+    }
+
+    /// The list a preview sends back comes from the directory as read. A phone added since (the Admin console, the
+    /// person) refuses the run, "preview again", rather than be deleted by the stale list (review 2026-10-24).
+    @Test func aPhoneAddedSinceTheReadRefusesTheRun() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewPhone(of: alice, phone: "+1 555 0100", origin: .form, current: phonesNow)
+        let pending = try pending()
+        try googleHas(#"[{"primary": true, "type": "mobile", "value": "+1 555 0199"}]"#)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        guard case .problem(let refused) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(refused.contains("preview again") && writes().isEmpty)
+        #expect(try user("alice@example.com").phones.isEmpty, "nothing ran, so nothing is patched")
+    }
+
+    @Test func anUnchangedPhoneIsNotAWrite() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.previewPhone(of: alice, phone: "  ", origin: .form, current: phonesNow)
+        guard case .problem(let none) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(none.hasPrefix("Nothing to remove"))
+        await changes.previewPhone(of: alice.with(phones: [GamUser.Phone(type: "work", value: "100", primary: true)]), phone: " 100", origin: .form, current: phonesNow)
+        guard case .problem(let same) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(same.hasPrefix("Nothing to change") && writes().isEmpty)
     }
 
     @Test func suspendingNeedsTheConfirmClickAndUnsuspendingPatchesBack() async throws {

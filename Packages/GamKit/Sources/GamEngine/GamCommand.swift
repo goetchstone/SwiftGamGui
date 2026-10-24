@@ -46,6 +46,7 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case clearRecovery, hideFromDirectory, transferCalendarOwnership, deleteFilters, imapOff, popOff, deleteSendAs
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
+    case updatePhones
 }
 
 /// Permission to run one `GamWrite`, minted only by ChangeCore's executor once a held preview has passed

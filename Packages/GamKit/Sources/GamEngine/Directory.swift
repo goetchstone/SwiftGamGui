@@ -66,13 +66,27 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
 }
 
 extension GamUser {
+    /// One of the person's phones (`GamCommands.Phone`, there so the platform-free fuzz build has it).
+    public typealias Phone = GamCommands.Phone
+
+    /// Every phone the record holds, in its order. `phone` is the one a signature shows: the primary, else the first.
+    public var phones: [Phone] {
+        (record["phones"]?.array ?? []).compactMap { item in
+            guard let phone = item.object else { return nil }
+            return Phone(type: Fields.text(Fields.truthy(phone["type"])), customType: Fields.text(Fields.truthy(phone["customType"])),
+                         value: Fields.text(Fields.truthy(phone["value"])), primary: phone["primary"]?.truthy == true)
+        }
+    }
+
     /// This user as a confirmed write left them, so the cached directory shows the change without a
     /// reload (GamGUI's `patch_user`). The record itself is patched and read again, so every field comes
     /// from one place: GAM's `organization … primary` sets the primary organization's title and
     /// department together.
-    public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil) -> GamUser {
+    public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil, phones: [Phone]? = nil) -> GamUser {
         var record = record
         if let suspended { record["suspended"] = .bool(suspended) }
+        // `GamCommands.updatePhones` sends the whole list, which Google keeps in place of the old one.
+        if let phones { record["phones"] = .array(phones.map(\.json)) }
         if title != nil || department != nil {
             var items = record["organizations"]?.array ?? []
             let index = items.firstIndex { $0.object?["primary"]?.truthy == true } ?? (items.isEmpty ? nil : 0)

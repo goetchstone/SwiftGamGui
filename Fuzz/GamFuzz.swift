@@ -93,6 +93,12 @@ func builders(_ a: String, _ b: String, _ c: String, _ d: String) {
 
     let read = GamCommands.infoUser(email: a).argv
     require(read.count == 6 && same(read[2], a), "infoUser")
+
+    // A phone's number and custom type, whatever they hold, are one element each, in place.
+    if let phones = try? GamCommands.updatePhones(email: a, phones: [GamCommands.Phone(type: c, customType: d, value: b, primary: true)]).argv {
+        require(same(phones[2], a) && phones[3] == "phone" && same(phones[phones.count - 2], b) && phones.last == "primary"
+                && (d.isEmpty || same(phones[6], d)), "updatePhones \(phones.count)")
+    }
 }
 
 /// A closed set accepts only its own values, however the text is spelled.

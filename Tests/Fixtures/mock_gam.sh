@@ -336,6 +336,11 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/suspended/$addr" ]; then
     record=$(printf '%s' "$record" | sed 's/"suspended": false/"suspended": true/')
   fi
+  # Phones changed since the directory was read (the Admin console, the person): with GAM_MOCK_STATE,
+  # $GAM_MOCK_STATE/phones/<user> (a JSON list) is the record's phones. No fixture record has any.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/phones/$addr" ]; then
+    record="{\"phones\": $(tr -d '\n' < "$GAM_MOCK_STATE/phones/$addr"), ${record#\{}"
+  fi
   printf '%s\n' "$record"
   exit 0
 fi
@@ -2064,8 +2069,43 @@ fi
 # <UserAttribute>* plus the notify clause, as `gam create|add user` / `gam update user` take them. Only
 # the attributes GamGUI emits are modelled; anything else is an invalid argument.
 check_user_attrs() {
+  phone_primary=""
   while [ $# -gt 0 ]; do
     case "$1" in
+      phone|phones)
+        # Grammar 5874-5878, 5899: `phone clear`, or `phone [type <type>|custom <String>] [value <String>]
+        # notprimary|primary`, as getUserAttributes reads it (gam/__init__.py:47476-47489, 47135-47171 at 7.48.30): a type
+        # GAM doesn't know is kept as a custom type, so any word passes; `custom` needs a name that isn't blank; a second
+        # primary is a usage error (appendItemToBodyList); an empty value is dropped, not refused, and none at all stops GAM.
+        shift
+        if [ "${1:-}" = "clear" ]; then shift; continue; fi
+        phone_value="" phone_kept=""
+        while :; do
+          case "${1:-}" in
+            type)
+              need_value $# "phone type"
+              if [ "$(lower "$2" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')" = custom ]; then
+                case "${3:-}" in *[![:space:]]*) shift 3 ;; *) missing_arg "custom attribute type" ;; esac
+              else
+                shift 2
+              fi ;;
+            value) need_value $# "String"; phone_value=1; if [ -n "$2" ]; then phone_kept=1; fi; shift 2 ;;
+            primary|notprimary)
+              # No `value` at all: appendItemToBodyList reads itemValue['value'] and GAM stops on the KeyError (the
+              # traceback approximate). A value given empty is dropped, so its primary counts for nothing.
+              if [ -z "$phone_value" ]; then
+                printf 'Traceback (most recent call last):\n  File "gam/__init__.py", in appendItemToBodyList\nKeyError: %s\n' "'value'" 1>&2
+                exit 1
+              fi
+              if [ "$1" = primary ] && [ -n "$phone_kept" ]; then
+                [ -z "$phone_primary" ] || usage_error "Multiple phones are marked primary, only one can be primary"
+                phone_primary=1
+              fi
+              shift; break ;;
+            "") missing_arg "notprimary|primary" ;;
+            *) invalid_arg "$1" ;;
+          esac
+        done ;;
       suspended|suspend|changepassword|changepasswordatnextlogin|archived|archive)
         need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       password)
