@@ -616,6 +616,17 @@ Reads and this Mac only: nothing here changes the tenant.
   every row of one export kept; the widest window, every account if any export was, the first address given; a log stopped
   at its cap only while every export of it was (a later read for just the accounts that matter reaches further back, which
   clears Still to do's "pull again"). An export that can't be read is named, the rest still shown.
+- **Opening fast** (2026-10-24, asked for: an incident took long to open): saved logs are read back four at once
+  (`IncidentLogs.readBackAtOnce`, invariant 9: each holds its CSV's whole table while read, and a file can be 256 MB),
+  each on a core of its own, and all are put together once (`IncidentLogs.evidence`, async; `merged(_:)` over every pull,
+  held to the old two-at-a-time fold by `pullsPutTogetherAtOnceAreThemAddedOneByOne`). The parameters cell is split on its bytes
+  (`parameters(exported:)`, held to the Foundation reading by `theParametersCellReadsAsBefore`; it now also reads back a
+  value beginning with a combining mark, which Foundation folded into the parameter before). Each log's flagged and
+  account counts are made with it (`Log.flagged`, `.accounts`), never counted by the screen. Measured on 10 saved pulls of
+  40,000 Gmail-shaped events (220,000 in all): Release 10.7 s → 2.6 s, Debug 25.3 s → 9.7 s (every log at once was 1.9 s
+  and 5.8 s, holding a table a core); 200,000 events read back in 1.9 s Release (4.6 s before), 11 s Debug. **Measure in the build that runs:** Foundation's string searches are compiled optimized even
+  in a Debug build and a byte loop isn't, so the splitter is 20× faster in Release but no faster in Debug. What's left is
+  the shared `CSVReader` (GAM's output reader too, held to GamGUI's parsing: invariant 11), left alone.
 - **Bounded** (invariant 9): 200 incidents, 500 notes each, 100 saved reads each, 256 MB a file and 1 GB an export.
 - **Gotchas** (review before commit): a new incident takes the pull just made (else New Incident… after a pull lost it);
   showing the evidence waits for a pull still reading (`IncidentLogs.show` replaces the last pull, which drops one

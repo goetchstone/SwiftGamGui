@@ -1492,8 +1492,8 @@ private struct LogGroup: View {
         switch log.rows {
         case .failure: return "\(log.application.name): couldn't be read"
         case .success(let rows):
-            let flagged = rows.filter(\.flagged).count
-            let people = Set(rows.map(\.who)).count
+            // Counted once as the log was made (a big log's took a tenth of a second at every redraw).
+            let flagged = log.flagged, people = log.accounts
             return "\(log.application.name): \(rows.count) event\(rows.count == 1 ? "" : "s")"
                 + (flagged > 0 ? ", \(flagged) flagged" : "") + (rows.isEmpty ? "" : ", \(people) account\(people == 1 ? "" : "s")")
                 + (log.hours < asked ? " (the last \(IncidentLogsSection.window(log.hours)): the most the Gmail log reads)" : "")

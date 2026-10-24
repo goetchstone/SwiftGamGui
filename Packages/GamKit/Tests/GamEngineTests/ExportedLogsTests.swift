@@ -59,6 +59,49 @@ struct ExportedLogsTests {
         #expect(a.identity == b.identity && a.identity != other.identity)
     }
 
+    /// The parameters cell read on its bytes (2026-10-24, for speed) splits as the Foundation reading it replaced, kept here
+    /// as the reference: names in any script, ": " and " | " inside values, empty pieces, a leading piece with no name.
+    /// Where they differ, the bytes are what the export wrote: a value beginning with a combining mark, whose ": " Foundation
+    /// matched as a character and so missed, folding the parameter into the one before it.
+    @Test func theParametersCellReadsAsBefore() {
+        func before(_ cell: String) -> [ActivityLogs.Parameter] {
+            guard !cell.isEmpty else { return [] }
+            var parameters: [ActivityLogs.Parameter] = []
+            for piece in cell.components(separatedBy: " | ") {
+                if let colon = piece.range(of: ": "), !piece[..<colon.lowerBound].isEmpty,
+                   piece[..<colon.lowerBound].unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.contains($0) || "_.-".unicodeScalars.contains($0) }) {
+                    parameters.append(ActivityLogs.Parameter(name: String(piece[..<colon.lowerBound]), value: String(piece[colon.upperBound...])))
+                } else if let last = parameters.popLast() {
+                    parameters.append(ActivityLogs.Parameter(name: last.name, value: last.value + " | " + piece))
+                }
+            }
+            return parameters
+        }
+        // By their bytes: `String ==` takes "é" and "e" + U+0301 as equal.
+        func bytes(_ parameters: [ActivityLogs.Parameter]) -> [[UInt8]] { parameters.map { Array($0.name.utf8) + [0] + Array($0.value.utf8) } }
+        let cells = ["", " | ", " | | ", "a: b", "a:b", ": b", "a: ", "a: b | c: d", "lead | a: b", "a: b | rest", "a: b |  | c: d",
+                     "message_info.subject: Invoice | Due today | message_info.source.address: billing@example.org",
+                     "x-y_z.0: v: w | n: ", "nom_é: café | 名前: 値 | ключ: значение", "a b: c | d: e", "a: 🚀 | 🚀: b | c: d 🚀",
+                     "a: one |two | b: x", "a: |", "| a: b", "a: b | ", " | a: b"]
+        for cell in cells { #expect(bytes(ActivityLogs.parameters(exported: cell)) == bytes(before(cell)), "\(cell)") }
+        // Every mix of the pieces a cell is made of, in a fixed order.
+        let parts = ["a: b", " | ", ": ", "name_1.x-y", "é", "名", " ", "|", "🚀", "v", ":"]
+        var seed: UInt64 = 0x2026_1024, compared = 0
+        for _ in 0..<4_000 {
+            var cell = ""
+            for _ in 0..<12 {
+                seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+                cell += parts[Int(seed >> 33) % parts.count]
+            }
+            if bytes(ActivityLogs.parameters(exported: cell)) == bytes(before(cell)) { compared += 1 } else { Issue.record("\(cell)") }
+        }
+        #expect(compared == 4_000)
+        let accented = [ActivityLogs.Parameter(name: "message_info.subject", value: "\u{301}tude"),
+                        ActivityLogs.Parameter(name: "message_info.source.address", value: "a@example.org")]
+        let written = accented.map { "\($0.name): \($0.value)" }.joined(separator: " | ")
+        #expect(bytes(ActivityLogs.parameters(exported: written)) == bytes(accented) && bytes(before(written)) != bytes(accented))
+    }
+
     /// The export's dialect reads a backslash as data; GAM's reads it as an escape.
     @Test func theExportsDialectHasNoEscape() {
         #expect(CSVReader.records("a\\,b\n", escaping: false) == [["a\\", "b"]])

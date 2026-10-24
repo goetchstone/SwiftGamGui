@@ -570,7 +570,7 @@ final class CompromisedChangesTests {
             return ActivityLogs.Export(name: folder.lastPathComponent, about: try String(contentsOf: folder.appending(path: "about.txt"), encoding: .utf8),
                                        logs: logs)
         }
-        let once = IncidentLogs.evidence([try export(first.folder)])
+        let once = await IncidentLogs.evidence([try export(first.folder)])
         #expect(once.unreadable.isEmpty && once.pull.fromEvidence && once.pull.ended)
         #expect(once.pull.query.users == ["carol@example.com", "dana@example.com"] && once.pull.query.hours == 72 && once.pull.query.ip.isEmpty)
         func shape(_ row: ActivityLogs.Row) -> [String] {
@@ -586,7 +586,7 @@ final class CompromisedChangesTests {
         }
         #expect(compared > 20, "the mock's events, every log")
         #expect(pull.logs.contains { ((try? $0.rows.get()) ?? []).contains { !$0.agent.isEmpty || !$0.app.isEmpty } }, "who acted is covered")
-        let twice = IncidentLogs.evidence([try export(first.folder), try export(second.folder)])
+        let twice = await IncidentLogs.evidence([try export(first.folder), try export(second.folder)])
         #expect(twice.pull.logs.map { (try? $0.rows.get().count) ?? -1 } == once.pull.logs.map { (try? $0.rows.get().count) ?? -1 })
         #expect(IncidentLogs.export(try export(first.folder), isFrom: "example.com"))
         #expect(!IncidentLogs.export(try export(first.folder), isFrom: "example.org"))
@@ -618,8 +618,8 @@ final class CompromisedChangesTests {
                     == Dictionary(read.logs.map { ($0.application, $0.csv) }) { a, _ in a })
         }
         #expect(IncidentStore.readsBackLast(second, after: [first.name], saved: 1))
-        let readBack = IncidentLogs.evidence(saved.exports).pull
-        let added = IncidentLogs.adding(second, to: IncidentLogs.evidence([first]).pull)
+        let readBack = await IncidentLogs.evidence(saved.exports).pull
+        let added = IncidentLogs.adding(second, to: await IncidentLogs.evidence([first]).pull)
         let inMemory = try #require(added.together)
         #expect(added.readable && inMemory.fromEvidence && inMemory.ended)
         #expect(inMemory.query == readBack.query && inMemory.logs.map(\.application) == readBack.logs.map(\.application))
@@ -641,7 +641,7 @@ final class CompromisedChangesTests {
         logs.keep = { read in
             handed.append(read.query)
             stillReading.append(logs.isPulling && logs.isKeeping && read.ended)
-            return IncidentLogs.evidence([]).pull
+            return await IncidentLogs.evidence([]).pull
         }
         let query = IncidentLogs.Query(applications: [.login, .token], users: [], hours: 72, ip: "")
         await logs.pull(query)
