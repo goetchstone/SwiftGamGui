@@ -122,7 +122,7 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   and thousands of those passed the runner's 8 MiB cap in review, listing none. None is GAM's exit 60, "No drafts."
 - **The removal:** keep them (the start), delete every listed draft, or only those whose subject contains some text
   (`Form.Discard`, `Compromised.drafts(_:subjectMatching:)`; one that matches nothing is refused in words). One held step
-  `deleteMessages` (`delete messages ids <list>`, 8170-8174; with ids GAM needs no `doit` and checks no count), its own
+  `deleteMessages` (`delete messages ids <list>`, 8178-8182; with ids GAM needs no `doit` and checks no count), its own
   action `.deleteMessages`, destructive, needing the reset when it runs, confirmed by the typed address as every run here
   (Guard counts steps, so the number of drafts isn't typed: it's in the step and the sheet, which says it can't be undone).
 - **Delete, not Trash** (review 2026-10-19): Gmail's own Discard deletes a draft; a draft in Trash may still be a draft

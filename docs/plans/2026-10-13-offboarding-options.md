@@ -16,7 +16,7 @@ again, so it plans only what's left. No per-item rows, no new model.
 ## What the research found
 - **Secondary calendars are deleted with the account** (Google, from 2026-10-05), and the Calendar transfer doesn't
   include them. The one gap that loses data.
-- **The grammar file can be wrong:** line 1685 reads `calendars <CalendarEntity> transfer <UserItem>`; GAM's source
+- **The grammar file can be wrong:** line 1690 reads `calendars <CalendarEntity> transfer <UserItem>`; GAM's source
   accepts only `calendars <list> transfer ownership <user>`. The source is the authority.
 - **`forward off` doesn't stop filters that forward.**
 - **The transfer runs 10 to 25 minutes after its command.** Groups, org unit and suspend can switch off what it
@@ -32,8 +32,8 @@ the detail.
 | Slice | Step | Command | Read first |
 |---|---|---|---|
 | 2 | **Hand secondary calendars to the manager** | `calendars <ids> transfer ownership M` | the owned read #66 already makes |
-| 3 | **Remove mail filters that forward** (all of them, operator) | `user L delete filters <ids>` (7957) | `user L print filters formatjson` (7961) |
-| 4 | **Turn off IMAP**, **Turn off POP** (two steps) | `user L imap off`, `user L pop off` (8372, 8378) | none |
+| 3 | **Remove mail filters that forward** (all of them, operator) | `user L delete filters <ids>` (7965) | `user L print filters formatjson` (7969) |
+| 4 | **Turn off IMAP**, **Turn off POP** (two steps) | `user L imap off`, `user L pop off` (8380, 8386) | none |
 
 Each: off unless added; needs only the reset; a strict mock handler that fails as GAM's source does; an exact argv in
 `NativeArgvTests`; the README row "not yet" until it runs live with the operator's yes. An added step with nothing to

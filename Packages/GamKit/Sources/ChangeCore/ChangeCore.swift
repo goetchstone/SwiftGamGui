@@ -746,7 +746,7 @@ public actor Executor {
     /// argument with `getEntityList(…, shlexSplit=True)`: first as a selector word (`getChoice`: stripped,
     /// lowercased, then without `_` and `-`), then split by POSIX shlex on spaces and commas, where quotes and
     /// a backslash are syntax and `#` starts a comment; `tltitle:` then picks a list by title (GamCommands.txt
-    /// 649, 803, 1289). So only printable ASCII without those characters, under the length cap, and neither
+    /// 651, 807, 1294). So only printable ASCII without those characters, under the length cap, and neither
     /// a selector nor a title.
     static func usableListID(_ id: String) -> Bool {
         let scalars = Array(id.unicodeScalars)

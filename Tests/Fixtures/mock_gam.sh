@@ -166,7 +166,7 @@ member_record() { members_of "$1" | grep -F "\"email\": \"$2\", " || true; }   #
 tenant_domain() {  # <domain, lowercased>
   grep -qF -e "\"domainName\": \"$1\"" -e "\"domainAliasName\": \"$1\"" "$GAM_MOCK_FIXTURES/domains.json"
 }
-# `todrive <ToDriveAttribute>*` (grammar 655) after a print/report read: only the shape the Builder emits
+# `todrive <ToDriveAttribute>*` (grammar 657) after a print/report read: only the shape the Builder emits
 # (GAMCommands.todrive_args) — `todrive [tduser <EmailAddress>] [tdtitle <String>]`, each once, in that order,
 # last on the line. GAM (CSVPrintFile.GetTodriveParameters, read from the vendored build) reads tduser with
 # getString, which refuses an empty value, and tdtitle with minLen=0, which doesn't.
@@ -211,7 +211,7 @@ acl_notify_tail() {
 
 case "${1:-}" in
   version)
-    echo "GAM 7.48.30 - mock"
+    echo "GAM 7.48.34 - mock"
     # As the real build does in a fresh config directory: its config line, then the cache it created.
     if [ -n "${GAMCFGDIR:-}" ]; then
       printf 'Config File: %s/gam.cfg, Section: DEFAULT\nCreated: %s/gamcache\n' "$GAMCFGDIR" "$GAMCFGDIR"
@@ -652,7 +652,7 @@ fi
 
 # `gam print groups [fields <GroupFieldNameList>]* formatjson` -> GAM's CSV, an `email` and a `JSON` column
 # per group (gam/__init__.py:36720-36724, header :36870, :37014), the record holding the fields asked for
-# (and the address, which GAM always prints). Each field must be a <GroupFieldName> (grammar 3965), matched
+# (and the address, which GAM always prints). Each field must be a <GroupFieldName> (grammar 3970), matched
 # as GAM matches it, lowercased with underscores dropped; another is GAM's invalid choice. Only the four the
 # app asks for, together, are modelled (mock_gam/groups.json holds them); fewer would need the records cut
 # down. The count is a string, as the Directory API sends an int64 (approximate). GAM also takes quotechar,
@@ -741,7 +741,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] 
   exit 0
 fi
 
-# `<user> delete messages ids <MessageIDEntity>` (8170-8174; _processMessagesThreads with ids: no doit, no count check):
+# `<user> delete messages ids <MessageIDEntity>` (8178-8182; _processMessagesThreads with ids: no doit, no count check):
 # the compromised-account step that deletes the chosen drafts for good. As GAM 7.48.30 does: a token for the user;
 # getProfile, so Gmail off is userGmailServiceNotEnabledWarning (73); "User: <u>, Delete N Messages"; then Gmail's
 # batchDelete, message_batch_size (50) at a time: each "  User: <u>, Message: <id>, Deleted (j/N)", or a batch holding an ID
@@ -1022,7 +1022,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ];
   not_modelled "print messages other than a query with headers all, showlabels and showdate"
 fi
 
-# `<user> trash messages ids <MessageIDEntity>` (8186-8190; _processMessagesThreads with ids: nothing is listed, so Spam is no
+# `<user> trash messages ids <MessageIDEntity>` (8194-8198; _processMessagesThreads with ids: nothing is listed, so Spam is no
 # bar; no doit, no count check): the Phishing screen's trash of one mailbox's copies in Spam, by the IDs SpamCopies read. As
 # GAM 7.48.30 does: a token for the user; getProfile, so Gmail off is userGmailServiceNotEnabledWarning (73); "User: <u>,
 # Trash N Messages"; then Gmail's messages.trash on each ID, a batch request each: "  User: <u>, Message: <id>, Trashed
@@ -1073,7 +1073,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "trash" ] && [ "${4:-}" = "messages" ] 
 fi
 
 # ---- One email out of every mailbox (docs/domains/phishing.md) --------------------------------------------------------
-# `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]` (8186-8190), as
+# `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]` (8194-8198), as
 # GAM 7.48.30's _processMessagesThreads runs it, for `all users` (every active user, by address: isSuspended=False) or
 # `user <email>`. The mailboxes are mock_gam/messages.csv (`user,id,rfc822msgid,labels`, a message a line, made up); with
 # GAM_MOCK_STATE a trashed message is $GAM_MOCK_STATE/trashed/<id>, and $GAM_MOCK_STATE/nogmail/<user> a person with
@@ -1500,11 +1500,11 @@ print_acl_rows() {  # <file> <key value>...
 
 # `gam user <u> print calendars fields id,summary,accessrole,primary formatjson` (printShowCalendars, :55691-55840)
 # -> primaryEmail,calendarId,JSON, the person's own calendar list. Each field must be a <CalendarListField>
-# (grammar 6266-6283), matched lowercased as GAM matches it; only the four the app asks for are modelled, and
+# (grammar 6273-6290), matched lowercased as GAM matches it; only the four the app asks for are modelled, and
 # GAM's other options are refused rather than answered in a guessed shape. GAM acts as the person: one who
 # isn't a user fails before anything prints, and one with Calendar off fails after the "Getting" line, exit 73.
 # `... ownedsecondary [showhidden] fields id,summary formatjson`: the calendars on that list the person is
-# dataOwner of, `dataOwner` added to the fields (:55747-55748, :55771-55776). The grammar (6288) shows the two
+# dataOwner of, `dataOwner` added to the fields (:55747-55748, :55771-55776). The grammar (6295) shows the two
 # as alternatives, but they're one parser loop. calendarList.list leaves hidden entries out unless showHidden:
 # `user_owned_calendars/<u>.json` are the visible ones, `<u>.hidden.json` the hidden ones.
 CALENDAR_LIST_FIELDS="accessrole|backgroundcolor|colorid|conferenceproperties|defaultreminders|deleted|description|foregroundcolor|hidden|id|location|notificationsettings|primary|selected|summary|summaryoverride|timezone"
@@ -1593,7 +1593,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendaracls
 fi
 
 # `gam calendars <list> transfer ownership <user>` (doCalendarsTransferOwnership, :55992-56014; GamUpdate 7.46.04;
-# the grammar's 1685 lacks `ownership`, which getChoice requires: anything else is an invalid choice). Each calendar
+# the grammar's 1690 lacks `ownership`, which getChoice requires: anything else is an invalid choice). Each calendar
 # in the comma list in turn, "(i/n)" after each line when there's more than one: validateCalendar gets it with the
 # admin's own access first, so one the admin can't see (here: one the fixtures don't hold) fails "Not Found" before
 # any transfer; then transferOwnership as the admin: "Calendar: <id>, Ownership Transferred to: <user>" on stdout.
@@ -1654,7 +1654,7 @@ fi
 # `gam print resources fields id,name,email,resourcetype,buildingid formatjson` (doPrintShowResourceCalendars,
 # :41423-41548) -> resourceId,resourceName,JSON; buildingId as `id:<id>` beside a looked-up buildingName, which
 # is the raw id for a building GAM can't name (:41515-41517, :40799-40802). Each field must be a
-# <ResourceFieldName> (grammar 4877-4900); only the five the app asks for are modelled. GAM's `query` is a
+# <ResourceFieldName> (grammar 4882-4905); only the five the app asks for are modelled. GAM's `query` is a
 # structured filter GamGUI never sends (it filters the list itself), so it is refused, as is every other option.
 RESOURCE_FIELDS="acls|autoacceptinvitations|buildingid|calendar|capacity|category|description|email|featureinstances|features|floor|floorsection|generatedresourcename|id|name|resourcecategory|resourcedescription|resourceemail|resourceid|resourcename|resourcetype|type|uservisibledescription"
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "resources" ]; then
@@ -2087,7 +2087,7 @@ check_user_attrs() {
         shift 2 ;;
       displayname|recoveryemail|recoveryphone|ou|org|orgunitpath)
         need_value $# "String"; shift 2 ;;
-      gal|includeinglobaladdresslist)  # [<Boolean>]: getBoolean's optional form, true when bare (grammar 5831)
+      gal|includeinglobaladdresslist)  # [<Boolean>]: getBoolean's optional form, true when bare (grammar 5838)
         shift; if is_bool "${1:-}"; then shift; fi ;;
       notify|subject|notifypassword|from|mailbox|replyto|message|textmessage|htmlmessage)
         need_value $# "String"; shift 2 ;;
@@ -2189,7 +2189,7 @@ if [ "${1:-}" = "undelete" ] && [ "${2:-}" = "user" ]; then
   exit 0
 fi
 
-# `gam user <email> signout` (8938). SIGNOUTFAIL: Google refuses users.signOut the way a missing
+# `gam user <email> signout` (8946). SIGNOUTFAIL: Google refuses users.signOut the way a missing
 # admin.directory.user.security scope does — GAM's entityActionFailedWarning, ACTION_FAILED_RC.
 signout_refused() {
   printf 'User: %s, Sign Out Failed: Not Authorized to access this resource/api\n' "$1" 1>&2
@@ -2203,7 +2203,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "signout" ]; then
   exit 0
 fi
 
-# `gam user <email> deprovision|deprov [popimap] [signout] [turnoff2sv]` (7899): GAM's parser takes the
+# `gam user <email> deprovision|deprov [popimap] [signout] [turnoff2sv]` (7907): GAM's parser takes the
 # three words in any order. Per user it deletes the app passwords, invalidates the backup codes and
 # deletes the OAuth tokens, then (options) turns off 2SV, signs out, disables POP/IMAP. A failure is
 # reported against the user and stops that user's remaining parts (deprovisionUser, read statically).
@@ -2399,7 +2399,7 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "add" ] || [ "${3:-}" = "create" ]; }
   exit 0
 fi
 
-# `gam user <email> forward <FalseValues>` / `forward <TrueValues> <action> <EmailAddress>` (8000-8001). GAM's
+# `gam user <email> forward <FalseValues>` / `forward <TrueValues> <action> <EmailAddress>` (8008-8009). GAM's
 # setForward (7.48.26): getBoolean first, then per user a token (not_a_user, "Set Failed") and one Gmail settings
 # call, Gmail off its userGmailServiceNotEnabledWarning (exit 73); printed as _showForward prints what Gmail returns.
 # Stricter than GAM, never looser: GAM strips the Boolean, ignores a word after `off`, and takes `on`'s action and address in any order
@@ -2438,8 +2438,8 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "forward" ]; then
 fi
 
 # `gam user <email> imap|imap4 <Boolean> [noautoexpunge] [expungebehavior archive|deleteforever|trash]
-#  [maxfoldersize 0|1000|2000|5000|10000]` (8372) / `pop|pop3 <Boolean> [for allmail|newmail|mailfromnowon|fromnowon]
-#  [action keep|leaveininbox|archive|delete|trash|markread]` (8378). GAM's setImap and setPop (7.48.26): the options
+#  [maxfoldersize 0|1000|2000|5000|10000]` (8380) / `pop|pop3 <Boolean> [for allmail|newmail|mailfromnowon|fromnowon]
+#  [action keep|leaveininbox|archive|delete|trash|markread]` (8386). GAM's setImap and setPop (7.48.26): the options
 # first, then per user a token (not_a_user, "Set Failed") and one Gmail settings call, Gmail off its
 # userGmailServiceNotEnabledWarning (exit 73); printed as _showImap and _showPop print the settings Gmail returns.
 if [ "${1:-}" = "user" ] && case "${3:-}" in imap|imap4|pop|pop3) true ;; *) false ;; esac; then
@@ -2538,7 +2538,7 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && [ "${2:-}" = "group" 
 fi
 
 # `gam update group <group> add|create [<GroupRole>] <member>` / `delete|remove [<GroupRole>] <member>`
-# (grammar 3931, 3937), as doUpdateGroups (gam/__init__.py:35000, read at 7.48.22) runs them. Only the shape
+# (grammar 3936, 3942), as doUpdateGroups (gam/__init__.py:35000, read at 7.48.22) runs them. Only the shape
 # the app sends: one group and one member, though GAM reads each as a list (`<GroupEntity>`,
 # `<UserTypeEntity>`), and none of the option words. Anything else is refused, not answered in a guessed
 # shape; so is a group added to itself (Google's cycle refusal isn't modelled).

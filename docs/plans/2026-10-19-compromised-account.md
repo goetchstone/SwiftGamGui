@@ -37,8 +37,8 @@ rows. Nothing in offboarding changes.
 | Revoke access & sign out | `user P deprovision signout` | always | ends every session, deletes app passwords and backup codes, revokes every connected app (P re-grants what they use) |
 | Turn off forwarding | `user P forward off` | always | |
 | Delete the picked filters | `user P delete filters <ids>` | when picked | one command, as offboarding's |
-| Remove a picked delegate | `user P delete delegate D` (7919) | when picked | one step each (GamGUI's builder) |
-| Remove a picked send-as address | `user P delete sendas S` (8293) | when picked | one step each; native builder |
+| Remove a picked delegate | `user P delete delegate D` (7927) | when picked | one step each (GamGUI's builder) |
+| Remove a picked send-as address | `user P delete sendas S` (8301) | when picked | one step each; native builder |
 | Turn off IMAP / POP | `user P imap off`, `user P pop off` | **on** | the lock as asked; P can turn either back on in Gmail settings |
 
 - **What stops what:** offboarding's rule, kept: when the reset runs, everything needs it ("nothing after it runs");
@@ -74,7 +74,7 @@ warnings), and filtering every log by the attacker's IP is the most useful view:
 their password into the fake page. Without this, those logs are exported from the Admin console one at a time.
 
 - **One read per log:** `report <application> (user <u>|user all|select users <list>) start -<hours>h end now [ip X]
-  maxactivities 1000` (4730-4744), for login, token, gmail, accessevaluation, chat, useraccounts, drive, takeout, admin
+  maxactivities 1000` (4735-4749), for login, token, gmail, accessevaluation, chat, useraccounts, drive, takeout, admin
   and mobile. The logs an incident needs first are on by default (see the runbook's list). The Admin console's
   "Access" log is the Reports API's `access_evaluation` (cookie validation and access-token requests; Google's appendix).
 - **The window:** a day, 3 days (the default), a week, a month or six months. `end now` is named so the Gmail log's

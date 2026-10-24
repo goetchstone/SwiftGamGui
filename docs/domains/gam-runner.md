@@ -42,6 +42,19 @@ an allowlisted environment, a timeout, and capped output capture.
   `EXPECTED_GAM_VERSION`, so a bump waited for GamGUI's. A bump leaves `gamgui_commit` alone: `../gamgui` is shared
   and moves under other work (7.48.28's first run read it mid-bump), so run `bump_gam.py` with `--gamgui` set to a
   clone checked out at the commit the fixtures already name.
+- **Bump to 7.48.34 (2026-10-24):** the first bump whose grammar moved: 8 lines added (three Additional Storage SKUs,
+  `<TokenID>`, `<BrowserIDList>`, `<TokenIDList>`, and `addcsvdata … includecsvdatainjson` on three print commands), so
+  every line from 313 on shifted by 2 to 8. 113 citations in 14 files were renumbered, each checked to name the same
+  grammar text as before. Number-shaped values that aren't citations (timeouts, sizes, dates, `0600`, GAM's own
+  `:NNNN` source lines) and a note dated to 7.48.22 were left alone. GAM's changelog for 7.48.31–.34 only adds options
+  this app doesn't build. Find's dry run (`CommandKindTests.reviewedDryRuns`) was re-read through GitHub's
+  v7.48.30...v7.48.34 compare: `_processMessagesThreads` and its `doit` check are untouched (the Gmail hunks are in
+  `printShowMessagesThreads`, where an unknown error on one message is now a warning line). **The fixtures go stale
+  between bumps:** they are generated only by a bump, so a mock change
+  can break the next generation days later. A message Phishing added on 10-19 (`19a0c0ffee000007`) had no
+  `message_headers` file, so GamGUI's recorded `from:` search over alice's mailbox stopped the generator. It now has
+  one. `gam_output.json` also changed where the mock's answers grew since 10-17 (a forwarding read, that search): it
+  records the mock, not GAM. After a mock change that adds data, re-run `gen_fixtures.py` then rather than at the bump.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
