@@ -34,8 +34,8 @@ enum Spikes {
         let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
-            // The pointer up on the menu bar, off the window: on CI it rests mid-screen, over a control, and that
-            // control's tooltip came out in the whole-window picture (offboard-plan, 2026-10-24).
+            // The pointer up on the menu bar, off the window: on CI it rests mid-screen, where a control under it would
+            // show its tooltip in the whole-window picture.
             if let screen = NSScreen.screens.first { CGWarpMouseCursorPosition(CGPoint(x: screen.frame.midX, y: 1)) }
             await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
@@ -106,6 +106,9 @@ enum Spikes {
         let bitmap: NSBitmapImageRep
         if sheet == nil, let window, let whole = await windowImage(window) {
             bitmap = NSBitmapImageRep(cgImage: whole)
+            // In points, so a web view's snapshot lands where it's shown whatever the screen's scale.
+            bitmap.size = window.frame.size
+            await drawWebViews(in: content, rect: content.bounds, onto: bitmap)
             print("snapshot: the whole window")
         } else {
             let view = sheet ?? splitViews(in: content).first?.arrangedSubviews.last ?? content
@@ -183,11 +186,23 @@ enum Spikes {
 
     /// The whole window as it's shown, title bar, toolbar and sidebar included: ScreenCaptureKit's picture of this app's
     /// own window, which needs no screen-recording permission (`SCShareableContent.currentProcess`, "without user consent
-    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane instead. The window isn't made key
-    /// first: that focuses the page's first field and scrolls back to it, undoing a screen's scroll to what it shows
-    /// (compromised-reading came out at the top, 2026-10-24).
+    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane instead.
+    ///
+    /// First, what `cacheDisplay` did for the pane without being asked (CI, 2026-10-24): a window in the background isn't
+    /// updated on its own, so a scroll a screen's demo asked for last (compromised-reading) or a picker's new title (onboard)
+    /// hadn't reached it; layout and draw passes let them land, and the scroll's own update after it. And no field keeps
+    /// the focus: a focused field's suggestion list (`textInputSuggestions`, offboard-plan) is a child window, which the
+    /// capture includes. The window isn't made key: that would focus the page's first field and scroll back to it.
     @MainActor
     static func windowImage(_ window: NSWindow) async -> CGImage? {
+        window.makeFirstResponder(nil)
+        for child in window.childWindows ?? [] where child.sheetParent == nil { child.orderOut(nil) }
+        for _ in 0..<3 {
+            window.contentView?.layoutSubtreeIfNeeded()
+            window.display()
+            CATransaction.flush()
+            try? await Task.sleep(for: .milliseconds(200))
+        }
         do {
             let content = try await SCShareableContent.currentProcess
             guard let shown = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
