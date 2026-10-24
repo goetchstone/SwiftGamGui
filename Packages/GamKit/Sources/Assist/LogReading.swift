@@ -37,19 +37,98 @@ public enum LogReading {
     /// What the pull says that its events don't: the address it was pulled by (the operator's to call the attacker's), the
     /// logs it read, by name (nil: not said; a lock is seen only where the admin log was read, by the accounts), the
     /// sign-ins the operator marked as the person's own (`key(account:address:)`), and the logs that stopped at their cap,
-    /// each with its oldest event read (a log read for every account can stop short of the attack).
+    /// each with its oldest event read (a log read for every account can stop short of the attack). And what this app shows
+    /// of the emails to pull: Phishing's runs in its audit log (`pulled`), and the emails its Find showed nobody here has
+    /// (`nobodyHas`). Facts beside the events, never among them.
     public struct Context: Sendable, Equatable {
         public let pulledBy: String
         public let read: Set<String>?
         public let theirs: Set<String>
         public let capped: [String: Date]
+        public let pulled: [Pulled]
+        public let nobodyHas: [NobodyHas]
 
-        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:]) {
+        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
+                    pulled: [Pulled] = [], nobodyHas: [NobodyHas] = []) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
             self.capped = capped
+            self.pulled = pulled
+            self.nobodyHas = nobodyHas
         }
+    }
+
+    /// Phishing's Find showed no mailbox here has this email, every mailbox and its Spam searched, at `at`, with `by`
+    /// connected: kept on this Mac, since a read is never audited. Sent only outside, removed since, or never delivered: the
+    /// usual end of Pull All for an email.
+    public struct NobodyHas: Sendable, Equatable {
+        /// The Message-ID, with or without its angle brackets.
+        public let messageID: String
+        public let at: Date
+        public let by: String
+
+        public init(messageID: String, at: Date, by: String) {
+            (self.messageID, self.at, self.by) = (messageID, at, by)
+        }
+    }
+
+    /// How a to-do item was done, when, and by whom (an admin's address, or "" when none was known).
+    public struct Done: Sendable, Equatable {
+        public enum How: Sendable, Equatable {
+            /// Phishing's latest run trashed the email everywhere it was found (this app's audit log).
+            case trashed
+            /// Phishing's Find showed nobody here has the email (kept on this Mac).
+            case nobodyHasIt
+        }
+        public let how: How
+        public let at: Date
+        public let by: String
+    }
+
+    /// Phishing's latest run on one email, as this app's audit log shows it: when its newest record was written and by
+    /// whom, the steps the run held for the email, those that ended trashed and those that failed (the rest never ended:
+    /// not begun after a Stop, cut off, or still running), the mailboxes they named, and whether Find had searched every
+    /// mailbox and its Spam for it. The screen reads it from the log; the reader decides what it shows.
+    public struct Pulled: Sendable, Equatable {
+        /// The Message-ID, with or without its angle brackets.
+        public let messageID: String
+        public let at: Date
+        public let by: String
+        public let steps: Int
+        public let trashed: Int
+        public let failed: Int
+        public let mailboxes: Int
+        public let searchedEverywhere: Bool
+
+        public init(messageID: String, at: Date, by: String, steps: Int, trashed: Int, failed: Int, mailboxes: Int,
+                    searchedEverywhere: Bool) {
+            (self.messageID, self.at, self.by, self.steps, self.trashed, self.failed, self.mailboxes, self.searchedEverywhere)
+                = (messageID, at, by, steps, trashed, failed, mailboxes, searchedEverywhere)
+        }
+
+        /// Every step the run held for it ended trashed, and Find had searched everywhere: no copy Find could see is left.
+        /// A step failed or never ended, or a mailbox unsearched (where a copy is unknown), and it's still to do.
+        var isDone: Bool { steps > 0 && trashed == steps && searchedEverywhere }
+
+        /// What the run left, as the to-do item says it: "Phishing's last run by … trashed 2 of its 3 steps, but 1 failed: …".
+        var left: String {
+            var but: [String] = []
+            if failed > 0 { but.append("\(failed) failed") }
+            let unfinished = max(0, steps - trashed - failed)
+            if unfinished > 0 { but.append("\(unfinished) didn't finish") }
+            if !searchedEverywhere { but.append("Find couldn't search every mailbox for it") }
+            return "Phishing's last run" + (by.isEmpty ? "" : " by \(by)")
+                + (trashed >= steps ? " trashed it from every mailbox it found" : " trashed \(trashed) of its \(steps) steps")
+                + (but.isEmpty ? "" : ", but " + LogReading.list(but)) + ": find it again there to see what's left."
+        }
+    }
+
+    /// A Message-ID as Phishing names it: without its angle brackets (the Gmail log keeps them).
+    static func bareMessageID(_ id: String) -> String {
+        let trimmed = id.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count > 1, trimmed.hasPrefix("<"), trimmed.hasSuffix(">") else { return trimmed }
+        return String(trimmed.dropFirst().dropLast())
     }
 
     /// A sign-in the operator marked as the person's own: their account and the address, case aside.
@@ -165,7 +244,8 @@ public enum LogReading {
 
     /// Something left to do, worked out by code from where each account stands and what the logs show; the model only
     /// words it. `id` ("T1") is what the model's sentences cite. It leaves the list once the logs show it done (a lock, a
-    /// device removed, recovery details cleared); what the logs can't show stays until the incident record can tick it.
+    /// device removed, recovery details cleared), or once this app shows an email pulled or nobody here having it, which then
+    /// lists it as done (`Reading.done`, "D1", with `done`); what none can show stays until the incident record can tick it.
     public struct Task: Sendable, Equatable, Identifiable {
         /// Most urgent first.
         public enum Kind: String, Sendable, CaseIterable {
@@ -183,6 +263,8 @@ public enum LogReading {
         /// The logs to read again for its accounts ("Pull Again"), by their names in the logs (`login`, `gmail`); empty for
         /// none. A read, never a change.
         public let pullsAgain: [String]
+        /// How it was done, when and by whom, for an item on `Reading.done`; nil while it's still to do.
+        public let done: Done?
     }
 
     /// Which events a to-do item is about: its accounts', from these addresses (none: any), in these logs, through these
@@ -250,16 +332,27 @@ public enum LogReading {
     }
 
     /// Every finding, most serious first; where each account the attacker touched stands, with its timeline; what's left
-    /// to do; and each draft once in the order the findings point to them.
+    /// to do, and what this app's audit log shows done; and each draft once in the order the findings point to them.
     public struct Reading: Sendable, Equatable {
         public let findings: [Finding]
         public let statuses: [Status]
         public let toDo: [Task]
+        /// The emails Phishing pulled from every mailbox, or that its Find showed nobody here has, each with how, when and by
+        /// whom (`Task.done`).
+        public let done: [Task]
         public let events: Int
 
         public var drafts: [Draft] {
             var seen: Set<Draft> = []
             return findings.flatMap(\.drafts).filter { seen.insert($0).inserted }
+        }
+
+        /// The Message-IDs of every email still to pull, each once, in the to-do list's order: never one done.
+        public var emailsToPull: [String] {
+            var seen: Set<String> = []
+            return toDo.flatMap(\.drafts).compactMap { draft in
+                if case .pullEmail(let id, _) = draft, seen.insert(id).inserted { id } else { nil }
+            }
         }
     }
 
@@ -655,29 +748,57 @@ public enum LogReading {
         // Mail sent from a suspect address: the message to pull from everyone. Only a send (`isSent`): what the attacker read,
         // drafted or trashed there is the person's own mail. Its sender is secured by their sign-in from that address, not
         // here: whose mailbox a Gmail row is isn't certain from the row alone.
+        // One Phishing has trashed from every mailbox (its audit log, `Pulled`), or that its Find showed nobody here has
+        // (`NobodyHas`), is done: listed with how, when and by whom, and drafted nowhere again. The latest of the two decides:
+        // a run after a check found copies again. A run that left any is still to do, saying what it left.
         var messages: [String: [Event]] = [:], order: [String] = []
         for event in events where event.log == "gmail" && acting.contains(event.ip) && isSent(event) {
             guard let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { continue }
             if messages[id] == nil { order.append(id) }
             messages[id, default: []].append(event)
         }
+        var runs: [String: Pulled] = [:]
+        for run in context.pulled {
+            let id = bareMessageID(run.messageID)
+            if runs[id].map({ $0.at < run.at }) ?? true { runs[id] = run }
+        }
+        var checks: [String: NobodyHas] = [:]
+        for check in context.nobodyHas {
+            let id = bareMessageID(check.messageID)
+            if checks[id].map({ $0.at < check.at }) ?? true { checks[id] = check }
+        }
+        var pulledDone: Set<String> = [], doneTasks: [(String, [String], Done)] = []
         for id in order {
             let theirs = messages[id] ?? []
             let subject = theirs.compactMap { $0.parameters["message_info.subject"] }.first { !$0.isEmpty } ?? ""
-            found.append(Pending(.mailFromSuspect, "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) was sent from "
-                                 + list(unique(theirs.map(\.ip))) + ".", unique(theirs.map(\.who).filter(isAccount)),
-                                 unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)],
-                                 todo: [(.pullEmail, "Pull “\(subject.isEmpty ? "(no subject)" : subject)” (\(id)) from every mailbox: it went out "
-                                         + "from the attacker's address.", [.pullEmail(messageID: id, subject: subject)])]))
+            let named = "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id))"
+            let accounts = unique(theirs.map(\.who).filter(isAccount)), run = runs[bareMessageID(id)], check = checks[bareMessageID(id)]
+            var todo: [(Task.Kind, String, [Draft])] = []
+            if let check, run.map({ $0.at <= check.at }) ?? true {
+                pulledDone.insert(id)
+                doneTasks.append(("Nobody here has \(named): Phishing's Find searched every mailbox and its Spam.", accounts,
+                                  Done(how: .nobodyHasIt, at: check.at, by: check.by)))
+            } else if let run, run.isDone {
+                pulledDone.insert(id)
+                doneTasks.append(("Pulled \(named): trashed from " + (run.mailboxes == 1 ? "the one mailbox" : "the \(run.mailboxes) mailboxes")
+                                  + " that had it, every mailbox searched first.", accounts, Done(how: .trashed, at: run.at, by: run.by)))
+            } else {
+                todo = [(.pullEmail, "Pull \(named) from every mailbox: it went out from the attacker's address." + (run.map { " " + $0.left } ?? ""),
+                         [.pullEmail(messageID: id, subject: subject)])]
+            }
+            found.append(Pending(.mailFromSuspect, "\(named) was sent from " + list(unique(theirs.map(\.ip))) + ".", accounts,
+                                 unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)], todo: todo))
         }
 
         let ranked = found.enumerated().sorted { a, b in
             (Finding.Kind.allCases.firstIndex(of: a.element.kind)!, a.offset) < (Finding.Kind.allCases.firstIndex(of: b.element.kind)!, b.offset)
         }.map(\.element)
-        // A finding about an account already locked drafts no lock again: what's left is in the to-do list.
+        // A finding about an account already locked drafts no lock again, nor one about an email already pulled: what's
+        // left is in the to-do list.
         let locked = Set(statuses.filter { $0.state == .locked }.map { $0.account.lowercased() })
         func stillToDraft(_ draft: Draft) -> Bool {
             if case .secureAccount(let account) = draft { return !locked.contains(account.lowercased()) }
+            if case .pullEmail(let id, _) = draft { return !pulledDone.contains(id) }
             return true
         }
 
@@ -709,7 +830,9 @@ public enum LogReading {
                     events: item.events, drafts: item.drafts.filter(stillToDraft), markable: item.markable)
         }, statuses: statuses, toDo: ordered.enumerated().map { index, item in
             Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3,
-                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.0 == .pullAgain ? pullsAgain : [])
+                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.0 == .pullAgain ? pullsAgain : [], done: nil)
+        }, done: doneTasks.enumerated().map { index, item in
+            Task(id: "D\(index + 1)", kind: .pullEmail, words: item.0, accounts: item.1, drafts: [], shows: nil, pullsAgain: [], done: item.2)
         }, events: events.count)
     }
 

@@ -163,7 +163,7 @@ public struct AuditEntry: Sendable, Identifiable {
 
     /// The instant in a timestamp as both apps write it: Python's `isoformat()` of a UTC time,
     /// `YYYY-MM-DDTHH:MM:SS[.ffffff]+HH:MM`. Anything else is shown as written.
-    static func instant(_ text: String) -> Date? {
+    public static func instant(_ text: String) -> Date? {
         let bytes = Array(text.utf8)
         func number(_ start: Int, _ count: Int) -> Int? {
             guard start + count <= bytes.count else { return nil }

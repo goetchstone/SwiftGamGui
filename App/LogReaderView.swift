@@ -23,6 +23,13 @@ struct LogReaderView: View {
 
     let part: Part
     let pull: IncidentLogs.Pull
+    /// This app's audit log: read with the pull for the emails Phishing pulled on `domain` (`PhishingAudit`), which show done.
+    let auditURL: URL
+    let domain: String
+    /// The emails Phishing's Find showed nobody on this domain has, which show done too.
+    let nobodyHas: [NobodyHasStore.Check]
+    /// Why those can't be kept (their store didn't open, or a save failed); nil when they are.
+    let nobodyHasProblem: String?
     /// The reading and the model's explanation, kept by the screen across its tabs.
     let memory: Memory
     /// Opens Incident for a person and checks them, with one thing picked when a "Do It Here" asked for it.
@@ -46,7 +53,8 @@ struct LogReaderView: View {
 
     /// What the reader keeps while the screen is open, whichever tab shows: the pull's reading, made once per pull and off
     /// the main thread (the rules scan every event, and a whole pull for every account holds hundreds of thousands: read in
-    /// a view's body, it stopped the app for minutes, failure log 2026-10-23), and the model's explanation of it.
+    /// a view's body, it stopped the app for minutes, failure log 2026-10-23), and the model's explanation of it. The screen
+    /// makes a new one each time it opens, so coming back from Phishing reads its runs again.
     @MainActor
     @Observable
     final class Memory {
@@ -57,12 +65,16 @@ struct LogReaderView: View {
         /// A reading has come: debug snapshots wait for it before they scroll to it.
         var hasReading: Bool { read != nil }
 
-        /// Reads `pull` for `key` in the background, once: either tab asking for the key being read waits on that read. A
-        /// newer key's read replaces it, and the older one's reading is dropped when it ends.
-        fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], key: String) {
+        /// Reads `pull` for `key` in the background, once, with what the audit log shows Phishing pulled: either tab asking
+        /// for the key being read waits on that read. A newer key's read replaces it, and the older one's reading is dropped
+        /// when it ends.
+        fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
+                                nobodyHas: [NobodyHasStore.Check], key: String) {
             guard read?.key != key, reading?.key != key else { return }
             reading = (key, Task { [weak self] in
-                let found = await Task.detached(priority: .userInitiated) { LogReaderView.reading(pull, marks: marks) }.value
+                let found = await Task.detached(priority: .userInitiated) {
+                    LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas)
+                }.value
                 guard let self, self.reading?.key == key else { return }
                 self.read = (key, found)
                 self.reading = nil
@@ -72,8 +84,9 @@ struct LogReaderView: View {
 
     /// What identifies the pull read: its query, each log's outcome, and the sign-ins marked as theirs.
     private var key: String {
-        "\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
+        "\(domain)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
+            + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
     }
 
     /// The sign-in a "That Was Them" asks a note for.
@@ -89,17 +102,25 @@ struct LogReaderView: View {
         case failed(String)
     }
 
-    /// What the rules find in `pull`, told the address it was pulled by, the logs it read, the sign-ins marked as theirs, and
-    /// the logs that stopped at their cap with the oldest event each read (one read for every account can stop short of the
-    /// attack: what's still to do says so). Off the main thread (`Memory`).
-    nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark]) -> LogReading.Reading {
+    /// What the rules find in `pull`, told the address it was pulled by, the logs it read, the sign-ins marked as theirs, the
+    /// logs that stopped at their cap with the oldest event each read (one read for every account can stop short of the
+    /// attack: what's still to do says so), each email's latest Phishing run in the audit log, and the emails Phishing's
+    /// Find showed nobody here has. Off the main thread (`Memory`).
+    nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
+                                    nobodyHas: [NobodyHasStore.Check]) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
         for log in pull.logs where log.capped {
             if let oldest = ((try? log.rows.get()) ?? []).compactMap(\.date).min() { capped[log.application.rawValue] = oldest }
         }
-        return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs, capped: capped))
+        let runs = pulled.map { run in
+            LogReading.Pulled(messageID: run.messageID, at: run.at, by: run.by, steps: run.steps, trashed: run.trashed,
+                              failed: run.failed, mailboxes: run.mailboxes, searchedEverywhere: run.searchedEverywhere)
+        }
+        let checks = nobodyHas.map { LogReading.NobodyHas(messageID: $0.messageID, at: $0.at, by: $0.by) }
+        return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
+                                                                         capped: capped, pulled: runs, nobodyHas: checks))
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -131,7 +152,7 @@ struct LogReaderView: View {
                 readingNow
             }
         }
-        .onChange(of: key, initial: true) { memory.begin(pull, marks: marks, key: key) }
+        .onChange(of: key, initial: true) { memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, key: key) }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in
                 markProblem = markTheirs(marking.account, marking.address, note)
@@ -193,9 +214,10 @@ struct LogReaderView: View {
                 ForEach(reading.statuses, id: \.account) { status in StatusRow(status: status) }
             }
             Text("Still to do").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
-            // Every email to pull at once (Pull All): Phishing finds each and lists only those someone has. Only Message-IDs it
-            // can search by, at most its limit at a time: one it can't, or the rest past the limit, never blocks the others.
-            let pulls = Self.emailsToPull(reading)
+            // Every email still to pull at once (Pull All), never one done: Phishing finds each and lists only those someone
+            // has. Only Message-IDs it can search by, at most its limit at a time: one it can't, or the rest past the limit,
+            // never blocks the others.
+            let pulls = reading.emailsToPull
             let searchable = pulls.filter { (try? GamCommands.MessageID(validating: $0)) != nil }
             let batch = Array(searchable.prefix(GamCommands.MessageID.mostPerFind))
             if batch.count > 1 {
@@ -231,19 +253,21 @@ struct LogReaderView: View {
                 Label("Not read, so not in this list: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
             }
+            if !reading.done.isEmpty {
+                Text("Done").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                ForEach(reading.done) { task in DoneRow(task: task) }
+            }
+            if let nobodyHasProblem {
+                Label("An email Phishing's Find showed nobody has isn't kept, so it stays to do: \(nobodyHasProblem)",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
         } header: {
             Text("Where things stand").accessibilityAddTraits(.isHeader)
         } footer: {
-            Text("Worked out by rules in code from the logs on Investigate. Show the Events and Pull Again only read; a fix "
+            Text("Worked out by rules in code from the logs on Investigate, and for the emails to pull from Phishing: its runs in "
+                 + "this app's audit log, and what its Find showed nobody has. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
-        }
-    }
-
-    /// The Message-IDs of every email still to pull, each once, in the to-do list's order.
-    static func emailsToPull(_ reading: LogReading.Reading) -> [String] {
-        var seen: Set<String> = []
-        return reading.toDo.flatMap(\.drafts).compactMap { draft in
-            if case .pullEmail(let id, _) = draft, seen.insert(id).inserted { id } else { nil }
         }
     }
 
@@ -559,6 +583,32 @@ private struct TaskRow: View {
                 .padding(.leading, 28)
             }
         }
+    }
+}
+
+/// Something done: its sentence, then how, when and by whom in words beside the check mark, which never says it alone.
+private struct DoneRow: View {
+    let task: LogReading.Task
+
+    var body: some View {
+        let when = task.done.map { done in
+            let at = done.at.formatted(date: .abbreviated, time: .shortened) + (done.by.isEmpty ? "" : " by \(done.by)")
+            return switch done.how {
+            case .trashed: "Trashed \(at), as this app's audit log shows."
+            case .nobodyHasIt: "Checked \(at), as Phishing's Find showed."
+            }
+        } ?? "Done."
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(task.id). \(task.words)")
+                Text(when).font(.callout).foregroundStyle(.secondary)
+            }
+            .textSelection(.enabled)
+        } icon: {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Done, \(task.id): \(task.words) \(when)")
     }
 }
 
