@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Renders every screen of a debug GamGUI.app to PNGs, from the demo tenant and the strict mock GAM only:
 # credentials in memory, never the Keychain, and never the real gam (AppServices refuses anything but a
-# regular file named mock_gam.sh). CI's macOS job runs it; the operator can too. Each image is the
-# screen's own pane: the sidebar's and toolbar's system materials don't draw this way.
+# regular file named mock_gam.sh). CI's macOS job runs it; the operator can too. Each image is the whole
+# window, as ScreenCaptureKit captures the app's own window without a permission; where it can't, and for a
+# sheet, the screen's own pane (the log says which). The demo's directory is the mock's people and
+# Tests/Fixtures/demo/extra_users.jsonl, in a copy of the fixtures: the tests' own stay as they are.
 #
 #   scripts/screenshots.sh path/to/Debug/GamGUI.app out-dir
 set -euo pipefail
@@ -13,6 +15,10 @@ out="${2:?usage: scripts/screenshots.sh path/to/GamGUI.app out-dir}"
 binary="$app/Contents/MacOS/GamGUI"
 [ -x "$binary" ] || { echo "no executable at $binary" >&2; exit 1; }
 mkdir -p "$out"
+demo="$(mktemp -d)"
+trap 'rm -rf "$demo"' EXIT
+cp -R Tests/Fixtures/mock_gam "$demo/mock_gam"
+cat Tests/Fixtures/demo/extra_users.jsonl >> "$demo/mock_gam/print_users.json"
 
 status=0
 # name:screen[:selected:tab[:window[:template[:calendar]]]] — the person page is captured once per tab, for
@@ -101,7 +107,7 @@ for spec in home:home users:users groups:groups setup:setup \
     SWIFTGAMGUI_DEMO=1 SWIFTGAMGUI_SCREEN="$screen" SWIFTGAMGUI_SNAPSHOT="$file" \
     ${person:+SWIFTGAMGUI_SELECT="$person"} ${tab:+SWIFTGAMGUI_TAB="$tab"} ${window:+SWIFTGAMGUI_WINDOW="$window"} \
     ${template:+SWIFTGAMGUI_TEMPLATE="$template"} ${calendar:+SWIFTGAMGUI_CALENDAR="$calendar"} \
-    SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" "$binary" &
+    SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" GAM_MOCK_FIXTURES="$demo/mock_gam" "$binary" &
   pid=$!
   for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
   hung=0

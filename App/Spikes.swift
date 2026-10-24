@@ -3,6 +3,9 @@ import Foundation
 import GamEngine
 import Setup
 import LocalAuthentication
+#if DEBUG
+import ScreenCaptureKit
+#endif
 import Security
 import Vault
 import WebKit
@@ -31,6 +34,9 @@ enum Spikes {
         let environment = ProcessInfo.processInfo.environment
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered: a killed spike still shows how far it got
         if let path = environment["SWIFTGAMGUI_SNAPSHOT"] {
+            // The pointer up on the menu bar, off the window: on CI it rests mid-screen, where a control under it would
+            // show its tooltip in the whole-window picture.
+            if let screen = NSScreen.screens.first { CGWarpMouseCursorPosition(CGPoint(x: screen.frame.midX, y: 1)) }
             await sizeWindow(environment["SWIFTGAMGUI_WINDOW"])
             if environment["SWIFTGAMGUI_DEMO"] == "1" {
                 // Fill the demo screen. Home, Users and Groups: connected, and the directory loaded (Groups:
@@ -71,10 +77,10 @@ enum Spikes {
     /// the snapshot waits until there's none, up to 20 seconds after its pause.
     @MainActor static var snapshotWork = 0
 
-    /// Renders the app's real window (AppKit-backed controls included) to a PNG and quits: how a
-    /// screen is looked at from the command line. No screen-recording permission involved. Only the
-    /// screen's own pane, below the toolbar: the sidebar's and toolbar's system materials don't draw
-    /// this way (the selected row came out as a black bar).
+    /// Renders the app's real window to a PNG and quits: how a screen is looked at from the command line. The screen's
+    /// own pane is drawn by `cacheDisplay`, which can't draw the sidebar's and toolbar's system materials (the selected row
+    /// came out as a black bar); those come from ScreenCaptureKit's picture of this app's own window (no screen-recording
+    /// permission: `windowImage`), with the pane laid over its place. Without that picture, and for a sheet, the pane alone.
     @MainActor
     static func snapshot(to file: URL) async {
         // A person's page reads their groups, delegates, auto-reply and signature after the list loads, and
@@ -107,13 +113,28 @@ enum Spikes {
             rect.origin.x += sidebar
             if view.isFlipped { rect.origin.y += toolbar }
         }
-        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: rect) else {
+        guard let pane = view.bitmapImageRepForCachingDisplay(in: rect) else {
             print("snapshot: nothing to draw")
             NSApp.terminate(nil)
             return
         }
-        view.cacheDisplay(in: rect, to: bitmap)
-        await drawWebViews(in: view, rect: rect, onto: bitmap)
+        view.cacheDisplay(in: rect, to: pane)
+        await drawWebViews(in: view, rect: rect, onto: pane)
+        var bitmap = pane
+        // The window's own picture for what only it can draw (title bar, toolbar, sidebar), with the pane laid over its
+        // place: the pane stays the drawing the checks below were made for, whatever the window server shows.
+        if sheet == nil, let window, let chrome = await windowImage(window) {
+            let whole = NSBitmapImageRep(cgImage: chrome)
+            whole.size = window.frame.size   // in points, as the pane's place is
+            if let context = NSGraphicsContext(bitmapImageRep: whole) {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = context
+                pane.draw(in: view.convert(rect, to: nil))
+                NSGraphicsContext.restoreGraphicsState()
+                bitmap = whole
+                print("snapshot: the whole window")
+            }
+        }
         do {
             try bitmap.representation(using: .png, properties: [:])?.write(to: file)
             print("snapshot: \(file.path)")
@@ -165,6 +186,38 @@ enum Spikes {
             exit(EXIT_FAILURE)
         }
         NSApp.terminate(nil)
+    }
+
+    /// The whole window as it's shown, title bar, toolbar and sidebar included: ScreenCaptureKit's picture of this app's
+    /// own window, which needs no screen-recording permission (`SCShareableContent.currentProcess`, "without user consent
+    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane alone.
+    ///
+    /// No field keeps the focus: a focused field's suggestion list (`textInputSuggestions`, offboard-plan, 2026-10-24) is a
+    /// child window, which the capture includes. The window isn't made key: that would focus the page's first field.
+    @MainActor
+    static func windowImage(_ window: NSWindow) async -> CGImage? {
+        window.makeFirstResponder(nil)
+        for child in window.childWindows ?? [] where child.sheetParent == nil { child.orderOut(nil) }
+        try? await Task.sleep(for: .milliseconds(300))
+        do {
+            let content = try await SCShareableContent.currentProcess
+            guard let shown = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+                print("snapshot: ScreenCaptureKit doesn't list the window, so only its pane is drawn")
+                return nil
+            }
+            let filter = SCContentFilter(desktopIndependentWindow: shown)
+            let configuration = SCStreamConfiguration()
+            let scale = CGFloat(filter.pointPixelScale)
+            configuration.width = Int(filter.contentRect.width * scale)
+            configuration.height = Int(filter.contentRect.height * scale)
+            configuration.captureResolution = .best
+            configuration.ignoreShadowsSingleWindow = true
+            configuration.showsCursor = false
+            return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+        } catch {
+            print("snapshot: the window couldn't be captured whole (\(error.localizedDescription)), so only its pane is drawn")
+            return nil
+        }
     }
 
     /// AppKit controls (fields, segmented controls, pop-ups) that reach past the window's left or right edge. A
