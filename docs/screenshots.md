@@ -1,7 +1,7 @@
 # Screenshots
 
-Rendered by CI from a demo tenant and the test mock of GAM (`scripts/screenshots.sh`), so the names are
-placeholders. Each screen's pull request refreshes its own.
+Rendered by CI from a demo domain and the test mock of GAM (`scripts/screenshots.sh`), so every name is made up.
+`scripts/refresh_screenshots.sh <run-id>` replaces them all from one CI run.
 
 | Home | Users | Setup |
 |---|---|---|
@@ -53,6 +53,10 @@ a switch, with what you tick undone, once you've typed the person's address.
 | Incident | Read the logs |
 |---|---|
 | ![Incident: its Investigate, Respond and Report tabs, the incident kept on this Mac, and the logs to pull](screenshots/compromised.png) | ![Read the logs: each finding in words, with its fix as a button: secure the person, or pull the email from every mailbox](screenshots/compromised-reading.png) |
+
+| Securing an account | Still to do, and done |
+|---|---|
+| ![Respond: what the check found worth looking at first, scheduled emails first](screenshots/compromised-plan.png) | ![Respond: where each account stands, what's left to do, and the emails already pulled](screenshots/compromised-todo.png) |
 
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move

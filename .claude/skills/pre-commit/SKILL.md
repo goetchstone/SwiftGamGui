@@ -36,8 +36,9 @@ Act on the items your diff touches.
   not only drawn red or green); text uses system styles, never fixed sizes; everything works from the
   keyboard (⌘R refreshes a screen that loads); a tooltip (`.help`) never holds the only explanation.
   Say in the PR what was checked.
-- **Screenshots as we go**: CI renders each screen (`scripts/screenshots.sh`); a PR that changes one
-  refreshes its image in `docs/screenshots` from that run's artifact.
+- **Screenshots as we go**: CI renders each screen (`scripts/screenshots.sh`); a PR that changes one runs
+  `scripts/refresh_screenshots.sh <run-id>` on its green run, which replaces every picture in `docs/screenshots`
+  at once (refreshing only the changed one left the rest stale: Home showed an old GAM, 2026-10-23).
 - **Fits the smallest window**: a new column, panel or inspector, or a wider one, gets bounds in
   `ColumnWidths` and a `smallest` run in `scripts/screenshots.sh`. On macOS 27 an inspector that can't
   fit crashes the app on a Mac and only clips on CI (failure-log 2026-10-10, "person-page layout loop").
