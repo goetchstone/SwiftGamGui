@@ -701,15 +701,23 @@ log through GAM. Reads only: nothing is sent.
   rejected or slowed for too much mail, and `event_info.success` false; `message_info.flattened_destinations` every recipient
   as `service:selector:address`, comma-separated; `message_info.rfc2822_message_id` ties each to the email. The app names the
   field by its chain, as the real pulls show (`ActivityLogsTests.gmailsNestedParametersAreNamedByTheirChain`).
+- **The principle** (second adversarial review, 2026-10-24): **over-warning is safe, under-warning the harm.** Everyone an
+  email of the attacker's was addressed to or received by is to warn; only an outside address the log says bounced is left
+  out (a quarantine, a rejection, a failed event or a group keeps someone on). A warning counts only on the log's positive
+  word: a person here's mailbox receiving it; outside, or no one's mailbox, its send Google didn't mark failed naming them
+  with nothing failing after. Done needs that for everyone to warn, the directory read and nothing unreadable.
 - **The list** (`LogReading.Reach`, worked out with the reading for each email the attacker sent, pure): every address its
-  sends named (sends begun too), Bcc included, an alias as its person (the directory's `people`), then any mailbox that
-  received it unnamed; each **received** (a receipt, whatever a retry's bounce says), **bounced**, **quarantined or
-  rejected**, **sent** (nothing else in the logs read: outside, the most Google's log says), or inside **no one's mailbox** (a
-  group, or an address no account has: listed, never someone to warn; only with the directory read). Inside at any domain a
-  person here has an address at, or where a mailbox received it. Addresses are read loosely (`LogReading.address`: `&`, `#`,
-  letters beyond ASCII), never with `isAccount`; an entry that still isn't one is counted (`unreadable`), said, and keeps
-  the to-do from done (review 2026-10-24). The model is never given any of it.
-- **The warning:** code offers the emails an account here sent after it (type 1), from an address that isn't the attacker's,
+  sends named (sends begun too), Bcc included, an alias as its person (`people`, with Google's `nonEditableAliases` from the
+  directory record), then any mailbox that received it unnamed; each **received** (a receipt, whatever a retry's bounce
+  says; a receipt Google marked failed is none), **bounced**, **quarantined or rejected**, **sent**, or inside **no one's
+  mailbox here** (a group, or an address no account has, only with the directory read). Inside: a domain a person has an
+  address at, a directory address, or anyone with a receipt anywhere in the pull, one answer for every email. Addresses are
+  read loosely (`LogReading.address`, on bytes for ASCII); an entry that isn't one is counted (`unreadable`), said, and keeps
+  the to-do from done. The model is never given any of it.
+- **Whose Gmail log the pull has** is read off the data: a person with a receipt of anything in it (receipts carry no
+  address, so a read filtered by the attacker's address has none, and a merged pull is judged by what it holds). A person
+  here still to warn with none is to pull again (`Reach.unread`).
+- **The warning:** code offers the emails an account here sent after it (type 1, not marked failed) to someone it reached, from an address that isn't the attacker's,
   by how many people it reached they went to (`candidatesShown`, 10). The operator picks (**Pick the Warning**); the pick is
   kept with the open incident (`IncidentStore.Record.warnings`, bare Message-IDs) and checked again at every reading: the
   attacker's own, one from before, one only begun or not in the logs read doesn't count, and says why. A warning that counts
@@ -722,9 +730,11 @@ log through GAM. Reads only: nothing is sent.
 - **Where:** Respond, a section per email under Where things stand (`LogReaderView`'s `ReachSection`): a line in numbers,
   every address (300 shown), the warnings picked and whether they count, **Export CSV…** (`Reach.columns`: address, where,
   reached, when, warned; private 0600, off the main thread, in `LogReaderView` since only it may name the reader). A pick
-  re-reads with the last reading kept on screen (`reachKey`), not swapped for "Reading the logs…". Each email in the log is
-  summed once, only its emails, the picks and what was sent after the first (`LogReading.Mail`), and the candidates found by
-  address; no email the attacker sent, no work.
+  re-reads with the last reading kept on screen and "Updating…" said (`reachKey`; a read under way for a key no longer
+  asked is cancelled, so a pick then its clear can't land the wrong reading). Two passes: the attacker's emails and the picks,
+  then only the sends here after the first that went to someone those reached, each once, recipients read on their bytes.
+  Measured in Release on 300,000 Gmail events: 0.15 s with no email of the attacker's, 0.65 s with one early to 50 of 1,000
+  people (it was 0.71 s before the reviews, 1.78 s at their worst).
 - **Known limits:** a build from before this one, saving an incident, drops its picks (its writer doesn't know them; bumping
   the format would make it set the whole incident aside instead). A Details save writes onto the record as kept now, so a
   pick made in another window stays.
