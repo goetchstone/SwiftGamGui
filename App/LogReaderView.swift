@@ -82,7 +82,14 @@ struct LogReaderView: View {
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
                                 nobodyHas: [NobodyHasStore.Check], domains: Set<String>, people: [String: String]?,
                                 warnings: [IncidentStore.Warning], key: String) {
-            guard read?.key != key, reading?.key != key else { return }
+            // The reading shown is the one asked for again (a pick, then its clear): a read still under way is for a key no
+            // longer asked, and must never land over it (review 2026-10-24).
+            if read?.key == key {
+                reading?.task.cancel()
+                reading = nil
+                return
+            }
+            guard reading?.key != key else { return }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
                     LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
@@ -107,7 +114,7 @@ struct LogReaderView: View {
     /// both tabs for "Reading the logs…" at every pick (review 2026-10-24).
     static func reachKey(warnings: [IncidentStore.Warning], domains: Set<String>, people: [String: String]?) -> String {
         "reach:" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",") + "|" + domains.sorted().joined(separator: ",")
-            + "|" + (people.map { String($0.count) } ?? "-")
+            + "|" + (people.map { String($0.hashValue) } ?? "-")
     }
 
     /// The sign-in a "That Was Them" asks a note for.
@@ -147,7 +154,6 @@ struct LogReaderView: View {
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
                                                                          domains: domains, people: people,
-                                                                         accountsRead: pull.query.users.isEmpty ? nil : Set(pull.query.users.map { $0.lowercased() }),
                                                                          warnings: picked))
     }
 
@@ -176,7 +182,7 @@ struct LogReaderView: View {
                 || read.key.hasPrefix(key.prefix(upTo: key.range(of: "|reach:")?.lowerBound ?? key.endIndex) + "|reach:") {
                 switch part {
                 case .findings: findings(read.reading)
-                case .toDo: toDo(read.reading)
+                case .toDo: toDo(read.reading, updating: read.key != key)
                 }
             } else {
                 readingNow
@@ -240,7 +246,7 @@ struct LogReaderView: View {
     }
 
     /// Respond: where each account stands, and what's left to do, each with a button for what can be done from here.
-    @ViewBuilder private func toDo(_ reading: LogReading.Reading) -> some View {
+    @ViewBuilder private func toDo(_ reading: LogReading.Reading, updating: Bool = false) -> some View {
         Section {
             if !reading.statuses.isEmpty {
                 Text("Where each account stands").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
@@ -303,7 +309,7 @@ struct LogReaderView: View {
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
         ForEach(reading.reaches, id: \.messageID) { reach in
-            ReachSection(reach: reach, pick: pickWarning.map { pick in { warning in pick(reach.messageID, warning) } })
+            ReachSection(reach: reach, updating: updating, pick: pickWarning.map { pick in { warning in pick(reach.messageID, warning) } })
         }
     }
 
@@ -628,6 +634,8 @@ private struct TaskRow: View {
 /// candidates (kept with the open incident), and the list as a CSV. Reads only: nothing here sends anything.
 private struct ReachSection: View {
     let reach: LogReading.Reach
+    /// A newer reading (a pick, the directory) is on its way: this one is shown until it comes.
+    let updating: Bool
     /// Keeps a warning picked (nil clears them): the problem in words, or nil once kept. Nil with no incident open.
     let pick: ((String?) -> String?)?
     @State private var problem: String?
@@ -672,20 +680,28 @@ private struct ReachSection: View {
         say(count { $0.outcome == .sent && $0.inside }, "here with no receipt in the logs read")
         say(count { $0.outcome == .bounced }, "bounced")
         say(count { $0.outcome == .blocked }, "quarantined or rejected")
-        say(count { $0.outcome == .notAMailbox }, "no one's mailbox (a group, or an address no account has)")
+        say(count { $0.outcome == .notAMailbox }, "no one's mailbox here (a group, or an address no account has)")
         var text = "It went to \(all.count) \(all.count == 1 ? "address" : "addresses")" + (parts.isEmpty ? "." : ": " + parts.joined(separator: ", ") + ".")
         if reach.unreadable > 0 { text += " \(reach.unreadable) more the log names don't read as an address: see the Admin console's Gmail log events." }
         let counted = reach.warnings.filter { $0.problem == nil }
         if reach.warnings.isEmpty { return text + " No warning picked yet." }
         if counted.isEmpty { return text + " No warning picked counts yet, so who was warned can't be told." }
         let left = reach.toWarn.count
-        return text + (left == 0 ? " The warnings picked reached everyone it reached." : " The warnings picked aren't shown reaching \(left) of them.")
+        return text + (left == 0 ? " The log shows the warnings picked reaching everyone to warn."
+                       : " The log doesn't show the warnings picked reaching \(left) of the people to warn.")
     }
 
     private func words(_ recipient: LogReading.Reach.Recipient) -> String { LogReading.Reach.words(recipient) }
 
     var body: some View {
         Section {
+            if updating {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Updating with the warnings picked…").foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
             Text(summary)
             if reach.recipients.isEmpty {
                 Text("The logs read have no send of it naming its recipients: pull the sender's Gmail log over the day it went out.")
@@ -693,7 +709,7 @@ private struct ReachSection: View {
             } else {
                 DisclosureGroup("Every address it went to (\(reach.recipients.count))") {
                     ForEach(reach.recipients.prefix(Self.shown)) { recipient in
-                        let warned = recipient.warned.map { $0 ? "warned" : "not warned" }
+                        let warned = recipient.warned.map { $0 ? "warned" : "not shown warned" }
                         HStack(alignment: .firstTextBaseline) {
                             Text(recipient.address).textSelection(.enabled)
                             Spacer()
@@ -717,14 +733,14 @@ private struct ReachSection: View {
                         Label("Warning picked, \(named), doesn't count: \(problem).", systemImage: "exclamationmark.triangle.fill")
                             .symbolRenderingMode(.multicolor).textSelection(.enabled)
                     } else {
-                        Label("Warning picked: \(named), to \(warning.covers) of the people it reached.", systemImage: "envelope.badge")
+                        Label("Warning picked: \(named), shown reaching \(warning.covers) of the people to warn.", systemImage: "envelope.badge")
                             .textSelection(.enabled)
                     }
                 }
             }
             if !reach.unread.isEmpty {
-                Text("Whether \(reach.unread.count == 1 ? "1 person here" : "\(reach.unread.count) people here") received it, or a warning, is in "
-                     + "their own Gmail log, which wasn't read: Pull Again on the to-do item reads it.")
+                Text("Whether \(reach.unread.count == 1 ? "1 person here" : "\(reach.unread.count) people here") got a warning is in their "
+                     + "own Gmail log, which the pull doesn't have: Pull Again on the to-do item reads it.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             HStack {
@@ -767,9 +783,9 @@ private struct ReachSection: View {
             Text("Who \(named) reached").accessibilityAddTraits(.isHeader)
         } footer: {
             Text("From the Gmail log's own events for this email: its sends (every address, Bcc too), a mailbox here receiving it, a "
-                 + "bounce, a quarantine or a rejection. Inside, only that mailbox's receipt says it arrived; outside, no failure is the "
-                 + "most Google's log says. The warning's candidates are emails sent after it, from an account here, to the same people; "
-                 + "a warning picked counts for someone here once their receipt of it is in the logs.")
+                 + "bounce, a quarantine or a rejection. Everyone it was sent to is to warn but an outside address that bounced: warning "
+                 + "too many is safe, too few isn't. A warning picked counts for someone here once their mailbox's receipt of it is in "
+                 + "the logs, and outside where its send went with nothing failing; done needs that for everyone to warn.")
         }
     }
 }

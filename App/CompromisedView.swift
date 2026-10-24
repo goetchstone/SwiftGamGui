@@ -237,14 +237,18 @@ struct CompromisedView: View {
         // The incident open on this domain keeps the warnings picked (Who it reached); with none open, a pick can't be kept.
         let open = incidents.record(incidents.openID).flatMap { $0.domain == domain.lowercased() ? $0 : nil }
         // The domains people here have addresses at (primary and aliases, from the directory) and the connected one: inside.
-        let domains = Set(((directory.users ?? []).flatMap { [$0.primaryEmail] + $0.aliases } + ["@" + domain])
-            .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })
-        // Each person's address and alias to their own: an alias is its person, and an inside address that's neither is no
-        // one's mailbox (a group). Nil until the directory is read.
+        // Each person's addresses: their own, their aliases, and the domain aliases Google adds (`nonEditableAliases`, which GAM
+        // returns with the aliases asked for). An alias is its person; an inside address that's none is no one's mailbox (a
+        // group). Nil until the directory is read.
+        func addresses(_ user: GamUser) -> [String] {
+            [user.primaryEmail] + user.aliases + (user.record["nonEditableAliases"]?.array ?? []).compactMap(\.string)
+        }
         let people = directory.users.map { users in
-            Dictionary(users.flatMap { user in ([user.primaryEmail] + user.aliases).map { ($0.lowercased(), user.primaryEmail.lowercased()) } },
+            Dictionary(users.flatMap { user in addresses(user).map { ($0.lowercased(), user.primaryEmail.lowercased()) } },
                        uniquingKeysWith: { first, _ in first })
         }
+        let domains = Set(((people.map { Array($0.keys) } ?? []) + ["@" + domain])
+            .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })
         return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
