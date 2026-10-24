@@ -77,11 +77,10 @@ enum Spikes {
     /// the snapshot waits until there's none, up to 20 seconds after its pause.
     @MainActor static var snapshotWork = 0
 
-    /// Renders the app's real window to a PNG and quits: how a screen is looked at from the command line. The whole
-    /// window, title bar, toolbar and sidebar included, as ScreenCaptureKit captures this app's own window (no
-    /// screen-recording permission: `windowImage`); else, and for a sheet, only the screen's own pane, drawn by
-    /// `cacheDisplay`, which can't draw the sidebar's and toolbar's system materials (the selected row came out as a
-    /// black bar).
+    /// Renders the app's real window to a PNG and quits: how a screen is looked at from the command line. The screen's
+    /// own pane is drawn by `cacheDisplay`, which can't draw the sidebar's and toolbar's system materials (the selected row
+    /// came out as a black bar); those come from ScreenCaptureKit's picture of this app's own window (no screen-recording
+    /// permission: `windowImage`), with the pane laid over its place. Without that picture, and for a sheet, the pane alone.
     @MainActor
     static func snapshot(to file: URL) async {
         // A person's page reads their groups, delegates, auto-reply and signature after the list loads, and
@@ -103,33 +102,39 @@ enum Spikes {
         }
         // A sheet open over the screen (a group's page with `SWIFTGAMGUI_TAB`) is the picture, whole.
         let sheet = window?.attachedSheet?.contentView
-        let bitmap: NSBitmapImageRep
-        if sheet == nil, let window, let whole = await windowImage(window) {
-            bitmap = NSBitmapImageRep(cgImage: whole)
-            // In points, so a web view's snapshot lands where it's shown whatever the screen's scale.
-            bitmap.size = window.frame.size
-            await drawWebViews(in: content, rect: content.bounds, onto: bitmap)
-            print("snapshot: the whole window")
-        } else {
-            let view = sheet ?? splitViews(in: content).first?.arrangedSubviews.last ?? content
-            // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
-            var rect = view.bounds
-            if sheet == nil {
-                let toolbar = min(view.safeAreaInsets.top, rect.height)
-                let sidebar = min(view.safeAreaInsets.left, rect.width)
-                rect.size.height -= toolbar
-                rect.size.width -= sidebar
-                rect.origin.x += sidebar
-                if view.isFlipped { rect.origin.y += toolbar }
+        let view = sheet ?? splitViews(in: content).first?.arrangedSubviews.last ?? content
+        // The sidebar floats over the screen's pane, which starts beneath it: crop to the safe area.
+        var rect = view.bounds
+        if sheet == nil {
+            let toolbar = min(view.safeAreaInsets.top, rect.height)
+            let sidebar = min(view.safeAreaInsets.left, rect.width)
+            rect.size.height -= toolbar
+            rect.size.width -= sidebar
+            rect.origin.x += sidebar
+            if view.isFlipped { rect.origin.y += toolbar }
+        }
+        guard let pane = view.bitmapImageRepForCachingDisplay(in: rect) else {
+            print("snapshot: nothing to draw")
+            NSApp.terminate(nil)
+            return
+        }
+        view.cacheDisplay(in: rect, to: pane)
+        await drawWebViews(in: view, rect: rect, onto: pane)
+        var bitmap = pane
+        // The window's own picture for what only it can draw (title bar, toolbar, sidebar), with the pane laid over its
+        // place: on CI, ScreenCaptureKit's copy of the window lagged the views (the demo's last scroll, a picker's new
+        // title: compromised-reading, onboard, 2026-10-24), which `cacheDisplay` draws as they are.
+        if sheet == nil, let window, let chrome = await windowImage(window) {
+            let whole = NSBitmapImageRep(cgImage: chrome)
+            whole.size = window.frame.size   // in points, as the pane's place is
+            if let context = NSGraphicsContext(bitmapImageRep: whole) {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = context
+                pane.draw(in: view.convert(rect, to: nil))
+                NSGraphicsContext.restoreGraphicsState()
+                bitmap = whole
+                print("snapshot: the whole window")
             }
-            guard let pane = view.bitmapImageRepForCachingDisplay(in: rect) else {
-                print("snapshot: nothing to draw")
-                NSApp.terminate(nil)
-                return
-            }
-            view.cacheDisplay(in: rect, to: pane)
-            await drawWebViews(in: view, rect: rect, onto: pane)
-            bitmap = pane
         }
         do {
             try bitmap.representation(using: .png, properties: [:])?.write(to: file)
@@ -186,23 +191,15 @@ enum Spikes {
 
     /// The whole window as it's shown, title bar, toolbar and sidebar included: ScreenCaptureKit's picture of this app's
     /// own window, which needs no screen-recording permission (`SCShareableContent.currentProcess`, "without user consent
-    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane instead.
+    /// via TCC"). Nil, said in words, when it can't: the caller draws the screen's pane alone.
     ///
-    /// First, what `cacheDisplay` did for the pane without being asked (CI, 2026-10-24): a window in the background isn't
-    /// updated on its own, so a scroll a screen's demo asked for last (compromised-reading) or a picker's new title (onboard)
-    /// hadn't reached it; layout and draw passes let them land, and the scroll's own update after it. And no field keeps
-    /// the focus: a focused field's suggestion list (`textInputSuggestions`, offboard-plan) is a child window, which the
-    /// capture includes. The window isn't made key: that would focus the page's first field and scroll back to it.
+    /// No field keeps the focus: a focused field's suggestion list (`textInputSuggestions`, offboard-plan, 2026-10-24) is a
+    /// child window, which the capture includes. The window isn't made key: that would focus the page's first field.
     @MainActor
     static func windowImage(_ window: NSWindow) async -> CGImage? {
         window.makeFirstResponder(nil)
         for child in window.childWindows ?? [] where child.sheetParent == nil { child.orderOut(nil) }
-        for _ in 0..<3 {
-            window.contentView?.layoutSubtreeIfNeeded()
-            window.display()
-            CATransaction.flush()
-            try? await Task.sleep(for: .milliseconds(200))
-        }
+        try? await Task.sleep(for: .milliseconds(300))
         do {
             let content = try await SCShareableContent.currentProcess
             guard let shown = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
