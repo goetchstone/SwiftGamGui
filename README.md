@@ -12,7 +12,7 @@ phishing email pulled. Every change shows its exact `gam` command first, runs on
 It began as a native rewrite of [GamGUI](https://github.com/goetchstone/gamgui) and still runs the same commands,
 held to them by tests. It has since grown well past it.
 
-![Read the logs: each finding in words, with its fix as a button](docs/screenshots/compromised-reading.png)
+![Incident, Respond: where each account stands, what's left to do, and a button for each fix](docs/screenshots/compromised-todo.png)
 
 ## What it does
 

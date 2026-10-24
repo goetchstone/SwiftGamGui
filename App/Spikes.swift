@@ -122,8 +122,7 @@ enum Spikes {
         await drawWebViews(in: view, rect: rect, onto: pane)
         var bitmap = pane
         // The window's own picture for what only it can draw (title bar, toolbar, sidebar), with the pane laid over its
-        // place: on CI, ScreenCaptureKit's copy of the window lagged the views (the demo's last scroll, a picker's new
-        // title: compromised-reading, onboard, 2026-10-24), which `cacheDisplay` draws as they are.
+        // place: the pane stays the drawing the checks below were made for, whatever the window server shows.
         if sheet == nil, let window, let chrome = await windowImage(window) {
             let whole = NSBitmapImageRep(cgImage: chrome)
             whole.size = window.frame.size   // in points, as the pane's place is
