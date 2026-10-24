@@ -141,6 +141,7 @@ enum Spikes {
         } catch {
             print("snapshot: \(error)")
         }
+        printState(in: content)
         // After the image, so CI keeps a picture of the layout that failed.
         let smallest = ProcessInfo.processInfo.environment["SWIFTGAMGUI_WINDOW"] == "smallest"
         let tooNarrow = columnsTooNarrow(in: content, spare: smallest ? spareWidth : 0)
@@ -186,6 +187,28 @@ enum Spikes {
             exit(EXIT_FAILURE)
         }
         NSApp.terminate(nil)
+    }
+
+    /// What a picture can't say on its own, in CI's log: each pop-up's selected item and its items, and where each scroll
+    /// view stands. Two screens came out wrong once CI built with Xcode 27.1 (onboard's role, compromised-reading's
+    /// scroll, 2026-10-24), and only the run could say why.
+    @MainActor
+    static func printState(in content: NSView) {
+        func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
+        let shown = descendants(content).filter { !$0.isHiddenOrHasHiddenAncestor }
+        // Pop-ups as VoiceOver reads them: SwiftUI's own pickers aren't AppKit's NSPopUpButton.
+        func popUps(in element: Any, depth: Int) {
+            guard depth < 40, let element = element as? NSAccessibilityProtocol else { return }
+            if element.accessibilityRole() == .popUpButton {
+                print("state: pop-up \"\(element.accessibilityLabel() ?? "")\" shows \"\(element.accessibilityValue().map { "\($0)" } ?? "")\"")
+            }
+            for child in element.accessibilityChildren() ?? [] { popUps(in: child, depth: depth + 1) }
+        }
+        popUps(in: content, depth: 0)
+        for scroll in shown.compactMap({ $0 as? NSScrollView }) {
+            let document = scroll.documentView.map { "\(type(of: $0)) \(Int($0.frame.height)) tall" } ?? "no document"
+            print("state: scroll at \(Int(scroll.contentView.bounds.minY)) of \(document), \(Int(scroll.frame.height)) shown")
+        }
     }
 
     /// The whole window as it's shown, title bar, toolbar and sidebar included: ScreenCaptureKit's picture of this app's
