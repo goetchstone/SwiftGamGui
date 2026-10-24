@@ -50,6 +50,8 @@ struct LogReaderView: View {
     let show: (IncidentLogs.Filter) -> Void
     /// Reads these logs again for these accounts, adding to what's shown ("Pull Again"): a read.
     let pullAgain: (_ logs: [ActivityLogs.Application], _ accounts: [String]) -> Void
+    /// The tenant's domains, lowercased: an address at one is inside (Who it reached).
+    let domains: Set<String>
     /// The warnings picked for the emails the attacker sent, kept with the open incident (Who it reached).
     let warnings: [IncidentStore.Warning]
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
@@ -76,12 +78,12 @@ struct LogReaderView: View {
         /// for the key being read waits on that read. A newer key's read replaces it, and the older one's reading is dropped
         /// when it ends.
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
-                                nobodyHas: [NobodyHasStore.Check], warnings: [IncidentStore.Warning], key: String) {
+                                nobodyHas: [NobodyHasStore.Check], domains: Set<String>, warnings: [IncidentStore.Warning], key: String) {
             guard read?.key != key, reading?.key != key else { return }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
                     LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
-                                          domain: domain, warnings: warnings)
+                                          domains: domains, warnings: warnings)
                 }.value
                 guard let self, self.reading?.key == key else { return }
                 self.read = (key, found)
@@ -95,7 +97,7 @@ struct LogReaderView: View {
         "\(domain)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
-            + "|" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",")
+            + "|" + warnings.map { "\($0.email)>\($0.warning)" }.joined(separator: ",") + "|" + domains.sorted().joined(separator: ",")
     }
 
     /// The sign-in a "That Was Them" asks a note for.
@@ -116,7 +118,7 @@ struct LogReaderView: View {
     /// attack: what's still to do says so), each email's latest Phishing run in the audit log, and the emails Phishing's
     /// Find showed nobody here has. Off the main thread (`Memory`).
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
-                                    nobodyHas: [NobodyHasStore.Check], domain: String = "", warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
+                                    nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -133,7 +135,7 @@ struct LogReaderView: View {
         for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
-                                                                         domains: domain.isEmpty ? [] : [domain.lowercased()],
+                                                                         domains: domains,
                                                                          warnings: picked))
     }
 
@@ -167,7 +169,7 @@ struct LogReaderView: View {
             }
         }
         .onChange(of: key, initial: true) {
-            memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, warnings: warnings, key: key)
+            memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, warnings: warnings, key: key)
         }
         .sheet(item: $marking) { marking in
             MarkSheet(marking: marking, problem: $markProblem) { note in

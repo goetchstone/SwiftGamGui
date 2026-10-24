@@ -89,6 +89,11 @@ struct IncidentStoreTests {
         var bad = picked
         bad.warnings = [IncidentStore.Warning(email: "phish 1", warning: "warn-1@mail.example.com")]
         #expect(throws: IncidentStore.Problem.self) { try store.save(bad) }
+        var many = picked
+        many.warnings = (0...IncidentStore.notesCap).map { IncidentStore.Warning(email: "phish-1@mail.example.com", warning: "w\($0)@mail.example.com") }
+        #expect(throws: IncidentStore.Problem.invalid("At most \(IncidentStore.notesCap) warnings picked are kept with an incident.")) {
+            try store.save(many)
+        }
     }
 
     /// What isn't kept: no title, a title too long, an empty note, a domain that isn't one.

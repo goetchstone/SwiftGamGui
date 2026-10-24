@@ -294,7 +294,8 @@ public struct IncidentStore: Sendable {
         }
         // A Message-ID is printable ASCII, at most a header line long.
         func isMessageID(_ id: String) -> Bool { (1...998).contains(id.utf8.count) && id.utf8.allSatisfy { (0x21...0x7E).contains($0) } }
-        guard record.warnings.count <= notesCap, record.warnings.allSatisfy({ isMessageID($0.email) && isMessageID($0.warning) }) else {
+        guard record.warnings.count <= notesCap else { throw .invalid("At most \(notesCap) warnings picked are kept with an incident.") }
+        guard record.warnings.allSatisfy({ isMessageID($0.email) && isMessageID($0.warning) }) else {
             throw .invalid("A warning picked isn't an email's Message-ID.")
         }
         return record
