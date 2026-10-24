@@ -66,26 +66,8 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
 }
 
 extension GamUser {
-    /// One of the person's phones as Google keeps it: its type (GAM's word for it, or `custom` with `customType`), the
-    /// number, and whether it's the primary one.
-    public struct Phone: Sendable, Equatable {
-        public let type: String
-        public let customType: String
-        public let value: String
-        public let primary: Bool
-
-        public init(type: String, customType: String = "", value: String, primary: Bool) {
-            (self.type, self.customType, self.value, self.primary) = (type, customType, value, primary)
-        }
-
-        /// As the record holds it: a custom type's name and the primary flag only when there's one.
-        var json: JSONValue {
-            var phone: GamOutput.Record = ["type": .string(type), "value": .string(value)]
-            if !customType.isEmpty { phone["customType"] = .string(customType) }
-            if primary { phone["primary"] = .bool(true) }
-            return .object(phone)
-        }
-    }
+    /// One of the person's phones (`GamCommands.Phone`, there so the platform-free fuzz build has it).
+    public typealias Phone = GamCommands.Phone
 
     /// Every phone the record holds, in its order. `phone` is the one a signature shows: the primary, else the first.
     public var phones: [Phone] {

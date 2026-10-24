@@ -87,6 +87,27 @@ public enum GamCommands {
     // MARK: native (no GamGUI builder)
     // Each is held to its exact argv by NativeArgvTests, against the vendored grammar and GAM's source, not GamGUI.
 
+    /// One of a person's phones as Google keeps it: its type (GAM's word for it, or `custom` with `customType`), the
+    /// number, and whether it's the primary one. `GamUser.Phone` is this; it lives here so the fuzz build has it.
+    public struct Phone: Sendable, Equatable {
+        public let type: String
+        public let customType: String
+        public let value: String
+        public let primary: Bool
+
+        public init(type: String, customType: String = "", value: String, primary: Bool) {
+            (self.type, self.customType, self.value, self.primary) = (type, customType, value, primary)
+        }
+
+        /// As a user record holds it: a custom type's name and the primary flag only when there's one.
+        var json: JSONValue {
+            var phone: GamOutput.Record = ["type": .string(type), "value": .string(value)]
+            if !customType.isEmpty { phone["customType"] = .string(customType) }
+            if primary { phone["primary"] = .bool(true) }
+            return .object(phone)
+        }
+    }
+
     /// GAM's phone types (5874-5876 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
     /// keeps as a custom type of that name (getKeywordAttribute), so a phone goes back only with one of these, `custom`
     /// with its name, or no type.
@@ -100,7 +121,7 @@ public enum GamCommands {
     /// with no value (getUserAttributes, updateUsers' users.update, gam/__init__.py:47476-47489 at 7.48.30), so a phone
     /// left out is deleted: the others go as they are, and none left is `phone clear`. Each number one line, at most one
     /// primary (GAM's usage error otherwise).
-    public static func updatePhones(email: String, phones: [GamUser.Phone]) throws -> GamWrite {
+    public static func updatePhones(email: String, phones: [Phone]) throws -> GamWrite {
         guard phones.count(where: \.primary) <= 1 else { throw Invalid.argument("only one phone can be the primary") }
         var argv = ["update", "user", email]
         for phone in phones {
