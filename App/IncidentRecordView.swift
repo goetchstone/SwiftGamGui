@@ -204,7 +204,7 @@ struct IncidentRecordSection: View {
         incidents.loading = true
         let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String], readable: Bool) in
             let saved = store.exports(of: id)
-            let merged = IncidentLogs.evidence(saved.exports)
+            let merged = await IncidentLogs.evidence(saved.exports)
             return (merged.pull, saved.exports.map(\.name), saved.unreadable + merged.unreadable,
                     merged.unreadable.count < saved.exports.count)
         }.value

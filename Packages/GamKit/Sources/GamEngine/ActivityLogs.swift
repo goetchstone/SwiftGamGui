@@ -488,15 +488,43 @@ public enum ActivityLogs {
 
     /// The parameters cell back into parameters: `name: value` pieces joined by " | ". A piece that isn't `name: value` (a
     /// name being letters, digits, `_`, `.` or `-`) is the rest of the value before it, which held " | " (a subject can).
+    /// Read on the cell's bytes, the " | " and ": " the export wrote: every saved event comes through here when an incident
+    /// opens, and Foundation's string searches were most of the time it took (2026-10-24).
     static func parameters(exported cell: String) -> [Parameter] {
         guard !cell.isEmpty else { return [] }
-        var parameters: [Parameter] = []
-        for piece in cell.components(separatedBy: " | ") {
-            if let colon = piece.range(of: ": "), !piece[..<colon.lowerBound].isEmpty,
-               piece[..<colon.lowerBound].unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.contains($0) || "_.-".unicodeScalars.contains($0) }) {
-                parameters.append(Parameter(name: String(piece[..<colon.lowerBound]), value: String(piece[colon.upperBound...])))
+        let bytes = Array(cell.utf8)
+        // Cut at ASCII bytes, so each piece is whole UTF-8.
+        func text(_ range: Range<Int>) -> String { String(decoding: bytes[range], as: UTF8.self) }
+        func isName(_ range: Range<Int>) -> Bool {
+            guard !range.isEmpty else { return false }
+            guard bytes[range].allSatisfy({ $0 < 0x80 }) else {
+                return text(range).unicodeScalars.allSatisfy { CharacterSet.alphanumerics.contains($0) || "_.-".unicodeScalars.contains($0) }
+            }
+            return bytes[range].allSatisfy { byte in
+                (0x30...0x39).contains(byte) || (0x41...0x5A).contains(byte) || (0x61...0x7A).contains(byte) || byte == 0x5F || byte == 0x2E || byte == 0x2D
+            }
+        }
+        var pieces: [Range<Int>] = [], from = 0, at = 0
+        while at + 2 < bytes.count {
+            if bytes[at] == 0x20, bytes[at + 1] == 0x7C, bytes[at + 2] == 0x20 {
+                pieces.append(from..<at)
+                at += 3
+                from = at
+            } else {
+                at += 1
+            }
+        }
+        pieces.append(from..<bytes.count)
+        var parameters: [Parameter] = [], valueStart = 0
+        for piece in pieces {
+            var colon = piece.lowerBound
+            while colon + 1 < piece.upperBound, !(bytes[colon] == 0x3A && bytes[colon + 1] == 0x20) { colon += 1 }
+            if colon + 1 < piece.upperBound, isName(piece.lowerBound..<colon) {
+                parameters.append(Parameter(name: text(piece.lowerBound..<colon), value: text(colon + 2..<piece.upperBound)))
+                valueStart = colon + 2
             } else if let last = parameters.popLast() {
-                parameters.append(Parameter(name: last.name, value: last.value + " | " + piece))
+                // The value before it held " | ": it runs on through this piece.
+                parameters.append(Parameter(name: last.name, value: text(valueStart..<piece.upperBound)))
             }
         }
         return parameters

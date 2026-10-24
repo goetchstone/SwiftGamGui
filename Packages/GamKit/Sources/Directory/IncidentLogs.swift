@@ -49,8 +49,23 @@ public final class IncidentLogs {
         /// for accounts, newest first).
         public let capped: Bool
         /// When capped by a whole read: the time it was read completely through.
-        public internal(set) var through: Date? = nil
+        public internal(set) var through: Date?
+        /// How many of its events Google flagged, and how many accounts they're of: worked out once, as the log is made, not
+        /// by the screen at every redraw (2026-10-24: a 200,000-event log's took about 0.1 s on the main thread each time).
+        public let flagged: Int, accounts: Int
         public var id: ActivityLogs.Application { application }
+
+        init(application: ActivityLogs.Application, rows: Result<[ActivityLogs.Row], UserAccess.Problem>, hours: Int, capped: Bool,
+             through: Date? = nil) {
+            self.application = application
+            self.rows = rows
+            self.hours = hours
+            self.capped = capped
+            self.through = through
+            let read = (try? rows.get()) ?? []
+            flagged = read.count { $0.flagged }
+            accounts = Set(read.map(\.who)).count
+        }
     }
 
     public struct Pull: Sendable {
@@ -113,6 +128,9 @@ public final class IncidentLogs {
     private let access: UserAccess
     /// At most this many `gam` reads at once.
     static let concurrent = 3
+    /// At most this many saved logs read back at once when an incident opens (invariant 9): each holds its CSV's whole
+    /// table while it's read, and a saved log can be 256 MB.
+    nonisolated static let readBackAtOnce = 4
     /// Each read's bound (`ActivityLogs.cap`; a test's smaller one pages through the mock's few rows).
     private let cap: Int
     /// Now, when each log's first read fixes its window (a test's own, for the mock's fixed dates).
@@ -415,20 +433,38 @@ public final class IncidentLogs {
         kept = (pull, tenant, setup.generation)
     }
 
-    /// The pull an incident's saved exports make (each `ActivityLogs.Export`, oldest first), put together one after another
-    /// (`merged`). An export that can't be read is named in `unreadable`, the rest still read.
-    public nonisolated static func evidence(_ exports: [ActivityLogs.Export]) -> (pull: Pull, unreadable: [String]) {
-        var together: Pull?, unreadable: [String] = []
-        for export in exports {
-            let next = adding(export, to: together)
-            together = next.together
-            if !next.readable { unreadable.append(export.name) }
+    /// The pull an incident's saved exports make (each `ActivityLogs.Export`, oldest first), put together (`merged`). An
+    /// export that can't be read is named in `unreadable`, the rest still read. Saved logs are read back `readBackAtOnce`
+    /// at a time, each on a core of its own, and all are put together once (2026-10-24: read one after another, merged
+    /// after each, an incident with ten saved pulls took seconds to open).
+    @concurrent public nonisolated static func evidence(_ exports: [ActivityLogs.Export]) async -> (pull: Pull, unreadable: [String]) {
+        let abouts = exports.map { About($0.about) }
+        let jobs = exports.enumerated().flatMap { index, export in export.logs.indices.map { (index, $0) } }
+        let logs = await withTaskGroup(of: (export: Int, log: Int, read: Log?).self) { group in
+            var logs = exports.map { [Log?](repeating: nil, count: $0.logs.count) }, started = 0
+            func startNext() {
+                guard started < jobs.count else { return }
+                let (index, at) = jobs[started], log = exports[index].logs[at], about = abouts[index]
+                started += 1
+                group.addTask { (index, at, Self.log(log.application, log.csv, about)) }
+            }
+            for _ in 0..<readBackAtOnce { startNext() }
+            for await done in group {
+                logs[done.export][done.log] = done.read
+                startNext()
+            }
+            return logs
+        }
+        var pulls: [Pull] = [], unreadable: [String] = []
+        for (index, export) in exports.enumerated() {
+            if let pull = pull(abouts[index], logs[index]) { pulls.append(pull) } else { unreadable.append(export.name) }
         }
         let empty = Pull(query: Query(applications: [], users: [], hours: 0, ip: ""), logs: [], ended: true, fromEvidence: true)
-        return (together ?? empty, unreadable)
+        return (pulls.isEmpty ? empty : merged(pulls), unreadable)
     }
 
-    /// `together` (the exports put together so far, nil for none readable) with `export` after them, as `evidence(_:)` puts
+    /// `together` (the exports put together so far, nil for none readable) with `export` after them: `merged(_:)` gives the
+    /// same at once as one after another (`pullsPutTogetherAtOnceAreThemAddedOneByOne`), so this is what `evidence(_:)` puts
     /// each one with those before it; `together` as it was when `export` isn't readable as a pull. A pull just saved to an
     /// incident is added to the evidence shown this way, so no saved pull is read again (failure log 2026-10-23).
     public nonisolated static func adding(_ export: ActivityLogs.Export, to together: Pull?) -> (together: Pull?, readable: Bool) {
@@ -440,12 +476,21 @@ public final class IncidentLogs {
     /// and each log's own window and cap, from its `about.txt`.
     nonisolated static func pull(of export: ActivityLogs.Export) -> Pull? {
         let about = About(export.about)
-        var logs: [Log] = []
-        for (application, csv) in export.logs {
-            guard let rows = ActivityLogs.rows(exported: csv, application: application) else { return nil }
-            logs.append(Log(application: application, rows: .success(rows), hours: about.window[application] ?? about.hours,
-                            capped: about.capped.contains(application), through: about.through[application]))
-        }
+        return pull(about, export.logs.map { log($0.application, $0.csv, about) })
+    }
+
+    /// One saved log read back, with its window, cap and how far it was read from its export's `about`; nil when it isn't
+    /// readable as one.
+    nonisolated static func log(_ application: ActivityLogs.Application, _ csv: String, _ about: About) -> Log? {
+        guard let rows = ActivityLogs.rows(exported: csv, application: application) else { return nil }
+        return Log(application: application, rows: .success(rows), hours: about.window[application] ?? about.hours,
+                   capped: about.capped.contains(application), through: about.through[application])
+    }
+
+    /// An export as a pull from its logs read back (`log`), nil when one of them wasn't readable.
+    nonisolated static func pull(_ about: About, _ read: [Log?]) -> Pull? {
+        guard !read.contains(where: { $0 == nil }) else { return nil }
+        var logs = read.compactMap(\.self)
         // In the app's order of the logs, as every pull put together is.
         let order = ActivityLogs.Application.allCases
         logs.sort { order.firstIndex(of: $0.application)! < order.firstIndex(of: $1.application)! }
@@ -453,39 +498,45 @@ public final class IncidentLogs {
                     logs: logs, ended: true, fromEvidence: true)
     }
 
-    /// `older` with `newer` added: each log's rows newest first, an event both read once (by `identity`; within one pull every
-    /// row stays, as two events can match in every column), a log stopped at its cap only while both reads of it were (a
-    /// read for just the accounts that matter reaches further back), and a log one of them couldn't read taken from the
-    /// other. The widest window, every account if either was, and the first address given.
-    public nonisolated static func merged(_ older: Pull, _ newer: Pull) -> Pull {
+    /// `older` with `newer` added (`merged(_:)`).
+    public nonisolated static func merged(_ older: Pull, _ newer: Pull) -> Pull { merged([older, newer]) }
+
+    /// `pulls` (at least one, oldest first) put together at once, as adding each to those before it would: each log's rows
+    /// newest first, an event an earlier pull read once (by `identity`; within one pull every row stays, as two events can
+    /// match in every column), a log stopped at its cap only while every read of it was (a read for just the accounts that
+    /// matter reaches further back), and a log a pull couldn't read taken from those that could. The widest window, every
+    /// account if any pull was, and the first address given.
+    nonisolated static func merged(_ pulls: [Pull]) -> Pull {
+        if pulls.count == 1 { return pulls[0] }
         var logs: [Log] = []
         for application in ActivityLogs.Application.allCases {
-            let old = older.logs.first { $0.application == application }, new = newer.logs.first { $0.application == application }
-            switch (old, new) {
-            case (let old?, let new?):
-                switch (old.rows, new.rows) {
-                case (.success(let kept), .success(let read)):
-                    let known = Set(kept.map(\.identity))
-                    let rows = (kept + read.filter { !known.contains($0.identity) }).enumerated().sorted { a, b in
-                        (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
-                    }.map(\.element)
-                    // Both stopped short: read through the later of the two; one read whole: whole.
-                    logs.append(Log(application: application, rows: .success(rows), hours: max(old.hours, new.hours),
-                                    capped: old.capped && new.capped,
-                                    through: old.capped && new.capped ? [old.through, new.through].compactMap { $0 }.max() : nil))
-                case (.success, .failure): logs.append(old)
-                default: logs.append(new)
-                }
-            case (let only?, nil), (nil, let only?): logs.append(only)
-            case (nil, nil): break
+            let all = pulls.compactMap { pull in pull.logs.first { $0.application == application } }
+            let read = all.filter { if case .success = $0.rows { true } else { false } }
+            guard read.count > 1 else {
+                // Read by one pull alone, or by none (the last one's words for why not).
+                if let only = read.first ?? all.last { logs.append(only) }
+                continue
             }
+            var known: Set<String> = [], kept: [ActivityLogs.Row] = []
+            for log in read {
+                let rows = (try? log.rows.get()) ?? []
+                kept += rows.filter { !known.contains($0.identity) }
+                known.formUnion(rows.map(\.identity))
+            }
+            let rows = kept.enumerated().sorted { a, b in
+                (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
+            }.map(\.element)
+            // Every read stopped short: read through the latest of them; one read whole: whole.
+            let capped = read.allSatisfy(\.capped)
+            logs.append(Log(application: application, rows: .success(rows), hours: read.map(\.hours).max() ?? 0, capped: capped,
+                            through: capped ? read.compactMap(\.through).max() : nil))
         }
         var seen: Set<String> = []
-        let users = older.query.users.isEmpty || newer.query.users.isEmpty ? []
-            : (older.query.users + newer.query.users).filter { seen.insert($0.lowercased()).inserted }
-        let query = Query(applications: logs.map(\.application), users: users, hours: max(older.query.hours, newer.query.hours),
-                          ip: older.query.ip.isEmpty ? newer.query.ip : older.query.ip)
-        return Pull(query: query, logs: logs, ended: older.ended && newer.ended, fromEvidence: older.fromEvidence && newer.fromEvidence)
+        let users = pulls.contains { $0.query.users.isEmpty } ? []
+            : pulls.flatMap(\.query.users).filter { seen.insert($0.lowercased()).inserted }
+        let query = Query(applications: logs.map(\.application), users: users, hours: pulls.map(\.query.hours).max() ?? 0,
+                          ip: pulls.first { !$0.query.ip.isEmpty }?.query.ip ?? "")
+        return Pull(query: query, logs: logs, ended: pulls.allSatisfy(\.ended), fromEvidence: pulls.allSatisfy(\.fromEvidence))
     }
 
     /// Reads `query`'s logs and adds them to the pull shown (`merged`), as "Pull Again" does for the accounts that matter:
