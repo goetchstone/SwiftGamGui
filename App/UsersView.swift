@@ -398,6 +398,7 @@ private struct UserDetail: View {
     let connectedAdmin: @MainActor @Sendable () -> String?
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
+    @State private var editingPhone = false
     @State private var newGroup = ""
     @State private var newDelegate = ""
     @State private var editingAutoReply = false
@@ -457,7 +458,10 @@ private struct UserDetail: View {
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
         }
-        .onChange(of: editingRole || editingAutoReply, initial: true) { _, open in editorOpen = open }
+        .sheet(isPresented: $editingPhone) {
+            PhoneEditor(user: user, changes: changes) { editingPhone = false }
+        }
+        .onChange(of: editingRole || editingPhone || editingAutoReply, initial: true) { _, open in editorOpen = open }
         .onDisappear { editorOpen = false }
         #if DEBUG
         // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would; `search` opens the Mail
@@ -484,6 +488,7 @@ private struct UserDetail: View {
         // closes, so what was typed for the last person can't become a preview for this one.
         .onChange(of: user.id) {
             editingRole = false
+            editingPhone = false
             editingAutoReply = false
         }
         // One sheet: a preview, and for Set Temporary Password the same sheet through its run to the sign-in details, under
@@ -526,6 +531,7 @@ private struct UserDetail: View {
             Spacer()
             Menu {
                 Button("Edit Title and Department…") { editingRole = true }
+                Button("Edit Phone…") { editingPhone = true }
                 Divider()
                 Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
                 Button("Set Temporary Password…") { Task { await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin) } }
@@ -573,6 +579,9 @@ private struct UserDetail: View {
                 LabeledContent("Organizational unit", value: user.orgUnitPath)
                 LabeledContent("Location", value: user.location.isEmpty ? "—" : user.location)
                 LabeledContent("Phone", value: user.phone.isEmpty ? "—" : user.phone)
+                Button("Edit Phone…") { editingPhone = true }
+                    .disabled(changes.isBusy)
+                    .accessibilityHint("Previews the change to the phone their signature shows. Their other phones stay as they are.")
                 LabeledContent("Last sign-in", value: Self.signIn(user.lastLoginTime))
             }
             if !user.aliases.isEmpty {
@@ -971,6 +980,51 @@ private struct RoleEditor: View {
                     let user = user, title = title, department = department, changes = changes
                     close()
                     Task { await changes.previewOrganization(of: user, title: title, department: department, origin: .form) }
+                }
+            }
+        }
+    }
+}
+
+/// The phone a signature shows (`UserChanges.previewPhone`), prefilled, then a preview of exactly what will run. Emptied,
+/// it's removed. The person's other phones are said, since the write sends them all.
+private struct PhoneEditor: View {
+    let user: GamUser
+    let changes: UserChanges
+    let close: () -> Void
+    @State private var phone: String
+
+    init(user: GamUser, changes: UserChanges, close: @escaping () -> Void) {
+        self.user = user
+        self.changes = changes
+        self.close = close
+        _phone = State(initialValue: user.phone)
+    }
+
+    /// How many other phones go back as they are.
+    private var others: Int { max(0, user.phones.count - (user.phone.isEmpty ? 0 : 1)) }
+
+    var body: some View {
+        Form {
+            Section("\(user.fullName)'s phone") {
+                TextField("Phone", text: $phone, prompt: Text(verbatim: "+1 555 0100"))
+                    .textContentType(.telephoneNumber)
+            }
+            Text("Signatures show this number as {phone}. "
+                 + (user.phone.isEmpty ? "It's saved as their work phone." : "Leave it empty to remove it.")
+                 + (others > 0 ? " Their other \(others == 1 ? "phone stays" : "\(others) phones stay") as \(others == 1 ? "it is" : "they are")." : ""))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 380)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: close) }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Preview") {
+                    // Close first: the preview opens its own sheet.
+                    let user = user, phone = phone, changes = changes
+                    close()
+                    Task { await changes.previewPhone(of: user, phone: phone, origin: .form) }
                 }
             }
         }

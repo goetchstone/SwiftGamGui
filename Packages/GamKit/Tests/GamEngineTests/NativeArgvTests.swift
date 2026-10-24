@@ -16,6 +16,15 @@ struct NativeArgvTests {
         // <Boolean>`: the temporary password, changed by the person at their next sign-in.
         ("set_password", GamCommands.setPassword(email: "<email>", password: "Abcd-Efgh-Jkmn"),
          ["update", "user", "<email>", "password", "Abcd-Efgh-Jkmn", "changepassword", "on"]),
+        // 5874-5878 `phone [type <type>|(custom <String>)] [value <String>] notprimary|primary`, one per phone: GAM sends
+        // them as the whole list (getUserAttributes, gam/__init__.py:47476-47489); 5899 `phone clear` when none is left.
+        ("update_phones",
+         try! GamCommands.updatePhones(email: "<email>", phones: [
+            GamUser.Phone(type: "work", value: "+1 555 0100", primary: true), GamUser.Phone(type: "Mobile", value: "+1 555 0199", primary: false),
+            GamUser.Phone(type: "custom", customType: "Desk", value: "100", primary: false), GamUser.Phone(type: "", value: "200", primary: false)]),
+         ["update", "user", "<email>", "phone", "type", "work", "value", "+1 555 0100", "primary",
+          "phone", "type", "mobile", "value", "+1 555 0199", "notprimary", "phone", "type", "custom", "Desk", "value", "100", "notprimary",
+          "phone", "value", "200", "notprimary"]),
         // 5831 `gal|includeinglobaladdresslist [<Boolean>]`: optional, true when bare, so `off` always.
         ("hide_from_directory", GamCommands.hideFromDirectory(email: "<email>"), ["update", "user", "<email>", "gal", "off"]),
         // 8372 `<UserTypeEntity> imap|imap4 <Boolean>`, 8378 `pop|pop3 <Boolean>`: required; `off` is getBoolean's.
@@ -127,6 +136,22 @@ struct NativeArgvTests {
     }
 
     /// An operator value is one element, whatever it holds.
+    /// A phone GAM wouldn't send back as it is never reaches it: two primaries (GAM's usage error), a type GAM would
+    /// keep as custom, `custom` with no name, no number, or a number over lines. Each number is one element, as typed.
+    @Test func eachPhoneGoesBackAsItIs() throws {
+        func phone(_ type: String, _ value: String = "1", primary: Bool = false, custom: String = "") -> GamUser.Phone {
+            GamUser.Phone(type: type, customType: custom, value: value, primary: primary)
+        }
+        for bad in [[phone("work", primary: true), phone("home", primary: true)], [phone("google_voice")], [phone("custom")],
+                    [phone("custom", custom: "  ")], [phone("work", "")], [phone("work", "1\n2")], [phone("work", "1\u{0}")]] {
+            #expect(throws: GamCommands.Invalid.self) { try GamCommands.updatePhones(email: "c@example.com", phones: bad) }
+        }
+        let write = try GamCommands.updatePhones(email: "c@example.com", phones: [phone("work", "x primary phone clear", primary: true)])
+        #expect(write.argv == ["update", "user", "c@example.com", "phone", "type", "work", "value", "x primary phone clear", "primary"])
+        #expect(write.action == .updatePhones)
+        #expect(try GamCommands.updatePhones(email: "c@example.com", phones: []).argv == ["update", "user", "c@example.com", "phone", "clear"])
+    }
+
     @Test func anAddressIsOneElement() {
         let odd = "a b,c@example.com"
         #expect(GamCommands.clearRecovery(email: odd).argv[2] == odd && GamCommands.clearRecovery(email: odd).argv.count == 7)

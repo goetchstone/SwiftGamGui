@@ -66,13 +66,45 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
 }
 
 extension GamUser {
+    /// One of the person's phones as Google keeps it: its type (GAM's word for it, or `custom` with `customType`), the
+    /// number, and whether it's the primary one.
+    public struct Phone: Sendable, Equatable {
+        public let type: String
+        public let customType: String
+        public let value: String
+        public let primary: Bool
+
+        public init(type: String, customType: String = "", value: String, primary: Bool) {
+            (self.type, self.customType, self.value, self.primary) = (type, customType, value, primary)
+        }
+
+        /// As the record holds it: a custom type's name and the primary flag only when there's one.
+        var json: JSONValue {
+            var phone: GamOutput.Record = ["type": .string(type), "value": .string(value)]
+            if !customType.isEmpty { phone["customType"] = .string(customType) }
+            if primary { phone["primary"] = .bool(true) }
+            return .object(phone)
+        }
+    }
+
+    /// Every phone the record holds, in its order. `phone` is the one a signature shows: the primary, else the first.
+    public var phones: [Phone] {
+        (record["phones"]?.array ?? []).compactMap { item in
+            guard let phone = item.object else { return nil }
+            return Phone(type: Fields.text(Fields.truthy(phone["type"])), customType: Fields.text(Fields.truthy(phone["customType"])),
+                         value: Fields.text(Fields.truthy(phone["value"])), primary: phone["primary"]?.truthy == true)
+        }
+    }
+
     /// This user as a confirmed write left them, so the cached directory shows the change without a
     /// reload (GamGUI's `patch_user`). The record itself is patched and read again, so every field comes
     /// from one place: GAM's `organization … primary` sets the primary organization's title and
     /// department together.
-    public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil) -> GamUser {
+    public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil, phones: [Phone]? = nil) -> GamUser {
         var record = record
         if let suspended { record["suspended"] = .bool(suspended) }
+        // `GamCommands.updatePhones` sends the whole list, which Google keeps in place of the old one.
+        if let phones { record["phones"] = .array(phones.map(\.json)) }
         if title != nil || department != nil {
             var items = record["organizations"]?.array ?? []
             let index = items.firstIndex { $0.object?["primary"]?.truthy == true } ?? (items.isEmpty ? nil : 0)

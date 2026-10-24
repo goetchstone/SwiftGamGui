@@ -15,6 +15,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
 | Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
 | Set a temporary password, changed at next sign-in (Users) | not yet: new to both apps |
+| Set, change or remove the phone a signature shows (Users) | not yet: new to both apps |
 | Set signature (Signatures) | **confirmed** (2026-10-13) |
 | Add people to a group as members (Groups) | **confirmed** (2026-10-13) |
 | Add people to a group as managers or owners (Groups) | not yet: never run live in either app |

@@ -87,6 +87,41 @@ public enum GamCommands {
     // MARK: native (no GamGUI builder)
     // Each is held to its exact argv by NativeArgvTests, against the vendored grammar and GAM's source, not GamGUI.
 
+    /// GAM's phone types (5874-5876 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
+    /// keeps as a custom type of that name (getKeywordAttribute), so a phone goes back only with one of these, `custom`
+    /// with its name, or no type.
+    public static let phoneTypes: Set<String> = [
+        "assistant", "callback", "car", "company_main", "grand_central", "home", "home_fax", "isdn", "main", "mobile",
+        "other", "other_fax", "pager", "radio", "telex", "tty_tdd", "work", "work_fax", "work_mobile", "work_pager",
+    ]
+
+    /// The person's phones, every one of them (5874-5878 `phone [type …] [value <String>] notprimary|primary`, 5899
+    /// `phone clear`). GAM sends the phones it's given as the list Google keeps in place of the old one, and drops one
+    /// with no value (getUserAttributes, updateUsers' users.update, gam/__init__.py:47476-47489 at 7.48.30), so a phone
+    /// left out is deleted: the others go as they are, and none left is `phone clear`. Each number one line, at most one
+    /// primary (GAM's usage error otherwise).
+    public static func updatePhones(email: String, phones: [GamUser.Phone]) throws -> GamWrite {
+        guard phones.count(where: \.primary) <= 1 else { throw Invalid.argument("only one phone can be the primary") }
+        var argv = ["update", "user", email]
+        for phone in phones {
+            guard !phone.value.isEmpty, !phone.value.unicodeScalars.contains(where: { $0.properties.generalCategory == .control })
+            else { throw Invalid.argument("each phone is a number on one line") }
+            let type = PythonText.lower(phone.type)
+            let typed: [String]
+            if type.isEmpty {
+                typed = []
+            } else if type == "custom" {
+                guard !PythonText.strip(phone.customType).isEmpty else { throw Invalid.argument("a custom phone type has a name") }
+                typed = ["type", "custom", phone.customType]
+            } else {
+                guard phoneTypes.contains(type) else { throw Invalid.argument("“\(phone.type)” isn't a phone type GAM keeps as it is") }
+                typed = ["type", type]
+            }
+            argv += ["phone"] + typed + ["value", phone.value, phone.primary ? "primary" : "notprimary"]
+        }
+        return GamWrite(phones.isEmpty ? argv + ["phone", "clear"] : argv, action: .updatePhones)
+    }
+
     /// Both recovery fields emptied, so "Forgot password?" can't reach the leaver's own phone or address
     /// (grammar 5842-5843 under `update user`, 5942; GAM sends an empty value as a cleared field). The command
     /// line shown and audited masks both (`ArgvRedaction`), so the step's words say what it does.

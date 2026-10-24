@@ -2064,8 +2064,34 @@ fi
 # <UserAttribute>* plus the notify clause, as `gam create|add user` / `gam update user` take them. Only
 # the attributes GamGUI emits are modelled; anything else is an invalid argument.
 check_user_attrs() {
+  phone_primary=""
   while [ $# -gt 0 ]; do
     case "$1" in
+      phone|phones)
+        # Grammar 5874-5878, 5899: `phone clear`, or `phone [type <type>|custom <String>] [value <String>]
+        # notprimary|primary`, as getUserAttributes reads it (gam/__init__.py:47476-47489, 47135-47171 at 7.48.30): a type
+        # GAM doesn't know is kept as a custom type, so any word passes; `custom` needs a name that isn't blank; a second
+        # primary is a usage error (appendItemToBodyList); an empty value is dropped, not refused.
+        shift
+        if [ "${1:-}" = "clear" ]; then shift; continue; fi
+        while :; do
+          case "${1:-}" in
+            type)
+              need_value $# "phone type"
+              if [ "$(lower "$2")" = custom ]; then
+                case "${3:-}" in *[![:space:]]*) shift 3 ;; *) missing_arg "custom attribute type" ;; esac
+              else
+                shift 2
+              fi ;;
+            value) need_value $# "String"; shift 2 ;;
+            primary)
+              [ -z "$phone_primary" ] || usage_error "Multiple phones are marked primary, only one can be primary"
+              phone_primary=1; shift; break ;;
+            notprimary) shift; break ;;
+            "") missing_arg "notprimary|primary" ;;
+            *) invalid_arg "$1" ;;
+          esac
+        done ;;
       suspended|suspend|changepassword|changepasswordatnextlogin|archived|archive)
         need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       password)
