@@ -111,7 +111,7 @@ there, its Bcc list matches the message's own. Nothing runs.
 
 **L2 (the operator's yes in chat for "secure P"):** tick the reset as done if it was; tick what the attacker made; run.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
-send-as addresses gone, IMAP and POP off. Mark the README rows confirmed.
+send-as addresses gone, IMAP and POP off. Mark the rows confirmed in docs/live-verification.md.
 
 ## Leftover drafts (slice 4)
 A taken-over account can be left with thousands of drafts, and phishing batches Google blocked leave drafts anyone
@@ -140,8 +140,7 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   that changes ID while it's listed (an autosave: GAM's 404 fails the listing; Check Again reads it again).
 
 ## Scheduled sends (2026-10-23)
-Asked for in a real incident, after the attacker asked Gemini to "help schedule": "we need to find and stop anything that
-may have been scheduled to send." **A scheduled email is not a draft** (the drafts' listing never shows it), and Gmail sends
+Asked for (2026-10-23): find and stop anything scheduled to send. **A scheduled email is not a draft** (the drafts' listing never shows it), and Gmail sends
 it at its time on its own, with nobody signed in: the lock doesn't stop it. Slice 4 had left it out.
 - **The check** lists every one with its recipients: GamGUI's mailbox search (`searchMessages`, Spam and Trash included,
   `headers all`, read by `MailboxSearch`) for `in:scheduled`, at most `Compromised.ScheduledSend.cap` (500, above the
@@ -209,8 +208,8 @@ it at its time on its own, with nobody signed in: the lock doesn't stop it. Slic
   30 days and says so; the admin log for an account reads what was done to it unless `userisactor`, so it's sent; one
   address that isn't a user fails the whole log in GAM, so the screen checks the accounts against the directory first.
   Each read is pinned to the tenant the pull began on and may take ten minutes (GAM reads one account after another).
-- **Past the cap** (`IncidentLogs.paged`; asked for after a real incident's pull for every account stopped at 1,000 events
-  and didn't reach the attack, 2026-10-22): a read at the cap (`ActivityLogs.cap`, per account when accounts are named) is
+- **Past the cap** (`IncidentLogs.paged`; asked for when a pull for every account stopped at 1,000 events
+  short of the attack, 2026-10-22): a read at the cap (`ActivityLogs.cap`, per account when accounts are named) is
   read again over the same window up to where it stopped. The window is fixed as times when the log's first read runs
   (`start <now less the hours> end <now>`, `yyyy-mm-ddThh:mm:ssZ`, `GamCommands.isReportTime`, which GAM passes on as
   given): GAM's `-72h` counts from each read and rounds to the minute, and a Gmail log queued behind others would drift
@@ -239,8 +238,7 @@ it at its time on its own, with nobody signed in: the lock doesn't stop it. Slic
   understands it; a merge is read through the later of two such reads, or whole when either read was.
 - **Windows:** 1, 3, 10, 15 and 30 days, and 6 months (`ActivityLogs.hours`; the Gmail log reads 30 days at most, so its
   start is held there).
-- **What's realistic** (numbers from a real small tenant's export, 2026-10-23: its Gmail log runs about 12,600 events a day
-  for every account): every account's Gmail for 10 or 15 days fits one pull (about 130 and 190 reads); 30 days is two (the
+- **What's realistic** (a small domain's every-account Gmail log runs to thousands of events a day): every account's Gmail for 10 or 15 days fits one pull (well over a hundred reads); 30 days is two (the
   oldest half, then Read the Rest). A large organisation's every-account Gmail runs to hundreds of thousands of events a day:
   read whole by every account, only a day or so fits. There, filter by the attacker's address (`ip`, which Google applies
   before it counts, so every account's events from that address are few) or name the accounts that matter (20 at once): both
@@ -430,7 +428,7 @@ one that reads or forwards mail. Reads only.
 Read the logs opens with each account the attacker had and where it stands, read from the logs in time order
 ([docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md)). Nothing is typed: the "I know when the account
 was locked" switch is gone. Reads only.
-- **Who is a suspect** (`LogReading.marksAttacker`, a real tenant's export, 2026-10-22): Google's `suspicious_*`
+- **Who is a suspect** (`LogReading.marksAttacker`, from Google's real logs): Google's `suspicious_*`
   warnings, an account disabled as hijacked, and a sign-in it marked `is_suspicious`, unless that sign-in was proved with a
   passkey or security key (only when the account added no passkey in these logs before it: an attacker can enroll their
   own, security review 2026-10-22), or re-proves a session (`login_type` `reauth`) from an address the account signs in from
@@ -475,22 +473,22 @@ was locked" switch is gone. Reads only.
   The builder holds that read's accounts to `filterAddress`, as Chrome's filter is. A known lie, older than this slice
   (review 2026-10-22): with `select users` the mock prints each account's rows in turn, where GAM sorts them all newest
   first (`SortRows('id.time')`, :14948); the app's merges sort by date, so nothing here depends on it.
-- **Seen in a real tenant's export (2026-10-22, read-only):** the lock as GAM ran it is `CHANGE_PASSWORD`, a
+- **Seen in Google's real logs (read-only):** the lock as GAM ran it is `CHANGE_PASSWORD`, a
   `REVOKE_3LO_TOKEN` per app, then `RESET_SIGNIN_COOKIES`, within seconds, each naming the person in `USER_EMAIL`; the
   Admin console's reset adds `CHANGE_PASSWORD_ON_NEXT_LOGIN` beside `CHANGE_PASSWORD`; a person's own change is
   `password_edit` in both the sign-in and account changes logs.
 - **Not modelled, for the live check to tell:** whether Google returns an account warning (no actor) to a read of that
   one account; the event names for exporting contacts beyond `print_contacts`; how far the admin log lags.
-- **Live check (L1l, read-only):** on the real incident, pull by the affected accounts over a window from before the
+- **Live check (L1l, read-only):** on an incident, pull by the affected accounts over a window from before the
   attack: each status matches what was done and when (the audit log and the Admin console's admin log), and Google's
   "disabled the account: hijacked" appears in the taken-over account's own pull.
 
 ## The rundown: where each account stands, its timeline, what's left (incidents plan)
 Read the logs opens with every account the attacker touched, each with its status and a timeline, then **Still to do**,
-then the findings ("What the logs show"). Asked for after the operator ran a real incident through it (2026-10-22): the
-first version gave a status only to accounts the attacker got into, and only its first reset and sign-out, so four
-accounts whose passwords were tried showed no lock and still offered Secure, and three forced sign-outs on one account
-read as one on a later day. Code decides what's done and what's left; the model only words it.
+then the findings ("What the logs show"). Asked for after real logs were run through it (2026-10-22): the
+first version gave a status only to accounts the attacker got into, and only its first reset and sign-out, so
+accounts whose passwords were only tried showed no lock and still offered Secure, and several forced sign-outs on one
+account read as one on a later day. Code decides what's done and what's left; the model only words it.
 - **Every account touched** (`LogReading.read`): an event from a suspect address in the sign-in, SAML, OAuth or account
   changes logs (a sign-in, a failed one, Google's warning), or a password Chrome saw typed on a phishing site. Never a Gmail
   row's account (whose mailbox it is isn't certain). In the order each was first touched.
@@ -656,7 +654,7 @@ Asked for (2026-10-23): the screen organized better, a button for each recommend
   never its own types; the screen names `LogReaderView.Memory`, never the model's module.
 
 ## Done from the audit log (incidents plan, the checklist's first piece)
-Asked for (2026-10-23, from the real incident): after Pull All trashed the attacker's emails, Still to do still listed
+Asked for (2026-10-23): after Pull All trashed the attacker's emails, Still to do still listed
 every one, so what was left couldn't be told. The plan's "a step already done shows done, with its time and who did it",
 first for the emails pulled. Reads only: the audit log is read, never written here.
 - **Done** (`LogReading.Pulled.isDone`, from `PhishingAudit.latestRuns`; phishing.md D13): the email's latest Phishing

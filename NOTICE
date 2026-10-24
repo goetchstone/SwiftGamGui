@@ -1,0 +1,8 @@
+GAM GUI (SwiftGamGui)
+Copyright 2026 SwiftGamGui contributors
+
+Licensed under the Apache License, Version 2.0 (LICENSE).
+
+A built app embeds GAM7 (https://github.com/GAM-team/GAM), also under the Apache License,
+Version 2.0 (Vendor/gam7/LICENSE). GAM is fetched at build time, not kept in this repository.
+Earlier versions of this repository, up to the change of license, were released under the MIT License.

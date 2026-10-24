@@ -1,6 +1,6 @@
 ---
 name: live-verify
-description: Prove a GAM command or a SwiftGamGui flow works against the operator's real Google Workspace tenant — the only proof a write works, because the mock lies. Use before marking a README live-verification row confirmed, after a GAM bump, or whenever a live test is asked for. Every write needs the operator's own yes in this chat for that one action.
+description: Prove a GAM command or a SwiftGamGui flow works against the operator's real Google Workspace tenant — the only proof a write works, because the mock lies. Use before marking a row confirmed in docs/live-verification.md, after a GAM bump, or whenever a live test is asked for. Every write needs the operator's own yes in this chat for that one action.
 ---
 
 # Live verification
@@ -20,6 +20,6 @@ before a live session. The essentials:
   real leaver, run by the operator. Account-free writes use a scratch group or a calendar the operator
   owns.
 - **Check the effect, not the exit code**: the audit record, then the change itself in Google.
-- **Record it**: a README row moves to **confirmed** only after the native app ran it live; rows whose
+- **Record it**: a row in `docs/live-verification.md` moves to **confirmed** only after the native app ran it live; rows whose
   argv equals a GamGUI-confirmed write read **argv-identical** until then. A break → `post-failure`.
 - **Tenant data never enters the repo**: scrub every identifier to `example.com` placeholders.

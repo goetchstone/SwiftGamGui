@@ -361,9 +361,9 @@ public enum LogReading {
 
     /// Google's own word that a sign-in was someone else's: a suspicious-sign-in event, an account disabled as hijacked,
     /// or a sign-in marked suspicious, unless that sign-in was proved with a passkey or security key (the person's own
-    /// device), or re-proves a session from an address the account signs in from unmarked. A real tenant's log
-    /// (2026-10-22) marked both: a passkey re-sign-in through iCloud Private Relay, and a person re-proving themselves at
-    /// the office after Google disabled their account; every sign-in of the attacker's was a password one. Not every flag
+    /// device), or re-proves a session from an address the account signs in from unmarked. Real logs
+    /// mark both: a passkey re-sign-in through a privacy relay's address, and a person re-proving themselves at
+    /// their usual address after Google disabled their account; an attacker's sign-in is commonly a password one. Not every flag
     /// either: a person's own failed challenge, or a denied cookie, is flagged too. A sign-in the operator marked as the
     /// person's own (`Context.theirs`) never is. A passkey proves the person only when the account added none in these logs
     /// before that sign-in (`passkeysAdded`): an attacker who had the account can enroll their own (review 2026-10-22).
@@ -386,7 +386,7 @@ public enum LogReading {
     /// A Gmail event that is a message sent. Every Gmail event is `delivery`, and its `event_info.mail_event_type` says what
     /// happened (Google's "Gmail Activity Events"): 1 sent, 35 the send begun. The rest (31 viewed, 7 opened, 29 a draft, 13
     /// trashed…) aren't a send: from the attacker's address they are the person's own mail the attacker read, and pulling it
-    /// would take real mail from everyone who has it (2026-10-23, a real incident listed every message the attacker read).
+    /// would take real mail from everyone who has it (in use it listed every message an attacker read).
     static func isSent(_ event: Event) -> Bool {
         Int(event.parameters["event_info.mail_event_type"] ?? "").map(sentTypes.contains) ?? false
     }
@@ -837,7 +837,7 @@ public enum LogReading {
     }
 
     /// The lock's steps by event name: a password reset by an admin, or by the person from an address they signed in from
-    /// before the attack (a real tenant, 2026-10-22: people changed their own); a sign-out by an admin or by Google; a suspension by an admin
+    /// before the attack (people do change their own); a sign-out by an admin or by Google; a suspension by an admin
     /// or Google's own disabling. GAM's `deprovision signout` also revokes apps, app passwords and backup codes,
     /// which make no lock alone.
     static let resets: Set = ["CHANGE_PASSWORD", "password_edit"]

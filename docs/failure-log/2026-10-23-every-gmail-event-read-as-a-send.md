@@ -1,6 +1,6 @@
 # 2026-10-23 — Every Gmail event read as a send: the attacker's reading became "pull from every mailbox"
 
-- **Symptom** — During a real incident the operator saw a great many "Pull … from every mailbox" items in Read the logs,
+- **Symptom** — In use, the operator saw a great many "Pull … from every mailbox" items in Read the logs,
   each saying the email "went through Gmail from" the attacker's address and "went out from the attacker's address".
   Acting on them would have moved real mail (anything the attacker read in the person's mailbox) out of every mailbox that
   had it. The operator asked before trashing them; nothing was pulled.

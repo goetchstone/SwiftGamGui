@@ -97,7 +97,7 @@ rules, starting at `in:sent newer_than:3d` to find other phishing waves the acco
 ## Slice 4: leftover drafts
 A taken-over account can be left with phishing drafts anyone signed in can send: they're removed, all or by subject, alone if need be.
 The check lists the drafts (newest 5,000); all of them, or those whose subject matches, are deleted in one held step, as
-Gmail's Discard does (a trashed draft may still be sendable: review 2026-10-19). Scheduled sends, left out at first, were added in a real incident (2026-10-23): listed with their recipients and deleted in one held step, beside the drafts. Runbook: docs/domains/compromised-account.md, "Leftover drafts".
+Gmail's Discard does (a trashed draft may still be sendable: review 2026-10-19). Scheduled sends, left out at first, were added on 2026-10-23: listed with their recipients and deleted in one held step, beside the drafts. Runbook: docs/domains/compromised-account.md, "Leftover drafts".
 
 ## Slice 5: Chrome
 Why: after a takeover, whether the person uses Chrome signed in with their work account matters, since what that Chrome
