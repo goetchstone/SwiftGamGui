@@ -96,6 +96,80 @@ struct IncidentStoreTests {
         }
     }
 
+    /// The review (Report's lessons learned and plan going forward) is kept with the incident and read back, its meeting's
+    /// time too; a file from before has none and still reads; an answer past its length isn't kept.
+    @Test func theReviewIsKept() throws {
+        var store = try IncidentStore(root: root)
+        let made = try store.create(domain: "example.com", title: "Takeover", opened: Self.monday, openedBy: "", reported: "")
+        #expect(made.review == IncidentStore.Review())
+        var reviewed = made
+        reviewed.review = IncidentStore.Review(kind: "Account takeover", severity: "High", meeting: Self.monday.addingTimeInterval(86_400 * 8),
+                                               attendees: "Pat, Sam", cause: "A phishing page took the password.", wentWell: "Locked in an hour.",
+                                               improve: "2-Step Verification for everyone.", plan: "Enforce 2SV — Pat — Nov 15\nPhishing training — Sam — Dec 1")
+        try store.save(reviewed)
+        let file = root.appending(path: made.id).appending(path: IncidentStore.fileName)
+        #expect(try IncidentStore(root: root).records.first?.review == reviewed.review)
+        #expect(mode(file) == 0o600)
+
+        // No meeting time: kept as none.
+        reviewed.review.meeting = nil
+        try store.save(reviewed)
+        #expect(try IncidentStore(root: root).records.first?.review.meeting == nil)
+
+        // As it was written before 2026-10-27: no "review" at all.
+        let old = try #require(JSONValue.parse(try String(contentsOf: file, encoding: .utf8))?.object)
+        var stripped = GamOutput.Record()
+        for (key, value) in old where key != "review" { stripped[key] = value }
+        try Data(JSONValue.dumps(.object(stripped)).utf8).write(to: file)
+        let reread = try IncidentStore(root: root)
+        #expect(reread.unreadable.isEmpty && reread.records.first?.review == IncidentStore.Review())
+
+        var long = reviewed
+        long.review.plan = String(repeating: "x", count: IncidentStore.reviewLength + 1)
+        #expect(throws: IncidentStore.Problem.self) { try store.save(long) }
+        long.review = IncidentStore.Review(severity: String(repeating: "x", count: IncidentStore.nameLength + 1))
+        #expect(throws: IncidentStore.Problem.self) { try store.save(long) }
+    }
+
+    /// The report's export copies every saved read, byte for byte, into a new private folder (`0700`, files `0600`), each
+    /// file with its SHA-256; a link in the evidence is never followed, and a folder there already isn't written into.
+    @Test func theEvidenceIsCopiedWithItsFingerprints() throws {
+        var store = try IncidentStore(root: root)
+        let made = try store.create(domain: "example.com", title: "Takeover", opened: Self.monday, openedBy: "", reported: "")
+        try store.keep(try IncidentStore.readExport(at: try export()), in: made.id)
+        let target = base.appending(path: "report").appending(path: "evidence")
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: false)
+        let hashes = try store.copyEvidence(of: made.id, to: target)
+        // `shasum -a 256` of the two files as written above.
+        func sha(_ text: String) throws -> String {
+            let pipe = Pipe(), process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/shasum")
+            process.arguments = ["-a", "256"]
+            let input = Pipe()
+            process.standardInput = input
+            process.standardOutput = pipe
+            try process.run()
+            input.fileHandleForWriting.write(Data(text.utf8))
+            try input.fileHandleForWriting.close()
+            process.waitUntilExit()
+            return String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self).split(separator: " ").first.map(String.init) ?? ""
+        }
+        #expect(hashes.map(\.file) == ["evidence/Incident logs 2026-10-23 0619/about.txt", "evidence/Incident logs 2026-10-23 0619/login-log.csv"])
+        #expect(hashes.map(\.sha256) == [try sha(Self.about), try sha(Self.login)])
+        let copied = target.appending(path: "Incident logs 2026-10-23 0619")
+        #expect(mode(target) == 0o700 && mode(copied) == 0o700 && mode(copied.appending(path: "login-log.csv")) == 0o600)
+        #expect(try Data(contentsOf: copied.appending(path: "login-log.csv")) == Data(Self.login.utf8))
+
+        // A link put among the evidence: refused, never read through.
+        let kept = try store.evidenceFolder(of: made.id).appending(path: "Incident logs 2026-10-23 0619")
+        try FileManager.default.createSymbolicLink(at: kept.appending(path: "zz-link.csv"), withDestinationURL: base.appending(path: "elsewhere"))
+        try Data("secret".utf8).write(to: base.appending(path: "elsewhere"))
+        let again = base.appending(path: "again")
+        #expect(throws: IncidentStore.Problem.self) { try store.copyEvidence(of: made.id, to: again) }
+        // A folder by that name already: its read's folder isn't made over what's there.
+        #expect(throws: IncidentStore.Problem.self) { try store.copyEvidence(of: made.id, to: target) }
+    }
+
     /// What isn't kept: no title, a title too long, an empty note, a domain that isn't one.
     @Test func whatIsntKept() throws {
         var store = try IncidentStore(root: root)

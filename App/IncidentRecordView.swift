@@ -89,6 +89,7 @@ struct IncidentRecordSection: View {
                 incidents.openID = nil
                 incidents.evidence = nil
                 incidents.together = nil
+                incidents.shownKey = nil
                 logs.clear()
             }
             .accessibilityHint("Closes the incident on this screen. It stays kept, to open again.")
@@ -191,6 +192,7 @@ struct IncidentRecordSection: View {
         guard let record = open, let store = incidents.store else {
             incidents.evidence = nil
             incidents.together = nil
+            incidents.shownKey = nil
             logs.keep = nil
             return
         }
@@ -201,16 +203,24 @@ struct IncidentRecordSection: View {
                 return nil
             }
         }
+        // Read and shown already, or being read: coming back to the screen reads nothing again. What was shown since (a pull
+        // saved to it, added in memory) is still what the logs show.
+        let key = "\(setup.generation)|\(domain)|\(id)|\(incidents.reload)"
+        guard incidents.shownKey != key || logs.pull == nil && !incidents.loading else { return }
+        incidents.shownKey = key
         incidents.loading = true
-        let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String], readable: Bool) in
+        let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String], readable: Bool,
+                                                  abouts: [String: String]) in
             let saved = store.exports(of: id)
             let merged = await IncidentLogs.evidence(saved.exports)
             return (merged.pull, saved.exports.map(\.name), saved.unreadable + merged.unreadable,
-                    merged.unreadable.count < saved.exports.count)
+                    merged.unreadable.count < saved.exports.count,
+                    Dictionary(saved.exports.map { ($0.name, Incidents.about($0)) }, uniquingKeysWith: { first, _ in first }))
         }.value
         incidents.loading = false
         guard incidents.openID == id else { return }
         incidents.evidence = (id, loaded.names, loaded.unreadable)
+        incidents.abouts = loaded.abouts
         incidents.together = (id, loaded.readable ? loaded.pull : nil)
         if loaded.names.isEmpty {
             // A new incident takes the pull just made: pull, then New Incident… keeps what was found.

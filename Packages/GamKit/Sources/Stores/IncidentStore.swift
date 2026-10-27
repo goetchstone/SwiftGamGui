@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import GamEngine
 
@@ -36,6 +37,33 @@ public struct IncidentStore: Sendable {
         public var notes: [Note]
         /// The warnings the operator picked for the emails the attacker sent (Respond's Who it reached).
         public var warnings: [Warning] = []
+        /// The post-incident review, as the operator writes it (Report).
+        public var review = Review()
+    }
+
+    /// The post-incident review (the standard's lessons learned): the incident's type and severity, the review meeting, how
+    /// they got in, what went well, what to do better, and the plan going forward, one item a line. Typed by the operator.
+    public struct Review: Sendable, Equatable {
+        public var kind = ""
+        public var severity = ""
+        public var meeting: Date?
+        public var attendees = ""
+        public var cause = ""
+        public var wentWell = ""
+        public var improve = ""
+        public var plan = ""
+
+        public init(kind: String = "", severity: String = "", meeting: Date? = nil, attendees: String = "", cause: String = "",
+                    wentWell: String = "", improve: String = "", plan: String = "") {
+            (self.kind, self.severity, self.meeting, self.attendees) = (kind, severity, meeting, attendees)
+            (self.cause, self.wentWell, self.improve, self.plan) = (cause, wentWell, improve, plan)
+        }
+
+        /// Its text fields by their names in the file, in the order the screen asks them.
+        var texts: [(key: String, value: String)] {
+            [("kind", kind), ("severity", severity), ("attendees", attendees), ("cause", cause), ("wentWell", wentWell),
+             ("improve", improve), ("plan", plan)]
+        }
     }
 
     /// A warning picked for an email the attacker sent: both bare Message-IDs, as the Gmail log names them.
@@ -83,6 +111,8 @@ public struct IncidentStore: Sendable {
     public static let titleLength = 200
     public static let nameLength = 100
     public static let noteLength = 2_000
+    /// A review's answer (the plan going forward holds a line an item).
+    public static let reviewLength = 8_000
 
     public let root: URL
     /// Newest opened first.
@@ -272,6 +302,67 @@ public struct IncidentStore: Sendable {
         return (exports, unreadable)
     }
 
+    /// Copies every saved read of the incident `id` into `folder` (made `0700`; each read a folder of its own, each file `0600`),
+    /// as the report's export holds them, and returns each file's path in `folder` with its SHA-256: what shows the evidence
+    /// unchanged. Each file read by descriptor without following a link, a regular file of at most `fileCap` bytes, in pieces
+    /// (a file can be 256 MB); written exclusively, never over anything. Throws, naming the file, at the first that can't be.
+    public func copyEvidence(of id: String, to folder: URL) throws(Problem) -> [(file: String, sha256: String)] {
+        guard Self.isID(id) else { throw .invalid("That isn't an incident's ID.") }
+        let evidence = root.appending(path: id, directoryHint: .isDirectory).appending(path: "evidence", directoryHint: .isDirectory)
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: evidence.path)) ?? []).filter { !$0.hasPrefix(".") }.sorted()
+        do { close(try SignatureStore.privateFolder(folder)) } catch { throw .file("make the evidence folder", Self.code(error)) }
+        var hashes: [(file: String, sha256: String)] = []
+        for name in names.prefix(Self.exportsCap) {
+            let from = open(evidence.appending(path: name, directoryHint: .isDirectory).path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            // A stray file is no saved read; anything else that won't open (a link, no access) is evidence left out: said.
+            guard from >= 0 else {
+                if errno == ENOTDIR { continue }
+                throw .file("read the evidence \(name)", errno)
+            }
+            defer { close(from) }
+            let target = folder.appending(path: name, directoryHint: .isDirectory)
+            guard mkdir(target.path, 0o700) == 0 else { throw .file("copy the evidence \(name)", errno) }
+            let to = open(target.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            guard to >= 0 else { throw .file("copy the evidence \(name)", errno) }
+            defer { close(to) }
+            let files = ((try? FileManager.default.contentsOfDirectory(atPath: evidence.appending(path: name).path)) ?? [])
+                .filter { !$0.hasPrefix(".") }.sorted()
+            for file in files {
+                let hash = try Self.copy(file, from: from, to: to, what: "\(name)/\(file)")
+                hashes.append(("\(folder.lastPathComponent)/\(name)/\(file)", hash))
+            }
+        }
+        return hashes
+    }
+
+    /// Copies the file `name` from the folder `from` to `to`, by descriptors, hashing it on the way: its SHA-256 in hex.
+    private static func copy(_ name: String, from: Int32, to: Int32, what: String) throws(Problem) -> String {
+        let source = openat(from, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard source >= 0 else { throw .file("read the evidence \(what)", errno) }
+        defer { close(source) }
+        var info = stat()
+        guard fstat(source, &info) == 0 else { throw .file("read the evidence \(what)", errno) }
+        guard info.st_mode & S_IFMT == S_IFREG else { throw .invalid("The evidence \(what) isn't a regular file.") }
+        guard info.st_size <= fileCap else { throw .invalid("The evidence \(what) is larger than \(fileCap >> 20) MB.") }
+        let copy = openat(to, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard copy >= 0 else { throw .file("copy the evidence \(what)", errno) }
+        defer { close(copy) }
+        guard fchmod(copy, 0o600) == 0 else { throw .file("copy the evidence \(what)", errno) }
+        var hasher = SHA256(), buffer = [UInt8](repeating: 0, count: 1 << 20), total = 0
+        while true {
+            let count = buffer.withUnsafeMutableBytes { Darwin.read(source, $0.baseAddress, $0.count) }
+            if count < 0, errno == EINTR { continue }
+            guard count >= 0 else { throw .file("read the evidence \(what)", errno) }
+            if count == 0 { break }
+            total += count
+            guard total <= fileCap else { throw .invalid("The evidence \(what) is larger than \(fileCap >> 20) MB.") }
+            hasher.update(data: buffer[..<count])
+            do { try SignatureStore.writeAll(copy, buffer[..<count]) } catch { throw .file("copy the evidence \(what)", Self.code(error)) }
+        }
+        guard fcntl(copy, F_FULLFSYNC) == 0 || fsync(copy) == 0 else { throw .file("copy the evidence \(what)", errno) }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
     // MARK: the file
 
     static func isID(_ id: String) -> Bool {
@@ -298,6 +389,10 @@ public struct IncidentStore: Sendable {
         guard record.warnings.allSatisfy({ isMessageID($0.email) && isMessageID($0.warning) }) else {
             throw .invalid("A warning picked isn't an email's Message-ID.")
         }
+        guard record.review.kind.count <= nameLength, record.review.severity.count <= nameLength,
+              record.review.texts.allSatisfy({ $0.value.count <= reviewLength }) else {
+            throw .invalid("The type and severity must be \(nameLength) characters or fewer, and each answer of the review \(reviewLength).")
+        }
         return record
     }
 
@@ -319,8 +414,26 @@ public struct IncidentStore: Sendable {
             guard let email = entry["email"]?.string, let warning = entry["warning"]?.string else { return nil }
             warnings.append(Warning(email: email, warning: warning))
         }
+        // Kept since 2026-10-27: a file from before has none.
+        var review = Review()
+        if let kept = file["review"] {
+            guard case .object(let fields) = kept else { return nil }
+            func text(_ key: String) -> String? {
+                guard let value = fields[key] else { return "" }
+                return value.string
+            }
+            guard let kind = text("kind"), let severity = text("severity"), let attendees = text("attendees"), let cause = text("cause"),
+                  let wentWell = text("wentWell"), let improve = text("improve"), let plan = text("plan") else { return nil }
+            var meeting: Date?
+            if let at = fields["meeting"], at != .null {
+                guard let date = at.string.flatMap({ try? Date($0, strategy: .iso8601) }) else { return nil }
+                meeting = date
+            }
+            review = Review(kind: kind, severity: severity, meeting: meeting, attendees: attendees, cause: cause, wentWell: wentWell,
+                            improve: improve, plan: plan)
+        }
         return try? valid(Record(id: id, domain: domain, title: title, opened: opened, openedBy: openedBy, reported: reported, notes: notes,
-                                 warnings: warnings))
+                                 warnings: warnings, review: review))
     }
 
     /// Writes `record` as the whole of its `incident.json`, making its folder (and `root`) `0700` first.
@@ -328,10 +441,14 @@ public struct IncidentStore: Sendable {
         let folder = root.appending(path: record.id, directoryHint: .isDirectory)
         do { close(try SignatureStore.privateFolder(root)) } catch { throw .file("save the incident", Self.code(error)) }
         let notes = record.notes.map { JSONValue.object(["at": .string($0.at.formatted(.iso8601)), "text": .string($0.text)]) }
+        var review = JSONObject()
+        for (key, value) in record.review.texts { review[key] = .string(value) }
+        review["meeting"] = record.review.meeting.map { .string($0.formatted(.iso8601)) } ?? .null
         let file = JSONValue.object(["version": .number(String(Self.format)), "id": .string(record.id), "domain": .string(record.domain),
                                      "title": .string(record.title), "opened": .string(record.opened.formatted(.iso8601)),
                                      "openedBy": .string(record.openedBy), "reported": .string(record.reported), "notes": .array(notes),
-                                     "warnings": .array(record.warnings.map { .object(["email": .string($0.email), "warning": .string($0.warning)]) })])
+                                     "warnings": .array(record.warnings.map { .object(["email": .string($0.email), "warning": .string($0.warning)]) }),
+                                     "review": .object(review)])
         do {
             try SignatureStore.writeFile(Array((JSONValue.dumps(file) + "\n").utf8), named: Self.fileName, in: folder, interrupt: nil)
         } catch {

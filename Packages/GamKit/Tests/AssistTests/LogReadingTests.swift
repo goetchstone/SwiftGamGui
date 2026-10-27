@@ -736,7 +736,7 @@ struct LogReadingTests {
 
         let bounced = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::dana@example.com", "smtp-out::guest@example.org"]),
                                  Self.gmail("carol@example.com", 30, phish, at: 31, to: ["gmail-ui::dana@example.com", "smtp-out::guest@example.org"])]).1
-        #expect(LogReading.Reach.columns.last == "to warn" && bounced.rows.map { [$0[0], $0[2], $0[5]] }
+        #expect(LogReading.Reach.columns[5] == "to warn" && bounced.rows.map { [$0[0], $0[2], $0[5]] }
                 == [["dana@example.com", "bounced", "yes"], ["guest@example.org", "bounced", ""]])
 
         let accented = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["smtp-out::jose\u{301}@partner.example"]),

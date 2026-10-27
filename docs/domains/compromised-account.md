@@ -787,6 +787,50 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   IP, and a domain alias in `nonEditableAliases`, as the rules assume; and a group it went to listed by its members, with
   a nested group's and the "Does not exist" wording and exit code the mock assumes for an address that isn't a group.
 
+## The report (incidents plan, slice 4, moved up at the operator's ask)
+Asked for (2026-10-27, a week after the takeover): "a nice report I can run on the incident and export", drilling into its
+numbers ("like who does not have 2 factor on"), who was emailed, bounced and reached, verifying "someone from here contacted
+them", and "due diligence … the logs to support it and the records we need", then the review meeting, its lessons learned and
+the plan going forward. Report's first section, once the incident's logs are read. Reads and this Mac only.
+- **Files:** `Assist/IncidentReport.swift` (pure: `make` from the reading, the audit log's changes, the record, the evidence and
+  the directory's 2SV; `text` the whole report as plain text; `agenda` the meeting's), `App/IncidentReportView.swift` (the
+  section, a count's list sheet, the review sheet, Export Report…, the PDF), `LogReaderView`'s `.report` part (only it names
+  the reader: it makes the report, at most once for each change of what it's made of, `Memory.report`), `IncidentStore.Review`
+  and `copyEvidence`. Tests: `AssistTests/IncidentReportTests.swift`, `IncidentStoreTests.theReviewIsKept`,
+  `.theEvidenceIsCopiedWithItsFingerprints`.
+- **In numbers:** every number is a button that opens its list (a table, Export CSV…): accounts touched and those not locked;
+  the attacker's emails and every address they went to (a row each email and address, so a number of addresses can be fewer
+  than its rows); received, sent outside, bounced, quarantined, to warn, warned, contacted from here after, and reached with
+  no contact seen; with the directory read, accounts touched and people reached here with 2-Step Verification off (Reports'
+  "No 2-step verification": active, not enrolled); emails pulled; steps taken; still to do.
+- **Contacted from here after** (`Reach.Recipient.contacted`, two more CSV columns on Who it reached too): the first email an
+  account here sent, from an address that isn't the attacker's, that reached them after the attacker's (by its send naming
+  them, or their mailbox's receipt; for one that isn't a mailbox here, through the group it was listed by), and how many.
+  Any email, picked or not, so it never makes anyone *warned*: that still takes the warning picked.
+- **What was done** (`Action`, oldest first, each with what shows it): an admin's steps to each account and Google's own
+  (the timeline's, from Google's Admin and sign-in logs); the changes this app's audit log shows it ran to an account touched
+  or a person here reached, since the attack (ended steps only; Phishing's trash steps are said once a email, as pulled);
+  emails pulled; each warning that counts (the Gmail log); the notes. The app's record and Google's side by side are what to
+  hand anyone. The audit log is read with the reading, off the main thread, newest first, stopping at the attack.
+- **The review** (`IncidentStore.Review`, kept in `incident.json` since 2026-10-27; a file without it still reads): type,
+  severity, the meeting's time and who attended, how they got in, what went well, what to do better, and the plan going
+  forward (a line an item, with who and by when). The meeting's agenda is filled from the numbers.
+- **Export Report…** (a new folder, never an existing one: `0700`, files `0600`; a failure removes it): `Incident report.pdf`
+  (Core Text from the plain text: nothing is read as markup), `Incident report.txt`, `who-it-reached.csv`, `accounts.csv`,
+  `steps-taken.csv`, `still-to-do.csv`, `emails-pulled.csv`, `timeline.csv`, `evidence/` (every saved read copied by
+  descriptor, never through a link) and `evidence-sha256.txt` (each file's SHA-256, listed in the report too, to show the
+  evidence unchanged). Times in the report say the Mac's time zone.
+- **Coming back reads nothing again** (asked the same day: "it still takes a bit to read the logs when we already have
+  one"): Incident's reading is kept by the window (`ContentView`), not the screen, so leaving Incident no longer forgets it,
+  and an incident's saved logs are read from disk once per opening (`Incidents.shownKey`). What would make it different reads
+  again: a new pull, a mark, a pick, the directory, a group read, or the audit log's size or time
+  (`LogReaderView.auditStamp`, looked at when the screen appears and after a run), so a Phishing run or a Secure here still
+  shows. The groups read are kept too; only a read that failed is tried again on leaving (`GroupsReached.forgetFailures`).
+- **Not built:** the sign-off (slice 5's Close Incident), a hand tick for what no log shows (it's a note for now).
+- **Live check (L4r, reads and this Mac only):** on the real incident, Export Report…: the PDF opens and reads in order;
+  who-it-reached.csv matches Who it reached and the 10-19 list made by hand; `shasum -a 256` of an evidence file matches
+  evidence-sha256.txt; leave Incident and come back: no "Reading the logs…".
+
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it
 points to, and on request the on-device model's explanation. Plan and rules: docs/plans/2026-10-19-on-device-log-reader.md.
@@ -814,5 +858,6 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 - The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): first slice 7 (narrow pulls first:
   the reported accounts, then each attacker address across every account; and an every-account pull says after its first
   read how far it will get, extending "What's realistic" above), then the incoming phish and who to warn,
-  the rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent) and the report, watching, Look for Trouble.
+  the rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent), watching and
+  the sign-off, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

@@ -107,6 +107,10 @@ struct ContentView: View {
     @State private var compromisedPerson: String?
     /// A Message-ID another screen asked Phishing to find (the log reader's "Pull … from Every Mailbox…").
     @State private var phishingMessage: String?
+    /// Incident's reading of the logs, and the directory as it reads it: kept by the window, so going to another screen and
+    /// back reads nothing again (the operator, 2026-10-27: each return re-read every event).
+    @State private var incidentReading = LogReaderView.Memory()
+    @State private var directoryIndex = DirectoryIndex()
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
@@ -174,8 +178,8 @@ struct ContentView: View {
             case .compromised:
                 CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
                                 logs: services.incidentLogs, groupsReached: services.groupsReached, known: services.knownSignIns,
-                                nobodyHas: services.nobodyHas, incidents: services.incidents,
-                                auditURL: services.auditURL, hasGam: services.executor != nil,
+                                nobodyHas: services.nobodyHas, incidents: services.incidents, readerMemory: incidentReading,
+                                directoryIndex: directoryIndex, auditURL: services.auditURL, hasGam: services.executor != nil,
                                 requested: $compromisedPerson) { id in
                     // An empty ID only opens the screen: what the operator pasted there stays.
                     if !id.isEmpty { phishingMessage = id }

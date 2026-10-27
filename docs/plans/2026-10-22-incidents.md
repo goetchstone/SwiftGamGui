@@ -26,9 +26,14 @@ reached, from the Gmail log's own Send, Receive and Bounced events, with the war
 CSV (runbook "Who it reached"), checked by three adversarial reviews and a final one (2026-10-25). Then (2026-10-27) its
 groups read to their members, nested groups too, at most 20 a screen: each member needs their own receipt of the warning,
 and only a group whose members couldn't be read counts on the warning's send (runbook "Who it reached", "A group's
-members"). Next, in this order: slice 7 (narrow pulls first, and how far a wide pull gets, planned 2026-10-24 at the operator's ask);
-the incoming phish and a pull anchored on the attack; the
-checklist (done from the logs where they show it, else ticked by hand) and the report (slice 4); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+members"). Then (2026-10-27, moved up at the operator's ask: "a nice report I can run on the incident and export", to show due
+diligence with the logs to support it, and plan the review meeting) slice 4's report on Report: each number opening its list,
+every step taken with the record that shows it, who each recipient was contacted by after the phish, the review (type,
+severity, the meeting, lessons learned, the plan going forward) with the meeting's agenda, and Export Report… (a PDF, its
+text, a CSV a list, and the evidence copied with each file's SHA-256); and coming back to Incident reads nothing again (runbook
+"The report"). Next, in this order: slice 7 (narrow pulls first, and how far a wide pull gets, planned 2026-10-24 at the
+operator's ask); the incoming phish and a pull anchored on the attack; the checklist (done from the logs where they show it,
+else ticked by hand); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen
