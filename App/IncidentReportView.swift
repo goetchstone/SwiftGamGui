@@ -55,13 +55,9 @@ struct IncidentReportView: View {
 
     var body: some View {
         Section {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(report.record.title).font(.headline)
-                Text(IncidentRecordSection.opened(inputs.record)).foregroundStyle(.secondary)
-                Text(timesWords).foregroundStyle(.secondary)
-            }
-            .textSelection(.enabled)
-            .accessibilityElement(children: .combine)
+            // The incident's title and when it was opened are its header's, just above (the operator, 2026-10-27: said twice).
+            Text(timesWords)
+                .textSelection(.enabled)
             HStack {
                 if exporting {
                     ProgressView().controlSize(.small)

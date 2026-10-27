@@ -79,13 +79,18 @@ public enum ActivityLogs {
         public let app: String
 
         public init(record: GamOutput.Record, application: Application, index: Int) {
+            self.init(record: record, application: application, index: index, columns: Columns(record.keys))
+        }
+
+        /// The row of `record`, whose columns are `columns` (`Columns.fit`): worked out once for a report's every row.
+        init(record: GamOutput.Record, application: Application, index: Int, columns: Columns) {
             self.application = application
             func text(_ key: String) -> String { Fields.text(Fields.first(record, key)) }
             time = text("id.time")
             date = try? Date(time, strategy: .iso8601)
             event = text("name")
             ip = text("ipAddress")
-            parameters = ActivityLogs.parameters(record)
+            parameters = columns.parameters(record)
             identity = ([text("id.uniqueQualifier"), time, event] + parameters.map { "\($0.name)=\($0.value)" }).joined(separator: "|")
             id = [text("id.uniqueQualifier"), time, event, String(index)].joined(separator: "|")
             // A Chrome event's person is the account signed in to the profile, else the actor, else the device's user: a
@@ -213,52 +218,98 @@ public enum ActivityLogs {
                                        "actor.applicationInfo.impersonation"]
 
     /// Each simple column by name, then each nested parameter by its chain of names, in GAM's column order.
-    static func parameters(_ record: GamOutput.Record) -> [Parameter] {
-        var names: [String: String] = [:]
-        for (key, value) in record where key.hasPrefix("parameters.") && key.hasSuffix(".name") {
-            names[String(key.dropLast(5))] = Fields.text(value)
+    static func parameters(_ record: GamOutput.Record) -> [Parameter] { Columns(record.keys).parameters(record) }
+
+    /// What a report's header says of its columns, worked out once for every row under it: which are parameters, in what
+    /// order, and how each nested one is named. One GAM call's CSV gives every row the same columns in the same order, and
+    /// each row worked them out again (the operator's 30-day pull, 2026-10-27: a Gmail read of 1,000 events was 2 s in GAM,
+    /// then 6 to 8 s of a Debug build sorting each row's columns, `padded` twice a comparison).
+    struct Columns {
+        enum Kind {
+            /// A simple column: said by its own name.
+            case simple(String)
+            /// A nested parameter's value: named by the `.name` columns of these prefixes that have one, chained; one of a
+            /// list's values (`multiValue`) joins the one before it of the same name.
+            case nested(prefixes: [String], list: Bool)
         }
-        // A list's count column (flattenJSON writes `x` beside `x.0`…) is never a parameter.
-        let keys = Set(record.keys)
-        func isCount(_ key: String) -> Bool { keys.contains(key + ".0") }
-        // GAM sorts its titles as text (`…parameter.10` before `….2`): the nested ones back in their numeric order, after
-        // the simple ones in GAM's.
-        func padded(_ key: String) -> String {
-            key.split(separator: ".").map { part in
-                part.allSatisfy(\.isASCII) && part.allSatisfy(\.isNumber) && part.count < 9
-                    ? String(repeating: "0", count: 9 - part.count) + part : String(part)
-            }.joined(separator: ".")
+
+        let keys: [String]
+        /// Each column that can say a parameter, in the order they're said: its place in the row, and how.
+        let said: [(index: Int, kind: Kind)]
+        /// Each `parameters.….name` column: its place in the row, and its prefix.
+        let names: [(index: Int, prefix: String)]
+
+        init(_ keys: [String]) {
+            self.keys = keys
+            var names: [(index: Int, prefix: String)] = []
+            for (index, key) in keys.enumerated() where key.hasPrefix("parameters.") && key.hasSuffix(".name") {
+                names.append((index, String(key.dropLast(5))))
+            }
+            self.names = names
+            // A list's count column (flattenJSON writes `x` beside `x.0`…) is never a parameter.
+            let all = Set(keys)
+            // GAM sorts its titles as text (`…parameter.10` before `….2`): the nested ones back in their numeric order, after
+            // the simple ones in GAM's. Each key padded once, not twice a comparison.
+            func padded(_ key: String) -> String {
+                key.split(separator: ".").map { part in
+                    part.utf8.allSatisfy { (0x30...0x39).contains($0) } && part.utf8.count < 9
+                        ? String(repeating: "0", count: 9 - part.utf8.count) + part : String(part)
+                }.joined(separator: ".")
+            }
+            let nested = keys.indices.filter { keys[$0].hasPrefix("parameters.") }.map { ($0, padded(keys[$0])) }
+            let ordered = keys.indices.filter { !keys[$0].hasPrefix("parameters.") } + nested.sorted { $0.1 < $1.1 }.map(\.0)
+            var said: [(index: Int, kind: Kind)] = []
+            for index in ordered {
+                let key = keys[index]
+                guard !all.contains(key + ".0"), !activityColumns.contains(key) else { continue }
+                guard key.hasPrefix("parameters.") else {
+                    said.append((index, .simple(key)))
+                    continue
+                }
+                // `….value`, `….intValue`, `….boolValue`, `….multiValue.N`: the value of the parameter whose prefix it has.
+                let parts = key.split(separator: ".").map(String.init)
+                guard let at = parts.lastIndex(where: { ["value", "intValue", "boolValue", "multiValue"].contains($0) }),
+                      !(parts[at] == "multiValue" && at == parts.count - 1)   // a list's count
+                else { continue }
+                let prefixes = stride(from: 2, through: at, by: 1).map { parts[..<$0].joined(separator: ".") }
+                guard !prefixes.isEmpty else { continue }
+                said.append((index, .nested(prefixes: prefixes, list: parts[at] == "multiValue")))
+            }
+            self.said = said
         }
-        let ordered = record.members.filter { !$0.key.hasPrefix("parameters.") }
-            + record.members.filter { $0.key.hasPrefix("parameters.") }.sorted { padded($0.key) < padded($1.key) }
-        var out: [Parameter] = []
-        for (key, value) in ordered where !isCount(key) {
-            let text = Fields.text(Fields.truthy(value))   // a short row's missing cell is null, never "None"
-            guard !text.isEmpty, !activityColumns.contains(key) else { continue }
-            guard key.hasPrefix("parameters.") else {
-                out.append(Parameter(name: key, value: text))
-                continue
-            }
-            // `….value`, `….intValue`, `….boolValue`, `….multiValue.N`: the value of the parameter whose prefix it has.
-            let parts = key.split(separator: ".").map(String.init)
-            guard let at = parts.lastIndex(where: { ["value", "intValue", "boolValue", "multiValue"].contains($0) }),
-                  !(parts[at] == "multiValue" && at == parts.count - 1)   // a list's count
-            else { continue }
-            var chain: [String] = []
-            for end in stride(from: 2, through: at, by: 1) {
-                if let name = names[parts[..<end].joined(separator: ".")] { chain.append(name) }
-            }
-            guard !chain.isEmpty else { continue }
-            let name = chain.joined(separator: ".")
-            if let last = out.last, last.name == name, parts[at] == "multiValue" {
-                out[out.count - 1] = Parameter(name: name, value: last.value + " " + text)
-            } else {
-                out.append(Parameter(name: name, value: text))
-            }
+
+        /// Whether `record` has these columns, in this order: then it's read by them.
+        func fit(_ record: GamOutput.Record) -> Bool {
+            record.members.count == keys.count && zip(record.members, keys).allSatisfy { $0.key == $1 }
         }
-        // An event GAM wrote both simply and nested says each once.
-        var seen: Set<String> = []
-        return out.filter { seen.insert($0.name + "\u{0}" + $0.value).inserted }
+
+        /// `record`'s parameters, `record` having these columns (`fit`).
+        func parameters(_ record: GamOutput.Record) -> [Parameter] {
+            let members = record.members
+            var names: [String: String] = [:]
+            for (index, prefix) in self.names { names[prefix] = Fields.text(members[index].value) }
+            var out: [Parameter] = []
+            for (index, kind) in said {
+                let text = Fields.text(Fields.truthy(members[index].value))   // a short row's missing cell is null, never "None"
+                guard !text.isEmpty else { continue }
+                switch kind {
+                case .simple(let name):
+                    out.append(Parameter(name: name, value: text))
+                case .nested(let prefixes, let list):
+                    let chain = prefixes.compactMap { names[$0] }
+                    guard !chain.isEmpty else { continue }
+                    let name = chain.joined(separator: ".")
+                    if list, let last = out.last, last.name == name {
+                        out[out.count - 1] = Parameter(name: name, value: last.value + " " + text)
+                    } else {
+                        out.append(Parameter(name: name, value: text))
+                    }
+                }
+            }
+            // An event GAM wrote both simply and nested says each once.
+            var seen: Set<String> = []
+            return out.filter { seen.insert($0.name + "\u{0}" + $0.value).inserted }
+        }
     }
 
     /// The events Google raises itself, beside any whose name says suspicious, blocked, deny, disabled, leak or attack:
@@ -419,9 +470,15 @@ public enum ActivityLogs {
         }.joined(separator: ", ")
     }
 
-    /// The report's rows, newest first as GAM sorted them.
+    /// The report's rows, newest first as GAM sorted them: each read by its columns, worked out once while the rows share
+    /// them (a CSV's always do; JSON's records may not).
     public static func rows(_ stdout: String, application: Application) -> [Row] {
-        GamOutput.records(stdout).enumerated().map { Row(record: $1, application: application, index: $0) }
+        var columns: Columns?
+        return GamOutput.records(stdout).enumerated().map { index, record in
+            let fitting = columns.flatMap { $0.fit(record) ? $0 : nil } ?? Columns(record.keys)
+            columns = fitting
+            return Row(record: record, application: application, index: index, columns: fitting)
+        }
     }
 
     /// The addresses to look for elsewhere: each IP in `rows`, those on a flagged event first, then by how often.
