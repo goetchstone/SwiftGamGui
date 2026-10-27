@@ -53,12 +53,18 @@ public enum LogReading {
         /// isn't read, and for one read empty (a tenant has at least its admin: final review 2026-10-25). An inside address that
         /// isn't one is no one's mailbox (a group, an address no account has): `Reach`.
         public let people: [String: String]?
+        /// Each group here the attacker's emails went to whose members were read, and the groups read among them: its address to
+        /// its members' addresses, lowercased. A group read counts by its members, each person here by their own receipt, never
+        /// on a warning's send; one not read still does (`Reach`).
+        public let groups: [String: [String]]
+        /// The groups read with GAM's CUSTOMER member: everyone in the organization, every person in `people`.
+        public let everyone: Set<String>
         /// The warnings the operator picked for each email the attacker sent: its bare Message-ID to theirs (`Reach`).
         public let warnings: [String: Set<String>]
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
                     pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], people: [String: String]? = nil,
-                    warnings: [String: Set<String>] = [:]) {
+                    groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:]) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
@@ -67,6 +73,8 @@ public enum LogReading {
             self.nobodyHas = nobodyHas
             self.domains = domains
             self.people = people.flatMap { $0.isEmpty ? nil : $0 }
+            self.groups = groups
+            self.everyone = everyone
             self.warnings = warnings
         }
     }
@@ -360,9 +368,11 @@ public enum LogReading {
             case bounced
             /// Quarantined, rejected for too much mail, or an event Google marked failed, and no receipt after.
             case blocked
-            /// Its sends named them, and the logs read show nothing else: outside, the most Google's log says.
+            /// Its sends named them, or a group read they're in (`Recipient.via`), and the logs read show nothing else: outside,
+            /// the most Google's log says.
             case sent
-            /// Inside, but no one's mailbox (a group, an address no account has): its members show by their own receipts.
+            /// Inside, but no one's mailbox (a group, an address no account has). A group whose members were read lists them,
+            /// each by their own receipt (`Recipient.expanded`).
             case notAMailbox
         }
 
@@ -374,13 +384,18 @@ public enum LogReading {
             public let outcome: Outcome
             public let at: Date?
             /// The log's own word that a warning that counts reached them: their mailbox's receipt of it (a person here), or
-            /// its send Google didn't mark failed naming them with nothing failing after (outside, or no one's mailbox). False
-            /// is "not shown warned", never "not warned": a receipt in a log not read can't be seen. Nil while no warning that
-            /// counts is picked.
+            /// its send Google didn't mark failed naming them, or a group read they're in, with nothing failing after (outside,
+            /// or no one's mailbox). False is "not shown warned", never "not warned": a receipt in a log not read can't be seen.
+            /// Nil while no warning that counts is picked, and for a group whose members are listed.
             public let warned: Bool?
+            /// The group here the email reached them through, as its sends named it: listed only as its member (or a member's).
+            public let via: String?
+            /// A group here whose members were read: they're listed, each counted as themselves, so it's never warned or to warn
+            /// itself, nor counted among who it reached.
+            public let expanded: Bool
             /// To warn: reached (all but an address that bounced and isn't a person's mailbox here) and not shown warned. A
             /// person here whose copy bounced stays to warn (final review 2026-10-25: the CSV said "bounced" and nothing more).
-            public var toWarn: Bool { !(outcome == .bounced && !mailbox) && warned != true }
+            public var toWarn: Bool { !expanded && !(outcome == .bounced && !mailbox) && warned != true }
             public var id: String { address }
         }
 
@@ -421,8 +436,9 @@ public enum LogReading {
 
         /// Who to warn about it: everyone it was addressed to or received by. Over-warning is safe and under-warning the harm
         /// (review 2026-10-24), so only an address that bounced and isn't a person's mailbox here (outside, or no one's) is left
-        /// out: a warning to it would bounce too. A quarantine, a rejection, or a person here whose copy bounced stays on.
-        public var reached: [Recipient] { recipients.filter { !($0.outcome == .bounced && !$0.mailbox) } }
+        /// out: a warning to it would bounce too. A quarantine, a rejection, or a person here whose copy bounced stays on. A group
+        /// whose members are listed is left out too: they are who it reached.
+        public var reached: [Recipient] { recipients.filter { !$0.expanded && !($0.outcome == .bounced && !$0.mailbox) } }
         /// Reached and not shown warned by a warning that counts.
         public var toWarn: [Recipient] { recipients.filter(\.toWarn) }
 
@@ -432,12 +448,15 @@ public enum LogReading {
 
         /// The outcome in words, as the screen and the CSV say it.
         public static func words(_ recipient: Recipient) -> String {
-            switch recipient.outcome {
+            let group = "a group here, each of its members listed as themselves"
+            let sent = recipient.via.map { "sent to \($0)" } ?? "sent"
+            return switch recipient.outcome {
             case .received: "received"
             case .bounced: "bounced"
-            case .blocked: "quarantined or rejected"
-            case .sent: recipient.inside ? "sent, no receipt in the logs read" : "sent, no bounce in the logs read"
-            case .notAMailbox: "no one's mailbox here: a group or an address no account has"
+            case .blocked: recipient.expanded ? "quarantined or rejected; \(group)" : "quarantined or rejected"
+            case .sent: recipient.inside ? "\(sent), no receipt in the logs read" : "\(sent), no bounce in the logs read"
+            case .notAMailbox: recipient.expanded ? group
+                : (recipient.via.map { "in \($0), " } ?? "") + "no one's mailbox here: a group or an address no account has"
             }
         }
 
@@ -944,8 +963,9 @@ public enum LogReading {
             let warned = Set(reach.reached.filter { $0.warned == true }.map(\.address))
             let by = reach.warnings.filter { $0.problem == nil && !$0.warned.isDisjoint(with: warned) }
             if reach.toWarn.isEmpty, reach.unreadable == 0, reach.unnamed == 0, context.people != nil, let latest = by.filter({ $0.at != nil }).max(by: { $0.at! < $1.at! }) {
-                // A group or an address no account has counts on the warning's send, as outside does: who got either through a
-                // group is in its members' own Gmail logs, which a pull may not have (final review 2026-10-25), so it's said.
+                // A group whose members weren't read, or an address no account has, counts on the warning's send, as outside does:
+                // who got either through a group is in its members' own Gmail logs, which a pull may not have (final review
+                // 2026-10-25), so it's said. A group whose members were read isn't among them: its members are, as themselves.
                 let groups = reach.reached.filter { $0.inside && !$0.mailbox }.count   // quarantined or rejected too (final review)
                 doneTasks.append((.warnRecipients, "Warned everyone \(named) reached: \(reach.reached.count) "
                                   + (reach.reached.count == 1 ? "person" : "people")
@@ -1047,6 +1067,25 @@ public enum LogReading {
             readings[text] = found
             return found
         }
+        // Who a group read reaches (`Context.groups`): its members, each as `person` reads them, then the members of the groups
+        // read among them, each once (groups can hold each other), and everyone here for one with GAM's CUSTOMER member. Worked
+        // out once a group.
+        let everyone = context.people.map { Set($0.values).sorted() } ?? []
+        var through: [String: (members: [String], held: Set<String>)] = [:]
+        func members(of group: String) -> (members: [String], held: Set<String>) {
+            if let known = through[group] { return known }
+            var found: [String] = [], seen: Set<String> = [group], queue = [group]
+            while !queue.isEmpty {
+                let next = queue.removeFirst()
+                let listed = (context.groups[next] ?? []).compactMap { read($0).map(person) } + (context.everyone.contains(next) ? everyone : [])
+                for member in listed where seen.insert(member).inserted {
+                    found.append(member)
+                    if context.groups[member] != nil { queue.append(member) }
+                }
+            }
+            through[group] = (found, Set(found))
+            return (found, Set(found))
+        }
         // Pass 1: each Gmail event's email and type once; when the attacker's first email went; and the people whose Gmail
         // log the pull has after it (a receipt of anything since: receipts carry no address, so a read by the attacker's
         // address has none, and one from before says nothing of the days after).
@@ -1073,10 +1112,12 @@ public enum LogReading {
         // Pass 2: the attacker's emails and the picks, each once; then only the emails here after the first of them that went
         // to someone those reached, each once (review 2026-10-24: every send kept made a reading of a whole pull ten times
         // slower): a send naming one of them, or one a person among them received (a send to a group names the group, not its
-        // members: final review 2026-10-25).
+        // members: final review 2026-10-25). A group read's members are among them.
         let named = attackers.union(picks)
         var mails = Mail.all(in: ided.filter { named.contains($0.id) }.map(\.event), person: person, reading: read)
-        let reachedAll = Set(attackers.flatMap { mails[$0]?.order ?? [] })
+        let reachedAll = Set(attackers.flatMap { id in
+            (mails[id]?.order ?? []).flatMap { [$0] + (context.groups[$0] == nil ? [] : members(of: $0).members) }
+        })
         var candidates: Set<String> = []
         for (id, kind, event) in ided where kind == 1 && (event.time ?? first) >= first && !named.contains(id) && !candidates.contains(id)
             && !attacker.contains(event.ip) {
@@ -1127,6 +1168,14 @@ public enum LogReading {
             reachedBy[id] = found
             return found
         }
+        // Whom a warning's reach covers: those it reached, and an outside address or a group not read there through a group
+        // read it reached by its send. A person here only by their own receipt (`Context.groups`).
+        func covered(_ found: Set<String>) -> (String) -> Bool {
+            let groups = found.filter { context.groups[$0] != nil }
+            return { address in
+                found.contains(address) || (!isMailbox(address) && groups.contains { members(of: $0).held.contains(address) })
+            }
+        }
         return ids.map { pasted in
             let id = bareMessageID(pasted), mail = mails[id] ?? Mail()
             let after = (mail.sends + mail.begun).compactMap(\.time).min() ?? .distantPast
@@ -1143,9 +1192,21 @@ public enum LogReading {
                                        at: (send ?? found?.sends.first)?.time, covers: 0, warned: [], problem: problem)
             }
             let counting = picked.filter { $0.problem == nil }.map(\.messageID)
-            let warned = Set(counting.flatMap { reached(by: $0) })
-            let recipients = mail.order.map { address in
-                let inside = isInside(address)
+            let warned = covered(Set(counting.flatMap { reached(by: $0) }))
+            // A group here whose members were read counts by them (`Context.groups`), listed after everyone the log names, each
+            // once, through the first group its sends named that holds them; a group it bounced from reached no one.
+            func isExpanded(_ address: String) -> Bool {
+                context.groups[address] != nil && isInside(address) && !isMailbox(address) && mail.failed[address]?.bounced != true
+            }
+            var addresses = mail.order, via: [String: String] = [:], listed = Set(mail.order)
+            for group in mail.order where isExpanded(group) {
+                for member in members(of: group).members where listed.insert(member).inserted {
+                    addresses.append(member)
+                    via[member] = group
+                }
+            }
+            let recipients = addresses.map { address in
+                let inside = isInside(address), expanded = isExpanded(address)
                 let outcome: Reach.Outcome = if mail.received[address] != nil { .received }
                     else if let failure = mail.failed[address] { failure.bounced ? .bounced : .blocked }
                     else if inside && !isMailbox(address) { .notAMailbox }
@@ -1156,9 +1217,9 @@ public enum LogReading {
                 case .sent, .notAMailbox: after == .distantPast ? nil : after
                 }
                 return Reach.Recipient(address: address, inside: inside, mailbox: isMailbox(address), outcome: outcome, at: at,
-                                       warned: counting.isEmpty ? nil : warned.contains(address))
+                                       warned: counting.isEmpty || expanded ? nil : warned(address), via: via[address], expanded: expanded)
             }
-            let reach = Set(recipients.filter { !($0.outcome == .bounced && !$0.mailbox) }.map(\.address))
+            let reach = Set(recipients.filter { !$0.expanded && !($0.outcome == .bounced && !$0.mailbox) }.map(\.address))
             var covers: [String: Int] = [:]
             for address in reach { for other in byAddress[address] ?? [] where !picked.contains(where: { $0.messageID == other }) { covers[other, default: 0] += 1 } }
             // The most people first, then the earlier, at most `candidatesShown`: whole counts taken from the top until there are
@@ -1191,7 +1252,7 @@ public enum LogReading {
             return Reach(messageID: id, subject: mail.subject, senders: unique(mail.sends.map(\.who).filter(isAccount)), recipients: recipients,
                          candidates: Array(candidates.prefix(Reach.candidatesShown)),
                          warnings: picked.map { pick in
-                             let shown = pick.problem == nil ? reached(by: pick.messageID).intersection(reach) : []
+                             let shown = pick.problem == nil ? Set(reach.filter(covered(reached(by: pick.messageID)))) : []
                              return Reach.Candidate(messageID: pick.messageID, sender: pick.sender, subject: pick.subject, at: pick.at,
                                                     covers: shown.count, warned: shown, problem: pick.problem)
                          },

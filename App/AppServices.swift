@@ -46,6 +46,8 @@ struct AppServices {
     let compromisedChanges: CompromisedChanges
     /// Its incident logs: the activity reports an incident needs, pulled together.
     let incidentLogs: IncidentLogs
+    /// The groups the attacker's emails went to, read for whom they reach (Who it reached): its own reader.
+    let groupsReached: GroupsReached
     /// One email out of every mailbox: GAM's dry run to find the copies, then the trash through the executor.
     let phishingChanges: PhishingChanges
     /// A person's mailbox searched from their page.
@@ -132,6 +134,7 @@ struct AppServices {
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
                                                                   access: UserAccess(setup: setup, runner: runner)),
                            incidentLogs: IncidentLogs(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           groupsReached: GroupsReached(setup: setup, runner: runner),
                            phishingChanges: phishingChanges,
                            mailboxSearches: MailboxSearches(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),

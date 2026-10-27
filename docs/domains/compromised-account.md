@@ -723,6 +723,19 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   mailbox's own unless it's a sender's (then, and when its actor doesn't read, the whole email's). Addresses are read loosely
   (`LogReading.address`, on bytes for ASCII); an entry that isn't one is counted (`unreadable`), said, and keeps the to-do
   from done; a send naming no recipient (`unnamed`) does too. The model is never given any of it.
+- **A group's members** (2026-10-27; before, a member whose Gmail log wasn't pulled was invisible and the group counted on
+  the warning's send): a group here it went to (no one's mailbox, not bounced from) is read for its members
+  (`GroupsReached`, GamGUI's `print group-members group <g> formatjson`, the builder the group page uses), then the groups
+  among them, each once though groups hold each other, **at most 20 while the screen is open** (invariant 9); a read that
+  failed, an address GAM finds no group at, and one past the limit aren't read again until the screen is left and opened
+  again, and each is said under its email with why. A group read counts by its members (`Context.groups`, `.everyone`):
+  each is listed after everyone the log names, through the group (`Recipient.via`), an alias as its person, GAM's CUSTOMER
+  member as everyone in the directory; the group's own row (`expanded`) is neither warned nor to warn nor counted among who
+  it reached. A person here among them needs their own receipt (and is pulled again without one); an outside member, or a
+  group not read, counts on the warning's send to it or to a group read that holds it. The reading is asked once without the
+  members and once with them (the group key joins the directory's, so, as for a directory change, "Reading the logs…"
+  shows until the reading with them comes: `staleIsSafe`); while they're read, the first counts the group on the send, as
+  it says, and the email's section says they're being read. A suspended member is listed like anyone (warning too many is safe).
 - **Whose Gmail log the pull has** is read off the data: a person with a receipt of anything since that email went
   (receipts carry no address, so a read filtered by the attacker's address has none, and a merged pull is judged by what it
   holds). A person here still to warn with none is to pull again (`Reach.unread`); none while the directory isn't read, since
@@ -739,8 +752,8 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
 - **To do and done:** "Warn the N people … reached" until the warnings that count reach everyone it reached; "Pull the
   Gmail log again for …" (Pull Again, Gmail only, 20 at a time) for `Reach.unread`; a pick that doesn't count, unreadable
   entries, a send naming no one, and the directory not read are their own items. Done names every warning that counted and
-  reached someone, with the latest one's sender and time, and how many of those reached are a group or an address no
-  account has, which count on the warning's send as outside does.
+  reached someone, with the latest one's sender and time, and how many of those reached are a group whose members weren't
+  read or an address no account has, which count on the warning's send as outside does (a group read is its members).
 - **Where:** Respond, a section per email under Where things stand (`LogReaderView`'s `ReachSection`): a line in numbers,
   every address (300 shown; what's still to warn stands out and says "to warn"), the warnings picked and whether they count,
   **Export CSV…** (`Reach.columns`: address, where, reached, when, warned, to warn; private 0600, off the main thread, in
@@ -758,18 +771,21 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   scratch program linking only `Assist` (a Release test bundle takes most of an hour to build), Release then Debug: no email
   of the attacker's 0.14 s, 0.82 s; one to 50 of them 0.54 s, 1.77 s (4.9 s Debug before); one to all 1,000 1.43 s, 3.9 s
   (10.1 s Debug before). `LogReadingTests.whoItReachedIsReadInSeconds` holds the shape in thread CPU time.
-- **Known limits:** who got it through a group shows only in its members' own Gmail logs: a group counts on the warning's
-  send, and Done says how many did (reading the group's members to list each is the next step). The receipt rules rest on
+- **Known limits:** a group whose members can't be read (GAM's failure, or past 20 groups) still counts on the warning's
+  send, and Done says how many did. Members are read as they are now, not as they were when the email went. The receipt
+  rules rest on
   Google's schema and the mock's rows (a Receive's actor is the recipient, with no IP), not yet on a live row (L3w). A build
   from before this one, saving an incident, drops its picks (its writer doesn't know them; bumping the format would make it
   set the whole incident aside instead). A Details save writes onto the record as kept now, so a pick made in another window
   stays.
 - Tests: `LogReadingTests.whoThePhishReached`, `.whetherTheyWereWarned`, `.whatTheLogsShowAndWhatTheyCant`,
-  `.whatTheThirdReviewFound`, `.whatTheFinalReviewFound`, `.whoItReachedIsReadInSeconds`,
-  `IncidentStoreTests.theWarningsPickedAreKept`.
+  `.whatTheThirdReviewFound`, `.whatTheFinalReviewFound`, `.whoAGroupReached`, `.aGroupNotReadCountsOnTheSend`,
+  `.whoItReachedIsReadInSeconds`, `IncidentStoreTests.theWarningsPickedAreKept`,
+  `GroupStoreTests.theGroupsAnEmailWentToAreReadWithTheGroupsInThem`, `.pastTheLimitAGroupIsSaidNotRead`.
 - **Live check (L3w, reads only):** on the real incident, Who it reached for the phish against the list made from the Admin
   console's export on 10-19 (recipient, where, bounced): the same addresses, the same bounces; and a Receive row's actor and
-  IP, and a domain alias in `nonEditableAliases`, as the rules assume.
+  IP, and a domain alias in `nonEditableAliases`, as the rules assume; and a group it went to listed by its members, with
+  a nested group's and the "Does not exist" wording and exit code the mock assumes for an address that isn't a group.
 
 ## Log reader (Read the logs)
 Under Pull Incident Logs once a pull has ended: what the logs show, by rules in code, each finding with the fixes it

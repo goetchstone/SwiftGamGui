@@ -22,6 +22,8 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
   snapshot tagged with domain, generation and revision; a load in flight and a problem, each tagged too.
 - `Packages/GamKit/Sources/Directory/GroupMembers.swift`: a group's members. UserAccess's shape: keyed
   by the address as `Guard.normalized` compares it, the domain and the generation; the last eight kept.
+- `Packages/GamKit/Sources/Directory/GroupsReached.swift`: Incident's own reader of the groups an attacker's email went
+  to, with the same read, nested groups followed, at most 20 a screen (compromised-account.md, "Who it reached").
 - `Packages/GamKit/Sources/Directory/GroupChanges.swift`: the writes (slice B). SignatureChanges' shape:
   a held preview, a confirm that runs only the one shown, a result in words.
 - `Packages/GamKit/Sources/Setup/SetupModel.swift`: `onTenantChange(_:)`, the list of tenant observers.

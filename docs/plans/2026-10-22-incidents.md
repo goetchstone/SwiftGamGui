@@ -23,9 +23,10 @@ Mac (runbook "Done from the audit log"; phishing.md D13, D14). Then (2026-10-24)
 read four at once and merged once (PR #117; runbook "Opening fast"). Then (2026-10-24, at the operator's ask: "export a
 list of who it got out to and not bounced", all from the app) who to warn and whether they were: Respond's Who it
 reached, from the Gmail log's own Send, Receive and Bounced events, with the warning picked kept in the incident and a
-CSV (runbook "Who it reached"), checked by three adversarial reviews and a final one (2026-10-25).
-Next, in this order: Who it reached's groups read to their members, so each member needs their own receipt of the warning
-(today a group counts on the warning's send, and Done says how many did); slice 7 (narrow pulls first, and how far a wide pull gets, planned 2026-10-24 at the operator's ask);
+CSV (runbook "Who it reached"), checked by three adversarial reviews and a final one (2026-10-25). Then (2026-10-27) its
+groups read to their members, nested groups too, at most 20 a screen: each member needs their own receipt of the warning,
+and only a group whose members couldn't be read counts on the warning's send (runbook "Who it reached", "A group's
+members"). Next, in this order: slice 7 (narrow pulls first, and how far a wide pull gets, planned 2026-10-24 at the operator's ask);
 the incoming phish and a pull anchored on the attack; the
 checklist (done from the logs where they show it, else ticked by hand) and the report (slice 4); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add

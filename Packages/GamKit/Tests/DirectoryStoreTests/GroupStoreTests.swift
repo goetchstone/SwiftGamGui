@@ -370,4 +370,57 @@ struct GroupStoreTests {
         #expect(!members.isReading("sales@example.com"))
         #expect(calls("print", "group-members").isEmpty)
     }
+
+    // MARK: the groups an email went to (Incident's Who it reached)
+
+    /// Each group asked, then the groups among its members, each read once with GamGUI's argv, though the groups hold each
+    /// other (here it@ holds team@ again); GAM's CUSTOMER member is everyone, an address GAM finds no group at is said, and
+    /// nothing asked is read again until `forget`. Another tenant sees none of it.
+    @Test func theGroupsAnEmailWentToAreReadWithTheGroupsInThem() async throws {
+        let state = scratch.appending(path: "state")
+        try FileManager.default.createDirectory(at: state.appending(path: "groups"), withIntermediateDirectories: true)
+        try Data(("{\"email\": \"carol@example.com\", \"group\": \"it@example.com\", \"id\": \"100000000000000000003\", \"role\": \"MEMBER\", "
+                  + "\"status\": \"ACTIVE\", \"type\": \"USER\"}\n{\"email\": \"team@example.com\", \"group\": \"it@example.com\", "
+                  + "\"id\": \"03abc000000000004\", \"role\": \"MEMBER\", \"status\": \"ACTIVE\", \"type\": \"GROUP\"}\n").utf8)
+            .write(to: state.appending(path: "groups/it@example.com"))
+        let runner = try runner(), app = app(runner)
+        let reached = GroupsReached(setup: app.setup, runner: runner)
+        reached.environment = ["GAM_MOCK_STATE": state.path]
+        try await connect("example.com", in: app.setup)
+        let before = reached.key
+        await reached.read([" TEAM@example.com", "nosuch@example.com"])
+        // The builder GoldenArgvTests holds to GamGUI's argv.
+        #expect(calls("print", "group-members").map(bytes) == ["team@example.com", "nosuch@example.com", "sales@example.com",
+                                                                "staff@example.com", "it@example.com"].map {
+            bytes(GamCommands.printGroupMembers(group: $0).argv)
+        })
+        #expect(reached.members == ["team@example.com": ["sales@example.com", "staff@example.com"],
+                                    "sales@example.com": ["alice@example.com", "it@example.com"],
+                                    "staff@example.com": ["bob@example.com", "alice@example.com"],
+                                    "it@example.com": ["carol@example.com", "team@example.com"]])
+        #expect(reached.everyone == ["staff@example.com"] && reached.problems == ["nosuch@example.com": "GAM finds no group at that address"])
+        #expect(reached.key != before && !reached.isReading)
+
+        let after = reached.key
+        await reached.read(["team@example.com", "it@example.com"])
+        #expect(calls("print", "group-members").count == 5 && reached.key == after, "asked again, nothing is read again")
+        reached.forget()
+        #expect(reached.members.isEmpty && reached.key != after)
+        await reached.read(["it@example.com"])
+        #expect(calls("print", "group-members").count == 9 && reached.members.count == 4, "forgotten, they're read again: it@, team@, sales@, staff@")
+
+        try await connect("example.org", in: app.setup)
+        #expect(reached.members.isEmpty && reached.problems.isEmpty, "example.com's groups, shown as example.org's")
+    }
+
+    /// Past the limit a group isn't read, and is said not read (invariant 9).
+    @Test func pastTheLimitAGroupIsSaidNotRead() async throws {
+        let runner = try runner(), app = app(runner)
+        let reached = GroupsReached(setup: app.setup, runner: runner, limit: 2)
+        try await connect("example.com", in: app.setup)
+        await reached.read(["team@example.com"])
+        #expect(calls("print", "group-members").count == 2 && Set(reached.members.keys) == ["team@example.com", "sales@example.com"])
+        #expect(reached.problems == ["staff@example.com": "not read: this screen reads at most 2 groups",
+                                     "it@example.com": "not read: this screen reads at most 2 groups"])
+    }
 }
