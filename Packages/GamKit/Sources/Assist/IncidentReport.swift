@@ -54,6 +54,82 @@ public struct IncidentReport: Sendable, Equatable {
         public var isEmpty: Bool { self == Review() }
     }
 
+    /// An address an email of the attacker's got to (`gotIt`): once, however many of their emails got to it.
+    public struct GotIt: Sendable, Equatable {
+        public let address: String
+        public let inside: Bool
+        /// A person's mailbox here.
+        public let mailbox: Bool
+        /// A receipt in its mailbox here; else sent, and nothing in the logs read says it failed.
+        public let received: Bool
+        /// When the first of them got to it.
+        public let at: Date?
+        /// The emails that got to it, by subject, each once, in the order they did.
+        public let subjects: [String]
+        public let emails: Int
+        /// Not shown warned of one of them by a warning picked that counts.
+        public let toWarn: Bool
+        /// Shown warned of every one of them.
+        public let warned: Bool
+        /// The first email from here that reached it after one of them (`Reach.Recipient.contacted`).
+        public let contacted: LogReading.Reach.Contact?
+        /// The group here it was listed through, when only a group's members named it.
+        public let through: String
+    }
+
+    /// Everyone the attacker's emails got to, each once, in the order they first did (the operator, 2026-10-27: "a clean way
+    /// to know who actually got a message and needs to be warned", across many emails of one subject, and "if it bounced, they
+    /// did not get it"): a receipt here, or a send nothing in the logs read says failed (outside, a person here whose Gmail log
+    /// isn't read, a group here). A bounce, a quarantine or a rejection didn't get through, and a group whose members are
+    /// listed is them.
+    public static func gotIt(_ reaches: [LogReading.Reach]) -> [GotIt] {
+        var order: [String] = []
+        var found: [String: (inside: Bool, mailbox: Bool, received: Bool, at: Date?, subjects: [String], emails: Int, toWarn: Bool,
+                             warned: Bool, contacted: LogReading.Reach.Contact?, through: String?)] = [:]
+        for reach in reaches {
+            let subject = reach.subject.isEmpty ? "(no subject)" : reach.subject
+            for recipient in reach.recipients where !recipient.expanded && [.received, .sent, .notAMailbox].contains(recipient.outcome) {
+                let contacted = recipient.contacted
+                guard var seen = found[recipient.address] else {
+                    order.append(recipient.address)
+                    found[recipient.address] = (recipient.inside, recipient.mailbox, recipient.outcome == .received, recipient.at, [subject], 1,
+                                                recipient.toWarn, recipient.warned == true, contacted, recipient.via)
+                    continue
+                }
+                seen.received = seen.received || recipient.outcome == .received
+                if let at = recipient.at { seen.at = min(seen.at ?? at, at) }
+                if !seen.subjects.contains(subject) { seen.subjects.append(subject) }
+                seen.emails += 1
+                seen.toWarn = seen.toWarn || recipient.toWarn
+                seen.warned = seen.warned && recipient.warned == true
+                if let contacted, seen.contacted.map({ contacted.at < $0.at }) ?? true { seen.contacted = contacted }
+                // Named itself by any of them: not only through a group.
+                if recipient.via == nil { seen.through = nil }
+                found[recipient.address] = seen
+            }
+        }
+        return order.compactMap { address in
+            found[address].map { GotIt(address: address, inside: $0.inside, mailbox: $0.mailbox, received: $0.received, at: $0.at,
+                                       subjects: $0.subjects, emails: $0.emails, toWarn: $0.toWarn, warned: $0.warned,
+                                       contacted: $0.contacted, through: $0.through ?? "") }
+        }
+    }
+
+    /// The list's columns: the address first, as `Email`, so a mail merge or a contacts import finds it.
+    public static let gotItColumns = ["Email", "Where", "Got it", "First got", "Emails", "Subjects", "Warned", "To warn",
+                                      "First contacted after", "Contacted by", "Contact subject", "Through group", "2-Step Verification"]
+
+    /// `got` as a table under `gotItColumns`; 2-Step Verification said for a person here only with the directory read (`no2SV`).
+    public static func gotItTable(_ got: [GotIt], no2SV: Set<String>?) -> Table {
+        Table(columns: gotItColumns, rows: got.map { one in
+            [.text(one.address), .text(one.inside ? "inside" : "outside"),
+             .text(one.received ? "received" : "sent, no bounce or failure in the logs read"), .time(one.at), .text(String(one.emails)),
+             .text(one.subjects.joined(separator: "; ")), .text(one.warned ? "yes" : ""), .text(one.toWarn ? "yes" : ""),
+             .time(one.contacted?.at), .text(one.contacted?.sender ?? ""), .text(one.contacted?.subject ?? ""), .text(one.through),
+             .text(one.inside && one.mailbox ? no2SV.map { $0.contains(one.address.lowercased()) ? "off" : "on" } ?? "" : "")]
+        })
+    }
+
     /// A change this app ran, as its audit log shows it: when it ended, what it was in words, whom it was done to, by whom, and
     /// whether it worked (nil: the log can't say).
     public struct Change: Sendable, Equatable {
@@ -151,11 +227,14 @@ public struct IncidentReport: Sendable, Equatable {
     public let evidence: [Evidence]
     /// The emails the attacker sent, each in a sentence: what it was, who sent it, and what came of it.
     public let emails: [String]
+    /// Every address each email was sent to or received by, bounces too, a row each email and address (Who it reached's own
+    /// columns): the record beside the list of who it got to.
+    public let reached: Table
 
     public static func == (a: Self, b: Self) -> Bool {
         a.record == b.record && a.made == b.made && a.madeBy == b.madeBy && a.times == b.times && a.counts == b.counts
             && a.actions == b.actions && a.standing.map { [$0.account, $0.words] } == b.standing.map { [$0.account, $0.words] }
-            && a.toDo == b.toDo && a.timeline == b.timeline && a.evidence == b.evidence && a.emails == b.emails
+            && a.toDo == b.toDo && a.timeline == b.timeline && a.evidence == b.evidence && a.emails == b.emails && a.reached == b.reached
     }
 
     /// A count by its ID.
@@ -182,40 +261,25 @@ public struct IncidentReport: Sendable, Equatable {
         }
         func twoStep(_ address: String) -> Cell { .text(no2SV.map { $0.contains(address.lowercased()) ? "off" : "on" } ?? "") }
 
-        // Who each email reached, a row per email and address, and the attacker's emails in a sentence each.
-        let recipientColumns = ["email", "Message-ID", "address", "where", "reached", "when", "warned", "to warn", "first contacted after",
-                                "contacted by", "contact subject", "emails from here after", "through group", "2-Step Verification"]
-        var recipientRows: [(recipient: LogReading.Reach.Recipient, row: [Cell])] = []
-        var emails: [String] = []
+        // Everyone the attacker's emails got to, once each, and the emails a sentence and a row each.
+        let got = gotIt(reading.reaches)
+        func gotTable(_ keep: (GotIt) -> Bool) -> Table { gotItTable(got.filter(keep), no2SV: no2SV) }
+        var emails: [String] = [], emailRows: [[Cell]] = []
         for reach in reading.reaches {
             let subject = reach.subject.isEmpty ? "(no subject)" : reach.subject
-            for recipient in reach.recipients where !recipient.expanded {
-                recipientRows.append((recipient, [
-                    .text(subject), .text(reach.messageID), .text(recipient.address), .text(recipient.inside ? "inside" : "outside"),
-                    .text(LogReading.Reach.words(recipient)), .time(recipient.at),
-                    .text(recipient.warned.map { $0 ? "yes" : "not shown" } ?? ""), .text(recipient.toWarn ? "yes" : ""),
-                    .time(recipient.contacted?.at), .text(recipient.contacted?.sender ?? ""), .text(recipient.contacted?.subject ?? ""),
-                    .text(recipient.contacted.map { String($0.emails) } ?? ""), .text(recipient.via ?? ""),
-                    recipient.inside && recipient.mailbox ? twoStep(recipient.address) : .text(""),
-                ]))
-            }
-            let listed = reach.recipients.filter { !$0.expanded }
-            func n(_ test: (LogReading.Reach.Recipient) -> Bool) -> Int { listed.filter(test).count }
+            let listed = gotIt([reach])
             let senders = reach.senders.isEmpty ? "" : " from \(reach.senders.joined(separator: ", "))"
             let warned = reach.warnings.filter { $0.problem == nil }
-            emails.append("“\(subject)” (\(reach.messageID))\(senders): to \(listed.count) \(listed.count == 1 ? "address" : "addresses"); "
-                + "\(n { $0.outcome == .received }) received it here, \(n { $0.outcome == .bounced }) bounced, "
-                + "\(n { $0.outcome == .blocked }) quarantined or rejected, \(n { $0.outcome == .sent && !$0.inside }) sent outside with no "
-                + "bounce seen; \(reach.toWarn.count) still to warn, \(n { $0.contacted != nil }) contacted from here after it."
+            let sent = (reach.recipients.compactMap(\.at)).min()
+            emails.append("“\(subject)” (\(reach.messageID))\(senders): got to \(listed.count) \(listed.count == 1 ? "address" : "addresses") "
+                + "(\(listed.filter { !$0.inside }.count) outside); \(listed.filter(\.toWarn).count) still to warn, "
+                + "\(listed.filter { $0.contacted != nil }.count) contacted from here after it."
                 + (warned.isEmpty ? " No warning picked counts yet."
                    : " Warned by " + warned.map { "“\($0.subject.isEmpty ? "(no subject)" : $0.subject)” from \($0.sender)" + ($0.at.map { " at \(when($0))" } ?? "") }
                     .joined(separator: "; ") + "."))
+            emailRows.append([.text(subject), .text(reach.messageID), .text(reach.senders.joined(separator: ", ")), .time(sent),
+                              .text(String(listed.count)), .text(String(listed.filter { !$0.inside }.count)), .text(String(listed.filter(\.toWarn).count))])
         }
-        let recipientTable = { (keep: (LogReading.Reach.Recipient) -> Bool) in
-            Table(columns: recipientColumns, rows: recipientRows.filter { keep($0.recipient) }.map(\.row))
-        }
-        let addresses = Set(recipientRows.map(\.recipient.address))
-        func people(_ keep: (LogReading.Reach.Recipient) -> Bool) -> Int { Set(recipientRows.filter { keep($0.recipient) }.map(\.recipient.address)).count }
 
         // Every step taken: what the logs show done to each account (an admin's or Google's), what this app ran, the emails
         // pulled, each warning that counted, and the notes.
@@ -226,7 +290,7 @@ public struct IncidentReport: Sendable, Equatable {
                                       account: status.account, source: moment.who == .admin ? "Google's Admin log" : "Google's sign-in log"))
             }
         }
-        let reached = Set(reading.reaches.flatMap { $0.recipients.filter { $0.inside && $0.mailbox }.map { $0.address.lowercased() } })
+        let reached = Set(got.filter { $0.inside && $0.mailbox }.map { $0.address.lowercased() })
         let since = min(firstSign ?? record.opened, record.opened)
         for change in changes where change.at >= since && (accounts.contains(change.target.lowercased()) || reached.contains(change.target.lowercased())) {
             let outcome = change.ok.map { $0 ? "" : " (failed)" } ?? " (no result recorded)"
@@ -276,35 +340,32 @@ public struct IncidentReport: Sendable, Equatable {
         }
         counts += [
             Count(id: "emails", label: "Emails the attacker sent", number: reading.reaches.count,
-                  about: "Each email the attacker sent, a row for each address it went to.", table: recipientTable { _ in true }),
-            Count(id: "addresses", label: "Addresses they went to", number: addresses.count,
-                  about: "Every address the attacker's emails were sent to or received by, a row for each email.", table: recipientTable { _ in true }),
-            Count(id: "received", label: "Received it here", number: people { $0.outcome == .received },
-                  about: "Mailboxes here that received it.", table: recipientTable { $0.outcome == .received }),
-            Count(id: "outside", label: "Sent outside, no bounce seen", number: people { $0.outcome == .sent && !$0.inside },
-                  about: "Addresses outside it was sent to with no bounce in the logs read: the most Google's log says of outside.",
-                  table: recipientTable { $0.outcome == .sent && !$0.inside }),
-            Count(id: "bounced", label: "Bounced", number: people { $0.outcome == .bounced },
-                  about: "Addresses a bounce notice names.", table: recipientTable { $0.outcome == .bounced }),
-            Count(id: "blocked", label: "Quarantined or rejected", number: people { $0.outcome == .blocked },
-                  about: "Copies quarantined, rejected, or marked failed, with no receipt after.", table: recipientTable { $0.outcome == .blocked }),
-            Count(id: "toWarn", label: "Still to warn", number: people(\.toWarn),
-                  about: "Reached, and not shown warned by a warning picked that counts.", table: recipientTable(\.toWarn)),
-            Count(id: "warned", label: "Warned", number: people { $0.warned == true },
-                  about: "Shown warned by the log's own word: their receipt of a warning picked (here), or its send (outside).",
-                  table: recipientTable { $0.warned == true }),
-            Count(id: "contacted", label: "Contacted from here after", number: people { $0.contacted != nil },
-                  about: "Sent or received an email from an account here after the attacker's: the first, and how many.",
-                  table: recipientTable { $0.contacted != nil }),
-            Count(id: "notContacted", label: "Reached, no contact from here seen", number: people { $0.toWarn && $0.contacted == nil },
+                  about: "Each email the attacker sent: who sent it, when, and how many it got to.",
+                  table: Table(columns: ["subject", "Message-ID", "from", "sent", "got to", "outside", "still to warn"], rows: emailRows)),
+            Count(id: "gotIt", label: "Got an email of the attacker's", number: got.count,
+                  about: "Each address an email of the attacker's got to, once, however many: a receipt here, or a send nothing says "
+                    + "failed. A bounce, a quarantine or a rejection didn't get through, so isn't listed. Export it to send the warning.",
+                  table: gotTable { _ in true }),
+            Count(id: "gotItOutside", label: "Got it, outside", number: got.filter { !$0.inside }.count,
+                  about: "The addresses outside an email of the attacker's got to: who to warn that this app can't see into.",
+                  table: gotTable { !$0.inside }),
+            Count(id: "toWarn", label: "Still to warn", number: got.filter(\.toWarn).count,
+                  about: "Got one, and not shown warned of it by a warning picked that counts.", table: gotTable(\.toWarn)),
+            Count(id: "warned", label: "Warned", number: got.filter(\.warned).count,
+                  about: "Shown warned of every one that got to them, by the log's own word: their receipt of a warning picked (here), or "
+                    + "its send (outside).", table: gotTable(\.warned)),
+            Count(id: "contacted", label: "Contacted from here after", number: got.filter { $0.contacted != nil }.count,
+                  about: "Sent an email from an account here after one of the attacker's got to them: the first, and how many.",
+                  table: gotTable { $0.contacted != nil }),
+            Count(id: "notContacted", label: "Still to warn, no contact from here seen", number: got.filter { $0.toWarn && $0.contacted == nil }.count,
                   about: "Still to warn, and no email from here after the attacker's in the logs read.",
-                  table: recipientTable { $0.toWarn && $0.contacted == nil }),
+                  table: gotTable { $0.toWarn && $0.contacted == nil }),
         ]
         if let no2SV {
-            counts.append(Count(id: "reached2SV", label: "Reached here with 2-Step Verification off",
-                                number: people { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) },
-                                about: "People here an email of the attacker's reached who have 2-Step Verification off: the next accounts at risk.",
-                                table: recipientTable { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }))
+            counts.append(Count(id: "reached2SV", label: "Got it here with 2-Step Verification off",
+                                number: got.filter { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }.count,
+                                about: "People here an email of the attacker's got to who have 2-Step Verification off: the next accounts at risk.",
+                                table: gotTable { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }))
         }
         counts += [
             Count(id: "pulled", label: "Emails pulled from every mailbox", number: pulled.count,
@@ -326,7 +387,10 @@ public struct IncidentReport: Sendable, Equatable {
 
         return IncidentReport(record: record, made: made, madeBy: madeBy, times: Times(firstSign: firstSign, opened: record.opened, contained: contained),
                               counts: counts, actions: actions, standing: statuses.map { ($0.account, $0.words(when)) },
-                              toDo: reading.toDo.map { "\($0.id): \($0.words)" }, timeline: timeline, evidence: evidence, emails: emails)
+                              toDo: reading.toDo.map { "\($0.id): \($0.words)" }, timeline: timeline, evidence: evidence, emails: emails,
+                              reached: Table(columns: ["email", "Message-ID"] + LogReading.Reach.columns, rows: reading.reaches.flatMap { reach in
+                                  reach.rows.map { [.text(reach.subject.isEmpty ? "(no subject)" : reach.subject), .text(reach.messageID)] + $0.map(Cell.text) }
+                              }))
     }
 
     // MARK: the report as text
@@ -381,8 +445,9 @@ public struct IncidentReport: Sendable, Equatable {
         heading("The attacker's emails, and who they reached")
         if emails.isEmpty { line("No email the attacker sent shows in the logs read.") }
         for email in emails { line("• " + email) }
-        if let addresses = count("addresses"), addresses.number > 0 {
-            line("Every address, with whether it received, bounced, was warned and was contacted from here after, is in who-it-reached.csv.")
+        if let got = count("gotIt"), got.number > 0 {
+            line("Everyone they got to, once each, with whether they were warned and contacted from here after, is in who-got-it.csv; "
+                 + "every address each email was sent to, bounces too, is in who-it-reached.csv.")
         }
 
         heading("Where each account stands")
@@ -443,9 +508,9 @@ public struct IncidentReport: Sendable, Equatable {
             "1. What happened: the timeline and the attacker's emails (\(number("accounts")) accounts touched, \(number("emails")) emails sent).",
             "2. How it was found and how fast: time to detect \(detect), time to contain \(contain).",
             "3. What was done, and what shows it: \(number("actions")) steps taken.",
-            "4. Who was reached and whether they were warned: \(number("addresses")) addresses, \(number("toWarn")) still to warn, "
-                + "\(number("contacted")) contacted from here after.",
-            "5. What's still open: \(number("toDo")) items" + (number("reached2SV") > 0 ? ", and \(number("reached2SV")) people reached here with 2-Step Verification off" : "") + ".",
+            "4. Who it got to and whether they were warned: \(number("gotIt")) addresses (\(number("gotItOutside")) outside), "
+                + "\(number("toWarn")) still to warn, \(number("contacted")) contacted from here after.",
+            "5. What's still open: \(number("toDo")) items" + (number("reached2SV") > 0 ? ", and \(number("reached2SV")) people it got to here with 2-Step Verification off" : "") + ".",
             "6. How they got in, and why it worked.",
             "7. What went well, and what to do better.",
             "8. The plan going forward: each change with who owns it and by when.",

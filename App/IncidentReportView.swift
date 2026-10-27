@@ -255,12 +255,13 @@ struct IncidentReportView: View {
             let text = report.text(when, zone: zone, hashes: hashes)
             try AuditExport.writePrivately(text, to: folder.appending(path: "Incident report.txt"))
             try writePrivately(pdf(text, title: "Incident report: \(report.record.title)"), to: folder.appending(path: "Incident report.pdf"))
-            let lists = [("who-it-reached.csv", "addresses"), ("accounts.csv", "accounts"), ("steps-taken.csv", "actions"), ("still-to-do.csv", "toDo"),
-                         ("emails-pulled.csv", "pulled")]
+            let lists = [("who-got-it.csv", "gotIt"), ("emails.csv", "emails"), ("accounts.csv", "accounts"), ("steps-taken.csv", "actions"),
+                         ("still-to-do.csv", "toDo"), ("emails-pulled.csv", "pulled")]
             for (name, id) in lists {
                 guard let table = report.count(id)?.table else { continue }
                 try AuditExport.writePrivately(AuditExport.csv(table.csv), to: folder.appending(path: name))
             }
+            try AuditExport.writePrivately(AuditExport.csv(report.reached.csv), to: folder.appending(path: "who-it-reached.csv"))
             try AuditExport.writePrivately(AuditExport.csv(report.timeline.csv), to: folder.appending(path: "timeline.csv"))
             try AuditExport.writePrivately(hashes.map { "\($0.sha256)  \($0.file)\n" }.joined(), to: folder.appending(path: "evidence-sha256.txt"))
             return hashes.count

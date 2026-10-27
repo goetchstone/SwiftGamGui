@@ -807,10 +807,19 @@ the plan going forward. Report's first section, once the incident's logs are rea
   and `copyEvidence`. Tests: `AssistTests/IncidentReportTests.swift`, `IncidentStoreTests.theReviewIsKept`,
   `.theEvidenceIsCopiedWithItsFingerprints`.
 - **In numbers:** every number is a button that opens its list (a table, Export CSV…): accounts touched and those not locked;
-  the attacker's emails and every address they went to (a row each email and address, so a number of addresses can be fewer
-  than its rows); received, sent outside, bounced, quarantined, to warn, warned, contacted from here after, and reached with
-  no contact seen; with the directory read, accounts touched and people reached here with 2-Step Verification off (Reports'
-  "No 2-step verification": active, not enrolled); emails pulled; steps taken; still to do.
+  the attacker's emails (a row each); **everyone they got to**, once each, and those outside; still to warn, warned,
+  contacted from here after, and still to warn with no contact seen; with the directory read, accounts touched and people it
+  got to here with 2-Step Verification off (Reports' "No 2-step verification": active, not enrolled); emails pulled; steps
+  taken; still to do. No bounce is a number of its own (the operator, 2026-10-27: "if it bounced, they did not get it").
+- **Everyone it got to** (`IncidentReport.gotIt`, asked 2026-10-27 after many emails of one subject made the lists messy: "a
+  clean way to know who actually got a message and needs to be warned", and "a list that can be imported so we can send the
+  email either way, even if we did warn already"): each address once, however many of the attacker's emails got to it: a
+  receipt here, or a send nothing in the logs read says failed (outside, a person here whose Gmail log isn't read, a group
+  here not read). A bounce, a quarantine or a rejection didn't get through; a group read is its members. It's still to warn
+  when a warning that counts isn't shown reaching it for any of them, warned when it is for all, and its first contact from
+  here is the earliest. On Respond above Who it reached, with **Copy Addresses** (comma-separated, for a Bcc) and **Export
+  for Import…** (the CSV's first column is `Email`, for a mail merge or a contacts import), and as the report's "Got an email
+  of the attacker's". Who it reached's own lists, bounces too, are unchanged: over-warning stays its rule for to-warn.
 - **Contacted from here after** (`Reach.Recipient.contacted`, two more CSV columns on Who it reached too): the first email an
   account here sent, from an address that isn't the attacker's, that reached them after the attacker's (by its send naming
   them, or their mailbox's receipt; for one that isn't a mailbox here, through the group it was listed by), and how many.
@@ -824,7 +833,8 @@ the plan going forward. Report's first section, once the incident's logs are rea
   severity, the meeting's time and who attended, how they got in, what went well, what to do better, and the plan going
   forward (a line an item, with who and by when). The meeting's agenda is filled from the numbers.
 - **Export Report…** (a new folder, never an existing one: `0700`, files `0600`; a failure removes it): `Incident report.pdf`
-  (Core Text from the plain text: nothing is read as markup), `Incident report.txt`, `who-it-reached.csv`, `accounts.csv`,
+  (Core Text from the plain text: nothing is read as markup), `Incident report.txt`, `who-got-it.csv` (everyone it got to,
+  once each), `who-it-reached.csv` (every email's every address, bounces too), `emails.csv`, `accounts.csv`,
   `steps-taken.csv`, `still-to-do.csv`, `emails-pulled.csv`, `timeline.csv`, `evidence/` (every saved read copied by
   descriptor, never through a link) and `evidence-sha256.txt` (each file's SHA-256, listed in the report too, to show the
   evidence unchanged). Times in the report say the Mac's time zone.
