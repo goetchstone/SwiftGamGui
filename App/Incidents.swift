@@ -21,6 +21,8 @@ final class Incidents {
     var evidence: (id: String, names: [String], unreadable: [String])?
     /// What each saved read of the open incident read, in a line (its `about.txt` past the first), by its name: for the report.
     var abouts: [String: String] = [:]
+    /// The addresses a saved read of the open incident read every account from (`IncidentLogs.sweptAddress`): their sweep is done.
+    var swept: Set<String> = []
     /// The same evidence put together (`IncidentLogs.evidence`; nil when no saved read was readable): what a pull just
     /// saved to it is added to, in memory (`add`).
     var together: (id: String, pull: IncidentLogs.Pull?)?
@@ -129,14 +131,14 @@ final class Incidents {
     func add(_ read: IncidentLogs.Pull, to id: String) async throws(Failure) -> IncidentLogs.Pull? {
         guard let store else { throw Failure(openProblem ?? "The incidents couldn't be opened.") }
         let shown = !loading && evidence?.id == id ? evidence : nil, base = together?.id == id ? together : nil
-        let saved = await Task.detached { () -> Result<(name: String, about: String, added: (together: IncidentLogs.Pull?, readable: Bool)?), Failure> in
+        let saved = await Task.detached { () -> Result<(name: String, about: String, swept: String?, added: (together: IncidentLogs.Pull?, readable: Bool)?), Failure> in
             do {
                 let export = try IncidentLogs.exportAll(read, into: try store.evidenceFolder(of: id)).export
                 guard let shown, let base,
                       IncidentStore.readsBackLast(export, after: shown.names,
                                                  saved: shown.names.count + shown.unreadable.filter { !shown.names.contains($0) }.count)
-                else { return .success((export.name, Self.about(export), nil)) }
-                return .success((export.name, Self.about(export), IncidentLogs.adding(export, to: base.pull)))
+                else { return .success((export.name, Self.about(export), IncidentLogs.sweptAddress(about: export.about), nil)) }
+                return .success((export.name, Self.about(export), IncidentLogs.sweptAddress(about: export.about), IncidentLogs.adding(export, to: base.pull)))
             } catch let problem as IncidentStore.Problem {
                 return .failure(Failure(problem.message))
             } catch {
@@ -146,9 +148,10 @@ final class Incidents {
         switch saved {
         case .failure(let failure):
             throw failure
-        case .success((let name, let about, let added?)) where evidence?.id == id && evidence?.names == shown?.names:
+        case .success((let name, let about, let swept, let added?)) where evidence?.id == id && evidence?.names == shown?.names:
             evidence = (id, (shown?.names ?? []) + [name], (shown?.unreadable ?? []) + (added.readable ? [] : [name]))
             abouts[name] = about
+            if let swept { self.swept.insert(swept) }
             together = (id, added.together)
             return added.together
         case .success:

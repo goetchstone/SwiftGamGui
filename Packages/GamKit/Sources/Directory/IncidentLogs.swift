@@ -93,6 +93,35 @@ public final class IncidentLogs {
         public internal(set) var events = 0
         public internal(set) var reads = 0
         public internal(set) var through: Date?
+        /// How far it will get, worked out from its first read when that came back full (`Estimate`).
+        public internal(set) var estimate: Estimate?
+    }
+
+    /// How far a log read whole will get within its bounds (slice 7: "an every-account pull says up front how far it will
+    /// get"), from its first read of the whole window: that read's events over their span are the log's events an hour (its
+    /// newest, so busier or quieter later in the day), and that read's time each read's. Oldest first, so what's left is the
+    /// newest.
+    public struct Estimate: Sendable, Equatable {
+        public let perHour: Int
+        /// The window, and how much of it, from its start, it will read whole: all of it when `whole`.
+        public let windowHours: Int
+        public let hours: Int
+        /// Too busy to read even its first day whole: it stops at once.
+        public let tooBusy: Bool
+        public let reads: Int
+        public let seconds: Int
+        public var whole: Bool { !tooBusy && hours >= windowHours }
+
+        /// From a first read of `count` events over `span` seconds that took `took` seconds, a window of `windowHours`, and the
+        /// bounds: `cap` events a read, `perDay` reads a day, `budget` reads a log.
+        public static func from(count: Int, span: TimeInterval, took: TimeInterval, windowHours: Int, cap: Int, perDay: Int, budget: Int) -> Estimate {
+            let perHour = Int((Double(count) / max(span / 3_600, 1.0 / 60)).rounded())
+            let tooBusy = perHour * 24 > cap * perDay
+            let hours = tooBusy ? 0 : min(windowHours, cap * budget / max(perHour, 1))
+            let reads = tooBusy ? 1 : min(budget, 1 + Int((Double(perHour * hours) / Double(cap)).rounded(.up)))
+            return Estimate(perHour: perHour, windowHours: windowHours, hours: hours, tooBusy: tooBusy, reads: reads,
+                            seconds: Int((Double(reads) * max(took, 0.1)).rounded(.up)))
+        }
     }
 
     /// What a log's read tells the screen as it goes: it began, a read ended with this many events read whole so far, or
@@ -101,6 +130,7 @@ public final class IncidentLogs {
         case started
         case read(events: Int, reads: Int = 1)
         case through(Date)
+        case estimate(Estimate)
     }
 
     /// While a pull reads: each of its logs' progress.
@@ -204,6 +234,7 @@ public final class IncidentLogs {
             progress[application, default: Progress()].events = events
             progress[application]?.reads += reads
         case .through(let at): progress[application, default: Progress()].through = at
+        case .estimate(let estimate): progress[application, default: Progress()].estimate = estimate
         }
     }
 
@@ -235,6 +266,8 @@ public final class IncidentLogs {
                                   in: tenant)
         } reading: { events in
             await reported(events, 1)
+        } estimated: { estimate in
+            await progress(application, .estimate(estimate))
         }
         return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through)
     }
@@ -252,9 +285,11 @@ public final class IncidentLogs {
     static func complete(users: [String], start: Date, end: Date, cap: Int, perDay: Int = ActivityLogs.readsPerDay,
                          budget: Int = ActivityLogs.readsPerLog, progress: (Date) async -> Void,
                          read: (_ users: [String], _ start: String, _ end: String) async -> Result<[ActivityLogs.Row], UserAccess.Problem>,
-                         reading: (_ events: Int) async -> Void = { _ in })
+                         reading: (_ events: Int) async -> Void = { _ in }, estimated: (Estimate) async -> Void = { _ in })
         async -> (rows: Result<[ActivityLogs.Row], UserAccess.Problem>, through: Date?) {
+        let clock = ContinuousClock(), began = clock.now
         let first = await read(users, time(start), time(end))
+        let took = clock.now - began
         guard case .success(let whole) = first else { return (first, nil) }
         func full(_ rows: [ActivityLogs.Row]) -> Bool {
             users.count <= 1 ? rows.count >= cap : Dictionary(grouping: rows) { $0.who.lowercased() }.contains { $0.value.count >= cap }
@@ -262,6 +297,14 @@ public final class IncidentLogs {
         guard full(whole) else {
             await reading(whole.count)
             return (.success(whole), nil)
+        }
+        // Full: how far it will get, said before the days are read.
+        let dates = whole.compactMap(\.date)
+        if let newest = dates.max(), let oldest = dates.min() {
+            await estimated(Estimate.from(count: whole.count, span: newest.timeIntervalSince(oldest),
+                                          took: Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18,
+                                          windowHours: Int((end.timeIntervalSince(start) / 3_600).rounded(.up)), cap: cap, perDay: perDay,
+                                          budget: budget))
         }
         await reading(0)
         var rows: [ActivityLogs.Row] = [], seen: Set<String> = [], reads = 1, day = start
@@ -704,6 +747,15 @@ public final class IncidentLogs {
         }
         return Exported(folder: folder, written: read.map(\.application), unread: unread.map(\.application),
                         export: ActivityLogs.Export(name: folder.lastPathComponent, about: note, logs: logs))
+    }
+
+    /// The address a saved read of every account was made from, by its `about.txt` (as `about` writes it, whole or its lines
+    /// joined): what makes an attacker address's sweep done (slice 7). Nil for a read of some accounts, or by no address.
+    public nonisolated static func sweptAddress(about text: String) -> String? {
+        // `About` reads the address; "every account" is said, never taken from an Accounts line left out.
+        guard text.split(whereSeparator: \.isNewline).contains("Accounts: every account.") else { return nil }
+        let about = About(text)
+        return about.users.isEmpty && !about.ip.isEmpty ? about.ip : nil
     }
 
     nonisolated static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
