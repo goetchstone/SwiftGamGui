@@ -48,6 +48,9 @@ struct LogReaderView: View {
     let show: (IncidentLogs.Filter) -> Void
     /// Reads these logs again for these accounts, adding to what's shown ("Pull Again"): a read.
     let pullAgain: (_ logs: [ActivityLogs.Application], _ accounts: [String]) -> Void
+    /// What the screen scrolls to for this part, on the section shown itself: on the reader as a whole, built with Xcode
+    /// 27.1, it scrolled to the page's top (its `.sheet` and `.onChange` wrap the section; failure log 2026-10-24).
+    let anchor: String
     @State private var marking: Marking?
     @State private var markProblem: String?
 
@@ -145,11 +148,11 @@ struct LogReaderView: View {
         Group {
             if let read = memory.read, read.key == key {
                 switch part {
-                case .findings: findings(read.reading)
-                case .toDo: toDo(read.reading)
+                case .findings: findings(read.reading).id(anchor)
+                case .toDo: toDo(read.reading).id(anchor)
                 }
             } else {
-                readingNow
+                readingNow.id(anchor)
             }
         }
         .onChange(of: key, initial: true) { memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, key: key) }
