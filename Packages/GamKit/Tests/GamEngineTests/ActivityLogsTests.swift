@@ -88,6 +88,12 @@ struct ActivityLogsTests {
         #expect(Set((0...35).map { ActivityLogs.gmailWords("\($0)") }).count == 36)
         #expect(ActivityLogs.gmailWords("29") == "Saved a draft" && ActivityLogs.gmailWords("13") == "Moved a message to Trash")
         #expect(ActivityLogs.gmailWords("36") == "A Gmail event (type 36)" && ActivityLogs.gmailWords("") == "A Gmail event")
+        // A boolean in a nested parameter, as GAM's CSV writes Python's: Google marking bob@'s receipt of the warning failed,
+        // which Who it reached reads as no receipt (final review 2026-10-25: no fixture row went through this path).
+        let failed = try #require(try await self.read(.gmail, users: ["bob@example.com"]).first)
+        #expect(failed.parameters.contains(ActivityLogs.Parameter(name: "event_info.success", value: "False")))
+        #expect(failed.parameters.contains(ActivityLogs.Parameter(name: "event_info.mail_event_type", value: "2")))
+        #expect(failed.parameters.contains(ActivityLogs.Parameter(name: "message_info.rfc2822_message_id", value: "<warning-1@mail.example.com>")))
     }
 
     @Test func appGrantsSayTheAppAndItsAccess() async throws {

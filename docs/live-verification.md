@@ -59,6 +59,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
 | Incident: a kept incident, made from an export, its saved logs read back after a relaunch (reads; this Mac only) | not yet: new to both apps |
 | Incident: Show the Events and Pull Again on the to-do items (reads) | not yet: new to both apps |
+| Incident: Who it reached: every recipient, received or bounced, the warning picked, Export CSV (Respond; reads only) | not yet: new to both apps (L3w in the compromised-account runbook) |
 | Incident: Pull Incident Logs read whole, oldest first, with Read the Rest (reads) | not yet: new to both apps |
 | Read the logs: each account's timeline and Still to do (reads only) | partly: run over real exported logs (2026-10-22), not yet in the app live |
 | Incident: block a computer, or take the account off it (Incident) | not yet: new to both apps |

@@ -58,6 +58,13 @@ a switch, with what you tick undone, once you've typed the person's address.
 |---|---|
 | ![Respond: what the check found worth looking at first, scheduled emails first](screenshots/compromised-plan.png) | ![Respond: where each account stands, what's left to do, and the emails already pulled](screenshots/compromised-todo.png) |
 
+Who it reached: for each email the attacker sent, every recipient the Gmail log names, whether it was received, bounced
+or only sent, whether a warning you pick reached them, and Export CSV… for the list. It reads only.
+
+| Who it reached |
+|---|
+| ![Who it reached: the phish's recipients, each received, bounced or sent, and Export CSV](screenshots/compromised-reached.png) |
+
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move
 a copy from, its Spam included, and runs with their number typed.

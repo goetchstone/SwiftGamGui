@@ -611,10 +611,10 @@ final class OnboardChangesTests {
         await changes.confirm(try await preview(changes, role: RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic")), confirmed)
         #expect(changes.finishing?.phase == .waiting)
         let before = writes().count
-        let started = ContinuousClock.now
+        let started = SuspendingClock.now
         changes.stopFinishing()
         await changes.waitForFinishing()
-        #expect(ContinuousClock.now - started < .seconds(10))
+        #expect(SuspendingClock.now - started < .seconds(10))
         #expect(changes.finishing?.phase == .stopped)
         #expect(changes.run?.notDone.values.allSatisfy { $0.reason == Onboarding.stoppedReason } == true)
         #expect(changes.run?.notDone.count == 3)

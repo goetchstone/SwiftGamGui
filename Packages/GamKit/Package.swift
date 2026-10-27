@@ -36,7 +36,7 @@ let package = Package(
         .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "ChangeCore", "Stores", "TestSupport"]),
         .testTarget(name: "StoresTests", dependencies: ["Stores", "GamEngine", "TestSupport"]),
-        .testTarget(name: "AssistTests", dependencies: ["Assist", "GamEngine"]),
+        .testTarget(name: "AssistTests", dependencies: ["Assist", "GamEngine", "TestSupport"]),
         .testTarget(name: "SpikeTests"),
     ]
 )

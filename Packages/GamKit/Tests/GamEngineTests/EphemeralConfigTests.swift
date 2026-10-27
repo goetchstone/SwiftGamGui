@@ -95,7 +95,7 @@ struct EphemeralConfigTests {
         let fd = open(path, O_WRONLY | O_CREAT, 0o600)
         #expect(ftruncate(fd, 256 << 20) == 0)
         close(fd)
-        let clock = ContinuousClock()
+        let clock = SuspendingClock()
         let started = clock.now
         #expect(config.wipe())
         #expect(clock.now - started < .seconds(5))

@@ -191,7 +191,7 @@ struct UsageReportTests {
     @Test func aTenantSwitchStopsTheOldLoad() async throws {
         let app = app(try runner(slow: true))
         try await connect("example.com", in: app.setup)
-        let clock = ContinuousClock(), started = clock.now
+        let clock = SuspendingClock(), started = clock.now
         let usage = app.usage
         let old = Task { await usage.load() }
         var turns = 0

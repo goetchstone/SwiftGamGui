@@ -1,4 +1,5 @@
 import Foundation
+import TestSupport
 import Testing
 @testable import Assist
 
@@ -504,7 +505,7 @@ struct LogReadingTests {
         #expect(toDo == ["1 of the recipients the log names for “Shared file” (phish-1@mail.example.com) don't read as an address: check them "
                          + "in the Admin console's Gmail log events, then warn them.",
                          "Warn the 6 people “Shared file” (phish-1@mail.example.com) reached, 2 of them outside: pick the warning sent to them "
-                         + "under Who it reached, or send one."])
+                         + "under Who it reached (its sender's Gmail log in the pull), or send one."])
         #expect(reach.rows.map { $0[2] } == ["sent, no bounce in the logs read", "received", "bounced", "sent, no receipt in the logs read",
                                              "sent, no bounce in the logs read", "no one's mailbox here: a group or an address no account has", "received"])
         // Addresses read on their bytes, or by their scalars beyond ASCII: trimmed, lowercased, never one that isn't.
@@ -514,6 +515,22 @@ struct LogReadingTests {
         #expect(LogReading.destinations(LogReading.Event(log: "gmail", time: nil, who: "", event: "delivery", ip: "", flagged: false, parameters: [
             "message_info.flattened_destinations": " gmail-ui:inbox:A@x.example , smtp-out::b@y.example,,a@X.example,smtp-out::not one"])) == (["a@x.example", "b@y.example"], 1)
             ? true : false)
+        // Read in place on its bytes (2026-10-25): the ends of a field and an entry, and a reading that remembers gives the same.
+        var remembered: [String: String?] = [:]
+        for (field, addresses, unreadable) in [("a@x.example,", ["a@x.example"], 0), ("\tsmtp-out::B@y.example\t", ["b@y.example"], 0),
+                                               ("gmail-ui::", [], 1), ("smtp-out::José@Empresa.example", ["josé@empresa.example"], 0),
+                                               (", ,\t,", [], 0), ("a@x.example,a@x.example", ["a@x.example"], 0)] {
+            let event = LogReading.Event(log: "gmail", time: nil, who: "", event: "delivery", ip: "", flagged: false,
+                                         parameters: ["message_info.flattened_destinations": field])
+            let plain = LogReading.destinations(event)
+            let remembering = LogReading.destinations(event) { text in
+                if let known = remembered[text] { return known }
+                remembered[text] = LogReading.address(text)
+                return remembered[text]!
+            }
+            #expect(plain.addresses == addresses && plain.unreadable == unreadable, "\(field.debugDescription)")
+            #expect(remembering.addresses == addresses && remembering.unreadable == unreadable, "\(field.debugDescription)")
+        }
         // No directory read: an inside address with no receipt is still someone to warn.
         let noDirectory = LogReading.read(Self.reachEvents, context: LogReading.Context(domains: ["example.com"])).reaches.first
         #expect(noDirectory?.recipients.first { $0.address == "team@example.com" }?.outcome == .sent)
@@ -548,7 +565,8 @@ struct LogReadingTests {
             "phish-1@mail.example.com": ["warn-1@mail.example.com", "lunch@mail.example.com", "allhands@mail.example.com"]]))
         let done = try #require(readable.done.first { $0.kind == .warnRecipients })
         #expect(done.words.contains("reached: 6 people"))
-        #expect(done.words.hasPrefix("Warned everyone “Shared file” (phish-1@mail.example.com) reached: 6 people, by ")
+        #expect(done.words.hasPrefix("Warned everyone “Shared file” (phish-1@mail.example.com) reached: 6 people (one of them a group or "
+                                     + "an address no account has, counted on the warning's send), by ")
                 && ["Don't open “Shared file”", "Lunch", "All hands"].allSatisfy(done.words.contains))
         #expect(done.done == LogReading.Done(how: .warned, at: Date(timeIntervalSince1970: 1_792_400_000 + 70 * 60), by: "bob@example.com"))
         #expect(!readable.toDo.contains { [.warnRecipients, .pullAgain].contains($0.kind) && $0.words.contains("phish-1@") })
@@ -604,6 +622,184 @@ struct LogReadingTests {
         #expect(reach.unread == ["dana@example.com"] && pull.accounts == ["dana@example.com"])
         #expect(pull.words.hasPrefix("Pull the Gmail log again for dana@example.com: whether they got a warning about"))
         #expect(!read(["warn-1@mail.example.com"]).done.contains { $0.kind == .warnRecipients })
+    }
+
+    /// From the third review (2026-10-24), each a way to hide someone or show done too soon: a send naming no recipient keeps
+    /// it from done and says so; a warning's failure naming no one is the whole warning's (outside, it reached no one); a
+    /// receipt from before the phish doesn't show the pull has that person's log since; an address no one has that bounced
+    /// can't be warned, so it isn't to warn; a plus-address is its person; and every candidate is offered, not just ten.
+    @Test func whatTheThirdReviewFound() throws {
+        let phish = "<phish-1@mail.example.com>"
+        var events = Self.incident.filter { $0.log != "gmail" } + [
+            Self.gmail("dana@example.com", 2, "<old@mail.example.com>", at: 5),   // dana@'s only receipt, before the phish
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker,
+                       to: ["smtp-out::pat@partner.example", "gmail-ui::Alice+News@example.com", "gmail-ui::dana@example.com",
+                            "gmail-ui::gone@example.com"]),
+            Self.gmail("carol@example.com", 30, phish, at: 31, to: ["gmail-ui::gone@example.com"]),
+            Self.gmail("alice@example.com", 2, phish, at: 31),
+            Self.gmail("bob@example.com", 1, "<warn-1@mail.example.com>", at: 60, ip: Self.office, to: ["smtp-out::pat@partner.example"]),
+            Self.gmail("bob@example.com", 30, "<warn-1@mail.example.com>", at: 61),   // the sender's own failure, naming no one
+        ]
+        // Twelve emails sent after it to alice@, any of which could be (part of) the warning.
+        events += (0..<12).map { Self.gmail("bob@example.com", 1, "<note-\($0)@mail.example.com>", at: 70 + $0, ip: Self.office,
+                                            subject: "Note \($0)", to: ["gmail-ui::alice@example.com"]) }
+        let read = LogReading.read(events, context: LogReading.Context(domains: ["example.com"], people: Self.people,
+                                                                        warnings: ["phish-1@mail.example.com": ["warn-1@mail.example.com"]]))
+        let reach = try #require(read.reaches.first)
+        #expect(reach.recipients.map(\.address) == ["pat@partner.example", "alice@example.com", "dana@example.com", "gone@example.com"],
+                "alice+news@ is alice@")
+        #expect(reach.recipients.map(\.outcome) == [.sent, .received, .sent, .bounced])
+        #expect(reach.recipients.map(\.mailbox) == [false, true, true, false])
+        #expect(reach.reached.map(\.address) == ["pat@partner.example", "alice@example.com", "dana@example.com"], "gone@ bounced and is no one's")
+        #expect(reach.recipients[0].warned == false, "the warning's own failure, naming no one, is the whole warning's")
+        #expect(reach.unread == ["dana@example.com"], "a receipt from before the phish says nothing of the days after")
+        #expect(reach.candidates.count == 12, "every candidate, not just ten")
+
+        // A send of it naming no recipient: never done, and said.
+        let unnamed = LogReading.read(Self.incident.filter { $0.log != "gmail" } + [
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["smtp-out::pat@partner.example"]),
+            Self.gmail("carol@example.com", 1, phish, at: 32, ip: Self.attacker),
+            Self.gmail("bob@example.com", 1, "<warn-1@mail.example.com>", at: 60, ip: Self.office, to: ["smtp-out::pat@partner.example"]),
+        ], context: LogReading.Context(domains: ["example.com"], people: Self.people, warnings: ["phish-1@mail.example.com": ["warn-1@mail.example.com"]]))
+        #expect(unnamed.reaches.first?.unnamed == 1 && unnamed.reaches.first?.toWarn.isEmpty == true)
+        #expect(!unnamed.done.contains { $0.kind == .warnRecipients })
+        #expect(unnamed.toDo.contains { $0.words.hasPrefix("The log shows a send of “Shared file” (phish-1@mail.example.com) naming no recipient") })
+    }
+
+    /// From the final review (2026-10-25), each a way to hide someone, show done too soon or offer the wrong warning: a
+    /// warning's failure whose actor doesn't read is the whole warning's; a warning received, then quarantined, didn't reach
+    /// them (released, it did); a failure after a bounce keeps someone to warn, whichever came first; a warning whose whole
+    /// send failed is offered to no one; a later email's unread is its own; with no directory, no Pull Again (GAM refuses a
+    /// group) and "Read the directory" said; a warning sent to a group is offered by its members' receipts; a mailbox's own
+    /// quarantine naming no one lists it; an empty directory is none; a person here whose copy bounced is "to warn" in the
+    /// CSV; and an address beyond ASCII keeps its own bytes.
+    @Test func whatTheFinalReviewFound() throws {
+        let phish = "<phish-1@mail.example.com>", warning = "<warn-1@mail.example.com>", base = Self.incident.filter { $0.log != "gmail" }
+        func reach(_ events: [LogReading.Event], people: [String: String]? = Self.people, picks: Set<String> = [],
+                   email: String = "phish-1@mail.example.com") throws -> (LogReading.Reading, LogReading.Reach) {
+            let read = LogReading.read(base + events, context: LogReading.Context(domains: ["example.com"], people: people,
+                                                                                  warnings: picks.isEmpty ? [:] : ["phish-1@mail.example.com": picks]))
+            return (read, try #require(read.reaches.first { $0.messageID == email }))
+        }
+        let toPat = Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["smtp-out::pat@partner.example"])
+        let warnPat = Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it", to: ["smtp-out::pat@partner.example"])
+
+        let unreadActor = try reach([toPat, warnPat, Self.gmail("", 34, warning, at: 61)], picks: ["warn-1@mail.example.com"]).1
+        #expect(unreadActor.recipients[0].warned == false, "a failure whose actor doesn't read is the whole warning's")
+
+        let toDana = [Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::dana@example.com"]),
+                      Self.gmail("dana@example.com", 2, phish, at: 31),
+                      Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it", to: ["gmail-ui::dana@example.com"])]
+        let quarantined = try reach(toDana + [Self.gmail("dana@example.com", 2, warning, at: 61), Self.gmail("dana@example.com", 5, warning, at: 62)],
+                                    picks: ["warn-1@mail.example.com"]).1
+        #expect(quarantined.recipients[0].warned == false, "received, then quarantined")
+        let released = try reach(toDana + [Self.gmail("dana@example.com", 5, warning, at: 61), Self.gmail("dana@example.com", 6, warning, at: 62)],
+                                 picks: ["warn-1@mail.example.com"]).1
+        #expect(released.recipients[0].warned == true, "quarantined, then released")
+
+        for (bounce, slowed) in [(31, 40), (40, 31)] {
+            let tried = try reach([toPat, Self.gmail("carol@example.com", 30, phish, at: bounce, to: ["smtp-out::pat@partner.example"]),
+                                   Self.gmail("carol@example.com", 34, phish, at: slowed, to: ["smtp-out::pat@partner.example"])]).1
+            #expect(tried.recipients[0].outcome == .blocked && tried.toWarn.map(\.address) == ["pat@partner.example"], "bounced at \(bounce)")
+        }
+
+        let wholeFailed = try reach([toPat, warnPat, Self.gmail("bob@example.com", 34, warning, at: 61)]).1
+        #expect(wholeFailed.candidates.isEmpty, "a warning whose whole send failed reached no one")
+
+        let later = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::alice@example.com"]),
+                               Self.gmail("alice@example.com", 2, phish, at: 31), Self.gmail("dana@example.com", 2, "<old@mail.example.com>", at: 40),
+                               Self.gmail("carol@example.com", 1, "<phish-2@mail.example.com>", at: 100, ip: Self.attacker, subject: "Invoice",
+                                          to: ["gmail-ui::dana@example.com"])], email: "phish-2@mail.example.com").1
+        #expect(later.unread == ["dana@example.com"], "dana@'s receipt is from before this email, though after the first")
+
+        let (noDirectory, noDirectoryReach) = try reach([
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::alice@example.com", "gmail-ui::team@example.com"]),
+            Self.gmail("alice@example.com", 2, phish, at: 31)], people: nil)
+        #expect(noDirectoryReach.unread.isEmpty && !noDirectory.toDo.contains { $0.kind == .pullAgain && $0.accounts.contains("team@example.com") })
+        #expect(noDirectory.toDo.contains { $0.words.hasPrefix("Read the directory (open Users) to finish Who") }
+                && noDirectory.toDo.contains { $0.words.hasPrefix("Warn the 2 people") })
+
+        let toGroup = [Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::alice@example.com", "gmail-ui::dana@example.com"]),
+                       Self.gmail("alice@example.com", 2, phish, at: 31), Self.gmail("dana@example.com", 2, phish, at: 31),
+                       Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it", to: ["gmail-ui::team@example.com"]),
+                       Self.gmail("alice@example.com", 2, warning, at: 61), Self.gmail("dana@example.com", 2, warning, at: 61)]
+        #expect(try reach(toGroup).1.candidates.map { "\($0.messageID) \($0.covers)" } == ["warn-1@mail.example.com 2"], "offered by its members' receipts")
+        let (grouped, _) = try reach(toGroup, picks: ["warn-1@mail.example.com"])
+        #expect(grouped.done.first { $0.kind == .warnRecipients }?.words
+                == "Warned everyone “Shared file” (phish-1@mail.example.com) reached: 2 people, by bob@example.com's “Don't open it”.")
+
+        let ownQuarantine = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["smtp-out::list@partner.example"]),
+                                       Self.gmail("dana@example.com", 5, phish, at: 31)]).1
+        #expect(ownQuarantine.toWarn.map { "\($0.address) \($0.outcome) \($0.mailbox)" } == ["list@partner.example sent false", "dana@example.com blocked true"])
+
+        #expect(LogReading.Context(people: [:]).people == nil, "a tenant has at least its admin")
+
+        let bounced = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::dana@example.com", "smtp-out::guest@example.org"]),
+                                 Self.gmail("carol@example.com", 30, phish, at: 31, to: ["gmail-ui::dana@example.com", "smtp-out::guest@example.org"])]).1
+        #expect(LogReading.Reach.columns.last == "to warn" && bounced.rows.map { [$0[0], $0[2], $0[5]] }
+                == [["dana@example.com", "bounced", "yes"], ["guest@example.org", "bounced", ""]])
+
+        let accented = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["smtp-out::jose\u{301}@partner.example"]),
+                                  Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, to: ["smtp-out::jos\u{E9}@partner.example"])],
+                                 picks: ["warn-1@mail.example.com"]).1
+        #expect(Array(accented.recipients[0].address.unicodeScalars) == Array("jose\u{301}@partner.example".unicodeScalars))
+        #expect(accented.recipients[0].warned == true)
+
+        // Checked again after those fixes: a group whose copy was rejected is still said in done, counted on the send; an offer
+        // counts a copy received, then quarantined, as no receipt; a send with no time leaves everyone with no receipt to pull
+        // again; and past `candidatesShown` of one count, the earliest are offered, earliest first.
+        let (rejected, _) = try reach([
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::team@example.com", "gmail-ui::alice@example.com"]),
+            Self.gmail("carol@example.com", 34, phish, at: 32, to: ["gmail-ui::team@example.com"]), Self.gmail("alice@example.com", 2, phish, at: 31),
+            Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it",
+                       to: ["gmail-ui::team@example.com", "gmail-ui::alice@example.com"]),
+            Self.gmail("alice@example.com", 2, warning, at: 61)], picks: ["warn-1@mail.example.com"])
+        #expect(rejected.done.first { $0.kind == .warnRecipients }?.words.contains("(one of them a group or an address no account has") == true)
+        let offered = try reach(toDana + [Self.gmail("dana@example.com", 2, warning, at: 61), Self.gmail("dana@example.com", 5, warning, at: 62)]).1
+        #expect(offered.candidates.isEmpty, "received, then quarantined, it reached no one to offer")
+        let untimed = try reach([LogReading.Event(log: "gmail", time: nil, who: "carol@example.com", event: "delivery", ip: Self.attacker,
+                                                  flagged: false, parameters: ["event_info.mail_event_type": "1", "message_info.rfc2822_message_id": phish,
+                                                                               "message_info.flattened_destinations": "gmail-ui::dana@example.com"])]).1
+        #expect(untimed.unread == ["dana@example.com"])
+        let notes = (0..<130).map { n in
+            Self.gmail("bob@example.com", 1, "<note-\(n)@mail.example.com>", at: 200 - n, ip: Self.office, subject: "Note \(n)", to: ["gmail-ui::alice@example.com"])
+        }
+        let many = try reach([Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::alice@example.com"])] + notes).1
+        #expect(many.candidates.map(\.messageID) == (30..<130).reversed().map { "note-\($0)@mail.example.com" }, "the earliest 100, earliest first")
+    }
+
+    /// Who it reached on a whole pull costs less than summing every email in it, which is what made a reading ten times slower
+    /// (review 2026-10-24; final review 2026-10-25: nothing held it): 100,000 Gmail events among 500 people, the phish to 5 of
+    /// them, a warning picked. Both in the work's own CPU time, so neither a busy runner nor a sleep counts, and against each
+    /// other, so a slower Mac doesn't either.
+    @Test func whoItReachedIsReadInSeconds() throws {
+        let people = (0..<500).map { "user\($0)@example.com" }
+        var events = Self.incident.filter { $0.log != "gmail" }
+        for n in 0..<100_000 {
+            let send = n % 3 == 0
+            events.append(Self.gmail(people[n % people.count], send ? 1 : 2, "<m\(n / 3)@mail.example.com>", at: 40 + n / 100,
+                                     ip: send ? "203.0.113.\(n % 200)" : "", subject: "Note",
+                                     to: send ? (1...3).map { "gmail-ui::" + people[(n + $0 * 7) % people.count] } : []))
+        }
+        events.append(Self.gmail("carol@example.com", 1, "<phish-1@mail.example.com>", at: 30, ip: Self.attacker,
+                                 to: people.prefix(5).map { "gmail-ui::" + $0 }))
+        let context = LogReading.Context(domains: ["example.com"], people: Dictionary(uniqueKeysWithValues: people.map { ($0, $0) }),
+                                         warnings: ["phish-1@mail.example.com": ["m300@mail.example.com"]])
+        var reaches: [LogReading.Reach] = [], known: [String: String?] = [:]
+        let took = threadCPUTime {
+            reaches = LogReading.reaches(["<phish-1@mail.example.com>"], in: events, attacker: [Self.attacker], context: context)
+        }
+        let gmail = events.filter { $0.log == "gmail" }
+        let everything = threadCPUTime {
+            _ = LogReading.Mail.all(in: gmail, person: { $0 }) { text in
+                if let found = known[text] { return found }
+                known[text] = LogReading.address(text)
+                return known[text]!
+            }
+        }
+        #expect(try #require(reaches.first).recipients.count == 5)
+        // About three quarters of it in a Debug build; summing every email again took 2.4 times it.
+        #expect(took < everything * 3 / 2, "\(took), and \(everything) to sum every email")
     }
 
     @Test func anEmailPhishingPulledIsDoneWithWhenAndByWhom() {
@@ -904,8 +1100,8 @@ struct LogReadingTests {
     /// A whole pull's size (a small domain's every-account Gmail runs to thousands of events a day) read in seconds, not the
     /// minutes it took when each account's status read every event (failure log 2026-10-23): 200 accounts the attacker had,
     /// each from its own address, among 200,000 events. A few seconds in a debug build; reading every event per account,
-    /// 40 accounts took 23 and these 200 would take about 110, so a generous bound still catches that and leaves a busy
-    /// runner room (failure logs 2026-10-16 and 2026-10-20: a tight timing test failed on one).
+    /// 40 accounts took 23 and these 200 would take about 110, so a generous bound still catches that. It's the read's own
+    /// CPU time: a busy runner's other work and a Mac asleep mid-test don't count (failure logs 2026-10-16, 2026-10-25).
     @Test func aWholePullIsReadInSeconds() {
         let accounts = (0..<200).map { "user\($0)@example.com" }
         var events: [LogReading.Event] = []
@@ -920,11 +1116,10 @@ struct LogReadingTests {
             events.append(Self.event(logs[index % logs.count], accounts[n], logs[index % logs.count] == "login" ? "login_success" : "view",
                                      ip: index.isMultiple(of: 9) ? "198.51.\(100 + n / 200).\(n % 200 + 1)" : "203.0.113.\(index % 200)", at: index % 4_000))
         }
-        let clock = ContinuousClock(), started = clock.now
-        let reading = LogReading.read(events)
-        let took = clock.now - started
-        #expect(reading.statuses.count == 200 && reading.events == 200_000)
-        #expect(took < .seconds(60), "took \(took)")
+        var reading: LogReading.Reading?
+        let took = threadCPUTime { reading = LogReading.read(events) }
+        #expect(reading?.statuses.count == 200 && reading?.events == 200_000)
+        #expect(took > .zero && took < .seconds(60), "took \(took)")
     }
 }
 
