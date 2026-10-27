@@ -70,7 +70,15 @@ struct ActivityLogsTests {
     /// the type isn't said again in its details.
     @Test func gmailsNestedParametersAreNamedByTheirChain() async throws {
         let read = try await read(.gmail, users: ["carol@example.com"])
-        #expect(read.map(\.words) == ["Sent a message", "Viewed a message", "Sent a message", "A message bounced: it couldn't be delivered"])
+        #expect(read.map(\.words) == ["Sent a message", "Viewed a message", "Sent a message", "A message bounced: it couldn't be delivered"]
+                + Array(repeating: "Received a message", count: 4))
+        // A receipt names its sender one level deeper, `message_info.source` (GAM keeps a messageValue parameter whole and
+        // flattens it, GAM 7.48.34 :14865-14899): the vendor's email to carol@, the incoming phish (Where it started).
+        let vendor = try #require(read.first { $0.parameters.contains(ActivityLogs.Parameter(name: "message_info.rfc2822_message_id",
+                                                                                            value: "<inv-4471@mail.vendor.example>")) })
+        #expect(vendor.parameters.contains(ActivityLogs.Parameter(name: "message_info.source.address", value: "billing@vendor.example")))
+        #expect(vendor.parameters.contains(ActivityLogs.Parameter(name: "message_info.source.from_header_address", value: "billing@vendor.example")))
+        #expect(!vendor.parameters.contains { $0.name.hasPrefix("parameters") || $0.name == "message_info.source" })
         let send = try #require(read.first)
         // Who it went to, in Google's schema's form (`service:selector:address`, comma-separated): what Who it reached reads.
         #expect(send.parameters.contains(ActivityLogs.Parameter(name: "message_info.flattened_destinations", value:

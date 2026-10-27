@@ -230,11 +230,13 @@ public struct IncidentReport: Sendable, Equatable {
     /// Every address each email was sent to or received by, bounces too, a row each email and address (Who it reached's own
     /// columns): the record beside the list of who it got to.
     public let reached: Table
+    /// Where it started: the first account taken over and the email picked as the phish that got it (Investigate).
+    public let wayIn: LogReading.WayIn?
 
     public static func == (a: Self, b: Self) -> Bool {
         a.record == b.record && a.made == b.made && a.madeBy == b.madeBy && a.times == b.times && a.counts == b.counts
             && a.actions == b.actions && a.standing.map { [$0.account, $0.words] } == b.standing.map { [$0.account, $0.words] }
-            && a.toDo == b.toDo && a.timeline == b.timeline && a.evidence == b.evidence && a.emails == b.emails && a.reached == b.reached
+            && a.toDo == b.toDo && a.timeline == b.timeline && a.evidence == b.evidence && a.emails == b.emails && a.reached == b.reached && a.wayIn == b.wayIn
     }
 
     /// A count by its ID.
@@ -361,6 +363,14 @@ public struct IncidentReport: Sendable, Equatable {
                   about: "Still to warn, and no email from here after the attacker's in the logs read.",
                   table: gotTable { $0.toWarn && $0.contacted == nil }),
         ]
+        if let picked = reading.wayIn?.picked {
+            counts.append(Count(id: "gotPhish", label: "Got the email that started it", number: picked.receivedBy.count,
+                                about: "Everyone here the logs read show receiving “\(picked.subject.isEmpty ? "(no subject)" : picked.subject)” from "
+                                    + "\(picked.sender): they may have fallen for it too.",
+                                table: Table(columns: ["Email", "Touched by the attacker"], rows: picked.receivedBy.map { address in
+                                    [.text(address), .text(accounts.contains(address.lowercased()) ? "yes" : "")]
+                                })))
+        }
         if let no2SV {
             counts.append(Count(id: "reached2SV", label: "Got it here with 2-Step Verification off",
                                 number: got.filter { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }.count,
@@ -390,7 +400,7 @@ public struct IncidentReport: Sendable, Equatable {
                               toDo: reading.toDo.map { "\($0.id): \($0.words)" }, timeline: timeline, evidence: evidence, emails: emails,
                               reached: Table(columns: ["email", "Message-ID"] + LogReading.Reach.columns, rows: reading.reaches.flatMap { reach in
                                   reach.rows.map { [.text(reach.subject.isEmpty ? "(no subject)" : reach.subject), .text(reach.messageID)] + $0.map(Cell.text) }
-                              }))
+                              }), wayIn: reading.wayIn)
     }
 
     // MARK: the report as text
@@ -435,6 +445,9 @@ public struct IncidentReport: Sendable, Equatable {
             line("Contained: not yet: the logs don't show every account touched locked.")
         }
         for count in counts where count.id != "actions" { line("\(count.label): \(count.number)") }
+
+        heading("Where it started")
+        line(wayInWords(when))
 
         heading("What was done")
         if actions.isEmpty { line("No step taken shows in the logs read, this app's audit log, or the notes.") }
@@ -498,6 +511,35 @@ public struct IncidentReport: Sendable, Equatable {
         return out.joined(separator: "\n") + "\n"
     }
 
+    /// Where it started, in words: the email picked as the phish that got the first account, and who else here received it; or
+    /// what's left to pick it from.
+    public func wayInWords(_ when: (Date) -> String) -> String {
+        guard let wayIn else { return "No account the attacker got into shows in the logs read." }
+        if let picked = wayIn.picked {
+            return "The email that started it: “\(picked.subject.isEmpty ? "(no subject)" : picked.subject)” from \(picked.sender.isEmpty ? "a sender the log doesn't name" : picked.sender)"
+                + " (Message-ID \(picked.messageID)). " + Self.receivedWords(picked, wayIn: wayIn, when: when)
+        }
+        if let unread = wayIn.pickedUnread {
+            return "The email picked as where it started (\(unread)) isn't in the logs read: pull \(wayIn.account)'s Gmail log from before \(when(wayIn.attackedAt))."
+        }
+        return "Not picked yet: \(wayIn.candidates.count) email\(wayIn.candidates.count == 1 ? "" : "s") \(wayIn.account) received from outside in the "
+            + "\(LogReading.wayInHours) hours before the attacker's first sign at \(when(wayIn.attackedAt)) are listed on Investigate, under Where it started."
+    }
+
+    /// Who received the email picked, by name, and when, against the attacker's first sign: the first account taken over is
+    /// said as one of them only when the logs show it receiving it.
+    public static func receivedWords(_ picked: LogReading.WayIn.Email, wayIn: LogReading.WayIn, when: (Date) -> String) -> String {
+        let first = (picked.at.map { "First received \(when($0)), before" } ?? "Before") + " the attacker's first sign, on \(wayIn.account) at "
+            + "\(when(wayIn.attackedAt))."
+        let others = picked.receivedBy.filter { $0 != wayIn.account }
+        let who: String = if picked.receivedBy.isEmpty { "No one here is shown receiving it." }
+            else if others.isEmpty { "Only \(wayIn.account) is shown receiving it." }
+            else if picked.receivedBy.contains(wayIn.account) {
+                "\(wayIn.account) received it, and so did \(others.joined(separator: ", ")): they may have fallen for it too."
+            } else { "Received here by \(others.joined(separator: ", ")): they may have fallen for it too." }
+        return first + " " + who
+    }
+
     /// The post-incident review meeting's agenda, filled from the report's own numbers.
     public static func agenda(_ report: IncidentReport) -> [String] {
         func number(_ id: String) -> Int { report.count(id)?.number ?? 0 }
@@ -511,7 +553,9 @@ public struct IncidentReport: Sendable, Equatable {
             "4. Who it got to and whether they were warned: \(number("gotIt")) addresses (\(number("gotItOutside")) outside), "
                 + "\(number("toWarn")) still to warn, \(number("contacted")) contacted from here after.",
             "5. What's still open: \(number("toDo")) items" + (number("reached2SV") > 0 ? ", and \(number("reached2SV")) people it got to here with 2-Step Verification off" : "") + ".",
-            "6. How they got in, and why it worked.",
+            "6. How they got in, and why it worked" + (report.wayIn?.picked.map {
+                ": the logs show it began with “\($0.subject.isEmpty ? "(no subject)" : $0.subject)” from \($0.sender)."
+            } ?? "."),
             "7. What went well, and what to do better.",
             "8. The plan going forward: each change with who owns it and by when.",
         ]

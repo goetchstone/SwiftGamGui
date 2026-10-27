@@ -75,6 +75,11 @@ struct LogReaderView: View {
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
     /// incident open, where a pick couldn't be kept.
     let pickWarning: ((_ email: String, _ warning: String?) -> String?)?
+    /// The email picked as where it started, kept with the open incident (a bare Message-ID); nil with none.
+    let phish: String?
+    /// Keeps the email picked as where it started (nil clears it): the problem in words, or nil once kept. Nil with no incident
+    /// open, where a pick couldn't be kept.
+    let pickPhish: ((String?) -> String?)?
     /// What the report is made with, with the incident open (Report): nil with none, where there's nothing to report on.
     let incident: ReportInputs?
     /// What the screen scrolls to for this part, on the section shown itself: on the reader as a whole, built with Xcode
@@ -108,6 +113,8 @@ struct LogReaderView: View {
         fileprivate var explained: (reading: LogReading.Reading, state: Explaining)?
         /// A reading has come: debug snapshots wait for it before they scroll to it.
         var hasReading: Bool { read != nil }
+        /// A reading with an email picked as where it started has come: the debug snapshot of it waits for it.
+        var picksPhish: Bool { read?.reading.wayIn?.picked != nil }
         /// The first Who it reached section's anchor, for debug snapshots to scroll to.
         var firstReach: String? { read?.reading.reaches.first.map { LogReaderView.reachAnchor($0.messageID) } }
 
@@ -127,7 +134,8 @@ struct LogReaderView: View {
         /// it's the key asked or `staleIsSafe` allows; one no longer wanted ends unshown.
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
                                 nobodyHas: [NobodyHasStore.Check], domains: Set<String>, people: [String: String]?,
-                                groups: [String: [String]], everyone: Set<String>, warnings: [IncidentStore.Warning], key: String) {
+                                groups: [String: [String]], everyone: Set<String>, warnings: [IncidentStore.Warning], phish: String?,
+                                key: String) {
             // The reading shown is the one asked for again (a pick, then its clear): a read still under way is for a key no
             // longer asked, and must never land over it (review 2026-10-24); it runs on unwanted, so a pick after it still
             // waits for it (final review 2026-10-25: it ran beside the next).
@@ -144,7 +152,7 @@ struct LogReaderView: View {
             if reading != nil {
                 queued = (key, { [weak self] in
                     self?.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                                groups: groups, everyone: everyone, warnings: warnings, key: key)
+                                groups: groups, everyone: everyone, warnings: warnings, phish: phish, key: key)
                 })
                 return
             }
@@ -152,7 +160,7 @@ struct LogReaderView: View {
                 let found = await Task.detached(priority: .userInitiated) {
                     let reading = LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain),
                                                         nobodyHas: nobodyHas, domains: domains, people: people, groups: groups,
-                                                        everyone: everyone, warnings: warnings)
+                                                        everyone: everyone, warnings: warnings, phish: phish)
                     return (reading, LogReaderView.changes(in: auditURL, since: LogReaderView.since(reading), to: LogReaderView.involved(reading)))
                 }.value
                 guard let self, let reading = self.reading, reading.key == key else { return }
@@ -165,6 +173,10 @@ struct LogReaderView: View {
             }, true)
         }
     }
+
+    /// Where Where it started (Investigate) and Everyone it got to (Respond) are, to scroll to.
+    static let wayInAnchor = "reader.wayIn"
+    static let gotItAnchor = "reader.gotit"
 
     /// Where an email's Who it reached section is, to scroll to.
     static func reachAnchor(_ messageID: String) -> String { "reader.reach.\(messageID)" }
@@ -194,15 +206,18 @@ struct LogReaderView: View {
         "\(domain)|\(auditStamp)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
-            + "|" + Self.reachKey(warnings: warnings, directoryKey: directoryKey)
+            + "|" + Self.reachKey(warnings: warnings, phish: phish, directoryKey: directoryKey)
     }
 
     /// What only Who it reached reads: a change of these keeps the reading shown until the new one comes, rather than swap
     /// both tabs for "Reading the logs…" at every pick (review 2026-10-24).
-    static func reachKey(warnings: [IncidentStore.Warning], directoryKey: String) -> String {
+    static func reachKey(warnings: [IncidentStore.Warning], phish: String? = nil, directoryKey: String) -> String {
         // A space between the two: a Message-ID holds none (`IncidentStore.isMessageID`), though it can hold ">" (final review
-        // 2026-10-25: split there, an email's section never said it was updating).
-        "reach:" + warnings.map { "\($0.email) \($0.warning)" }.joined(separator: "\n") + "\u{1F}" + directoryKey
+        // 2026-10-25: split there, an email's section never said it was updating). The phish picked is a line of its own,
+        // "phish <id>": picking one only adds, so the last reading stays while the new one comes; no email's section is named
+        // "phish", so none says it's updating.
+        "reach:" + (warnings.map { "\($0.email) \($0.warning)" } + (phish.map { ["phish \($0)"] } ?? [])).joined(separator: "\n")
+            + "\u{1F}" + directoryKey
     }
 
     /// The emails whose picks differ between two keys: the sections updating while the last reading stays on screen, not
@@ -247,7 +262,7 @@ struct LogReaderView: View {
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
                                     nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], people: [String: String]? = nil,
                                     groups: [String: [String]] = [:], everyone: Set<String> = [],
-                                    warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
+                                    warnings: [IncidentStore.Warning] = [], phish: String? = nil) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -265,7 +280,7 @@ struct LogReaderView: View {
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
                                                                          domains: domains, people: people, groups: groups,
-                                                                         everyone: everyone, warnings: picked))
+                                                                         everyone: everyone, warnings: picked, phish: phish))
     }
 
     /// When the attack began, as the reading shows it: the first account's first suspect event, or the first time an email of
@@ -323,7 +338,11 @@ struct LogReaderView: View {
             // The reading for this pull, or while only picks were added, the last one until the new one comes.
             if let read = memory.read, read.key == key || Self.staleIsSafe(shown: read.key, asked: key) {
                 switch part {
-                case .findings: findings(read.reading).id(anchor)
+                case .findings:
+                    findings(read.reading).id(anchor)
+                    if let wayIn = read.reading.wayIn {
+                        WayInSection(wayIn: wayIn, current: phish, pick: pickPhish, pullEmail: pullEmail).id(Self.wayInAnchor)
+                    }
                 case .toDo: toDo(read.reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key)).id(anchor)
                 case .report: report(read.reading, key: read.key).id(anchor)
                 }
@@ -333,7 +352,7 @@ struct LogReaderView: View {
         }
         .onChange(of: key, initial: true) {
             memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                         groups: groups, everyone: everyone, warnings: warnings, key: key)
+                         groups: groups, everyone: everyone, warnings: warnings, phish: phish, key: key)
         }
         // Each reading names the groups the emails went to: their members are read (once each), and a reading with them follows.
         .onChange(of: memory.read?.key, initial: true) {
@@ -461,7 +480,7 @@ struct LogReaderView: View {
                  + "this app's audit log, and what its Find showed nobody has. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
-        if !reading.reaches.isEmpty { GotItSection(got: IncidentReport.gotIt(reading.reaches)) }
+        if !reading.reaches.isEmpty { GotItSection(got: IncidentReport.gotIt(reading.reaches)).id(Self.gotItAnchor) }
         ForEach(reading.reaches, id: \.messageID) { reach in
             // A group here whose members aren't read counts on the warning's send: why, or that they're being read.
             let notRead = reach.recipients.filter { $0.inside && !$0.mailbox && !$0.expanded }
@@ -1041,6 +1060,128 @@ private struct ReachSection: View {
                  + "outside address, or a group whose members aren't read, where its send went (to it, or to a group read that holds it) "
                  + "with nothing failing; done needs that for everyone to warn.")
         }
+    }
+}
+
+/// Where it started (Investigate; asked 2026-10-27: a vendor's email to the operator's designer gave the attacker the account):
+/// what the first account the attacker got into received from outside before its attack began, newest first, for the operator
+/// to mark the one that started it; once marked, that email with everyone here who received it (they may have fallen for it
+/// too) and Pull from Every Mailbox. The rules list; only the operator says which it was. The pick is kept with the incident on
+/// this Mac; the pull opens Phishing, where nothing changes until it's previewed and confirmed.
+private struct WayInSection: View {
+    let wayIn: LogReading.WayIn
+    /// The pick as kept now: the reading of it may still be coming.
+    let current: String?
+    /// Keeps a pick (nil clears it): the problem in words, or nil once kept. Nil with no incident open.
+    let pick: ((String?) -> String?)?
+    let pullEmail: (String) -> Void
+    @State private var problem: String?
+    @State private var showAll = false
+    private static let shown = 10
+
+    private func when(_ date: Date) -> String { date.formatted(date: .abbreviated, time: .shortened) }
+
+    /// A pick made or cleared that the reading shown doesn't have yet.
+    private var updating: Bool { current != (wayIn.picked?.messageID ?? wayIn.pickedUnread) }
+
+    var body: some View {
+        Section {
+            if let picked = wayIn.picked {
+                pickedRow(picked)
+            } else if let unread = wayIn.pickedUnread {
+                HStack(alignment: .firstTextBaseline) {
+                    Label("The email picked (\(unread)) isn't in the logs read: pull \(wayIn.account)'s Gmail log from before "
+                          + "\(when(wayIn.attackedAt)).", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                    Spacer()
+                    unpick
+                }
+            } else {
+                Text("What \(wayIn.account) received from outside in the \(LogReading.wayInHours) hours before the attacker's first sign at "
+                     + "\(when(wayIn.attackedAt)), newest first. Mark the one that started it.")
+                if wayIn.candidates.isEmpty {
+                    Text("None in the logs read. Pull \(wayIn.account)'s Gmail log over a window that reaches before the attack to see them.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(showAll ? wayIn.candidates : Array(wayIn.candidates.prefix(Self.shown))) { email in candidateRow(email) }
+                if !showAll, wayIn.candidates.count > Self.shown {
+                    Button("Show All \(wayIn.candidates.count)") { showAll = true }
+                }
+            }
+            if wayIn.unnamed > 0, wayIn.picked == nil {
+                Text("\(wayIn.unnamed) more it received then, whose log names no sender: see them in the Admin console's Gmail log.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            if updating {
+                HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Updating…").foregroundStyle(.secondary) }
+                    .accessibilityElement(children: .combine)
+            }
+            if pick == nil {
+                Text("Open or make an incident above to keep which email it was.").font(.callout).foregroundStyle(.secondary)
+            }
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text("Where it started").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("Listed by rules in code from the Gmail log; which one started it is yours to say. The pick is kept with the incident "
+                 + "and goes in the report.")
+        }
+    }
+
+    private func subject(_ email: LogReading.WayIn.Email) -> String { "“\(email.subject.isEmpty ? "(no subject)" : email.subject)”" }
+
+    private func candidateRow(_ email: LogReading.WayIn.Email) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(subject(email)).fontWeight(.semibold)
+                Text("From \(email.sender)" + (email.at.map { " · received \(when($0))" } ?? "")).font(.callout).foregroundStyle(.secondary)
+                if email.receivedBy.count > 1 {
+                    Text("Also received by \(email.receivedBy.count - 1) more here").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .textSelection(.enabled)
+            .accessibilityElement(children: .combine)
+            Spacer()
+            Button("That's the Phish") { keep(email.messageID) }
+                .disabled(pick == nil || updating)
+                .accessibilityLabel("Mark \(subject(email)) from \(email.sender) as the email that started it")
+        }
+    }
+
+    private func pickedRow(_ picked: LogReading.WayIn.Email) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("The email that started it: \(subject(picked)) from \(picked.sender.isEmpty ? "a sender the log doesn't name" : picked.sender)")
+                        .fontWeight(.semibold)
+                    // Who received it is said by name: the first account taken over may not be one of them (a review of the
+                    // demo's picture, 2026-10-27: "before the attacker's first sign of dana@" read as dana@ having it).
+                    Text(IncidentReport.receivedWords(picked, wayIn: wayIn, when: when))
+                }
+                .textSelection(.enabled)
+            } icon: {
+                Image(systemName: "flag.fill")
+            }
+            .accessibilityElement(children: .combine)
+            HStack {
+                Spacer()
+                Button("Pull from Every Mailbox…") { pullEmail(picked.messageID) }
+                    .accessibilityHint("Opens Phishing with this email and finds who has it. Nothing changes until you preview and confirm there.")
+                unpick
+            }
+        }
+    }
+
+    private var unpick: some View {
+        Button("Not This One") { keep(nil) }
+            .disabled(pick == nil)
+            .accessibilityLabel("Clear the email marked as where it started")
+    }
+
+    private func keep(_ id: String?) {
+        problem = pick?(id)
     }
 }
 

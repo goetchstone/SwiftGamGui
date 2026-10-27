@@ -101,6 +101,15 @@ final class Incidents {
         return save(record)
     }
 
+    /// Keeps `phish` (a bare Message-ID) as the email that started the incident `id`, or with nil clears it: the problem in words,
+    /// or nil once saved (Investigate's Where it started).
+    func pickPhish(_ phish: String?, in id: String) -> String? {
+        guard var record = record(id) else { return "That incident isn't kept any more." }
+        guard record.phish != phish else { return nil }
+        record.phish = phish
+        return save(record)
+    }
+
     /// Keeps an export (read with `IncidentStore.readExport`) as the incident's evidence; the problem in words, or nil.
     func keep(_ export: IncidentStore.Export, in id: String) -> String? {
         do {

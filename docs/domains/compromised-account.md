@@ -795,6 +795,34 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   IP, and a domain alias in `nonEditableAliases`, as the rules assume; and a group it went to listed by its members, with
   a nested group's and the "Does not exist" wording and exit code the mock assumes for an address that isn't a group.
 
+## Where it started (incidents plan: the incoming phish)
+Asked for (2026-10-27): the operator's account was that a vendor was compromised, their designer fell for an email from it,
+and the attacker then sent as the designer; "trace the vendor's email that started it". Investigate's section under the
+findings. Reads and this Mac only.
+- **The candidates** (`LogReading.wayIn`, `WayIn`, pure): the first account the attacker got into (`attackerGotIn`, earliest
+  `attackedAt`: a password typed on a phishing site counts, as Chrome saw it), and the emails its mailbox received (Gmail
+  `mail_event_type` 2 or 6, not marked failed) from a sender outside the tenant's domains in the `wayInHours` (72) before that,
+  newest first, at most `wayInShown` (50), each with everyone here the logs read show receiving it. A receipt naming no sender
+  is counted, never listed. Two passes over the Gmail events. Code lists them; only the operator says which it was.
+- **The sender:** `message_info.source.address`, else `.from_header_address`: GAM keeps a nested messageValue parameter whole
+  (`purge_parameters` False, GAM 7.48.34 :14865-14899) and flattens it, so the reader's name chain reads it one level below
+  `message_info`. The names inside `source` are Google's Gmail log schema's, not yet seen on a live row (L3o).
+- **That's the Phish** (kept as `IncidentStore.Record.phish`, a bare Message-ID, since 2026-10-27; a file without it reads;
+  `Incidents.pickPhish`): the pick shows with its sender, when it came, and who else here received it ("they may have fallen
+  for it too"), with Pull from Every Mailbox… (Phishing, previewed there) and Not This One. A pick outside the window is still
+  shown; one no one here is shown receiving says so, with what to pull. It's a line of the reading's key ("phish <id>",
+  `reachKey`): picking keeps the last reading on screen until the new one comes, as a warning pick does.
+- **In the report:** a Where it started paragraph before What was done, "Got the email that started it" (who here received
+  it, those the attacker touched marked), and the review agenda's "How they got in" naming it.
+- **Named WayIn, not Origin:** `WriteRouteTests.noIntentReachesAWrite` holds that no model-side screen names ChangeCore's
+  `Origin`; a reader type called that failed it (2026-10-27).
+- Tests: `AssistTests/IncidentWayInTests.swift`, `IncidentStoreTests.theEmailThatStartedItIsKept`,
+  `ActivityLogsTests.gmailsNestedParametersAreNamedByTheirChain` (the mock's vendor receipt). The mock: the vendor's email to
+  carol@ and alice@ on 10-19 before the attack, an outside newsletter, a colleague's email and an email from four days before.
+- **Live check (L3o, reads only):** on the real incident, pull the designer's Gmail log from 3 days before the attack:
+  Where it started lists the vendor's email with its sender (the field names `message_info.source.address` hold), and who
+  else received it matches the Admin console's Gmail log search for its Message-ID.
+
 ## The report (incidents plan, slice 4, moved up at the operator's ask)
 Asked for (2026-10-27, a week after the takeover): "a nice report I can run on the incident and export", drilling into its
 numbers ("like who does not have 2 factor on"), who was emailed, bounced and reached, verifying "someone from here contacted
