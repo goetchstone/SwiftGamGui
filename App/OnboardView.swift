@@ -112,6 +112,9 @@ struct OnboardView: View {
                     ForEach(roles.roles, id: \.name) { role in
                         Text("\(role.name) (\(role.steps.count) step\(role.steps.count == 1 ? "" : "s"))").tag(role.name)
                     }
+                    // The selection always has an item, as Signatures' picker does: one that matched none (while the
+                    // roles load) left the picker blank after, built with Xcode 27.1 (failure log 2026-10-24).
+                    if role == nil { Text("Choose a role\u{2026}").tag(roleName) }
                 }
                 if let role { RoleSummary(role: role, templates: templates, welcomeSaved: roles.welcome(named: role.welcome) != nil) }
             }

@@ -61,6 +61,9 @@ struct LogReaderView: View {
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
     /// incident open, where a pick couldn't be kept.
     let pickWarning: ((_ email: String, _ warning: String?) -> String?)?
+    /// What the screen scrolls to for this part, on the section shown itself: on the reader as a whole, built with Xcode
+    /// 27.1, it scrolled to the page's top (its `.sheet` and `.onChange` wrap the section; failure log 2026-10-24).
+    let anchor: String
     @State private var marking: Marking?
     @State private var markProblem: String?
     /// The warnings were cleared, so Respond reads again with nothing shown: VoiceOver hears when it's back (final review
@@ -234,11 +237,11 @@ struct LogReaderView: View {
             // The reading for this pull, or while only picks were added, the last one until the new one comes.
             if let read = memory.read, read.key == key || Self.staleIsSafe(shown: read.key, asked: key) {
                 switch part {
-                case .findings: findings(read.reading)
-                case .toDo: toDo(read.reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key))
+                case .findings: findings(read.reading).id(anchor)
+                case .toDo: toDo(read.reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key)).id(anchor)
                 }
             } else {
-                readingNow
+                readingNow.id(anchor)
             }
         }
         .onChange(of: key, initial: true) {

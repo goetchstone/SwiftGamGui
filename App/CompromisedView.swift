@@ -105,6 +105,9 @@ struct CompromisedView: View {
                 }
                 .onChange(of: scrollToReports) { _, wanted in
                     if wanted { scroller.scrollTo(scrollToReader ? Self.readerAnchor : Self.reportsAnchor, anchor: .top) }
+                    #if DEBUG
+                    if wanted, Spikes.isRequested { print("state: scrolled to \(scrollToReader ? "the reader" : "the logs")") }
+                    #endif
                 }
                 .onChange(of: scrollTarget) { _, anchor in
                     if let anchor { scroller.scrollTo(anchor, anchor: .top) }
@@ -184,7 +187,7 @@ struct CompromisedView: View {
             IncidentLogsSection(person: check?.user.primaryEmail, logs: logs, directory: directory, form: $pullForm, filter: $filter,
                                 readMore: read, readingSaved: incidents.loading)
                 .id(Self.reportsAnchor)
-            if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller).id(Self.readerAnchor) }
+            if let pull = logs.pull, pull.ended { reader(.findings, pull, scroller) }
         } else {
             Section { Text("Connect a domain on Setup first.").foregroundStyle(.secondary) }
         }
@@ -202,7 +205,7 @@ struct CompromisedView: View {
             }
             .id(Self.runAnchor)
         }
-        if setup.active != nil, let pull = logs.pull, pull.ended { reader(.toDo, pull, scroller).id(Self.toDoAnchor) }
+        if setup.active != nil, let pull = logs.pull, pull.ended { reader(.toDo, pull, scroller) }
         Group {
             whoSection.id(Self.checkAnchor)
             if let check {
@@ -260,7 +263,7 @@ struct CompromisedView: View {
             go(.investigate, to: Self.reportsAnchor, scroller)
         }, domains: index.domains, people: index.people, directoryKey: index.key, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
-        })
+        }, anchor: part == .findings ? Self.readerAnchor : Self.toDoAnchor)
     }
 
     /// Shows `tab` scrolled to `anchor`: at once when it's shown already, else once it has drawn.
@@ -462,7 +465,9 @@ struct CompromisedView: View {
                     incidents.openID = record.id
                 }
                 // Scroll once the findings are drawn: an anchor that first appears in the same update doesn't scroll.
+                let pulled = ContinuousClock.now
                 for _ in 0..<100 where !readerMemory.hasReading { try? await Task.sleep(for: .milliseconds(50)) }
+                print("state: the reading \(readerMemory.hasReading ? "came" : "hadn't come") \(ContinuousClock.now - pulled) after the pull")
                 try? await Task.sleep(for: .milliseconds(300))
                 if asked == "todo" || asked == "reached" {
                     self.tab = .respond
