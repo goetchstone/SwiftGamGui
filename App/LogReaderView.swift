@@ -75,6 +75,10 @@ struct LogReaderView: View {
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
     /// incident open, where a pick couldn't be kept.
     let pickWarning: ((_ email: String, _ warning: String?) -> String?)?
+    /// Reads every account's logs from this attacker address ("Pull Every Account From …", slice 7): a read.
+    let sweep: (String) -> Void
+    /// The addresses a read of every account was made from already: their sweep is done.
+    let swept: Set<String>
     /// The email picked as where it started, kept with the open incident (a bare Message-ID); nil with none.
     let phish: String?
     /// Keeps the email picked as where it started (nil clears it): the problem in words, or nil once kept. Nil with no incident
@@ -135,7 +139,7 @@ struct LogReaderView: View {
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
                                 nobodyHas: [NobodyHasStore.Check], domains: Set<String>, people: [String: String]?,
                                 groups: [String: [String]], everyone: Set<String>, warnings: [IncidentStore.Warning], phish: String?,
-                                key: String) {
+                                swept: Set<String>, key: String) {
             // The reading shown is the one asked for again (a pick, then its clear): a read still under way is for a key no
             // longer asked, and must never land over it (review 2026-10-24); it runs on unwanted, so a pick after it still
             // waits for it (final review 2026-10-25: it ran beside the next).
@@ -152,7 +156,7 @@ struct LogReaderView: View {
             if reading != nil {
                 queued = (key, { [weak self] in
                     self?.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                                groups: groups, everyone: everyone, warnings: warnings, phish: phish, key: key)
+                                groups: groups, everyone: everyone, warnings: warnings, phish: phish, swept: swept, key: key)
                 })
                 return
             }
@@ -160,7 +164,7 @@ struct LogReaderView: View {
                 let found = await Task.detached(priority: .userInitiated) {
                     let reading = LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain),
                                                         nobodyHas: nobodyHas, domains: domains, people: people, groups: groups,
-                                                        everyone: everyone, warnings: warnings, phish: phish)
+                                                        everyone: everyone, warnings: warnings, phish: phish, swept: swept)
                     return (reading, LogReaderView.changes(in: auditURL, since: LogReaderView.since(reading), to: LogReaderView.involved(reading)))
                 }.value
                 guard let self, let reading = self.reading, reading.key == key else { return }
@@ -206,6 +210,7 @@ struct LogReaderView: View {
         "\(domain)|\(auditStamp)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
+            + "|swept:" + swept.sorted().joined(separator: ",")
             + "|" + Self.reachKey(warnings: warnings, phish: phish, directoryKey: directoryKey)
     }
 
@@ -262,7 +267,7 @@ struct LogReaderView: View {
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
                                     nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], people: [String: String]? = nil,
                                     groups: [String: [String]] = [:], everyone: Set<String> = [],
-                                    warnings: [IncidentStore.Warning] = [], phish: String? = nil) -> LogReading.Reading {
+                                    warnings: [IncidentStore.Warning] = [], phish: String? = nil, swept: Set<String> = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
         var capped: [String: Date] = [:]
@@ -280,7 +285,7 @@ struct LogReaderView: View {
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
                                                                          domains: domains, people: people, groups: groups,
-                                                                         everyone: everyone, warnings: picked, phish: phish))
+                                                                         everyone: everyone, warnings: picked, phish: phish, swept: swept))
     }
 
     /// When the attack began, as the reading shows it: the first account's first suspect event, or the first time an email of
@@ -352,7 +357,7 @@ struct LogReaderView: View {
         }
         .onChange(of: key, initial: true) {
             memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                         groups: groups, everyone: everyone, warnings: warnings, phish: phish, key: key)
+                         groups: groups, everyone: everyone, warnings: warnings, phish: phish, swept: swept, key: key)
         }
         // Each reading names the groups the emails went to: their members are read (once each), and a reading with them follows.
         .onChange(of: memory.read?.key, initial: true) {
@@ -458,7 +463,7 @@ struct LogReaderView: View {
                      : "Nothing left that these logs can show.").foregroundStyle(.secondary)
             }
             ForEach(reading.toDo) { task in
-                TaskRow(task: task, secure: secure, pullEmail: pullEmail, show: show, pullAgain: pullAgain)
+                TaskRow(task: task, secure: secure, pullEmail: pullEmail, show: show, pullAgain: pullAgain, sweep: sweep)
             }
             if !unread.isEmpty {
                 Label("Not read, so not in this list: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
@@ -807,6 +812,7 @@ private struct TaskRow: View {
     let pullEmail: (String) -> Void
     let show: (IncidentLogs.Filter) -> Void
     let pullAgain: ([ActivityLogs.Application], [String]) -> Void
+    let sweep: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -816,8 +822,13 @@ private struct TaskRow: View {
                 Image(systemName: "circle")
             }
             .accessibilityLabel("To do \(task.id): \(task.words)")
-            if !task.drafts.isEmpty || task.shows != nil || !task.pullsAgain.isEmpty {
+            if !task.drafts.isEmpty || task.shows != nil || !task.pullsAgain.isEmpty || task.sweeps != nil {
                 HStack {
+                    if let address = task.sweeps {
+                        Button("Pull Every Account From \(address)") { sweep(address) }
+                            .accessibilityHint("Reads every account's logs from this address over the window shown, and adds what it finds. "
+                                               + "Nothing changes.")
+                    }
                     let logs = task.pullsAgain.compactMap(ActivityLogs.Application.init(rawValue:))
                     if !logs.isEmpty {
                         Button("Pull Again") { pullAgain(logs, task.accounts) }

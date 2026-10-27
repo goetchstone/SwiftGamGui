@@ -87,6 +87,7 @@ public enum LogExplainer {
         case .finishLock: "finish the lock: only the password reset or only the sign-out was done"
         case .pullAgain: "pull some logs again for just these accounts: the pull doesn't hold all of them for these accounts (read for every "
             + "account, they stop short of the attack, or a recipient's own Gmail log isn't in it)"
+        case .sweep: "read every account's logs from the attacker's address, to find whom else it reached: quick at any size"
         case .removeAdded: "remove the passkey or 2-Step Verification method the attacker added to the account"
         case .clearRecovery: "clear the recovery email and phone the attacker changed"
         case .unblockSender: "have the person unblock the sender the attacker blocked in Gmail"

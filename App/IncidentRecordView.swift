@@ -210,17 +210,19 @@ struct IncidentRecordSection: View {
         incidents.shownKey = key
         incidents.loading = true
         let loaded = await Task.detached { () -> (pull: IncidentLogs.Pull, names: [String], unreadable: [String], readable: Bool,
-                                                  abouts: [String: String]) in
+                                                  abouts: [String: String], swept: Set<String>) in
             let saved = store.exports(of: id)
             let merged = await IncidentLogs.evidence(saved.exports)
             return (merged.pull, saved.exports.map(\.name), saved.unreadable + merged.unreadable,
                     merged.unreadable.count < saved.exports.count,
-                    Dictionary(saved.exports.map { ($0.name, Incidents.about($0)) }, uniquingKeysWith: { first, _ in first }))
+                    Dictionary(saved.exports.map { ($0.name, Incidents.about($0)) }, uniquingKeysWith: { first, _ in first }),
+                    Set(saved.exports.compactMap { IncidentLogs.sweptAddress(about: $0.about) }))
         }.value
         incidents.loading = false
         guard incidents.openID == id else { return }
         incidents.evidence = (id, loaded.names, loaded.unreadable)
         incidents.abouts = loaded.abouts
+        incidents.swept = loaded.swept
         incidents.together = (id, loaded.readable ? loaded.pull : nil)
         if loaded.names.isEmpty {
             // A new incident takes the pull just made: pull, then New Incident… keeps what was found.

@@ -38,6 +38,33 @@ struct IncidentEvidenceTests {
         #expect(rest.through[.gmail] == (try? Date("2026-10-16T00:00:00Z", strategy: .iso8601)))
     }
 
+    /// The address a saved read of every account was made from (slice 7: that address's sweep is done); never one for some
+    /// accounts, by no address, or with its Accounts line missing.
+    @Test func whichAddressAReadOfEveryAccountWasFrom() {
+        func about(_ accounts: String?, _ address: String) -> String {
+            "Incident logs exported 2026-10-27 0900 UTC.\nOver the last 30 days.\n" + (accounts.map { "Accounts: \($0).\n" } ?? "")
+                + "From IP address: \(address).\n\ngmail-log.csv: the Gmail log, 12 events.\n"
+        }
+        #expect(IncidentLogs.sweptAddress(about: about("every account", "198.51.100.23")) == "198.51.100.23")
+        #expect(IncidentLogs.sweptAddress(about: about("every account", "2001:db8::7")) == "2001:db8::7")
+        #expect(IncidentLogs.sweptAddress(about: about("carol@example.com", "198.51.100.23")) == nil)
+        #expect(IncidentLogs.sweptAddress(about: about("every account", "any")) == nil)
+        #expect(IncidentLogs.sweptAddress(about: about(nil, "198.51.100.23")) == nil)
+    }
+
+    /// How far a read of every account will get, from its first full read (slice 7): the events an hour over that read's
+    /// span, then how much of the window the bounds read whole, oldest first, in how many reads and how long. The operator's
+    /// 30-day Gmail of 2026-10-27 (about 900 events an hour) stopped after about 9 days: said up front now.
+    @Test func howFarAWideReadWillGet() {
+        let operators = IncidentLogs.Estimate.from(count: 1_000, span: 4_000, took: 2, windowHours: 720, cap: 1_000, perDay: 100, budget: 200)
+        #expect(operators.perHour == 900 && operators.hours == 222 && !operators.whole && !operators.tooBusy)
+        #expect(operators.reads == 200 && operators.seconds == 400)
+        let quiet = IncidentLogs.Estimate.from(count: 1_000, span: 360_000, took: 1.5, windowHours: 720, cap: 1_000, perDay: 100, budget: 200)
+        #expect(quiet.perHour == 10 && quiet.whole && quiet.hours == 720 && quiet.reads == 9)
+        let busy = IncidentLogs.Estimate.from(count: 1_000, span: 300, took: 2, windowHours: 720, cap: 1_000, perDay: 100, budget: 200)
+        #expect(busy.perHour == 12_000 && busy.tooBusy && busy.hours == 0 && busy.reads == 1)
+    }
+
     /// Exports put together: rows newest first, an event both saved once, the widest window, every account when any export
     /// was; a log stopped at its cap only while every export of it was (a later read for just the accounts that matter
     /// reaches further back). One that can't be read is named, the rest still read.

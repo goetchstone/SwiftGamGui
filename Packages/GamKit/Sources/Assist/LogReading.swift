@@ -63,10 +63,14 @@ public enum LogReading {
         public let warnings: [String: Set<String>]
         /// The email the operator picked as where it started ("That's the Phish"), a bare Message-ID (`WayIn`).
         public let phish: String?
+        /// The addresses a read of every account was made from already (an incident's saved reads, each by its `about.txt`; or
+        /// the read shown): their sweep is done.
+        public let swept: Set<String>
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
                     pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], people: [String: String]? = nil,
-                    groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:], phish: String? = nil) {
+                    groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:], phish: String? = nil,
+                    swept: Set<String> = []) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
@@ -79,6 +83,7 @@ public enum LogReading {
             self.everyone = everyone
             self.warnings = warnings
             self.phish = phish
+            self.swept = swept
         }
     }
 
@@ -275,7 +280,7 @@ public enum LogReading {
     public struct Task: Sendable, Equatable, Identifiable {
         /// Most urgent first.
         public enum Kind: String, Sendable, CaseIterable {
-            case secureAgain, secure, finishLock, pullAgain, removeAdded, clearRecovery, unblockSender, deleteDevice, pullEmail,
+            case secureAgain, secure, finishLock, pullAgain, sweep, removeAdded, clearRecovery, unblockSender, deleteDevice, pullEmail,
                  warnRecipients, signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look, checkShared
         }
         public let id: String
@@ -291,6 +296,8 @@ public enum LogReading {
         public let pullsAgain: [String]
         /// How it was done, when and by whom, for an item on `Reading.done`; nil while it's still to do.
         public let done: Done?
+        /// The attacker's address to read every account's logs from ("Pull Every Account From …", slice 7): a read. Nil for none.
+        public var sweeps: String? = nil
     }
 
     /// Which events a to-do item is about: its accounts', from these addresses (none: any), in these logs, through these
@@ -1035,7 +1042,18 @@ public enum LogReading {
             }
         }
         // Most urgent first, each once.
+        // Narrow first (slice 7, planned 2026-10-24; the operator, 2026-10-27, of every account's Gmail: "with a larger tenant it
+        // would take days"): each attacker address read for every account, Google filtering on it before it reads, so the read
+        // stays small at any size. Never a shared one (`acting` leaves those out), nor one read so already.
+        var sweeps: [(Task.Kind, String, [String], [Draft], Shown?)] = [], sweepFor: [String: String] = [:]
+        for address in suspects where acting.contains(address) && !context.swept.contains(address) {
+            let words = "Read every account's logs from \(address), over the window shown: whom else it signed in to, sent from or "
+                + "changed. Google filters on the address before it reads, so this stays quick however large the organization."
+            sweeps.append((.sweep, words, [], [], nil))
+            sweepFor[words] = address
+        }
         let todos = statusTasks.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String]()) } + coverage.map { ($0.0, $0.1, $0.2, $0.3, $0.4, pullsAgain) }
+            + sweeps.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String]()) }
             + ranked.flatMap { item in
                 item.todo.map { ($0.0, $0.1, item.accounts, $0.2, item.shows ?? Shown(accounts: item.accounts, addresses: item.addresses), [String]()) }
             } + warnTasks
@@ -1049,7 +1067,7 @@ public enum LogReading {
                     events: item.events, drafts: item.drafts.filter(stillToDraft), markable: item.markable)
         }, statuses: statuses, toDo: ordered.enumerated().map { index, item in
             Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3,
-                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.5, done: nil)
+                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.5, done: nil, sweeps: sweepFor[item.1])
         }, done: doneTasks.enumerated().map { index, item in
             Task(id: "D\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: [], shows: nil, pullsAgain: [], done: item.3)
         }, events: events.count, reaches: reaches, wayIn: wayIn(statuses, in: events, context: context))

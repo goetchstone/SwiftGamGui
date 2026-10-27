@@ -795,6 +795,31 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   IP, and a domain alias in `nonEditableAliases`, as the rules assume; and a group it went to listed by its members, with
   a nested group's and the "Does not exist" wording and exit code the mock assumes for an address that isn't a group.
 
+## Narrow first, and how far a wide read gets (incidents plan, slice 7)
+Asked for 2026-10-24 ("Investigate leads with the narrow pulls … and an every-account pull says up front how far it will
+get"), built 2026-10-27 after watching the operator's 30-day pull: every account's Gmail, a day at a time, 1,000 events a GAM
+call, is hours on a large tenant ("with a larger tenant it would take days"). Reads only.
+- **Each attacker address, across every account** (`LogReading.Task.Kind.sweep`, `Task.sweeps`): a to-do item for each address
+  the reader found suspect (`acting`: never one set aside as shared, an office or a VPN), with **Pull Every Account From …**:
+  the recommended logs, every account, that address, the window shown (`CompromisedView.sweep`). Google filters on the address
+  before it reads, so the read stays small at any size: whom else it signed in to, sent from or changed. Code finds the
+  addresses; the model only words the item ("read every account's logs from the attacker's address").
+- **Done** (`Context.swept`): once a saved read of the open incident read every account from that address, as its `about.txt`
+  says (`IncidentLogs.sweptAddress`, by `About`; "Accounts: every account." must be said), never the merged query, which keeps
+  only the first address; or the read shown, when it isn't the evidence. So an address is never swept twice.
+- **How far a wide read gets** (`IncidentLogs.Estimate`, said in the log's progress line while it reads): from a log's first
+  read of the whole window when it comes back full, the events an hour over that read's span (its newest, so the time of day
+  sways it) and that read's time; then how much of the window, oldest first, the bounds (`cap` a read, `readsPerDay`,
+  `readsPerLog`) read whole, in how many reads and minutes: "About 900 events an hour: it will read the oldest 9 days of the
+  30 days whole, in about 200 reads (about 7 minutes), then stop. Narrow it (an account, or the attacker's address) to read it
+  all." Too busy for even a day says so. The operator's real 30-day Gmail (about 900 an hour) stopped after about 9 days.
+- **Not built** from the plan: a wide read waiting with Read the Oldest N Hours and Narrow Instead (it's said, and it reads);
+  reading several days at once and more events per GAM call (each a speed-up for the wide read, not a change of its scale).
+- Tests: `AssistTests/NarrowFirstTests.swift`, `IncidentEvidenceTests.whichAddressAReadOfEveryAccountWasFrom`,
+  `.howFarAWideReadWillGet`.
+- **Live check (L1n, reads only):** on the real incident, Pull Every Account From the attacker's address: it ends in seconds
+  to minutes, its item leaves Still to do, and a 30-day every-account Gmail pull's estimate is near where it stops.
+
 ## Where it started (incidents plan: the incoming phish)
 Asked for (2026-10-27): the operator's account was that a vendor was compromised, their designer fell for an email from it,
 and the attacker then sent as the designer; "trace the vendor's email that started it". Investigate's section under the

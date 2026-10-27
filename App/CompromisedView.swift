@@ -296,7 +296,10 @@ struct CompromisedView: View {
         directoryKey: index.key + "|" + groups.key, groupProblems: groups.problems, readingGroups: groups.isReading,
         readGroups: { addresses in Task { await groups.read(addresses) } }, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
-        }, phish: open?.phish, pickPhish: open.map { record in { phish in incidents.pickPhish(phish, in: record.id) } },
+        }, sweep: { address in
+            sweep(address)
+            go(.investigate, to: Self.reportsAnchor, scroller)
+        }, swept: swept(pull, open: open), phish: open?.phish, pickPhish: open.map { record in { phish in incidents.pickPhish(phish, in: record.id) } },
         incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
         anchor: part == .findings ? Self.readerAnchor : part == .toDo ? Self.toDoAnchor : Self.reportAnchor)
     }
@@ -315,6 +318,21 @@ struct CompromisedView: View {
             kept.review = review
             return incidents.save(kept)
         })
+    }
+
+    /// The addresses a read of every account was made from already: the open incident's saved reads (each by its `about.txt`,
+    /// never the merged query, which keeps only the first address), or a read shown that isn't the evidence.
+    private func swept(_ pull: IncidentLogs.Pull, open: IncidentStore.Record?) -> Set<String> {
+        var swept = open.flatMap { record in incidents.evidence?.id == record.id ? incidents.swept : nil } ?? []
+        if !pull.fromEvidence, pull.query.users.isEmpty, !pull.query.ip.isEmpty { swept.insert(pull.query.ip) }
+        return swept
+    }
+
+    /// Reads every account's logs from `address` (the recommended logs, over the window shown), and adds what it finds to
+    /// what's shown, as a Pull Again does: narrow first (slice 7). A read: nothing changes.
+    private func sweep(_ address: String) {
+        let shown = logs.pull?.query.hours ?? 0
+        read(IncidentLogs.Query(applications: ActivityLogs.incidentDefault, users: [], hours: shown > 0 ? shown : pullForm.hours, ip: address))
     }
 
     /// Shows `tab` scrolled to `anchor`: at once when it's shown already, else once it has drawn.
@@ -1477,8 +1495,24 @@ private struct IncidentLogsSection: View {
         case .reading:
             return "\(application.name): reading, \(events) so far in \(progress.reads) read\(progress.reads == 1 ? "" : "s")"
                 + (progress.through.map { ", whole through \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "")
+                + (progress.estimate.map { ". " + estimateWords($0) } ?? "")
         case .done: return progress.failed ? "\(application.name): couldn't be read" : "\(application.name): done, \(events)"
         }
+    }
+
+    /// "About 9,000 events an hour: it will read the oldest 22 hours of the 30 days whole, in about 200 reads (about 7
+    /// minutes), then stop. Narrow it (an account, or the attacker's address) to read it all."
+    static func estimateWords(_ estimate: IncidentLogs.Estimate) -> String {
+        let rate = "About \(estimate.perHour.formatted()) events an hour"
+        if estimate.tooBusy {
+            return rate + ": too busy to read even its first day whole within the bounds. Narrow it (an account, or the attacker's "
+                + "address) to read it."
+        }
+        let minutes = max(1, (estimate.seconds + 59) / 60)
+        let time = "in about \(estimate.reads.formatted()) read\(estimate.reads == 1 ? "" : "s") (about \(minutes) minute\(minutes == 1 ? "" : "s"))"
+        if estimate.whole { return rate + ": it will read all \(window(estimate.windowHours)) whole, \(time)." }
+        return rate + ": it will read the oldest \(window(estimate.hours)) of the \(window(estimate.windowHours)) whole, \(time), then stop. "
+            + "Narrow it (an account, or the attacker's address) to read it all."
     }
 
     static func symbol(_ progress: IncidentLogs.Progress) -> String {
