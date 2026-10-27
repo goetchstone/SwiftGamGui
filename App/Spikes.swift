@@ -196,17 +196,24 @@ enum Spikes {
     static func printState(in content: NSView) {
         func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
         let shown = descendants(content).filter { !$0.isHiddenOrHasHiddenAncestor }
-        // Pop-ups read as the views that draw them: walking the accessibility tree from here named none on any screen in
-        // CI (run 40484251153), Onboard's blank Role among them (2026-10-27).
-        for popUp in shown.compactMap({ $0 as? NSPopUpButton }) {
-            let items = popUp.itemArray.map { "\"\($0.title)\"" }.joined(separator: ", ")
-            print("state: pop-up \(type(of: popUp)) shows \"\(popUp.titleOfSelectedItem ?? "")\", item \(popUp.indexOfSelectedItem) of [\(items)]")
+        // Pop-ups as VoiceOver reads them, each element asked by name (`AnyObject`): SwiftUI's elements didn't pass a cast to
+        // `NSAccessibilityProtocol`, so that walk named no pop-up on any screen, and SwiftUI's pickers aren't NSPopUpButtons
+        // (runs 40484251153 and 40488222868, 2026-10-27). How far the walk got is said too, by role.
+        var reached: [String: Int] = [:]
+        func walk(_ element: AnyObject, depth: Int) {
+            guard depth < 60 else { return }
+            let role: NSAccessibility.Role? = element.accessibilityRole?() ?? nil
+            reached[role?.rawValue ?? "no role", default: 0] += 1
+            if let role, [.popUpButton, .menuButton, .comboBox].contains(role) {
+                let label: String? = element.accessibilityLabel?() ?? nil, value: Any? = element.accessibilityValue?() ?? nil
+                print("state: \(role.rawValue) \"\(label ?? "")\" shows \"\(value.map { "\($0)" } ?? "")\"")
+            }
+            let children: [Any] = (element.accessibilityChildren?() ?? nil) ?? []
+            for child in children { walk(child as AnyObject, depth: depth + 1) }
         }
-        // Anything else that may draw a picker, by its class, so one drawn some other way is still named.
-        for view in shown where !(view is NSPopUpButton)
-            && ["PopUp", "Picker", "Menu", "ComboBox"].contains(where: { String(describing: type(of: view)).contains($0) }) {
-            print("state: picker-like \(type(of: view)), \(Int(view.frame.width)) by \(Int(view.frame.height))")
-        }
+        walk(content, depth: 0)
+        print("state: accessibility reached " + reached.sorted { ($1.value, $0.key) < ($0.value, $1.key) }.prefix(10)
+            .map { "\($0.key) \($0.value)" }.joined(separator: ", "))
         for scroll in shown.compactMap({ $0 as? NSScrollView }) {
             let document = scroll.documentView.map { "\(type(of: $0)) \(Int($0.frame.height)) tall" } ?? "no document"
             print("state: scroll at \(Int(scroll.contentView.bounds.minY)) of \(document), \(Int(scroll.frame.height)) shown")
