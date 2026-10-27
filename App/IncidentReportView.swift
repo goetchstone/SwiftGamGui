@@ -56,8 +56,11 @@ struct IncidentReportView: View {
     var body: some View {
         Section {
             // The incident's title and when it was opened are its header's, just above (the operator, 2026-10-27: said twice).
-            Text(timesWords)
-                .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(timesWords)
+                Text(report.wayInWords(Self.when)).foregroundStyle(.secondary)
+            }
+            .textSelection(.enabled)
             HStack {
                 if exporting {
                     ProgressView().controlSize(.small)

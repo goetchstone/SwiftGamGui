@@ -61,10 +61,12 @@ public enum LogReading {
         public let everyone: Set<String>
         /// The warnings the operator picked for each email the attacker sent: its bare Message-ID to theirs (`Reach`).
         public let warnings: [String: Set<String>]
+        /// The email the operator picked as where it started ("That's the Phish"), a bare Message-ID (`WayIn`).
+        public let phish: String?
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
                     pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], people: [String: String]? = nil,
-                    groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:]) {
+                    groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:], phish: String? = nil) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
@@ -76,6 +78,7 @@ public enum LogReading {
             self.groups = groups
             self.everyone = everyone
             self.warnings = warnings
+            self.phish = phish
         }
     }
 
@@ -497,6 +500,8 @@ public enum LogReading {
         public let events: Int
         /// Who each email the attacker sent reached, in the to-do list's order of them.
         public let reaches: [Reach]
+        /// Where it started: the first account the attacker got into, the emails it got from outside before, and the one picked.
+        public let wayIn: WayIn?
 
         public var drafts: [Draft] {
             var seen: Set<Draft> = []
@@ -1047,7 +1052,106 @@ public enum LogReading {
                  shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.5, done: nil)
         }, done: doneTasks.enumerated().map { index, item in
             Task(id: "D\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: [], shows: nil, pullsAgain: [], done: item.3)
-        }, events: events.count, reaches: reaches)
+        }, events: events.count, reaches: reaches, wayIn: wayIn(statuses, in: events, context: context))
+    }
+
+    /// Where it started (asked 2026-10-27: a vendor's email to the operator's designer gave the attacker the account): the
+    /// emails the first account the attacker got into received from outside in the `wayInHours` before its attack began,
+    /// newest first, for the operator to pick the one that started it; and the one picked, with every mailbox here that
+    /// received it, who may have fallen for it too. Code lists them; nothing guesses which it was.
+    public struct WayIn: Sendable, Equatable {
+        public struct Email: Sendable, Equatable, Identifiable {
+            /// Bare, as Phishing names it.
+            public let messageID: String
+            /// Its sender, as the Gmail log names it (`message_info.source`).
+            public let sender: String
+            public let subject: String
+            /// When the account received it.
+            public let at: Date?
+            /// Every mailbox here the logs read show receiving it, each once, the first first.
+            public let receivedBy: [String]
+            public var id: String { messageID }
+        }
+
+        public let account: String
+        /// When its attack began (`Status.attackedAt`): the window ends there.
+        public let attackedAt: Date
+        /// At most `wayInShown`, newest first.
+        public let candidates: [Email]
+        /// Emails it received in the window whose log names no sender: said, never guessed from.
+        public let unnamed: Int
+        /// The email picked, as the logs read show it; nil with none picked, or one they don't show anyone receiving.
+        public let picked: Email?
+        /// The Message-ID picked when the logs read don't show anyone here receiving it.
+        public let pickedUnread: String?
+    }
+
+    /// How far before the attack began its emails are looked at, in hours, and how many are listed.
+    public static let wayInHours = 72
+    public static let wayInShown = 50
+
+    /// The `WayIn` of `statuses`' first account the attacker got into, from its Gmail receipts (`mail_event_type` 2 or 6, not
+    /// marked failed) in `events`: a sender outside `Context.domains`, in the window. Two passes over the Gmail events: the
+    /// account's receipts, then everyone's receipts of those few emails.
+    static func wayIn(_ statuses: [Status], in events: [Event], context: Context) -> WayIn? {
+        guard let first = statuses.filter(\.attackerGotIn).compactMap({ status in status.attackedAt.map { (status.account.lowercased(), $0) } })
+            .min(by: { $0.1 < $1.1 }) else { return nil }
+        let (account, attackedAt) = first
+        let from = attackedAt.addingTimeInterval(-Double(wayInHours) * 3_600)
+        func person(_ text: String) -> String? {
+            guard let found = address(text) else { return nil }
+            return context.people?[found] ?? found
+        }
+        func receipt(_ event: Event) -> String? {
+            guard event.log == "gmail", let type = Int(event.parameters["event_info.mail_event_type"] ?? ""), type == 2 || type == 6,
+                  event.parameters["event_info.success"]?.lowercased() != "false",
+                  let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { return nil }
+            return bareMessageID(id)
+        }
+        func sender(_ event: Event) -> String? {
+            (event.parameters["message_info.source.address"]).flatMap(address)
+                ?? (event.parameters["message_info.source.from_header_address"]).flatMap(address)
+        }
+        func outside(_ address: String) -> Bool {
+            !context.domains.contains(address.split(separator: "@").last.map { String($0).lowercased() } ?? "")
+        }
+        // Pass 1: the account's receipts in the window, from outside, each email once at its first receipt.
+        var found: [String: (sender: String, subject: String, at: Date?)] = [:], unnamed: Set<String> = []
+        for event in events {
+            guard let id = receipt(event), let at = event.time, at >= from, at <= attackedAt, person(event.who) == account else { continue }
+            guard let by = sender(event) else {
+                unnamed.insert(id)
+                continue
+            }
+            guard outside(by) else { continue }
+            if let seen = found[id], (seen.at ?? .distantFuture) <= at { continue }
+            found[id] = (by, event.parameters["message_info.subject"] ?? "", at)
+        }
+        let listed = found.sorted { ($0.value.at ?? .distantPast, $0.key) > ($1.value.at ?? .distantPast, $1.key) }.prefix(wayInShown)
+        let picked = context.phish.map(bareMessageID)
+        // Pass 2: every mailbox here that received those, and the pick (a sender and subject from any receipt of it).
+        let wanted = Set(listed.map(\.key) + (picked.map { [$0] } ?? []))
+        var received: [String: [(who: String, at: Date?)]] = [:], about: [String: (sender: String, subject: String)] = [:]
+        for event in events {
+            guard let id = receipt(event), wanted.contains(id), let mailbox = person(event.who) else { continue }
+            received[id, default: []].append((mailbox, event.time))
+            if about[id] == nil, let by = sender(event) { about[id] = (by, event.parameters["message_info.subject"] ?? "") }
+        }
+        func receivedBy(_ id: String) -> [String] {
+            var seen: Set<String> = []
+            return (received[id] ?? []).sorted { ($0.at ?? .distantFuture) < ($1.at ?? .distantFuture) }.map(\.who)
+                .filter { seen.insert($0).inserted }
+        }
+        let candidates = listed.map { WayIn.Email(messageID: $0.key, sender: $0.value.sender, subject: $0.value.subject, at: $0.value.at,
+                                                   receivedBy: receivedBy($0.key)) }
+        var chosen: WayIn.Email?
+        if let picked {
+            chosen = candidates.first { $0.messageID == picked } ?? (received[picked] == nil ? nil : WayIn.Email(
+                messageID: picked, sender: about[picked]?.sender ?? "", subject: about[picked]?.subject ?? "",
+                at: received[picked]?.compactMap(\.at).min(), receivedBy: receivedBy(picked)))
+        }
+        return WayIn(account: account, attackedAt: attackedAt, candidates: candidates, unnamed: unnamed.subtracting(found.keys).count,
+                      picked: chosen, pickedUnread: chosen == nil ? picked : nil)
     }
 
     /// Who each email in `ids` (the attacker's sends, as the Gmail log names them) reached (`Reach`), and the emails an

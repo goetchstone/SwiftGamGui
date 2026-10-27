@@ -39,6 +39,8 @@ public struct IncidentStore: Sendable {
         public var warnings: [Warning] = []
         /// The post-incident review, as the operator writes it (Report).
         public var review = Review()
+        /// The email the operator picked as where it started ("That's the Phish" on Investigate): a bare Message-ID.
+        public var phish: String?
     }
 
     /// The post-incident review (the standard's lessons learned): the incident's type and severity, the review meeting, how
@@ -389,6 +391,7 @@ public struct IncidentStore: Sendable {
         guard record.warnings.allSatisfy({ isMessageID($0.email) && isMessageID($0.warning) }) else {
             throw .invalid("A warning picked isn't an email's Message-ID.")
         }
+        guard record.phish.map(isMessageID) ?? true else { throw .invalid("The email picked isn't an email's Message-ID.") }
         guard record.review.kind.count <= nameLength, record.review.severity.count <= nameLength,
               record.review.texts.allSatisfy({ $0.value.count <= reviewLength }) else {
             throw .invalid("The type and severity must be \(nameLength) characters or fewer, and each answer of the review \(reviewLength).")
@@ -432,8 +435,14 @@ public struct IncidentStore: Sendable {
             review = Review(kind: kind, severity: severity, meeting: meeting, attendees: attendees, cause: cause, wentWell: wentWell,
                             improve: improve, plan: plan)
         }
+        // Kept since 2026-10-27: a file from before has none.
+        var phish: String?
+        if let kept = file["phish"], kept != .null {
+            guard let id = kept.string else { return nil }
+            phish = id
+        }
         return try? valid(Record(id: id, domain: domain, title: title, opened: opened, openedBy: openedBy, reported: reported, notes: notes,
-                                 warnings: warnings, review: review))
+                                 warnings: warnings, review: review, phish: phish))
     }
 
     /// Writes `record` as the whole of its `incident.json`, making its folder (and `root`) `0700` first.
@@ -448,7 +457,7 @@ public struct IncidentStore: Sendable {
                                      "title": .string(record.title), "opened": .string(record.opened.formatted(.iso8601)),
                                      "openedBy": .string(record.openedBy), "reported": .string(record.reported), "notes": .array(notes),
                                      "warnings": .array(record.warnings.map { .object(["email": .string($0.email), "warning": .string($0.warning)]) }),
-                                     "review": .object(review)])
+                                     "review": .object(review), "phish": record.phish.map(JSONValue.string) ?? .null])
         do {
             try SignatureStore.writeFile(Array((JSONValue.dumps(file) + "\n").utf8), named: Self.fileName, in: folder, interrupt: nil)
         } catch {

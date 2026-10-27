@@ -296,7 +296,8 @@ struct CompromisedView: View {
         directoryKey: index.key + "|" + groups.key, groupProblems: groups.problems, readingGroups: groups.isReading,
         readGroups: { addresses in Task { await groups.read(addresses) } }, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
-        }, incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
+        }, phish: open?.phish, pickPhish: open.map { record in { phish in incidents.pickPhish(phish, in: record.id) } },
+        incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
         anchor: part == .findings ? Self.readerAnchor : part == .toDo ? Self.toDoAnchor : Self.reportAnchor)
     }
 
@@ -467,7 +468,8 @@ struct CompromisedView: View {
     /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), the
     /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`: Investigate's findings; `todo`: Respond's
     /// Still to do; `reached`: Respond's first Who it reached, alice@'s and bob@'s logs too, in a demo incident with the mock's
-    /// warning picked; `report`: the same incident's report on Report, with a review written), or the person's logs saved to a
+    /// warning picked, scrolled to Everyone it got to; `report`: the same incident's report on Report, with a review written;
+    /// `origin`: the same on Investigate, scrolled to Where it started with the vendor's email picked), or the person's logs saved to a
     /// demo incident kept in the demo's temporary folder, with a note, opened on Report (`incident`). A plan, the confirm sheet or
     /// a run shows on Respond.
     private func fillForSnapshot() {
@@ -479,7 +481,7 @@ struct CompromisedView: View {
         let asked = environment["SWIFTGAMGUI_TAB"] ?? ""
         let changes = changes
         // The log reader's pictures wait for its reading, which comes off the main thread after the pull, and for the scroll.
-        let reading = ["reading", "todo", "reached", "report"].contains(asked)
+        let reading = ["reading", "todo", "reached", "report", "origin"].contains(asked)
         if reading { Spikes.snapshotWork += 1 }
         Task {
             defer { if reading { Spikes.snapshotWork -= 1 } }
@@ -506,7 +508,7 @@ struct CompromisedView: View {
             if reading, let email = changes.check?.user.primaryEmail {
                 // Who it reached reads the recipients' and the warning's sender's Gmail logs too, in a demo incident with the
                 // mock's warning picked: what a pick shows (warned on its send outside, not shown warned with no receipt here).
-                let reached = asked == "reached" || asked == "report"
+                let reached = asked == "reached" || asked == "report" || asked == "origin"
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome],
                                                    users: [email, "dana@example.com"] + (reached ? ["alice@example.com", "bob@example.com"] : []),
                                                    hours: 72, ip: ""))
@@ -514,6 +516,7 @@ struct CompromisedView: View {
                                                                          opened: Date(), openedBy: "Pat", reported: "A Google alert") {
                     if let pull = logs.pull { _ = try? await incidents.add(pull, to: record.id) }
                     _ = incidents.pickWarning(email: "phish-1@mail.example.com", warning: "warning-1@mail.example.com", in: record.id)
+                    if asked == "origin" { _ = incidents.pickPhish("inv-4471@mail.vendor.example", in: record.id) }
                     if asked == "report", var reviewed = incidents.record(record.id) {
                         reviewed.review = IncidentStore.Review(kind: "Account takeover and phishing", severity: "High",
                                                                meeting: Date().addingTimeInterval(86_400 * 2), attendees: "Pat, Sam",
@@ -531,12 +534,18 @@ struct CompromisedView: View {
                 try? await Task.sleep(for: .milliseconds(300))
                 if asked == "report" {
                     self.tab = .report
+                } else if asked == "origin" {
+                    // Where it started, on Investigate under the findings, once the reading with the pick has come.
+                    for _ in 0..<100 where readerMemory.picksPhish != true { try? await Task.sleep(for: .milliseconds(50)) }
+                    try? await Task.sleep(for: .milliseconds(300))
+                    scrollTarget = LogReaderView.wayInAnchor
                 } else if asked == "todo" || asked == "reached" {
                     self.tab = .respond
-                    if asked == "reached", let anchor = readerMemory.firstReach {
-                        // Once Respond has drawn it: an anchor that first appears in the same update doesn't scroll.
+                    if asked == "reached", readerMemory.firstReach != nil {
+                        // Everyone it got to, above the first Who it reached; once Respond has drawn it: an anchor that first
+                        // appears in the same update doesn't scroll.
                         try? await Task.sleep(for: .milliseconds(300))
-                        scrollTarget = anchor
+                        scrollTarget = LogReaderView.gotItAnchor
                     }
                 } else {
                     scrollToReader = true

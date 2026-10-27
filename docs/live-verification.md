@@ -61,6 +61,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Incident: Show the Events and Pull Again on the to-do items (reads) | not yet: new to both apps |
 | Incident: Who it reached: every recipient, received or bounced, the warning picked, Export CSV (Respond; reads only) | not yet: new to both apps (L3w in the compromised-account runbook) |
 | Incident: Pull Incident Logs read whole, oldest first, with Read the Rest (reads) | not yet: new to both apps |
+| Incident: Where it started: the vendor's email listed with its sender, picked, who else here received it (Investigate; reads only) | not yet: new to both apps (L3o in the compromised-account runbook) |
 | Read the logs: each account's timeline and Still to do (reads only) | partly: run over real exported logs (2026-10-22), not yet in the app live |
 | Incident: block a computer, or take the account off it (Incident) | not yet: new to both apps |
 | Read the logs: Do It Here on a to-do item (opens the plan with only that fix picked) | not yet: new to both apps |

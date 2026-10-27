@@ -475,7 +475,13 @@ fi
 # Activity Events"; GAM's `gmaileventtypes` reads it there, :14854-14862), kept nested as `parameters.N…` beside
 # `message_info` (:14865-14899: a messageValue parameter isn't purged). The fixture has a view by the attacker's address
 # (31) beside the sends (1): real logs hold every message the attacker read (2026-10-23). Which of the two parameters
-# comes first is a guess; the reader names each by its chain, not its place.
+# comes first is a guess; the reader names each by its chain, not its place. Receipts (2) carry their sender one level
+# deeper, `message_info.source` (`address`, `from_header_address`): doReport keeps a messageValue parameter whole
+# (purge_parameters False, GAM 7.48.34 :14865-14899) and flattenJSON writes it `parameters.1.messageValue.parameter.3.
+# messageValue.parameter.N…`; the names inside `source` are Google's Gmail log schema's, not yet seen live (L3o). The vendor's
+# email (inv-4471, billing@vendor.example) reached carol@ at 13:41 on 10-19, before Chrome saw her type her password, and
+# alice@ too; beside it an outside newsletter in the 72 hours before, a colleague's email (inside), and an outside email from
+# four days before: the incoming phish's candidates and what isn't one.
 if [ "${1:-}" = "report" ] && case "${2:-}" in login|logins|token|tokens|oauthtoken|gmail|accessevaluation|chat|useraccounts|drive|doc|docs|takeout|admin|mobile|devices|chrome|saml|calendar|calendars|groups|group|rules|contextawareaccess|vault|\
 geminiinworkspaceapps|gemini|geminiforworkspace|meet|hangoutsmeet|contacts|keep|tasks|admindataaction|accesstransparency|access|datastudio|lookerstudio|\
 groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsearch|classroom|datamigration|meethardware|assignments|graduation) true ;;

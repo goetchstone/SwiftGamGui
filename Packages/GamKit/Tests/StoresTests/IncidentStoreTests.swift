@@ -131,6 +131,31 @@ struct IncidentStoreTests {
         #expect(throws: IncidentStore.Problem.self) { try store.save(long) }
     }
 
+    /// The email picked as where it started is kept and read back, and cleared; a file from before has none; one that isn't a
+    /// Message-ID isn't kept.
+    @Test func theEmailThatStartedItIsKept() throws {
+        var store = try IncidentStore(root: root)
+        var record = try store.create(domain: "example.com", title: "Takeover", opened: Self.monday, openedBy: "", reported: "")
+        #expect(record.phish == nil)
+        record.phish = "inv-4471@mail.vendor.example"
+        try store.save(record)
+        #expect(try IncidentStore(root: root).records.first?.phish == "inv-4471@mail.vendor.example")
+        record.phish = nil
+        try store.save(record)
+        let file = root.appending(path: record.id).appending(path: IncidentStore.fileName)
+        #expect(try IncidentStore(root: root).records.first?.phish == nil)
+        #expect(try String(contentsOf: file, encoding: .utf8).contains("\"phish\": null"))
+        // As it was written before 2026-10-27: no "phish" at all.
+        let old = try #require(JSONValue.parse(try String(contentsOf: file, encoding: .utf8))?.object)
+        var stripped = GamOutput.Record()
+        for (key, value) in old where key != "phish" { stripped[key] = value }
+        try Data(JSONValue.dumps(.object(stripped)).utf8).write(to: file)
+        let reread = try IncidentStore(root: root)
+        #expect(reread.unreadable.isEmpty && reread.records.first?.phish == nil)
+        record.phish = "not one"
+        #expect(throws: IncidentStore.Problem.self) { try store.save(record) }
+    }
+
     /// The report's export copies every saved read, byte for byte, into a new private folder (`0700`, files `0600`), each
     /// file with its SHA-256; a link in the evidence is never followed, and a folder there already isn't written into.
     @Test func theEvidenceIsCopiedWithItsFingerprints() throws {

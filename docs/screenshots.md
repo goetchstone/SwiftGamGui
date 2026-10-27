@@ -63,7 +63,14 @@ or only sent, whether a warning you pick reached them, and Export CSV… for the
 
 | Who it reached |
 |---|
-| ![Who it reached: the phish's recipients, each received, bounced or sent, and Export CSV](screenshots/compromised-reached.png) |
+| ![Everyone the attacker's emails got to, once each, with Copy Addresses and Export for Import, above Who it reached](screenshots/compromised-reached.png) |
+
+Where it started: what the first account taken over received from outside before the attack, the vendor's email marked as the
+phish, and who else here received it.
+
+| Where it started |
+|---|
+| ![Where it started: the vendor's email marked as the phish, and who else received it](screenshots/compromised-origin.png) |
 
 The incident report, on Report: the numbers, each opening the list behind it; what was done, each step with the record
 that shows it; the attacker's emails; and the review with the meeting's agenda. Export Report… saves it as a PDF with its
