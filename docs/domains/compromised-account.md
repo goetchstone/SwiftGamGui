@@ -251,6 +251,14 @@ it at its time on its own, with nobody signed in: the lock doesn't stop it. Slic
   (`IncidentLogs.Progress`: waiting its turn, reading with its events so far and its reads, whole through a time, done or
   couldn't be read), so a busy log reading a day in a dozen reads still moves. The reader is linear: each account's rules read only its own events and
   the admin's done to it (`LogReading.Accounts`); 200,000 events read in about 2 seconds in a Debug build.
+- **A read's columns are worked out once, not for each row** (`ActivityLogs.Columns`; watched on the operator's 30-day pull,
+  2026-10-27): every row of one GAM call has the header's columns in its order, and each row was sorting its own, `padded`
+  twice a comparison. A Gmail read of 1,000 events was then about 2 s in GAM and 6 to 8 s of a Debug build's parse, one log
+  after another a day at a time, so Gmail was most of the pull. Now `rows` makes one plan a header (the order, the count
+  columns, each nested column's name chain) and reads each row's values by it; a record whose columns differ (JSON's can) gets
+  its own. 1,000 Gmail-shaped rows of 93 columns, the whole read (best of 3, background priority): Debug 17.3 s → 1.4 s,
+  Release 4.9 s → 0.43 s. `ActivityColumnsTests` holds it to the parser as it was (kept there as `reference`) on every mock
+  report and on rows made for each case. What's left is mostly the shared `CSVReader` (held to GamGUI's parsing, left alone).
 - **Mock lie, handled where it matters:** the mock ignores a read's start (its events are on fixed dates, and the tests read
   at today's time). Paging back now stops once a read reaches the window's start (nothing earlier is in it, and an end
   before the start is GAM's usage error), which real GAM never needs and the mock's extra rows did. A day's read in the
