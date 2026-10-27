@@ -48,26 +48,45 @@ struct IncidentReportTests {
         #expect(LogReading.Reach.columns.count == reach.rows.first?.count)
     }
 
+    /// Everyone the attacker's emails got to, once each (2026-10-27: "who actually got a message", "if it bounced, they did not
+    /// get it"): a receipt, or a send nothing says failed; never a bounce; one address however many emails got to it, with
+    /// whether it's still to warn of any of them.
+    @Test func everyoneItGotToOnceEach() throws {
+        let got = IncidentReport.gotIt(Self.reading().reaches)
+        #expect(got.map(\.address) == ["pat@partner.example", "alice@example.com", "dana@example.com", "ap&ar@vendor.example",
+                                       "team@example.com", "bob@example.com"], "guest@ bounced: it didn't get it")
+        let pat = try #require(got.first)
+        #expect(pat.emails == 2 && pat.subjects == ["Shared file", "Re"] && !pat.inside && !pat.received)
+        #expect(pat.toWarn && !pat.warned, "warned of the phish, not of the Re after it")
+        #expect(pat.contacted?.messageID == "warn-1@mail.example.com")
+        let alice = try #require(got.first { $0.address == "alice@example.com" })
+        #expect(alice.received && alice.warned && !alice.toWarn && alice.emails == 1)
+        #expect(got.first { $0.address == "team@example.com" }.map { $0.inside && !$0.mailbox } == true, "a group here not read: sent to it")
+        let table = IncidentReport.gotItTable(got, no2SV: ["dana@example.com"])
+        #expect(table.columns.first == "Email" && table.rows.count == 6 && table.rows.allSatisfy { $0.count == table.columns.count })
+        #expect(table.rows[2][12] == .text("off") && table.rows[0][12] == .text(""), "2SV only for a person here, with the directory read")
+    }
+
     /// Each number with its list: the accounts and where they stand, who has 2-Step Verification off (only with the directory
-    /// read), each recipient by what came of it, and the steps taken.
+    /// read), everyone the emails got to and what's left of warning them, and the steps taken. No bounce is a number of its own.
     @Test func eachNumberHasTheListBehindIt() throws {
         let report = Self.report()
         func number(_ id: String) -> Int? { report.count(id)?.number }
-        #expect(report.counts.map(\.id) == ["accounts", "notLocked", "accounts2SV", "emails", "addresses", "received", "outside", "bounced",
-                                            "blocked", "toWarn", "warned", "contacted", "notContacted", "reached2SV", "pulled", "actions", "toDo"])
+        #expect(report.counts.map(\.id) == ["accounts", "notLocked", "accounts2SV", "emails", "gotIt", "gotItOutside", "toWarn", "warned",
+                                            "contacted", "notContacted", "reached2SV", "pulled", "actions", "toDo"])
         let accounts = try #require(report.count("accounts"))
         #expect(accounts.table.rows.map { $0[0] } == [.text("carol@example.com"), .text("dana@example.com"), .text("erin@example.com")])
         #expect(accounts.table.rows.map { $0[1] } == [.text("locked"), .text("partly locked"), .text("not locked")])
         #expect(accounts.table.rows.map { $0[5] } == [.text("on"), .text("off"), .text("on")])
         #expect(number("notLocked") == 2 && number("accounts2SV") == 1)
-        #expect(number("emails") == 2 && number("addresses") == 7, "the phish and the attacker's Re to pat@")
-        #expect(report.count("outside")?.table.rows.count == 3 && number("outside") == 2, "a row each email, a number each address")
-        #expect(number("received") == 2 && number("outside") == 2 && number("bounced") == 1 && number("blocked") == 0)
-        #expect(number("warned") == 2 && number("toWarn") == 5, "the pick reached alice@ and pat@; pat@ is still to warn of the Re")
-        #expect(number("contacted") == 6 && number("notContacted") == 1, "nothing from here reached pat@ after the Re")
-        #expect(number("reached2SV") == 2, "alice@ and dana@, people here it reached")
-        let bounced = try #require(report.count("bounced"))
-        #expect(bounced.table.rows.map { $0[2] } == [.text("guest@example.org")] && bounced.table.columns.count == bounced.table.rows[0].count)
+        #expect(number("emails") == 2, "the phish and the attacker's Re to pat@")
+        #expect(report.count("emails")?.table.rows.map { $0[4] } == [.text("6"), .text("1")], "a row each email, how many it got to")
+        #expect(number("gotIt") == 6 && number("gotItOutside") == 2)
+        #expect(number("toWarn") == 5 && number("warned") == 1, "pat@ is still to warn of the Re")
+        #expect(number("contacted") == 6 && number("notContacted") == 0)
+        #expect(number("reached2SV") == 2, "alice@ and dana@, people here it got to")
+        #expect(report.reached.rows.count == 8 && report.reached.rows.contains { $0[2] == .text("guest@example.org") && $0[4] == .text("bounced") },
+                "the full record keeps the bounce")
         // The directory not read: nothing is said of 2-Step Verification.
         let unread = Self.report(no2SV: nil)
         #expect(unread.count("accounts2SV") == nil && unread.count("reached2SV") == nil)
@@ -116,9 +135,9 @@ struct IncidentReportTests {
         #expect(places.count == headings.count && places == places.sorted())
         #expect(text.hasPrefix("INCIDENT REPORT: Carol's account taken over\nDomain: example.com\n"))
         #expect(text.contains("Times are in America/New_York.") && text.contains("Time to detect (first sign to opened): 1 hour 22 minutes"))
-        #expect(text.contains("Contained: not yet") && text.contains("Received it here: 2\n"))
+        #expect(text.contains("Contained: not yet") && text.contains("Got an email of the attacker's: 6\n") && !text.contains("Bounced"))
         #expect(text.contains("Not written yet. For the review meeting, go through:\n1. What happened"))
-        #expect(text.contains("4. Who was reached and whether they were warned: 7 addresses, 5 still to warn, 6 contacted from here after."))
+        #expect(text.contains("4. Who it got to and whether they were warned: 6 addresses (2 outside), 5 still to warn, 6 contacted from here after."))
         #expect(text.contains("ab12  evidence/Incident logs 2026-10-19 1500/about.txt") && text.contains("• Incident logs 2026-10-19 1500: Over the last 3 days."))
 
         report = IncidentReport.make(Self.reading(), record: IncidentReport.Record(

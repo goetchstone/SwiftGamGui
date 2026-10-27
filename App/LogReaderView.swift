@@ -461,6 +461,7 @@ struct LogReaderView: View {
                  + "this app's audit log, and what its Find showed nobody has. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
+        if !reading.reaches.isEmpty { GotItSection(got: IncidentReport.gotIt(reading.reaches)) }
         ForEach(reading.reaches, id: \.messageID) { reach in
             // A group here whose members aren't read counts on the warning's send: why, or that they're being read.
             let notRead = reach.recipients.filter { $0.inside && !$0.mailbox && !$0.expanded }
@@ -1040,6 +1041,75 @@ private struct ReachSection: View {
                  + "outside address, or a group whose members aren't read, where its send went (to it, or to a group read that holds it) "
                  + "with nothing failing; done needs that for everyone to warn.")
         }
+    }
+}
+
+/// Everyone the attacker's emails got to, once each (the operator, 2026-10-27: "a list that can be imported so we can send the
+/// email either way, even if we did warn already"): exported for a mail merge or a contacts import, or copied for a Bcc. A
+/// bounced, quarantined or rejected copy didn't get through, so isn't listed. Reads only: nothing is sent.
+private struct GotItSection: View {
+    let got: [IncidentReport.GotIt]
+    @State private var said: (text: String, failed: Bool)?
+    @Environment(\.appearsActive) private var appearsActive
+
+    var body: some View {
+        Section {
+            Text(summary)
+            HStack {
+                Spacer()
+                Button("Copy Addresses", action: copy)
+                    .accessibilityHint("Puts every address on the clipboard, comma-separated, for an email's Bcc.")
+                Button("Export for Import…", action: export)
+                    .accessibilityHint("Saves the list as a CSV whose first column is Email, for a mail merge or a contacts import.")
+            }
+            if let said {
+                Label(said.text, systemImage: said.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text("Everyone it got to").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("Each address once, however many of the attacker's emails got to it: a receipt here, or sent with nothing in the logs "
+                 + "saying it failed. Who it reached, below, has every email's full list, bounces too.")
+        }
+    }
+
+    private var summary: String {
+        let outside = got.filter { !$0.inside }.count, toWarn = got.filter(\.toWarn).count
+        return "\(got.count) \(got.count == 1 ? "address" : "addresses") got an email of the attacker's: \(outside) outside, "
+            + "\(got.count - outside) here. \(toWarn) still to warn (no warning picked is shown reaching them)."
+    }
+
+    private func copy() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(got.map(\.address).joined(separator: ", "), forType: .string)
+        say("Copied \(got.count) \(got.count == 1 ? "address" : "addresses").", failed: false)
+    }
+
+    private func export() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "who-got-it.csv"
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.message = "Everyone the attacker's emails got to, once each. It names people: keep it private."
+        let rows = IncidentReport.gotItTable(got, no2SV: nil).csv
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task {
+                do {
+                    try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    say("Exported \(got.count) \(got.count == 1 ? "address" : "addresses") to \(destination.lastPathComponent).", failed: false)
+                } catch {
+                    say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
+                }
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    private func say(_ text: String, failed: Bool) {
+        said = (text, failed)
+        if appearsActive { AccessibilityNotification.Announcement(text).post() }
     }
 }
 
