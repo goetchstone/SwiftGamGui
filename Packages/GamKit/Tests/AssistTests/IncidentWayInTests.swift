@@ -72,9 +72,17 @@ struct IncidentWayInTests {
         #expect(got.number == 2 && got.table.rows == [[.text("carol@example.com"), .text("yes")], [.text("alice@example.com"), .text("")]])
         let text = picked.text(IncidentReportTests.when)
         #expect(text.contains("\nWHERE IT STARTED\n") && text.range(of: "WHERE IT STARTED")!.lowerBound < text.range(of: "WHAT WAS DONE")!.lowerBound)
-        #expect(text.contains("The email that started it: “Invoice 4471” from billing@vendor.example, received minute -30 "
-                              + "(Message-ID inv-1@mail.vendor.example), before the attacker's first sign of carol@example.com at minute 8. "
-                              + "Also received here by alice@example.com: they may have fallen for it too."))
+        #expect(text.contains("The email that started it: “Invoice 4471” from billing@vendor.example (Message-ID inv-1@mail.vendor.example). "
+                              + "First received minute -30, before the attacker's first sign, on carol@example.com at minute 8. "
+                              + "carol@example.com received it, and so did alice@example.com: they may have fallen for it too."))
+        // The first account taken over isn't among those who got it (the demo's picture, 2026-10-27): never said as having it.
+        let elsewhere = try #require(LogReading.read(Self.events, context: LogReading.Context(domains: ["example.com"], people: Reading.people,
+                                                                                              phish: "weekly@news.example.org")).wayIn)
+        let weekly = try #require(elsewhere.picked)
+        let other = LogReading.WayIn.Email(messageID: "x", sender: "s@vendor.example", subject: "", at: nil, receivedBy: ["alice@example.com"])
+        #expect(IncidentReport.receivedWords(other, wayIn: elsewhere, when: IncidentReportTests.when)
+                == "Before the attacker's first sign, on carol@example.com at minute 8. Received here by alice@example.com: they may have fallen for it too.")
+        #expect(IncidentReport.receivedWords(weekly, wayIn: elsewhere, when: IncidentReportTests.when).hasSuffix("Only carol@example.com is shown receiving it."))
         #expect(text.contains("6. How they got in, and why it worked: the logs show it began with “Invoice 4471” from billing@vendor.example."))
         let open = report(nil)
         #expect(open.count("gotPhish") == nil)

@@ -516,18 +516,28 @@ public struct IncidentReport: Sendable, Equatable {
     public func wayInWords(_ when: (Date) -> String) -> String {
         guard let wayIn else { return "No account the attacker got into shows in the logs read." }
         if let picked = wayIn.picked {
-            let others = picked.receivedBy.filter { $0 != wayIn.account }
             return "The email that started it: “\(picked.subject.isEmpty ? "(no subject)" : picked.subject)” from \(picked.sender.isEmpty ? "a sender the log doesn't name" : picked.sender)"
-                + (picked.at.map { ", received \(when($0))" } ?? "") + " (Message-ID \(picked.messageID)), before the attacker's first sign of "
-                + "\(wayIn.account) at \(when(wayIn.attackedAt))."
-                + (others.isEmpty ? " No one else here is shown receiving it."
-                   : " Also received here by \(others.joined(separator: ", ")): they may have fallen for it too.")
+                + " (Message-ID \(picked.messageID)). " + Self.receivedWords(picked, wayIn: wayIn, when: when)
         }
         if let unread = wayIn.pickedUnread {
             return "The email picked as where it started (\(unread)) isn't in the logs read: pull \(wayIn.account)'s Gmail log from before \(when(wayIn.attackedAt))."
         }
         return "Not picked yet: \(wayIn.candidates.count) email\(wayIn.candidates.count == 1 ? "" : "s") \(wayIn.account) received from outside in the "
             + "\(LogReading.wayInHours) hours before the attacker's first sign at \(when(wayIn.attackedAt)) are listed on Investigate, under Where it started."
+    }
+
+    /// Who received the email picked, by name, and when, against the attacker's first sign: the first account taken over is
+    /// said as one of them only when the logs show it receiving it.
+    public static func receivedWords(_ picked: LogReading.WayIn.Email, wayIn: LogReading.WayIn, when: (Date) -> String) -> String {
+        let first = (picked.at.map { "First received \(when($0)), before" } ?? "Before") + " the attacker's first sign, on \(wayIn.account) at "
+            + "\(when(wayIn.attackedAt))."
+        let others = picked.receivedBy.filter { $0 != wayIn.account }
+        let who: String = if picked.receivedBy.isEmpty { "No one here is shown receiving it." }
+            else if others.isEmpty { "Only \(wayIn.account) is shown receiving it." }
+            else if picked.receivedBy.contains(wayIn.account) {
+                "\(wayIn.account) received it, and so did \(others.joined(separator: ", ")): they may have fallen for it too."
+            } else { "Received here by \(others.joined(separator: ", ")): they may have fallen for it too." }
+        return first + " " + who
     }
 
     /// The post-incident review meeting's agenda, filled from the report's own numbers.

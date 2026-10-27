@@ -1151,16 +1151,14 @@ private struct WayInSection: View {
     }
 
     private func pickedRow(_ picked: LogReading.WayIn.Email) -> some View {
-        let others = picked.receivedBy.filter { $0 != wayIn.account }
-        return VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("The email that started it: \(subject(picked)) from \(picked.sender.isEmpty ? "a sender the log doesn't name" : picked.sender)")
                         .fontWeight(.semibold)
-                    Text((picked.at.map { "Received \(when($0)), " } ?? "") + "before the attacker's first sign of \(wayIn.account) at "
-                         + "\(when(wayIn.attackedAt)).")
-                    Text(others.isEmpty ? "No one else here is shown receiving it."
-                         : "Also received here by \(others.joined(separator: ", ")): they may have fallen for it too.")
+                    // Who received it is said by name: the first account taken over may not be one of them (a review of the
+                    // demo's picture, 2026-10-27: "before the attacker's first sign of dana@" read as dana@ having it).
+                    Text(IncidentReport.receivedWords(picked, wayIn: wayIn, when: when))
                 }
                 .textSelection(.enabled)
             } icon: {
