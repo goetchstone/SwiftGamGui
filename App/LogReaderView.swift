@@ -20,13 +20,16 @@ enum SecurePick: Equatable {
 /// to its screen (Incident checks the person; Phishing finds who has the email), and that screen shows its
 /// own preview, confirmed there. Its own file, apart from anything that can run gam (invariant 10, `WriteRouteTests`).
 struct LogReaderView: View {
-    /// Which part this is: the findings (Investigate) or where each account stands and what's left to do (Respond).
-    enum Part { case findings, toDo }
+    /// Which part this is: the findings (Investigate), where each account stands and what's left to do (Respond), or the
+    /// incident's report (Report).
+    enum Part { case findings, toDo, report }
 
     let part: Part
     let pull: IncidentLogs.Pull
     /// This app's audit log: read with the pull for the emails Phishing pulled on `domain` (`PhishingAudit`), which show done.
     let auditURL: URL
+    /// The audit log as the screen last looked at it (`auditStamp(_:)`): a change reads the pull again.
+    let auditStamp: String
     let domain: String
     /// The emails Phishing's Find showed nobody on this domain has, which show done too.
     let nobodyHas: [NobodyHasStore.Check]
@@ -72,6 +75,8 @@ struct LogReaderView: View {
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
     /// incident open, where a pick couldn't be kept.
     let pickWarning: ((_ email: String, _ warning: String?) -> String?)?
+    /// What the report is made with, with the incident open (Report): nil with none, where there's nothing to report on.
+    let incident: ReportInputs?
     /// What the screen scrolls to for this part, on the section shown itself: on the reader as a whole, built with Xcode
     /// 27.1, it scrolled to the page's top (its `.sheet` and `.onChange` wrap the section; failure log 2026-10-24).
     let anchor: String
@@ -82,14 +87,19 @@ struct LogReaderView: View {
     @State private var announceReread: String?
     @Environment(\.appearsActive) private var appearsActive
 
-    /// What the reader keeps while the screen is open, whichever tab shows: the pull's reading, made once per pull and off
-    /// the main thread (the rules scan every event, and a whole pull for every account holds hundreds of thousands: read in
-    /// a view's body, it stopped the app for minutes, failure log 2026-10-23), and the model's explanation of it. The screen
-    /// makes a new one each time it opens, so coming back from Phishing reads its runs again.
+    /// What the reader keeps, whichever tab and screen shows: the pull's reading, made once per pull and off the main thread
+    /// (the rules scan every event, and a whole pull for every account holds hundreds of thousands: read in a view's body, it
+    /// stopped the app for minutes, failure log 2026-10-23), and the model's explanation of it. The window keeps it, so coming
+    /// back to Incident reads nothing again (the operator, 2026-10-27); a run since, on Phishing or here, changes the audit
+    /// log's stamp (`auditStamp`), which is in the reading's key, so its runs are read.
     @MainActor
     @Observable
     final class Memory {
         fileprivate var read: (key: String, reading: LogReading.Reading)?
+        /// What this app's audit log shows it ran since the attack, read with that reading, for the report.
+        fileprivate var changes: [IncidentReport.Change] = []
+        /// The last report made, and what it was made of: made again only when one of those changed.
+        @ObservationIgnored fileprivate var report: (made: ReportInputs.Key, report: IncidentReport)?
         /// The read under way, by its pull's key, and whether it's still wanted (not, once the reading shown is asked again).
         @ObservationIgnored private var reading: (key: String, task: Task<Void, Never>, wanted: Bool)?
         /// The newest read asked while another is under way, started when that one ends: picks in a row run one reading at a
@@ -100,6 +110,16 @@ struct LogReaderView: View {
         var hasReading: Bool { read != nil }
         /// The first Who it reached section's anchor, for debug snapshots to scroll to.
         var firstReach: String? { read?.reading.reaches.first.map { LogReaderView.reachAnchor($0.messageID) } }
+
+        /// Forgets the reading and the explanation (another tenant): a read under way ends unshown.
+        func clear() {
+            read = nil
+            changes = []
+            report = nil
+            explained = nil
+            reading?.wanted = false
+            queued = nil
+        }
 
         /// Reads `pull` for `key` in the background, once, with what the audit log shows Phishing pulled: either tab asking
         /// for the key being read waits on that read. One read runs at a time: a newer key asked while one runs waits in
@@ -130,11 +150,13 @@ struct LogReaderView: View {
             }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
-                    LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
-                                          domains: domains, people: people, groups: groups, everyone: everyone, warnings: warnings)
+                    let reading = LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain),
+                                                        nobodyHas: nobodyHas, domains: domains, people: people, groups: groups,
+                                                        everyone: everyone, warnings: warnings)
+                    return (reading, LogReaderView.changes(in: auditURL, since: LogReaderView.since(reading), to: LogReaderView.involved(reading)))
                 }.value
                 guard let self, let reading = self.reading, reading.key == key else { return }
-                if reading.wanted { self.read = (key, found) }
+                if reading.wanted { (self.read, self.changes) = ((key, found.0), found.1) }
                 self.reading = nil
                 if let next = self.queued {
                     self.queued = nil
@@ -156,9 +178,20 @@ struct LogReaderView: View {
         }.filter { seen.insert($0).inserted }
     }
 
-    /// What identifies the pull read: its query, each log's outcome, and the sign-ins marked as theirs.
+    /// The audit log's size and when it was last written: what changes when a run adds to it. Read by descriptor, never
+    /// through a link; "none" when there's no log yet.
+    static func auditStamp(_ url: URL) -> String {
+        let fd = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard fd >= 0 else { return "none" }
+        defer { close(fd) }
+        var info = stat()
+        guard fstat(fd, &info) == 0 else { return "none" }
+        return "\(info.st_size)@\(info.st_mtimespec.tv_sec).\(info.st_mtimespec.tv_nsec)"
+    }
+
+    /// What identifies the pull read: its query, each log's outcome, the sign-ins marked as theirs, and the audit log's stamp.
     private var key: String {
-        "\(domain)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
+        "\(domain)|\(auditStamp)|\(pull.query)|" + pull.logs.map { "\($0.application.rawValue):\((try? $0.rows.get().count).map(String.init) ?? "failed")" }
             .joined(separator: ",") + "|" + marks.map(\.id).joined(separator: ",")
             + "|" + nobodyHas.map { "\($0.id)@\($0.at.timeIntervalSince1970)" }.joined(separator: ",")
             + "|" + Self.reachKey(warnings: warnings, directoryKey: directoryKey)
@@ -235,6 +268,38 @@ struct LogReaderView: View {
                                                                          everyone: everyone, warnings: picked))
     }
 
+    /// When the attack began, as the reading shows it: the first account's first suspect event, or the first time an email of
+    /// the attacker's reached someone. Nil with neither: nothing to report changes from.
+    nonisolated static func since(_ reading: LogReading.Reading) -> Date? {
+        (reading.statuses.compactMap(\.attackedAt) + reading.reaches.flatMap { $0.recipients.compactMap(\.at) }).min()
+    }
+
+    /// The accounts the attacker touched and the people here their emails reached, lowercased: whose changes the report lists.
+    nonisolated static func involved(_ reading: LogReading.Reading) -> Set<String> {
+        Set(reading.statuses.map { $0.account.lowercased() }
+            + reading.reaches.flatMap { $0.recipients.filter { $0.inside && $0.mailbox }.map { $0.address.lowercased() } })
+    }
+
+    /// Every change this app ran to one of `involved` that ended on or after `since`, oldest first, from its audit log (newest
+    /// first, so the read stops at the first older record), at most `PhishingAudit.scanLimit` records read and 5,000 kept
+    /// (invariant 9; only the incident's count toward it, so others never push its first steps out). Phishing's trash steps
+    /// are left out: the report says each email pulled once. Off the main thread.
+    nonisolated static func changes(in log: URL, since: Date?, to involved: Set<String>) -> [IncidentReport.Change] {
+        guard let since else { return [] }
+        var found: [IncidentReport.Change] = [], read = 0
+        AuditLog.forEachRecord(at: log) { record in
+            read += 1
+            guard let at = record["ts"]?.string.flatMap(AuditEntry.instant) else { return read < PhishingAudit.scanLimit }
+            guard at >= since else { return false }
+            guard case .bool(let ok)? = record["ok"], let action = record["action"]?.string, action != WriteAction.trashMessage.rawValue,
+                  let target = record["target"]?.string, involved.contains(target.lowercased()) else { return read < PhishingAudit.scanLimit }
+            found.append(IncidentReport.Change(at: at, what: WriteAction(rawValue: action)?.displayName ?? action.replacingOccurrences(of: "_", with: " "),
+                                               target: target, by: record["actor"]?.string ?? "", ok: ok))
+            return read < PhishingAudit.scanLimit && found.count < 5_000
+        }
+        return found.reversed()
+    }
+
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
     private var unread: [String] {
         pull.logs.filter { (try? $0.rows.get()) == nil }.map(\.application.name)
@@ -260,6 +325,7 @@ struct LogReaderView: View {
                 switch part {
                 case .findings: findings(read.reading).id(anchor)
                 case .toDo: toDo(read.reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key)).id(anchor)
+                case .report: report(read.reading, key: read.key).id(anchor)
                 }
             } else {
                 readingNow.id(anchor)
@@ -300,7 +366,7 @@ struct LogReaderView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Reading the logs: \(events.formatted()) event\(events == 1 ? "" : "s")")
         } header: {
-            Text(part == .findings ? "What the logs show" : "Where things stand").accessibilityAddTraits(.isHeader)
+            Text(part == .findings ? "What the logs show" : part == .toDo ? "Where things stand" : "Incident report").accessibilityAddTraits(.isHeader)
         }
     }
 
@@ -408,6 +474,40 @@ struct LogReaderView: View {
             } })
                 .id(Self.reachAnchor(reach.messageID))
         }
+    }
+
+    /// Report: the incident's report, made from this reading and what the audit log shows done, once for each change of them.
+    @ViewBuilder private func report(_ reading: LogReading.Reading, key: String) -> some View {
+        if let incident {
+            IncidentReportView(report: report(of: reading, key: key, incident), inputs: incident)
+        } else {
+            Section {
+                Text("Open or make an incident above: the report is of an incident kept on this Mac, from its saved logs.")
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Incident report").accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+
+    /// The report for this reading and incident: the one made already when nothing it's made of changed (it lists every
+    /// address the emails reached, so it isn't made at every redraw).
+    private func report(of reading: LogReading.Reading, key: String, _ incident: ReportInputs) -> IncidentReport {
+        let made = ReportInputs.Key(reading: key, record: incident.record, evidence: incident.evidence.map(\.name),
+                                    directory: incident.directoryKey, madeBy: incident.madeBy, changes: memory.changes.count,
+                                    no2SV: incident.no2SV)
+        if let kept = memory.report, kept.made == made { return kept.report }
+        let record = incident.record
+        let report = IncidentReport.make(reading, record: IncidentReport.Record(
+            title: record.title, domain: record.domain, opened: record.opened, openedBy: record.openedBy, reported: record.reported,
+            notes: record.notes.map { IncidentReport.Note(at: $0.at, text: $0.text) },
+            review: IncidentReport.Review(kind: record.review.kind, severity: record.review.severity, meeting: record.review.meeting,
+                                          attendees: record.review.attendees, cause: record.review.cause, wentWell: record.review.wentWell,
+                                          improve: record.review.improve, plan: record.review.plan)),
+            changes: memory.changes, evidence: incident.evidence.map { IncidentReport.Evidence(name: $0.name, about: $0.about) },
+            no2SV: incident.no2SV, made: Date(), madeBy: incident.madeBy, when: IncidentReportView.when)
+        memory.report = (made, report)
+        return report
     }
 
     /// The sign-ins marked as theirs on this domain, each with its note and an Undo: never hidden.

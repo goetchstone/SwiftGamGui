@@ -19,11 +19,16 @@ final class Incidents {
     }
     /// The open incident's evidence as last read: each saved read's name, and those that couldn't be read.
     var evidence: (id: String, names: [String], unreadable: [String])?
+    /// What each saved read of the open incident read, in a line (its `about.txt` past the first), by its name: for the report.
+    var abouts: [String: String] = [:]
     /// The same evidence put together (`IncidentLogs.evidence`; nil when no saved read was readable): what a pull just
     /// saved to it is added to, in memory (`add`).
     var together: (id: String, pull: IncidentLogs.Pull?)?
     /// Reading the evidence, or an export picked.
     var loading = false
+    /// Which evidence was last read and shown, or is being read: the tenant's connection, the incident and `reload`. Coming
+    /// back to Incident with the same reads nothing again (the operator, 2026-10-27).
+    var shownKey: String?
     /// Bumped to read the evidence again (a pull or an export was just saved to it).
     var reload = 0
     /// The last problem, in words, shown with the incident.
@@ -44,6 +49,12 @@ final class Incidents {
     }
 
     func records(for domain: String) -> [IncidentStore.Record] { store?.records(for: domain) ?? [] }
+
+    /// What a saved read read, in a line: its `about.txt` past the line saying when it was exported.
+    nonisolated static func about(_ export: ActivityLogs.Export) -> String {
+        export.about.split(whereSeparator: \.isNewline).dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }.joined(separator: " ")
+    }
     func record(_ id: String?) -> IncidentStore.Record? { id.flatMap { id in store?.records.first { $0.id == id } } }
 
     /// A new incident, saved; the problem in words when it wasn't.
@@ -109,14 +120,14 @@ final class Incidents {
     func add(_ read: IncidentLogs.Pull, to id: String) async throws(Failure) -> IncidentLogs.Pull? {
         guard let store else { throw Failure(openProblem ?? "The incidents couldn't be opened.") }
         let shown = !loading && evidence?.id == id ? evidence : nil, base = together?.id == id ? together : nil
-        let saved = await Task.detached { () -> Result<(name: String, added: (together: IncidentLogs.Pull?, readable: Bool)?), Failure> in
+        let saved = await Task.detached { () -> Result<(name: String, about: String, added: (together: IncidentLogs.Pull?, readable: Bool)?), Failure> in
             do {
                 let export = try IncidentLogs.exportAll(read, into: try store.evidenceFolder(of: id)).export
                 guard let shown, let base,
                       IncidentStore.readsBackLast(export, after: shown.names,
                                                  saved: shown.names.count + shown.unreadable.filter { !shown.names.contains($0) }.count)
-                else { return .success((export.name, nil)) }
-                return .success((export.name, IncidentLogs.adding(export, to: base.pull)))
+                else { return .success((export.name, Self.about(export), nil)) }
+                return .success((export.name, Self.about(export), IncidentLogs.adding(export, to: base.pull)))
             } catch let problem as IncidentStore.Problem {
                 return .failure(Failure(problem.message))
             } catch {
@@ -126,8 +137,9 @@ final class Incidents {
         switch saved {
         case .failure(let failure):
             throw failure
-        case .success((let name, let added?)) where evidence?.id == id && evidence?.names == shown?.names:
+        case .success((let name, let about, let added?)) where evidence?.id == id && evidence?.names == shown?.names:
             evidence = (id, (shown?.names ?? []) + [name], (shown?.unreadable ?? []) + (added.readable ? [] : [name]))
+            abouts[name] = about
             together = (id, added.together)
             return added.together
         case .success:

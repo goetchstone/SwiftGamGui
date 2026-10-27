@@ -3,6 +3,7 @@ import ChangeCore
 import Directory
 import GamEngine
 import Setup
+import Stores
 import SwiftUI
 
 /// Incident (docs/plans/2026-10-19-compromised-account.md): for a person who stays employed but whose account
@@ -14,8 +15,8 @@ struct CompromisedView: View {
     let directory: DirectoryStore
     let changes: CompromisedChanges
     let logs: IncidentLogs
-    /// The groups the attacker's emails went to, read for whom they reach (Who it reached); read again each time it opens
-    /// (forgotten on leaving).
+    /// The groups the attacker's emails went to, read for whom they reach (Who it reached); a read that failed is tried again
+    /// each time the screen opens.
     let groupsReached: GroupsReached
     /// Sign-ins marked as the person's own ("That was them"), which the log reader makes no suspect of.
     let known: KnownSignIns
@@ -23,7 +24,11 @@ struct CompromisedView: View {
     let nobodyHas: NobodyHasChecks
     /// The incidents kept on this Mac, and the one open here.
     let incidents: Incidents
-    /// This app's audit log, which the log reader reads for the emails Phishing pulled.
+    /// The log reader's reading and explanation, kept by the window: they survive a change of tab, and of screen.
+    let readerMemory: LogReaderView.Memory
+    /// The directory as Who it reached reads it, built once a snapshot.
+    let directoryIndex: DirectoryIndex
+    /// This app's audit log, which the log reader reads for the emails Phishing pulled and the report for what was done.
     let auditURL: URL
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
@@ -51,10 +56,9 @@ struct CompromisedView: View {
     @State private var pullForm = PullForm()
     /// The events a to-do item narrowed the logs to ("Show the Events"); nil for all.
     @State private var filter: IncidentLogs.Filter?
-    /// The log reader's reading and explanation, kept here so they survive a change of tab.
-    @State private var readerMemory = LogReaderView.Memory()
-    /// The directory as Who it reached reads it, built once a snapshot.
-    @State private var directoryIndex = DirectoryIndex()
+    /// The audit log as last looked at (`LogReaderView.auditStamp`): a run since, here or on Phishing, reads the logs again.
+    /// Nil until the screen appears, and then looked at as it's drawn, so the first reading is never of a stamp about to change.
+    @State private var auditStamp: String?
     /// Where to scroll once a change of tab has drawn the new tab (its sections don't exist before).
     @State private var scrollAfterTab: String?
     @Environment(\.appearsActive) private var appearsActive
@@ -87,7 +91,7 @@ struct CompromisedView: View {
                     switch tab {
                     case .investigate: investigate(scroller)
                     case .respond: respond(scroller)
-                    case .report: report
+                    case .report: report(scroller)
                     }
                 }
                 .formStyle(.grouped)
@@ -150,10 +154,15 @@ struct CompromisedView: View {
         .frame(minWidth: 0, maxWidth: .infinity)
         .onAppear {
             if let check = changes.check, form.person.isEmpty, requested == nil { form.person = check.asked }
+            auditStamp = LogReaderView.auditStamp(auditURL)
         }
-        // Read again each time the screen opens, as its reader's memory is: a read that failed isn't kept for good. On leaving,
+        // A run ended here: what it did is in the audit log, for the report and the emails pulled.
+        .onChange(of: changes.isRunning) { _, running in
+            if !running { auditStamp = LogReaderView.auditStamp(auditURL) }
+        }
+        // The groups read are kept with the reading, but a read that failed is tried again when the screen opens. On leaving,
         // not opening, so the first reading isn't asked twice.
-        .onDisappear { groupsReached.forget() }
+        .onDisappear { groupsReached.forgetFailures() }
         .onChange(of: requested, initial: true) { _, email in
             guard let email else { return }
             requested = nil
@@ -173,7 +182,7 @@ struct CompromisedView: View {
             logs.clear()
             // Another tenant: the narrowing and the reader's memory were the last one's.
             filter = nil
-            readerMemory = LogReaderView.Memory()
+            readerMemory.clear()
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }
         .onChange(of: announcement) { _, text in
@@ -240,9 +249,22 @@ struct CompromisedView: View {
         PullEmailSection(openPhishing: openPhishing)
     }
 
-    /// Report: the incident's evidence and notes, and the checklist.
-    @ViewBuilder private var report: some View {
-        if setup.active != nil { IncidentRecordSection(part: .report, setup: setup, incidents: incidents, logs: logs) }
+    /// Report: the incident report (from the saved logs, once read), the incident's evidence and notes, and what's left after.
+    @ViewBuilder private func report(_ scroller: ScrollViewProxy) -> some View {
+        if setup.active != nil {
+            if let pull = logs.pull, pull.ended {
+                reader(.report, pull, scroller)
+            } else {
+                Section {
+                    Text(incidents.loading || logs.isPulling ? "The report follows once the logs are read."
+                         : "Open or make an incident above, with its logs pulled or added, for its report.")
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Incident report").accessibilityAddTraits(.isHeader)
+                }
+            }
+            IncidentRecordSection(part: .report, setup: setup, incidents: incidents, logs: logs)
+        }
         AfterwardsSection()
     }
 
@@ -256,7 +278,8 @@ struct CompromisedView: View {
         let index = directoryIndex.index(directory, domain: domain)
         // The groups the attacker's emails went to, once their members are read: each counts by them.
         let groups = groupsReached
-        return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
+        return LogReaderView(part: part, pull: pull, auditURL: auditURL,
+                             auditStamp: auditStamp ?? LogReaderView.auditStamp(auditURL), domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
             requested = person
@@ -273,7 +296,24 @@ struct CompromisedView: View {
         directoryKey: index.key + "|" + groups.key, groupProblems: groups.problems, readingGroups: groups.isReading,
         readGroups: { addresses in Task { await groups.read(addresses) } }, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
-        }, anchor: part == .findings ? Self.readerAnchor : Self.toDoAnchor)
+        }, incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
+        anchor: part == .findings ? Self.readerAnchor : part == .toDo ? Self.toDoAnchor : Self.reportAnchor)
+    }
+
+    /// What the report of the incident `record` is made with: its saved reads, the directory's people with 2-Step Verification
+    /// off, who's connected, and copying its evidence and keeping its review, both on this Mac.
+    private func reportInputs(_ record: IncidentStore.Record, index: DirectoryIndex.Index) -> ReportInputs {
+        let names = incidents.evidence.flatMap { $0.id == record.id ? $0.names : nil } ?? []
+        let store = incidents.store, id = record.id
+        return ReportInputs(record: record, evidence: names.map { ($0, incidents.abouts[$0] ?? "") }, no2SV: index.no2SV, directoryKey: index.key,
+                            madeBy: setup.connectedAdmin ?? "", copyEvidence: { folder in
+            guard let store else { throw IncidentStore.Problem.invalid("The incidents couldn't be opened.") }
+            return try store.copyEvidence(of: id, to: folder)
+        }, saveReview: { review in
+            guard var kept = incidents.record(id) else { return "That incident isn't kept any more." }
+            kept.review = review
+            return incidents.save(kept)
+        })
     }
 
     /// Shows `tab` scrolled to `anchor`: at once when it's shown already, else once it has drawn.
@@ -312,6 +352,7 @@ struct CompromisedView: View {
     private static let runAnchor = "compromised.run"
     private static let reportsAnchor = "compromised.reports"
     private static let readerAnchor = "compromised.reader"
+    private static let reportAnchor = "compromised.report"
     private static let incidentAnchor = "compromised.incident"
     private static let checkAnchor = "compromised.check"
 
@@ -426,8 +467,9 @@ struct CompromisedView: View {
     /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), the
     /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`: Investigate's findings; `todo`: Respond's
     /// Still to do; `reached`: Respond's first Who it reached, alice@'s and bob@'s logs too, in a demo incident with the mock's
-    /// warning picked), or the person's logs saved to a demo incident kept in the demo's temporary folder, with a note, opened
-    /// on Report (`incident`). A plan, the confirm sheet or a run shows on Respond.
+    /// warning picked; `report`: the same incident's report on Report, with a review written), or the person's logs saved to a
+    /// demo incident kept in the demo's temporary folder, with a note, opened on Report (`incident`). A plan, the confirm sheet or
+    /// a run shows on Respond.
     private func fillForSnapshot() {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
@@ -437,7 +479,7 @@ struct CompromisedView: View {
         let asked = environment["SWIFTGAMGUI_TAB"] ?? ""
         let changes = changes
         // The log reader's pictures wait for its reading, which comes off the main thread after the pull, and for the scroll.
-        let reading = ["reading", "todo", "reached"].contains(asked)
+        let reading = ["reading", "todo", "reached", "report"].contains(asked)
         if reading { Spikes.snapshotWork += 1 }
         Task {
             defer { if reading { Spikes.snapshotWork -= 1 } }
@@ -464,7 +506,7 @@ struct CompromisedView: View {
             if reading, let email = changes.check?.user.primaryEmail {
                 // Who it reached reads the recipients' and the warning's sender's Gmail logs too, in a demo incident with the
                 // mock's warning picked: what a pick shows (warned on its send outside, not shown warned with no receipt here).
-                let reached = asked == "reached"
+                let reached = asked == "reached" || asked == "report"
                 await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome],
                                                    users: [email, "dana@example.com"] + (reached ? ["alice@example.com", "bob@example.com"] : []),
                                                    hours: 72, ip: ""))
@@ -472,6 +514,14 @@ struct CompromisedView: View {
                                                                          opened: Date(), openedBy: "Pat", reported: "A Google alert") {
                     if let pull = logs.pull { _ = try? await incidents.add(pull, to: record.id) }
                     _ = incidents.pickWarning(email: "phish-1@mail.example.com", warning: "warning-1@mail.example.com", in: record.id)
+                    if asked == "report", var reviewed = incidents.record(record.id) {
+                        reviewed.review = IncidentStore.Review(kind: "Account takeover and phishing", severity: "High",
+                                                               meeting: Date().addingTimeInterval(86_400 * 2), attendees: "Pat, Sam",
+                                                               cause: "A look-alike sign-in page took Carol's password; she had no 2-Step Verification.",
+                                                               plan: "Enforce 2-Step Verification for everyone — Pat — in two weeks")
+                        _ = incidents.save(reviewed)
+                        _ = incidents.addNote("Called the bank about the invoice in the phish.", at: Date(), to: record.id)
+                    }
                     incidents.openID = record.id
                 }
                 // Scroll once the findings are drawn: an anchor that first appears in the same update doesn't scroll.
@@ -479,7 +529,9 @@ struct CompromisedView: View {
                 for _ in 0..<100 where !readerMemory.hasReading { try? await Task.sleep(for: .milliseconds(50)) }
                 print("state: the reading \(readerMemory.hasReading ? "came" : "hadn't come") \(ContinuousClock.now - pulled) after the pull")
                 try? await Task.sleep(for: .milliseconds(300))
-                if asked == "todo" || asked == "reached" {
+                if asked == "report" {
+                    self.tab = .report
+                } else if asked == "todo" || asked == "reached" {
                     self.tab = .respond
                     if asked == "reached", let anchor = readerMemory.firstReach {
                         // Once Respond has drawn it: an anchor that first appears in the same update doesn't scroll.
@@ -1643,11 +1695,20 @@ private struct ActivityList: View {
 /// never at every redraw (review 2026-10-24); nil people until the directory is read.
 @MainActor
 final class DirectoryIndex {
-    private var built: (revision: String, key: String, people: [String: String]?, domains: Set<String>)?
+    /// The directory as Who it reached and the report read it.
+    struct Index {
+        let key: String
+        let people: [String: String]?
+        let domains: Set<String>
+        /// The people Reports lists without 2-Step Verification (active, not enrolled), lowercased; nil until the directory is read.
+        let no2SV: Set<String>?
+    }
 
-    func index(_ directory: DirectoryStore, domain: String) -> (key: String, people: [String: String]?, domains: Set<String>) {
+    private var built: (revision: String, key: String, people: [String: String]?, domains: Set<String>, no2SV: Set<String>?)?
+
+    func index(_ directory: DirectoryStore, domain: String) -> Index {
         let revision = "\(domain.lowercased())|\(directory.revision.map(String.init) ?? "-")"
-        if let built, built.revision == revision { return (built.key, built.people, built.domains) }
+        if let built, built.revision == revision { return Index(key: built.key, people: built.people, domains: built.domains, no2SV: built.no2SV) }
         var people: [String: String]?
         if let users = directory.users {
             var map: [String: String] = [:]
@@ -1663,7 +1724,8 @@ final class DirectoryIndex {
         // A revision that changes nothing read here keeps its key: a password reset or a suspension elsewhere re-reads no pull
         // (final review 2026-10-25).
         let key = built.flatMap { $0.people == people && $0.domains == domains ? $0.key : nil } ?? revision
-        built = (revision, key, people, domains)
-        return (key, people, domains)
+        let no2SV = directory.reports?.first { $0.key == "no_2sv" }.map { Set($0.users.map { $0.primaryEmail.lowercased() }) }
+        built = (revision, key, people, domains, no2SV)
+        return Index(key: key, people: people, domains: domains, no2SV: no2SV)
     }
 }

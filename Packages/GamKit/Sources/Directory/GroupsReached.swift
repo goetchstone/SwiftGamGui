@@ -7,9 +7,10 @@ import Vault
 
 /// The groups here an attacker's emails went to, read for whom they reach (Incident's Who it reached,
 /// docs/domains/compromised-account.md): each group's members, with GamGUI's group-members read, then the groups among
-/// them, each read once, at most `limit` while the screen is open (invariant 9). A group read counts by its members; one
+/// them, each read once, at most `limit` for the tenant's connection (invariant 9). A group read counts by its members; one
 /// not read (past the limit, or a read that failed) counts on the warning's send, and why is kept to say. Nothing asked is
-/// read again until the screen opens again (`forget`): a reading that lists the same groups never reads them in a loop.
+/// read again, but a read that failed once the screen opens again (`forgetFailures`): a reading that lists the same groups
+/// never reads them in a loop.
 /// Kept only for the tenant and generation they were read for.
 @MainActor
 @Observable
@@ -31,8 +32,10 @@ public final class GroupsReached {
         var members: [String: [String]] = [:]
         var everyone: Set<String> = []
         var problems: [String: String] = [:]
-        /// Every group asked, read or not: never asked again.
+        /// Every group asked, read or not: never asked again (but `failed`, by `forgetFailures`).
         var asked: Set<String> = []
+        /// The groups whose read failed (not those past the limit).
+        var failed: Set<String> = []
     }
 
     private let setup: SetupModel
@@ -56,11 +59,21 @@ public final class GroupsReached {
         tenant.map { $0.domain == setup.active && $0.generation == setup.generation } ?? false
     }
 
-    /// Drops every group read, so the next round reads them again (the screen closing, to open anew).
+    /// Drops every group read, so the next round reads them again.
     public func forget() {
         read = Read()
         tenant = nil
         epoch += 1
+        revision += 1
+    }
+
+    /// Drops only the groups whose read failed, so the next round tries them again (the screen closing, to open anew): what
+    /// was read is kept with the reading it made, which then isn't made again (the operator, 2026-10-27).
+    public func forgetFailures() {
+        guard !read.failed.isEmpty else { return }
+        read.asked.subtract(read.failed)
+        for group in read.failed { read.problems[group] = nil }
+        read.failed = []
         revision += 1
     }
 
@@ -109,6 +122,7 @@ public final class GroupsReached {
                 queue += found.filter { $0.memberType == "GROUP" }.map { Guard.normalized($0.email) }
             case .failure(let problem):
                 read.problems[group] = problem.summary
+                read.failed.insert(group)
             }
         }
     }

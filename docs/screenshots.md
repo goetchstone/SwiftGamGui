@@ -65,6 +65,14 @@ or only sent, whether a warning you pick reached them, and Export CSV… for the
 |---|
 | ![Who it reached: the phish's recipients, each received, bounced or sent, and Export CSV](screenshots/compromised-reached.png) |
 
+The incident report, on Report: the numbers, each opening the list behind it; what was done, each step with the record
+that shows it; the attacker's emails; and the review with the meeting's agenda. Export Report… saves it as a PDF with its
+lists and a fingerprinted copy of the evidence.
+
+| The incident report |
+|---|
+| ![The incident report: its numbers, what was done, and the review](screenshots/compromised-report.png) |
+
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move
 a copy from, its Spam included, and runs with their number typed.

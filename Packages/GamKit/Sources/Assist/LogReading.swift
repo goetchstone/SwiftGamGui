@@ -393,10 +393,23 @@ public enum LogReading {
             /// A group here whose members were read: they're listed, each counted as themselves, so it's never warned or to warn
             /// itself, nor counted among who it reached.
             public let expanded: Bool
+            /// The first email an account here sent that reached them after this one, and how many did (the operator, 2026-10-27:
+            /// "verify someone from here contacted them"): any email, picked as the warning or not, so it never says warned.
+            /// Nil when the logs read show none.
+            public let contacted: Contact?
             /// To warn: reached (all but an address that bounced and isn't a person's mailbox here) and not shown warned. A
             /// person here whose copy bounced stays to warn (final review 2026-10-25: the CSV said "bounced" and nothing more).
             public var toWarn: Bool { !expanded && !(outcome == .bounced && !mailbox) && warned != true }
             public var id: String { address }
+        }
+
+        /// An email here that reached someone after the attacker's did (`Recipient.contacted`): the first, and how many.
+        public struct Contact: Sendable, Equatable {
+            public let messageID: String
+            public let sender: String
+            public let subject: String
+            public let at: Date
+            public let emails: Int
         }
 
         /// An email sent after this one by an account here, from an address that isn't the attacker's, to people it reached:
@@ -444,7 +457,8 @@ public enum LogReading {
 
         /// Every candidate is offered (a warning can be split over several emails), the most people first, at most this many.
         public static let candidatesShown = 100
-        public static let columns = ["address", "where", "reached", "when", "warned", "to warn"]
+        public static let columns = ["address", "where", "reached", "when", "warned", "to warn", "first contacted after", "contacted by",
+                                     "contact subject", "emails from here after"]
 
         /// The outcome in words, as the screen and the CSV say it.
         public static func words(_ recipient: Recipient) -> String {
@@ -465,7 +479,8 @@ public enum LogReading {
             recipients.map { recipient in
                 [recipient.address, recipient.inside ? "inside" : "outside", Self.words(recipient),
                  recipient.at.map { $0.formatted(.iso8601) } ?? "", recipient.warned.map { $0 ? "yes" : "not shown" } ?? "",
-                 recipient.toWarn ? "yes" : ""]
+                 recipient.toWarn ? "yes" : "", recipient.contacted.map { $0.at.formatted(.iso8601) } ?? "",
+                 recipient.contacted?.sender ?? "", recipient.contacted?.subject ?? "", recipient.contacted.map { String($0.emails) } ?? ""]
             }
         }
     }
@@ -1205,6 +1220,24 @@ public enum LogReading {
                     via[member] = group
                 }
             }
+            func earlier(_ a: Reach.Candidate, _ b: Reach.Candidate) -> Bool {
+                (a.at ?? .distantPast, a.messageID) < (b.at ?? .distantPast, b.messageID)
+            }
+            // The first email here that reached each of them after this one, and how many: by their own address, or for one that
+            // isn't a mailbox here, through the group it was listed by (as a warning's send covers them).
+            func contact(_ address: String) -> Reach.Contact? {
+                var ids = byAddress[address] ?? []
+                if !isMailbox(address), let group = via[address] { ids += byAddress[group] ?? [] }
+                var first: Reach.Candidate?, seen: Set<String> = [], count = 0
+                for other in ids where seen.insert(other).inserted {
+                    guard let email = warnings[other], let at = email.at, at > after else { continue }
+                    count += 1
+                    if first.map({ earlier(email, $0) }) ?? true { first = email }
+                }
+                return first.flatMap { email in
+                    email.at.map { Reach.Contact(messageID: email.messageID, sender: email.sender, subject: email.subject, at: $0, emails: count) }
+                }
+            }
             let recipients = addresses.map { address in
                 let inside = isInside(address), expanded = isExpanded(address)
                 let outcome: Reach.Outcome = if mail.received[address] != nil { .received }
@@ -1217,7 +1250,8 @@ public enum LogReading {
                 case .sent, .notAMailbox: after == .distantPast ? nil : after
                 }
                 return Reach.Recipient(address: address, inside: inside, mailbox: isMailbox(address), outcome: outcome, at: at,
-                                       warned: counting.isEmpty || expanded ? nil : warned(address), via: via[address], expanded: expanded)
+                                       warned: counting.isEmpty || expanded ? nil : warned(address), via: via[address], expanded: expanded,
+                                       contacted: expanded ? nil : contact(address))
             }
             let reach = Set(recipients.filter { !$0.expanded && !($0.outcome == .bounced && !$0.mailbox) }.map(\.address))
             var covers: [String: Int] = [:]
@@ -1227,11 +1261,8 @@ public enum LogReading {
             // time: final review 2026-10-25).
             var byCount: [Int: [String]] = [:]
             for (other, count) in covers { byCount[count, default: []].append(other) }
-            // The bucket that crosses the limit keeps only its earliest, never sorted whole (final review 2026-10-25: nearly every
-            // candidate can share one count).
-            func earlier(_ a: Reach.Candidate, _ b: Reach.Candidate) -> Bool {
-                (a.at ?? .distantPast, a.messageID) < (b.at ?? .distantPast, b.messageID)
-            }
+            // The bucket that crosses the limit keeps only its earliest (`earlier`), never sorted whole (final review 2026-10-25:
+            // nearly every candidate can share one count).
             var candidates: [Reach.Candidate] = []
             for count in byCount.keys.sorted(by: >) where candidates.count < Reach.candidatesShown {
                 let room = Reach.candidatesShown - candidates.count

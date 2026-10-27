@@ -48,7 +48,8 @@ status=0
 # (where each account stands, Still to do with its buttons, and under Done the phish, which the demo's audit log shows
 # Phishing trashed from every mailbox); compromised-reached, the same with alice's and bob's logs too, in a demo incident with
 # alice's warning picked, scrolled to Who it reached for the phish (every recipient, received, bounced or sent, who the
-# warning reached, and Export CSV…); compromised-incident, her logs saved to a demo incident
+# warning reached, and Export CSV…); compromised-report, the same incident's report on Report (the numbers, each opening its
+# list, what was done and what shows it, the attacker's emails, and a review written); compromised-incident, her logs saved to a demo incident
 # (in the demo's temporary folder) with a note, opened on Report. Incident opens on Investigate; a plan, the confirm sheet
 # or a run is on Respond.
 # Reports opens on its first report, then on its
@@ -80,6 +81,7 @@ for spec in home:home users:users groups:groups setup:setup \
             compromised-incident:incident:carol@example.com:incident narrow-compromised-incident:incident:carol@example.com:incident:smallest \
             compromised-todo:incident:carol@example.com:todo narrow-compromised-todo:incident:carol@example.com:todo:smallest \
             compromised-reached:incident:carol@example.com:reached narrow-compromised-reached:incident:carol@example.com:reached:smallest \
+            compromised-report:incident:carol@example.com:report narrow-compromised-report:incident:carol@example.com:report:smallest \
             narrow-compromised-reports:incident:carol@example.com:reports:smallest \
             narrow-profile:users:alice@example.com:profile:smallest narrow-groups:users:alice@example.com:groups:smallest \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
