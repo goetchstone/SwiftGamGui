@@ -54,8 +54,19 @@ struct LogReaderView: View {
     let domains: Set<String>
     /// Every person's address and alias here, lowercased, to their own; nil while the directory isn't read (Who it reached).
     let people: [String: String]?
-    /// Which directory snapshot those come from: what the reading is keyed by, never the map hashed at every redraw.
+    /// Each group the attacker's emails went to whose members were read, to their addresses, and those with GAM's CUSTOMER
+    /// member (everyone here): a group read counts by its members (Who it reached).
+    let groups: [String: [String]]
+    let everyone: Set<String>
+    /// Which directory snapshot and group reads those come from: what the reading is keyed by, never the maps hashed at every
+    /// redraw.
     let directoryKey: String
+    /// Why a group's members weren't read, by its address: said under each email that went to it.
+    let groupProblems: [String: String]
+    /// Groups' members are being read: a reading with them follows.
+    let readingGroups: Bool
+    /// Reads the members of these groups, and of the groups among them, each once while the screen is open: a read.
+    let readGroups: ([String]) -> Void
     /// The warnings picked for the emails the attacker sent, kept with the open incident (Who it reached).
     let warnings: [IncidentStore.Warning]
     /// Keeps a warning picked for an email (nil clears that email's): the problem in words, or nil once kept. Nil with no
@@ -96,7 +107,7 @@ struct LogReaderView: View {
         /// it's the key asked or `staleIsSafe` allows; one no longer wanted ends unshown.
         fileprivate func begin(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], auditURL: URL, domain: String,
                                 nobodyHas: [NobodyHasStore.Check], domains: Set<String>, people: [String: String]?,
-                                warnings: [IncidentStore.Warning], key: String) {
+                                groups: [String: [String]], everyone: Set<String>, warnings: [IncidentStore.Warning], key: String) {
             // The reading shown is the one asked for again (a pick, then its clear): a read still under way is for a key no
             // longer asked, and must never land over it (review 2026-10-24); it runs on unwanted, so a pick after it still
             // waits for it (final review 2026-10-25: it ran beside the next).
@@ -113,14 +124,14 @@ struct LogReaderView: View {
             if reading != nil {
                 queued = (key, { [weak self] in
                     self?.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                                warnings: warnings, key: key)
+                                groups: groups, everyone: everyone, warnings: warnings, key: key)
                 })
                 return
             }
             reading = (key, Task { [weak self] in
                 let found = await Task.detached(priority: .userInitiated) {
                     LogReaderView.reading(pull, marks: marks, pulled: PhishingAudit.latestRuns(in: auditURL, on: domain), nobodyHas: nobodyHas,
-                                          domains: domains, people: people, warnings: warnings)
+                                          domains: domains, people: people, groups: groups, everyone: everyone, warnings: warnings)
                 }.value
                 guard let self, let reading = self.reading, reading.key == key else { return }
                 if reading.wanted { self.read = (key, found) }
@@ -135,6 +146,15 @@ struct LogReaderView: View {
 
     /// Where an email's Who it reached section is, to scroll to.
     static func reachAnchor(_ messageID: String) -> String { "reader.reach.\(messageID)" }
+
+    /// The groups here the attacker's emails went to, as their sends named them (one not a bounce): whose members to read.
+    /// The groups among those members are the read's to follow, within its limit.
+    static func groupsToRead(_ reading: LogReading.Reading?) -> [String] {
+        var seen: Set<String> = []
+        return (reading?.reaches ?? []).flatMap { reach in
+            reach.recipients.filter { $0.inside && !$0.mailbox && $0.via == nil && $0.outcome != .bounced }.map(\.address)
+        }.filter { seen.insert($0).inserted }
+    }
 
     /// What identifies the pull read: its query, each log's outcome, and the sign-ins marked as theirs.
     private var key: String {
@@ -193,6 +213,7 @@ struct LogReaderView: View {
     /// Find showed nobody here has. Off the main thread (`Memory`).
     nonisolated static func reading(_ pull: IncidentLogs.Pull, marks: [KnownSignInStore.Mark], pulled: [PhishingAudit.Run],
                                     nobodyHas: [NobodyHasStore.Check], domains: Set<String> = [], people: [String: String]? = nil,
+                                    groups: [String: [String]] = [:], everyone: Set<String> = [],
                                     warnings: [IncidentStore.Warning] = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
@@ -210,8 +231,8 @@ struct LogReaderView: View {
         for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
-                                                                         domains: domains, people: people,
-                                                                         warnings: picked))
+                                                                         domains: domains, people: people, groups: groups,
+                                                                         everyone: everyone, warnings: picked))
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -246,7 +267,12 @@ struct LogReaderView: View {
         }
         .onChange(of: key, initial: true) {
             memory.begin(pull, marks: marks, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas, domains: domains, people: people,
-                         warnings: warnings, key: key)
+                         groups: groups, everyone: everyone, warnings: warnings, key: key)
+        }
+        // Each reading names the groups the emails went to: their members are read (once each), and a reading with them follows.
+        .onChange(of: memory.read?.key, initial: true) {
+            let groups = Self.groupsToRead(memory.read?.reading)
+            if !groups.isEmpty { readGroups(groups) }
         }
         .onChange(of: memory.read?.key) { _, read in
             guard let named = announceReread, part == .toDo, read == key else { return }
@@ -370,7 +396,12 @@ struct LogReaderView: View {
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
         ForEach(reading.reaches, id: \.messageID) { reach in
-            ReachSection(reach: reach, updating: updating.contains(reach.messageID), pick: pickWarning.map { pick in { warning in
+            // A group here whose members aren't read counts on the warning's send: why, or that they're being read.
+            let notRead = reach.recipients.filter { $0.inside && !$0.mailbox && !$0.expanded }
+            ReachSection(reach: reach, updating: updating.contains(reach.messageID),
+                         groupProblems: notRead.compactMap { recipient in groupProblems[recipient.address].map { (recipient.address, $0) } },
+                         readingGroups: readingGroups && notRead.contains { groupProblems[$0.address] == nil },
+                         pick: pickWarning.map { pick in { warning in
                 let problem = pick(reach.messageID, warning)
                 if warning == nil, problem == nil { announceReread = "“\(reach.subject.isEmpty ? "(no subject)" : reach.subject)”" }
                 return problem
@@ -702,6 +733,10 @@ private struct ReachSection: View {
     let reach: LogReading.Reach
     /// A newer reading (a pick, the directory) is on its way: this one is shown until it comes.
     let updating: Bool
+    /// Each group here it went to whose members weren't read, and why: each counts on the warning's send.
+    let groupProblems: [(group: String, why: String)]
+    /// The members of a group it went to are being read.
+    let readingGroups: Bool
     /// Keeps a warning picked (nil clears them): the problem in words, or nil once kept. Nil with no incident open.
     let pick: ((String?) -> String?)?
     @State private var problem: String?
@@ -754,8 +789,13 @@ private struct ReachSection: View {
         say(count { $0.outcome == .sent && $0.inside }, "here with no receipt in the logs read")
         say(count { $0.outcome == .bounced }, "bounced")
         say(count { $0.outcome == .blocked }, "quarantined or rejected")
-        say(count { $0.outcome == .notAMailbox }, "no one's mailbox here (a group, or an address no account has)")
+        say(count { $0.outcome == .notAMailbox && !$0.expanded }, "no one's mailbox here (a group not read, or an address no account has)")
         var text = "It went to \(all.count) \(all.count == 1 ? "address" : "addresses")" + (parts.isEmpty ? "." : ": " + parts.joined(separator: ", ") + ".")
+        let groups = count(\.expanded), through = count { $0.via != nil }
+        if groups > 0 {
+            text += " \(groups == 1 ? "A group" : "\(groups) groups") here \(groups == 1 ? "counts" : "count") by \(groups == 1 ? "its" : "their") members, "
+                + "\(through) of them listed only through a group."
+        }
         if reach.unreadable > 0 { text += " \(reach.unreadable) more the log names don't read as an address: see the Admin console's Gmail log events." }
         if reach.unnamed > 0 {
             text += " \(reach.unnamed == 1 ? "A send of it names" : "\(reach.unnamed) sends of it name") no recipient: who that went to isn't in the logs read."
@@ -792,6 +832,18 @@ private struct ReachSection: View {
                 .accessibilityElement(children: .combine)
             }
             Text(summary)
+            if readingGroups {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading the members of the groups it went to…").foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if !groupProblems.isEmpty {
+                Text("Members not read, so each counts on the warning's send: "
+                     + groupProblems.map { "\($0.group) (\($0.why))" }.joined(separator: "; ") + ".")
+                    .font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+            }
             if reach.recipients.isEmpty {
                 Text("The logs read have no send of it naming its recipients: pull the sender's Gmail log over the day it went out.")
                     .foregroundStyle(.secondary)
@@ -883,9 +935,10 @@ private struct ReachSection: View {
         } footer: {
             Text("From the Gmail log's own events for this email: its sends (every address, Bcc too), a mailbox here receiving it, a "
                  + "bounce, a quarantine or a rejection. Everyone it was sent to is to warn but an address that bounced and isn't a "
-                 + "person's mailbox here: warning too many is safe, too few isn't. A warning picked counts for someone here once the "
-                 + "logs' last word of it in their mailbox is a receipt, and for an outside address or a group where its send went with "
-                 + "nothing failing; done needs that for everyone to warn.")
+                 + "person's mailbox here: warning too many is safe, too few isn't. A group here whose members are read counts by them. "
+                 + "A warning picked counts for someone here once the logs' last word of it in their mailbox is a receipt, and for an "
+                 + "outside address, or a group whose members aren't read, where its send went (to it, or to a group read that holds it) "
+                 + "with nothing failing; done needs that for everyone to warn.")
         }
     }
 }

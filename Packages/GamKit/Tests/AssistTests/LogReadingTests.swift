@@ -768,6 +768,93 @@ struct LogReadingTests {
         #expect(many.candidates.map(\.messageID) == (30..<130).reversed().map { "note-\($0)@mail.example.com" }, "the earliest 100, earliest first")
     }
 
+    /// A group whose members were read counts by them, never on the warning's send (2026-10-27: a member whose Gmail log
+    /// wasn't pulled was invisible, and done counted the group on the send): each member is listed after everyone the log
+    /// names, through the group, an alias as its person and a nested group read followed, each once though the groups hold
+    /// each other. A person here is warned only by their own receipt, and pulled again without one; an outside member, or a
+    /// group not read, by the warning's send to the group. Done's note counts only a group not read. One the email bounced
+    /// from reached no one, and one with GAM's CUSTOMER member reaches everyone here.
+    @Test func whoAGroupReached() throws {
+        let phish = "<phish-1@mail.example.com>", warning = "<warn-1@mail.example.com>"
+        let groups = ["team@example.com": ["alice@example.com", "A.Anders@example.com", "dana@example.com", "ext@vendor.example", "sub@example.com",
+                                           "unread-group@example.com"],
+                      "sub@example.com": ["bob@example.com", "team@example.com"]]
+        let events = Self.incident.filter { $0.log != "gmail" } + [
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::team@example.com", "smtp-out::pat@partner.example"]),
+            Self.gmail("alice@example.com", 2, phish, at: 31), Self.gmail("bob@example.com", 2, phish, at: 31),
+            Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it",
+                       to: ["gmail-ui::team@example.com", "smtp-out::pat@partner.example"]),
+            Self.gmail("alice@example.com", 2, warning, at: 61), Self.gmail("bob@example.com", 2, warning, at: 61),
+            Self.gmail("alice@example.com", 1, "<lunch@mail.example.com>", at: 65, ip: Self.office, subject: "Lunch", to: ["gmail-ui::dana@example.com"]),
+        ]
+        func read(_ events: [LogReading.Event], groups: [String: [String]] = groups, everyone: Set<String> = [],
+                  picks: Set<String> = ["warn-1@mail.example.com"]) throws -> (LogReading.Reading, LogReading.Reach) {
+            let read = LogReading.read(events, context: LogReading.Context(domains: ["example.com"], people: Self.people, groups: groups,
+                                                                           everyone: everyone, warnings: ["phish-1@mail.example.com": picks]))
+            return (read, try #require(read.reaches.first))
+        }
+
+        let (reading, reach) = try read(events)
+        #expect(reach.recipients.map(\.address) == ["team@example.com", "pat@partner.example", "alice@example.com", "bob@example.com",
+                                                    "dana@example.com", "ext@vendor.example", "sub@example.com", "unread-group@example.com"])
+        #expect(reach.recipients.map(\.via) == [nil, nil, nil, nil, "team@example.com", "team@example.com", "team@example.com", "team@example.com"])
+        #expect(reach.recipients.map(\.expanded) == [true, false, false, false, false, false, true, false])
+        #expect(reach.reached.map(\.address) == ["pat@partner.example", "alice@example.com", "bob@example.com", "dana@example.com",
+                                                 "ext@vendor.example", "unread-group@example.com"], "a group read is who it reached, not one of them")
+        #expect(reach.recipients.map(\.warned) == [nil, true, true, true, false, true, nil, true],
+                "dana@ only by her own receipt; ext@ and the group not read by the warning's send to team@")
+        #expect(reach.toWarn.map(\.address) == ["dana@example.com"] && reach.unread == ["dana@example.com"])
+        #expect(reach.warnings.first?.warned == ["pat@partner.example", "alice@example.com", "bob@example.com", "ext@vendor.example",
+                                                 "unread-group@example.com"])
+        #expect(reach.candidates.map(\.messageID) == ["lunch@mail.example.com"], "an email to a member is offered")
+        #expect(reach.rows.map { $0[2] } == ["a group here, each of its members listed as themselves", "sent, no bounce in the logs read",
+                                             "received", "received", "sent to team@example.com, no receipt in the logs read",
+                                             "sent to team@example.com, no bounce in the logs read",
+                                             "a group here, each of its members listed as themselves",
+                                             "in team@example.com, no one's mailbox here: a group or an address no account has"])
+        #expect(reach.rows.first.map { [$0[4], $0[5]] } == ["", ""])
+        #expect(!reading.done.contains { $0.kind == .warnRecipients }, "dana@ isn't shown warned: never done on the group's send")
+        #expect(reading.toDo.contains { $0.kind == .pullAgain && $0.accounts == ["dana@example.com"] })
+
+        // Her receipt, and it's done: the group not read is the one counted on the send.
+        let (warned, _) = try read(events + [Self.gmail("dana@example.com", 2, warning, at: 61)])
+        #expect(warned.done.first { $0.kind == .warnRecipients }?.words == "Warned everyone “Shared file” (phish-1@mail.example.com) reached: "
+                + "6 people (one of them a group or an address no account has, counted on the warning's send), by bob@example.com's “Don't open it”.")
+        // With every group read, no note.
+        let (whole, _) = try read(events + [Self.gmail("dana@example.com", 2, warning, at: 61)],
+                                  groups: groups.merging(["unread-group@example.com": []]) { kept, _ in kept })
+        #expect(whole.done.first { $0.kind == .warnRecipients }?.words
+                == "Warned everyone “Shared file” (phish-1@mail.example.com) reached: 5 people, by bob@example.com's “Don't open it”.")
+
+        // Bounced from the group: it reached no one through it.
+        let (_, bounced) = try read(events + [Self.gmail("carol@example.com", 30, phish, at: 32, to: ["gmail-ui::team@example.com"])])
+        #expect(bounced.recipients.map(\.address) == ["team@example.com", "pat@partner.example", "alice@example.com", "bob@example.com"])
+        #expect(!bounced.recipients[0].expanded && bounced.reached.count == 3)
+        // GAM's CUSTOMER member: everyone here, each by their own receipt.
+        let (_, all) = try read(events, groups: ["team@example.com": []], everyone: ["team@example.com"])
+        #expect(all.recipients.map(\.address) == ["team@example.com", "pat@partner.example", "alice@example.com", "bob@example.com",
+                                                  "carol@example.com", "dana@example.com"])
+        #expect(all.toWarn.map(\.address) == ["carol@example.com", "dana@example.com"])
+    }
+
+    /// The same email, its group's members not read: the group counts on the warning's send, and done says so (the note the
+    /// expansion leaves only to groups not read).
+    @Test func aGroupNotReadCountsOnTheSend() throws {
+        let phish = "<phish-1@mail.example.com>", warning = "<warn-1@mail.example.com>"
+        let read = LogReading.read(Self.incident.filter { $0.log != "gmail" } + [
+            Self.gmail("carol@example.com", 1, phish, at: 30, ip: Self.attacker, to: ["gmail-ui::team@example.com", "gmail-ui::alice@example.com"]),
+            Self.gmail("alice@example.com", 2, phish, at: 31),
+            Self.gmail("bob@example.com", 1, warning, at: 60, ip: Self.office, subject: "Don't open it",
+                       to: ["gmail-ui::team@example.com", "gmail-ui::alice@example.com"]),
+            Self.gmail("alice@example.com", 2, warning, at: 61),
+        ], context: LogReading.Context(domains: ["example.com"], people: Self.people, groups: ["other@example.com": ["dana@example.com"]],
+                                       warnings: ["phish-1@mail.example.com": ["warn-1@mail.example.com"]]))
+        let reach = try #require(read.reaches.first)
+        #expect(reach.recipients.map(\.address) == ["team@example.com", "alice@example.com"] && reach.recipients.allSatisfy { !$0.expanded && $0.via == nil })
+        #expect(read.done.first { $0.kind == .warnRecipients }?.words == "Warned everyone “Shared file” (phish-1@mail.example.com) reached: "
+                + "2 people (one of them a group or an address no account has, counted on the warning's send), by bob@example.com's “Don't open it”.")
+    }
+
     /// Who it reached on a whole pull costs less than summing every email in it, which is what made a reading ten times slower
     /// (review 2026-10-24; final review 2026-10-25: nothing held it): 100,000 Gmail events among 500 people, the phish to 5 of
     /// them, a warning picked. Both in the work's own CPU time, so neither a busy runner nor a sleep counts, and against each

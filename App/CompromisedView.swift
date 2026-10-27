@@ -14,6 +14,9 @@ struct CompromisedView: View {
     let directory: DirectoryStore
     let changes: CompromisedChanges
     let logs: IncidentLogs
+    /// The groups the attacker's emails went to, read for whom they reach (Who it reached); read again each time it opens
+    /// (forgotten on leaving).
+    let groupsReached: GroupsReached
     /// Sign-ins marked as the person's own ("That was them"), which the log reader makes no suspect of.
     let known: KnownSignIns
     /// The emails Phishing's Find showed nobody here has, which the log reader shows done.
@@ -148,6 +151,9 @@ struct CompromisedView: View {
         .onAppear {
             if let check = changes.check, form.person.isEmpty, requested == nil { form.person = check.asked }
         }
+        // Read again each time the screen opens, as its reader's memory is: a read that failed isn't kept for good. On leaving,
+        // not opening, so the first reading isn't asked twice.
+        .onDisappear { groupsReached.forget() }
         .onChange(of: requested, initial: true) { _, email in
             guard let email else { return }
             requested = nil
@@ -248,6 +254,8 @@ struct CompromisedView: View {
         let open = incidents.record(incidents.openID).flatMap { $0.domain == domain.lowercased() ? $0 : nil }
         // The domains people here have addresses at (primary and aliases, from the directory) and the connected one: inside.
         let index = directoryIndex.index(directory, domain: domain)
+        // The groups the attacker's emails went to, once their members are read: each counts by them.
+        let groups = groupsReached
         return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
@@ -261,7 +269,9 @@ struct CompromisedView: View {
         }, pullAgain: { applications, accounts in
             pullAgain(applications, accounts)
             go(.investigate, to: Self.reportsAnchor, scroller)
-        }, domains: index.domains, people: index.people, directoryKey: index.key, warnings: open?.warnings ?? [], pickWarning: open.map { record in
+        }, domains: index.domains, people: index.people, groups: groups.members, everyone: groups.everyone,
+        directoryKey: index.key + "|" + groups.key, groupProblems: groups.problems, readingGroups: groups.isReading,
+        readGroups: { addresses in Task { await groups.read(addresses) } }, warnings: open?.warnings ?? [], pickWarning: open.map { record in
             { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
         }, anchor: part == .findings ? Self.readerAnchor : Self.toDoAnchor)
     }
