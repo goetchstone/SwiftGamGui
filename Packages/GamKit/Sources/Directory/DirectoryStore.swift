@@ -110,6 +110,8 @@ public final class DirectoryStore {
         return failure.problem
     }
     public var loadedAt: Date? { current?.loadedAt }
+    /// The shown snapshot's revision: it changes with each load and patch, so what's worked out from the list can be kept until it does.
+    public var revision: Int? { current?.revision }
 
     private var current: Snapshot? {
         guard let snapshot, snapshot.domain == setup.active, snapshot.generation == setup.generation else { return nil }

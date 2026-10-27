@@ -46,7 +46,7 @@ struct ImportTests {
     @Test func aFIFONamedLikeACredentialIsRefusedWithoutBlocking() throws {
         #expect(mkfifo(folder.appending(path: "oauth2service.json").path, 0o600) == 0)
         try put("oauth2.txt")
-        let clock = ContinuousClock()
+        let clock = SuspendingClock()
         let started = clock.now
         #expect(throws: CredentialFolder.Failure.notARegularFile("oauth2service.json")) { try CredentialFolder.read(folder) }
         #expect(clock.now - started < .seconds(2))

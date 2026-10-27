@@ -230,7 +230,9 @@ struct IncidentRecordSection: View {
 
     private func save(_ editing: Editing, _ title: String, _ opened: Date, _ openedBy: String, _ reported: String) -> String? {
         switch editing.purpose {
-        case .edit(var record):
+        case .edit(let edited):
+            // Onto the record as kept now: what another window saved since the sheet opened (a note, a warning picked) stays.
+            guard var record = incidents.record(edited.id) else { return "That incident isn't kept any more." }
             (record.title, record.opened, record.openedBy, record.reported) = (title, opened, openedBy, reported)
             return incidents.save(record)
         case .new, .fromExport:

@@ -147,7 +147,7 @@ struct GroupStoreTests {
     @Test func aTenantSwitchStopsTheOldLoad() async throws {
         let app = app(try runner(slow: "print groups"))
         try await connect("example.com", in: app.setup)
-        let clock = ContinuousClock(), started = clock.now
+        let clock = SuspendingClock(), started = clock.now
         let groups = app.groups
         let old = Task { await groups.load() }
         while !groups.isLoading { await Task.yield() }

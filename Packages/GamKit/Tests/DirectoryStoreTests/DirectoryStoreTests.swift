@@ -137,7 +137,7 @@ struct DirectoryStoreTests {
         let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let store = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
-        let clock = ContinuousClock(), started = clock.now
+        let clock = SuspendingClock(), started = clock.now
         let old = Task { await store.load() }
         while !store.isLoading { await Task.yield() }
         try await connect("example.org", admin: "admin@example.org", in: setup)
@@ -156,7 +156,7 @@ struct DirectoryStoreTests {
         let first = DirectoryStore(setup: setup, runner: slow)
         let second = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
-        let clock = ContinuousClock(), started = clock.now
+        let clock = SuspendingClock(), started = clock.now
         let old = Task { await first.load() }
         while !first.isLoading { await Task.yield() }
         try await connect("example.org", admin: "admin@example.org", in: setup)

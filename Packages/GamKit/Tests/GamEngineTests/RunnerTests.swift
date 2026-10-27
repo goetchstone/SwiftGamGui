@@ -65,10 +65,11 @@ struct RunnerTests {
     }
 
     /// The timeout stops the process: a 10-minute sleep ends long before it would. The bound is wall time, as it must
-    /// be, but far from both ends, so a busy CI runner can't cross it (failure-log 2026-10-20).
+    /// be, but far from both ends, so a busy CI runner can't cross it (failure-log 2026-10-20), and on `SuspendingClock`,
+    /// so a Mac asleep mid-test doesn't either (failure-log 2026-10-25).
     @Test func aRunPastItsTimeoutIsStopped() async throws {
         let sleeper = GamRunner(binary: URL(filePath: "/bin/sleep"))
-        let clock = ContinuousClock()
+        let clock = SuspendingClock()
         let started = clock.now
         await #expect(throws: GamRunnerError.timedOut(seconds: 0)) {
             try await sleeper.runRaw(["600"], timeout: .milliseconds(300))
@@ -93,7 +94,7 @@ struct RunnerTests {
         defer { try? FileManager.default.removeItem(at: script) }
         let run = Task { try await GamRunner(binary: script).runRaw([]) }
         let mine = { Set(GamRunner.children.withLock { $0.filter { $0.value == script.path }.keys }) }
-        let clock = ContinuousClock()
+        let clock = SuspendingClock()
         let deadline = clock.now + .seconds(5)
         while mine().isEmpty, clock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))

@@ -36,6 +36,8 @@ struct CompromisedView: View {
     @State private var scrollToReports = false
     /// …and to the log reader (`reading`).
     @State private var scrollToReader = false
+    /// …and to a part drawn after the tab changed (`reached`: the first Who it reached section).
+    @State private var scrollTarget: String?
     /// What a "Do It Here" asked to pick for a person, applied once the check has read them; only that one thing, not the
     /// full lock again.
     @State private var pendingPick: (person: String, pick: SecurePick)?
@@ -48,6 +50,8 @@ struct CompromisedView: View {
     @State private var filter: IncidentLogs.Filter?
     /// The log reader's reading and explanation, kept here so they survive a change of tab.
     @State private var readerMemory = LogReaderView.Memory()
+    /// The directory as Who it reached reads it, built once a snapshot.
+    @State private var directoryIndex = DirectoryIndex()
     /// Where to scroll once a change of tab has drawn the new tab (its sections don't exist before).
     @State private var scrollAfterTab: String?
     @Environment(\.appearsActive) private var appearsActive
@@ -104,6 +108,9 @@ struct CompromisedView: View {
                     #if DEBUG
                     if wanted, Spikes.isRequested { print("state: scrolled to \(scrollToReader ? "the reader" : "the logs")") }
                     #endif
+                }
+                .onChange(of: scrollTarget) { _, anchor in
+                    if let anchor { scroller.scrollTo(anchor, anchor: .top) }
                 }
             }
         }
@@ -237,6 +244,10 @@ struct CompromisedView: View {
     /// Phishing; Show the Events narrows Investigate's logs; Pull Again reads more.
     private func reader(_ part: LogReaderView.Part, _ pull: IncidentLogs.Pull, _ scroller: ScrollViewProxy) -> some View {
         let domain = setup.active?.name ?? ""
+        // The incident open on this domain keeps the warnings picked (Who it reached); with none open, a pick can't be kept.
+        let open = incidents.record(incidents.openID).flatMap { $0.domain == domain.lowercased() ? $0 : nil }
+        // The domains people here have addresses at (primary and aliases, from the directory) and the connected one: inside.
+        let index = directoryIndex.index(directory, domain: domain)
         return LogReaderView(part: part, pull: pull, auditURL: auditURL, domain: domain, nobodyHas: nobodyHas.checks(for: domain),
                              nobodyHasProblem: nobodyHas.problem, memory: readerMemory, secure: { person, pick in
             pendingPick = pick.map { (person, $0) }
@@ -250,6 +261,8 @@ struct CompromisedView: View {
         }, pullAgain: { applications, accounts in
             pullAgain(applications, accounts)
             go(.investigate, to: Self.reportsAnchor, scroller)
+        }, domains: index.domains, people: index.people, directoryKey: index.key, warnings: open?.warnings ?? [], pickWarning: open.map { record in
+            { email, warning in incidents.pickWarning(email: email, warning: warning, in: record.id) }
         }, anchor: part == .findings ? Self.readerAnchor : Self.toDoAnchor)
     }
 
@@ -402,7 +415,8 @@ struct CompromisedView: View {
     /// (`plan`), the confirm sheet over it (`confirm`), a finished run's panel (`result`, made up: nothing runs), the
     /// person's incident logs, then every account's by the first address on their flagged sign-in (`reports`), the
     /// person's and dana@'s logs with Chrome's, read by the log reader (`reading`: Investigate's findings; `todo`: Respond's
-    /// Still to do), or the person's logs saved to a demo incident kept in the demo's temporary folder, with a note, opened
+    /// Still to do; `reached`: Respond's first Who it reached, alice@'s and bob@'s logs too, in a demo incident with the mock's
+    /// warning picked), or the person's logs saved to a demo incident kept in the demo's temporary folder, with a note, opened
     /// on Report (`incident`). A plan, the confirm sheet or a run shows on Respond.
     private func fillForSnapshot() {
         #if DEBUG
@@ -413,7 +427,7 @@ struct CompromisedView: View {
         let asked = environment["SWIFTGAMGUI_TAB"] ?? ""
         let changes = changes
         // The log reader's pictures wait for its reading, which comes off the main thread after the pull, and for the scroll.
-        let reading = asked == "reading" || asked == "todo"
+        let reading = ["reading", "todo", "reached"].contains(asked)
         if reading { Spikes.snapshotWork += 1 }
         Task {
             defer { if reading { Spikes.snapshotWork -= 1 } }
@@ -438,15 +452,30 @@ struct CompromisedView: View {
                 return
             }
             if reading, let email = changes.check?.user.primaryEmail {
-                await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome], users: [email, "dana@example.com"],
+                // Who it reached reads the recipients' and the warning's sender's Gmail logs too, in a demo incident with the
+                // mock's warning picked: what a pick shows (warned on its send outside, not shown warned with no receipt here).
+                let reached = asked == "reached"
+                await logs.pull(IncidentLogs.Query(applications: ActivityLogs.incidentDefault + [.chrome],
+                                                   users: [email, "dana@example.com"] + (reached ? ["alice@example.com", "bob@example.com"] : []),
                                                    hours: 72, ip: ""))
+                if reached, case .success(let record) = incidents.create(domain: setup.active?.name ?? "", title: "Account takeover",
+                                                                         opened: Date(), openedBy: "Pat", reported: "A Google alert") {
+                    if let pull = logs.pull { _ = try? await incidents.add(pull, to: record.id) }
+                    _ = incidents.pickWarning(email: "phish-1@mail.example.com", warning: "warning-1@mail.example.com", in: record.id)
+                    incidents.openID = record.id
+                }
                 // Scroll once the findings are drawn: an anchor that first appears in the same update doesn't scroll.
                 let pulled = ContinuousClock.now
                 for _ in 0..<100 where !readerMemory.hasReading { try? await Task.sleep(for: .milliseconds(50)) }
                 print("state: the reading \(readerMemory.hasReading ? "came" : "hadn't come") \(ContinuousClock.now - pulled) after the pull")
                 try? await Task.sleep(for: .milliseconds(300))
-                if asked == "todo" {
+                if asked == "todo" || asked == "reached" {
                     self.tab = .respond
+                    if asked == "reached", let anchor = readerMemory.firstReach {
+                        // Once Respond has drawn it: an anchor that first appears in the same update doesn't scroll.
+                        try? await Task.sleep(for: .milliseconds(300))
+                        scrollTarget = anchor
+                    }
                 } else {
                     scrollToReader = true
                     scrollToReports = true
@@ -1595,5 +1624,36 @@ private struct ActivityList: View {
                     .symbolRenderingMode(.multicolor).font(.callout)
             }
         }
+    }
+}
+
+/// The directory as Who it reached reads it: each person's addresses (their own, their aliases, and the domain aliases Google
+/// adds, `nonEditableAliases`, which GAM returns with the aliases asked for) to their own, a person's own address never taken
+/// by another's alias; and every domain those are at, with the connected one. Built once a snapshot (`DirectoryStore.revision`),
+/// never at every redraw (review 2026-10-24); nil people until the directory is read.
+@MainActor
+final class DirectoryIndex {
+    private var built: (revision: String, key: String, people: [String: String]?, domains: Set<String>)?
+
+    func index(_ directory: DirectoryStore, domain: String) -> (key: String, people: [String: String]?, domains: Set<String>) {
+        let revision = "\(domain.lowercased())|\(directory.revision.map(String.init) ?? "-")"
+        if let built, built.revision == revision { return (built.key, built.people, built.domains) }
+        var people: [String: String]?
+        if let users = directory.users {
+            var map: [String: String] = [:]
+            for user in users { map[user.primaryEmail.lowercased()] = user.primaryEmail.lowercased() }
+            for user in users {
+                let aliases = user.aliases + (user.record["nonEditableAliases"]?.array ?? []).compactMap(\.string)
+                for alias in aliases where map[alias.lowercased()] == nil { map[alias.lowercased()] = user.primaryEmail.lowercased() }
+            }
+            people = map
+        }
+        let domains = Set(((people.map { Array($0.keys) } ?? []) + ["@" + domain])
+            .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })
+        // A revision that changes nothing read here keeps its key: a password reset or a suspension elsewhere re-reads no pull
+        // (final review 2026-10-25).
+        let key = built.flatMap { $0.people == people && $0.domains == domains ? $0.key : nil } ?? revision
+        built = (revision, key, people, domains)
+        return (key, people, domains)
     }
 }
