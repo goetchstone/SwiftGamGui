@@ -196,15 +196,17 @@ enum Spikes {
     static func printState(in content: NSView) {
         func descendants(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap(descendants) }
         let shown = descendants(content).filter { !$0.isHiddenOrHasHiddenAncestor }
-        // Pop-ups as VoiceOver reads them: SwiftUI's own pickers aren't AppKit's NSPopUpButton.
-        func popUps(in element: Any, depth: Int) {
-            guard depth < 40, let element = element as? NSAccessibilityProtocol else { return }
-            if element.accessibilityRole() == .popUpButton {
-                print("state: pop-up \"\(element.accessibilityLabel() ?? "")\" shows \"\(element.accessibilityValue().map { "\($0)" } ?? "")\"")
-            }
-            for child in element.accessibilityChildren() ?? [] { popUps(in: child, depth: depth + 1) }
+        // Pop-ups read as the views that draw them: walking the accessibility tree from here named none on any screen in
+        // CI (run 40484251153), Onboard's blank Role among them (2026-10-27).
+        for popUp in shown.compactMap({ $0 as? NSPopUpButton }) {
+            let items = popUp.itemArray.map { "\"\($0.title)\"" }.joined(separator: ", ")
+            print("state: pop-up \(type(of: popUp)) shows \"\(popUp.titleOfSelectedItem ?? "")\", item \(popUp.indexOfSelectedItem) of [\(items)]")
         }
-        popUps(in: content, depth: 0)
+        // Anything else that may draw a picker, by its class, so one drawn some other way is still named.
+        for view in shown where !(view is NSPopUpButton)
+            && ["PopUp", "Picker", "Menu", "ComboBox"].contains(where: { String(describing: type(of: view)).contains($0) }) {
+            print("state: picker-like \(type(of: view)), \(Int(view.frame.width)) by \(Int(view.frame.height))")
+        }
         for scroll in shown.compactMap({ $0 as? NSScrollView }) {
             let document = scroll.documentView.map { "\(type(of: $0)) \(Int($0.frame.height)) tall" } ?? "no document"
             print("state: scroll at \(Int(scroll.contentView.bounds.minY)) of \(document), \(Int(scroll.frame.height)) shown")

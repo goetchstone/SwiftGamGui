@@ -56,8 +56,17 @@ struct OnboardView: View {
         .frame(minWidth: 0, maxWidth: .infinity)
         .task { debugSelection() }
         .onChange(of: roles.roles.map(\.name), initial: true) { _, names in
+            #if DEBUG
+            if Spikes.isRequested { print("state: onboard roles [\(names.joined(separator: ", "))], role \"\(roleName)\"") }
+            #endif
             if !names.contains(roleName) { roleName = names.first ?? "" }
         }
+        #if DEBUG
+        // In what order the role and the roles arrive, for a snapshot's log (the Role picker drawn blank on CI, 2026-10-27).
+        .onChange(of: roleName, initial: true) { _, name in
+            if Spikes.isRequested { print("state: onboard role \"\(name)\", roles [\(roles.roles.map(\.name).joined(separator: ", "))]") }
+        }
+        #endif
         .onChange(of: changes.defaultAssignee, initial: true) { _, admin in
             // The connected admin, once (§9 Q7); clearing it still means the new hire.
             guard !assigneeApplied, assignee.isEmpty, !admin.isEmpty else { return }
