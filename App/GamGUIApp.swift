@@ -1,6 +1,7 @@
 import AppKit
 import Directory
 import GamEngine
+import Jobs
 import Setup
 import SwiftUI
 
@@ -97,6 +98,28 @@ enum ColumnWidths {
 struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
+    #if DEBUG
+    @State private var demoJobs = false
+
+    /// Two made-up runs for the tray's snapshot: an offboarding part done, and a pull from every mailbox that ended with two
+    /// mailboxes failed. Events as the executor reports them; nothing runs.
+    static func showDemoJobs(_ board: JobBoard) {
+        let offboarding = UUID(), pull = UUID()
+        board.handle(.started(job: pull, preview: UUID(), title: "Trash message for 9 addresses", total: 9))
+        for name in ["alice", "bob", "dana", "erin", "frank", "gwen", "hank"] {
+            board.handle(.step(job: pull, item: "Trash message: \(name)@example.com", outcome: .succeeded, detail: ""))
+        }
+        for name in ["ivy", "jack"] {
+            board.handle(.step(job: pull, item: "Trash message: \(name)@example.com", outcome: .failed,
+                               detail: "Mail service not enabled for \(name)@example.com."))
+        }
+        board.handle(.finished(job: pull))
+        board.handle(.started(job: offboarding, preview: UUID(), title: "Offboarding carol@example.com", total: 12))
+        for step in ["Sign out", "Reset password", "Hide from directory", "Set vacation", "Remove group member"] {
+            board.handle(.step(job: offboarding, item: "\(step): carol@example.com", outcome: .succeeded, detail: ""))
+        }
+    }
+    #endif
     /// The person Signatures opens on when another screen sends it one.
     @State private var signaturesPerson: String?
     /// The person Calendars opens on when Users sends it one.
@@ -205,6 +228,19 @@ struct ContentView: View {
                     .navigationTitle("Setup")
             }
         }
+        // The jobs tray, on every screen: each run the executor makes, and Stop.
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { JobsButton(board: services.jobs) }
+        }
+        #if DEBUG
+        // Snapshots (`SWIFTGAMGUI_TAB=jobs`): the tray over the screen, with made-up runs: nothing runs.
+        .sheet(isPresented: $demoJobs) { JobsTray(board: services.jobs).frame(width: 440, height: 520) }
+        .task {
+            guard ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "jobs", Spikes.isRequested else { return }
+            Self.showDemoJobs(services.jobs)
+            demoJobs = true
+        }
+        #endif
         // Siri's request opens Users in the window in front, where it's drafted.
         .onChange(of: services.siriDrafts.titleChange != nil && appearsActive, initial: true) { _, wanted in
             if wanted { screen = .users }

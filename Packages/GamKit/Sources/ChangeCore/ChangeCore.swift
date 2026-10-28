@@ -1,6 +1,7 @@
 import CryptoKit
 import Foundation
 import GamEngine
+import Jobs
 import os
 import Vault
 
@@ -173,6 +174,8 @@ extension WriteAction {
 public struct HeldPreview: Sendable, Identifiable {
     public let id: UUID
     public let steps: [WriteStep]
+    /// What the jobs tray calls its run ("Offboarding carol@example.com"): the screen's, else worked out from its steps.
+    public let title: String
     /// SHA-256 of every step's argv bytes, in the audit: what ran is provably what was shown.
     public let digest: String
     public let domain: Domain
@@ -289,6 +292,8 @@ public actor Executor {
     /// Who is making the change, asked at each run: the admin the connected domain signs in as.
     private let currentActor: (@Sendable () async -> String?)?
     private let extraEnvironment: [String: String]
+    /// Where each run is reported as it starts, as each step ends and as it finishes: the jobs tray (`JobBoard.report`).
+    private let jobs: (@Sendable (JobEvent) -> Void)?
 
     private var held: [UUID: HeldPreview] = [:]
     private var order: [UUID] = []
@@ -309,7 +314,8 @@ public actor Executor {
     public init(runner: AuthenticatedRunner, audit: AuditLog, actor: String? = nil,
                 currentActor: (@Sendable () async -> String?)? = nil, tenant: @escaping Tenant,
                 now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
-                extraEnvironment: [String: String] = [:]) {
+                extraEnvironment: [String: String] = [:], jobs: (@Sendable (JobEvent) -> Void)? = nil) {
+        self.jobs = jobs
         self.runner = runner
         self.audit = audit
         self.actor = actor
@@ -332,7 +338,7 @@ public actor Executor {
     /// `stopsAtAccountWideFailure` and `typedAddress` are for a routine (offboarding): see `HeldPreview`.
     public func preview(_ steps: [WriteStep], origin: Origin = .form, confirmStep: Bool = false,
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
-                        stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil,
+                        stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil, title: String = "",
                         precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated()
@@ -356,7 +362,7 @@ public actor Executor {
             return .failure(.tenantChanged)
         }
         let preview = HeldPreview(
-            id: UUID(), steps: steps, digest: HeldPreview.digest(of: steps), domain: current.domain,
+            id: UUID(), steps: steps, title: title.isEmpty ? Self.title(of: steps) : title, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
             decision: Guard.evaluate(steps.map(\.change), typedCountAbove: typedCountAbove),
             confirmStep: confirmStep, typedCountAbove: typedCountAbove, stopsAtAccountWideFailure: stopsAtAccountWideFailure,
@@ -366,6 +372,23 @@ public actor Executor {
         held[preview.id] = preview
         order.append(preview.id)
         return .success(preview)
+    }
+
+    /// A run's name for the jobs tray when its screen gives none: its one kind of change and whom it's for ("Trash message for 12
+    /// addresses"), else how many changes and the address most of them are for.
+    static func title(of steps: [WriteStep]) -> String {
+        var actions: [WriteAction] = [], counts: [String: Int] = [:], targets: [String] = []
+        for step in steps {
+            if !actions.contains(step.action) { actions.append(step.action) }
+            if counts[step.target] == nil { targets.append(step.target) }
+            counts[step.target, default: 0] += 1
+        }
+        let whom = targets.count == 1 ? targets[0] : "\(targets.count) addresses"
+        if actions.count == 1 { return "\(actions[0].displayName) for \(whom)" }
+        // The one most steps are for, the first named on a tie: linear, for a run of thousands (review 2026-10-28).
+        var most = targets[0]
+        for target in targets.dropFirst() where counts[target]! > counts[most]! { most = target }
+        return "\(steps.count) changes for \(most)" + (targets.count > 1 ? " and \(targets.count - 1) more" : "")
     }
 
     public enum PreviewRefusal: Error, Equatable, Sendable {
@@ -487,9 +510,12 @@ public actor Executor {
         if let why = await aliasRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
         let ran = await execute(taken, progress: progress)
-        // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13).
+        // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13). Nor does a stopped one: a
+        // Stop (the jobs tray's, on any run) means nothing more of it runs, a wait for Google included (review 2026-10-28). Read
+        // before the `defer` above clears the request.
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: Task.isCancelled ? nil : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
+                          retry: Task.isCancelled || stopRequests.contains(taken.id) ? nil
+                              : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
     }
 
     // MARK: retrying what waits for a new account (D3d)
@@ -562,7 +588,8 @@ public actor Executor {
         let ran = await execute(state.preview, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
                                 progress: progress)
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: Task.isCancelled ? nil : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+                          retry: Task.isCancelled || stopRequests.contains(state.preview.id) ? nil
+                              : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
     }
 
     /// Stop, between rounds: the waiting steps are dropped, and the handle runs nothing. A round already under
@@ -585,6 +612,17 @@ public actor Executor {
 
     /// A step after a Stop: never begun.
     public static let stopped = "Not run: stopped."
+
+    /// A step's result as the jobs tray hears it: what it was in words, how it ended, and why (masked, as the audit's).
+    static func jobStep(_ job: UUID, _ step: WriteStep, _ result: RunOutcome.Step) -> JobEvent {
+        let item = "\(step.action.displayName): \(step.target)"
+        return switch result {
+        case .succeeded: .step(job: job, item: item, outcome: .succeeded, detail: "")
+        case .failed(let message, _): .step(job: job, item: item, outcome: .failed, detail: message)
+        case .skipped(let reason): .step(job: job, item: item, outcome: .notRun, detail: reason)
+        case .waiting(let message): .step(job: job, item: item, outcome: .waiting, detail: message)
+        }
+    }
 
     /// Tests: how many runs' waiting steps are held for a retry.
     var parkedRuns: Int { parked.count }
@@ -630,6 +668,11 @@ public actor Executor {
                          attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
         -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
+        // Reported to the jobs tray: a job each time steps run (a retry round is its own, of the steps still waiting).
+        let job = UUID(), deciding = prior.map { $0.count(where: \.isWaiting) } ?? preview.steps.count
+        jobs?(.started(job: job, preview: preview.id, title: preview.title + (attempt.map { " (waiting for Google, try \($0))" } ?? ""),
+                       total: deciding))
+        defer { jobs?(.finished(job: job)) }
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
@@ -641,7 +684,10 @@ public actor Executor {
                 continue
             }
             // Each result as it's decided: for a step that ran, after its end record.
-            defer { progress?.yield((index, results[index])) }
+            defer {
+                progress?.yield((index, results[index]))
+                jobs?(Self.jobStep(job, planned, results[index]))
+            }
             if let stoppedBy {
                 results.append(.skipped(reason: stoppedBy))
                 continue
