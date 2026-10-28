@@ -89,6 +89,17 @@ struct IncidentWayInTests {
         #expect(open.wayInWords(IncidentReportTests.when).hasPrefix("Not picked yet: 2 emails carol@example.com received from outside"))
     }
 
+    /// None received from outside in the window: said as none found, never "0 emails … are listed" (2026-10-28).
+    @Test func noneToPickIsSaidAsNoneFound() throws {
+        let reading = LogReading.read(Reading.incident, context: LogReading.Context(domains: ["example.com"]))
+        let wayIn = try #require(reading.wayIn)
+        #expect(wayIn.candidates.isEmpty)
+        let words = IncidentReport.make(reading, record: IncidentReportTests.record, changes: [], evidence: [], no2SV: nil,
+                                        made: IncidentReportTests.at(120), madeBy: "", when: IncidentReportTests.when).wayInWords(IncidentReportTests.when)
+        #expect(words.hasPrefix("Not found yet: the logs read show no email from outside reaching carol@example.com in the 72 hours"))
+        #expect(!words.contains("0 emails"))
+    }
+
     /// No account the attacker got into (only a password tried): nothing to trace.
     @Test func nothingWithoutAnAccountTakenOver() {
         let tried = [Reading.event("login", "erin@example.com", "login_failure", ip: Reading.attacker, at: 25),
