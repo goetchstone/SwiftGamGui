@@ -22,6 +22,23 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-28 — A second door to the same write skipped the first door's checks
+- **What happened:** Builder slice 2 ported GamGUI's curated writes, argv-identical. GamGUI's Builder runs them with none of
+  the checks its own screens make for the same write: no delegate check (Users has `_check_delegate`), and Set title /
+  department sends an empty field, which clears it. Natively the checks that prevent a loss live in each screen's model
+  (`UserChanges.checkDelegate`, the temporary password's connected-admin refusal), so the Builder had to carry them over by
+  hand (`BuilderChanges`). Looking for them showed Users' own suspend has no connected-admin check, while offboarding,
+  Incident and the temporary password do: suspending the account the app signs in as locks the app out. Its review then found
+  the carried-over refusal could be passed by `uid:alice@…` or `<alice@…>` (GAM rewrites both to alice), because the form used
+  `Address.looksLikeEmail` where `GamCommands.isOneAddress` already existed for exactly this; fixed before merge.
+- **Invariant in force:** #2 (every mutation goes through ChangeCore), with #11 (parity is a test).
+- **Why it didn't hold:** #2 guarantees the route (preview, guard, audit), not the checks: they sit beside each screen, so each
+  new way into a write copies them or goes without. #11 holds the argv, and GamGUI's Builder never had the checks.
+- **Would a rule have caught it?** only if enforced differently: a loss-preventing check belongs with the write (the builder, or
+  a ChangeCore precondition every caller gets, as the executor's tenant check is), not with a screen.
+- **Enforcement home if changed:** tripwire test: one per write class that names the checks a preview of it must make, run over
+  every model that builds it (the connected-admin refusal for suspend, password and deprovision first).
+
 ## 2026-10-28 — Parity carried GamGUI's own hole: a typed `todrive` made a Builder read write
 - **What happened:** Builder slice 1 (#135) ported GamGUI's generic read builder, argv-identical over all 514 promoted reads.
   An adversarial review before merge found two holes GamGUI has too: some reads put a required value where GAM reads options

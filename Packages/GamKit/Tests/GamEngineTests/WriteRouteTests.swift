@@ -54,15 +54,20 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["GamRead(", "GamWrite("]).isEmpty)
     }
 
-    /// The Builder (invariant 3): only its screen runs a catalog read, and it names nothing that can change the domain. A
-    /// catalog read is a `GamRead` from `GamCommands.catalogRead`, which refuses any command that isn't runnable.
-    @Test func theBuilderReachesNoWrite() throws {
+    /// The Builder (invariants 2 and 3): only its screen runs a catalog read (a `GamRead` from `GamCommands.catalogRead`, which
+    /// refuses any command that isn't runnable), and its changes reach ChangeCore through `BuilderChanges` alone: the screen names
+    /// no other changes model, no executor or write, and confirms nothing (its sheet does, `onlyAScreenMakesTheOperatorsConfirmation`).
+    @Test func theBuilderWritesOnlyThroughBuilderChanges() throws {
         #expect(try Self.files(in: "App", matching: ["catalogRead"]) == ["App/BuilderView.swift"])
-        let writing = try Self.files(in: "App", matching: ["UserChanges", "GroupChanges", "CalendarChanges", "SignatureChanges", "OnboardChanges",
-                                                           "OffboardChanges", "CompromisedChanges", "PhishingChanges", "Executor", "executor",
-                                                           "GamWrite", "WriteStep", "AuthenticatedRunner", "AppServices", "HeldPreview",
-                                                           ".confirm(", "confirmed:"], orWord: "OperatorConfirmation")
+        let writing = try Self.files(in: "App", matching: ["UserChanges", "GroupChanges", "groupChanges", "CalendarChanges",
+                                                           "SignatureChanges", "OnboardChanges", "OffboardChanges", "CompromisedChanges",
+                                                           "PhishingChanges", "Executor", "executor", "GamWrite", "WriteStep",
+                                                           "AuthenticatedRunner", "AppServices", "HeldPreview", ".confirm(", "confirmed:"],
+                                     orWord: "OperatorConfirmation")
         #expect(!writing.contains("App/BuilderView.swift"), "\(writing)")
+        let reaching = try Self.files(in: "App", matching: ["BuilderChanges", "builderChanges"])
+        #expect(reaching == ["App/AppServices.swift", "App/BuilderView.swift", "App/ChangePreviewSheet.swift", "App/GamGUIApp.swift"],
+                "\(reaching)")
     }
 
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
@@ -123,7 +128,7 @@ struct WriteRouteTests {
         let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
         let writing = try Self.files(in: "App", matching: ["UserChanges", "userChanges", "OnboardChanges", "onboardChanges",
                                                            "OffboardChanges", "offboardChanges", "CompromisedChanges", "compromisedChanges",
-                                                           "Executor", "executor", ".confirm(",
+                                                           "BuilderChanges", "builderChanges", "Executor", "executor", ".confirm(",
                                                            "confirmed:", "WriteStep", "GamWrite", "AuthenticatedRunner",
                                                            "previewOrganization", "previewPhone", "AppServices", "HeldPreview", "Origin",
                                                            ".run("], orWord: "OperatorConfirmation")

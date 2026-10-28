@@ -1,10 +1,12 @@
 # Catalog and Builder
 
-**One line:** GAM's whole command catalog to browse and search, and every command that only reads run from here: GamGUI's
-generic read builder, ported and held to it command by command. Slice 1 of plan §12 phase 4.
+**One line:** GAM's whole command catalog to browse and search, every command that only reads run from here (GamGUI's
+generic read builder, ported and held to it command by command; slice 1 of plan §12 phase 4), and GamGUI's curated commands
+with typed fields, their changes previewed and confirmed through ChangeCore one at a time (slice 2).
 
-**Owns invariant 3** (only confidently read-only commands become runnable). Touches 1 (each value one argv element), 9 (the
-runner's output cap; the result kept whole, bounded by it) and 11 (parity is a test).
+**Owns invariant 3** (only confidently read-only commands become runnable). Touches 1 (each value one argv element), 2 (a
+curated change only through `BuilderChanges` and the executor), 9 (the runner's output cap; the result kept whole, bounded by
+it) and 11 (parity is a test).
 
 ## Files
 - `Packages/GamKit/Sources/GamEngine/CommandCatalog.swift`: the vendored catalog (`Vendor/gam7/command_catalog.json`, GamGUI's
@@ -17,12 +19,20 @@ runner's output cap; the result kept whole, bounded by it) and 11 (parity is a t
   `cell`, `_columns_and_texts`, the CSV export).
 - `UserAccess.catalogRead` (Directory): the read run on the tenant it was started on, as long as a log read may take (10 min),
   parsed off the main actor; GAM's words when it fails; a read cut off at the output cap is refused, never shown as whole.
-- `App/BuilderView.swift`: the screen. `scripts/embed_gam.sh` copies the catalog into the app beside `gam7/` (never into the
-  signed GAM folder).
-- Tests: `GamEngineTests/CommandCatalogTests.swift`, `CatalogResultTests.swift`, `DirectoryStoreTests/BuilderReadTests.swift`,
-  `WriteRouteTests.theBuilderReachesNoWrite`, `CommandKindTests.everyBuilderInTheSourceIsChecked`.
-- Parity fixture: `Tests/Fixtures/catalog_reads.json`, made by `scripts/gen_catalog_reads.py`: frozen GamGUI's own read builder
-  and gate run over this repo's catalog, so the same code on the same input. `bump_gam.py` runs it after `gen_fixtures.py`.
+- `Packages/GamKit/Sources/GamEngine/CuratedCommand.swift`: GamGUI's curated commands (`catalog.py::_curated`), 24 of its 26,
+  each with its fields and GamGUI's builder; `built(_:)` is GamGUI's `_assemble` plus this app's form rules; `target(_:)` whom
+  it's for.
+- `Packages/GamKit/Sources/Directory/BuilderChanges.swift`: a curated change previewed (held by the executor), confirmed, run
+  once and audited (`about.command` is GamGUI's `meta.cid`), with the checks below.
+- `App/BuilderView.swift`: the screen. `BuilderPreviewSheet` (in `App/ChangePreviewSheet.swift`) is a change's confirm step.
+  `scripts/embed_gam.sh` copies the catalog into the app beside `gam7/` (never into the signed GAM folder).
+- Tests: `GamEngineTests/CommandCatalogTests.swift`, `CatalogResultTests.swift`, `CuratedCommandTests.swift`,
+  `DirectoryStoreTests/BuilderReadTests.swift`, `BuilderChangesTests.swift`, `WriteRouteTests.theBuilderWritesOnlyThroughBuilderChanges`,
+  `CommandKindTests.everyBuilderInTheSourceIsChecked`.
+- Parity fixtures, both made by `scripts/gen_catalog_reads.py` from a GamGUI clone pinned at the fixtures' commit:
+  `Tests/Fixtures/catalog_reads.json` (frozen GamGUI's own read builder and gate run over this repo's catalog, so the same code
+  on the same input) and `catalog_curated.json` (`_curated()`: each command's fields, and the argv its `build` makes with every
+  field filled, once per choice, and with only the required ones). `bump_gam.py` runs it after `gen_fixtures.py`.
 
 ## How it works
 - **Runnable** = the catalog calls it read-only (`risk` 0) and certain, GamGUI's verb rule checked again here agrees (the first
@@ -50,8 +60,31 @@ runner's output cap; the result kept whole, bounded by it) and 11 (parity is a t
   is a table (`TableColumnForEach`, every column any row has) when GAM printed one, with a filter over every row (GamGUI's
   plan U1) and Export CSV… (`AuditExport`: private file, whole or nothing, formula-safe cells; a structured value as JSON), or
   GAM's words as printed.
-- **Reaches no write** (`WriteRouteTests`): only `BuilderView` calls `catalogRead`, and it names no changes model, executor,
-  confirmation or `AppServices`.
+- **GamGUI's curated commands** are listed with the catalog's, in their sections, runnable first (GamGUI's `_curated() +
+  shallow`): typed fields (a person or a group with the directory's or the tenant's matches as completions, a choice as a
+  picker, GamGUI's words to insert under a query), the exact command as typed, and Run (a read, run as above) or Preview… (a
+  change). A change is held by the executor and shown on its sheet: the summary, the command as GAM gets it (masked as the
+  audit keeps it), a warning, how much it can hurt; Run is always a click (GamGUI's `confirm_step=True`), and a destructive
+  one is never the default button. Each runs alone: sequences are a later slice.
+- **Risk is GamGUI's, never below ChangeCore's floor** (`WriteAction.minimumRisk`): a random password reset and an alias removed
+  are destructive here, as on every other screen. Transfer and suspend are destructive in GamGUI too.
+- **Two of GamGUI's 26 run elsewhere** (`CuratedCommand.elsewhere`): a signature is set on Signatures, which keeps the one it
+  replaces to put back; an account is deleted by offboarding's Close Out (Off3), with the delete's own checks (an alias of
+  another account, a Drive transfer still running). Plan §9 puts the first native delete there.
+- **Deliberate differences from GamGUI's Builder**, each where a run would do what wasn't meant: a person, group or address
+  field must be one address GAM acts on as given (`GamCommands.isOneAddress`: GAM reads a bare name, `oauthuser` or a list as
+  someone else, a group's member is a `<UserTypeEntity>`, and GAM rewrites `uid:a@b`, `id:a@b` and `Name <a@b>` to `a@b`);
+  Undelete account also takes `uid:<digits>`, GAM's own remedy when deleted accounts share an address; a choice is one GamGUI
+  lists (an empty one its default, as the picker starts); Search a mailbox's "Headers + body" is listed but refused
+  (`CuratedCommand.notYet`) until a read can be audited, as the other sensitive reads wait (no screen here reads a body);
+  `target` falls back to the first address, so a new group or an undeleted account is named in the audit, not "(command)";
+  a delegate is checked as Users checks one (`UserChanges.checkDelegate`); suspend and the random password refuse the connected
+  admin, by the account GAM resolves the address to (`info user`: an alias reads as its owner), read at the preview and again
+  just before the run, and refused when GAM can't say (either signs the app out, with no way back from here); and Set title /
+  department warns before GAM clears a field left empty (it sends both, as GamGUI's does).
+- **Writes only through `BuilderChanges`** (`WriteRouteTests`): only `BuilderView` calls `catalogRead`; it names no other changes
+  model, no executor, write or `AppServices`, and confirms nothing (its sheet does); `BuilderChanges` is named only by the
+  screen, its sheet and the wiring, and nothing Siri or a model touches reaches it.
 
 ## Gotchas / mock-lies traps
 - **The mock answers only `gam version`** of the 501. The strict mock models the exact forms this app's typed builders send
@@ -66,16 +99,31 @@ runner's output cap; the result kept whole, bounded by it) and 11 (parity is a t
   do is bounded by the rules above (only argvs whose own keywords read), so it's accepted, not defended further.
 - A value is trimmed as Python's `strip()` trims (`PythonText.strip`), the separator characters U+001C to U+001F too.
 
+- **The strict mock models every curated write** (it is GamGUI's, which covered this set): a Builder change runs against it as
+  the other screens' do. Its curated reads are the typed builders' forms the mock already answers.
+- **Two address checks exist; the Builder needs the strict one.** `Address.looksLikeEmail` takes `uid:alice@example.com` and
+  `<alice@example.com>`, which GAM rewrites to alice: with it, a suspend of the connected admin passed the refusal (review
+  2026-10-28). Any field GAM reads as an account takes `GamCommands.isOneAddress`. A refusal that compares addresses compares
+  what GAM will act on: ask GAM (`info user`), never the cached directory, which may not be loaded.
+- Users' own suspend has no connected-admin check at all (follow-up; RULE-FEEDBACK 2026-10-28).
+- `print filelist query …` isn't modelled by the mock, so the demo can't show Find a user's Drive files run.
+- A Builder change doesn't patch the cached directory (GamGUI's Builder doesn't either): Users → Refresh shows a suspend or a
+  title set here.
+
 ## Testing / live-verification status
-`swift test --package-path Packages/GamKit --filter "CommandCatalog|CatalogResult|BuilderRead"`. Offline: the promotion
-boundary, every promoted command's slots and argv against GamGUI's, an edited catalog promoting no write, the door's
-refusals, the result's table, filter and CSV. **Not proven offline:** that GAM accepts each read live (B1).
+`swift test --package-path Packages/GamKit --filter "CommandCatalog|CatalogResult|CuratedCommand|BuilderRead|BuilderChanges"`.
+Offline: the promotion boundary, every promoted command's slots and argv against GamGUI's, an edited catalog promoting no
+write, the door's refusals, the result's table, filter and CSV; every curated command's fields and argv against GamGUI's, the
+form's refusals, each change held, refused without the click, run as held and audited with its command, the risk floor, and
+the checks above. **Not proven offline:** that GAM accepts each read live (B1) and each curated command run from here (B2 to
+B4 in docs/live-verification.md).
 
 ## Not built yet (later slices)
-- GamGUI's 26 curated commands (forwarding, aliases, create group, undelete, data transfer, …): writes through ChangeCore's
-  preview and confirm, one at a time.
-- Sequences, with Stop; External Only (needs the tenant's domains, as Who it reached has); a click on an address for its
-  follow-ups; descriptions for each command (GamGUI's `gloss()`, by rule).
+- Sequences, with Stop (GamGUI's `MAX_SEQUENCE_STEPS` 25, the typed word at ten with a destructive step); External Only (needs the
+  tenant's domains, as Who it reached has); a click on an address in a result for its curated follow-ups (GamGUI's
+  `ROW_ACTIONS`); descriptions for each catalog command (GamGUI's `gloss()`, by rule).
+- The curated "List a shared drive's files" read (plan §8): new to both apps, its argv checked against the grammar and run once
+  live before it's relied on.
 - Sensitive reads, once a read can be audited.
 - The command finder (the on-device model over a catalog search) and its Siri intent.
 - Sheet export: dropped by decision (plan §1).
