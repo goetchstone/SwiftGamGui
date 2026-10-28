@@ -1,0 +1,11579 @@
+{
+ "source": {
+  "gamgui_commit": "2f35285",
+  "gam_version": "7.48.34",
+  "generator": "scripts/gen_catalog_reads.py"
+ },
+ "reads": [
+  {
+   "id": "raw.1386",
+   "slots": [],
+   "argv": [
+    "checkconnection"
+   ],
+   "argvRequired": [
+    "checkconnection"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1393",
+   "slots": [],
+   "argv": [
+    "version"
+   ],
+   "argvRequired": [
+    "version"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1436",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Entity",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<EntityList>"
+    }
+   ],
+   "argv": [
+    "list",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "list",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1437",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "list"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "list"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1441",
+   "slots": [],
+   "argv": [
+    "print",
+    "addresses"
+   ],
+   "argvRequired": [
+    "print",
+    "addresses"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1446",
+   "slots": [],
+   "argv": [
+    "info",
+    "gcporgid"
+   ],
+   "argvRequired": [
+    "info",
+    "gcporgid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1471",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Project ID",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<ProjectIDEntity>"
+    }
+   ],
+   "argv": [
+    "show",
+    "projects",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "projects"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1473",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Project ID",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<ProjectIDEntity>"
+    }
+   ],
+   "argv": [
+    "print",
+    "projects",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "projects"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1476",
+   "slots": [],
+   "argv": [
+    "info",
+    "currentprojectid"
+   ],
+   "argvRequired": [
+    "info",
+    "currentprojectid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1488",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Project ID",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<ProjectIDEntity>"
+    }
+   ],
+   "argv": [
+    "show",
+    "svcaccts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "svcaccts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1490",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Project ID",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<ProjectIDEntity>"
+    }
+   ],
+   "argv": [
+    "print",
+    "svcaccts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "svcaccts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1528",
+   "slots": [],
+   "argv": [
+    "show",
+    "sakeys"
+   ],
+   "argvRequired": [
+    "show",
+    "sakeys"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1543",
+   "slots": [],
+   "argv": [
+    "oauth",
+    "info"
+   ],
+   "argvRequired": [
+    "oauth",
+    "info"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1550",
+   "slots": [],
+   "argv": [
+    "print",
+    "privileges"
+   ],
+   "argvRequired": [
+    "print",
+    "privileges"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1551",
+   "slots": [],
+   "argv": [
+    "show",
+    "privileges"
+   ],
+   "argvRequired": [
+    "show",
+    "privileges"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1565",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Role",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<RoleItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "adminrole",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "adminrole",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1567",
+   "slots": [],
+   "argv": [
+    "print",
+    "adminroles"
+   ],
+   "argvRequired": [
+    "print",
+    "adminroles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1571",
+   "slots": [],
+   "argv": [
+    "show",
+    "adminroles"
+   ],
+   "argvRequired": [
+    "show",
+    "adminroles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1583",
+   "slots": [],
+   "argv": [
+    "print",
+    "admins"
+   ],
+   "argvRequired": [
+    "print",
+    "admins"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1587",
+   "slots": [],
+   "argv": [
+    "show",
+    "admins"
+   ],
+   "argvRequired": [
+    "show",
+    "admins"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1594",
+   "slots": [],
+   "argv": [
+    "show",
+    "alertsettings"
+   ],
+   "argvRequired": [
+    "show",
+    "alertsettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1600",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Alert ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<AlertID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "alert",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "alert",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1601",
+   "slots": [],
+   "argv": [
+    "show",
+    "alerts"
+   ],
+   "argvRequired": [
+    "show",
+    "alerts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1603",
+   "slots": [],
+   "argv": [
+    "print",
+    "alerts"
+   ],
+   "argvRequired": [
+    "print",
+    "alerts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1607",
+   "slots": [],
+   "argv": [
+    "show",
+    "alertfeedback"
+   ],
+   "argvRequired": [
+    "show",
+    "alertfeedback"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1609",
+   "slots": [],
+   "argv": [
+    "print",
+    "alertfeedback"
+   ],
+   "argvRequired": [
+    "print",
+    "alertfeedback"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1622",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Email Address",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailAddressEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "alias",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "alias",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1624",
+   "slots": [],
+   "argv": [
+    "print",
+    "alias"
+   ],
+   "argvRequired": [
+    "print",
+    "alias"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1636",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Email",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailItem>"
+    }
+   ],
+   "argv": [
+    "whatis",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "whatis",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1640",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticaccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticaccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1643",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticaccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticaccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1647",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticaccountsummaries"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticaccountsummaries"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1650",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticaccountsummaries"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticaccountsummaries"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1654",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticproperties"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticproperties"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1658",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticproperties"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticproperties"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1663",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticdatastreams"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticdatastreams"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1667",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticdatastreams"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "analyticdatastreams"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1694",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    },
+    {
+     "key": "a1",
+     "label": "Calendar ACLScope",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarACLScopeEntity>"
+    }
+   ],
+   "argv": [
+    "calendars",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "calendars",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1697",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    }
+   ],
+   "argv": [
+    "calendars",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "argvRequired": [
+    "calendars",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1700",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    }
+   ],
+   "argv": [
+    "calendars",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "argvRequired": [
+    "calendars",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1977",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    },
+    {
+     "key": "a1",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    }
+   ],
+   "argv": [
+    "calendar",
+    "<a0>",
+    "info",
+    "events",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "calendar",
+    "<a0>",
+    "info",
+    "events"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1980",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    },
+    {
+     "key": "a1",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Event Display Property",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<EventDisplayProperty>"
+    }
+   ],
+   "argv": [
+    "calendar",
+    "<a0>",
+    "show",
+    "events",
+    "<a1>",
+    "<a2>"
+   ],
+   "argvRequired": [
+    "calendar",
+    "<a0>",
+    "show",
+    "events",
+    "<a2>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1983",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    },
+    {
+     "key": "a1",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Event Display Property",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<EventDisplayProperty>"
+    }
+   ],
+   "argv": [
+    "calendar",
+    "<a0>",
+    "print",
+    "events",
+    "<a1>",
+    "<a2>"
+   ],
+   "argvRequired": [
+    "calendar",
+    "<a0>",
+    "print",
+    "events",
+    "<a2>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2020",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    }
+   ],
+   "argv": [
+    "calendar",
+    "<a0>",
+    "show",
+    "settings"
+   ],
+   "argvRequired": [
+    "calendar",
+    "<a0>",
+    "show",
+    "settings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2023",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Calendar",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarEntity>"
+    }
+   ],
+   "argv": [
+    "calendar",
+    "<a0>",
+    "print",
+    "settings"
+   ],
+   "argvRequired": [
+    "calendar",
+    "<a0>",
+    "print",
+    "settings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2062",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chatspace",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chatspace",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2065",
+   "slots": [],
+   "argv": [
+    "show",
+    "chatspaces"
+   ],
+   "argvRequired": [
+    "show",
+    "chatspaces"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2068",
+   "slots": [],
+   "argv": [
+    "print",
+    "chatspaces"
+   ],
+   "argvRequired": [
+    "print",
+    "chatspaces"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2082",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Member",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatMember>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chatmember",
+    "member",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chatmember",
+    "member",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2085",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
+    "show",
+    "chatmembers",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "chatmembers",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2089",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
+    "print",
+    "chatmembers",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "chatmembers",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2133",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Message",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatMessage>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chatmessage",
+    "name",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chatmessage",
+    "name",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2137",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Event",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatEvent>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chatevent",
+    "name",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chatevent",
+    "name",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2218",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DeviceID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "browser",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "browser",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2223",
+   "slots": [],
+   "argv": [
+    "show",
+    "browsers"
+   ],
+   "argvRequired": [
+    "show",
+    "browsers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2231",
+   "slots": [],
+   "argv": [
+    "print",
+    "browsers"
+   ],
+   "argvRequired": [
+    "print",
+    "browsers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2262",
+   "slots": [],
+   "argv": [
+    "show",
+    "browsertokens"
+   ],
+   "argvRequired": [
+    "show",
+    "browsertokens"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.2268",
+   "slots": [],
+   "argv": [
+    "print",
+    "browsertokens"
+   ],
+   "argvRequired": [
+    "print",
+    "browsertokens"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.2278",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeaues"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeaues"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2283",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeaues"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeaues"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2291",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeneedsattn"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeneedsattn"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2295",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeneedsattn"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeneedsattn"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2360",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chrome Profile Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChromeProfileName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chromeprofile",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chromeprofile",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2362",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeprofiles"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeprofiles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2367",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeprofiles"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeprofiles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2377",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chrome Profile Command Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChromeProfileCommandName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chromeprofilecommand",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chromeprofilecommand",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2380",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chrome Profile Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChromeProfileNameEntity>"
+    }
+   ],
+   "argv": [
+    "show",
+    "chromeprofilecommands",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeprofilecommands",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2382",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chrome Profile Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChromeProfileNameEntity>"
+    }
+   ],
+   "argv": [
+    "print",
+    "chromeprofilecommands",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeprofilecommands",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2387",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromedevicecounts"
+   ],
+   "argvRequired": [
+    "show",
+    "chromedevicecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2390",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromedevicecounts"
+   ],
+   "argvRequired": [
+    "print",
+    "chromedevicecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2396",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeversions"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeversions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2401",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeversions"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeversions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2441",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromehistory",
+    "platforms"
+   ],
+   "argvRequired": [
+    "show",
+    "chromehistory",
+    "platforms"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2443",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromehistory",
+    "platforms"
+   ],
+   "argvRequired": [
+    "print",
+    "chromehistory",
+    "platforms"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2446",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromehistory",
+    "channels"
+   ],
+   "argvRequired": [
+    "show",
+    "chromehistory",
+    "channels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2449",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromehistory",
+    "channels"
+   ],
+   "argvRequired": [
+    "print",
+    "chromehistory",
+    "channels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2453",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromehistory",
+    "versions"
+   ],
+   "argvRequired": [
+    "show",
+    "chromehistory",
+    "versions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2458",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromehistory",
+    "versions"
+   ],
+   "argvRequired": [
+    "print",
+    "chromehistory",
+    "versions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2463",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromehistory",
+    "releases"
+   ],
+   "argvRequired": [
+    "show",
+    "chromehistory",
+    "releases"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2468",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromehistory",
+    "releases"
+   ],
+   "argvRequired": [
+    "print",
+    "chromehistory",
+    "releases"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2592",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Cr OS",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "cros",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "cros",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2601",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "info"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "info"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2616",
+   "slots": [],
+   "argv": [
+    "print",
+    "cros"
+   ],
+   "argvRequired": [
+    "print",
+    "cros"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2633",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "print",
+    "cros",
+    "select",
+    "cros",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "cros",
+    "select",
+    "cros",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2645",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "print",
+    "cros"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "print",
+    "cros"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2671",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "print"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "print"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2672",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "print",
+    "cros"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "print",
+    "cros"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2676",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "show",
+    "count"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "show",
+    "count"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2684",
+   "slots": [],
+   "argv": [
+    "print",
+    "crosactivity"
+   ],
+   "argvRequired": [
+    "print",
+    "crosactivity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2703",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "print",
+    "crosactivity",
+    "select",
+    "cros",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "crosactivity",
+    "select",
+    "cros",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2712",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "print",
+    "crosactivity"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "print",
+    "crosactivity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2741",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Cr OS",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSEntity>"
+    }
+   ],
+   "argv": [
+    "get",
+    "devicefile",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "get",
+    "devicefile",
+    "<a0>"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.2742",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
+    "get",
+    "devicefile"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "get",
+    "devicefile"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.2796",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Serial Number",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SerialNumber>"
+    }
+   ],
+   "argv": [
+    "info",
+    "crostelemetry",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "crostelemetry",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2801",
+   "slots": [],
+   "argv": [
+    "show",
+    "crostelemetry"
+   ],
+   "argvRequired": [
+    "show",
+    "crostelemetry"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2807",
+   "slots": [],
+   "argv": [
+    "print",
+    "crostelemetry"
+   ],
+   "argvRequired": [
+    "print",
+    "crostelemetry"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2833",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromepolicies"
+   ],
+   "argvRequired": [
+    "show",
+    "chromepolicies"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2839",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromepolicies"
+   ],
+   "argvRequired": [
+    "print",
+    "chromepolicies"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2861",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Schema Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SchemaName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chromeschema",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chromeschema",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2864",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeschemas"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeschemas"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2868",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromschemas"
+   ],
+   "argvRequired": [
+    "print",
+    "chromschemas"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2873",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Schema Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SchemaName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chromeschema",
+    "std",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chromeschema",
+    "std",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2874",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeschemas",
+    "std"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeschemas",
+    "std"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2884",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "App ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<AppID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "chromeapp",
+    "android",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "chromeapp",
+    "android",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2887",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeapps"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeapps"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2893",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeapps"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeapps"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2900",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeappdevices"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeappdevices"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2907",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeappdevices"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeappdevices"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2915",
+   "slots": [],
+   "argv": [
+    "show",
+    "chromeversions"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeversions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2920",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromeversions"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeversions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2926",
+   "slots": [],
+   "argv": [
+    "print",
+    "chromesnvalidity"
+   ],
+   "argvRequired": [
+    "print",
+    "chromesnvalidity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2932",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Classification Label Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ClassificationLabelNameEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "classificationlabels",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "classificationlabels",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2935",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "classificationlabels"
+   ],
+   "argvRequired": [
+    "print",
+    "classificationlabels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2939",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "classificationlabels"
+   ],
+   "argvRequired": [
+    "show",
+    "classificationlabels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2954",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Classification Label Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ClassificationLabelNameEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "classificationlabelpermissions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "print",
+    "classificationlabelpermissions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2956",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Classification Label Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ClassificationLabelNameEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "classificationlabelpermissions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "show",
+    "classificationlabelpermissions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3028",
+   "slots": [],
+   "argv": [
+    "info",
+    "gcporgid"
+   ],
+   "argvRequired": [
+    "info",
+    "gcporgid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3033",
+   "slots": [],
+   "argv": [
+    "show",
+    "caalevels"
+   ],
+   "argvRequired": [
+    "show",
+    "caalevels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3035",
+   "slots": [],
+   "argv": [
+    "print",
+    "caalevels"
+   ],
+   "argvRequired": [
+    "print",
+    "caalevels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3055",
+   "slots": [],
+   "argv": [
+    "print",
+    "channelcustomers"
+   ],
+   "argvRequired": [
+    "print",
+    "channelcustomers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3060",
+   "slots": [],
+   "argv": [
+    "show",
+    "channelcustomers"
+   ],
+   "argvRequired": [
+    "show",
+    "channelcustomers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3081",
+   "slots": [],
+   "argv": [
+    "print",
+    "channelcustomercentitlements"
+   ],
+   "argvRequired": [
+    "print",
+    "channelcustomercentitlements"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3087",
+   "slots": [],
+   "argv": [
+    "show",
+    "channelcustomerentitlements"
+   ],
+   "argvRequired": [
+    "show",
+    "channelcustomerentitlements"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3106",
+   "slots": [],
+   "argv": [
+    "print",
+    "channeloffers"
+   ],
+   "argvRequired": [
+    "print",
+    "channeloffers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3111",
+   "slots": [],
+   "argv": [
+    "show",
+    "channeloffers"
+   ],
+   "argvRequired": [
+    "show",
+    "channeloffers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3122",
+   "slots": [],
+   "argv": [
+    "print",
+    "channelproducts"
+   ],
+   "argvRequired": [
+    "print",
+    "channelproducts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3127",
+   "slots": [],
+   "argv": [
+    "show",
+    "channelproducts"
+   ],
+   "argvRequired": [
+    "show",
+    "channelproducts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3139",
+   "slots": [],
+   "argv": [
+    "print",
+    "channelskus"
+   ],
+   "argvRequired": [
+    "print",
+    "channelskus"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3144",
+   "slots": [],
+   "argv": [
+    "show",
+    "channelskus"
+   ],
+   "argvRequired": [
+    "show",
+    "channelskus"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3154",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "contactdelegates"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "contactdelegates"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3155",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "contactdelegates"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "contactdelegates"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3314",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Course ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CourseID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "course",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "course",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3318",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Course",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CourseEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "courses",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "courses",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3322",
+   "slots": [],
+   "argv": [
+    "print",
+    "courses"
+   ],
+   "argvRequired": [
+    "print",
+    "courses"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3333",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-participants"
+   ],
+   "argvRequired": [
+    "print",
+    "course-participants"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3339",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-counts",
+    "students"
+   ],
+   "argvRequired": [
+    "print",
+    "course-counts",
+    "students"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3434",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-announcements"
+   ],
+   "argvRequired": [
+    "print",
+    "course-announcements"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3442",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-materials"
+   ],
+   "argvRequired": [
+    "print",
+    "course-materials"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3451",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-submissions"
+   ],
+   "argvRequired": [
+    "print",
+    "course-submissions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3459",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-topics"
+   ],
+   "argvRequired": [
+    "print",
+    "course-topics"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3464",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-works"
+   ],
+   "argvRequired": [
+    "print",
+    "course-works"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3485",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-studentgroups"
+   ],
+   "argvRequired": [
+    "print",
+    "course-studentgroups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3493",
+   "slots": [],
+   "argv": [
+    "print",
+    "course-studentgroup-members"
+   ],
+   "argvRequired": [
+    "print",
+    "course-studentgroup-members"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3504",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "classroominvitations"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "classroominvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3506",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "classroominvitations"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "classroominvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3510",
+   "slots": [],
+   "argv": [
+    "show",
+    "classroominvitations"
+   ],
+   "argvRequired": [
+    "show",
+    "classroominvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3513",
+   "slots": [],
+   "argv": [
+    "print",
+    "classroominvitations"
+   ],
+   "argvRequired": [
+    "print",
+    "classroominvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3531",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "guardian"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3534",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "guardian"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3543",
+   "slots": [],
+   "argv": [
+    "show",
+    "guardian"
+   ],
+   "argvRequired": [
+    "show",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3547",
+   "slots": [],
+   "argv": [
+    "print",
+    "guardian"
+   ],
+   "argvRequired": [
+    "print",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3553",
+   "slots": [],
+   "argv": [
+    "print",
+    "guardian"
+   ],
+   "argvRequired": [
+    "print",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3559",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "classroomprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "classroomprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3560",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "classroomprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "classroomprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3581",
+   "slots": [],
+   "argv": [
+    "info",
+    "customer"
+   ],
+   "argvRequired": [
+    "info",
+    "customer"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3583",
+   "slots": [],
+   "argv": [
+    "info",
+    "instance"
+   ],
+   "argvRequired": [
+    "info",
+    "instance"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3585",
+   "slots": [],
+   "argv": [
+    "info",
+    "customerid"
+   ],
+   "argvRequired": [
+    "info",
+    "customerid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3587",
+   "slots": [],
+   "argv": [
+    "info",
+    "gcporgid"
+   ],
+   "argvRequired": [
+    "info",
+    "gcporgid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3591",
+   "slots": [],
+   "argv": [
+    "print",
+    "transferapps"
+   ],
+   "argvRequired": [
+    "print",
+    "transferapps"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3606",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Transfer ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TransferID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "datatransfer",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "datatransfer",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3607",
+   "slots": [],
+   "argv": [
+    "print",
+    "datatransfers"
+   ],
+   "argvRequired": [
+    "print",
+    "datatransfers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3611",
+   "slots": [],
+   "argv": [
+    "show",
+    "datatransfers"
+   ],
+   "argvRequired": [
+    "show",
+    "datatransfers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3623",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Domain Name",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<DomainName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "domain",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "domain"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3625",
+   "slots": [],
+   "argv": [
+    "print",
+    "domains"
+   ],
+   "argvRequired": [
+    "print",
+    "domains"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3628",
+   "slots": [],
+   "argv": [
+    "show",
+    "domains"
+   ],
+   "argvRequired": [
+    "show",
+    "domains"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3635",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Domain Alias",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DomainAlias>"
+    }
+   ],
+   "argv": [
+    "info",
+    "domainalias",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "domainalias",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3637",
+   "slots": [],
+   "argv": [
+    "print",
+    "domainaliases"
+   ],
+   "argvRequired": [
+    "print",
+    "domainaliases"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3640",
+   "slots": [],
+   "argv": [
+    "show",
+    "domainaliases"
+   ],
+   "argvRequired": [
+    "show",
+    "domainaliases"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3707",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Contact",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ContactEntity>"
+    }
+   ],
+   "argv": [
+    "get",
+    "contactphotos",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "get",
+    "contactphotos",
+    "<a0>"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.3753",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Contact",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ContactEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "contacts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "contacts",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3757",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Contact Selection",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ContactSelection>"
+    }
+   ],
+   "argv": [
+    "show",
+    "contacts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "contacts",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3761",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Contact Selection",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ContactSelection>"
+    }
+   ],
+   "argv": [
+    "print",
+    "contacts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "contacts",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3808",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "People Resource Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<PeopleResourceNameEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "domaincontacts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "domaincontacts",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3811",
+   "slots": [],
+   "argv": [
+    "print",
+    "domaincontacts"
+   ],
+   "argvRequired": [
+    "print",
+    "domaincontacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3817",
+   "slots": [],
+   "argv": [
+    "show",
+    "domaincontacts"
+   ],
+   "argvRequired": [
+    "show",
+    "domaincontacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3824",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "People Resource Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<PeopleResourceNameEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "people",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "people",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3827",
+   "slots": [],
+   "argv": [
+    "print",
+    "people"
+   ],
+   "argvRequired": [
+    "print",
+    "people"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3832",
+   "slots": [],
+   "argv": [
+    "show",
+    "people"
+   ],
+   "argvRequired": [
+    "show",
+    "people"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3843",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Email Address",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailAddress>"
+    }
+   ],
+   "argv": [
+    "audit",
+    "monitor",
+    "list",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "audit",
+    "monitor",
+    "list",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4047",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "group",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "group",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4057",
+   "slots": [],
+   "argv": [
+    "print",
+    "groups"
+   ],
+   "argvRequired": [
+    "print",
+    "groups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4080",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "print",
+    "grouptree",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "grouptree",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4083",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "show",
+    "grouptree",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "grouptree",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4097",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "member",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "member",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4098",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "member",
+    "user",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "member",
+    "user",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4099",
+   "slots": [],
+   "argv": [
+    "print",
+    "group-members"
+   ],
+   "argvRequired": [
+    "print",
+    "group-members"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4121",
+   "slots": [],
+   "argv": [
+    "show",
+    "group-members"
+   ],
+   "argvRequired": [
+    "show",
+    "group-members"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4195",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "cigroups",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "cigroups",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4204",
+   "slots": [],
+   "argv": [
+    "print",
+    "cigroups"
+   ],
+   "argvRequired": [
+    "print",
+    "cigroups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4232",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "cimember",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "cimember",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4233",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<GroupEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "cimember",
+    "user",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "cimember",
+    "user",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4234",
+   "slots": [],
+   "argv": [
+    "print",
+    "cigroup-members"
+   ],
+   "argvRequired": [
+    "print",
+    "cigroup-members"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4249",
+   "slots": [],
+   "argv": [
+    "show",
+    "cigroup-members"
+   ],
+   "argvRequired": [
+    "show",
+    "cigroup-members"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4270",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Allowlisted Domains ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<AllowlistedDomainsIDEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "allowlisteddomain",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "allowlisteddomain",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4272",
+   "slots": [],
+   "argv": [
+    "print",
+    "allowlisteddomains"
+   ],
+   "argvRequired": [
+    "print",
+    "allowlisteddomains"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4275",
+   "slots": [],
+   "argv": [
+    "show",
+    "allowlisteddomains"
+   ],
+   "argvRequired": [
+    "show",
+    "allowlisteddomains"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4359",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DeviceEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "device",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "device",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4363",
+   "slots": [],
+   "argv": [
+    "print",
+    "devices"
+   ],
+   "argvRequired": [
+    "print",
+    "devices"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4386",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device User",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<DeviceUserEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "deviceuser",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "deviceuser",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4389",
+   "slots": [],
+   "argv": [
+    "print",
+    "deviceusers"
+   ],
+   "argvRequired": [
+    "print",
+    "deviceusers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4397",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device User",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<DeviceUserEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "deviceuserstate",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "deviceuserstate",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4406",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "CIPolicy Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CIPolicyNameEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "policies",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "policies",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4409",
+   "slots": [],
+   "argv": [
+    "print",
+    "policies"
+   ],
+   "argvRequired": [
+    "print",
+    "policies"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4413",
+   "slots": [],
+   "argv": [
+    "show",
+    "policies"
+   ],
+   "argvRequired": [
+    "show",
+    "policies"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4441",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "SSOProfile",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SSOProfileItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "inboundssoprofile",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "inboundssoprofile",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4443",
+   "slots": [],
+   "argv": [
+    "show",
+    "inboundssoprofiles"
+   ],
+   "argvRequired": [
+    "show",
+    "inboundssoprofiles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4445",
+   "slots": [],
+   "argv": [
+    "print",
+    "inboundssoprofiles"
+   ],
+   "argvRequired": [
+    "print",
+    "inboundssoprofiles"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4454",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "SSOCredentials Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SSOCredentialsName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "inboundssocredential",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "inboundssocredential",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4456",
+   "slots": [],
+   "argv": [
+    "show",
+    "inboundssocredentials"
+   ],
+   "argvRequired": [
+    "show",
+    "inboundssocredentials"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4458",
+   "slots": [],
+   "argv": [
+    "print",
+    "inboundssocredentials"
+   ],
+   "argvRequired": [
+    "print",
+    "inboundssocredentials"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4479",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "SSOAssignment Selector",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SSOAssignmentSelector>"
+    }
+   ],
+   "argv": [
+    "info",
+    "inboundssoassignment",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "inboundssoassignment",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4481",
+   "slots": [],
+   "argv": [
+    "show",
+    "inboundssoassignments"
+   ],
+   "argvRequired": [
+    "show",
+    "inboundssoassignments"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4483",
+   "slots": [],
+   "argv": [
+    "print",
+    "inboundssoassignments"
+   ],
+   "argvRequired": [
+    "print",
+    "inboundssoassignments"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4488",
+   "slots": [],
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "argvRequired": [
+    "print",
+    "licenses"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4491",
+   "slots": [],
+   "argv": [
+    "show",
+    "licenses"
+   ],
+   "argvRequired": [
+    "show",
+    "licenses"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4494",
+   "slots": [],
+   "argv": [
+    "show",
+    "configlicenseskus"
+   ],
+   "argvRequired": [
+    "show",
+    "configlicenseskus"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4556",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Mobile",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MobileEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "mobile",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "mobile",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4559",
+   "slots": [],
+   "argv": [
+    "print",
+    "mobile"
+   ],
+   "argvRequired": [
+    "print",
+    "mobile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4593",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Org Unit",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<OrgUnitItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "org",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "org",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4595",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Org Unit",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<OrgUnitEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "orgs",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "orgs",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4603",
+   "slots": [],
+   "argv": [
+    "print",
+    "orgs"
+   ],
+   "argvRequired": [
+    "print",
+    "orgs"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4610",
+   "slots": [],
+   "argv": [
+    "show",
+    "orgtree"
+   ],
+   "argvRequired": [
+    "show",
+    "orgtree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4655",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Printer ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<PrinterID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "printer",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "printer",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4658",
+   "slots": [],
+   "argv": [
+    "show",
+    "printers"
+   ],
+   "argvRequired": [
+    "show",
+    "printers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4664",
+   "slots": [],
+   "argv": [
+    "print",
+    "printers"
+   ],
+   "argvRequired": [
+    "print",
+    "printers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4670",
+   "slots": [],
+   "argv": [
+    "show",
+    "printermodels"
+   ],
+   "argvRequired": [
+    "show",
+    "printermodels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4673",
+   "slots": [],
+   "argv": [
+    "print",
+    "printermodels"
+   ],
+   "argvRequired": [
+    "print",
+    "printermodels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4679",
+   "slots": [],
+   "argv": [
+    "report",
+    "usageparameters",
+    "customer"
+   ],
+   "argvRequired": [
+    "report",
+    "usageparameters",
+    "customer"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4680",
+   "slots": [],
+   "argv": [
+    "report",
+    "usage",
+    "user"
+   ],
+   "argvRequired": [
+    "report",
+    "usage",
+    "user"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4687",
+   "slots": [],
+   "argv": [
+    "report",
+    "usage",
+    "customer"
+   ],
+   "argvRequired": [
+    "report",
+    "usage",
+    "customer"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4734",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Activity Application Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ActivityApplicationName>"
+    }
+   ],
+   "argv": [
+    "report",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "report",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4767",
+   "slots": [],
+   "argv": [
+    "report",
+    "customers"
+   ],
+   "argvRequired": [
+    "report",
+    "customers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4785",
+   "slots": [],
+   "argv": [
+    "report",
+    "users"
+   ],
+   "argvRequired": [
+    "report",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4815",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Customer ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CustomerID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "resoldcustomer",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "resoldcustomer",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4826",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Customer ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CustomerID>"
+    },
+    {
+     "key": "a1",
+     "label": "SKUID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SKUID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "resoldsubscription",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "resoldsubscription",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4828",
+   "slots": [],
+   "argv": [
+    "show",
+    "resoldsubscriptions"
+   ],
+   "argvRequired": [
+    "show",
+    "resoldsubscriptions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4832",
+   "slots": [],
+   "argv": [
+    "print",
+    "resoldsubscriptions"
+   ],
+   "argvRequired": [
+    "print",
+    "resoldsubscriptions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4910",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Building ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<BuildingID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "building",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "building",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4912",
+   "slots": [],
+   "argv": [
+    "show",
+    "buildings"
+   ],
+   "argvRequired": [
+    "show",
+    "buildings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4915",
+   "slots": [],
+   "argv": [
+    "print",
+    "buildings"
+   ],
+   "argvRequired": [
+    "print",
+    "buildings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4922",
+   "slots": [],
+   "argv": [
+    "show",
+    "features"
+   ],
+   "argvRequired": [
+    "show",
+    "features"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4923",
+   "slots": [],
+   "argv": [
+    "print",
+    "features"
+   ],
+   "argvRequired": [
+    "print",
+    "features"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4928",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceID>"
+    }
+   ],
+   "argv": [
+    "info",
+    "resource",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "resource",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4934",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "resources",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "resources",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4938",
+   "slots": [],
+   "argv": [
+    "show",
+    "resources"
+   ],
+   "argvRequired": [
+    "show",
+    "resources"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4942",
+   "slots": [],
+   "argv": [
+    "print",
+    "resources"
+   ],
+   "argvRequired": [
+    "print",
+    "resources"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4961",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceID>"
+    },
+    {
+     "key": "a1",
+     "label": "Calendar ACLScope",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarACLScopeEntity>"
+    }
+   ],
+   "argv": [
+    "resource",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "resource",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4963",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceID>"
+    }
+   ],
+   "argv": [
+    "resource",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "argvRequired": [
+    "resource",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4966",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceID>"
+    }
+   ],
+   "argv": [
+    "resource",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "argvRequired": [
+    "resource",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4973",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceEntity>"
+    },
+    {
+     "key": "a1",
+     "label": "Calendar ACLScope",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarACLScopeEntity>"
+    }
+   ],
+   "argv": [
+    "resources",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "resources",
+    "<a0>",
+    "info",
+    "acls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4975",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceEntity>"
+    }
+   ],
+   "argv": [
+    "resources",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "argvRequired": [
+    "resources",
+    "<a0>",
+    "show",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4978",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Resource",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ResourceEntity>"
+    }
+   ],
+   "argv": [
+    "resources",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "argvRequired": [
+    "resources",
+    "<a0>",
+    "print",
+    "acls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4994",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Schema Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SchemaName>"
+    }
+   ],
+   "argv": [
+    "info",
+    "schema",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "schema",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4999",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Schema",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SchemaEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "schemas",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "schemas",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5000",
+   "slots": [],
+   "argv": [
+    "show",
+    "schema"
+   ],
+   "argvRequired": [
+    "show",
+    "schema"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5001",
+   "slots": [],
+   "argv": [
+    "print",
+    "schema"
+   ],
+   "argvRequired": [
+    "print",
+    "schema"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5086",
+   "slots": [],
+   "argv": [
+    "show",
+    "shareddrivethemes"
+   ],
+   "argvRequired": [
+    "show",
+    "shareddrivethemes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5102",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "info",
+    "shareddrive",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "shareddrive",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5105",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "show",
+    "shareddriveinfo",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "shareddriveinfo",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5108",
+   "slots": [],
+   "argv": [
+    "print",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "print",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5114",
+   "slots": [],
+   "argv": [
+    "show",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "show",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5121",
+   "slots": [],
+   "argv": [
+    "print",
+    "shareddriveorganizers"
+   ],
+   "argvRequired": [
+    "print",
+    "shareddriveorganizers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5133",
+   "slots": [],
+   "argv": [
+    "print",
+    "oushareddrives"
+   ],
+   "argvRequired": [
+    "print",
+    "oushareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5136",
+   "slots": [],
+   "argv": [
+    "show",
+    "oushareddrives"
+   ],
+   "argvRequired": [
+    "show",
+    "oushareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5155",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5158",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5161",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5167",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5189",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5192",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5195",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5202",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5263",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File Permission IDor Email",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<DriveFilePermissionIDorEmail>"
+    }
+   ],
+   "argv": [
+    "info",
+    "drivefileacl",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "drivefileacl",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5266",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    }
+   ],
+   "argv": [
+    "show",
+    "drivefileacls",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "drivefileacls",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5274",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    }
+   ],
+   "argv": [
+    "print",
+    "drivefileacls",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "drivefileacls",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5305",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    },
+    {
+     "key": "a2",
+     "label": "Drive File Permission IDor Email",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<DriveFilePermissionIDorEmail>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefileacl",
+    "<a1>",
+    "<a2>",
+    "adminaccess"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefileacl",
+    "<a1>",
+    "<a2>",
+    "adminaccess"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5308",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "drivefileacls",
+    "<a1>",
+    "adminaccess"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "drivefileacls",
+    "<a1>",
+    "adminaccess"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5316",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive Entity Admin",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntityAdmin>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "drivefileacls",
+    "<a1>",
+    "adminaccess"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "drivefileacls",
+    "<a1>",
+    "adminaccess"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5346",
+   "slots": [],
+   "argv": [
+    "print",
+    "shareddriveacls"
+   ],
+   "argvRequired": [
+    "print",
+    "shareddriveacls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5354",
+   "slots": [],
+   "argv": [
+    "show",
+    "shareddriveacls"
+   ],
+   "argvRequired": [
+    "show",
+    "shareddriveacls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5377",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddriveacls"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddriveacls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5386",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveacls"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveacls"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5549",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaultmatter",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaultmatter",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5552",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultmatters"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultmatters"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5555",
+   "slots": [],
+   "argv": [
+    "show",
+    "vaultmatters"
+   ],
+   "argvRequired": [
+    "show",
+    "vaultmatters"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5559",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultcounts"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultcounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5562",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultcounts"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultcounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5572",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultcounts"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultcounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5642",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Export",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ExportItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaultexport",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaultexport",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5645",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Export",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ExportItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaultexport",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaultexport",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5648",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultexports"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultexports"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5653",
+   "slots": [],
+   "argv": [
+    "show",
+    "vaultexports"
+   ],
+   "argvRequired": [
+    "show",
+    "vaultexports"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5696",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Hold",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<HoldItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaulthold",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaulthold",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5699",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Hold",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<HoldItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaulthold",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaulthold",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5702",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultholds"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultholds"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5706",
+   "slots": [],
+   "argv": [
+    "show",
+    "vaultholds"
+   ],
+   "argvRequired": [
+    "show",
+    "vaultholds"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5710",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "vaultholds"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "vaultholds"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5711",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "vaultholds"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "vaultholds"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5749",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Query",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<QueryItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaultquery",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaultquery",
+    "<a0>",
+    "matter",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5752",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Matter",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MatterItem>"
+    },
+    {
+     "key": "a1",
+     "label": "Query",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<QueryItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "vaultquery",
+    "<a0>",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "info",
+    "vaultquery",
+    "<a0>",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5755",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultqueries"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultqueries"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5758",
+   "slots": [],
+   "argv": [
+    "show",
+    "vaultqueries"
+   ],
+   "argvRequired": [
+    "show",
+    "vaultqueries"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5975",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "user",
+     "required": false,
+     "placeholder": "<UserItem>"
+    }
+   ],
+   "argv": [
+    "info",
+    "user",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "user"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6013",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "info",
+    "users",
+    "user",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "users",
+    "user",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6051",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "users"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6069",
+   "slots": [],
+   "argv": [
+    "print",
+    "users"
+   ],
+   "argvRequired": [
+    "print",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6092",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "print",
+    "users",
+    "select",
+    "user",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "users",
+    "select",
+    "user",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6111",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6135",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6136",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6143",
+   "slots": [],
+   "argv": [
+    "print",
+    "users"
+   ],
+   "argvRequired": [
+    "print",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6151",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "print",
+    "users",
+    "select",
+    "user",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "users",
+    "select",
+    "user",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6154",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "users"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6160",
+   "slots": [],
+   "argv": [
+    "print",
+    "usercountsbyorgunit"
+   ],
+   "argvRequired": [
+    "print",
+    "usercountsbyorgunit"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6165",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "userlist"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "userlist"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6171",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "count"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "count"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6176",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "asps"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "asps"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6177",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "asps"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "asps"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6182",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "backupcodes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "backupcodes"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.6183",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "backupcodes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "backupcodes"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.6188",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "businessprofileaccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "businessprofileaccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6190",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "businessprofileaccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "businessprofileaccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6286",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "calendars",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "calendars",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6289",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "calendars"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "calendars"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6293",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "calendars"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "calendars"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6317",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "calsettings"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "calsettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6320",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "calsettings"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "calsettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6336",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Calendar ACLScope",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CalendarACLScopeEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "calendaracls",
+    "<a1>",
+    "<a2>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "calendaracls",
+    "<a1>",
+    "<a2>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6338",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "calendaracls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "calendaracls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6341",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "calendaracls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "calendaracls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6500",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "events",
+    "<a1>",
+    "<a2>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "events",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6503",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    },
+    {
+     "key": "a3",
+     "label": "Event Display Property",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<EventDisplayProperty>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "events",
+    "<a1>",
+    "<a2>",
+    "<a3>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "events",
+    "<a1>",
+    "<a3>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6506",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User Calendar",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserCalendarEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Event",
+     "kind": "text",
+     "required": false,
+     "placeholder": "<EventEntity>"
+    },
+    {
+     "key": "a3",
+     "label": "Event Display Property",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<EventDisplayProperty>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "events",
+    "<a1>",
+    "<a2>",
+    "<a3>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "events",
+    "<a1>",
+    "<a3>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6572",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "focustime"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "focustime"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6580",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "focustime"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "focustime"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6618",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatavailability"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatavailability"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6621",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatavailability"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatavailability"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6678",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspace",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspace",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6681",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "User 2",
+     "kind": "user",
+     "required": true,
+     "placeholder": "<UserItem>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspacedm",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspacedm",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6684",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatspaces"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatspaces"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6688",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatspaces"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatspaces"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6693",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspace",
+    "asadmin",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatspace",
+    "asadmin",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6696",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatspaces",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatspaces",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6701",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatspaces",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatspaces",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6715",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsections"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsections"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6717",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsections"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsections"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6720",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Section",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSection>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsectionitems",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsectionitems",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6723",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Section",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSection>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsectionitems",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsectionitems",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6779",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6783",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmembers"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmembers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6788",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmembers"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmembers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6795",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6799",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmembers",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmembers",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6805",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmembers",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmembers",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6851",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Message",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatMessage>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmessage",
+    "name",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmessage",
+    "name",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6854",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmessages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatmessages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6861",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmessages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatmessages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6870",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsearchmessages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatsearchmessages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6881",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsearchmessages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatsearchmessages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6893",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Event",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatEvent>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatevent",
+    "name",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatevent",
+    "name",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6895",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatevents"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatevents"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6899",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatevents"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatevents"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6911",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Chat Emoji",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatEmoji>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "chatemoji",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatemoji",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6913",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "chatemojis"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatemojis"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6916",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "chatemojis"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "chatemojis"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6938",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "datastudioassets"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "datastudioassets"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6967",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "datastudiopermissions"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "datastudiopermissions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6974",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "datastudiopermissions"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "datastudiopermissions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7190",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "document",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "document",
+    "<a1>"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.7201",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "drivefile",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "drivefile",
+    "<a1>"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.7212",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefile",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefile",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7301",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    },
+    {
+     "key": "a2",
+     "label": "Drive File Permission IDor Email",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<DriveFilePermissionIDorEmail>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefileacl",
+    "<a1>",
+    "<a2>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "drivefileacl",
+    "<a1>",
+    "<a2>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7304",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "drivefileacls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "drivefileacls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7310",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "drivefileacls",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "drivefileacls",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7333",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Drive File ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileID>"
+    }
+   ],
+   "argv": [
+    "show",
+    "ownership",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "ownership",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7335",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Drive File ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileID>"
+    }
+   ],
+   "argv": [
+    "print",
+    "ownership",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "print",
+    "ownership",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7373",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filecomments",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filecomments",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7378",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filecomments",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filecomments",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7409",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filerevisions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filerevisions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7415",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filerevisions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filerevisions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7695",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "fileinfo",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "fileinfo",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7707",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filepath",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filepath",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7713",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filepath",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filepath",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7719",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filecounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7735",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filecounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7751",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filesharecounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filesharecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7755",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filesharecounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filesharecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7772",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filetree"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filetree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7784",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filetree"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filetree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7797",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "fileparenttree",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "fileparenttree",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7800",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filelist"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filelist"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7829",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "diskusage",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "diskusage",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7852",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "driveactivity"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "driveactivity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7880",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "drivelastmodification"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "drivelastmodification"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7884",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "drivelastmodification"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "drivelastmodification"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7888",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "drivesettings"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "drivesettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7891",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "drivesettings"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "drivesettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7895",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "emptydrivefolders"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "emptydrivefolders"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7928",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "delegates"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "delegates"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7929",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "delegates"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "delegates"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7966",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Filter ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<FilterIDEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "filters",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "filters",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7967",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "filters"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "filters"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7968",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "filters"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filters"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7982",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "forms",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "forms",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7985",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "forms",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "forms",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7988",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "formresponses",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "formresponses",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7992",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "formresponses",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "formresponses",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8001",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Email Address",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailAddressEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "forwardingaddress",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "forwardingaddress",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8002",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "forwardingaddress"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "forwardingaddress"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8004",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "forwardingaddress"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "forwardingaddress"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8009",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "forward"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "forward"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8010",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "forward"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "forward"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8038",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "labels"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "labels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8042",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "labels"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "labels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8226",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "messages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "messages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8239",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "messages"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "messages"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8253",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "thread"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "thread"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8266",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "thread"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "thread"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8282",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "gmailprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "gmailprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8283",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "gmailprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "gmailprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8301",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Email Address",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailAddressEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "sendas",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "sendas",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8302",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "sendas"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "sendas"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8304",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "sendas"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "sendas"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8314",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "signature"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "signature"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8316",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "signature"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "signature"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8325",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "vacation"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "vacation"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8326",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "vacation"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "vacation"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8336",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "smimes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "smimes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8338",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "smimes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "smimes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8353",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "cseidentity"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "cseidentity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8355",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "cseidentities"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "cseidentities"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8357",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "cseidentities"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "cseidentities"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8370",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Key Pair ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<KeyPairID>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "csekeypair",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "csekeypair",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8372",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "csekeypairs"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "csekeypairs"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8374",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "csekeypairs"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "csekeypairs"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8382",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "imap"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "imap"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8383",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "imap"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "imap"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8388",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "pop"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "pop"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8389",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "pop"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "pop"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8392",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "language"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "language"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8393",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "language"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "language"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8410",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "groups"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "groups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8413",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "groups"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "groups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8416",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "grouptree"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "grouptree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8421",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "grouptree"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "grouptree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8425",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "groupslist"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "groupslist"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8433",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Email Address",
+     "kind": "email",
+     "required": true,
+     "placeholder": "<EmailAddress>"
+    }
+   ],
+   "argv": [
+    "info",
+    "userinvitation",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "info",
+    "userinvitation",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8434",
+   "slots": [],
+   "argv": [
+    "show",
+    "userinvitations"
+   ],
+   "argvRequired": [
+    "show",
+    "userinvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8438",
+   "slots": [],
+   "argv": [
+    "print",
+    "userinvitations"
+   ],
+   "argvRequired": [
+    "print",
+    "userinvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8474",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Notes Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<NotesNameEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "note",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "note",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8478",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "notes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "notes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8483",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "notes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "notes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8489",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Notes Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<NotesNameEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "noteattachments",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "noteattachments",
+    "<a1>"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.8533",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Space Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetSpaceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "meetspace",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "meetspace",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8538",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "meetconferences"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "meetconferences"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8542",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "meetconferences"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "meetconferences"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8546",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8549",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8553",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "meetrecordings",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "meetrecordings",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8555",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "meetrecordings",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "meetrecordings",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8558",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "meettranscripts",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "meettranscripts",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8560",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "meettranscripts",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "meettranscripts",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8646",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "contactphotos"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "contactphotos"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.8652",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "contacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "contacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8662",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "contacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "contacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8667",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "contacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "contacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8696",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "othercontacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "othercontacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8700",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "othercontacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "othercontacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8723",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "People Contact Group",
+     "kind": "group",
+     "required": true,
+     "placeholder": "<PeopleContactGroupEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "contactgroups",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "contactgroups",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8726",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "contactgroups"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "contactgroups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8729",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "contactgroups"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "contactgroups"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8772",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "peopleprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "peopleprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8776",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "peopleprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "peopleprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8788",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "photo"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "photo"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.8790",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "get",
+    "profilephoto"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "get",
+    "profilephoto"
+   ],
+   "sensitive": true
+  },
+  {
+   "id": "raw.8797",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "profile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "profile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8825",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanageraccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanageraccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8828",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8832",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Account Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerAccountPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagercontainers",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagercontainers",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8834",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Account Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerAccountPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagercontainers",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagercontainers",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8837",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Container Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerContainerPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagerworkspaces",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagerworkspaces",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8839",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Container Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerContainerPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerworkspaces",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerworkspaces",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8842",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Workspace Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerWorkspacePathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagertags",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagertags",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8844",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Workspace Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerWorkspacePathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagertags",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagertags",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8847",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Account Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerAccountPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagerpermissions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tagmanagerpermissions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8849",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tag Manager Account Path",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TagManagerAccountPathEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerpermissions",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerpermissions",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8871",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tasklist IDTask ID",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TasklistIDTaskIDEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "task",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "task",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8873",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tasks"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tasks"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8880",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tasks"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tasks"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8900",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Tasklist",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<TasklistEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "tasklist",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "tasklist",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8902",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tasklists"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tasklists"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8904",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tasklists"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tasklists"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8927",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrivethemes"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrivethemes"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8942",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8944",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8946",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8952",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddrives"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8959",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddriveorganizers"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "shareddriveorganizers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9035",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "sheet",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "sheet",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9040",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "sheet",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "sheet",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9068",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "sheetrange",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "sheetrange",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9072",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "sheetrange",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "sheetrange",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9081",
+   "slots": [],
+   "argv": [
+    "info",
+    "gcporgid"
+   ],
+   "argvRequired": [
+    "info",
+    "gcporgid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9083",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tokens"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tokens"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9086",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "tokens"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "tokens"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9089",
+   "slots": [],
+   "argv": [
+    "print",
+    "tokens"
+   ],
+   "argvRequired": [
+    "print",
+    "tokens"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9093",
+   "slots": [],
+   "argv": [
+    "show",
+    "tokens"
+   ],
+   "argvRequired": [
+    "show",
+    "tokens"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9115",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "youtubechannels"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "youtubechannels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9123",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "youtubechannels"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "youtubechannels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9136",
+   "slots": [],
+   "argv": [
+    "info",
+    "verify"
+   ],
+   "argvRequired": [
+    "info",
+    "verify"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9140",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "webresources"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "webresources"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9141",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "webresources"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "webresources"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9142",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "webmastersites"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "webmastersites"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9143",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "webmastersites"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "webmastersites"
+   ],
+   "sensitive": false
+  }
+ ]
+}

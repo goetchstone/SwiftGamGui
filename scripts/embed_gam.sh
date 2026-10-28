@@ -32,9 +32,11 @@ grep -v '^#' "${SRCROOT}/scripts/gam_checksums.txt" | grep -qxF "$(cat "$SRC/SHA
 
 rm -rf "$DEST"
 mkdir -p "$DEST"
-# The grammar, changelog and catalog are build inputs, not runtime files; LICENSE ships (Apache-2.0).
+# The grammar and changelog are build inputs, not runtime files; LICENSE ships (Apache-2.0). The command catalog is the
+# Builder's (CommandCatalog): beside gam7/, never inside the signed GAM folder.
 rsync -a --exclude GamCommands.txt --exclude GamUpdate.txt --exclude command_catalog.json --exclude SHA256 \
   "$SRC/" "$DEST/"
+install -m 0644 "$SRC/command_catalog.json" "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/command_catalog.json"
 ID="${EXPANDED_CODE_SIGN_IDENTITY:-}"
 [ -n "$ID" ] || ID="-"
 # No secure timestamp: an ad-hoc or development signature can't carry one. A Developer ID build for

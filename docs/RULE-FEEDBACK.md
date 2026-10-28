@@ -22,6 +22,19 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-28 — CLAUDE.md's layout names a module that no longer exists, and invariant 3's home moved
+- **What happened:** Builder slice 1 put the catalog and its promotion door in GamEngine (`CommandCatalog.swift`,
+  `GamCommands.catalogRead`), the only module that can make a `GamRead`, and removed the empty `Catalog` target. CLAUDE.md's
+  Layout still lists "Catalog" among GamKit's modules, and invariant 3's text says "a catalog command is buildable iff…"
+  without saying where that's held.
+- **Invariant in force:** #3 (only read-only commands become runnable automatically).
+- **Why it didn't hold:** it held: the rule is enforced by `CommandCatalogTests` (GamGUI's verb rule rechecked, an edited
+  catalog promoting no write, every promoted command's argv against GamGUI's) and `WriteRouteTests.theBuilderReachesNoWrite`.
+  Only the constitution's map is stale.
+- **Would a rule have caught it?** no: a layout line drifted; sessions don't edit CLAUDE.md.
+- **Enforcement home if changed:** none needed; `improve-rules` can drop "Catalog" from the Layout and name invariant 3's
+  enforcement home (`CommandCatalogTests`).
+
 ## 2026-10-27 — The write-route scan failed a reader type for its name alone
 - **What happened:** Where it started (PR #131) added `LogReading.Origin`; `WriteRouteTests.noIntentReachesAWrite` failed,
   since `App/LogReaderView.swift` (model-side: it names `Assist`) now held "Origin", a word on its writing list (ChangeCore's

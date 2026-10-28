@@ -46,6 +46,8 @@ enum Screen: String, CaseIterable, Identifiable {
     /// A taken-over account, start to finish (the compromised-account runbook): find who's affected, secure, pull, clean up.
     case compromised = "Incident"
     case phishing = "Phishing"
+    /// GAM's command catalog: browse every command, run any that only reads.
+    case builder = "Builder"
     case reports = "Reports"
     case audit = "Audit"
     case setup = "Setup"
@@ -63,6 +65,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .offboard: "person.badge.minus"
         case .compromised: "exclamationmark.shield"
         case .phishing: "envelope.badge.shield.half.filled"
+        case .builder: "terminal"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
         case .setup: "key"
@@ -190,6 +193,9 @@ struct ContentView: View {
                 PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil,
                              requested: $phishingMessage)
                     .navigationTitle("Phishing")
+            case .builder:
+                BuilderView(setup: services.setup, access: services.userAccess)
+                    .navigationTitle("Builder")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
                             apps: services.connectedApps) { email in

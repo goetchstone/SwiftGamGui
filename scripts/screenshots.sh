@@ -53,6 +53,8 @@ status=0
 # list, what was done and what shows it, the attacker's emails, and a review written); compromised-incident, her logs saved to a demo incident
 # (in the demo's temporary folder) with a note, opened on Report. Incident opens on Investigate; a plan, the confirm sheet
 # or a run is on Respond.
+# Builder opens on `gam print users` (`SWIFTGAMGUI_SELECT`, its words with `+` between them): the catalog listed, the command's
+# grammar, its fields and the exact command it runs; nothing is run.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
@@ -92,6 +94,7 @@ for spec in home:home users:users groups:groups setup:setup \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
+            builder:builder:print+users narrow-builder:builder:print+users::smallest \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             narrow-audit:audit:::smallest \
