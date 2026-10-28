@@ -335,6 +335,13 @@ public final class UserAccess {
         }
     }
 
+    /// A Builder read (`GamCommands.catalogRead`) run now as `domain`, the tenant it was started on: GAM's output, read off the
+    /// main actor as the screen shows it, or GAM's own words. As long as a log read may take: a whole-tenant `print` is slow.
+    public func catalogRead(_ read: GamRead, in domain: Domain) async -> Result<CatalogResult, Problem> {
+        let output = await readNow(read, in: domain, timeout: ActivityLogs.timeout) { $0 }
+        return await Task.detached { output.map { CatalogResult(argv: read.argv, stdout: $0) } }.value
+    }
+
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
     private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, timeout: Duration = GamRunner.defaultTimeout,
                             parse: (String) -> T) async -> Result<T, Problem> {

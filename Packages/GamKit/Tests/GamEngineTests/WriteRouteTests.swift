@@ -54,6 +54,17 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["GamRead(", "GamWrite("]).isEmpty)
     }
 
+    /// The Builder (invariant 3): only its screen runs a catalog read, and it names nothing that can change the domain. A
+    /// catalog read is a `GamRead` from `GamCommands.catalogRead`, which refuses any command that isn't runnable.
+    @Test func theBuilderReachesNoWrite() throws {
+        #expect(try Self.files(in: "App", matching: ["catalogRead"]) == ["App/BuilderView.swift"])
+        let writing = try Self.files(in: "App", matching: ["UserChanges", "GroupChanges", "CalendarChanges", "SignatureChanges", "OnboardChanges",
+                                                           "OffboardChanges", "CompromisedChanges", "PhishingChanges", "Executor", "executor",
+                                                           "GamWrite", "WriteStep", "AuthenticatedRunner", "AppServices", "HeldPreview",
+                                                           ".confirm(", "confirmed:"], orWord: "OperatorConfirmation")
+        #expect(!writing.contains("App/BuilderView.swift"), "\(writing)")
+    }
+
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
     /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
     @Test func theJobsTrayReachesNoWrite() throws {

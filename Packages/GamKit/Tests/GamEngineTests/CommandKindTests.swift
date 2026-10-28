@@ -158,8 +158,11 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 39 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 40 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
-        #expect(try commands().count == reads + writes)
+        // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
+        // and every runnable one's first known verb a read verb).
+        #expect(source.contains("public static func catalogRead(_ command: CommandCatalog.Command"))
+        #expect(try commands().count == reads + writes - 1)
     }
 }

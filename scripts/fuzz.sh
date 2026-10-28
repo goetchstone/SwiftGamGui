@@ -16,7 +16,7 @@ out="${FUZZ_OUT:-${TMPDIR:-/tmp}/gamfuzz}"
 mkdir -p "$out"
 swiftc -sanitize=fuzzer,address -parse-as-library -package-name gamfuzz -module-name GamFuzz \
   Fuzz/GamFuzz.swift \
-  "$engine"/Address.swift "$engine"/GamChoices.swift "$engine"/GamCommand.swift "$engine"/GamCommands.swift \
+  "$engine"/Address.swift "$engine"/CommandCatalog.swift "$engine"/GamChoices.swift "$engine"/GamCommand.swift "$engine"/GamCommands.swift \
   "$engine"/GamError.swift "$engine"/GamOutput.swift "$engine"/JSONValue.swift "$engine"/PythonText.swift \
   -o "$out/gamfuzz"
 for arg in "$@"; do

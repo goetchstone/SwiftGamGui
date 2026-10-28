@@ -42,6 +42,13 @@ saved template (Hand-over by default), and every step's exact command before it 
 Reports: the people behind each of the directory's counts, the storage and mail usage, and every account's connected
 apps and AI agents. Audit: this app's audit log, searched, paged and exported to CSV.
 
+Builder: GAM's whole command catalog by area and section, searched by name or grammar; a command that only reads shows its
+fields and the exact command it runs.
+
+| Builder |
+|---|
+| ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) |
+
 The jobs tray, in every window's toolbar: each change run since launch, running first, with where it stands, its newest
 steps and failures in words, and Stop.
 

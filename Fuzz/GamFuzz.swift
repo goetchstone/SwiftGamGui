@@ -1,5 +1,5 @@
 // Coverage-guided fuzzing (libFuzzer) of GamEngine's platform-free code: the parsers of GAM's output, the
-// error classifier and its masking, the argv builders and the closed-set validators. Everything they read
+// error classifier and its masking, the argv builders and the closed-set validators, and the Builder's catalog reads. Everything they read
 // comes from GAM or the tenant (names, signatures, stderr), so none of it is trusted.
 //
 // Built by `scripts/fuzz.sh` on Linux (Apple's toolchain ships no libFuzzer runtime) with these sources
@@ -17,15 +17,31 @@ public func fuzz(_ data: UnsafePointer<UInt8>, _ size: Int) -> Int32 {
     func field(_ index: Int) -> String { index < fields.count ? fields[index] : "" }
     let whole = String(decoding: bytes.dropFirst(), as: UTF8.self)
 
-    switch selector % 6 {
+    switch selector % 7 {
     case 0: parsers(whole)
     case 1: errors(stderr: field(0), secret: field(1), stdout: field(2), exitCode: Int32(bitPattern: UInt32(selector)))
     case 2: builders(field(0), field(1), field(2), field(3))
     case 3: choices(whole)
     case 4: redaction(fields)
+    case 5: catalogRead(syntax: field(0), values: Array(fields.dropFirst()))
     default: csvRoundTrip(fields)
     }
     return 0
+}
+
+/// Any grammar line, as an edited catalog could hold it, called read-only by the file, with any values: the template parser never
+/// crashes, and a command it makes runnable puts every value in as one element and never GAM's `todrive` or `doit` into its argv
+/// (invariant 3: those would write).
+func catalogRead(syntax: String, values: [String]) {
+    let command = CommandCatalog.command(CommandCatalog.Entry(id: "f", category: "Users", subcategory: "", name: "f", syntax: syntax,
+                                                              verb: "print", risk: 0, uncertain: false))
+    guard command.runnable else { return }
+    var filled: [String: String] = [:]
+    for (index, slot) in command.slots.enumerated() where index < values.count { filled[slot.key] = values[index] }
+    guard let read = try? GamCommands.catalogRead(command, values: filled) else { return }
+    require(!read.argv.contains(where: CommandCatalog.changesThings), "catalog read \(syntax.debugDescription) wrote: \(read.argv)")
+    let keywords = command.template.count { if case .literal = $0 { true } else { false } }
+    require(read.argv.count <= keywords + 2 * command.slots.count, "a value split: \(read.argv)")
 }
 
 func require(_ condition: Bool, _ what: @autoclosure () -> String) {

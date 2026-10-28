@@ -37,6 +37,8 @@ containment, eradication, recovery, lessons learned).
 - **Phishing**: find every copy of an email by its Message-ID, see who it went to, and trash them all from one preview.
 - **Reports and audit**: the people behind the directory's counts, storage and mail usage, every connected app and AI
   agent, and this app's own audit log.
+- **Builder**: GAM's whole command catalog to browse and search, and any of its 500 commands that only read, run with
+  the exact command shown first. Every change from any screen is listed in the jobs tray, with Stop.
 
 | | |
 |---|---|
@@ -73,10 +75,10 @@ Rendered by CI from a demo domain and a mock of GAM, so every name is made up. [
 ## Status
 
 Early, and in use on a real domain; what has run live is in [docs/live-verification.md](docs/live-verification.md).
-Still only in GamGUI: the Builder (any GAM command, sequences, and one-offs such as forwarding, aliases, a new group,
-undeleting an account and a data transfer), the jobs tray, anything run for many people at once (onboarding from a
-CSV, a department or a signature for many), deleting a leaver's account, and finding a calendar by name, sharing one
-with a group, or deleting a calendar or an event. The plan is in
+Still only in GamGUI: the Builder's changes and sequences (one-offs such as forwarding, aliases, a new group, undeleting
+an account and a data transfer), anything run for many people at once (onboarding from a CSV, a department or a
+signature for many), deleting a leaver's account, and finding a calendar by name, sharing one with a group, or deleting
+a calendar or an event. The plan is in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md).
 
 ## Build from source

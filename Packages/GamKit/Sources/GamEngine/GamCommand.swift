@@ -11,8 +11,8 @@ package protocol GamCommand: Sendable, Equatable {
 public struct GamRead: GamCommand {
     public let argv: [String]
 
-    /// `internal`: GamEngine's builders are the only source (Catalog's read-only promotion, phase 4, will
-    /// need a deliberate door here). Not even GamKit's other targets can make one.
+    /// `internal`: GamEngine's builders are the only source, the catalog's promoted reads included (`catalogRead`, for a
+    /// command only `CommandCatalog` makes). Not even GamKit's other targets can make one.
     init(_ argv: [String]) {
         self.argv = argv
     }

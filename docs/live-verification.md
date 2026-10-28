@@ -55,6 +55,7 @@ already proven live sent; **confirmed** means this app has itself run it against
 | Incident: a person's Apps Script projects (reads only) | not yet: new to both apps |
 | Incident: a person's connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
 | Reports: every account's connected apps and AI agents, its summary, and the on-device model's wording (reads only) | not yet: new to both apps |
+| Builder: a catalog command that only reads (B1: `print users`, `print groups`, `info user`, `print domains`, `show` of one person; reads only) | not yet from this app: GamGUI's generic read builder, argv-identical over every one (`catalog_reads.json`); the mock answers only `version` |
 | Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | partly: the lock's admin events seen in real exported logs (2026-10-22); the reader not yet run live |
 | Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
 | Incident: a kept incident, made from an export, its saved logs read back after a relaunch (reads; this Mac only) | not yet: new to both apps |
