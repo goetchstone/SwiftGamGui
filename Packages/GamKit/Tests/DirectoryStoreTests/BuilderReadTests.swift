@@ -51,7 +51,7 @@ final class BuilderReadTests {
         let domain = try await connect()
         let version = try GamCommands.catalogRead(try command("gam version"), values: [:])
         let shown = try await access.catalogRead(version, in: domain).get()
-        #expect(shown.argv == ["version"] && !shown.isTable && shown.text.hasPrefix("GAM 7.48.34"))
+        #expect(shown.argv == ["version"] && !shown.isTable && shown.text.hasPrefix("GAM \(GamVersion.expected)"))
     }
 
     /// GAM's own words when it refuses a read, never an empty table; and none at all without a domain connected.

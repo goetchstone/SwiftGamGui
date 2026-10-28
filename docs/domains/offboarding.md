@@ -64,10 +64,10 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
 5. **Not read by GamGUI:** groups, calendars, forwarding state, Drive ownership. Forwarding is always turned off.
 6. **Native reads, each a warning whatever the steps** (run at once with the delegates read):
    - the secondary calendars the leaver owns, hidden ones too: `user L print calendars ownedsecondary showhidden
-     fields id,summary formatjson` (6294-6295; `showhidden` because GAM filters the person's own list, which
+     fields id,summary formatjson` (6297-6298; `showhidden` because GAM filters the person's own list, which
      leaves hidden entries out). Google deletes them with the account (Workspace accounts, from 2026-10-05) and
      the transfer doesn't move them, so the warning names them;
-   - the Vault holds that cover the leaver: `user L print vaultholds` (5711, CSV only; holds on an org unit above
+   - the Vault holds that cover the leaver: `user L print vaultholds` (5714, CSV only; holds on an org unit above
      them count). Google doesn't transfer held data, and a held account can't be deleted;
    - a refused read (Calendar off, no Vault access) is said in GAM's words, never taken as "none".
 
@@ -102,20 +102,20 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   grammar's line 1685 lacks `ownership`; GAM's source (and GamUpdate 7.46.04) requires it. GAM first gets each
   calendar with the admin's own access, so one the admin can't see fails "Not Found" before any transfer: that one
   is handed over in the Admin console; **Remove filters that forward** after forwarding off, `user L delete filters
-  <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7969) shows
+  <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7972) shows
   forwarding (`action.forward`), read only when the step is added: `forward off` doesn't stop them. The whole filter
   goes, with its other actions (a label, archive); the preview names where each forwarded. The run reads them again
   with the two accounts, on the plan's domain, and refuses ("preview again") when they differ from those held: the
   leaver is signed in until the sign-out and could make another. The ID list is one element, so the builder refuses
   any ID but ASCII letters, digits, `-` and `_`, and a lone GAM list selector (`file`, `csv`…), which GAM would read a
   file from. **Turn off IMAP** and
-  **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8380, 8386),
+  **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8385, 8391),
   two steps with no read. GAM sends its defaults with each (`_imapDefaults`; `_popDefaults`' `leaveInInbox`, so no
   mail is moved or deleted), and each sets that setting's other values back to Gmail's defaults. Belt and braces (the
   operator's ask): the reset and the sign-out already cut off the mail apps the leaver had, these stop only IMAP and
   POP (not the Gmail app), and anyone who can still sign in can turn them back on. An added step that works
   over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). No GamGUI builder:
-  `NativeArgvTests` holds each exact argv, checked against the grammar (5838, 5849-5850, 5949, 8380, 8386) and GAM's
+  `NativeArgvTests` holds each exact argv, checked against the grammar (5841, 5852-5853, 5952, 8385, 8391) and GAM's
   source (the calendar handover against the source, not 1685). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
   audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
@@ -143,15 +143,15 @@ Re-read 2026-10-13; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 
 | Step | Grammar line |
 |---|---|
-| Reset password | 5942 `update user <UserItem> [ignorenullpassword] <UserAttribute>*`; 5838 `(password (random …`; 5825 `changepassword` |
-| Revoke | 7901 `<UserTypeEntity> deprovision\|deprov [popimap] [signout] [turnoff2sv]` |
-| Forwarding | 8000 `<UserTypeEntity> forward <FalseValues>` |
-| Delegate | 7912 `<UserTypeEntity> create\|add delegate\|delegates [convertalias] <UserEntity>` |
-| Auto-reply | 8285 `<UserTypeEntity> vacation [<Boolean>] [subject <String>] …` |
-| Transfer | 3598 `create\|add datatransfer\|transfer <OldOwnerID> <DataTransferServiceList> <NewOwnerID>`; 3593 the list is one comma-joined element |
-| Sweep | 6328 `<UserTypeEntity> delete calendaracls <UserCalendarEntity> <CalendarACLRole>] <CalendarACLScopeEntity>` (the lost `[`: the role is optional) |
-| Reminder | 6470 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
-| Delegates read | 7922 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
+| Reset password | 5952 `update user <UserItem> [ignorenullpassword] <UserAttribute>*`; 5848 `(password (random …`; 5835 `changepassword` |
+| Revoke | 7912 `<UserTypeEntity> deprovision\|deprov [popimap] [signout] [turnoff2sv]` |
+| Forwarding | 8011 `<UserTypeEntity> forward <FalseValues>` |
+| Delegate | 7923 `<UserTypeEntity> create\|add delegate\|delegates [convertalias] <UserEntity>` |
+| Auto-reply | 8325 `<UserTypeEntity> vacation [<Boolean>] [subject <String>] …` |
+| Transfer | 3606 `create\|add datatransfer\|transfer <OldOwnerID> <DataTransferServiceList> <NewOwnerID>`; 3601 the list is one comma-joined element |
+| Sweep | 6338 `<UserTypeEntity> delete calendaracls <UserCalendarEntity> <CalendarACLRole>] <CalendarACLScopeEntity>` (the lost `[`: the role is optional) |
+| Reminder | 6480 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
+| Delegates read | 7933 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
 
 ## Off1, the plan
 - **A plan belongs to its form and its tenant:** the screen shows it only while the form is the one it

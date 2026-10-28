@@ -68,7 +68,7 @@ public enum Compromised {
     }
 
     /// The fields Check Account reads with `info user`: who the person is, whether they're locked or an admin, their
-    /// 2-Step Verification and their recovery details (`USER_FIELDS_CHOICE_MAP`'s names; grammar 5787-5817).
+    /// 2-Step Verification and their recovery details (`USER_FIELDS_CHOICE_MAP`'s names; grammar 5790-5820).
     public static let accountFields = ["primaryEmail", "name", "suspended", "isAdmin", "isDelegatedAdmin", "isEnrolledIn2Sv",
                                        "isEnforcedIn2Sv", "recoveryEmail", "recoveryPhone"]
 

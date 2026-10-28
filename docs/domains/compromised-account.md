@@ -61,18 +61,18 @@ let only `requires` stop a step; it may not tolerate failures).
 ## Grammar and source (GAM 7.48.30)
 | Command | Grammar | Source |
 |---|---|---|
-| `user P print forward` | 8003 | printShowForward: `User,forwardEnabled,forwardTo,disposition` |
-| `user P print forwardingaddresses` | 7997 | printShowForwardingAddresses: `User,forwardingEmail,verificationStatus` |
-| `user P print sendas verifyonly` | 8297 | printShowSendAs: each signature a bool with `verifyonly` |
-| `user P delete sendas S` | 8293 | deleteInfoSendAs: an <EmailAddressEntity> split on commas and whitespace |
+| `user P print forward` | 8014 | printShowForward: `User,forwardEnabled,forwardTo,disposition` |
+| `user P print forwardingaddresses` | 8008 | printShowForwardingAddresses: `User,forwardingEmail,verificationStatus` |
+| `user P print sendas verifyonly` | 8310 | printShowSendAs: each signature a bool with `verifyonly` |
+| `user P delete sendas S` | 8306 | deleteInfoSendAs: an <EmailAddressEntity> split on commas and whitespace |
 | `print admins user P` | 1579 | doPrintShowAdmins: PRINT_ADMIN_TITLES; `_SEED_ADMIN_ROLE` is Super Admin; no group roles without `recursive` |
-| `user P delete delegate D` | 7919 | processDelegates: Gmail's notFound for one they don't have, exit 50 |
-| `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5780-5810 | USER_FIELDS_CHOICE_MAP |
-| `user P show vacation`, `user P vacation off` | 8283-8286 | GamGUI's builders (Users' auto-reply), held to argv.json |
-| `report admin user P start -Nh end now maxactivities M` (no `userisactor`) | 4730-4744 | doReport :14779-14788: read as `user all` with the filter `USER_EMAIL==P`, what admins did to P; a non-user reads none |
-| `print mobile query email:P fields resourceid,… formatjson` | 4555-4562 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
-| `user P print filelist showmimetype gscript fields … formatjson` | 7793-7822 | printFileList: the type put in Drive's query beside `'me' in owners`, My Drive only, the bin included; CSV `Owner,id,name,JSON`; exit 60 whenever no row was printed, none and every failure alike (`ScriptProject.list` reads none only from GAM's "Got 0 … for P") |
-| `print devices query email:P fields … userfields … formatjson` | 4359-4367 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
+| `user P delete delegate D` | 7930 | processDelegates: Gmail's notFound for one they don't have, exit 50 |
+| `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5790-5820 | USER_FIELDS_CHOICE_MAP |
+| `user P show vacation`, `user P vacation off` | 8325-8331 | GamGUI's builders (Users' auto-reply), held to argv.json |
+| `report admin user P start -Nh end now maxactivities M` (no `userisactor`) | 4738-4752 | doReport :14779-14788: read as `user all` with the filter `USER_EMAIL==P`, what admins did to P; a non-user reads none |
+| `print mobile query email:P fields resourceid,… formatjson` | 4563-4570 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
+| `user P print filelist showmimetype gscript fields … formatjson` | 7804-7833 | printFileList: the type put in Drive's query beside `'me' in owners`, My Drive only, the bin included; CSV `Owner,id,name,JSON`; exit 60 whenever no row was printed, none and every failure alike (`ScriptProject.list` reads none only from GAM's "Got 0 … for P") |
+| `print devices query email:P fields … userfields … formatjson` | 4367-4375 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
 
 ## Gotchas / mock-lies traps
 - **The mock's Gmail reads act as the person** (`gmail_read`): a non-user fails at the token (exit 50), `nogmail/<u>` is
@@ -122,7 +122,7 @@ signed in can still send. The operator: "I just need to clear the drafts on thei
   and thousands of those passed the runner's 8 MiB cap in review, listing none. None is GAM's exit 60, "No drafts."
 - **The removal:** keep them (the start), delete every listed draft, or only those whose subject contains some text
   (`Form.Discard`, `Compromised.drafts(_:subjectMatching:)`; one that matches nothing is refused in words). One held step
-  `deleteMessages` (`delete messages ids <list>`, 8178-8182; with ids GAM needs no `doit` and checks no count), its own
+  `deleteMessages` (`delete messages ids <list>`, 8181-8185; with ids GAM needs no `doit` and checks no count), its own
   action `.deleteMessages`, destructive, needing the reset when it runs, confirmed by the typed address as every run here
   (Guard counts steps, so the number of drafts isn't typed: it's in the step and the sheet, which says it can't be undone).
 - **Delete, not Trash** (review 2026-10-19): Gmail's own Discard deletes a draft; a draft in Trash may still be a draft

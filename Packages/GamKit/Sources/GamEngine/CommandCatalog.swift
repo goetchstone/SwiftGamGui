@@ -162,7 +162,9 @@ public struct CommandCatalog: Sendable {
         let words = words(syntax).map(String.init)
         guard let at = words.dropLast().firstIndex(of: verb) else { return false }
         if verb == "get" { return true }
-        let secrets: Set = ["show backupcodes", "print backupcodes", "show browsertokens", "print browsertokens"]
+        // And `info browsertoken`, new in GAM 7.49.00: one enrollment token, which GamGUI's list (frozen before it) doesn't name.
+        // A deliberate difference from GamGUI, held by `CommandCatalogTests.sensitiveHereOnly`.
+        let secrets: Set = ["show backupcodes", "print backupcodes", "show browsertokens", "print browsertokens", "info browsertoken"]
         return words[at + 1].split(separator: "|").contains { secrets.contains("\(verb) \($0)") }
     }
 

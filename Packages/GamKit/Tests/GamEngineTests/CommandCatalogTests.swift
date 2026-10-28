@@ -25,6 +25,9 @@ struct CommandCatalogTests {
         let reads: [Read]
     }
 
+    /// Secrets GAM added after GamGUI froze, browse-only here though GamGUI's list would run them (GAM 7.49.00).
+    static let sensitiveHereOnly: Set = ["gam info browsertoken <TokenPermanentID>"]
+
     static let reads = try! JSONDecoder().decode(Reads.self, from: Data(contentsOf: Fixtures.directory.appending(path: "catalog_reads.json")))
 
     /// The verb rule here is GamGUI's: the fixture carries GamGUI's own sets.
@@ -40,13 +43,13 @@ struct CommandCatalogTests {
         #expect(Self.reads.source.gam_version == Self.catalog.version && Self.catalog.version == GamVersion.expected)
         let promoted = Self.catalog.commands.filter(\.promoted)
         #expect(Set(promoted.map(\.id)) == Set(Self.reads.reads.map(\.id)))
-        #expect(promoted.count == 514 && promoted.filter(\.sensitive).count == 13 && Self.catalog.commands.count == 1_051)
+        #expect(promoted.count == 515 && promoted.filter(\.sensitive).count == 14 && Self.catalog.commands.count == 1_052)
         let byID = Dictionary(uniqueKeysWithValues: promoted.map { ($0.id, $0) })
         for read in Self.reads.reads {
             let command = try #require(byID[read.id])
             #expect(command.slots.map { [$0.key, $0.label, $0.kind.rawValue, $0.placeholder, String($0.required)] }
                     == read.slots.map { [$0.key, $0.label, $0.kind, $0.placeholder, String($0.required)] }, "\(read.id) \(command.syntax)")
-            #expect(command.sensitive == read.sensitive, "\(read.id)")
+            #expect(command.sensitive == (read.sensitive || Self.sensitiveHereOnly.contains(command.syntax)), "\(read.id)")
             guard command.runnable else { continue }
             let every = Dictionary(uniqueKeysWithValues: command.slots.map { ($0.key, "<\($0.key)>") })
             let required = Dictionary(uniqueKeysWithValues: command.slots.filter(\.required).map { ($0.key, "<\($0.key)>") })
