@@ -926,9 +926,16 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 
 ## Next
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
-- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): first slice 7 (narrow pulls first:
-  the reported accounts, then each attacker address across every account; and an every-account pull says after its first
-  read how far it will get, extending "What's realistic" above), then the incoming phish and who to warn,
-  the rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent), watching and
-  the sign-off, Look for Trouble.
+- The live checks of 2026-10-27's slices: L4r (the report's export), L3o (Where it started's sender fields), L1n (Pull
+  Every Account From, and a wide read's estimate).
+- **A read that fails partway says so** (seen 2026-10-27): `IncidentLogs.complete` stops at a failed read and returns what it
+  had with `through`, dropping the error, so the log reads as stopped at its bound. The operator's 30-day every-account Gmail
+  stopped at the window starting Oct 6 after about 90 reads (under the 200 bound), with no reason on screen: keep the
+  failure and say it beside Read the Rest.
+- **Picture Pull Every Account From:** the Still to do snapshot (`compromised-todo`) ends at T2, before it.
+- **The wide read's own speed-ups** (each a constant factor, not its scale): read several days of one log at once, and more
+  events per GAM call (`maxactivities` past 1,000 needs `GamRunner.outputCap`, 8 MB, raised: a Gmail event is about 2 KB).
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): a pull anchored on the attack, the
+  rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent), watching and the
+  sign-off, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.
