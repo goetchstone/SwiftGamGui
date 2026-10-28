@@ -29,12 +29,13 @@ runner's output cap; the result kept whole, bounded by it) and 11 (parity is a t
   of its first six words after `gam` holding a known verb holds a read verb and no destructive one; the verb sets are held to
   GamGUI's by the fixture), the same rule holds for the keywords the argv actually emits (`readOnly(literals:)`: the template
   keeps a word's first alternative and passes over fragments, so an edited `gam update|print user …` emitted `update`; review
-  2026-10-28), and it isn't **sensitive**, judged by the verb taken from the grammar line (`verb(of:)`), never the file's. 514 of 1,051 are promoted, as in GamGUI; 13 of
+  2026-10-28), and it isn't **sensitive**, judged by the verb taken from the grammar line (`verb(of:)`), never the file's. 515 of 1,052 are promoted (GAM 7.49.02), as in GamGUI; 14 of
   those are sensitive (GamGUI's `_is_sensitive`: every `get`, which saves a file, and `show`/`print backupcodes` and
-  `browsertokens`), so 501 run.
+  `browsertokens`; and here `info browsertoken` too, one enrollment token, new in GAM 7.49.00 and not named by GamGUI's
+  frozen list: `CommandCatalogTests.sensitiveHereOnly`), so 501 run.
 - **Sensitive reads are browse-only here** (a deliberate difference): GamGUI runs them and audits each run as
   `sensitive_read`, never the output. This app's audit log is the executor's, for writes; a read audit is its own slice.
-- **A value is never `todrive` or `doit`** (`keywordsNeverAValue`, case and underscores aside, as GAM reads a keyword): a
+- **A value is never `todrive` or `doit`** (`CommandCatalog.keywordsThatChange`, case and underscores aside, as GAM reads a keyword): a
   deliberate difference from GamGUI, which passes them along. Some reads put a required value where GAM reads options
   (`print events [<EventEntity>] <EventDisplayProperty>*`, `print contacts <ContactSelection>`), and `todrive` there uploads the
   result as a Sheet to the admin's Drive: a write with no preview or audit (review 2026-10-28). GamGUI's Builder has the same

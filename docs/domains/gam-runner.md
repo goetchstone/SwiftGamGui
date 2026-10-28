@@ -56,6 +56,18 @@ an allowlisted environment, a timeout, and capped output capture.
   one. `gam_output.json` also changed where the mock's answers grew since 10-17 (a forwarding read, that search): it
   records the mock, not GAM. After a mock change that adds data, re-run `gen_fixtures.py` then rather than at the bump.
 
+- **Bump to 7.49.02 (2026-10-28):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `2f35285`.
+  GAM's notes: 7.49.00 moves Chrome browsers and their enrollment tokens to the Chrome Management API (this app reads
+  Chrome profiles, unmoved; the Builder only browses the browser writes), 7.49.01 adds `max_to_xxx all` (Phishing always
+  sends a count of 1 or more), 7.49.02 makes a bad request or a failed precondition on one message in `print messages` a
+  warning line, as an unknown error was (Find reads it as unsure). `_processMessagesThreads`' `doit` check is unchanged
+  (`CommandKindTests.reviewedDryRuns`). The catalog gained `info browsertoken`, a secret GamGUI's list doesn't name: kept
+  browse-only (catalog-builder.md). The grammar moved from line 2244 on (+1 to +5): 140 citations in 8 files were
+  renumbered, each checked to land on the text it names, and **about 60 had already been wrong**, most of them
+  NativeArgvTests' and the runbooks' tables, left on 7.48.30's numbers by the last bump, and a few that never matched (5838
+  for `password`, which is 5845 at 7.48.34). So a bump renumbers by the text a citation names, not by the shift alone; the
+  dated plans in `docs/plans/` keep the numbers of their day.
+
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
   2026-09-23. Here both the parent and `extra` are filtered.

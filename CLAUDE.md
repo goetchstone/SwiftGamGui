@@ -118,7 +118,7 @@ Debug switches are **environment variables**, never launch arguments: AppKit rea
 arguments as defaults and opens a leftover bare path as a document, which once stopped SwiftUI from
 opening any window.
 
-GAM is pinned at `GamVersion.expected` (currently 7.48.34); `FixtureTests` fails if the fetch TAG, the
+GAM is pinned at `GamVersion.expected` (currently 7.49.02); `FixtureTests` fails if the fetch TAG, the
 mock's version, the catalog stamp or the fixtures disagree.
 
 ## The layered system

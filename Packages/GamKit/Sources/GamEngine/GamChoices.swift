@@ -65,7 +65,7 @@ extension GamCommands {
         }
     }
 
-    /// `[private|shared|all]` (GamCommands.txt 3604): which of the old owner's Drive files move; `all`
+    /// `[private|shared|all]` (GamCommands.txt 3607): which of the old owner's Drive files move; `all`
     /// is both. GAM sends the level only when one is named, so without one the Data Transfer API's own
     /// default decides whether files the old owner had shared move.
     public enum TransferPrivacy: String, CaseIterable, Sendable {
