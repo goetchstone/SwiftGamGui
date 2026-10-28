@@ -21,7 +21,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "GamEngine", dependencies: ["Vault"]),
-        .target(name: "ChangeCore", dependencies: ["GamEngine", "Vault"]),
+        .target(name: "ChangeCore", dependencies: ["GamEngine", "Vault", "Jobs"]),
         .target(name: "Vault"),
         .target(name: "Catalog"),
         .target(name: "Jobs"),
@@ -32,7 +32,7 @@ let package = Package(
         .target(name: "TestSupport", dependencies: ["GamEngine", "Vault"]),
         .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "VaultTests", dependencies: ["Vault"]),
-        .testTarget(name: "ChangeCoreTests", dependencies: ["ChangeCore", "GamEngine", "Vault", "TestSupport"]),
+        .testTarget(name: "ChangeCoreTests", dependencies: ["ChangeCore", "GamEngine", "Vault", "Jobs", "TestSupport"]),
         .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "ChangeCore", "Stores", "TestSupport"]),
         .testTarget(name: "StoresTests", dependencies: ["Stores", "GamEngine", "TestSupport"]),

@@ -416,7 +416,8 @@ public final class OnboardChanges {
             problem = "This build has no GAM. Build the app again after running scripts/fetch_gam.sh."
             return
         }
-        switch await executor.preview(steps, confirmStep: true, expecting: expecting) {
+        switch await executor.preview(steps, confirmStep: true, expecting: expecting,
+                                      title: "Onboarding \(plan.email.isEmpty ? plan.assignee : plan.email)" + (isRetry ? ", the rest" : "")) {
         case .success(let preview):
             let count = steps.count
             pending = Pending(preview: preview, plan: plan, isRetry: isRetry,

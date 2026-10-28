@@ -19,6 +19,7 @@ the Swift design inherits; read it too when this one is still a stub.
 | Phishing: one email out of every mailbox, by its Message-ID (GAM's dry run, then a trash per mailbox) | [phishing.md](phishing.md) | built; live check not yet |
 | Catalog and the Builder | [catalog-builder.md](catalog-builder.md) | stub (phase 4) |
 | ChangeCore: preview, guard, audit | [guard-audit.md](guard-audit.md) | phase 2: guard and audit log built |
+| The jobs tray: every write run, from any screen, with Stop | [jobs.md](jobs.md) | phase 3: the tray built (2026-10-28); bulk runs on it later |
 | The Audit and Reports screens: the log paged and exported, the directory reports, the usage report | [audit-reports.md](audit-reports.md) | built; the usage report's live read pending |
 
 Template for a filled runbook: **One line** · **Owns invariant(s)** · **Enforcement home** · Files ·

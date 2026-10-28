@@ -53,6 +53,7 @@ status=0
 # list, what was done and what shows it, the attacker's emails, and a review written); compromised-incident, her logs saved to a demo incident
 # (in the demo's temporary folder) with a note, opened on Report. Incident opens on Investigate; a plan, the confirm sheet
 # or a run is on Respond.
+# The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with two made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
@@ -60,7 +61,7 @@ status=0
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
-for spec in home:home users:users groups:groups setup:setup \
+for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \

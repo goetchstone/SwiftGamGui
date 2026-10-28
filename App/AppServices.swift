@@ -2,6 +2,7 @@ import ChangeCore
 import Directory
 import Foundation
 import GamEngine
+import Jobs
 import Setup
 import Stores
 import Vault
@@ -16,6 +17,8 @@ struct AppServices {
     let gam: (runner: GamRunner, runtimeDirectory: URL)?
     /// The only path to a write (ChangeCore); none without gam.
     let executor: Executor?
+    /// Every write run since launch, as the executor reports it: the jobs tray.
+    let jobs: JobBoard
     /// The user page's writes, through the executor.
     let userChanges: UserChanges
     /// A selected person's groups, delegates, auto-reply and signature, read live.
@@ -97,13 +100,16 @@ struct AppServices {
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
-        // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews.
+        // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews. Each run it
+        // makes is reported to the jobs tray, whose Stop asks it to stop after the step in flight.
+        let jobs = JobBoard()
         let executor = runner.map { runner in
             Executor(runner: runner, audit: AuditLog(url: auditURL),
                      currentActor: { @MainActor [weak setup] in setup?.connectedAdmin }, tenant: { @MainActor [weak setup] in
                 setup?.active.map { ($0, setup!.generation) }
-            }, extraEnvironment: extraEnvironment)
+            }, extraEnvironment: extraEnvironment, jobs: jobs.report)
         }
+        if let executor { jobs.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) } }
         let directory = DirectoryStore(setup: setup, runner: runner)
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)
@@ -113,7 +119,7 @@ struct AppServices {
         phishingChanges.keepNobodyHas = { [weak setup, weak nobodyHas] domain, messageIDs, at in
             nobodyHas?.record(domain: domain, messageIDs: messageIDs, by: setup?.connectedAdmin ?? "", at: at)
         }
-        return AppServices(setup: setup, directory: directory, gam: gam, executor: executor,
+        return AppServices(setup: setup, directory: directory, gam: gam, executor: executor, jobs: jobs,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
                            signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory),
