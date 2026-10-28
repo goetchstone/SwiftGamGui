@@ -767,3 +767,90 @@ struct PhishingConfirmSheet: View {
         }
     }
 }
+
+extension BuilderChanges {
+    /// The preview `command`'s page shows in its sheet: held, or running (the sheet stays, its buttons off, until it ends).
+    /// Another command's page never shows it.
+    func sheetPending(for command: CuratedCommand) -> Pending? {
+        switch state {
+        case .previewing(let pending), .running(let pending): concerns(command) && pending.command == command.id ? pending : nil
+        case .idle, .done, .problem: nil
+        }
+    }
+
+    /// The sheet was closed: drops a preview still waiting, never the result the run left behind.
+    func dismissPreview() {
+        if case .previewing = state { dismiss() }
+    }
+}
+
+/// A Builder command's confirm step: the change in words, the command exactly as GAM gets it (masked as the audit keeps it), what
+/// to know first, and how much it can hurt, then Cancel or Run. Always a click, as GamGUI's Builder asks; a destructive one is
+/// never the default button, so Return alone doesn't run it. Confirming runs exactly this preview, once.
+struct BuilderPreviewSheet: View {
+    let pending: BuilderChanges.Pending
+    let changes: BuilderChanges
+
+    private var running: Bool { changes.isBusy }
+
+    private func confirm() {
+        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
+    }
+
+    var body: some View {
+        Form {
+            Section(pending.title) {
+                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
+                    Text(step.summary).textSelection(.enabled)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("The command").font(.callout).foregroundStyle(.secondary)
+                        Text(step.commandLine)
+                            .font(.body.monospaced())
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            if let warning = pending.warning {
+                Section {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                }
+            }
+            Section {
+                if pending.isDestructive {
+                    Label("Destructive: check it, then click Run to change \(pending.preview.domain.name).",
+                          systemImage: "exclamationmark.octagon.fill")
+                        .foregroundStyle(.red)
+                } else {
+                    Label("Changes \(pending.preview.domain.name) once you click Run.", systemImage: "pencil.circle")
+                }
+            }
+            if running {
+                Section {
+                    HStack { ProgressView().controlSize(.small); Text("Running…") }
+                        .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520)
+        .interactiveDismissDisabled(running)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { changes.dismiss() }.disabled(running) }
+            if pending.isDestructive {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Run", role: .destructive) { confirm() }
+                        .disabled(running)
+                        .help("Runs exactly this, once")
+                }
+            } else {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Run") { confirm() }
+                        .disabled(running)
+                        .help("Runs exactly this, once")
+                }
+            }
+        }
+    }
+}

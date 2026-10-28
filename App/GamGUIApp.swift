@@ -217,7 +217,8 @@ struct ContentView: View {
                              requested: $phishingMessage)
                     .navigationTitle("Phishing")
             case .builder:
-                BuilderView(setup: services.setup, access: services.userAccess)
+                BuilderView(setup: services.setup, access: services.userAccess, directory: services.directory, groups: services.groups,
+                            changes: services.builderChanges)
                     .navigationTitle("Builder")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,

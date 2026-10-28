@@ -67,6 +67,8 @@ struct AppServices {
     let incidents: Incidents
     /// The storage and mail usage report, read when Reports first shows it.
     let usage: UsageStore
+    /// The Builder's curated writes (GamGUI's), one at a time through the executor.
+    let builderChanges: BuilderChanges
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -149,6 +151,9 @@ struct AppServices {
                            nobodyHas: nobodyHas,
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
+                           // Its own reader: whose account an address is, read live before a suspend or a password reset.
+                           builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory,
+                                                          access: UserAccess(setup: setup, runner: runner)),
                            auditURL: auditURL)
     }
 

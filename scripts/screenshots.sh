@@ -54,7 +54,9 @@ status=0
 # (in the demo's temporary folder) with a note, opened on Report. Incident opens on Investigate; a plan, the confirm sheet
 # or a run is on Respond.
 # Builder opens on `gam print users` (`SWIFTGAMGUI_SELECT`, its words with `+` between them): the catalog listed, the command's
-# grammar, its fields and the exact command it runs; nothing is run.
+# grammar, its fields and the exact command it runs; nothing is run. builder-change is GamGUI's curated Add member to group
+# (`SWIFTGAMGUI_SELECT` its id) with carol@example.com and the Sales group filled in (`fill`), and builder-confirm its confirm
+# sheet (`preview`): held, never run.
 # The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with two made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
@@ -96,6 +98,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
+            builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
+            narrow-builder-change:builder:build.add_group_member:fill:smallest \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             narrow-audit:audit:::smallest \

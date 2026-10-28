@@ -1,0 +1,1550 @@
+{
+ "source": {
+  "gamgui_commit": "2f35285",
+  "gam_version": "7.49.02",
+  "generator": "scripts/gen_catalog_reads.py"
+ },
+ "commands": [
+  {
+   "id": "build.set_signature",
+   "category": "Users",
+   "subcategory": "Gmail - Signature",
+   "name": "Set Gmail signature",
+   "risk": 1,
+   "raw": "gam user <email> signature <html>",
+   "description": "Replace a user's Gmail signature with the HTML you provide.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "signature",
+     "label": "Signature (HTML)",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "signature": "signature one\nA < B & C"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "signature",
+      "signature one\nA < B & C",
+      "html"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.add_delegate",
+   "category": "Users",
+   "subcategory": "Gmail - Delegates",
+   "name": "Add mailbox delegate",
+   "risk": 1,
+   "raw": "gam user <email> add delegate <delegate>",
+   "description": "Let another person read and send mail from this user's mailbox.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "delegate",
+     "label": "Delegate",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "delegate": "delegate@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "add",
+      "delegate",
+      "delegate@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.remove_delegate",
+   "category": "Users",
+   "subcategory": "Gmail - Delegates",
+   "name": "Remove mailbox delegate",
+   "risk": 1,
+   "raw": "gam user <email> delete delegate <delegate>",
+   "description": "Revoke a delegate's access to this user's mailbox.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "delegate",
+     "label": "Delegate",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "delegate": "delegate@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "delete",
+      "delegate",
+      "delegate@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.set_vacation",
+   "category": "Users",
+   "subcategory": "Gmail - Vacation",
+   "name": "Set vacation auto-reply",
+   "risk": 1,
+   "raw": "gam user <email> vacation on subject <s> message <m> html contactsonly false domainonly false start Started end NotSpecified",
+   "description": "Turn on the user's vacation auto-responder with a subject and message, for every sender and no end date (GAM would otherwise keep any earlier restriction or date).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "subject",
+     "label": "Subject",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "message",
+     "label": "Message",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "subject": "subject one\nA < B & C",
+      "message": "message one\nA < B & C"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "vacation",
+      "on",
+      "subject",
+      "subject one\nA < B & C",
+      "message",
+      "message one<br/>A &lt; B &amp; C",
+      "html",
+      "contactsonly",
+      "false",
+      "domainonly",
+      "false",
+      "start",
+      "Started",
+      "end",
+      "NotSpecified"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.vacation_off",
+   "category": "Users",
+   "subcategory": "Gmail - Vacation",
+   "name": "Turn off vacation auto-reply",
+   "risk": 1,
+   "raw": "gam user <email> vacation off",
+   "description": "Switch off the user's vacation auto-responder.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "vacation",
+      "off"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.print_delegates",
+   "category": "Users",
+   "subcategory": "Gmail - Delegates",
+   "name": "List mailbox delegates",
+   "risk": 0,
+   "raw": "gam user <email> print delegates",
+   "description": "Show everyone who has delegate access to this user's mailbox.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "delegates"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.add_forwarding_address",
+   "category": "Users",
+   "subcategory": "Gmail - Forwarding",
+   "name": "Add a forwarding address",
+   "risk": 1,
+   "raw": "gam user <email> add forwardingaddress <address>",
+   "description": "Register an address the user is allowed to forward mail to (does not enable forwarding).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "address",
+     "label": "Forward to",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "add",
+      "forwardingaddress",
+      "address@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.set_forward",
+   "category": "Users",
+   "subcategory": "Gmail - Forwarding",
+   "name": "Turn on forwarding",
+   "risk": 1,
+   "raw": "gam user <email> forward on <action> <address>",
+   "description": "Auto-forward the user's incoming mail to an address, choosing what to do with the original.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "address",
+     "label": "Forward to",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "action",
+     "label": "Keep original as",
+     "kind": "choice",
+     "required": true,
+     "choices": [
+      "keep",
+      "archive",
+      "markread",
+      "trash",
+      "delete"
+     ],
+     "default": "keep",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": "keep"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "keep",
+      "address@example.com"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": "archive"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "archive",
+      "address@example.com"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": "markread"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "markread",
+      "address@example.com"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": "trash"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "trash",
+      "address@example.com"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": "delete"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "delete",
+      "address@example.com"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "address": "address@example.com",
+      "action": ""
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "on",
+      "keep",
+      "address@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.forward_off",
+   "category": "Users",
+   "subcategory": "Gmail - Forwarding",
+   "name": "Turn off forwarding",
+   "risk": 1,
+   "raw": "gam user <email> forward off",
+   "description": "Stop auto-forwarding the user's incoming mail.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "forward",
+      "off"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.search_messages",
+   "category": "Users",
+   "subcategory": "Gmail - Messages",
+   "name": "Search a mailbox",
+   "risk": 0,
+   "raw": "gam user <email> print messages query <q> headers all",
+   "description": "Find messages in a mailbox by Gmail search (Message-ID, sender, subject, date) and show their full headers — incl. Return-Path / Received, so an envelope or bounce sender is visible. Capped at 50 results; Spam & Trash included.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "query",
+     "label": "Gmail search",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "rfc822msgid:<id>  ·  from:… after:2026/06/23 before:2026/06/24",
+     "hints": [
+      "rfc822msgid:",
+      "from:",
+      "to:",
+      "subject:",
+      "after:2026/06/23",
+      "before:2026/06/25",
+      "newer_than:7d",
+      "older_than:30d",
+      "has:attachment",
+      "is:unread",
+      "in:anywhere",
+      "label:"
+     ],
+     "hintNote": "Click a chip to insert it. Dates are YYYY/MM/DD; combine terms freely (any Gmail search operator works). rfc822msgid: matches the Message-ID."
+    },
+    {
+     "key": "detail",
+     "label": "Show",
+     "kind": "choice",
+     "required": true,
+     "choices": [
+      "Headers",
+      "Headers + body",
+      "Summary"
+     ],
+     "default": "Headers",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "query": "query one\nA < B & C",
+      "detail": "Headers"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "messages",
+      "query",
+      "query one\nA < B & C",
+      "includespamtrash",
+      "max_to_print",
+      "50",
+      "headers",
+      "all",
+      "showlabels",
+      "showdate"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "query": "query one\nA < B & C",
+      "detail": "Headers + body"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "messages",
+      "query",
+      "query one\nA < B & C",
+      "includespamtrash",
+      "max_to_print",
+      "50",
+      "headers",
+      "all",
+      "showbody",
+      "showlabels",
+      "showdate"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "query": "query one\nA < B & C",
+      "detail": "Summary"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "messages",
+      "query",
+      "query one\nA < B & C",
+      "includespamtrash",
+      "max_to_print",
+      "50",
+      "showlabels",
+      "showdate",
+      "showsize",
+      "showsnippet"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "query": "query one\nA < B & C",
+      "detail": ""
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "messages",
+      "query",
+      "query one\nA < B & C",
+      "includespamtrash",
+      "max_to_print",
+      "50",
+      "headers",
+      "all",
+      "showlabels",
+      "showdate"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.find_users",
+   "category": "Users",
+   "subcategory": "Users - Search",
+   "name": "Find users",
+   "risk": 0,
+   "raw": "gam print users query <QueryUser>",
+   "description": "Search the directory for users by an Admin-SDK query — suspended, admins, by OU, 2-step status, department, manager, name…",
+   "slots": [
+    {
+     "key": "query",
+     "label": "User search",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "isSuspended=true · orgUnitPath=/Sales · isEnrolledIn2Sv=false",
+     "hints": [
+      "isSuspended=true",
+      "isAdmin=true",
+      "isEnrolledIn2Sv=false",
+      "orgUnitPath=/Sales",
+      "orgUnitPath='/Sales/Field Reps'",
+      "email:admin*",
+      "givenName:Jan*",
+      "orgTitle:Manager",
+      "orgDepartment=Engineering",
+      "manager='boss@example.com'"
+     ],
+     "hintNote": "field=value — '=' exact, ':' contains, ':prefix*' starts-with (givenName/familyName/email only). Space-separate clauses to AND them; single-quote values with spaces. orgUnitPath is an exact match (not recursive)."
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "query": "query one\nA < B & C"
+     },
+     "argv": [
+      "print",
+      "users",
+      "query",
+      "query one\nA < B & C",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.find_cros",
+   "category": "ChromeOS Devices",
+   "subcategory": "Devices - Search",
+   "name": "Find Chromebooks",
+   "risk": 0,
+   "raw": "gam print cros query <QueryCrOS>",
+   "description": "Search the managed ChromeOS fleet — by status, asset ID, assigned user, location, last-sync/AUE date, or model…",
+   "slots": [
+    {
+     "key": "query",
+     "label": "Device search",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "status:provisioned · asset_id:… · user:…",
+     "hints": [
+      "status:provisioned",
+      "asset_id:1234",
+      "user:\"tom sawyer\"",
+      "location:seattle",
+      "recent_user:user@example.com",
+      "sync:2026-01-01..",
+      "last_user_activity:2026-06-01..2026-06-30",
+      "aue:2026-01-01..2026-12-31",
+      "chrome_version:111",
+      "public_model_name:\"Pixelbook Go\""
+     ],
+     "hintNote": "field:value (colon only — no =, <, >). Quote multi-word values. Dates are YYYY-MM-DD with '..' ranges (sync:2026-01-01.. = on/after). Space-separate to AND. status: provisioned | disabled | deprovisioned | managed."
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "query": "query one\nA < B & C"
+     },
+     "argv": [
+      "print",
+      "cros",
+      "query",
+      "query one\nA < B & C",
+      "fields",
+      "deviceId,serialNumber,status,orgUnitPath,annotatedAssetId,annotatedUser,lastSync,model",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.find_files",
+   "category": "Users",
+   "subcategory": "Drive - Search",
+   "name": "Find a user's Drive files",
+   "risk": 0,
+   "raw": "gam user <email> print filelist query <QueryDriveFile>",
+   "description": "Search a user's Drive by a Drive query — by name, type, owner, sharing, or modified date…",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "query",
+     "label": "Drive search",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "'me' in owners and trashed=false",
+     "hints": [
+      "'me' in owners",
+      "name contains 'budget'",
+      "fullText contains 'confidential'",
+      "mimeType='application/vnd.google-apps.folder'",
+      "trashed=false",
+      "starred=true",
+      "'user@example.com' in writers",
+      "sharedWithMe=true",
+      "modifiedTime > '2026-01-01T00:00:00'",
+      "and",
+      "or"
+     ],
+     "hintNote": "Drive query — single-quote string values; booleans (trashed/starred/sharedWithMe) are bare true/false. Combine clauses with the and/or chips. Timestamps are RFC3339, quoted."
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "query": "query one\nA < B & C"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "filelist",
+      "query",
+      "query one\nA < B & C",
+      "fields",
+      "id,name,mimeType,owners,modifiedTime,webViewLink",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.print_forwarding",
+   "category": "Users",
+   "subcategory": "Gmail - Forwarding",
+   "name": "List forwarding addresses",
+   "risk": 0,
+   "raw": "gam user <email> print forwardingaddresses",
+   "description": "Show the addresses this user may forward mail to.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "forwardingaddresses"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.create_alias",
+   "category": "Aliases",
+   "subcategory": "",
+   "name": "Add an alias to a user",
+   "risk": 1,
+   "raw": "gam create alias <alias> user <email>",
+   "description": "Give the user an additional email address that delivers to their mailbox.",
+   "slots": [
+    {
+     "key": "alias",
+     "label": "New alias address",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "alias": "alias@example.com",
+      "email": "email@example.com"
+     },
+     "argv": [
+      "create",
+      "alias",
+      "alias@example.com",
+      "user",
+      "email@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.delete_alias",
+   "category": "Aliases",
+   "subcategory": "",
+   "name": "Remove an alias",
+   "risk": 1,
+   "raw": "gam delete alias <alias>",
+   "description": "Remove an email alias so it no longer delivers anywhere.",
+   "slots": [
+    {
+     "key": "alias",
+     "label": "Alias address",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "alias": "alias@example.com"
+     },
+     "argv": [
+      "delete",
+      "alias",
+      "alias@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.add_group_member",
+   "category": "Groups",
+   "subcategory": "",
+   "name": "Add member to group",
+   "risk": 1,
+   "raw": "gam update group <group> add <role> <member>",
+   "description": "Add someone to a group as a member, manager, or owner.",
+   "slots": [
+    {
+     "key": "group",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "member",
+     "label": "Member",
+     "kind": "user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "role",
+     "label": "Role",
+     "kind": "choice",
+     "required": true,
+     "choices": [
+      "member",
+      "manager",
+      "owner"
+     ],
+     "default": "member",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "group": "group@example.com",
+      "member": "member@example.com",
+      "role": "member"
+     },
+     "argv": [
+      "update",
+      "group",
+      "group@example.com",
+      "add",
+      "member",
+      "member@example.com"
+     ]
+    },
+    {
+     "values": {
+      "group": "group@example.com",
+      "member": "member@example.com",
+      "role": "manager"
+     },
+     "argv": [
+      "update",
+      "group",
+      "group@example.com",
+      "add",
+      "manager",
+      "member@example.com"
+     ]
+    },
+    {
+     "values": {
+      "group": "group@example.com",
+      "member": "member@example.com",
+      "role": "owner"
+     },
+     "argv": [
+      "update",
+      "group",
+      "group@example.com",
+      "add",
+      "owner",
+      "member@example.com"
+     ]
+    },
+    {
+     "values": {
+      "group": "group@example.com",
+      "member": "member@example.com",
+      "role": ""
+     },
+     "argv": [
+      "update",
+      "group",
+      "group@example.com",
+      "add",
+      "member",
+      "member@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.remove_group_member",
+   "category": "Groups",
+   "subcategory": "",
+   "name": "Remove member from group",
+   "risk": 1,
+   "raw": "gam update group <group> remove <member>",
+   "description": "Remove someone from a group.",
+   "slots": [
+    {
+     "key": "group",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "member",
+     "label": "Member",
+     "kind": "user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "group": "group@example.com",
+      "member": "member@example.com"
+     },
+     "argv": [
+      "update",
+      "group",
+      "group@example.com",
+      "remove",
+      "member@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.create_group",
+   "category": "Groups",
+   "subcategory": "",
+   "name": "Create a group",
+   "risk": 1,
+   "raw": "gam create group <email> name <name> description <desc>",
+   "description": "Create a new Google Group; optionally set its display name and description.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "Group email",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "name",
+     "label": "Display name",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "description",
+     "label": "Description",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "name": "name one\nA < B & C",
+      "description": "description one\nA < B & C"
+     },
+     "argv": [
+      "create",
+      "group",
+      "email@example.com",
+      "name",
+      "name one\nA < B & C",
+      "description",
+      "description one\nA < B & C"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "name": "",
+      "description": ""
+     },
+     "argv": [
+      "create",
+      "group",
+      "email@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.set_organization",
+   "category": "Users",
+   "subcategory": "Profile",
+   "name": "Set title / department",
+   "risk": 1,
+   "raw": "gam update user <email> organization title <t> department <d> primary",
+   "description": "Set the user's job title and department on their directory profile.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "title",
+     "label": "Title",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "department",
+     "label": "Department",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "title": "title one\nA < B & C",
+      "department": "department one\nA < B & C"
+     },
+     "argv": [
+      "update",
+      "user",
+      "email@example.com",
+      "organization",
+      "title",
+      "title one\nA < B & C",
+      "department",
+      "department one\nA < B & C",
+      "primary"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "title": "",
+      "department": ""
+     },
+     "argv": [
+      "update",
+      "user",
+      "email@example.com",
+      "organization",
+      "title",
+      "",
+      "department",
+      "",
+      "primary"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.reset_password",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Reset password (random)",
+   "risk": 1,
+   "raw": "gam update user <email> password random changepassword off",
+   "description": "Set the user's password to a new random value, locking out the old one.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "update",
+      "user",
+      "email@example.com",
+      "password",
+      "random",
+      "changepassword",
+      "off"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.signout_user",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Sign out everywhere",
+   "risk": 1,
+   "raw": "gam user <email> signout",
+   "description": "End all of the user's active sessions everywhere (forces re-login; does not change the password).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "signout"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.undelete_user",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Undelete account",
+   "risk": 1,
+   "raw": "gam undelete user <email>",
+   "description": "Restore a recently deleted account (within Google's ~20-day recovery window).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "Deleted user email",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "undelete",
+      "user",
+      "email@example.com"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.transfer_data",
+   "category": "Data Transfers",
+   "subcategory": "",
+   "name": "Transfer Drive/Calendar ownership",
+   "risk": 2,
+   "raw": "gam create datatransfer <old> <service> <new> [all]",
+   "description": "Hand a departing user's Drive (private and shared files) or Calendar content to another user.",
+   "slots": [
+    {
+     "key": "old_owner",
+     "label": "From user",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "service",
+     "label": "Service",
+     "kind": "choice",
+     "required": true,
+     "choices": [
+      "drive",
+      "calendar",
+      "drive,calendar"
+     ],
+     "default": "drive",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "new_owner",
+     "label": "To user",
+     "kind": "user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "old_owner": "old_owner@example.com",
+      "service": "drive",
+      "new_owner": "new_owner@example.com"
+     },
+     "argv": [
+      "create",
+      "datatransfer",
+      "old_owner@example.com",
+      "drive",
+      "new_owner@example.com",
+      "all"
+     ]
+    },
+    {
+     "values": {
+      "old_owner": "old_owner@example.com",
+      "service": "calendar",
+      "new_owner": "new_owner@example.com"
+     },
+     "argv": [
+      "create",
+      "datatransfer",
+      "old_owner@example.com",
+      "calendar",
+      "new_owner@example.com"
+     ]
+    },
+    {
+     "values": {
+      "old_owner": "old_owner@example.com",
+      "service": "drive,calendar",
+      "new_owner": "new_owner@example.com"
+     },
+     "argv": [
+      "create",
+      "datatransfer",
+      "old_owner@example.com",
+      "drive,calendar",
+      "new_owner@example.com",
+      "all"
+     ]
+    },
+    {
+     "values": {
+      "old_owner": "old_owner@example.com",
+      "service": "",
+      "new_owner": "new_owner@example.com"
+     },
+     "argv": [
+      "create",
+      "datatransfer",
+      "old_owner@example.com",
+      "drive",
+      "new_owner@example.com",
+      "all"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.suspend_user",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Suspend account",
+   "risk": 2,
+   "raw": "gam update user <email> suspended on",
+   "description": "Block the user from signing in, without deleting the account (reversible).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "update",
+      "user",
+      "email@example.com",
+      "suspended",
+      "on"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.delete_user",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Delete account",
+   "risk": 2,
+   "raw": "gam delete user <email>",
+   "description": "Permanently delete the account (recoverable for ~20 days, then gone).",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com"
+     },
+     "argv": [
+      "delete",
+      "user",
+      "email@example.com"
+     ]
+    }
+   ]
+  }
+ ]
+}

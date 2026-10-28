@@ -30,7 +30,7 @@ def main() -> None:
     args = parser.parse_args()
     gamgui = args.gamgui.resolve()
     sys.path.insert(0, str(gamgui))
-    from gamgui.core.catalog.catalog import _is_sensitive, _make_reads_buildable  # noqa: PLC0415
+    from gamgui.core.catalog.catalog import _curated, _is_sensitive, _make_reads_buildable  # noqa: PLC0415
     from gamgui.core.catalog.models import CatalogCommand  # noqa: PLC0415
 
     catalog = json.loads((ROOT / "Vendor" / "gam7" / "command_catalog.json").read_text(encoding="utf-8"))
@@ -52,11 +52,55 @@ def main() -> None:
         })
     commit = subprocess.run(["git", "-C", str(gamgui), "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
                             check=True).stdout.strip()
-    out = {"source": {"gamgui_commit": commit, "gam_version": catalog["version"], "generator": "scripts/gen_catalog_reads.py"},
-           "reads": reads}
+    source = {"gamgui_commit": commit, "gam_version": catalog["version"], "generator": "scripts/gen_catalog_reads.py"}
+    out = {"source": source, "reads": reads}
     (ROOT / "Tests" / "Fixtures" / "catalog_reads.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n",
                                                                     encoding="utf-8")
     print(f"{len(reads)} reads, {sum(r['sensitive'] for r in reads)} sensitive, from GamGUI {commit} over GAM {catalog['version']}")
+    curated = [_curated_entry(command) for command in _curated()]
+    (ROOT / "Tests" / "Fixtures" / "catalog_curated.json").write_text(
+        json.dumps({"source": source, "commands": curated}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"{len(curated)} curated commands")
+
+
+# A value for each kind of slot, as the Builder's form posts it once `_assemble` has stripped it. The text has a line break,
+# markup characters and an ampersand, so the auto-reply's HTML (`autoreply_html`) is held too.
+_SAMPLE = {"target_user": "{key}@example.com", "user": "{key}@example.com", "group": "{key}@example.com",
+           "email": "{key}@example.com", "text": "{key} one\nA < B & C"}
+
+
+def _curated_entry(command) -> dict:
+    """GamGUI's curated command (`catalog._curated`) as the Swift port must declare it, and the argv its `build` makes: with every
+    slot filled as `routes/builder.py::_assemble` hands it (stripped, once per choice of each choice slot), and with only the
+    required text and address slots filled, an optional one and every choice left empty. `_assemble` itself would refuse an empty
+    choice (every choice slot is required); that case holds the build's own defaults (`or "keep"`), which the Swift form applies
+    to an empty choice as its picker does. `_assemble`'s stripping and required check aren't run here: the Swift tests hold them."""
+    def filled(choice_key: str = "", choice: str = "") -> dict:
+        values = {}
+        for slot in command.slots:
+            if slot.kind.value == "choice":
+                values[slot.key] = choice if slot.key == choice_key else (slot.default or slot.choices[0])
+            else:
+                values[slot.key] = _SAMPLE[slot.kind.value].format(key=slot.key)
+        return values
+
+    cases = [filled()]
+    for slot in command.slots:
+        if slot.kind.value == "choice":
+            cases += [filled(slot.key, choice) for choice in slot.choices]
+    cases.append({slot.key: (filled()[slot.key] if slot.required and slot.kind.value != "choice" else "") for slot in command.slots})
+    unique = []
+    for values in cases:
+        if values not in unique:
+            unique.append(values)
+    return {
+        "id": command.id, "category": command.category, "subcategory": command.subcategory, "name": command.name,
+        "risk": int(command.risk), "raw": command.raw_syntax, "description": command.description,
+        "slots": [{"key": s.key, "label": s.label, "kind": s.kind.value, "required": s.required, "choices": s.choices or [],
+                   "default": s.default, "placeholder": s.placeholder, "hints": s.hints, "hintNote": s.hint_note}
+                  for s in command.slots],
+        "cases": [{"values": values, "argv": list(command.build(values))} for values in unique],
+    }
 
 
 if __name__ == "__main__":
