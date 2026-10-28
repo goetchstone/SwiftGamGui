@@ -428,7 +428,8 @@ public final class OffboardChanges {
             // reminder alone (low risk), with nothing of the leaver's left to confirm.
             let typed = steps.contains { Guard.normalized($0.target) == Guard.normalized(user) } ? user : nil
             switch await executor.preview(steps, confirmStep: true, expecting: (domain, tenant.generation),
-                                          stopsAtAccountWideFailure: false, typedAddress: typed, precondition: precondition) {
+                                          stopsAtAccountWideFailure: false, typedAddress: typed, title: "Offboarding \(user)",
+                                          precondition: precondition) {
             case .success(let held): preview = held
             case .failure(let refusal): return refuse(refusal.message)
             }

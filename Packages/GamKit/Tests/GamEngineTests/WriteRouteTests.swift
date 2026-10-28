@@ -65,6 +65,17 @@ struct WriteRouteTests {
         #expect(!writing.contains("App/BuilderView.swift"), "\(writing)")
     }
 
+    /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
+    /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
+    @Test func theJobsTrayReachesNoWrite() throws {
+        let manifest = try String(contentsOf: Self.root.appending(path: "Packages/GamKit/Package.swift"), encoding: .utf8)
+        #expect(manifest.contains(#".target(name: "Jobs"),"#), "Jobs gains no dependency")
+        let imports = try Self.swiftFiles(in: "App").first { $0.path == "App/JobsView.swift" }?.lines.filter { $0.hasPrefix("import ") }
+        #expect(imports.map(Set.init) == ["import Jobs", "import SwiftUI"])
+        #expect(try Self.files(in: "App", matching: ["stopRun ="]) == ["App/AppServices.swift"])
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["stopRun ="]).isEmpty)
+    }
+
     /// `GamRunner.runRaw` takes any argv, and without a config directory GAM falls back to `~/.gam`
     /// (the operator's own GAM, if any). Only the authenticated runner (credentials) and the version probe
     /// (an empty config) call it, and only they make a config directory.

@@ -112,6 +112,19 @@ final class Incidents {
         return save(record)
     }
 
+    /// Marks the to-do item of `kind` saying `words`, on `basis`, done by hand in the incident `id`, as `how` says, now, by
+    /// `by`, in place of any tick of it before; or with `how` nil undoes it: the problem in words, or nil once saved (Respond's
+    /// Mark Done…).
+    func tick(kind: String, words: String, basis: String, how: String?, by: String, in id: String) -> String? {
+        guard var record = record(id) else { return "That incident isn't kept any more." }
+        record.ticks.removeAll { $0.kind == kind && $0.words == words && $0.basis == basis }
+        if let how {
+            record.ticks.append(IncidentStore.Tick(kind: kind, words: words, basis: basis, how: how.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                   at: Date(), by: by))
+        }
+        return save(record)
+    }
+
     /// Keeps an export (read with `IncidentStore.readExport`) as the incident's evidence; the problem in words, or nil.
     func keep(_ export: IncidentStore.Export, in id: String) -> String? {
         do {

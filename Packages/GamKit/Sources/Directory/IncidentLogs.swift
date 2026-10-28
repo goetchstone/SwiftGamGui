@@ -53,10 +53,24 @@ public final class IncidentLogs {
         /// How many of its events Google flagged, and how many accounts they're of: worked out once, as the log is made, not
         /// by the screen at every redraw (2026-10-24: a 200,000-event log's took about 0.1 s on the main thread each time).
         public let flagged: Int, accounts: Int
+        /// Whose events it holds every one of, and between when: each read of it with no address filter, for every account
+        /// (nil) or these (lowercased), from its oldest event to its newest, or to `through` for a read stopped at its cap
+        /// (the day it stopped in may be held only in part: review 2026-10-28). Empty when it can't say: read by an address, read
+        /// newest first to a cap (Chrome's and the admin log's for accounts), or no events. What tells a quiet mailbox from one
+        /// not read (`LogReading.Whole`).
+        public let whole: [Whole]
         public var id: ActivityLogs.Application { application }
 
+        public struct Whole: Sendable, Equatable {
+            public let accounts: Set<String>?
+            public let from: Date
+            public let to: Date
+        }
+
+        /// `scope`: the accounts a read with no address filter was for (empty: every account), to work out `whole` from its rows;
+        /// nil for a read that can't say. `whole` given instead: a log put together from reads, theirs.
         init(application: ActivityLogs.Application, rows: Result<[ActivityLogs.Row], UserAccess.Problem>, hours: Int, capped: Bool,
-             through: Date? = nil) {
+             through: Date? = nil, scope: [String]? = nil, whole: [Whole] = []) {
             self.application = application
             self.rows = rows
             self.hours = hours
@@ -65,6 +79,13 @@ public final class IncidentLogs {
             let read = (try? rows.get()) ?? []
             flagged = read.count { $0.flagged }
             accounts = Set(read.map(\.who)).count
+            let times = read.compactMap(\.date)
+            if let scope, let from = times.min(), let newest = times.max(), !capped || through != nil {
+                let to = through.map { min(newest, $0) } ?? newest
+                self.whole = from < to ? [Whole(accounts: scope.isEmpty ? nil : Set(scope.map { $0.lowercased() }), from: from, to: to)] : []
+            } else {
+                self.whole = whole
+            }
         }
     }
 
@@ -269,7 +290,8 @@ public final class IncidentLogs {
         } estimated: { estimate in
             await progress(application, .estimate(estimate))
         }
-        return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through)
+        return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through,
+                   scope: ip.isEmpty && events.isEmpty ? query.users : nil)
     }
 
     /// Every event of the window, read oldest first (asked for 2026-10-23: "I need it all … the oldest
@@ -526,8 +548,12 @@ public final class IncidentLogs {
     /// readable as one.
     nonisolated static func log(_ application: ActivityLogs.Application, _ csv: String, _ about: About) -> Log? {
         guard let rows = ActivityLogs.rows(exported: csv, application: application) else { return nil }
+        // Chrome's and the admin log's reads for accounts go newest first, each account to its own cap: they can't say. Nor can
+        // an `about.txt` that doesn't say whose and from where (its defaults are every account and any address).
+        let perAccount = [.chrome, .admin].contains(application) && !about.users.isEmpty
         return Log(application: application, rows: .success(rows), hours: about.window[application] ?? about.hours,
-                   capped: about.capped.contains(application), through: about.through[application])
+                   capped: about.capped.contains(application), through: about.through[application],
+                   scope: about.saysWhose && about.ip.isEmpty && !perAccount ? about.users : nil)
     }
 
     /// An export as a pull from its logs read back (`log`), nil when one of them wasn't readable.
@@ -572,7 +598,7 @@ public final class IncidentLogs {
             // Every read stopped short: read through the latest of them; one read whole: whole.
             let capped = read.allSatisfy(\.capped)
             logs.append(Log(application: application, rows: .success(rows), hours: read.map(\.hours).max() ?? 0, capped: capped,
-                            through: capped ? read.compactMap(\.through).max() : nil))
+                            through: capped ? read.compactMap(\.through).max() : nil, whole: read.flatMap(\.whole)))
         }
         var seen: Set<String> = []
         let users = pulls.contains { $0.query.users.isEmpty } ? []
@@ -649,6 +675,9 @@ public final class IncidentLogs {
     /// passed over; one missing leaves its default (every account, any address, no window).
     struct About {
         var hours = 0, users: [String] = [], ip = ""
+        /// It says both whose events and from which address: what a read holding a mailbox whole is judged by.
+        var saysWhose: Bool { saidAccounts && saidAddress }
+        private var saidAccounts = false, saidAddress = false
         var window: [ActivityLogs.Application: Int] = [:], capped: Set<ActivityLogs.Application> = []
         var through: [ActivityLogs.Application: Date] = [:]
 
@@ -668,9 +697,11 @@ public final class IncidentLogs {
                 } else if line.hasPrefix("Accounts: ") {
                     let list = line.dropFirst(10).trimmingCharacters(in: CharacterSet(charactersIn: "."))
                     users = list == "every account" ? [] : list.components(separatedBy: ", ")
+                    saidAccounts = true
                 } else if line.hasPrefix("From IP address: ") {
                     let address = line.dropFirst(17).trimmingCharacters(in: CharacterSet(charactersIn: "."))
                     ip = address == "any" ? "" : address
+                    saidAddress = true
                 } else if let dash = line.range(of: "-log.csv: "),
                           let application = ActivityLogs.Application(rawValue: String(line[..<dash.lowerBound])) {
                     if line.contains("older events past the cap weren't read") { capped.insert(application) }

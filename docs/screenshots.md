@@ -49,6 +49,13 @@ fields and the exact command it runs.
 |---|
 | ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) |
 
+The jobs tray, in every window's toolbar: each change run since launch, running first, with where it stands, its newest
+steps and failures in words, and Stop.
+
+| Jobs |
+|---|
+| ![The jobs tray: an offboarding running with its progress and Stop, and a pull from every mailbox ended with two failed](screenshots/jobs.png) |
+
 | Reports | Usage | Audit |
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words, and a page at a time](screenshots/audit.png) |
@@ -85,7 +92,7 @@ lists and a fingerprinted copy of the evidence.
 
 | The incident report |
 |---|
-| ![The incident report: its numbers, what was done, and the review](screenshots/compromised-report.png) |
+| ![The incident report: its summary, its numbers, what was done, and the review](screenshots/compromised-report.png) |
 
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move

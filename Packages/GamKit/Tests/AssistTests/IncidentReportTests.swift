@@ -149,4 +149,45 @@ struct IncidentReportTests {
         #expect(reviewed.contains("The plan going forward:\n• Enforce 2SV — Pat\n• Train — Sam\n"))
         #expect(reviewed.contains("The review meeting's agenda:\n1. What happened"))
     }
+
+    /// The same pieces drawn as Markdown: headings, a list a section, the timeline a table, the fingerprints fenced; and every
+    /// piece escaped, so a subject an attacker wrote is its words, never a link, an image, HTML, a heading or a list.
+    @Test func theReportAsMarkdown() {
+        #expect(IncidentReport.markdown(escaping: "[Click](https://evil.example) ![x](y) <b>hi</b> *a* _b_ `c` | d $1 & e")
+                == #"\[Click\]\(https://evil.example\) \!\[x\]\(y\) \<b\>hi\</b\> \*a\* \_b\_ \`c\` \| d \$1 \& e"#)
+        #expect(IncidentReport.markdown(escaping: "# Not a heading\nnor this") == ##"\# Not a heading nor this"##)
+        #expect(IncidentReport.markdown(escaping: "12. not a list") == #"12\. not a list"#)
+        #expect(IncidentReport.markdown(escaping: "- nor this") == #"\- nor this"#)
+        #expect(IncidentReport.markdown(escaping: "    nor code: Message-ID 1.5") == "nor code: Message-ID 1.5")
+        let report = Self.report()
+        let markdown = report.markdown(Self.when, hashes: [("evidence/a`b/about.txt", "ab12")])
+        #expect(markdown.hasPrefix("# Incident report: Carol's account taken over\n\nDomain: example.com\n\n"))
+        #expect(markdown.contains("\n\n## What was done\n\n- minute "))
+        #expect(markdown.contains("\n\n| when | account | who | what |\n| --- | --- | --- | --- |\n| minute "))
+        #expect(markdown.contains("\n\n```\nab12  evidence/a`b/about.txt\n```\n"))
+        #expect(markdown.contains("“Shared file”"), "quotes aren't markup: a subject reads as written")
+    }
+
+    /// A step marked done by hand is in what was done, said as typed and shown by the incident, never as an email pulled; and
+    /// the summary heads the report, said as the model's first draft when it was, without making the review written.
+    @Test func whatsTypedIsSaidAsTyped() throws {
+        let reading = Self.reading()
+        let task = try #require(reading.toDo.first { $0.kind.tickable })
+        let ticked = reading.ticking([LogReading.Ticked(kind: task.kind.rawValue, words: task.words, basis: task.basis, how: "Called them.",
+                                                        at: Self.at(100), by: "pat@example.com")])
+        let summary = IncidentReport.Review(summary: "Carol was phished.\n\nEveryone it got to was warned.", summaryDrafted: true)
+        #expect(summary.isEmpty, "a summary alone isn't a review")
+        let report = IncidentReport.make(ticked, record: IncidentReport.Record(title: "T", domain: "example.com", opened: Self.at(90), openedBy: "",
+                                                                              reported: "", notes: [], review: summary),
+                                         changes: [], evidence: [], no2SV: nil, made: Self.at(120), madeBy: "", when: Self.when)
+        #expect(report.actions.contains { $0.source == "Marked done on the incident"
+            && $0.what == "Done by hand (by pat@example.com): \(task.words) How: Called them." })
+        #expect(report.count("byHand")?.number == 1 && report.count("pulled")?.number == 0)
+        #expect(report.count("toDo")?.number == reading.toDo.count - 1)
+        let text = report.text(Self.when)
+        #expect(text.contains("\nSUMMARY\n=======\nCarol was phished.\nEveryone it got to was warned.\nFirst drafted by the on-device model"))
+        #expect(text.contains("only the summary, the notes, the review and what was marked done by hand are typed."))
+        #expect(text.contains("Not written yet. For the review meeting"))
+        #expect(!Self.report().text(Self.when).contains("SUMMARY"), "none written: no section")
+    }
 }

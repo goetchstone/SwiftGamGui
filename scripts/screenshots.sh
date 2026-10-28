@@ -55,6 +55,7 @@ status=0
 # or a run is on Respond.
 # Builder opens on `gam print users` (`SWIFTGAMGUI_SELECT`, its words with `+` between them): the catalog listed, the command's
 # grammar, its fields and the exact command it runs; nothing is run.
+# The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with two made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
@@ -62,7 +63,7 @@ status=0
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
-for spec in home:home users:users groups:groups setup:setup \
+for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
