@@ -1,5 +1,3 @@
-import Foundation
-
 /// GAM's command catalog (`Vendor/gam7/command_catalog.json`: GamGUI's shallow parse of the vendored grammar, regenerated on each
 /// GAM bump) and invariant 3's one door from it to a `GamRead`. A command runs here iff the catalog calls it confidently
 /// read-only, GamGUI's verb rule checked again here agrees (so an edited catalog can't promote a write), and it isn't a
@@ -66,53 +64,35 @@ public struct CommandCatalog: Sendable {
     public let version: String
     public let commands: [Command]
 
-    /// The catalog in `data` (the vendored JSON). Throws when it isn't one.
-    public init(json data: Data) throws {
-        struct Entry: Decodable {
-            let id: String
-            let category: String?
-            let subcategory: String?
-            let name: String?
-            let raw_syntax: String?
-            let verb: String?
-            let risk: Int?
-            let uncertain: Bool?
-        }
-        struct File: Decodable {
-            let version: String?
-            let commands: [Entry]
-        }
-        let file = try JSONDecoder().decode(File.self, from: data)
-        version = file.version ?? ""
-        commands = file.commands.map { entry in
-            let syntax = entry.raw_syntax ?? "", verb = entry.verb ?? ""
-            let risk = Risk(rawValue: entry.risk ?? 1) ?? .change, uncertain = entry.uncertain ?? false
-            let (slots, template) = Self.readTemplate(syntax)
-            // Read-only by the catalog, by the grammar line, and by the keywords its argv actually holds: the template keeps a
-            // word's first alternative and passes over fragments, so an edited line could otherwise emit a write's verb (review
-            // 2026-10-28: `gam update|print user …`).
-            let promoted = risk == .read && !uncertain && Self.readOnly(syntax) && Self.readOnly(literals: template)
-            return Command(id: entry.id, category: entry.category ?? "Other", subcategory: entry.subcategory ?? "", name: entry.name ?? "",
-                           syntax: syntax, verb: verb, risk: risk, uncertain: uncertain, area: Self.area(of: entry.category ?? "Other"),
-                           promoted: promoted, sensitive: promoted && Self.sensitive(syntax: syntax, verb: Self.verb(of: syntax)),
-                           slots: promoted ? slots : [], template: promoted ? template : [])
-        }
+    /// One command as the catalog file lists it.
+    struct Entry: Sendable {
+        let id: String
+        let category: String
+        let subcategory: String
+        let name: String
+        let syntax: String
+        let verb: String
+        let risk: Int
+        let uncertain: Bool
     }
 
-    /// Commands whose name or grammar line holds `text`, case aside, by section (GamGUI's `Catalog.search`); every command for none.
-    public func search(_ text: String) -> [Command] {
-        let wanted = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return Self.bySection(wanted.isEmpty ? commands : commands.filter {
-            $0.name.lowercased().contains(wanted) || $0.syntax.lowercased().contains(wanted)
-        })
+    /// `entries` judged: each promoted or not, by the catalog's word, the grammar line and the argv's own keywords.
+    init(version: String, entries: [Entry]) {
+        self.version = version
+        commands = entries.map(Self.command)
     }
 
-    /// Sorted so a category and subcategory are together, runnable first in each (GamGUI's `_by_section`).
-    static func bySection(_ commands: [Command]) -> [Command] {
-        commands.sorted {
-            ($0.category.lowercased(), $0.subcategory.lowercased(), $0.runnable ? 0 : 1, $0.name.lowercased())
-                < ($1.category.lowercased(), $1.subcategory.lowercased(), $1.runnable ? 0 : 1, $1.name.lowercased())
-        }
+    /// One entry as a command. Read-only by the catalog, by the grammar line, and by the keywords its argv actually holds: the
+    /// template keeps a word's first alternative and passes over fragments, so an edited line could otherwise emit a write's verb
+    /// (review 2026-10-28: `gam update|print user …`), or a required `todrive`.
+    static func command(_ entry: Entry) -> Command {
+        let risk = Risk(rawValue: entry.risk) ?? .change
+        let (slots, template) = readTemplate(entry.syntax)
+        let promoted = risk == .read && !entry.uncertain && readOnly(entry.syntax) && readOnly(literals: template)
+        return Command(id: entry.id, category: entry.category, subcategory: entry.subcategory, name: entry.name, syntax: entry.syntax,
+                       verb: entry.verb, risk: risk, uncertain: entry.uncertain, area: area(of: entry.category), promoted: promoted,
+                       sensitive: promoted && sensitive(syntax: entry.syntax, verb: verb(of: entry.syntax)),
+                       slots: promoted ? slots : [], template: promoted ? template : [])
     }
 
     // MARK: GamGUI's verb rule (`core/catalog/parser.py`)
@@ -132,7 +112,7 @@ public struct CommandCatalog: Sendable {
     static func readOnly(_ syntax: String) -> Bool {
         let after = words(syntax).dropFirst()
         func alternatives(_ word: Substring) -> [String] {
-            word.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
+            word.split(separator: "|").map { PythonText.lower(PythonText.strip(String($0))) }.filter { !$0.isEmpty }
         }
         guard let verb = after.prefix(6).first(where: { word in
             alternatives(word).contains { readVerbs.contains($0) || destructiveVerbs.contains($0) || lowVerbs.contains($0) }
@@ -141,9 +121,21 @@ public struct CommandCatalog: Sendable {
         return !alternativesOfVerb.contains(where: destructiveVerbs.contains) && alternativesOfVerb.contains(where: readVerbs.contains)
     }
 
-    /// The argv's own keywords, in order, are read-only by the same rule: the first known verb among them is a read verb.
+    /// GAM's keywords that change things: `todrive` makes any `print` upload its result as a Sheet to the admin's Drive (a write),
+    /// and `doit` lets a destructive command act. Never a value (some reads put a value where GAM reads options, `print events
+    /// <EventDisplayProperty>*`), never a keyword of a runnable command's argv. Compared as GAM reads a keyword: lowercased,
+    /// underscores dropped (review 2026-10-28).
+    static let keywordsThatChange: Set = ["todrive", "doit"]
+
+    static func changesThings(_ word: String) -> Bool {
+        keywordsThatChange.contains(String(PythonText.lower(word).unicodeScalars.filter { $0 != "_" }))
+    }
+
+    /// The argv's own keywords, in order, are read-only by the same rule: the first known verb among them is a read verb, and none
+    /// is a keyword that changes things.
     static func readOnly(literals template: [Part]) -> Bool {
         let words = template.compactMap { part -> String? in if case .literal(let word) = part { word } else { nil } }
+        guard !words.contains(where: changesThings) else { return false }
         guard let verb = words.first(where: { readVerbs.contains($0) || destructiveVerbs.contains($0) || lowVerbs.contains($0) }) else {
             return false
         }
@@ -155,10 +147,10 @@ public struct CommandCatalog: Sendable {
     static func verb(of syntax: String) -> String {
         let after = words(syntax).dropFirst()
         guard let word = after.prefix(6).first(where: { word in
-            word.split(separator: "|").contains { let lower = $0.trimmingCharacters(in: .whitespaces).lowercased()
+            word.split(separator: "|").contains { let lower = PythonText.lower(PythonText.strip(String($0)))
                 return readVerbs.contains(lower) || destructiveVerbs.contains(lower) || lowVerbs.contains(lower) }
         }) else { return "" }
-        return word.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.first { !$0.isEmpty } ?? ""
+        return word.split(separator: "|").map { PythonText.lower(PythonText.strip(String($0))) }.first { !$0.isEmpty } ?? ""
     }
 
     /// GamGUI's `str.split()`.
@@ -196,7 +188,7 @@ public struct CommandCatalog: Sendable {
             let startDepth = depth
             depth += opens - closes
             let optional = startDepth > 0 || word.hasPrefix("[")
-            let core = word.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+            let core = PythonText.strip(word, of: [0x5B, 0x5D])   // "[]"
             guard !core.isEmpty else { continue }
             let selfContained = word.hasPrefix("[") && word.hasSuffix("]") && opens == 1 && closes == 1
             let isUser = core.contains("UserTypeEntity") || (core == "<UserItem>" && position == 0)
@@ -249,7 +241,7 @@ public struct CommandCatalog: Sendable {
     /// `<RoleItem>` → "Role", `<EmailAddress>` → "Email Address" (GamGUI's `_humanize`: the first letter capitalized, the rest
     /// as written).
     static func humanized(_ placeholder: String) -> String {
-        var name = String(placeholder.trimmingCharacters(in: CharacterSet(charactersIn: "<>[]")).split(separator: "|", omittingEmptySubsequences: false).first ?? "")
+        var name = String(PythonText.strip(placeholder, of: [0x3C, 0x3E, 0x5B, 0x5D]).split(separator: "|", omittingEmptySubsequences: false).first ?? "")
         for suffix in ["TypeEntity", "Entity", "List", "Item"] where name.hasSuffix(suffix) && name.count > suffix.count {
             name.removeLast(suffix.count)
             break
@@ -260,14 +252,14 @@ public struct CommandCatalog: Sendable {
             spaced.append(character)
             previous = character
         }
-        spaced = spaced.trimmingCharacters(in: .whitespaces)
+        spaced = PythonText.strip(spaced)
         guard let first = spaced.first else { return placeholder }
         return first.uppercased() + spaced.dropFirst()
     }
 
     /// GamGUI's `_slot_kind`, by the placeholder's words.
     static func kind(of placeholder: String) -> Slot.Kind {
-        let lower = placeholder.lowercased()
+        let lower = PythonText.lower(placeholder)
         return lower.contains("email") ? .email : lower.contains("group") ? .group : lower.contains("user") ? .user : .text
     }
 

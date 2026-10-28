@@ -37,9 +37,12 @@ struct BuilderView: View {
     }
 
     var body: some View {
-        HSplitView {
+        // A row, not a split view: a split view's minimum is its whole width, which the smallest window can't hold (the
+        // snapshots check every column keeps 100 points to spare).
+        HStack(spacing: 0) {
             list
-                .frame(minWidth: 260, idealWidth: 320, maxWidth: 420)
+                .frame(width: 260)
+            Divider()
             Group {
                 if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
                     CommandDetail(command: command, setup: setup, access: access).id(command.id)
@@ -49,7 +52,7 @@ struct BuilderView: View {
                                                              + "the rest are listed to browse."))
                 }
             }
-            .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
         .searchable(text: $query, prompt: "Command or its grammar")
         .toolbar {

@@ -98,13 +98,17 @@ struct CommandCatalogTests {
               {"id": "w5", "category": "Users", "raw_syntax": "gam update|print user <UserItem> suspended on", "verb": "print", "risk": 0},
               {"id": "w6", "category": "Users", "raw_syntax": "gam x)|print update user <UserItem> suspended on", "verb": "print", "risk": 0},
               {"id": "w7", "category": "Users", "raw_syntax": "gam <UserTypeEntity> get drivefile <DriveFileEntity>", "verb": "x", "risk": 0},
+              {"id": "w8", "category": "Users", "raw_syntax": "gam print users To_Drive", "verb": "print", "risk": 0},
+              {"id": "w9", "category": "Users", "raw_syntax": "gam print users todrive", "verb": "print", "risk": 0},
               {"id": "r1", "category": "Users", "raw_syntax": "gam print users [query <QueryUser>]", "verb": "print", "risk": 0}
             ]}
             """
         // Review 2026-10-28: the argv's own keywords are judged, not only the grammar's words (the template keeps a first
         // alternative and passes over fragments), and a download is known by the grammar line, never the file's `verb`.
         let catalog = try CommandCatalog(json: Data(edited.utf8))
-        #expect(catalog.commands.filter(\.runnable).map(\.id) == ["r1"])
+        #expect(catalog.commands.filter(\.runnable).map(\.id) == ["w8", "r1"])
+        let mixedCase = try #require(catalog.commands.first { $0.id == "w8" })
+        #expect(try GamCommands.catalogRead(mixedCase, values: [:]).argv == ["print", "users"], "a word the template doesn't emit isn't sent")
         #expect(catalog.commands.first { $0.id == "w7" }?.sensitive == true)
         #expect(try GamCommands.catalogRead(catalog.commands.last!, values: [:]).argv == ["print", "users"], "an optional group is dropped")
     }

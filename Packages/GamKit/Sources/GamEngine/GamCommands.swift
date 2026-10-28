@@ -823,15 +823,10 @@ public enum GamCommands {
 
     // MARK: the Builder's catalog reads (invariant 3's one door from the catalog)
 
-    /// GAM's keywords a value may never be: `todrive` makes any `print` upload its result as a Sheet to the admin's Drive (a
-    /// write), and `doit` lets a destructive command act. Some reads put a value where GAM reads options (`print events
-    /// <EventDisplayProperty>*`: review 2026-10-28), so each value is checked as GAM reads a keyword, case and underscores aside.
-    static let keywordsNeverAValue: Set = ["todrive", "doit"]
-
     /// A catalog command's read with `values` (by slot key), as GamGUI's generic read builder puts it together: each value trimmed
     /// as Python trims and one argv element, an optional one left out when empty. Refuses a command that isn't runnable, a
-    /// required value left empty (where GamGUI would pass an empty argument along) and a value that's a keyword above (where
-    /// GamGUI would pass it along, and GAM would write).
+    /// required value left empty (where GamGUI would pass an empty argument along) and a value that's a keyword that changes things
+    /// (`CommandCatalog.keywordsThatChange`, where GamGUI would pass it along, and GAM would write).
     public static func catalogRead(_ command: CommandCatalog.Command, values: [String: String]) throws(Invalid) -> GamRead {
         guard command.runnable else {
             throw .argument(command.sensitive ? "\(command.name) is a download or a secret: it runs from the Builder once its run is audited"
@@ -841,7 +836,7 @@ public enum GamCommands {
         if let missing = command.slots.first(where: { $0.required && value($0.key).isEmpty }) {
             throw .argument("Fill in \(missing.label)")
         }
-        if let keyword = command.slots.first(where: { keywordsNeverAValue.contains(PythonText.lower(value($0.key)).replacingOccurrences(of: "_", with: "")) }) {
+        if let keyword = command.slots.first(where: { CommandCatalog.changesThings(value($0.key)) }) {
             throw .argument("\(keyword.label) can't be “\(value(keyword.key))”: GAM reads that as a keyword that changes things, and the Builder only reads")
         }
         var argv: [String] = []
