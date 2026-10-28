@@ -35,9 +35,12 @@ text, a CSV a list, and the evidence copied with each file's SHA-256); and comin
 (PR #129), and where it started: the emails the first account taken over got from outside before the attack, the one the
 operator marks as the phish, and who else got it (runbook "Where it started"). Then slice 7's core: each attacker address read
 for every account from Still to do, done once a saved read did, and a wide read saying up front how far it will get (runbook
-"Narrow first"). Next, in this order: a read that fails partway says why it stopped (runbook "Next"); a pull anchored on
-the attack; the checklist (done from the logs where they show it,
-else ticked by hand); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
+"Narrow first"). Then (2026-10-28, after a run through Respond a week in: done items kept asking) the checklist's hand tick
+for what no log shows, never on a lock, a log read or a computer; one warn item and one pull-again item across every email,
+counted as Report counts; marks by network, answering "is this address theirs" from Respond; Pull Again only for a mailbox no
+read holds whole (failure log 2026-10-28); and the report as one document drawn as text, Markdown and PDF, with a summary the
+on-device model can draft from the facts (runbook "Marked done by hand", "The report"). Next, in this order: a read that fails
+partway says why it stopped (runbook "Next"); a pull anchored on the attack; then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is
 picked up as it stands, without redoing a step.** Built on the Incident screen

@@ -300,6 +300,9 @@ struct CompromisedView: View {
             sweep(address)
             go(.investigate, to: Self.reportsAnchor, scroller)
         }, swept: swept(pull, open: open), phish: open?.phish, pickPhish: open.map { record in { phish in incidents.pickPhish(phish, in: record.id) } },
+        ticks: open?.ticks ?? [], tick: open.map { record in
+            { kind, words, basis, how in incidents.tick(kind: kind, words: words, basis: basis, how: how, by: setup.connectedAdmin ?? "", in: record.id) }
+        },
         incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
         anchor: part == .findings ? Self.readerAnchor : part == .toDo ? Self.toDoAnchor : Self.reportAnchor)
     }
@@ -539,7 +542,10 @@ struct CompromisedView: View {
                         reviewed.review = IncidentStore.Review(kind: "Account takeover and phishing", severity: "High",
                                                                meeting: Date().addingTimeInterval(86_400 * 2), attendees: "Pat, Sam",
                                                                cause: "A look-alike sign-in page took Carol's password; she had no 2-Step Verification.",
-                                                               plan: "Enforce 2-Step Verification for everyone — Pat — in two weeks")
+                                                               plan: "Enforce 2-Step Verification for everyone — Pat — in two weeks",
+                                                               summary: "A look-alike sign-in page took Carol's password, and the attacker "
+                                                                   + "signed in and sent a phish from her account. Her account is locked, "
+                                                                   + "the phish is pulled, and the people it got to are being warned.")
                         _ = incidents.save(reviewed)
                         _ = incidents.addNote("Called the bank about the invoice in the phish.", at: Date(), to: record.id)
                     }

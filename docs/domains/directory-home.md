@@ -235,3 +235,9 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **Not live yet:** the first real load is the operator's, with Touch ID and an explicit go for a live
   read.
 - The demo (`SWIFTGAMGUI_DEMO=1`, `SWIFTGAMGUI_SCREEN=home`) connects example.com and loads it.
+
+## Not built yet (GamGUI has them; parity audit 2026-10-28)
+- **Home's Recent failures card** (GamGUI `web/routes/home.py`: the last 3 failed writes in 30 days, linking to the audit
+  log) and its Jobs card, which waits on the jobs tray (plan §12, phase 3).
+- **A department for many people** (GamGUI `web/routes/users.py`, `bulk_store.html`: a group or a pasted list, a preview, a
+  run, retry the failed ones): a bulk job, so after the jobs tray. Build it only when asked, as with signatures for many.
