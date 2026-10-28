@@ -43,11 +43,12 @@ Reports: the people behind each of the directory's counts, the storage and mail 
 apps and AI agents. Audit: this app's audit log, searched, paged and exported to CSV.
 
 Builder: GAM's whole command catalog by area and section, searched by name or grammar; a command that only reads shows its
-fields and the exact command it runs.
+fields and the exact command it runs. GamGUI's curated commands change the domain from a typed form: Preview… holds the
+exact command, and it runs once you click Run.
 
-| Builder |
-|---|
-| ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) |
+| Builder | A change | Its confirm |
+|---|---|---|
+| ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) | ![Add member to group: the group, the member and the role, and the exact command](screenshots/builder-change.png) | ![The confirm sheet: the change, its exact command, and that it changes the domain once you click Run](screenshots/builder-confirm.png) |
 
 The jobs tray, in every window's toolbar: each change run since launch, running first, with where it stands, its newest
 steps and failures in words, and Stop.
