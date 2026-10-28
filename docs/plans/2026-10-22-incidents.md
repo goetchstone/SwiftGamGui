@@ -35,7 +35,8 @@ text, a CSV a list, and the evidence copied with each file's SHA-256); and comin
 (PR #129), and where it started: the emails the first account taken over got from outside before the attack, the one the
 operator marks as the phish, and who else got it (runbook "Where it started"). Then slice 7's core: each attacker address read
 for every account from Still to do, done once a saved read did, and a wide read saying up front how far it will get (runbook
-"Narrow first"). Next, in this order: a pull anchored on the attack; the checklist (done from the logs where they show it,
+"Narrow first"). Next, in this order: a read that fails partway says why it stopped (runbook "Next"); a pull anchored on
+the attack; the checklist (done from the logs where they show it,
 else ticked by hand); then slices 5 and 6.** Asked for: scan the logs, flag behaviour, recommend actions, use the
 on-device model and the logs' own logic, open an incident from what the logs flag, watch it with log pulls that add
 to it, and a report "sufficient documentation we can take to anyone". Required: **an incident already in progress is

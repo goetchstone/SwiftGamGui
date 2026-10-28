@@ -22,6 +22,30 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-27 — The write-route scan failed a reader type for its name alone
+- **What happened:** Where it started (PR #131) added `LogReading.Origin`; `WriteRouteTests.noIntentReachesAWrite` failed,
+  since `App/LogReaderView.swift` (model-side: it names `Assist`) now held "Origin", a word on its writing list (ChangeCore's
+  write-origin enum). Nothing reached a write; the type was renamed `WayIn` and the test kept as it is.
+- **Invariant in force:** #10 (a model or Siri only drafts a preview), held by the test's text scan.
+- **Why it didn't hold:** it held, coarsely: the scan matches words anywhere in a file's text (identifiers, comments), so a
+  harmless name colliding with a write-path type fails it. Cheap to work around once known; confusing the first time.
+- **Would a rule have caught it?** not a miss: the test was stricter than the invariant.
+- **Enforcement home if changed:** the tripwire test itself: match module-qualified or whole identifiers, or say in its
+  failure which listed word matched, so the fix is a rename and not a hunt.
+
+## 2026-10-27 — The credential guard read a pattern string as a GAM run
+- **What happened:** watching the operator's live 30-day pull (read-only: `ps` for the app's `gam` children), a command whose
+  `sed` pattern held "gam7/gam report" was blocked as running GAM from a shell, and listing the incidents folder's saved reads
+  (names and sizes, to see whether a pull was saved) was blocked as a credentials path. A script file and asking the operator
+  worked around both.
+- **Invariant in force:** #4 (secrets in the Keychain) and "Never touch credentials" (no `gam` from a shell), held by the local
+  credential-guard hook.
+- **Why it didn't hold:** it held, over-broadly: the hook matches the command's text, not what runs; the incidents folder
+  holds evidence, not credentials, under the same app-data root.
+- **Would a rule have caught it?** not a miss: a false positive cost a round trip each.
+- **Enforcement home if changed:** the hook: match an executed `gam` at a command's head; whether to allow names and sizes
+  under `incidents/` is the operator's call (it's tenant data, not credentials).
+
 ## 2026-10-23 — The mock's mailbox search accepted max_to_print and ignored it
 - **What happened:** reviewing scheduled sends (a delete capped at 500 found), the `gam-command-reviewer` agent found the
   strict `print messages query` handler validated `max_to_print` and then listed every match, while GAM stops at it. No
