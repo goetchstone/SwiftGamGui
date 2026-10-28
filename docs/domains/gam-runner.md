@@ -66,7 +66,8 @@ an allowlisted environment, a timeout, and capped output capture.
   renumbered, each checked to land on the text it names, and **about 60 had already been wrong**, most of them
   NativeArgvTests' and the runbooks' tables, left on 7.48.30's numbers by the last bump, and a few that never matched (5838
   for `password`, which is 5845 at 7.48.34). So a bump renumbers by the text a citation names, not by the shift alone; the
-  dated plans in `docs/plans/` keep the numbers of their day.
+  dated plans in `docs/plans/` keep the numbers of their day. **Live (2026-10-28):** the operator's app connects to its
+  domain on 7.49.02 (reconnect and access check). The rest of the acceptance pass, a read per area, is still to do.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log

@@ -973,6 +973,9 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
   Every Account From, and a wide read's estimate).
 - After any change to Still to do: a run through Respond on a real incident a week in, each item read against what was
   actually done (failure log 2026-10-28: made-up incidents never showed a week of real use).
+- **Ask the operator which items T10 to T14 were** in that run (2026-10-28: "should have been in the logs already"). They rank
+  after the address questions, so likely `look` or `checkShared`: if the logs the pull holds can answer one, that's a rule to
+  add rather than a tick.
 - **A read that fails partway says so** (seen 2026-10-27): `IncidentLogs.complete` stops at a failed read and returns what it
   had with `through`, dropping the error, so the log reads as stopped at its bound. The operator's 30-day every-account Gmail
   stopped at the window starting Oct 6 after about 90 reads (under the 200 bound), with no reason on screen: keep the
