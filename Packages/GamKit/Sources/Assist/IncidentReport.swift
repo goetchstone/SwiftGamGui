@@ -661,6 +661,11 @@ public struct IncidentReport: Sendable, Equatable {
         if let unread = wayIn.pickedUnread {
             return "The email picked as where it started (\(unread)) isn't in the logs read: pull \(wayIn.account)'s Gmail log from before \(when(wayIn.attackedAt))."
         }
+        if wayIn.candidates.isEmpty {
+            // None to pick: said so, never "0 emails … are listed" (2026-10-28, seen on the report's screenshot).
+            return "Not found yet: the logs read show no email from outside reaching \(wayIn.account) in the \(LogReading.wayInHours) hours "
+                + "before the attacker's first sign at \(when(wayIn.attackedAt)). Pull its Gmail log from before then to see what came in."
+        }
         return "Not picked yet: \(wayIn.candidates.count) email\(wayIn.candidates.count == 1 ? "" : "s") \(wayIn.account) received from outside in the "
             + "\(LogReading.wayInHours) hours before the attacker's first sign at \(when(wayIn.attackedAt)) are listed on Investigate, under Where it started."
     }

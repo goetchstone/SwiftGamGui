@@ -544,8 +544,9 @@ struct CompromisedView: View {
                                                                cause: "A look-alike sign-in page took Carol's password; she had no 2-Step Verification.",
                                                                plan: "Enforce 2-Step Verification for everyone — Pat — in two weeks",
                                                                summary: "A look-alike sign-in page took Carol's password, and the attacker "
-                                                                   + "signed in and sent a phish from her account. Her account is locked, "
-                                                                   + "the phish is pulled, and the people it got to are being warned.")
+                                                                   + "signed in and sent a phish from her account. Carol's account is locked "
+                                                                   + "and the lock is holding; Dana's is still to secure, and the people the "
+                                                                   + "phish got to are being warned.")
                         _ = incidents.save(reviewed)
                         _ = incidents.addNote("Called the bank about the invoice in the phish.", at: Date(), to: record.id)
                     }
