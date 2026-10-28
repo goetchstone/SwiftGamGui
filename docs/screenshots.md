@@ -78,7 +78,7 @@ lists and a fingerprinted copy of the evidence.
 
 | The incident report |
 |---|
-| ![The incident report: its numbers, what was done, and the review](screenshots/compromised-report.png) |
+| ![The incident report: its summary, its numbers, what was done, and the review](screenshots/compromised-report.png) |
 
 Phishing: one email out of every mailbox. Find Copies lists who has it, by its Message-ID, and changes nothing;
 List Recipients reads who the sender sent it to, outside the domain first; Trash shows each mailbox it will move

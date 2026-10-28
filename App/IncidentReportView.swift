@@ -36,13 +36,19 @@ struct ReportInputs {
 
 /// Report's incident report (docs/plans/2026-10-22-incidents.md, slice 4): the numbers, each opening the list behind it; every
 /// step taken with the record that shows it; the attacker's emails and whom they reached; the review (lessons learned and the
-/// plan going forward, with the review meeting's agenda); and Export Report…, a new private folder with the report as a PDF and
-/// as text, its lists as CSVs, and a copy of the evidence with each file's SHA-256. Reads and this Mac only.
+/// plan going forward, with the review meeting's agenda); the summary, written or drafted by the on-device model and checked;
+/// and Export Report…, a new private folder with the report as a PDF, Markdown and text, its lists as CSVs, and a copy of the
+/// evidence with each file's SHA-256. Reads and this Mac only.
 struct IncidentReportView: View {
     let report: IncidentReport
     let inputs: ReportInputs
+    /// The on-device model's draft of the summary from this report's facts, and how many of its sentences were dropped for a
+    /// number the facts don't hold; nil when the model can't answer now (`modelUnavailable` says why).
+    let draft: (() async throws -> (text: String, dropped: Int))?
+    let modelUnavailable: String?
     @State private var shown: IncidentReport.Count?
     @State private var reviewing = false
+    @State private var summarizing = false
     @State private var reading = false
     @State private var exporting = false
     @State private var exported: (text: String, failed: Bool, folder: URL?)?
@@ -71,8 +77,8 @@ struct IncidentReportView: View {
                     .accessibilityHint("Shows the whole report as it will be exported.")
                 Button("Export Report…", action: export)
                     .disabled(exporting)
-                    .accessibilityHint("Saves the report as a PDF and as text, its lists as CSV files, and a copy of the evidence with "
-                                       + "each file's fingerprint, in a new private folder.")
+                    .accessibilityHint("Saves the report as a PDF, as Markdown and as text, its lists as CSV files, and a copy of the "
+                                       + "evidence with each file's fingerprint, in a new private folder.")
             }
             if let exported {
                 HStack {
@@ -89,7 +95,15 @@ struct IncidentReportView: View {
             Text("Incident report").accessibilityAddTraits(.isHeader)
         } footer: {
             Text("Worked out by rules in code from the incident's saved logs and this app's audit log, as Respond shows them; only the "
-                 + "notes and the review are typed.")
+                 + "summary, the notes, the review and what's marked done by hand are typed.")
+        }
+        Section {
+            summary
+        } header: {
+            Text("Summary").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("At the top of the report, for whoever reads it first. The on-device model can draft it from the numbers and steps "
+                 + "below, never from anything the attacker wrote; you check it before it's kept.")
         }
         Section {
             ForEach(report.counts) { count in
@@ -150,6 +164,9 @@ struct IncidentReportView: View {
         }
         .sheet(item: $shown) { count in CountSheet(count: count, title: report.record.title) }
         .sheet(isPresented: $reviewing) { ReviewSheet(review: inputs.record.review, save: inputs.saveReview) }
+        .sheet(isPresented: $summarizing) {
+            SummarySheet(review: inputs.record.review, draft: draft, modelUnavailable: modelUnavailable, save: inputs.saveReview)
+        }
         .sheet(isPresented: $reading) {
             // Made now, as an export would be.
             FullReportSheet(text: { var now = report; now.made = Date(); return now.text(Self.when, zone: TimeZone.current.identifier) }())
@@ -165,9 +182,26 @@ struct IncidentReportView: View {
         return "First sign of the attacker: \(Self.when(first)).\(detected) \(contained)"
     }
 
+    @ViewBuilder private var summary: some View {
+        let review = inputs.record.review
+        if review.summary.isEmpty {
+            Text("Not written yet.").foregroundStyle(.secondary)
+        } else {
+            Text(review.summary).textSelection(.enabled)
+            if review.summaryDrafted {
+                Label("First drafted by the on-device model, then checked.", systemImage: "sparkles").font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        HStack {
+            Spacer()
+            Button(review.summary.isEmpty ? "Write the Summary…" : "Edit the Summary…") { summarizing = true }
+                .accessibilityHint("A few paragraphs at the top of the report. The on-device model can draft them for you to check.")
+        }
+    }
+
     @ViewBuilder private var review: some View {
         let review = inputs.record.review
-        if review == IncidentStore.Review() {
+        if review.isEmpty {
             Text("Not written yet. The review meeting's agenda:").foregroundStyle(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 6) {
@@ -192,7 +226,7 @@ struct IncidentReportView: View {
         .textSelection(.enabled)
         HStack {
             Spacer()
-            Button(review == IncidentStore.Review() ? "Write the Review…" : "Edit the Review…") { reviewing = true }
+            Button(review.isEmpty ? "Write the Review…" : "Edit the Review…") { reviewing = true }
                 .accessibilityHint("The incident's type and severity, the review meeting, how they got in, what went well, what to do "
                                    + "better, and the plan going forward.")
         }
@@ -245,7 +279,7 @@ struct IncidentReportView: View {
         if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
     }
 
-    /// The report's folder at `folder`, made new: `Incident report.pdf` and `.txt`, a CSV for each list, `evidence/` (every saved
+    /// The report's folder at `folder`, made new: `Incident report.pdf`, `.md` and `.txt`, a CSV for each list, `evidence/` (every saved
     /// read, copied) and `evidence-sha256.txt`. Returns how many evidence files were copied. A failure removes what was made.
     nonisolated static func write(_ report: IncidentReport, zone: String, to folder: URL,
                                   copyEvidence: (URL) throws -> [(file: String, sha256: String)]) throws -> Int {
@@ -255,9 +289,10 @@ struct IncidentReportView: View {
         }
         do {
             let hashes = try copyEvidence(folder.appending(path: "evidence", directoryHint: .isDirectory))
-            let text = report.text(when, zone: zone, hashes: hashes)
-            try AuditExport.writePrivately(text, to: folder.appending(path: "Incident report.txt"))
-            try writePrivately(pdf(text, title: "Incident report: \(report.record.title)"), to: folder.appending(path: "Incident report.pdf"))
+            let blocks = report.blocks(when, zone: zone, hashes: hashes)
+            try AuditExport.writePrivately(IncidentReport.text(blocks), to: folder.appending(path: "Incident report.txt"))
+            try AuditExport.writePrivately(IncidentReport.markdown(blocks), to: folder.appending(path: "Incident report.md"))
+            try writePrivately(pdf(blocks, title: "Incident report: \(report.record.title)"), to: folder.appending(path: "Incident report.pdf"))
             let lists = [("who-got-it.csv", "gotIt"), ("emails.csv", "emails"), ("accounts.csv", "accounts"), ("steps-taken.csv", "actions"),
                          ("still-to-do.csv", "toDo"), ("emails-pulled.csv", "pulled")]
             for (name, id) in lists {
@@ -291,23 +326,48 @@ struct IncidentReportView: View {
         guard fsync(fd) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
     }
 
-    /// The report's text as a US Letter PDF, typeset with Core Text from plain text (nothing in it is read as markup): the
-    /// first line as the title, each heading (a line over a rule of `=`) in bold, the rest as it is, a page number at the foot.
-    nonisolated static func pdf(_ text: String, title: String) -> Data {
+    /// The report as a US Letter PDF, typeset with Core Text from its pieces (`IncidentReport.blocks`), each plain text (nothing
+    /// in it is read as markup): the title large, each heading in bold with space above, each item after a bullet with its
+    /// lines hung under the first, the timeline's columns in bold over its rows, the fingerprints in a fixed-width font, and a
+    /// page number at the foot.
+    nonisolated static func pdf(_ blocks: [IncidentReport.Block], title: String) -> Data {
         let body = CTFontCreateUIFontForLanguage(.system, 9.5, nil)!, bold = CTFontCreateUIFontForLanguage(.emphasizedSystem, 11, nil)!
-        let big = CTFontCreateUIFontForLanguage(.emphasizedSystem, 15, nil)!
+        let big = CTFontCreateUIFontForLanguage(.emphasizedSystem, 15, nil)!, strong = CTFontCreateUIFontForLanguage(.emphasizedSystem, 9.5, nil)!
+        let fixed = CTFontCreateUIFontForLanguage(.userFixedPitch, 8, nil)!
         let ink = CGColor(gray: 0, alpha: 1)
         let styled = NSMutableAttributedString()
-        let lines = text.components(separatedBy: "\n")
-        for (index, line) in lines.enumerated() {
-            // A heading's rule: only right under a line, as long as it (`IncidentReport.text`'s `heading`).
-            if index > 0, !line.isEmpty, line.allSatisfy({ $0 == "=" }), line.count == min(lines[index - 1].count, 72) { continue }
-            let heading = index + 1 < lines.count && !lines[index + 1].isEmpty && lines[index + 1].allSatisfy { $0 == "=" }
-                && lines[index + 1].count == min(line.count, 72)
-            let font = index == 0 ? big : heading ? bold : body
-            styled.append(NSAttributedString(string: line + "\n", attributes: [
+        func add(_ text: String, _ font: CTFont, before: CGFloat = 0, hang: CGFloat = 0) {
+            var before = before, hang = hang
+            var tabs = [CTTextTabCreate(.left, Double(hang), nil)] as CFArray
+            let style = withUnsafeBytes(of: &before) { before in
+                withUnsafeBytes(of: &hang) { hang in
+                    withUnsafeBytes(of: &tabs) { tabs in
+                        let settings = [
+                            CTParagraphStyleSetting(spec: .paragraphSpacingBefore, valueSize: MemoryLayout<CGFloat>.size, value: before.baseAddress!),
+                            CTParagraphStyleSetting(spec: .headIndent, valueSize: MemoryLayout<CGFloat>.size, value: hang.baseAddress!),
+                            CTParagraphStyleSetting(spec: .tabStops, valueSize: MemoryLayout<CFArray>.size, value: tabs.baseAddress!),
+                        ]
+                        return CTParagraphStyleCreate(settings, settings.count)
+                    }
+                }
+            }
+            styled.append(NSAttributedString(string: text + "\n", attributes: [
                 NSAttributedString.Key(kCTFontAttributeName as String): font, NSAttributedString.Key(kCTForegroundColorAttributeName as String): ink,
+                NSAttributedString.Key(kCTParagraphStyleAttributeName as String): style,
             ]))
+        }
+        for block in blocks {
+            switch block {
+            case .title(let title): add("Incident report: \(title)", big)
+            case .heading(let text): add(text, bold, before: 12)
+            case .line(let text): add(text, body, before: 2)
+            case .item(let text): add("•\t" + text, body, before: 2, hang: 10)
+            case .table(let columns, let rows):
+                add(columns.joined(separator: "  ·  "), strong, before: 2)
+                for row in rows { add(row.joined(separator: "  ·  "), body) }
+            case .fixed(let lines): for line in lines { add(line, fixed) }
+            case .gap: add("", body)
+            }
         }
         let data = NSMutableData()
         var page = CGRect(x: 0, y: 0, width: 612, height: 792)
@@ -498,6 +558,83 @@ private struct ReviewSheet: View {
                 .font(.body)
                 .frame(minHeight: 70)
                 .accessibilityLabel(label)
+        }
+    }
+}
+
+/// The report's summary, typed or drafted: Draft asks the on-device model (from the report's numbers and steps, never the
+/// attacker's text), and its draft fills the editor to check and change before it's kept.
+private struct SummarySheet: View {
+    @State var review: IncidentStore.Review
+    let draft: (() async throws -> (text: String, dropped: Int))?
+    let modelUnavailable: String?
+    let save: (IncidentStore.Review) -> String?
+    @State private var problem: String?
+    @State private var drafting = false
+    @State private var said: String?
+    @Environment(\.dismiss) private var dismiss
+
+    init(review: IncidentStore.Review, draft: (() async throws -> (text: String, dropped: Int))?, modelUnavailable: String?,
+         save: @escaping (IncidentStore.Review) -> String?) {
+        _review = State(initialValue: review)
+        (self.draft, self.modelUnavailable, self.save) = (draft, modelUnavailable, save)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("The report's summary").font(.headline).accessibilityAddTraits(.isHeader)
+            Text("A few paragraphs for whoever reads the report first: what happened, what was done, and where it stands.")
+                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            TextEditor(text: $review.summary)
+                .font(.body)
+                .frame(minHeight: 200)
+                .accessibilityLabel("Summary")
+            HStack(alignment: .firstTextBaseline) {
+                if let draft {
+                    Button(review.summary.isEmpty ? "Draft with the On-Device Model" : "Draft Again with the On-Device Model") { ask(draft) }
+                        .disabled(drafting)
+                        .accessibilityHint("The model writes a draft from this report's numbers and steps, replacing what's here. Nothing "
+                                           + "leaves this Mac.")
+                    if drafting { ProgressView().controlSize(.small) }
+                } else if let modelUnavailable {
+                    Label(modelUnavailable, systemImage: "sparkles").font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if let said { Text(said).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    review.summary = review.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if review.summary.isEmpty { review.summaryDrafted = false }
+                    problem = save(review)
+                    if problem == nil { dismiss() }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 520, idealWidth: 600, minHeight: 420)
+    }
+
+    private func ask(_ draft: @escaping () async throws -> (text: String, dropped: Int)) {
+        drafting = true
+        said = nil
+        Task {
+            do {
+                let drafted = try await draft()
+                review.summary = drafted.text
+                review.summaryDrafted = !drafted.text.isEmpty
+                said = "The on-device model's draft, from this report's numbers and steps: check it against the report before you save it."
+                    + (drafted.dropped == 0 ? "" : " \(drafted.dropped) of its sentences held a number the report doesn't, so were left out.")
+            } catch {
+                said = "The model couldn't draft it: \(OnDeviceModel.failure(error))"
+            }
+            drafting = false
         }
     }
 }

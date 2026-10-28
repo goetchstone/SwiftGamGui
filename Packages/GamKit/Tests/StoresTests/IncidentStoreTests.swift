@@ -124,6 +124,31 @@ struct IncidentStoreTests {
         let reread = try IncidentStore(root: root)
         #expect(reread.unreadable.isEmpty && reread.records.first?.review == IncidentStore.Review())
 
+        // The summary (since 2026-10-28) and the items marked done by hand, kept; a file from before has neither.
+        reviewed.review.summary = "Carol was phished; every account is locked."
+        reviewed.review.summaryDrafted = true
+        reviewed.ticks = [IncidentStore.Tick(kind: "unblockSender", words: "Have carol@example.com unblock it.", basis: "9f2c", how: "On a call.",
+                                             at: Self.monday, by: "pat@example.com")]
+        try store.save(reviewed)
+        let kept = try #require(try IncidentStore(root: root).records.first)
+        #expect(kept.review == reviewed.review && kept.ticks == reviewed.ticks && !kept.review.isEmpty)
+        #expect(IncidentStore.Review(summary: "Only a summary.").isEmpty, "the summary is the report's, not the review's")
+        let current = try #require(JSONValue.parse(try String(contentsOf: file, encoding: .utf8))?.object)
+        var before = GamOutput.Record()
+        for (key, value) in current where key != "ticks" { before[key] = value }
+        if case .object(var review)? = current["review"] {
+            review["summary"] = nil
+            review["summaryDrafted"] = nil
+            before["review"] = .object(review)
+        }
+        try Data(JSONValue.dumps(.object(before)).utf8).write(to: file)
+        let older = try #require(try IncidentStore(root: root).records.first)
+        #expect(older.ticks.isEmpty && older.review.summary.isEmpty && !older.review.summaryDrafted && older.review.cause == reviewed.review.cause)
+        var blank = reviewed
+        blank.ticks = [IncidentStore.Tick(kind: "unblockSender", words: "w", basis: "", how: " ".trimmingCharacters(in: .whitespaces), at: Self.monday, by: "")]
+        #expect(throws: IncidentStore.Problem.self) { try store.save(blank) }
+        try store.save(older)
+
         var long = reviewed
         long.review.plan = String(repeating: "x", count: IncidentStore.reviewLength + 1)
         #expect(throws: IncidentStore.Problem.self) { try store.save(long) }

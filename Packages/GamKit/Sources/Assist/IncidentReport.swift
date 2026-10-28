@@ -44,14 +44,23 @@ public struct IncidentReport: Sendable, Equatable {
         public var improve = ""
         /// What will change, one item a line, each with who and by when.
         public var plan = ""
+        /// The report's summary, at its top; and whether it began as the on-device model's draft, which the report says.
+        public var summary = ""
+        public var summaryDrafted = false
 
         public init(kind: String = "", severity: String = "", meeting: Date? = nil, attendees: String = "", cause: String = "",
-                    wentWell: String = "", improve: String = "", plan: String = "") {
+                    wentWell: String = "", improve: String = "", plan: String = "", summary: String = "", summaryDrafted: Bool = false) {
             (self.kind, self.severity, self.meeting, self.attendees) = (kind, severity, meeting, attendees)
             (self.cause, self.wentWell, self.improve, self.plan) = (cause, wentWell, improve, plan)
+            (self.summary, self.summaryDrafted) = (summary, summaryDrafted)
         }
 
-        public var isEmpty: Bool { self == Review() }
+        /// Nothing of the review written: the summary is the report's, not the review's.
+        public var isEmpty: Bool {
+            var review = self
+            (review.summary, review.summaryDrafted) = ("", false)
+            return review == Review()
+        }
     }
 
     /// An address an email of the attacker's got to (`gotIt`): once, however many of their emails got to it.
@@ -300,9 +309,16 @@ public struct IncidentReport: Sendable, Equatable {
                                   account: change.target, source: "This app's audit log"))
         }
         for task in reading.done {
-            guard let done = task.done, done.how != .warned else { continue }
-            actions.append(Action(at: done.at, what: task.words + (done.by.isEmpty ? "" : " (by \(done.by))"), account: "",
-                                  source: done.how == .trashed ? "This app's audit log (Phishing)" : "Phishing's Find, kept on this Mac"))
+            guard let done = task.done else { continue }
+            let by = done.by.isEmpty ? "" : " (by \(done.by))"
+            switch done.how {
+            case .warned: continue   // each warning that counted is said below, from the Gmail log
+            case .trashed: actions.append(Action(at: done.at, what: task.words + by, account: "", source: "This app's audit log (Phishing)"))
+            case .nobodyHasIt: actions.append(Action(at: done.at, what: task.words + by, account: "", source: "Phishing's Find, kept on this Mac"))
+            case .byHand(let how):
+                actions.append(Action(at: done.at, what: "Done by hand" + by + ": " + task.words + " How: " + how,
+                                      account: task.accounts.count == 1 ? task.accounts[0] : "", source: "Marked done on the incident"))
+            }
         }
         for reach in reading.reaches {
             let subject = reach.subject.isEmpty ? "(no subject)" : reach.subject
@@ -324,7 +340,11 @@ public struct IncidentReport: Sendable, Equatable {
         func accountRows(_ keep: (LogReading.Status) -> Bool) -> Table {
             Table(columns: accountTable.columns, rows: zip(statuses, accountTable.rows).filter { keep($0.0) }.map(\.1))
         }
-        let pulled = reading.done.filter { $0.done.map { $0.how != .warned } ?? false }
+        let pulled = reading.done.filter { [.trashed, .nobodyHasIt].contains($0.done?.how) }
+        let byHand = reading.done.compactMap { task -> (task: LogReading.Task, how: String, at: Date, by: String)? in
+            guard let done = task.done, case .byHand(let how) = done.how else { return nil }
+            return (task, how, done.at, done.by)
+        }
         let actionTable = Table(columns: ["when", "what", "account", "shown by"],
                                 rows: actions.map { [.time($0.at), .text($0.what), .text($0.account), .text($0.source)] })
         var counts: [Count] = [
@@ -381,6 +401,13 @@ public struct IncidentReport: Sendable, Equatable {
             Count(id: "pulled", label: "Emails pulled from every mailbox", number: pulled.count,
                   about: "Emails Phishing trashed from every mailbox that had them, or showed nobody here has.",
                   table: Table(columns: ["what", "when", "by"], rows: pulled.map { [.text($0.words), .time($0.done?.at), .text($0.done?.by ?? "")] })),
+        ]
+        if !byHand.isEmpty {
+            counts.append(Count(id: "byHand", label: "Marked done by hand", number: byHand.count,
+                                about: "What no log can show done, marked done on the incident: how, when and by whom, as typed.",
+                                table: Table(columns: ["what", "how", "when", "by"], rows: byHand.map { [.text($0.task.words), .text($0.how), .time($0.at), .text($0.by)] })))
+        }
+        counts += [
             Count(id: "actions", label: "Steps taken", number: actions.count,
                   about: "Every step taken, oldest first, with the record that shows it.", table: actionTable),
             Count(id: "toDo", label: "Still to do", number: reading.toDo.count, about: "What the logs show is left, most urgent first.",
@@ -414,25 +441,56 @@ public struct IncidentReport: Sendable, Equatable {
         return parts.isEmpty ? "under a minute" : parts.joined(separator: " ")
     }
 
-    /// The report as plain text, in its order: what it is, the numbers, what was done, who the emails reached, where each
-    /// account stands, what's left, the timeline, the notes and the review, and the evidence. `hashes` are the evidence's files'
-    /// SHA-256, when the export has worked them out.
-    public func text(_ when: (Date) -> String, zone: String = "", hashes: [(file: String, sha256: String)] = []) -> String {
-        var out: [String] = []
-        func heading(_ text: String) { out += ["", text.uppercased(), String(repeating: "=", count: min(text.count, 72))] }
-        func line(_ text: String) { out.append(text) }
-        func field(_ label: String, _ value: String) { if !value.isEmpty { line("\(label): \(value)") } }
+    /// A piece of the report as it's drawn. The text, the Markdown and the PDF are each drawn from the same pieces, so the three
+    /// always say the same; each piece holds plain text, which no format reads as markup.
+    public enum Block: Sendable, Equatable {
+        /// The report's title, first and once.
+        case title(String)
+        case heading(String)
+        /// A line on its own.
+        case line(String)
+        /// An item of a list.
+        case item(String)
+        /// A table: the timeline.
+        case table(columns: [String], rows: [[String]])
+        /// Lines kept exactly as they are, in a fixed-width font: each evidence file's SHA-256.
+        case fixed([String])
+        /// A space between two parts of a section.
+        case gap
+    }
 
-        line("INCIDENT REPORT: \(record.title)")
+    /// The report, in its order: what it is, the summary, the numbers, where it started, what was done, who the emails reached,
+    /// where each account stands, what's left, the timeline, the notes and the review, and the evidence. `hashes` are the
+    /// evidence's files' SHA-256, when the export has worked them out.
+    public func blocks(_ when: (Date) -> String, zone: String = "", hashes: [(file: String, sha256: String)] = []) -> [Block] {
+        var out: [Block] = []
+        func heading(_ text: String) { out.append(.heading(text)) }
+        func line(_ text: String) { out.append(.line(text)) }
+        func item(_ text: String) { out.append(.item(text)) }
+        func field(_ label: String, _ value: String) { if !value.isEmpty { line("\(label): \(value)") } }
+        func paragraphs(_ text: String) -> [String] {
+            text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+        let review = record.review
+
+        out.append(.title(record.title))
         line("Domain: \(record.domain)")
         line("Opened (identified): \(when(record.opened))" + (record.openedBy.isEmpty ? "" : " by \(record.openedBy)"))
         field("How it was reported", record.reported)
-        field("Type", record.review.kind)
-        field("Severity", record.review.severity)
+        field("Type", review.kind)
+        field("Severity", review.severity)
         line("Report made \(when(made))" + (madeBy.isEmpty ? "" : " by \(madeBy)") + " with GAM GUI, from the evidence listed at the end.")
         if !zone.isEmpty { line("Times are in \(zone).") }
-        line("Every count and list below is worked out by code from Google's logs and this app's audit log; only the notes and the "
-             + "review are typed.")
+        line("Every count and list below is worked out by code from Google's logs and this app's audit log; only "
+             + (review.summary.isEmpty ? "" : "the summary, ") + "the notes, the review and what was marked done by hand are typed.")
+
+        if !review.summary.isEmpty {
+            heading("Summary")
+            for paragraph in paragraphs(review.summary) { line(paragraph) }
+            if review.summaryDrafted {
+                line("First drafted by the on-device model from this report's counts and steps, then checked before it was kept.")
+            }
+        }
 
         heading("At a glance")
         if let first = times.firstSign {
@@ -444,7 +502,7 @@ public struct IncidentReport: Sendable, Equatable {
         } else if !standing.isEmpty {
             line("Contained: not yet: the logs don't show every account touched locked.")
         }
-        for count in counts where count.id != "actions" { line("\(count.label): \(count.number)") }
+        for count in counts where count.id != "actions" { item("\(count.label): \(count.number)") }
 
         heading("Where it started")
         line(wayInWords(when))
@@ -452,12 +510,12 @@ public struct IncidentReport: Sendable, Equatable {
         heading("What was done")
         if actions.isEmpty { line("No step taken shows in the logs read, this app's audit log, or the notes.") }
         for action in actions {
-            line("\(when(action.at)): \(action.what)" + (action.account.isEmpty ? "" : " [\(action.account)]") + " (shown by \(action.source))")
+            item("\(when(action.at)): \(action.what)" + (action.account.isEmpty ? "" : " [\(action.account)]") + " (shown by \(action.source))")
         }
 
         heading("The attacker's emails, and who they reached")
         if emails.isEmpty { line("No email the attacker sent shows in the logs read.") }
-        for email in emails { line("• " + email) }
+        for email in emails { item(email) }
         if let got = count("gotIt"), got.number > 0 {
             line("Everyone they got to, once each, with whether they were warned and contacted from here after, is in who-got-it.csv; "
                  + "every address each email was sent to, bounces too, is in who-it-reached.csv.")
@@ -465,22 +523,22 @@ public struct IncidentReport: Sendable, Equatable {
 
         heading("Where each account stands")
         if standing.isEmpty { line("No account the attacker touched shows in the logs read.") }
-        for (account, words) in standing { line("• \(account): \(words)") }
+        for (account, words) in standing { item("\(account): \(words)") }
 
         heading("Still to do")
         if toDo.isEmpty { line("Nothing left that the logs read can show.") }
-        for item in toDo { line("• " + item) }
+        for task in toDo { item(task) }
 
         heading("Timeline")
-        if timeline.rows.isEmpty { line("Nothing in the logs read.") }
-        for row in timeline.rows { line(row.map { $0.words(when) }.joined(separator: "  ·  ")) }
+        if timeline.rows.isEmpty { line("Nothing in the logs read.") } else {
+            out.append(.table(columns: timeline.columns, rows: timeline.rows.map { $0.map { $0.words(when) } }))
+        }
 
         heading("Notes")
         if record.notes.isEmpty { line("None.") }
-        for note in record.notes { line("\(when(note.at)): \(note.text)") }
+        for note in record.notes { item("\(when(note.at)): \(note.text)") }
 
         heading("Post-incident review: lessons learned and the plan going forward")
-        let review = record.review
         if review.isEmpty {
             line("Not written yet. For the review meeting, go through:")
         } else {
@@ -491,24 +549,105 @@ public struct IncidentReport: Sendable, Equatable {
             field("What to do better", review.improve)
             if !review.plan.isEmpty {
                 line("The plan going forward:")
-                for item in review.plan.split(whereSeparator: \.isNewline) where !item.trimmingCharacters(in: .whitespaces).isEmpty {
-                    line("• " + item.trimmingCharacters(in: .whitespaces))
-                }
+                for step in paragraphs(review.plan) { item(step) }
             }
-            line("")
+            out.append(.gap)
             line("The review meeting's agenda:")
         }
-        for item in Self.agenda(self) { line(item) }
+        for step in Self.agenda(self) { line(step) }
 
         heading("Evidence")
         line("Each read of the logs kept with the incident, exactly as exported from Google's reports, is in the evidence folder.")
-        for item in evidence { line("• \(item.name)" + (item.about.isEmpty ? "" : ": \(item.about)")) }
+        for each in evidence { item(each.name + (each.about.isEmpty ? "" : ": \(each.about)")) }
         if !hashes.isEmpty {
-            line("")
+            out.append(.gap)
             line("SHA-256 of each evidence file, to show it is unchanged:")
-            for hash in hashes { line("\(hash.sha256)  \(hash.file)") }
+            out.append(.fixed(hashes.map { "\($0.sha256)  \($0.file)" }))
+        }
+        return out
+    }
+
+    /// The report as plain text (`blocks`): each heading in capitals over a rule, each item after a bullet, the timeline a row
+    /// a line.
+    public func text(_ when: (Date) -> String, zone: String = "", hashes: [(file: String, sha256: String)] = []) -> String {
+        Self.text(blocks(when, zone: zone, hashes: hashes))
+    }
+
+    public static func text(_ blocks: [Block]) -> String {
+        var out: [String] = []
+        for block in blocks {
+            switch block {
+            case .title(let title): out.append("INCIDENT REPORT: \(title)")
+            case .heading(let text): out += ["", text.uppercased(), String(repeating: "=", count: min(text.count, 72))]
+            case .line(let text): out.append(text)
+            case .item(let text): out.append("• " + text)
+            case .table(_, let rows): out += rows.map { $0.joined(separator: "  ·  ") }
+            case .fixed(let lines): out += lines
+            case .gap: out.append("")
+            }
         }
         return out.joined(separator: "\n") + "\n"
+    }
+
+    /// The report as Markdown (`blocks`), for a wiki, a ticket or a repository: every piece escaped (`markdown(escaping:)`), so
+    /// a subject an attacker wrote reads as the words it is, never a link, an image, HTML or a heading.
+    public func markdown(_ when: (Date) -> String, zone: String = "", hashes: [(file: String, sha256: String)] = []) -> String {
+        Self.markdown(blocks(when, zone: zone, hashes: hashes))
+    }
+
+    public static func markdown(_ blocks: [Block]) -> String {
+        var out = "", last: Block?
+        for block in blocks {
+            let chunk: String
+            switch block {
+            case .title(let title): chunk = "# Incident report: " + markdown(escaping: title)
+            case .heading(let text): chunk = "## " + markdown(escaping: text)
+            case .line(let text): chunk = markdown(escaping: text)
+            case .item(let text): chunk = "- " + markdown(escaping: text)
+            case .table(let columns, let rows):
+                func row(_ cells: [String]) -> String { "| " + cells.map(markdown(escaping:)).joined(separator: " | ") + " |" }
+                chunk = ([row(columns), "|" + String(repeating: " --- |", count: columns.count)] + rows.map(row)).joined(separator: "\n")
+            case .fixed(let lines):
+                // A fence longer than any run of backticks in it, so nothing in it can close it.
+                var longest = 0
+                for line in lines {
+                    var run = 0
+                    for character in line {
+                        run = character == "`" ? run + 1 : 0
+                        longest = max(longest, run)
+                    }
+                }
+                let fence = String(repeating: "`", count: max(3, longest + 1))
+                chunk = ([fence] + lines + [fence]).joined(separator: "\n")
+            case .gap: continue
+            }
+            if !out.isEmpty {
+                if case .item? = last, case .item = block { out += "\n" } else { out += "\n\n" }
+            }
+            out += chunk
+            last = block
+        }
+        return out + "\n"
+    }
+
+    /// `text` as Markdown that says exactly it, on one line (a line break is a space): each character CommonMark or GitHub's
+    /// flavour reads as markup escaped where it would be read so: the inline ones anywhere (`\` `` ` `` `*` `_` `[` `]` `<`
+    /// `>` `(` `)` `!` `|` `~` `&` `$` `{` `}` `#` `+`), and at the start a list's dash or number, or a heading's `=`.
+    /// Leading spaces go, so nothing becomes code.
+    static func markdown(escaping text: String) -> String {
+        let flat = text.map { $0.isNewline ? " " : $0 }
+        var out = ""
+        var start = true, digits = false
+        for character in String(flat).drop(while: { $0 == " " || $0 == "\t" }) {
+            if "\\`*_[]<>()!|~&${}#+".contains(character) || (start && "-=".contains(character))
+                || (digits && ".)".contains(character)) {
+                out.append("\\")
+            }
+            out.append(character)
+            digits = (start || digits) && character.isASCII && character.isNumber
+            start = false
+        }
+        return out
     }
 
     /// Where it started, in words: the email picked as the phish that got the first account, and who else here received it; or

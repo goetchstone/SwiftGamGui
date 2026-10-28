@@ -88,8 +88,10 @@ public enum LogExplainer {
         case .pullAgain: "pull some logs again for just these accounts: the pull doesn't hold all of them for these accounts (read for every "
             + "account, they stop short of the attack, or a recipient's own Gmail log isn't in it)"
         case .sweep: "read every account's logs from the attacker's address, to find whom else it reached: quick at any size"
+        case .readDirectory: "open Users so the directory is read: until then who the attacker's emails reached can't be finished"
         case .removeAdded: "remove the passkey or 2-Step Verification method the attacker added to the account"
         case .clearRecovery: "clear the recovery email and phone the attacker changed"
+        case .recoveryQuestion: "have the person set a new recovery question: the attacker changed it"
         case .unblockSender: "have the person unblock the sender the attacker blocked in Gmail"
         case .deleteDevice: "block the computer that joined the account at the attacker's sign-in, or take the account off it"
         case .pullEmail: "pull the email the attacker sent from every mailbox"
@@ -196,6 +198,13 @@ public enum LogExplainer {
         for task in reading.toDo.prefix(30) {
             lines.append("\(task.id): \(meaning(task.kind))." + (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + "."))
         }
+        // What this app's records show done: an email pulled, a warning sent, a step marked done by hand (never how it was
+        // done, which is typed).
+        if !reading.done.isEmpty { lines.append("Already done, as this app's records show:") }
+        for task in reading.done.prefix(30) {
+            let hand = if case .byHand? = task.done?.how { " (marked done by hand)" } else { "" }
+            lines.append("- Done: \(meaning(task.kind))\(hand)." + (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + "."))
+        }
         return lines.joined(separator: "\n")
     }
 
@@ -203,7 +212,58 @@ public enum LogExplainer {
     /// (citing unknown ones dropped from it), and every text trimmed.
     public static func explain(_ reading: LogReading.Reading, when: @Sendable (Date) -> String = { $0.formatted(.iso8601) },
                                using model: some Asking = OnDevice()) async throws -> Explanation {
-        let answer = try await model.answer(instructions: instructions, prompt: prompt(reading, when: when))
+        try await explain(reading, facts: prompt(reading, when: when), using: model)
+    }
+
+    /// The report's summary, drafted (the incidents plan: "the model drafts the report's summary from the findings, shown as
+    /// the model's and edited by the operator"; asked 2026-10-28: "can we get the model to help generate the report"): the
+    /// rundown, told the report's numbers too, as plain paragraphs without the to-do IDs (the report numbers its own list).
+    /// A sentence holding a number written nowhere in the facts is dropped, as a point citing no to-do item is, and counted for
+    /// the screen to say. Coarse (review 2026-10-28): the facts hold times and addresses too, so a small wrong count can still
+    /// pass; the operator checks the draft against the report before it's kept.
+    public static func summary(_ reading: LogReading.Reading, numbers: [(label: String, number: Int)],
+                               when: @Sendable (Date) -> String = { $0.formatted(.iso8601) },
+                               using model: some Asking = OnDevice()) async throws -> (text: String, dropped: Int) {
+        let facts = prompt(reading, when: when)
+            + (numbers.isEmpty ? "" : "\nThe report's numbers:\n" + numbers.map { "- \($0.label): \($0.number)" }.joined(separator: "\n"))
+        let explanation = try await explain(reading, facts: facts, using: model)
+        let known = Set(digits(in: facts))
+        var dropped = 0
+        func checked(_ text: String) -> String {
+            sentences(text).filter { sentence in
+                let stands = digits(in: sentence).allSatisfy(known.contains)
+                if !stands { dropped += 1 }
+                return stands
+            }.joined(separator: " ")
+        }
+        let parts = [checked(explanation.overview), checked(explanation.done), explanation.left.map { checked($0.text) }.filter { !$0.isEmpty }.joined(separator: " ")]
+        return (parts.filter { !$0.isEmpty }.joined(separator: "\n\n"), dropped)
+    }
+
+    /// Each run of digits in `text`, in any script ("٥" too, review 2026-10-28): what a number written in a sentence must be
+    /// among the facts' (a count, a date, a time).
+    static func digits(in text: String) -> [Substring] {
+        text.split(whereSeparator: { !$0.isNumber })
+    }
+
+    /// `text`'s sentences, each with its stop, trimmed: split after a `.`, `!` or `?` that a space or the end follows.
+    static func sentences(_ text: String) -> [String] {
+        var found: [String] = [], current = ""
+        let characters = Array(text)
+        for (index, character) in characters.enumerated() {
+            current.append(character)
+            if ".!?".contains(character), index + 1 == characters.count || characters[index + 1].isWhitespace {
+                found.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
+                current = ""
+            }
+        }
+        let rest = current.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (found + (rest.isEmpty ? [] : [rest])).filter { !$0.isEmpty }
+    }
+
+    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`.
+    static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
+        let answer = try await model.answer(instructions: instructions, prompt: facts)
         let known = Set(reading.toDo.map(\.id))
         func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
         let left = answer.left.compactMap { point -> Explanation.Point? in

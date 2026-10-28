@@ -515,8 +515,9 @@ account read as one on a later day. Code decides what's done and what's left; th
   as taken, confirm a new address, check a password, look at what was done, check a shared address. An item leaves once
   the logs show it done: a lock, a device unregistered or blocked, wiped or deleted by an admin (`deviceWord`), recovery
   removed by an admin. An email to pull leaves once this app's audit log shows Phishing trashed it from every mailbox, or
-  Phishing's Find showed nobody here has it, and is listed under Done ("Done from the audit log", below). What neither can show
-  (a warning sent) stays until the incident record can tick it. A finding about a locked account drafts no lock again.
+  Phishing's Find showed nobody here has it, and is listed under Done ("Done from the audit log", below). What no log can show
+  (a sender unblocked with the person, contacts warned by phone) is marked done by hand ("Marked done by hand", below). A
+  finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
   to-do item's fixed meaning by kind. It answers three sentences on what happened, two on what's done, and at most three
@@ -580,7 +581,15 @@ menu when it marked several accounts there) asks how the operator knows, and the
   (the screen's model, as `OnboardRoles` is); `App/LogReaderView.swift` (the button, the note sheet, Marked as Theirs with
   Undo). Tests: `StoresTests/KnownSignInStoreTests.swift`, `LogReadingTests.aSignInMarkedAsTheirsMakesNoSuspect`.
 - **What a mark does:** `LogReading.Context.theirs` (`LogReading.key(account:address:)`): that account's sign-ins from that
-  address make no suspect. The address can still be one through anyone else's. Only an account's own sign-in Google
+  address make no suspect (the very address: a network may be a relay's or a VPN's, shared with the attacker), and it's never
+  asked about as a new address after the lock. For that question only, an IPv6 mark counts by its /64 (`LogReading.network`),
+  as the reader's other per-address rules do: a phone or a home keeps its network while the rest changes, and an exact match
+  asked about the same phone again (2026-10-28, failure log "Still to do kept asking"). Never a network a suspect address
+  shares: there only the very address (review 2026-10-28: a mark through a relay's /64 cleared the attacker's address). The
+  address can still be one through anyone else's.
+- **From Respond too:** "Ask … whether … is theirs" (`confirmAddress`, `Task.theirs`) has That Was Them… (a menu for several
+  addresses), which marks the address with a note and answers it. A mark never counts toward the lock: a password change does
+  only from the very address used before the attack. Only an account's own sign-in Google
   marked is offered, never its warning that it blocked one (review 2026-10-22), and the operator's own pulled-by address
   is never markable. A mark is never hidden: Marked as Theirs lists each with its note and an Undo.
 
@@ -693,7 +702,18 @@ first for the emails pulled. Reads only: the audit log is read, never written he
   Find showed". Kept on this Mac (`NobodyHasStore`, through `NobodyHasChecks`), since a read is never audited. Unsure or
   unsearched stays to do. The latest of a run and a check decides. If the check can't be kept, Respond says so.
 - **Never shown done:** a run made before this build that Find Again hasn't since shown gone, and anything done outside
-  this app. The checklist's hand tick is for those.
+  this app. The hand tick is for those.
+- **Marked done by hand** (asked 2026-10-28: "I did that with her the other day, not sure why it still shows"): Mark Done… on a
+  to-do item asks how it was done and keeps it with the incident (`IncidentStore.Record.ticks`: its kind and words, how, when,
+  and the connected admin), applied where the reading is shown (`Reading.ticking`, cheap, so a tick never reads the pull
+  again). It's listed under Done with how, when and by whom and an Undo, and in the report's What was done as "Done by hand",
+  shown by the incident, beside what the logs show. Matched by kind, words and what the item stands on (`Task.basis`: for an
+  item a finding points to, how many events and from where; for the warn item, exactly who's to warn), so once the logs say
+  more (the attacker's second passkey, a different five to warn) it's to do again (review 2026-10-28: words alone didn't
+  change). **Never on a lock, recovery email and phone cleared, a computer, or a read of the logs or the directory**
+  (`Task.Kind.tickable`): Google's logs show the first three done whoever did them, and this app does the reads, so a tick
+  could only hide a way back in or a list left unfinished; Respond says so. "Read the directory" (`readDirectory`) and the
+  recovery question (`recoveryQuestion`, which no log shows) are their own kinds for that.
 - `LogReaderView.swift` names `PhishingAudit`, a reader of the log: still no changes model or executor (`WriteRouteTests`).
 - Tests: `LogReadingTests.anEmailPhishingPulledIsDoneWithWhenAndByWhom`; `PhishingChangesTests.theAuditShowsEachEmailsLatestRun`,
   `.theAuditSaysAFailedStepAndAnUnsearchedMailbox` and `.aRecordThatCantSayItsRunIsPassedOver`, on the records the
@@ -746,7 +766,11 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   it says, and the email's section says they're being read. A suspended member is listed like anyone (warning too many is safe).
 - **Whose Gmail log the pull has** is read off the data: a person with a receipt of anything since that email went
   (receipts carry no address, so a read filtered by the attacker's address has none, and a merged pull is judged by what it
-  holds). A person here still to warn with none is to pull again (`Reach.unread`); none while the directory isn't read, since
+  holds), or a person a read holds whole past it (`IncidentLogs.Log.whole`, `Context.gmailWhole`: a read with no address filter
+  holds every event of its accounts from its oldest event to its newest, or to where it was read through when it stopped at
+  its cap; none for a read newest first to a cap, or a saved read whose `about.txt` doesn't say whose and from where; kept
+  through the merge, worked out from the rows, never from a window the read claims; review 2026-10-28). Without that, every account's Gmail read whole still asked for quiet
+  mailboxes (2026-10-28). A person here still to warn with neither is to pull again (`Reach.unread`); none while the directory isn't read, since
   a group can't be told from a person then and GAM refuses a whole read naming one: "Read the directory" is said instead.
   Investigate's narrow pulls (the person, the attacker's address) hold the phish's Send; who received it and the warning
   come with each recipient's Gmail log (Pull Again) and the warning sender's.
@@ -757,9 +781,13 @@ Phishing's Find isn't the source: it shows who has a copy now, which after Pull 
   pick is kept with the open incident (`IncidentStore.Record.warnings`, bare Message-IDs) and checked again at every reading:
   the attacker's own, one from before, one only begun or not in the logs read doesn't count, and says why. With none
   counting, warned is unknown, never "no".
-- **To do and done:** "Warn the N people … reached" until the warnings that count reach everyone it reached; "Pull the
-  Gmail log again for …" (Pull Again, Gmail only, 20 at a time) for `Reach.unread`; a pick that doesn't count, unreadable
-  entries, a send naming no one, and the directory not read are their own items. Done names every warning that counted and
+- **To do and done:** one item across every email for each of these (asked 2026-10-28: one an email made five, "condense
+  that to one list to warn like on the report page"): "Warn the N people the attacker's emails got to …", counted as Report
+  counts (`IncidentReport.gotIt`: each address once, a bounce, quarantine or rejection not among them); "Pull the Gmail log
+  again for …" (Pull Again, Gmail only, 20 at a time) for every email's `Reach.unread`; and the directory not read. A pick that
+  doesn't count, unreadable entries and a send naming no one stay each email's own. An email is done once everyone it got to
+  is shown warned, said "Warned everyone … got to: N people" (Who it reached's own lists keep over-warning: bounces stay on
+  them). Done names every warning that counted and
   reached someone, with the latest one's sender and time, and how many of those reached are a group whose members weren't
   read or an address no account has, which count on the warning's send as outside does (a group read is its members).
 - **Where:** Respond, a section per email under Where things stand (`LogReaderView`'s `ReachSection`): a line in numbers,
@@ -885,8 +913,22 @@ the plan going forward. Report's first section, once the incident's logs are rea
 - **The review** (`IncidentStore.Review`, kept in `incident.json` since 2026-10-27; a file without it still reads): type,
   severity, the meeting's time and who attended, how they got in, what went well, what to do better, and the plan going
   forward (a line an item, with who and by when). The meeting's agenda is filled from the numbers.
-- **Export Report…** (a new folder, never an existing one: `0700`, files `0600`; a failure removes it): `Incident report.pdf`
-  (Core Text from the plain text: nothing is read as markup), `Incident report.txt`, `who-got-it.csv` (everyone it got to,
+- **One document, three formats** (asked 2026-10-28: "ensure we can create the MD and a PDF too"): `IncidentReport.blocks`
+  (title, headings, lines, items, the timeline as a table, the fingerprints fixed-width) is drawn as text (`text`), Markdown
+  (`markdown`) and the PDF (`IncidentReportView.pdf`, Core Text from the blocks, so it no longer guesses headings from a rule of
+  `=`), so the three always say the same. In the Markdown every piece is escaped (`markdown(escaping:)`): the inline marks
+  anywhere, a list's dash or number and a heading's `=` at the start, leading spaces dropped; a subject an attacker wrote is
+  its words, never a link, an image, HTML, a heading or a list. A URL stays as written (its text is its target).
+- **The summary** (asked the same day: "can we get the model to help generate the report"): at the report's top, typed or
+  drafted (`IncidentStore.Review.summary`, `summaryDrafted`; a summary alone isn't a review written). Draft with the On-Device
+  Model is the log reader's rundown (`LogExplainer.summary`: the same facts, plus what's done, hand ticks said as such but never
+  how, and the report's numbers), as paragraphs without the to-do IDs. A sentence holding a number written nowhere in the
+  facts (digits of any script) is dropped and counted, as a point citing no to-do item is. Coarse: the facts hold times and
+  addresses too, so a small wrong count can pass; the sheet says to check the draft against the report. The draft fills the editor; nothing is kept until Save, and the
+  report then says it was first drafted by the model and checked. Only `LogReaderView` names the model (`WriteRouteTests`): it
+  hands the report the draft as a closure.
+- **Export Report…** (a new folder, never an existing one: `0700`, files `0600`; a failure removes it): `Incident report.pdf`,
+  `Incident report.md`, `Incident report.txt`, `who-got-it.csv` (everyone it got to,
   once each), `who-it-reached.csv` (every email's every address, bounces too), `emails.csv`, `accounts.csv`,
   `steps-taken.csv`, `still-to-do.csv`, `emails-pulled.csv`, `timeline.csv`, `evidence/` (every saved read copied by
   descriptor, never through a link) and `evidence-sha256.txt` (each file's SHA-256, listed in the report too, to show the
@@ -897,8 +939,9 @@ the plan going forward. Report's first section, once the incident's logs are rea
   again: a new pull, a mark, a pick, the directory, a group read, or the audit log's size or time
   (`LogReaderView.auditStamp`, looked at when the screen appears and after a run), so a Phishing run or a Secure here still
   shows. The groups read are kept too; only a read that failed is tried again on leaving (`GroupsReached.forgetFailures`).
-- **Not built:** the sign-off (slice 5's Close Incident), a hand tick for what no log shows (it's a note for now).
-- **Live check (L4r, reads and this Mac only):** on the real incident, Export Report…: the PDF opens and reads in order;
+- **Not built:** the sign-off (slice 5's Close Incident).
+- **Live check (L4r, reads and this Mac only):** on the real incident, Export Report…: the PDF opens and reads in order, and
+  the Markdown reads the same in a Markdown viewer;
   who-it-reached.csv matches Who it reached and the 10-19 list made by hand; `shasum -a 256` of an evidence file matches
   evidence-sha256.txt; leave Incident and come back: no "Reading the logs…".
 
@@ -928,6 +971,8 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 - The live checks L1, L1c, L1d, L1r, L1s, L1l, L1t, L1u, L2 and L2p.
 - The live checks of 2026-10-27's slices: L4r (the report's export), L3o (Where it started's sender fields), L1n (Pull
   Every Account From, and a wide read's estimate).
+- After any change to Still to do: a run through Respond on a real incident a week in, each item read against what was
+  actually done (failure log 2026-10-28: made-up incidents never showed a week of real use).
 - **A read that fails partway says so** (seen 2026-10-27): `IncidentLogs.complete` stops at a failed read and returns what it
   had with `through`, dropping the error, so the log reads as stopped at its bound. The operator's 30-day every-account Gmail
   stopped at the window starting Oct 6 after about 90 reads (under the 200 bound), with no reason on screen: keep the
@@ -935,7 +980,6 @@ points to, and on request the on-device model's explanation. Plan and rules: doc
 - **Picture Pull Every Account From:** the Still to do snapshot (`compromised-todo`) ends at T2, before it.
 - **The wide read's own speed-ups** (each a constant factor, not its scale): read several days of one log at once, and more
   events per GAM call (`maxactivities` past 1,000 needs `GamRunner.outputCap`, 8 MB, raised: a Gmail event is about 2 KB).
-- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): a pull anchored on the attack, the
-  rest of the checklist (the hand tick, kept with the incident, for what no log shows, like a warning sent), watching and the
-  sign-off, Look for Trouble.
+- The rest of [docs/plans/2026-10-22-incidents.md](../plans/2026-10-22-incidents.md): a pull anchored on the attack, watching
+  and the sign-off, Look for Trouble.
 - Not built (the plan says why): 2SV off, suspend, deleting forwarding addresses, a signature check.

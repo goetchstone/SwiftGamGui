@@ -84,6 +84,11 @@ struct LogReaderView: View {
     /// Keeps the email picked as where it started (nil clears it): the problem in words, or nil once kept. Nil with no incident
     /// open, where a pick couldn't be kept.
     let pickPhish: ((String?) -> String?)?
+    /// The to-do items marked done by hand, kept with the open incident (Respond's Mark Done…).
+    let ticks: [IncidentStore.Tick]
+    /// Marks a to-do item of a kind, saying these words, on this basis, done by hand as the words given say (nil undoes it):
+    /// the problem in words, or nil once kept. Nil with no incident open, where a tick couldn't be kept.
+    let tick: ((_ kind: String, _ words: String, _ basis: String, _ how: String?) -> String?)?
     /// What the report is made with, with the incident open (Report): nil with none, where there's nothing to report on.
     let incident: ReportInputs?
     /// What the screen scrolls to for this part, on the section shown itself: on the reader as a whole, built with Xcode
@@ -91,6 +96,8 @@ struct LogReaderView: View {
     let anchor: String
     @State private var marking: Marking?
     @State private var markProblem: String?
+    @State private var ticking: LogReading.Task?
+    @State private var tickProblem: String?
     /// The warnings were cleared, so Respond reads again with nothing shown: VoiceOver hears when it's back (final review
     /// 2026-10-25: the sections came back in silence).
     @State private var announceReread: String?
@@ -251,6 +258,8 @@ struct LogReaderView: View {
     struct Marking: Identifiable {
         let account: String
         let address: String
+        /// Asked about on Respond (a sign-in after the lock from an address not seen before), not one Google flagged.
+        var asked = false
         var id: String { account + "|" + address }
     }
 
@@ -282,10 +291,15 @@ struct LogReaderView: View {
         // The warnings picked, by the email they warn about (Who it reached).
         var picked: [String: Set<String>] = [:]
         for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
+        // Whose Gmail log the pull holds whole, each account as the directory names its person (an alias typed into a pull).
+        let whole = (pull.logs.first { $0.application == .gmail }?.whole ?? []).map { read in
+            LogReading.Whole(accounts: read.accounts.map { Set($0.map { people?[$0] ?? $0 }) }, from: read.from, to: read.to)
+        }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
                                                                          capped: capped, pulled: runs, nobodyHas: checks,
                                                                          domains: domains, people: people, groups: groups,
-                                                                         everyone: everyone, warnings: picked, phish: phish, swept: swept))
+                                                                         everyone: everyone, warnings: picked, phish: phish, swept: swept,
+                                                                         gmailWhole: whole))
     }
 
     /// When the attack began, as the reading shows it: the first account's first suspect event, or the first time an email of
@@ -342,14 +356,18 @@ struct LogReaderView: View {
         Group {
             // The reading for this pull, or while only picks were added, the last one until the new one comes.
             if let read = memory.read, read.key == key || Self.staleIsSafe(shown: read.key, asked: key) {
+                // What was marked done by hand, moved to done where it's shown: a tick never reads the pull again.
+                let reading = read.reading.ticking(ticks.map {
+                    LogReading.Ticked(kind: $0.kind, words: $0.words, basis: $0.basis, how: $0.how, at: $0.at, by: $0.by)
+                })
                 switch part {
                 case .findings:
-                    findings(read.reading).id(anchor)
-                    if let wayIn = read.reading.wayIn {
+                    findings(reading).id(anchor)
+                    if let wayIn = reading.wayIn {
                         WayInSection(wayIn: wayIn, current: phish, pick: pickPhish, pullEmail: pullEmail).id(Self.wayInAnchor)
                     }
-                case .toDo: toDo(read.reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key)).id(anchor)
-                case .report: report(read.reading, key: read.key).id(anchor)
+                case .toDo: toDo(reading, updating: read.key == key ? [] : Self.picksChanged(shown: read.key, asked: key)).id(anchor)
+                case .report: report(reading, key: read.key).id(anchor)
                 }
             } else {
                 readingNow.id(anchor)
@@ -375,6 +393,14 @@ struct LogReaderView: View {
                 if markProblem == nil { self.marking = nil }
             } cancel: {
                 self.marking = nil
+            }
+        }
+        .sheet(item: $ticking) { task in
+            TickSheet(task: task, problem: $tickProblem) { how in
+                tickProblem = tick?(task.kind.rawValue, task.words, task.basis, how) ?? "Open or make an incident above: a tick is kept with it."
+                if tickProblem == nil { ticking = nil }
+            } cancel: {
+                ticking = nil
             }
         }
     }
@@ -463,15 +489,32 @@ struct LogReaderView: View {
                      : "Nothing left that these logs can show.").foregroundStyle(.secondary)
             }
             ForEach(reading.toDo) { task in
-                TaskRow(task: task, secure: secure, pullEmail: pullEmail, show: show, pullAgain: pullAgain, sweep: sweep)
+                TaskRow(task: task, secure: secure, pullEmail: pullEmail, show: show, pullAgain: pullAgain, sweep: sweep,
+                        markDone: tick == nil || !task.kind.tickable ? nil : {
+                            tickProblem = nil
+                            ticking = task
+                        }, markTheirs: marksProblem != nil ? nil : { address in
+                            markProblem = nil
+                            marking = Marking(account: task.accounts.first ?? "", address: address, asked: true)
+                        })
             }
             if !unread.isEmpty {
                 Label("Not read, so not in this list: " + unread.joined(separator: ", ") + ".", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
             }
+            if tick != nil, reading.toDo.contains(where: { !$0.kind.tickable }) {
+                Text("A lock, recovery details cleared, a computer, and a read of the logs or the directory can't be marked done by hand: "
+                     + "Google's logs show the first three done whoever did them, and this app does the reads. Pull the logs again to see them.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
             if !reading.done.isEmpty {
                 Text("Done").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
-                ForEach(reading.done) { task in DoneRow(task: task) }
+                ForEach(reading.done) { task in
+                    DoneRow(task: task, undo: tick.map { tick in { tickProblem = tick(task.kind.rawValue, task.words, task.basis, nil) } })
+                }
+            }
+            if ticking == nil, let tickProblem {
+                Label(tickProblem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
             }
             if let nobodyHasProblem {
                 Label("An email Phishing's Find showed nobody has isn't kept, so it stays to do: \(nobodyHasProblem)",
@@ -482,7 +525,8 @@ struct LogReaderView: View {
             Text("Where things stand").accessibilityAddTraits(.isHeader)
         } footer: {
             Text("Worked out by rules in code from the logs on Investigate, and for the emails to pull from Phishing: its runs in "
-                 + "this app's audit log, and what its Find showed nobody has. Show the Events and Pull Again only read; a fix "
+                 + "this app's audit log, and what its Find showed nobody has. What no log can show, like a sender unblocked with "
+                 + "the person, is marked done by hand and kept with the incident. Show the Events and Pull Again only read; a fix "
                  + "opens its screen, and nothing changes until you preview and confirm it there.")
         }
         if !reading.reaches.isEmpty { GotItSection(got: IncidentReport.gotIt(reading.reaches)).id(Self.gotItAnchor) }
@@ -504,7 +548,12 @@ struct LogReaderView: View {
     /// Report: the incident's report, made from this reading and what the audit log shows done, once for each change of them.
     @ViewBuilder private func report(_ reading: LogReading.Reading, key: String) -> some View {
         if let incident {
-            IncidentReportView(report: report(of: reading, key: key, incident), inputs: incident)
+            // The summary's draft: the model told this report's numbers and the reading's facts, never the logs' text.
+            let report = report(of: reading, key: key, incident), unavailable = LogExplainer.unavailable
+            let numbers = report.counts.map { (label: $0.label, number: $0.number) }
+            IncidentReportView(report: report, inputs: incident, draft: unavailable != nil ? nil : {
+                try await LogExplainer.summary(reading, numbers: numbers, when: { $0.formatted(date: .abbreviated, time: .shortened) })
+            }, modelUnavailable: unavailable)
         } else {
             Section {
                 Text("Open or make an incident above: the report is of an incident kept on this Mac, from its saved logs.")
@@ -528,7 +577,8 @@ struct LogReaderView: View {
             notes: record.notes.map { IncidentReport.Note(at: $0.at, text: $0.text) },
             review: IncidentReport.Review(kind: record.review.kind, severity: record.review.severity, meeting: record.review.meeting,
                                           attendees: record.review.attendees, cause: record.review.cause, wentWell: record.review.wentWell,
-                                          improve: record.review.improve, plan: record.review.plan)),
+                                          improve: record.review.improve, plan: record.review.plan, summary: record.review.summary,
+                                          summaryDrafted: record.review.summaryDrafted)),
             changes: memory.changes, evidence: incident.evidence.map { IncidentReport.Evidence(name: $0.name, about: $0.about) },
             no2SV: incident.no2SV, made: Date(), madeBy: incident.madeBy, when: IncidentReportView.when)
         memory.report = (made, report)
@@ -752,8 +802,13 @@ private struct MarkSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("That was \(marking.account)?").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Google marked a sign-in to \(marking.account) from \(marking.address) suspicious. Marked as theirs, it makes no "
-                 + "suspect in Read the logs. It's listed under Marked as Theirs with your note, and can be undone.")
+            Text((marking.asked ? "\(marking.account) signed in from \(marking.address) after the lock, an address these logs didn't "
+                  + "show before the attack. Marked as theirs, it isn't asked about again."
+                  : "Google marked a sign-in to \(marking.account) from \(marking.address) suspicious. Marked as theirs, it makes no "
+                  + "suspect in Read the logs.")
+                 + (marking.asked && marking.address.contains(":") ? " The rest of its IPv6 network (its first half) isn't asked about "
+                    + "either, as a phone or a home keeps it, unless the attacker's address shares it." : "")
+                 + " It's listed under Marked as Theirs on Investigate with your note, and can be undone.")
                 .fixedSize(horizontal: false, vertical: true)
             TextField("How you know", text: $note, prompt: Text("Their own passkey sign-in, through iCloud Private Relay"), axis: .vertical)
                 .lineLimit(2...4)
@@ -805,7 +860,8 @@ private struct MomentRow: View {
     }
 }
 
-/// One thing still to do: its number, the sentence, and a button for each fix it points to (the screen that does it).
+/// One thing still to do: its number, the sentence, a button for each fix it points to (the screen that does it), That Was
+/// Them for an address it asks about, and Mark Done… for what no log can show done.
 private struct TaskRow: View {
     let task: LogReading.Task
     let secure: (String, SecurePick?) -> Void
@@ -813,6 +869,10 @@ private struct TaskRow: View {
     let show: (IncidentLogs.Filter) -> Void
     let pullAgain: ([ActivityLogs.Application], [String]) -> Void
     let sweep: (String) -> Void
+    /// Asks how it was done, to keep it as done by hand; nil for an item the logs decide, or with no incident open.
+    let markDone: (() -> Void)?
+    /// Asks a note to mark one of its addresses as its account's own; nil when marks can't be kept.
+    let markTheirs: ((String) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -822,7 +882,8 @@ private struct TaskRow: View {
                 Image(systemName: "circle")
             }
             .accessibilityLabel("To do \(task.id): \(task.words)")
-            if !task.drafts.isEmpty || task.shows != nil || !task.pullsAgain.isEmpty || task.sweeps != nil {
+            let marks = markTheirs == nil ? [] : task.theirs
+            if !task.drafts.isEmpty || task.shows != nil || !task.pullsAgain.isEmpty || task.sweeps != nil || !marks.isEmpty || markDone != nil {
                 HStack {
                     if let address = task.sweeps {
                         Button("Pull Every Account From \(address)") { sweep(address) }
@@ -848,6 +909,20 @@ private struct TaskRow: View {
                     if let shown = task.shows {
                         Button("Show the Events") { show(IncidentLogs.Filter(shown)) }
                             .accessibilityHint("Opens Investigate with the logs narrowed to the events this is about. Nothing changes.")
+                    }
+                    if let markTheirs, marks.count == 1, let address = marks.first {
+                        Button("That Was Them…") { markTheirs(address) }
+                            .accessibilityHint("Marks \(address) as \(task.accounts.first ?? "the person")'s own, with a note, so it isn't asked about again.")
+                    } else if let markTheirs, marks.count > 1 {
+                        Menu("That Was Them") {
+                            ForEach(marks, id: \.self) { address in Button(address + "…") { markTheirs(address) } }
+                        }
+                        .fixedSize()
+                        .accessibilityHint("Marks one of these addresses as \(task.accounts.first ?? "the person")'s own, with a note.")
+                    }
+                    if let markDone {
+                        Button("Mark Done…", action: markDone)
+                            .accessibilityHint("Asks how it was done, and keeps it with the incident as done by hand, with when and by whom.")
                     }
                 }
                 .padding(.leading, 28)
@@ -1267,6 +1342,10 @@ private struct GotItSection: View {
 
 private struct DoneRow: View {
     let task: LogReading.Task
+    /// Undoes a tick, for an item marked done by hand: nil with no incident open.
+    let undo: (() -> Void)?
+
+    private var byHand: Bool { if case .byHand? = task.done?.how { true } else { false } }
 
     var body: some View {
         let when = task.done.map { done in
@@ -1275,19 +1354,61 @@ private struct DoneRow: View {
             case .trashed: "Trashed \(at), as this app's audit log shows."
             case .nobodyHasIt: "Checked \(at), as Phishing's Find showed."
             case .warned: "Sent \(at), as the Gmail log shows."
+            case .byHand(let how): "Marked done by hand \(at): \(how)"
             }
         } ?? "Done."
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(task.id). \(task.words)")
-                Text(when).font(.callout).foregroundStyle(.secondary)
+        HStack(alignment: .firstTextBaseline) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(task.id). \(task.words)")
+                    Text(when).font(.callout).foregroundStyle(.secondary)
+                }
+                .textSelection(.enabled)
+            } icon: {
+                Image(systemName: byHand ? "checkmark.circle" : "checkmark.circle.fill").foregroundStyle(.green)
             }
-            .textSelection(.enabled)
-        } icon: {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Done, \(task.id): \(task.words) \(when)")
+            if byHand, let undo {
+                Spacer()
+                Button("Undo", action: undo)
+                    .accessibilityLabel("Undo: \(task.id) is to do again")
+            }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Done, \(task.id): \(task.words) \(when)")
+    }
+}
+
+/// Asks how a to-do item no log can show was done, to keep it as done by hand: said in the report beside what the logs show.
+private struct TickSheet: View {
+    let task: LogReading.Task
+    @Binding var problem: String?
+    let save: (String) -> Void
+    let cancel: () -> Void
+    @State private var how = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Mark \(task.id) done?").font(.headline).accessibilityAddTraits(.isHeader)
+            Text(task.words).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text("No log shows this done, so it's kept with the incident as done by hand, with how, when and by whom, and the report "
+                 + "says so. If the logs later say more about it, it's to do again. It can be undone.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            TextField("How it was done", text: $how, prompt: Text("Unblocked the sender with them on a call, Oct 26"), axis: .vertical)
+                .lineLimit(2...4)
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel", role: .cancel, action: cancel).keyboardShortcut(.cancelAction)
+                Button("Mark Done") { save(how) }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(how.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityHint("Keeps it with the incident on this Mac as done by hand.")
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
     }
 }
 

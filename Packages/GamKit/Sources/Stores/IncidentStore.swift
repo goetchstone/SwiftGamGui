@@ -41,10 +41,13 @@ public struct IncidentStore: Sendable {
         public var review = Review()
         /// The email the operator picked as where it started ("That's the Phish" on Investigate): a bare Message-ID.
         public var phish: String?
+        /// The to-do items marked done by hand (Respond's Mark Done…), oldest first.
+        public var ticks: [Tick] = []
     }
 
     /// The post-incident review (the standard's lessons learned): the incident's type and severity, the review meeting, how
-    /// they got in, what went well, what to do better, and the plan going forward, one item a line. Typed by the operator.
+    /// they got in, what went well, what to do better, and the plan going forward, one item a line; and the report's summary.
+    /// Typed by the operator.
     public struct Review: Sendable, Equatable {
         public var kind = ""
         public var severity = ""
@@ -54,17 +57,47 @@ public struct IncidentStore: Sendable {
         public var wentWell = ""
         public var improve = ""
         public var plan = ""
+        /// The report's summary, at its top: written, or drafted by the on-device model and checked.
+        public var summary = ""
+        /// The summary began as the on-device model's draft: the report says so.
+        public var summaryDrafted = false
 
         public init(kind: String = "", severity: String = "", meeting: Date? = nil, attendees: String = "", cause: String = "",
-                    wentWell: String = "", improve: String = "", plan: String = "") {
+                    wentWell: String = "", improve: String = "", plan: String = "", summary: String = "", summaryDrafted: Bool = false) {
             (self.kind, self.severity, self.meeting, self.attendees) = (kind, severity, meeting, attendees)
             (self.cause, self.wentWell, self.improve, self.plan) = (cause, wentWell, improve, plan)
+            (self.summary, self.summaryDrafted) = (summary, summaryDrafted)
+        }
+
+        /// Nothing of the review written: the summary is the report's, not the review's.
+        public var isEmpty: Bool {
+            var review = self
+            (review.summary, review.summaryDrafted) = ("", false)
+            return review == Review()
         }
 
         /// Its text fields by their names in the file, in the order the screen asks them.
         var texts: [(key: String, value: String)] {
             [("kind", kind), ("severity", severity), ("attendees", attendees), ("cause", cause), ("wentWell", wentWell),
-             ("improve", improve), ("plan", plan)]
+             ("improve", improve), ("plan", plan), ("summary", summary)]
+        }
+    }
+
+    /// A to-do item marked done by hand: a step no log shows done, such as contacts warned by phone or a sender unblocked with
+    /// the person. Kept by the item's kind and its words when ticked, so an item the logs later say more about (another person
+    /// to warn) comes back to do; with how it was done, when, and by whom.
+    public struct Tick: Sendable, Equatable {
+        public let kind: String
+        public let words: String
+        /// A fingerprint of what the item stood on beyond its words (the reader's `Task.basis`): evidence grown since, it's
+        /// to do again.
+        public let basis: String
+        public let how: String
+        public let at: Date
+        public let by: String
+
+        public init(kind: String, words: String, basis: String, how: String, at: Date, by: String) {
+            (self.kind, self.words, self.basis, self.how, self.at, self.by) = (kind, words, basis, how, at, by)
         }
     }
 
@@ -396,6 +429,14 @@ public struct IncidentStore: Sendable {
               record.review.texts.allSatisfy({ $0.value.count <= reviewLength }) else {
             throw .invalid("The type and severity must be \(nameLength) characters or fewer, and each answer of the review \(reviewLength).")
         }
+        guard record.ticks.count <= notesCap else { throw .invalid("At most \(notesCap) items marked done are kept with an incident.") }
+        guard record.ticks.allSatisfy({ (1...noteLength).contains($0.how.count) }) else {
+            throw .invalid("Say how it was done in 1 to \(noteLength) characters.")
+        }
+        guard record.ticks.allSatisfy({ (1...40).contains($0.kind.count) && (1...reviewLength).contains($0.words.count) && $0.basis.count <= 40
+            && $0.by.count <= nameLength }) else {
+            throw .invalid("That item can't be kept as done: its words are longer than \(reviewLength) characters.")
+        }
         return record
     }
 
@@ -425,15 +466,22 @@ public struct IncidentStore: Sendable {
                 guard let value = fields[key] else { return "" }
                 return value.string
             }
+            // The summary since 2026-10-28: a review from before has none.
             guard let kind = text("kind"), let severity = text("severity"), let attendees = text("attendees"), let cause = text("cause"),
-                  let wentWell = text("wentWell"), let improve = text("improve"), let plan = text("plan") else { return nil }
+                  let wentWell = text("wentWell"), let improve = text("improve"), let plan = text("plan"), let summary = text("summary")
+            else { return nil }
             var meeting: Date?
             if let at = fields["meeting"], at != .null {
                 guard let date = at.string.flatMap({ try? Date($0, strategy: .iso8601) }) else { return nil }
                 meeting = date
             }
+            var drafted = false
+            if let kept = fields["summaryDrafted"] {
+                guard let flag = kept.bool else { return nil }
+                drafted = flag
+            }
             review = Review(kind: kind, severity: severity, meeting: meeting, attendees: attendees, cause: cause, wentWell: wentWell,
-                            improve: improve, plan: plan)
+                            improve: improve, plan: plan, summary: summary, summaryDrafted: drafted)
         }
         // Kept since 2026-10-27: a file from before has none.
         var phish: String?
@@ -441,8 +489,16 @@ public struct IncidentStore: Sendable {
             guard let id = kept.string else { return nil }
             phish = id
         }
+        // Kept since 2026-10-28: a file from before has none.
+        var ticks: [Tick] = []
+        for entry in file["ticks"]?.array ?? [] {
+            guard let kind = entry["kind"]?.string, let words = entry["words"]?.string, let basis = entry["basis"]?.string,
+                  let how = entry["how"]?.string, let at = entry["at"]?.string.flatMap({ try? Date($0, strategy: .iso8601) }),
+                  let by = entry["by"]?.string else { return nil }
+            ticks.append(Tick(kind: kind, words: words, basis: basis, how: how, at: at, by: by))
+        }
         return try? valid(Record(id: id, domain: domain, title: title, opened: opened, openedBy: openedBy, reported: reported, notes: notes,
-                                 warnings: warnings, review: review, phish: phish))
+                                 warnings: warnings, review: review, phish: phish, ticks: ticks))
     }
 
     /// Writes `record` as the whole of its `incident.json`, making its folder (and `root`) `0700` first.
@@ -453,11 +509,16 @@ public struct IncidentStore: Sendable {
         var review = JSONObject()
         for (key, value) in record.review.texts { review[key] = .string(value) }
         review["meeting"] = record.review.meeting.map { .string($0.formatted(.iso8601)) } ?? .null
+        review["summaryDrafted"] = .bool(record.review.summaryDrafted)
+        let ticks = record.ticks.map { tick in
+            JSONValue.object(["kind": .string(tick.kind), "words": .string(tick.words), "basis": .string(tick.basis), "how": .string(tick.how),
+                              "at": .string(tick.at.formatted(.iso8601)), "by": .string(tick.by)])
+        }
         let file = JSONValue.object(["version": .number(String(Self.format)), "id": .string(record.id), "domain": .string(record.domain),
                                      "title": .string(record.title), "opened": .string(record.opened.formatted(.iso8601)),
                                      "openedBy": .string(record.openedBy), "reported": .string(record.reported), "notes": .array(notes),
                                      "warnings": .array(record.warnings.map { .object(["email": .string($0.email), "warning": .string($0.warning)]) }),
-                                     "review": .object(review), "phish": record.phish.map(JSONValue.string) ?? .null])
+                                     "review": .object(review), "phish": record.phish.map(JSONValue.string) ?? .null, "ticks": .array(ticks)])
         do {
             try SignatureStore.writeFile(Array((JSONValue.dumps(file) + "\n").utf8), named: Self.fileName, in: folder, interrupt: nil)
         } catch {

@@ -66,11 +66,14 @@ public enum LogReading {
         /// The addresses a read of every account was made from already (an incident's saved reads, each by its `about.txt`; or
         /// the read shown): their sweep is done.
         public let swept: Set<String>
+        /// Whose Gmail log the pull holds every event of, and between when (`Whole`): a person here it holds past an email of the
+        /// attacker's needn't be pulled again to see whether a warning reached them (`Reach.unread`).
+        public let gmailWhole: [Whole]
 
         public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
                     pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], people: [String: String]? = nil,
                     groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:], phish: String? = nil,
-                    swept: Set<String> = []) {
+                    swept: Set<String> = [], gmailWhole: [Whole] = []) {
             self.pulledBy = pulledBy
             self.read = read
             self.theirs = theirs
@@ -84,7 +87,22 @@ public enum LogReading {
             self.warnings = warnings
             self.phish = phish
             self.swept = swept
+            self.gmailWhole = gmailWhole
         }
+    }
+
+    /// A read of a log that holds every event of its accounts (nil: every account's, else these, lowercased) from `from` to
+    /// `to`: its oldest and newest event, read with no address filter. Whatever its cap, such a read leaves nothing out between
+    /// those two; a read by an address holds only that address's, so it's none.
+    public struct Whole: Sendable, Equatable {
+        public let accounts: Set<String>?
+        public let from: Date
+        public let to: Date
+
+        public init(accounts: Set<String>?, from: Date, to: Date) { (self.accounts, self.from, self.to) = (accounts, from, to) }
+
+        /// It holds `account`'s events from before `at` to after it.
+        func holds(_ account: String, past at: Date) -> Bool { (accounts?.contains(account.lowercased()) ?? true) && from <= at && to > at }
     }
 
     /// Phishing's Find showed no mailbox here has this email, every mailbox and its Spam searched, at `at`, with `by`
@@ -110,10 +128,28 @@ public enum LogReading {
             case nobodyHasIt
             /// A warning the operator picked went to everyone the email reached (the Gmail log's sends of it).
             case warned
+            /// Marked done by hand on the incident, as the operator said it was done: what no log shows (`Ticked`).
+            case byHand(String)
         }
         public let how: How
         public let at: Date
         public let by: String
+    }
+
+    /// A to-do item marked done by hand, kept with the incident: by its kind and its words when ticked, with how it was done,
+    /// when and by whom. Only an item no log can show done takes one (`Task.Kind.tickable`).
+    public struct Ticked: Sendable, Equatable {
+        public let kind: String
+        public let words: String
+        /// The item's `Task.basis` when ticked.
+        public let basis: String
+        public let how: String
+        public let at: Date
+        public let by: String
+
+        public init(kind: String, words: String, basis: String, how: String, at: Date, by: String) {
+            (self.kind, self.words, self.basis, self.how, self.at, self.by) = (kind, words, basis, how, at, by)
+        }
     }
 
     /// Phishing's latest run on one email, as this app's audit log shows it: when its newest record was written and by
@@ -162,7 +198,9 @@ public enum LogReading {
         return String(trimmed.dropFirst().dropLast())
     }
 
-    /// A sign-in the operator marked as the person's own: their account and the address, case aside.
+    /// A sign-in the operator marked as the person's own: their account and the address, case aside. Exact, for whether a
+    /// sign-in makes a suspect: a network may be shared with the attacker (a relay's, a VPN's), and a mark must never clear
+    /// them. Only the question about a new address after the lock counts a mark by its network (`status`).
     public static func key(account: String, address: String) -> String { account.lowercased() + "|" + address.lowercased() }
 
     /// Where an account the attacker had stands, read from the logs in time order: the lock (a password reset and a
@@ -280,8 +318,16 @@ public enum LogReading {
     public struct Task: Sendable, Equatable, Identifiable {
         /// Most urgent first.
         public enum Kind: String, Sendable, CaseIterable {
-            case secureAgain, secure, finishLock, pullAgain, sweep, removeAdded, clearRecovery, unblockSender, deleteDevice, pullEmail,
-                 warnRecipients, signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look, checkShared
+            case secureAgain, secure, finishLock, pullAgain, sweep, readDirectory, removeAdded, clearRecovery, recoveryQuestion, unblockSender,
+                 deleteDevice, pullEmail, warnRecipients, signOutApp, warnContacts, warnChat, treatAsTaken, confirmAddress, checkPassword, look,
+                 checkShared
+
+            /// Whether it can be marked done by hand. Not a lock, recovery details cleared, a computer, or a read (of the logs or
+            /// the directory): the logs show each of the first three done whoever did it, and this app does the reads, so a tick
+            /// could only hide an account the attacker can still get back into, or a list left unfinished.
+            public var tickable: Bool {
+                ![.secureAgain, .secure, .finishLock, .pullAgain, .sweep, .readDirectory, .clearRecovery, .deleteDevice].contains(self)
+            }
         }
         public let id: String
         public let kind: Kind
@@ -298,6 +344,13 @@ public enum LogReading {
         public let done: Done?
         /// The attacker's address to read every account's logs from ("Pull Every Account From …", slice 7): a read. Nil for none.
         public var sweeps: String? = nil
+        /// The addresses the item asks whether are its account's own, each to mark as theirs here ("That Was Them", which
+        /// answers it): an address after the lock not seen before the attack.
+        public var theirs: [String] = []
+        /// A fingerprint of what it stands on beyond its words (the events behind it, who's to warn): a tick is matched by
+        /// kind, words and this, so one whose evidence grew (a second passkey, another person to warn at the same count) is to
+        /// do again (review 2026-10-28).
+        public var basis: String = ""
     }
 
     /// Which events a to-do item is about: its accounts', from these addresses (none: any), in these logs, through these
@@ -521,6 +574,35 @@ public enum LogReading {
             return toDo.flatMap(\.drafts).compactMap { draft in
                 if case .pullEmail(let id, _) = draft, seen.insert(id).inserted { id } else { nil }
             }
+        }
+
+        /// This reading with the items `ticks` mark done by hand moved from what's left to what's done (after what the logs and
+        /// this app show done), each with how, when and by whom, and both lists numbered again. A tick counts only for an item
+        /// that can take one, of its kind, saying exactly its words: one the logs now say more about is left to do again.
+        /// Cheap, so made where the reading is shown: a tick never reads the pull again.
+        public func ticking(_ ticks: [Ticked]) -> Reading {
+            func key(_ kind: String, _ words: String, _ basis: String) -> String { kind + "\u{1F}" + words + "\u{1F}" + basis }
+            var latest: [String: Ticked] = [:]
+            for tick in ticks {
+                let key = key(tick.kind, tick.words, tick.basis)
+                if latest[key].map({ $0.at <= tick.at }) ?? true { latest[key] = tick }
+            }
+            guard !latest.isEmpty else { return self }
+            var left: [Task] = [], ticked: [Task] = []
+            for task in toDo {
+                guard task.kind.tickable, let tick = latest[key(task.kind.rawValue, task.words, task.basis)] else { left.append(task); continue }
+                ticked.append(Task(id: "", kind: task.kind, words: task.words, accounts: task.accounts, drafts: [], shows: nil, pullsAgain: [],
+                                   done: Done(how: .byHand(tick.how), at: tick.at, by: tick.by), basis: task.basis))
+            }
+            guard !ticked.isEmpty else { return self }
+            func numbered(_ tasks: [Task], _ prefix: String) -> [Task] {
+                tasks.enumerated().map { index, task in
+                    Task(id: "\(prefix)\(index + 1)", kind: task.kind, words: task.words, accounts: task.accounts, drafts: task.drafts,
+                         shows: task.shows, pullsAgain: task.pullsAgain, done: task.done, sweeps: task.sweeps, theirs: task.theirs, basis: task.basis)
+                }
+            }
+            return Reading(findings: findings, statuses: statuses, toDo: numbered(left, "T"), done: numbered(done + ticked, "D"), events: events,
+                           reaches: reaches, wayIn: wayIn)
         }
     }
 
@@ -786,7 +868,7 @@ public enum LogReading {
                              + ", on the Admin console's page for them (Security), or with them in their Google Account.", []))
             }
             if question {
-                todo.append((.clearRecovery, "Have \(account) set a new recovery question in their Google Account: the attacker changed it, "
+                todo.append((.recoveryQuestion, "Have \(account) set a new recovery question in their Google Account: the attacker changed it, "
                              + "and no admin step resets it.", []))
             }
             if theirs.contains(where: { ["recovery_email_edit", "recovery_phone_edit"].contains($0.event) }), !cleared {
@@ -960,59 +1042,71 @@ public enum LogReading {
         // Who each reached, and whether the warnings picked reached them all: done only on the log's own word for each of
         // them, with the directory read and nothing unreadable; what the logs read can't show is to pull again.
         let reaches = reaches(order, in: events, attacker: acting, context: context)
-        var warnTasks: [(Task.Kind, String, [String], [Draft], Shown?, [String])] = []
+        var warnTasks: [(Task.Kind, String, [String], [Draft], Shown?, [String], String)] = []
+        // What's left of warning is said once across every email, as Report counts it (asked 2026-10-28: one warn item an email
+        // made five, "condense that to one list to warn like on the report page"): who's still to warn, whose Gmail log to pull
+        // again, and reading the directory. What's particular to one email (a warning picked that doesn't count, a send naming
+        // no one) stays that email's.
+        var unread: [String] = [], senders: [String] = [], listed: Set<String> = []
         for reach in reaches {
             let named = "“\(reach.subject.isEmpty ? "(no subject)" : reach.subject)” (\(reach.messageID))"
             // Show the Events: the sender's Gmail events, where its sends and bounces are.
             let shows = reach.senders.isEmpty ? nil : Shown(accounts: reach.senders, logs: ["gmail"])
-            if !reach.unread.isEmpty {
-                let shown = Array(reach.unread.prefix(20))
-                warnTasks.append((.pullAgain, "Pull the Gmail log again for \(list(shown))"
-                                  + (reach.unread.count > shown.count ? " (the first 20 of \(reach.unread.count))" : "")
-                                  + ": whether they got a warning about \(named) is in their own Gmail log, which the pull doesn't have.",
-                                  shown, [], nil, ["gmail"]))
-            }
+            senders += reach.senders.filter { listed.insert("sender " + $0).inserted }
+            unread += reach.unread.filter { listed.insert("unread " + $0).inserted }
             for warning in reach.warnings where warning.problem != nil {
                 warnTasks.append((.warnRecipients, "The warning picked for \(named), \(warning.messageID), doesn't count: \(warning.problem!).",
-                                  reach.senders, [], shows, []))
+                                  reach.senders, [], shows, [], ""))
             }
             if reach.unnamed > 0 {
                 warnTasks.append((.warnRecipients, "The log shows \(reach.unnamed == 1 ? "a send" : "\(reach.unnamed) sends") of \(named) naming no "
                                   + "recipient: who it went to isn't in the logs read. Check it in the Admin console's Gmail log events, then warn them.",
-                                  reach.senders, [], shows, []))
+                                  reach.senders, [], shows, [], ""))
             }
             if reach.unreadable > 0 {
                 warnTasks.append((.warnRecipients, "\(reach.unreadable) of the recipients the log names for \(named) don't read as an address: "
-                                  + "check them in the Admin console's Gmail log events, then warn them.", reach.senders, [], nil, []))
+                                  + "check them in the Admin console's Gmail log events, then warn them.", reach.senders, [], nil, [], ""))
             }
             guard !reach.reached.isEmpty else { continue }
-            // The warnings that count and reached someone it reached, by the log's word: what done names.
+            // Done once everyone it got to is shown warned, by the log's own word for each, with the directory read and nothing
+            // unreadable. Got to as Report counts it (`IncidentReport.gotIt`): a bounce, a quarantine or a rejection didn't get
+            // through (the operator, 2026-10-27: "if it bounced, they did not get it").
             let warned = Set(reach.reached.filter { $0.warned == true }.map(\.address))
             let by = reach.warnings.filter { $0.problem == nil && !$0.warned.isDisjoint(with: warned) }
-            if reach.toWarn.isEmpty, reach.unreadable == 0, reach.unnamed == 0, context.people != nil, let latest = by.filter({ $0.at != nil }).max(by: { $0.at! < $1.at! }) {
+            if IncidentReport.gotIt([reach]).allSatisfy({ !$0.toWarn }), reach.unreadable == 0, reach.unnamed == 0, context.people != nil,
+               let latest = by.filter({ $0.at != nil }).max(by: { $0.at! < $1.at! }) {
                 // A group whose members weren't read, or an address no account has, counts on the warning's send, as outside does:
                 // who got either through a group is in its members' own Gmail logs, which a pull may not have (final review
                 // 2026-10-25), so it's said. A group whose members were read isn't among them: its members are, as themselves.
-                let groups = reach.reached.filter { $0.inside && !$0.mailbox }.count   // quarantined or rejected too (final review)
-                doneTasks.append((.warnRecipients, "Warned everyone \(named) reached: \(reach.reached.count) "
-                                  + (reach.reached.count == 1 ? "person" : "people")
+                let got = IncidentReport.gotIt([reach]), groups = got.filter { $0.inside && !$0.mailbox }.count
+                doneTasks.append((.warnRecipients, "Warned everyone \(named) got to: \(got.count) "
+                                  + (got.count == 1 ? "person" : "people")
                                   + (groups == 0 ? "" : " (\(groups == 1 ? "one" : "\(groups)") of them a group or an address no account has, "
                                      + "counted on the warning's send)")
                                   + ", by \(list(by.map { "\($0.sender)'s “\($0.subject)”" })).",
                                   reach.senders, Done(how: .warned, at: latest.at!, by: latest.sender)))
-            } else {
-                if context.people == nil {
-                    warnTasks.append((.warnRecipients, "Read the directory (open Users) to finish Who \(named) reached: until then a group "
-                                      + "can't be told from a person, nor whose Gmail log to pull.", reach.senders, [], shows, []))
-                }
-                if !reach.toWarn.isEmpty {
-                    let count = reach.toWarn.count, outside = reach.toWarn.filter { !$0.inside }.count
-                    warnTasks.append((.warnRecipients, "Warn the \(count) \(count == 1 ? "person" : "people") \(named) reached"
-                                      + (by.isEmpty ? "" : " that no warning picked is shown reaching")
-                                      + (outside > 0 ? ", \(outside) of them outside" : "") + ": pick the warning sent to them under Who it "
-                                      + "reached (its sender's Gmail log in the pull), or send one.", reach.senders, [], shows, []))
-                }
             }
+        }
+        if !reaches.isEmpty, context.people == nil {
+            warnTasks.append((.readDirectory, "Read the directory (open Users) to finish Who it reached: until then a group can't be told "
+                              + "from a person, nor whose Gmail log to pull.", senders, [], senders.isEmpty ? nil : Shown(accounts: senders, logs: ["gmail"]), [], ""))
+        }
+        let toWarn = IncidentReport.gotIt(reaches).filter(\.toWarn)
+        if !toWarn.isEmpty {
+            let outside = toWarn.filter { !$0.inside }.count
+            warnTasks.append((.warnRecipients, "Warn the \(toWarn.count) \(toWarn.count == 1 ? "person" : "people") the attacker's "
+                              + (reaches.count == 1 ? "email" : "emails") + " got to that no warning picked is shown reaching"
+                              + (outside > 0 ? ", \(outside) of them outside" : "") + ": Everyone it got to lists each once, to copy or export. "
+                              + "Pick the warning sent to them under each email's Who it reached, or send one.",
+                              senders, [], senders.isEmpty ? nil : Shown(accounts: senders, logs: ["gmail"]), [],
+                              fingerprint(toWarn.map(\.address).sorted().joined(separator: ","))))
+        }
+        if !unread.isEmpty {
+            let shown = Array(unread.prefix(20))
+            warnTasks.append((.pullAgain, "Pull the Gmail log again for \(list(shown))"
+                              + (unread.count > shown.count ? " (the first 20 of \(unread.count))" : "")
+                              + ": whether a warning reached them is in their own Gmail log, which the pull doesn't hold past the attacker's email.",
+                              shown, [], nil, ["gmail"], ""))
         }
 
         let ranked = found.enumerated().sorted { a, b in
@@ -1052,10 +1146,12 @@ public enum LogReading {
             sweeps.append((.sweep, words, [], [], nil))
             sweepFor[words] = address
         }
-        let todos = statusTasks.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String]()) } + coverage.map { ($0.0, $0.1, $0.2, $0.3, $0.4, pullsAgain) }
-            + sweeps.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String]()) }
+        // Each item's basis beyond its words: for one a finding points to, how many events it stands on and from where.
+        let todos = statusTasks.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String](), "") } + coverage.map { ($0.0, $0.1, $0.2, $0.3, $0.4, pullsAgain, "") }
+            + sweeps.map { ($0.0, $0.1, $0.2, $0.3, $0.4, [String](), "") }
             + ranked.flatMap { item in
-                item.todo.map { ($0.0, $0.1, item.accounts, $0.2, item.shows ?? Shown(accounts: item.accounts, addresses: item.addresses), [String]()) }
+                item.todo.map { ($0.0, $0.1, item.accounts, $0.2, item.shows ?? Shown(accounts: item.accounts, addresses: item.addresses), [String](),
+                                 fingerprint("\(item.events)|" + item.addresses.joined(separator: ","))) }
             } + warnTasks
         var said: Set<String> = []
         let ordered = todos.enumerated().filter { said.insert($0.element.1 + "|" + $0.element.3.map(\.title).joined()).inserted }.sorted { a, b in
@@ -1067,7 +1163,8 @@ public enum LogReading {
                     events: item.events, drafts: item.drafts.filter(stillToDraft), markable: item.markable)
         }, statuses: statuses, toDo: ordered.enumerated().map { index, item in
             Task(id: "T\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: item.3,
-                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.5, done: nil, sweeps: sweepFor[item.1])
+                 shows: item.4.flatMap { $0.accounts.isEmpty ? nil : $0 }, pullsAgain: item.5, done: nil, sweeps: sweepFor[item.1],
+                 theirs: item.0 == .confirmAddress ? item.4?.addresses ?? [] : [], basis: item.6)
         }, done: doneTasks.enumerated().map { index, item in
             Task(id: "D\(index + 1)", kind: item.0, words: item.1, accounts: item.2, drafts: [], shows: nil, pullsAgain: [], done: item.3)
         }, events: events.count, reaches: reaches, wayIn: wayIn(statuses, in: events, context: context))
@@ -1400,8 +1497,13 @@ public enum LogReading {
             }
             // People here still to warn whose log the pull doesn't show from this email on: their Gmail log is what would show a
             // warning. None while the directory isn't read (`Reach.unread`).
+            // A person a read holds whole past the email isn't one: no event since is their mailbox being quiet, not unread
+            // (2026-10-28: every account's Gmail was read, and quiet mailboxes were still to pull again).
             let unread = context.people == nil ? []
-                : recipients.filter { $0.mailbox && $0.warned != true && (latest[$0.address].map { $0 < after } ?? true) }
+                : recipients.filter { recipient in
+                    recipient.mailbox && recipient.warned != true && (latest[recipient.address].map { $0 < after } ?? true)
+                        && !context.gmailWhole.contains { $0.holds(recipient.address, past: after) }
+                }
             return Reach(messageID: id, subject: mail.subject, senders: unique(mail.sends.map(\.who).filter(isAccount)), recipients: recipients,
                          candidates: Array(candidates.prefix(Reach.candidatesShown)),
                          warnings: picked.map { pick in
@@ -1614,7 +1716,16 @@ public enum LogReading {
         }.map(\.ip))
         let suspectNetworks = Set(acting.map(network))
         let knownNetworks = Set(beforeExact.map(network)).subtracting(suspectNetworks)
-        let known = { (ip: String) in beforeExact.contains(ip) || knownNetworks.contains(network(ip)) }
+        // Or one the operator marked as theirs ("That was them"), by its network as above (asked 2026-10-28: a phone's later
+        // IPv6 address in the network of one marked was asked about again), never a network a suspect address shares (review
+        // 2026-10-28: a relay's or a VPN's, shared with the attacker), there only the very address. Not for a password change,
+        // which counts toward the lock only from the very address used before the attack.
+        let mine = me + "|"
+        let marked = Set(context.theirs.filter { $0.hasPrefix(mine) }.map { String($0.dropFirst(mine.count)) })
+        let markedNetworks = Set(marked.map(network)).subtracting(suspectNetworks)
+        let known = { (ip: String) in
+            beforeExact.contains(ip) || knownNetworks.contains(network(ip)) || marked.contains(ip.lowercased()) || markedNetworks.contains(network(ip))
+        }
         // A suspension later undone isn't a lock.
         let unsuspended = events.filter { $0.log == "admin" && $0.event == "UNSUSPEND_USER" && $0.parameters["USER_EMAIL"]?.lowercased() == me }
             .compactMap(\.time)
@@ -1791,10 +1902,31 @@ public enum LogReading {
     /// first 64 bits, which a home keeps while its devices change the rest (privacy addresses).
     static func network(_ ip: String) -> String {
         guard ip.contains(":") else { return ip }
-        let halves = ip.lowercased().components(separatedBy: "::")
-        let head = halves[0].split(separator: ":", omittingEmptySubsequences: false).map(String.init).filter { !$0.isEmpty }
-        let groups = head.count >= 4 || halves.count == 1 ? head : head + Array(repeating: "0", count: 4 - head.count)
-        return groups.prefix(4).map { String(Int($0, radix: 16) ?? 0, radix: 16) }.joined(separator: ":")
+        var text = ip.lowercased()
+        if let zone = text.firstIndex(of: "%") { text = String(text[..<zone]) }
+        // An IPv4 address written as IPv6 is that IPv4 address.
+        if text.hasPrefix("::ffff:"), text.contains(".") { return String(text.dropFirst(7)) }
+        let halves = text.components(separatedBy: "::")
+        guard halves.count <= 2 else { return text }
+        // Each half's groups, an IPv4 address at the end as its two.
+        func groups(_ half: String) -> [String] {
+            half.split(separator: ":").flatMap { group -> [String] in
+                let octets = group.split(separator: ".").compactMap { UInt8($0) }
+                guard group.contains("."), octets.count == 4 else { return [String(group)] }
+                return [String(UInt16(octets[0]) << 8 | UInt16(octets[1]), radix: 16), String(UInt16(octets[2]) << 8 | UInt16(octets[3]), radix: 16)]
+            }
+        }
+        let head = groups(halves[0]), tail = halves.count == 2 ? groups(halves[1]) : []
+        let full = halves.count == 2 ? head + Array(repeating: "0", count: max(0, 8 - head.count - tail.count)) + tail : head
+        return full.prefix(4).map { String(Int($0, radix: 16) ?? 0, radix: 16) }.joined(separator: ":")
+    }
+
+    /// A short fingerprint of `text`, the same from run to run (Swift's own hash isn't): FNV-1a. Not a security hash: it only
+    /// tells one item's evidence from another's (`Task.basis`).
+    static func fingerprint(_ text: String) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in text.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100_0000_01b3 }
+        return String(hash, radix: 16)
     }
 
     /// How an attacker's sign-in got past Google's challenge, mid-sentence: the means of the takeover.

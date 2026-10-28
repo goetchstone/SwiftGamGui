@@ -78,6 +78,23 @@ struct IncidentEvidenceTests {
         #expect(rows.map(\.time) == ["2026-10-22T09:00:00Z", "2026-10-19T13:00:00Z"], "the repeat counted once, newest first")
         #expect(together.pull.logs.first?.capped == false && together.pull.query.hours == 720 && together.pull.query.users.isEmpty)
         #expect(await IncidentLogs.evidence([first, first]).pull.logs.first?.capped == true, "still at the cap in every export")
+        // Whose events each read holds whole, and between when, kept through the merge: carol's read whole; the first, read newest
+        // first to its cap, can't say. A read by an address holds none.
+        let oldest = try? Date("2026-10-19T13:00:00Z", strategy: .iso8601), newest = try? Date("2026-10-22T09:00:00Z", strategy: .iso8601)
+        #expect(together.pull.logs.first?.whole.map(\.accounts) == [["carol@example.com"]])
+        let carol = together.pull.logs.first?.whole.last
+        #expect(carol?.from == oldest && carol?.to == newest, "from its oldest event to its newest")
+        let byAddress = Self.export("Incident logs 2026-10-23 0800", about: whole.replacingOccurrences(of: "From IP address: any.", with: "From IP address: 192.0.2.10."),
+                                    login: [Self.late])
+        #expect(await IncidentLogs.evidence([byAddress]).pull.logs.first?.whole == [])
+        // An about.txt that doesn't say whose (its default is every account) holds no one whole; nor does a read newest first to
+        // its cap; a read stopped at its cap oldest first holds up to where it was read through (review 2026-10-28).
+        let unsaid = Self.export("Incident logs 2026-10-23 0900", about: "Over the last 7 days.\n", login: [Self.late, Self.early])
+        #expect(await IncidentLogs.evidence([unsaid]).pull.logs.first?.whole == [])
+        #expect(await IncidentLogs.evidence([first]).pull.logs.first?.whole == [], "newest first to its cap")
+        let through = whole.replacingOccurrences(of: "2 events.", with: "2 events; read completely through 2026-10-20T00:00:00Z, later events weren't read.")
+        let stopped = await IncidentLogs.evidence([Self.export("Incident logs 2026-10-23 1000", about: through, login: [Self.late, Self.early])])
+        #expect(stopped.pull.logs.first?.whole.first?.to == (try? Date("2026-10-20T00:00:00Z", strategy: .iso8601)))
         let broken = ActivityLogs.Export(name: "Broken", about: whole, logs: [(.login, "name,actor.email\n")])
         let partly = await IncidentLogs.evidence([broken, first])
         #expect(partly.unreadable == ["Broken"] && ((try? partly.pull.logs.first?.rows.get().count) ?? 0) == 1)
