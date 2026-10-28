@@ -22,6 +22,20 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+## 2026-10-28 — Parity carried GamGUI's own hole: a typed `todrive` made a Builder read write
+- **What happened:** Builder slice 1 (#135) ported GamGUI's generic read builder, argv-identical over all 514 promoted reads.
+  An adversarial review before merge found two holes GamGUI has too: some reads put a required value where GAM reads options
+  (`print events <EventDisplayProperty>*`), so a typed `todrive` uploaded the result to the admin's Drive (a write: no
+  preview, no audit); and promotion judged the grammar line, not the argv the template emits, so an edited catalog line
+  (`gam update|print user …`) could run a write. Both fixed before merge (catalog-builder.md), with a fuzz target.
+- **Invariant in force:** #3 (only read-only commands become runnable), held to GamGUI by #11 (parity is a test).
+- **Why it didn't hold:** #11 makes GamGUI's output the oracle, so a port identical to a hole passes; #3's check read the
+  grammar's words, not the argv a value completes.
+- **Would a rule have caught it?** only if enforced differently: #3 judged on the argv as sent, values included (now
+  `CommandCatalog.readOnly(literals:)`, `keywordsThatChange`, the fuzzer's `catalogRead`).
+- **Enforcement home if changed:** the tripwires exist; `improve-rules` could word #3 as "judged on the argv as sent" and #11
+  as "a floor, not proof of safety: a ported builder still gets the adversarial review a new one would".
+
 ## 2026-10-28 — CLAUDE.md's layout names a module that no longer exists, and invariant 3's home moved
 - **What happened:** Builder slice 1 put the catalog and its promotion door in GamEngine (`CommandCatalog.swift`,
   `GamCommands.catalogRead`), the only module that can make a `GamRead`, and removed the empty `Catalog` target. CLAUDE.md's

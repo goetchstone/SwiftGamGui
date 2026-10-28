@@ -11,7 +11,9 @@ every run the executor makes listed from any screen with Stop, bounded as GamGUI
 listed the Builder as the largest gap): Builder slice 1, GAM's whole catalog to browse and search and every command that only
 reads run from it, GamGUI's generic read builder ported and held to it over all 514 promoted reads
 (`Tests/Fixtures/catalog_reads.json`); sensitive reads browse-only until a read can be audited; the live check B1 waits on the
-operator (`docs/domains/catalog-builder.md`). Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
+operator (`docs/domains/catalog-builder.md`); next for it, after B1: its curated writes one at a time through ChangeCore,
+sequences, and an audit so sensitive reads can run. GAM 7.49.02 is pinned (2026-10-28, #138), and the operator's app connects
+on it. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
 progress" before the Appendix has the detail.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`
