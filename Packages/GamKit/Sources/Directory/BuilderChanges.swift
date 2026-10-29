@@ -3,7 +3,6 @@ import Foundation
 import GamEngine
 import Observation
 import Setup
-import Vault
 
 /// The Builder's curated writes (GamGUI's `/builder/preview` and `/builder/run`), through ChangeCore, one at a time: a command's
 /// values built as GamGUI builds them (`CuratedCommand`), held by the executor exactly as it will run, confirmed from its sheet
@@ -11,10 +10,8 @@ import Vault
 /// here runs `gam` itself; the Builder's reads run as its promoted ones do (`UserAccess.catalogRead`).
 ///
 /// Checks GamGUI's Builder doesn't make, each where a run would lose something: the screens' own checks for the same write (a
-/// delegate as Users checks one); the connected admin refused for a suspend or a random password (either signs the app out, with
-/// no way back from here), as Users refuses its temporary password, by the account GAM itself resolves the address to (an alias
-/// reads as its owner), read at the preview and again just before the run, and refused when it can't be read; and a title or
-/// department left empty said before it's cleared (GAM sets both together).
+/// delegate as Users checks one), and a title or department left empty said before it's cleared (GAM sets both together). The
+/// connected admin is refused for a suspend, a password reset or a sign-out by the executor, as on every screen.
 @MainActor
 @Observable
 public final class BuilderChanges {
@@ -46,16 +43,13 @@ public final class BuilderChanges {
     private let executor: Executor?
     private let setup: SetupModel
     private let directory: DirectoryStore
-    /// Its own reader: whose account an address is, read live, never from a page's lists.
-    private let access: UserAccess
     /// Counts previews asked for: one that comes back after a newer one was asked for is dropped, never shown on its page.
     private var asked = 0
 
-    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore, access: UserAccess) {
+    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore) {
         self.executor = executor
         self.setup = setup
         self.directory = directory
-        self.access = access
     }
 
     public var isBusy: Bool {
@@ -103,28 +97,7 @@ public final class BuilderChanges {
         let target = command.target(values)
         func value(_ key: String) -> String { PythonText.strip(values[key] ?? "") }
         var warning: String?
-        var precondition: (@Sendable () async throws -> Bool)?
         switch write.action {
-        case .suspendUser, .resetPassword:
-            guard let admin = setup.connectedAdmin, !admin.isEmpty else {
-                return refuse("The admin this app signs in as isn't known. Check access on Setup, then preview again.")
-            }
-            guard let domain = tenant?.domain else { return refuse("Connect a domain on Setup first.") }
-            do throws(PreconditionFailure) {
-                if try await Self.isConnectedAdmin(target, admin: admin, in: domain, access: access) {
-                    return refuse("\(target) is the admin this app is connected as: \(command.name.lowercased()) would sign the app out, "
-                        + "with no way back from here. Do it in the Admin console, or from another admin's setup.")
-                }
-            } catch {
-                return refuse(error.reason)
-            }
-            precondition = { [setup, access] in
-                guard let admin = await setup.connectedAdmin, !admin.isEmpty else {
-                    throw PreconditionFailure("The admin this app signs in as isn't known. Check access on Setup")
-                }
-                let isAdmin = try await Self.isConnectedAdmin(target, admin: admin, in: domain, access: access)
-                return !isAdmin
-            }
         case .addDelegate:
             let check = UserChanges.checkDelegate(value("delegate"), for: target, directory: directory.users)
             if let error = check.error { return refuse(error) }
@@ -152,8 +125,7 @@ public final class BuilderChanges {
         }
         let step = WriteStep(write, target: target, summary: "\(command.name): \(target)", risk: Self.risk(command),
                              about: ["command": command.id])
-        let held = await executor.preview([step], confirmStep: true, expecting: tenant, title: "\(command.name) for \(target)",
-                                          precondition: precondition)
+        let held = await executor.preview([step], confirmStep: true, expecting: tenant, title: "\(command.name) for \(target)")
         guard request == asked else {
             if case .success(let preview) = held { await executor.discard(preview.id) }
             return
@@ -164,23 +136,6 @@ public final class BuilderChanges {
         case .failure(let refusal):
             refuse(refusal.message)
         }
-    }
-
-    /// `address` is `admin`'s account: the same address, or one GAM resolves to it (`info user`, read now on `domain`: an alias
-    /// reads as the account that owns it). Throws when GAM can't say whose account it is: nothing is refused on a guess.
-    nonisolated static func isConnectedAdmin(_ address: String, admin: String, in domain: Domain,
-                                             access: UserAccess) async throws(PreconditionFailure) -> Bool {
-        if Guard.normalized(address) == Guard.normalized(admin) { return true }
-        let primary: String
-        do {
-            primary = try await access.account(address, in: domain, fields: ["primaryEmail"]).primaryEmail
-        } catch let problem as UserAccess.Problem {
-            throw PreconditionFailure("Couldn't check whose account \(address) is (\(problem.summary)), so it isn't changed.")
-        } catch {
-            throw PreconditionFailure("Couldn't check whose account \(address) is, so it isn't changed.")
-        }
-        guard !primary.isEmpty else { throw PreconditionFailure("GAM didn't say whose account \(address) is, so it isn't changed.") }
-        return Guard.normalized(primary) == Guard.normalized(admin)
     }
 
     // MARK: confirming

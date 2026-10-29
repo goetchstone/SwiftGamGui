@@ -38,6 +38,22 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   a ChangeCore precondition every caller gets, as the executor's tenant check is), not with a screen.
 - **Enforcement home if changed:** tripwire test: one per write class that names the checks a preview of it must make, run over
   every model that builds it (the connected-admin refusal for suspend, password and deprovision first).
+- **Then (same day):** the connected-admin refusal moved into the executor (`GamWrite.cutsOff`, guard-audit runbook), so every
+  caller gets it; the Builder's and the temporary password's copies went. The delegate and title checks still sit in screens.
+
+## 2026-10-28 — The mock's tenant had no admin, so the admin check's fail-open branch was the one tested
+- **What happened:** the executor's connected-admin check resolves the admin's own address with `info user`. Every test's
+  admin (`admin@example.com`) was missing from the mock's directory, so each read said "does not exist", which the check
+  took as "not the admin" and ran the write. The adversarial review found that branch lets a renamed admin be suspended.
+  Fixed before commit: the check compares Google account IDs (Setup confirms the token's `sub` against GAM's `id`), the
+  mock's directory has the admin, every mock user an `id`, and the mock's user writes fail for no such user. The next
+  review (2026-10-29) found the same shape once more: "no such user" was still read as "not the admin, go on", a guess
+  three plans got through. Any answer but "this account, with this ID" now refuses.
+- **Invariant in force:** "the mock lies" (make it fail the way real GAM fails).
+- **Why it didn't hold:** the rule is read as "the mock's refusals must match GAM's". This was a missing fact about the
+  tenant (it always contains its admin), not a refusal, so nothing prompted a look.
+- **Would a rule have caught it?** only if enforced differently: a fixture check that the tests' connected admin is a user
+  in the mock's directory.
 
 ## 2026-10-28 — Parity carried GamGUI's own hole: a typed `todrive` made a Builder read write
 - **What happened:** Builder slice 1 (#135) ported GamGUI's generic read builder, argv-identical over all 514 promoted reads.

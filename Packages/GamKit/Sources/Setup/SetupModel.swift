@@ -64,6 +64,11 @@ public final class SetupModel {
     /// another domain hid the connected one's admin (Off2's review, 2026-10-13).
     public var connectedAdmin: String? { active == nil ? nil : activeAdmin }
     private var activeAdmin: String?
+    /// The connected admin's Google account ID, once confirmed: the token's `sub`, taken only when GAM reads the same `id`
+    /// for the admin at Check access. Nil for an admin typed in (the token doesn't say whose it is) or one GAM couldn't
+    /// confirm: then ChangeCore makes no change that could cut an account off, since it can't tell whether it's this one.
+    public var connectedAdminID: String? { active == nil ? nil : activeAdminID }
+    private var activeAdminID: String?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.
@@ -264,8 +269,12 @@ public final class SetupModel {
             let result = try await runner.checkAccess(admin: admin, as: domain)
             lastCheck = CheckRecord(domain: domain, admin: admin, result: result)
             if result.isAuthorized {
-                activate(domain, admin: admin)
-                activity = .done("Connected to \(domain) as \(admin).")
+                let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
+                                                                of: admin, in: domain, runner: runner)
+                activate(domain, admin: admin, accountID: account.id)
+                activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
+                    " Which account that is isn't confirmed (\($0)), so a change that could sign it out isn't made here."
+                } ?? ""))
             } else {
                 activity = .problem(Self.summary(of: result))
             }
@@ -328,10 +337,35 @@ public final class SetupModel {
         for observer in tenantObservers { observer() }
     }
 
-    private func activate(_ domain: Domain, admin: String) {
+    /// The token's account ID when GAM reads the same `id` for `admin` now (an alias reads as its account); otherwise none,
+    /// and why, in words Setup shows: the token has none (an admin typed in has none either), GAM can't read the admin (a
+    /// delegated admin whose role doesn't reach its own account, an admin outside this directory), or GAM reads another
+    /// account. Only a cancellation is thrown: nobody waits for the check.
+    private static func confirmedAccountID(_ id: String?, of admin: String, in domain: Domain,
+                                           runner: AuthenticatedRunner) async throws -> (id: String?, why: String?) {
+        guard let id else { return (nil, "oauth2.txt doesn't say which account it is") }
+        let result: GamResult
+        do {
+            result = try await runner.run(GamCommands.infoUser(email: admin, fields: ["primaryEmail", "id"]), as: domain)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return (nil, "GAM couldn't read \(admin)")
+        }
+        guard result.exitCode == 0 else {
+            return (nil, "GAM couldn't read \(admin): \(GamError(exitCode: result.exitCode, stderr: result.stderr).message)")
+        }
+        guard GamUser(record: GamOutput.one(result.stdout)).accountID.map({ $0.utf8.elementsEqual(id.utf8) }) == true else {
+            return (nil, "GAM reads \(admin) as another account than oauth2.txt's")
+        }
+        return (id, nil)
+    }
+
+    private func activate(_ domain: Domain, admin: String, accountID: String?) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         activeAdmin = admin
+        activeAdminID = accountID
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -359,6 +393,7 @@ public final class SetupModel {
         if active == domain {
             active = nil
             activeAdmin = nil
+            activeAdminID = nil
             generation += 1
             tenantChanged()
         }

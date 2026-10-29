@@ -29,13 +29,12 @@ final class BuilderChangesTests {
         argvLog = scratch.appending(path: "argv.log")
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         let setup = setup
-        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
-            setup.active.map { ($0, setup.generation) }
-        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path])
-        let access = UserAccess(setup: setup, runner: runner)
-        access.environment = ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path]
-        changes = BuilderChanges(executor: executor, setup: setup, directory: directory, access: access)
+        // As the app makes it: the admin Setup connected, asked at each preview and run.
+        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), currentActor: { @MainActor in setup.connectedAdmin },
+                                adminAccountID: { @MainActor in setup.connectedAdminID }, tenant: { @MainActor in setup.active.map { ($0, setup.generation) } },
+                                extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
+                                                   "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path])
+        changes = BuilderChanges(executor: executor, setup: setup, directory: directory)
     }
 
     deinit {
@@ -48,7 +47,7 @@ final class BuilderChangesTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: admin).write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: "example.com")
         await setup.checkAccess(Domain("example.com")!)
         if loadingTheDirectory { await directory.load() }
@@ -153,17 +152,22 @@ final class BuilderChangesTests {
         #expect(problem?.hasPrefix("“Carol Clark” isn't one plain email address") == true)
     }
 
-    /// A suspend or a random password for the admin this app is connected as is refused: as typed, or as an alias GAM resolves to
-    /// it, whether or not the directory has been read; and the spellings GAM rewrites to another address aren't taken at all
-    /// (review 2026-10-28: `uid:alice@…` and `<alice@…>` were held and ran). A sign-out isn't refused (it ends web sessions, not
-    /// the app's authorization, as on Users).
+    /// A suspend, a random password or a sign-out for the admin this app is connected as is refused by the executor, as on every
+    /// screen: as typed at the preview, and as an alias GAM resolves to it at the run, whether or not the directory has been
+    /// read; and the spellings GAM rewrites to another address aren't taken at all (review 2026-10-28: `uid:alice@…` and
+    /// `<alice@…>` were held and ran).
     @Test func theConnectedAdminIsNotLockedOut() async throws {
         try await connect(as: "alice@example.com", loadingTheDirectory: false)
         #expect(directory.users == nil)
-        for id in ["build.suspend_user", "build.reset_password"] {
-            for typed in ["Alice@Example.com", "a.anders@example.com", "alice@alias.example.net"] {
-                await changes.preview(try command(id), values: ["email": typed])
-                #expect(problem?.contains("is the admin this app is connected as") == true, "\(id) \(typed): \(String(describing: problem))")
+        for id in ["build.suspend_user", "build.reset_password", "build.signout_user"] {
+            await changes.preview(try command(id), values: ["email": "Alice@Example.com"])
+            #expect(problem?.hasPrefix("Alice@Example.com is the admin this app is connected as") == true,
+                    "\(id): \(String(describing: problem))")
+            for alias in ["a.anders@example.com", "alice@alias.example.net"] {
+                await changes.preview(try command(id), values: ["email": alias])
+                await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+                #expect(problem?.hasPrefix("\(alias) is the account this app is connected as (alice@example.com)") == true,
+                        "\(id) \(alias): \(String(describing: problem))")
             }
             for rewritten in ["uid:alice@example.com", "ID:alice@example.com", "<alice@example.com>", "x<alice@example.com>",
                               "Alice <alice@example.com>", "uid: alice@example.com"] {
@@ -171,15 +175,14 @@ final class BuilderChangesTests {
                 #expect(problem?.contains("isn't one plain email address") == true, "\(id) \(rewritten): \(String(describing: problem))")
             }
         }
+        #expect(calls().allSatisfy { $0.prefix(2) == ["info", "user"] }, "only reads ran: \(calls())")
         await changes.preview(try command("build.suspend_user"), values: ["email": "carol@example.com"])
         #expect(try pending().isDestructive)
-        await changes.preview(try command("build.signout_user"), values: ["email": "alice@example.com"])
-        _ = try pending()
     }
 
-    /// Whose account it is is asked of GAM again just before the run, and an address GAM can't say refuses, never a guess: one
-    /// it doesn't know, and one whose read Google refuses.
-    @Test func theAccountIsCheckedAgainAndAnUnknownOneRefuses() async throws {
+    /// Whose account it is is asked of GAM just before the run (the executor's check, by account ID), and a read Google
+    /// refuses refuses the run, never a guess. An address GAM doesn't know is no one's: GAM itself says so at the write.
+    @Test func theAccountIsCheckedBeforeTheRun() async throws {
         try await connect(as: "alice@example.com")
         await changes.preview(try command("build.suspend_user"), values: ["email": "carol@example.com"])
         let before = calls().count
@@ -187,10 +190,12 @@ final class BuilderChangesTests {
         guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(calls().dropFirst(before).map { Array($0.prefix(3)) }
                 == [["info", "user", "carol@example.com"], ["update", "user", "carol@example.com"]])
-        for unknown in ["zed@example.com", "INFOREFUSED@example.com"] {
-            await changes.preview(try command("build.reset_password"), values: ["email": unknown])
-            #expect(problem?.hasPrefix("Couldn't check whose account \(unknown) is") == true, "\(unknown): \(String(describing: problem))")
-        }
+        await changes.preview(try command("build.reset_password"), values: ["email": "INFOREFUSED@example.com"])
+        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+        #expect(problem?.hasPrefix("Couldn't check whose account INFOREFUSED@example.com is") == true, "\(String(describing: problem))")
+        await changes.preview(try command("build.reset_password"), values: ["email": "nonexistent@example.com"])
+        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true))
+        #expect(problem?.contains("nonexistent@example.com") == true, "\(String(describing: problem))")
     }
 
     /// A preview that comes back after a newer one was asked for is dropped: it never shows under the newer command's page.
@@ -203,12 +208,6 @@ final class BuilderChangesTests {
         try await first.value
         #expect(problem == "Fill in User.")
         #expect(changes.subject == "build.create_alias")
-    }
-
-    /// An admin that isn't known refuses a suspend, as the temporary password does.
-    @Test func anUnknownAdminRefusesASuspend() async throws {
-        await changes.preview(try command("build.suspend_user"), values: ["email": "carol@example.com"])
-        #expect(problem == "The admin this app signs in as isn't known. Check access on Setup, then preview again.")
     }
 
     /// A delegate is checked as Users checks one: its owner refused, one outside the directory said before the add.

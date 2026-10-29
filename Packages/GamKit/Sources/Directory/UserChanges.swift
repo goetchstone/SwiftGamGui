@@ -280,13 +280,12 @@ public final class UserChanges {
 
     /// A password the operator hands over, which the person changes at their next sign-in: for someone locked out after a
     /// reset nobody saw, or back after an incident. Destructive (their current password stops working). Never for the
-    /// admin this app is connected as: it would sign the app out. The password is made here, masked in the preview and
-    /// the audit, and shown only after the run (`signIn`).
+    /// admin this app is connected as, by any of its addresses: it would sign the app out, and the executor refuses it. The
+    /// password is made here, masked in the preview and the audit, and shown only after the run (`signIn`).
     ///
-    /// `connectedAdmin` is read now and again when the change runs (the executor's precondition), and an unknown admin
-    /// refuses, as Compromised and Offboard do. One at a time: while a password's details are held (another window, say),
-    /// a second would drop them before they were handed over (review 2026-10-21).
-    public func previewTemporaryPassword(_ user: GamUser, connectedAdmin: @escaping @MainActor @Sendable () -> String?) async {
+    /// One at a time: while a password's details are held (another window, say), a second would drop them before they were
+    /// handed over (review 2026-10-21).
+    public func previewTemporaryPassword(_ user: GamUser) async {
         let email = user.primaryEmail
         func refuse(_ text: String) {
             subject = email
@@ -294,13 +293,6 @@ public final class UserChanges {
         }
         if let held = signIn {
             return refuse("Finish with \(held.email)'s temporary password first: hand it over, then click Done on its details.")
-        }
-        guard let admin = connectedAdmin(), !admin.isEmpty else {
-            return refuse("The admin this app signs in as isn't known. Check access on Setup, then preview again.")
-        }
-        if Guard.normalized(admin) == Guard.normalized(email) {
-            return refuse("\(email) is the admin this app is connected as: setting its password here would sign the app out. "
-                + "Change it in the Admin console or at myaccount.google.com.")
         }
         let password = TemporaryPassword.generate()
         let step = WriteStep(password.setPassword(email: email), target: email,
@@ -311,12 +303,8 @@ public final class UserChanges {
             ? "\(email) is a super admin: check they're the one you mean. Their admin access "
                 + "pauses until they sign in with the new password."
             : nil
-        let precondition: @Sendable () async throws -> Bool = {
-            guard let admin = await connectedAdmin(), !admin.isEmpty else { return false }
-            return Guard.normalized(admin) != Guard.normalized(email)
-        }
         await hold(step, title: "Set a temporary password for \(user.fullName)", confirmLabel: "Set Password", email: email,
-                   warning: warning, password: password, precondition: precondition)
+                   warning: warning, password: password)
     }
 
     /// GamGUI's `/users/signout`: ends every session; the person signs in again. LOW, as GamGUI rates it.
