@@ -51,6 +51,9 @@ and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summa
   end is the record after it), **Outcome unknown — check** (a begin Home lists: `Executor.unfinished`, the
   newest 20,000 records), Marked as checked (the operator's acknowledgement), No result recorded (GamGUI's
   "Unknown"). Mark as Checked on an outcome unknown is Home's `Executor.acknowledge`, for that one write.
+  Its action is named in words: this app's by `WriteAction.displayName` (also the jobs tray's and a preview's title; a run of
+  capitals one word as written, `imap` and `pop` said as acronyms: "Remove all calendar ACLs", "IMAP off"), GamGUI's snake
+  case by `AuditEntry.words`. The search still matches the action as written (`removeAllCalendarACLs`).
 - **The details** behind each disclosure are the record's fields as written (already masked): time, action,
   target, exit code, command, error, detail, who ran it, connector, then `extra`'s other keys. A value is cut at
   4,000 characters. The row's summary is GamGUI's Detail column: the error, else the command, else the detail,

@@ -27,6 +27,22 @@ struct AuditScreenTests {
         return folder.appending(path: "audit.jsonl")
     }
 
+    /// Every write's name in words, as Audit, the jobs tray and a preview's title say it: a run of capitals one word as written,
+    /// an acronym said as one (2026-10-30: "Remove all calendar a c ls", read out letter by letter).
+    @Test func everyActionIsSaidInWords() {
+        #expect(WriteAction.removeAllCalendarACLs.displayName == "Remove all calendar ACLs")
+        #expect(WriteAction.addCalendarACL.displayName == "Add calendar ACL")
+        #expect(WriteAction.deleteCalendarACL.displayName == "Delete calendar ACL")
+        #expect(WriteAction.imapOff.displayName == "IMAP off" && WriteAction.popOff.displayName == "POP off")
+        #expect(WriteAction.suspendUser.displayName == "Suspend user" && WriteAction.deleteSendAs.displayName == "Delete send as")
+        for action in WriteAction.allCases {
+            let words = action.displayName.split(separator: " ")
+            #expect(words.first?.first?.isUppercase == true, "\(action)")
+            #expect(words.allSatisfy { $0.count > 1 }, "no letter said alone: \(action)")
+            #expect(words.dropFirst().allSatisfy { $0 == $0.lowercased() || $0.filter(\.isUppercase).count > 1 }, "\(action)")
+        }
+    }
+
     @Test func everyQueryShowsGamGUIsPage() throws {
         let url = try log()
         #expect(AuditPage.size == fixture["constants"]!["PAGE_SIZE"]!.int)
