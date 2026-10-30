@@ -1335,6 +1335,12 @@ private struct AfterwardsSection: View {
 
 // MARK: the incident logs
 
+// A log's progress row shares its section with the log, whose id is its application. Keyed by the application alone,
+// the two would draw one row for both, as Phishing's Spam rows did (failure log 2026-10-30).
+private extension ActivityLogs.Application {
+    var progressRow: String { "progress " + rawValue }
+}
+
 /// Pull Incident Logs: the activity logs an incident needs, for a window, some accounts (none: every one) and an IP
 /// address, each a table in the one shape with its CSV. Reads only; the field starts with the checked person.
 private struct IncidentLogsSection: View {
@@ -1460,7 +1466,7 @@ private struct IncidentLogsSection: View {
                 } else {
                     if !pull.ended {
                         // Where each log is, after every read: a busy log takes a dozen reads a day, oldest day first.
-                        ForEach(pull.query.applications, id: \.self) { application in
+                        ForEach(pull.query.applications, id: \.progressRow) { application in
                             if let progress = logs.progress[application] {
                                 Label(Self.words(application, progress), systemImage: Self.symbol(progress))
                                     .font(.callout).foregroundStyle(.secondary)
