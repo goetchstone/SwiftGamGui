@@ -334,6 +334,21 @@ struct PhishingStatus {
     }
 }
 
+// Two ForEach in one Form section whose rows have the same id draw one row for both: alice's copy in Spam showed as her
+// Inbox copy (failure log 2026-10-30). So each list beside `withCopies` keys its rows by what it lists as well as by
+// whose mailbox.
+private extension MessageCopies.Mailbox {
+    var unusualRow: String { "unusual " + email }
+}
+
+private extension SpamCopies.Mailbox {
+    var spamRow: String { "spam " + email }
+}
+
+private extension SpamCopies.Unsearched {
+    var spamUnreadRow: String { "spam unread " + email }
+}
+
 /// Who has a copy: each mailbox with its count, then those with copies in Spam, those GAM couldn't search and those
 /// without one, GAM's commands for an admin who wants them, and Trash from N Mailboxes.
 private struct FoundSection: View {
@@ -405,7 +420,7 @@ private struct FoundSection: View {
             } else if let problem = search.sampleProblem {
                 Label("Couldn't read a copy to show what it is: \(problem)", systemImage: "questionmark.circle")
             }
-            ForEach(copies.unusual) { mailbox in
+            ForEach(copies.unusual, id: \.unusualRow) { mailbox in
                 Label("\(mailbox.email) has \(mailbox.copies) copies of this Message-ID; one email rarely arrives more than "
                       + "twice. Check it's the phish.", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
@@ -424,7 +439,7 @@ private struct FoundSection: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("\(mailbox.email), \(Self.copiesText(mailbox.copies))")
             }
-            ForEach(inSpam) { mailbox in
+            ForEach(inSpam, id: \.spamRow) { mailbox in
                 LabeledContent {
                     Text("\(Self.copiesText(mailbox.ids.count)) in Spam")
                 } label: {
@@ -439,7 +454,7 @@ private struct FoundSection: View {
                     .symbolRenderingMode(.multicolor)
                     .textSelection(.enabled)
             }
-            ForEach(spamUnsearched) { mailbox in
+            ForEach(spamUnsearched, id: \.spamUnreadRow) { mailbox in
                 VStack(alignment: .leading, spacing: 2) {
                     Label("\(mailbox.email)'s Spam: couldn't be checked", systemImage: "xmark.octagon.fill").symbolRenderingMode(.multicolor)
                     Text(mailbox.why).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)

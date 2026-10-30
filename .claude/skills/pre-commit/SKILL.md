@@ -41,6 +41,8 @@ Act on the items your diff touches.
   at once (refreshing only the changed one left the rest stale: Home showed an old GAM, 2026-10-23). A picture
   that looks wrong: compare `main`'s own render of it first, then read the run's `state:` lines (pop-ups, scrolls),
   before changing anything (two CI rounds went on guesses: failure log 2026-10-24, Xcode 27.1).
+- **One id per row in a section**: two `ForEach` in one Form section whose ids can meet (two lists keyed by
+  address) draw one row for both. Key each list by what it lists too (failure log 2026-10-30).
 - **Fits the smallest window**: a new column, panel or inspector, or a wider one, gets bounds in
   `ColumnWidths` and a `smallest` run in `scripts/screenshots.sh`. On macOS 27 an inspector that can't
   fit crashes the app on a Mac and only clips on CI (failure-log 2026-10-10, "person-page layout loop").

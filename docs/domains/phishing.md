@@ -186,6 +186,8 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
     since fails that step in GAM's words.
   - A mailbox with copies in both places has two steps; the screen says "mailboxes" and the sheet says "steps" when
     the two counts differ.
+  - It also has two rows in the results' one section, so each list there keys its rows by what it lists as well as
+    by address: keyed by address alone, the Spam row drew the Inbox row until 2026-10-30 (failure log).
 
 - **D12, Pull All: several emails, one confirm (2026-10-23, operator: "find copies of every message first, list only
   those someone has, and trash them all from one preview with one typed confirmation, each audited").** Read the logs
