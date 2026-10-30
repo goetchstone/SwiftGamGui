@@ -6,11 +6,16 @@ import Observation
 /// (invariant 9): the full counts, but only a sample of the failures and the newest steps, and only the newest finished runs.
 /// It runs nothing: Stop asks the executor to stop after the step in flight, which always finishes and is audited.
 public enum JobEvent: Sendable, Equatable {
-    /// A run of `preview`'s steps began: `total` steps to decide (a retry round's, only the steps still waiting).
+    /// A confirmed run of `preview`'s steps began checking: `total` steps to decide (a retry round's, only the steps still
+    /// waiting). It may wait for another write to end and reads again what its preview assumed, seconds before a step runs.
     case started(job: UUID, preview: UUID, title: String, total: Int)
+    /// The checks passed: its steps begin.
+    case checked(job: UUID)
     /// One step decided: what it was, in words, and how it ended.
     case step(job: UUID, item: String, outcome: JobOutcome, detail: String)
     case finished(job: UUID)
+    /// The checks refused it, for `reason` (what its screen says too): none of its steps ran.
+    case refused(job: UUID, reason: String)
 }
 
 /// How a step ended, as the tray counts it.
@@ -46,6 +51,10 @@ public struct Job: Sendable, Identifiable, Equatable {
     public internal(set) var recent: [Step] = []
     /// The first failures, at most `JobBoard.failedCap`: `failedTotal` counts them all.
     public internal(set) var failed: [Step] = []
+    /// Not begun: checking before its first step.
+    public internal(set) var checking = true
+    /// Why the checks refused it, at most `JobBoard.detailCap` characters: none of its steps ran.
+    public internal(set) var refusal: String?
     public internal(set) var finished = false
     /// Stop was asked; the step in flight finishes, nothing after it begins.
     public internal(set) var stopping = false
@@ -55,12 +64,14 @@ public struct Job: Sendable, Identifiable, Equatable {
     /// Failures counted past the sample: "and N more".
     public var more: Int { failedTotal - failed.count }
 
-    /// Where it stands, in words: "3 of 12 steps", then how it ended.
+    /// Where it stands, in words: checking, "3 of 12 steps", then how it ended.
     public var status: String {
         guard finished else {
+            if checking { return stopping ? "Stopping: none of its steps will run." : "Checking before it runs (after any change running now)…" }
             return (stopping ? "Stopping after the step running: " : "Running: ") + "\(done) of \(total) step\(total == 1 ? "" : "s") done"
                 + (failedTotal > 0 ? ", \(failedTotal) failed" : "") + "."
         }
+        if let refusal { return "Didn't run: " + refusal }
         var parts = ["\(succeeded) of \(total) succeeded"]
         if failedTotal > 0 { parts.append("\(failedTotal) failed") }
         if notRun > 0 { parts.append("\(notRun) not run") }
@@ -117,9 +128,13 @@ public final class JobBoard {
         case .started(let id, let preview, let title, let total):
             jobs.append(Job(id: id, preview: preview, title: title, total: total, started: Date()))
             running += 1
+        case .checked(let id):
+            guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
+            jobs[index].checking = false
         case .step(let id, let item, let outcome, let detail):
             guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
             let step = Job.Step(item: item, outcome: outcome, detail: String(detail.prefix(Self.detailCap)))
+            jobs[index].checking = false
             jobs[index].done += 1
             switch outcome {
             case .succeeded: jobs[index].succeeded += 1
@@ -133,18 +148,27 @@ public final class JobBoard {
             if jobs[index].recent.count > Self.window { jobs[index].recent.removeFirst() }
         case .finished(let id):
             guard let index = jobs.firstIndex(where: { $0.id == id }), !jobs[index].finished else { return }
-            jobs[index].finished = true
-            jobs[index].stopping = false
-            jobs[index].ended = Date()
-            running -= 1
-            finishedCount += 1
-            lastFinished = jobs[index]
-            // Only the newest finished runs are kept; a running one never goes.
-            let finished = jobs.filter(\.finished)
-            if finished.count > Self.finishedKept {
-                let dropped = Set(finished.prefix(finished.count - Self.finishedKept).map(\.id))
-                jobs.removeAll { dropped.contains($0.id) }
-            }
+            end(index)
+        case .refused(let id, let reason):
+            guard let index = jobs.firstIndex(where: { $0.id == id }), !jobs[index].finished else { return }
+            jobs[index].refusal = String(reason.prefix(Self.detailCap))
+            end(index)
+        }
+    }
+
+    private func end(_ index: Int) {
+        jobs[index].finished = true
+        jobs[index].checking = false
+        jobs[index].stopping = false
+        jobs[index].ended = Date()
+        running -= 1
+        finishedCount += 1
+        lastFinished = jobs[index]
+        // Only the newest finished runs are kept; a running one never goes.
+        let finished = jobs.filter(\.finished)
+        if finished.count > Self.finishedKept {
+            let dropped = Set(finished.prefix(finished.count - Self.finishedKept).map(\.id))
+            jobs.removeAll { dropped.contains($0.id) }
         }
     }
 

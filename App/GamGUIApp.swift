@@ -104,11 +104,12 @@ struct ContentView: View {
     #if DEBUG
     @State private var demoJobs = false
 
-    /// Two made-up runs for the tray's snapshot: an offboarding part done, and a pull from every mailbox that ended with two
-    /// mailboxes failed. Events as the executor reports them; nothing runs.
+    /// Three made-up runs for the tray's snapshot: a pull from every mailbox that ended with two mailboxes failed, an offboarding
+    /// part done, and a suspend still checking before it runs. Events as the executor reports them; nothing runs.
     static func showDemoJobs(_ board: JobBoard) {
         let offboarding = UUID(), pull = UUID()
         board.handle(.started(job: pull, preview: UUID(), title: "Trash message for 9 addresses", total: 9))
+        board.handle(.checked(job: pull))
         for name in ["alice", "bob", "dana", "erin", "frank", "gwen", "hank"] {
             board.handle(.step(job: pull, item: "Trash message: \(name)@example.com", outcome: .succeeded, detail: ""))
         }
@@ -118,9 +119,11 @@ struct ContentView: View {
         }
         board.handle(.finished(job: pull))
         board.handle(.started(job: offboarding, preview: UUID(), title: "Offboarding carol@example.com", total: 12))
+        board.handle(.checked(job: offboarding))
         for step in ["Sign out", "Reset password", "Hide from directory", "Set vacation", "Remove group member"] {
             board.handle(.step(job: offboarding, item: "\(step): carol@example.com", outcome: .succeeded, detail: ""))
         }
+        board.handle(.started(job: UUID(), preview: UUID(), title: "Suspend user for dana@example.com", total: 1))
     }
     #endif
     /// The person Signatures opens on when another screen sends it one.

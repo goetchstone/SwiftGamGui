@@ -7,9 +7,10 @@ import TestSupport
 import Testing
 import Vault
 
-/// The jobs tray (GamGUI's plan U5, `test_jobs_tray.py`): every run the executor makes reported as it starts, as each step ends
-/// and as it finishes, in order; a run refused before it starts is no job; Stop from the tray stops it after the step in flight;
-/// and the board bounded as GamGUI's registry is (invariant 9).
+/// The jobs tray (GamGUI's plan U5, `test_jobs_tray.py`): every run the executor makes reported as it starts checking, as its
+/// steps begin, as each step ends and as it finishes, in order; a run refused at once is no job, and one its checks refuse ends
+/// saying why; Stop from the tray stops it after the step in flight, or before any; and the board bounded as GamGUI's registry
+/// is (invariant 9).
 @MainActor
 @Suite("Jobs", .serialized)
 final class JobsTests {
@@ -50,8 +51,8 @@ final class JobsTests {
         WriteStep(GamCommands.setSuspended(email: email, suspended: true), target: email, summary: "Suspend \(email)")
     }
 
-    /// A run, reported in order: started (its preview, its title, how many steps), each step as it ends in words, finished. A
-    /// preview's title is its screen's, else its one kind of change and whom it's for.
+    /// A run, reported in order: started (its preview, its title, how many steps), checked, each step as it ends in words,
+    /// finished. A preview's title is its screen's, else its one kind of change and whom it's for.
     @Test func aRunIsReportedAsItGoes() async throws {
         let executor = try executor()
         let preview = try await executor.preview([suspend("alice@example.com"), suspend("bob@example.com")]).get()
@@ -60,6 +61,7 @@ final class JobsTests {
         let reported = events.value.withLock { $0 }
         guard case .started(let job, preview.id, "Suspend user for 2 addresses", 2)? = reported.first else { Issue.record("\(reported)"); return }
         #expect(Array(reported.dropFirst()) == [
+            .checked(job: job),
             .step(job: job, item: "Suspend user: alice@example.com", outcome: .succeeded, detail: ""),
             .step(job: job, item: "Suspend user: bob@example.com", outcome: .succeeded, detail: ""),
             .finished(job: job),
@@ -71,12 +73,73 @@ final class JobsTests {
                 == "3 changes for a@example.com and 1 more")
     }
 
-    /// A run refused before any step (unconfirmed, expired, another tenant) is no job: nothing ran.
+    /// A run refused at once (unconfirmed, expired, another tenant, a target in flight) is no job: nothing ran or waited.
     @Test func aRefusedRunIsNoJob() async throws {
         let executor = try executor()
         let preview = try await executor.preview([suspend("alice@example.com")]).get()
         let refused = await executor.run(preview, confirmation: OperatorConfirmation(confirmed: false))
         #expect(refused.refusal != nil && events.value.withLock { $0.isEmpty })
+    }
+
+    /// Listed while it checks, not from its first step (2026-10-30: a confirmed offboarding was missing from the tray for the
+    /// seconds its reads took): the job is reported before the preview's precondition reads anything, and "checked" after.
+    @Test func aRunIsListedWhileItChecks() async throws {
+        let board = JobBoard()
+        let events = events
+        let executor = try executor(report: { event in events.value.withLock { $0.append(event) }; board.report(event) })
+        let seen = Shared<(events: [JobEvent], status: String?)>(([], nil))
+        let preview = try await executor.preview([suspend("alice@example.com")], precondition: { @Sendable in
+            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            let status = await MainActor.run { board.jobs.first?.status }
+            seen.value.withLock { $0 = (events.value.withLock { $0 }, status) }
+            return true
+        }).get()
+        #expect(await executor.run(preview, confirmation: confirmed).succeeded)
+        let (before, status) = seen.value.withLock { $0 }
+        guard case .started(let job, preview.id, _, 1)? = before.first, before.count == 1 else { Issue.record("\(before)"); return }
+        #expect(status == "Checking before it runs (after any change running now)…")
+        #expect(events.value.withLock { Array($0.dropFirst().prefix(1)) } == [.checked(job: job)])
+        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(board.jobs.first?.status == "Done: 1 of 1 succeeded.")
+    }
+
+    /// Refused by its checks (here, what the preview showed changed): the job ends saying so, in the refusal's words, and no
+    /// step ran.
+    @Test func aRunItsChecksRefuseEndsSayingWhy() async throws {
+        let board = JobBoard()
+        let executor = try executor(report: board.report)
+        let preview = try await executor.preview([suspend("alice@example.com")], precondition: { @Sendable in false }).get()
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        let why = "What the preview showed has changed since — preview again."
+        #expect(outcome.refusal == why && outcome.steps.isEmpty)
+        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        let job = try #require(board.jobs.first)
+        #expect(job.finished && job.refusal == why && job.done == 0 && !job.checking)
+        #expect(job.status == "Didn't run: " + why)
+        #expect(board.running == 0 && board.finishedCount == 1 && board.lastFinished?.id == job.id)
+        board.handle(.finished(job: job.id))
+        #expect(board.finishedCount == 1, "ended once")
+    }
+
+    /// Stop from the tray while the run checks: the row says none of its steps will run, and none does.
+    @Test func stopWhileItChecksRunsNoStep() async throws {
+        let board = JobBoard()
+        let executor = try executor(report: board.report)
+        board.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) }
+        let status = Shared<String?>(nil)
+        let preview = try await executor.preview([suspend("alice@example.com"), suspend("bob@example.com")], precondition: { @Sendable in
+            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            let job = await MainActor.run { board.jobs.first!.id }
+            #expect(await board.stop(job))
+            let now = await MainActor.run { board.jobs.first?.status }
+            status.value.withLock { $0 = now }
+            return true
+        }).get()
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(outcome.steps == [.skipped(reason: Executor.stopped), .skipped(reason: Executor.stopped)])
+        #expect(status.value.withLock { $0 } == "Stopping: none of its steps will run.")
+        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(board.jobs.first?.status == "Ended: 0 of 2 succeeded, 2 not run.")
     }
 
     /// Stop from the tray: the step in flight finishes, the rest are "not run", the job says it ended so, and a stop after the
@@ -128,6 +191,26 @@ final class JobsTests {
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(outcome.steps[1].isWaiting && outcome.steps[3] == .skipped(reason: Executor.stopped))
         #expect(outcome.retry == nil, "stopped: nothing parked for a retry")
+    }
+
+    /// A retry round (Onboarding's wait for Google) is listed as its own run as it starts checking: the steps still waiting,
+    /// titled with its try, then checked, its steps and its end.
+    @Test func aRetryRoundIsListedAsItsOwnRun() async throws {
+        let executor = try executor(lag: 5)
+        let email = "new@example.com", password = "Xk7m-Qp9r-2Tzv"
+        let create = WriteStep(GamCommands.createUser(email: email, firstName: "J", lastName: "L", password: password), target: email,
+                               summary: "Create", secrets: [Secret(Data(password.utf8))])
+        let signature = WriteStep(GamCommands.setSignature(email: email, signature: "<b>J</b>"), target: email, summary: "Signature",
+                                  requires: [0], newAccountFrom: 0)
+        let preview = try await executor.preview([create, signature], title: "Onboarding \(email)").get()
+        let first = await executor.run(preview, confirmation: confirmed)
+        let handle = try #require(first.retry)
+        let before = events.value.withLock { $0.count }
+        _ = await executor.retry(handle)
+        let round = events.value.withLock { Array($0.dropFirst(before)) }
+        guard case .started(let job, preview.id, "Onboarding new@example.com (waiting for Google, try 2)", 1)? = round.first,
+              round.count == 4, case .step(job, "Set signature: new@example.com", _, _) = round[2] else { Issue.record("\(round)"); return }
+        #expect(round[1] == .checked(job: job) && round[3] == .finished(job: job))
     }
 
     /// Bounded as GamGUI's registry: the newest steps, the first failures with every one counted, each reason cut short, the

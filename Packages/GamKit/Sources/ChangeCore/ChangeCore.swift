@@ -520,30 +520,48 @@ public actor Executor {
         }
         inFlight.formUnion(targets)
         defer { inFlight.subtract(targets) }
+        // In the jobs tray from here, not from its first step: the wait for the lock and the reads below take seconds, and a
+        // confirmed offboarding wasn't listed until they ended (2026-10-30). Its Stop works from here too.
+        let job = UUID()
+        jobs?(.started(job: job, preview: taken.id, title: taken.title, total: taken.steps.count))
         await acquireWriteLock()
         defer { releaseWriteLock() }
-        // After the wait for the lock: a preview queued behind a long write may have expired meanwhile,
-        // and what it assumed is read again now, not before the wait.
-        guard now() - taken.createdAt <= Self.previewLifetime else { return .refused(Self.expired) }
-        if let precondition = taken.precondition {
-            do {
-                guard try await precondition() else { return .refused("What the preview showed has changed since — preview again.") }
-            } catch {
-                return .refused("What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again.")
-            }
+        if let why = await refusalBeforeSteps(taken) {
+            jobs?(.refused(job: job, reason: why))
+            return .refused(why)
         }
-        // Whose accounts the steps' addresses are, read on the tenant the preview was made for: not after a switch.
-        guard await isCurrent(taken) else { return .refused(Self.switched) }
-        if let why = await aliasRefusal(taken) { return .refused(why) }
-        if let why = await lockoutRefusal(taken) { return .refused(why) }
-        guard await isCurrent(taken) else { return .refused(Self.switched) }
-        let ran = await execute(taken, progress: progress)
+        jobs?(.checked(job: job))
+        let ran = await execute(taken, job: job, progress: progress)
         // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13). Nor does a stopped one: a
         // Stop (the jobs tray's, on any run) means nothing more of it runs, a wait for Google included (review 2026-10-28). Read
         // before the `defer` above clears the request.
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(taken.id) ? nil
                               : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
+    }
+
+    /// What `run` checks holding the write lock, just before the first step: why none may run, or nil.
+    private func refusalBeforeSteps(_ taken: HeldPreview) async -> String? {
+        // After the wait for the lock: a preview queued behind a long write may have expired meanwhile,
+        // and what it assumed is read again now, not before the wait.
+        guard now() - taken.createdAt <= Self.previewLifetime else { return Self.expired }
+        if let why = await preconditionRefusal(taken) { return why }
+        // Whose accounts the steps' addresses are, read on the tenant the preview was made for: not after a switch.
+        guard await isCurrent(taken) else { return Self.switched }
+        if let why = await aliasRefusal(taken) { return why }
+        if let why = await lockoutRefusal(taken) { return why }
+        guard await isCurrent(taken) else { return Self.switched }
+        return nil
+    }
+
+    /// What the preview assumed (its `precondition`), read again: why it no longer holds, or nil.
+    private func preconditionRefusal(_ preview: HeldPreview) async -> String? {
+        guard let precondition = preview.precondition else { return nil }
+        do {
+            return try await precondition() ? nil : "What the preview showed has changed since — preview again."
+        } catch {
+            return "What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again."
+        }
     }
 
     // MARK: retrying what waits for a new account (D3d)
@@ -597,27 +615,35 @@ public actor Executor {
         }
         inFlight.formUnion(targets)
         defer { inFlight.subtract(targets) }
+        let round = state.round + 1
+        // In the jobs tray from here, as `run`'s: a round of its own, of the steps still waiting.
+        let job = UUID()
+        jobs?(.started(job: job, preview: state.preview.id, title: state.preview.title + " (waiting for Google, try \(round + 1))",
+                       total: again.count))
         await acquireWriteLock()
         defer { releaseWriteLock() }
-        guard now() - state.ranAt <= Self.retryLifetime else { return .refused(Self.retryOver) }
-        // What runs is still what the operator confirmed. The held preview is immutable, so this can't fail today: it
-        // is a tripwire for a later change that rebuilds steps, not a defense of its own.
-        guard Self.same(HeldPreview.digest(of: state.preview.steps), state.preview.digest) else { return .refused(Self.heldChanged) }
-        // As `run` does: what the preview assumed is read again just before its steps run.
-        if let precondition = state.preview.precondition {
-            do {
-                guard try await precondition() else { return .refused("What the preview showed has changed since — preview again.") }
-            } catch {
-                return .refused("What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again.")
-            }
+        if let why = await refusalBeforeRetry(state) {
+            jobs?(.refused(job: job, reason: why))
+            return .refused(why)
         }
-        guard await isCurrent(state.preview) else { return .refused(Self.switched) }
-        let round = state.round + 1
-        let ran = await execute(state.preview, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
+        jobs?(.checked(job: job))
+        let ran = await execute(state.preview, job: job, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
                                 progress: progress)
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(state.preview.id) ? nil
                               : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+    }
+
+    /// What `retry` checks holding the write lock, just before its steps: why none may run, or nil.
+    private func refusalBeforeRetry(_ state: Parked) async -> String? {
+        guard now() - state.ranAt <= Self.retryLifetime else { return Self.retryOver }
+        // What runs is still what the operator confirmed. The held preview is immutable, so this can't fail today: it
+        // is a tripwire for a later change that rebuilds steps, not a defense of its own.
+        guard Self.same(HeldPreview.digest(of: state.preview.steps), state.preview.digest) else { return Self.heldChanged }
+        // As `run` does: what the preview assumed is read again just before its steps run.
+        if let why = await preconditionRefusal(state.preview) { return why }
+        guard await isCurrent(state.preview) else { return Self.switched }
+        return nil
     }
 
     /// Stop, between rounds: the waiting steps are dropped, and the handle runs nothing. A round already under
@@ -732,14 +758,12 @@ public actor Executor {
 
     /// Runs the preview's steps in order. `resuming` a retry: a step whose prior result isn't `.waiting`
     /// keeps it, unrun; `attempt` numbers the retry's audit records.
-    private func execute(_ preview: HeldPreview, resuming prior: [RunOutcome.Step]? = nil, listOutputs priorOutputs: [Int: String] = [:],
-                         attempt: Int? = nil, progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
+    private func execute(_ preview: HeldPreview, job: UUID, resuming prior: [RunOutcome.Step]? = nil,
+                         listOutputs priorOutputs: [Int: String] = [:], attempt: Int? = nil,
+                         progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
         -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
         let who = await currentActor?() ?? actor
-        // Reported to the jobs tray: a job each time steps run (a retry round is its own, of the steps still waiting).
-        let job = UUID(), deciding = prior.map { $0.count(where: \.isWaiting) } ?? preview.steps.count
-        jobs?(.started(job: job, preview: preview.id, title: preview.title + (attempt.map { " (waiting for Google, try \($0))" } ?? ""),
-                       total: deciding))
+        // `job`, reported to the jobs tray as its checks began: each step as it's decided, and its end.
         defer { jobs?(.finished(job: job)) }
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
