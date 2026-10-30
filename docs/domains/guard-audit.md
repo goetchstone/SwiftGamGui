@@ -182,5 +182,37 @@ now makes it a cancellation, and an interrupted end stays in `Executor.unfinishe
 a precondition's own error read as its type's name (`PreconditionFailure`); and the source scan matched only the
 literal `: false` (now any mention).
 
+## Built: the connected-admin check (2026-10-28)
+A write that cuts an account off (`GamWrite.cutsOff`: delete, suspend, deprovision, a password reset or set, a sign-out),
+run on the admin this app signs in as, signs the app out with no way back from here (deprovision deletes its OAuth token:
+GamGUI's failure-log 2026-09-24). The executor refuses it for every caller; it was a copy in some screens, and Users'
+Suspend had none (RULE-FEEDBACK 2026-10-28).
+- **At the preview**, by the address itself (`Guard.normalized`), with no read: `PreviewRefusal.cutsOffConnectedAdmin`. An
+  unconfirmed admin refuses any such change (`.adminUnconfirmed`); a change that cuts no one off needs no admin.
+- **By account ID** (`adminAccountID`, Setup's `connectedAdminID`): the admin's Google account ID, which Setup takes from
+  the token's `sub` only once GAM reads the same `id` for the admin, and says which cause when it can't (no ID in the
+  token, GAM can't read the admin, GAM reads another account). Without it nothing that cuts an account off previews.
+- **Just before the run**, after the precondition and the alias-delete check, the tenant checked first: GAM reads each
+  address cut off as it will be sent (`info user … primaryEmail,id`, once per spelling); one whose `id` is the admin's
+  refuses, whatever address Setup holds for the admin (an alias, one since renamed). **Only an account GAM reads now, with
+  an `id`, can be cut off:** "does not exist", a read Google refuses, or a record without an `id` refuses the run. That
+  costs nothing (GAM refuses a write to no one) and closes what "no such user, go on" let through (review 2026-10-29): an
+  alias an earlier step makes (however GAM spells it: a bare name gets the domain), a second spelling of an address read
+  once, an error line that reads as "not found". The admin is asked again at the run.
+- **Sign-out and the password change are in the set unproven.** GAM's grammar lists the token delete apart from `signout`
+  (7912), so its token may outlive both; refusing costs a trip to the Admin console, a wrong guess the app's authorization.
+- A run that cuts someone off costs one `info user` read per address. `ExecutorTests` "the connected admin" holds it; a
+  test about something else counts the writes (`wrote()`). The mock's directory has `admin@example.com`, as a real tenant
+  has its admin (its mailbox and calendar are swept too), and every mock user has an `id`; a test's token gets the mock's
+  `sub` from `Fixtures.oauth2(admin:)`. Without the admin in the mock every test once took a fail-open branch (review
+  2026-10-28). `info user` and the user writes (`update user`, `delete user`, `signout`, `deprovision`) agree on who exists
+  (`user_record`: the directory, aliases, accounts `create user` made, the SIGNOUTFAIL trigger) and answer no one as GAM's
+  entityUnknownWarning does (`no_such_user`: "Does not exist", 56, in example.com; "Service not applicable", 73, outside).
+  Offboard and Incident keep their own refusal at the check stage, which says why before a plan is made; the executor's
+  is the one that holds.
+- **Not yet:** the mock doesn't model GAM's address rewriting (`uid:<id>`, a bare name, `Name <a@b>`), so the run's read
+  can't be tested against those forms (the Builder's fields refuse them); and `GamError.classify` reads "404" or "not
+  found" anywhere in a line, the address included, which only the alias-delete check still relies on.
+
 ## Not built yet
 The §8 voice ticket (today the executor takes only an operator's confirmation).

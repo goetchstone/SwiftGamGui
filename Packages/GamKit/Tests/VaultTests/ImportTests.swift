@@ -147,6 +147,12 @@ struct ImportTests {
         #expect(CredentialFacts.adminEmail(inOAuth2: older) == "admin@example.com")
         #expect(CredentialFacts.adminEmail(inOAuth2: jwt) == nil)
         #expect(CredentialFacts.adminEmail(inOAuth2: Data(#"{"decoded_id_token": {"email": "a b@c.com"}}"#.utf8)) == nil)
+        // The account ID: `sub` from the same claims as the email, only as digits; none without a usable email beside it.
+        for (claims, id) in [(#"{"email": "a@b.com", "sub": "100000000000000000009"}"#, "100000000000000000009"),
+                             (#"{"email": "a@b.com", "sub": 100000000000000000009}"#, nil), (#"{"email": "a@b.com", "sub": "1e3"}"#, nil),
+                             (#"{"email": "a@b.com", "sub": ""}"#, nil), (#"{"sub": "100000000000000000009"}"#, nil)] as [(String, String?)] {
+            #expect(CredentialFacts.adminAccountID(inOAuth2: Data(#"{"decoded_id_token": \#(claims)}"#.utf8)) == id, "\(claims)")
+        }
         for control in ["\\u0000", "\\u001f"] {
             let text = #"{"decoded_id_token": {"email": "admin@example.com"# + control + #""}}"#
             #expect(CredentialFacts.adminEmail(inOAuth2: Data(text.utf8)) == nil, "control \(control)")

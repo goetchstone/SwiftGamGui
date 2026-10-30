@@ -78,9 +78,8 @@ it) and 11 (parity is a test).
   lists (an empty one its default, as the picker starts); Search a mailbox's "Headers + body" is listed but refused
   (`CuratedCommand.notYet`) until a read can be audited, as the other sensitive reads wait (no screen here reads a body);
   `target` falls back to the first address, so a new group or an undeleted account is named in the audit, not "(command)";
-  a delegate is checked as Users checks one (`UserChanges.checkDelegate`); suspend and the random password refuse the connected
-  admin, by the account GAM resolves the address to (`info user`: an alias reads as its owner), read at the preview and again
-  just before the run, and refused when GAM can't say (either signs the app out, with no way back from here); and Set title /
+  a delegate is checked as Users checks one (`UserChanges.checkDelegate`); suspend, the random password and a sign-out of the
+  connected admin are refused by the executor, as on every screen (guard-audit: the connected-admin check); and Set title /
   department warns before GAM clears a field left empty (it sends both, as GamGUI's does).
 - **Writes only through `BuilderChanges`** (`WriteRouteTests`): only `BuilderView` calls `catalogRead`; it names no other changes
   model, no executor, write or `AppServices`, and confirms nothing (its sheet does); `BuilderChanges` is named only by the
@@ -105,7 +104,7 @@ it) and 11 (parity is a test).
   `<alice@example.com>`, which GAM rewrites to alice: with it, a suspend of the connected admin passed the refusal (review
   2026-10-28). Any field GAM reads as an account takes `GamCommands.isOneAddress`. A refusal that compares addresses compares
   what GAM will act on: ask GAM (`info user`), never the cached directory, which may not be loaded.
-- Users' own suspend has no connected-admin check at all (follow-up; RULE-FEEDBACK 2026-10-28).
+- The connected-admin refusal was a copy here, and Users' own Suspend had none: it is the executor's now (2026-10-28).
 - `print filelist query …` isn't modelled by the mock, so the demo can't show Find a user's Drive files run.
 - A Builder change doesn't patch the cached directory (GamGUI's Builder doesn't either): Users → Refresh shows a suspend or a
   title set here.

@@ -34,6 +34,24 @@ public enum Fixtures {
         ["GAM_MOCK_FIXTURES": mockGamData.path]
     }
 
+    /// The Google account ID the mock's directory gives `email` (`mock_gam/print_users.json`'s `id`); nil for no such user.
+    public static func mockAccountID(_ email: String) -> String? {
+        guard let text = try? String(contentsOf: mockGamData.appending(path: "print_users.json"), encoding: .utf8) else { return nil }
+        for line in text.split(separator: "\n") {
+            guard let record = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                  (record["primaryEmail"] as? String) == email.lowercased() else { continue }
+            return record["id"] as? String
+        }
+        return nil
+    }
+
+    /// An `oauth2.txt` that signs in as `admin`, as GAM writes one: the claims beside the token, with the account ID (`sub`)
+    /// the mock's directory has for that admin, so Setup's Check access confirms it. A placeholder, never a real token.
+    public static func oauth2(admin: String) -> Data {
+        let sub = mockAccountID(admin).map { #", "sub": "\#($0)""# } ?? ""
+        return Data(#"{"decoded_id_token": {"email": "\#(admin)"\#(sub)}, "refresh_token": "placeholder"}"#.utf8)
+    }
+
     /// A fresh temp dir holding placeholder credential files. The mock only checks that they exist and
     /// aren't empty; nothing real is ever written here.
     public static func placeholderConfigDirectory() throws -> URL {

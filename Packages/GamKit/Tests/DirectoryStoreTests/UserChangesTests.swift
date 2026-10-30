@@ -11,12 +11,6 @@ import Vault
 /// GamGUI sends, the audit, and the cached directory patched (GamGUI's `patch_user`).
 struct NotPreviewing: Error { let state: String }
 
-/// The connected admin as the page reads it, changeable between a preview and its run.
-@MainActor final class AdminBox {
-    var value: String?
-    init(_ value: String?) { self.value = value }
-}
-
 /// A clock a test moves: `ContinuousClock`'s now plus whatever the test added.
 final class TestClock: @unchecked Sendable {
     private let lock = NSLock()
@@ -50,9 +44,9 @@ final class UserChangesTests {
         argvLog = scratch.appending(path: "argv.log")
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         let setup = setup
-        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
-            setup.active.map { ($0, setup.generation) }
-        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
+        // As the app makes it: the admin Setup connected, asked at each preview and run.
+        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), currentActor: { @MainActor in setup.connectedAdmin },
+                                adminAccountID: { @MainActor in setup.connectedAdminID }, tenant: { @MainActor in setup.active.map { ($0, setup.generation) } }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
                               "GAM_MOCK_STATE": scratch.appending(path: "mock-state").path])
         let clock = clock
         changes = UserChanges(executor: executor, directory: directory, today: { "2026-10-09" }, now: { clock.now })
@@ -69,7 +63,7 @@ final class UserChangesTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Data(#"{"decoded_id_token": {"email": "admin@example.com"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: "admin@example.com").write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: "example.com")
         await setup.checkAccess(Domain("example.com")!)
         await directory.load()
@@ -270,6 +264,20 @@ final class UserChangesTests {
         await changes.previewSuspend(try user("alice@example.com"), suspend: false)
         await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
         #expect(try !user("alice@example.com").suspended)
+    }
+
+    /// Suspend and Sign Out once had no check for the admin this app signs in as (only Set Temporary Password did): the
+    /// executor refuses both now, as on every screen, with nothing run.
+    @Test func suspendingOrSigningOutTheConnectedAdminIsRefused() async throws {
+        try await connect()
+        let admin = GamUser(record: ["primaryEmail": .string("Admin@example.com")])
+        await changes.previewSuspend(admin, suspend: true)
+        guard case .problem(let suspend) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(suspend.hasPrefix("Admin@example.com is the admin this app is connected as: this would sign the app out"))
+        await changes.previewSignOut(admin)
+        guard case .problem(let signOut) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(signOut.hasPrefix("Admin@example.com is the admin this app is connected as"))
+        #expect(writes().isEmpty)
     }
 
     /// A write that fails leaves the list as it was and says why, with GAM's remediation.
@@ -521,7 +529,7 @@ final class UserChangesTests {
     /// connected as is refused before anything is held.
     @Test func aTemporaryPasswordIsSetThenShownOnceAndNeverAudited() async throws {
         try await connect()
-        await changes.previewTemporaryPassword(try user("carol@example.com"), connectedAdmin: { "admin@example.com" })
+        await changes.previewTemporaryPassword(try user("carol@example.com"))
         let pending = try self.pending()
         #expect(pending.isDestructive && changes.signIn == nil)
         let shown = pending.preview.steps.map { $0.commandLine + " " + $0.summary }.joined(separator: "\n")
@@ -535,51 +543,33 @@ final class UserChangesTests {
         changes.doneWithSignIn()
         #expect(changes.signIn == nil)
 
-        // A set GAM refuses shows no password.
-        await changes.previewTemporaryPassword(GamUser(record: ["primaryEmail": .string("missing@example.com")]),
-                                               connectedAdmin: { "admin@example.com" })
+        // A set that doesn't run (there's no such account: refused before the write) shows no password.
+        await changes.previewTemporaryPassword(GamUser(record: ["primaryEmail": .string("missing@example.com")]))
         await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
         guard case .problem = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(changes.signIn == nil)
 
-        // The connected admin: refused in words, nothing held or run.
-        await changes.previewTemporaryPassword(GamUser(record: ["primaryEmail": .string("Admin@Example.com")]),
-                                               connectedAdmin: { "admin@example.com" })
+        // The connected admin: refused in words by the executor, nothing held or run.
+        await changes.previewTemporaryPassword(GamUser(record: ["primaryEmail": .string("Admin@Example.com")]))
         guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(message.contains("connected as"))
-        #expect(writes().count == 2)
+        #expect(writes().count == 1, "Carol's alone")
     }
 
-    /// The review's cases (2026-10-21). An unknown admin refuses, as Compromised does. While one person's password is
-    /// held, no second is previewed or confirmed: it would drop the first before it was handed over. The admin is read
-    /// again when the change runs: one that became the target refuses with nothing run. And the details go after fifteen
-    /// minutes.
+    /// The review's cases (2026-10-21). While one person's password is held, no second is previewed or confirmed: it would
+    /// drop the first before it was handed over. And the details go after fifteen minutes. (An unknown admin, and one that
+    /// became the target by the run, are the executor's: `ExecutorTests`, the connected admin.)
     @Test func aTemporaryPasswordFailsClosedAndIsOneAtATime() async throws {
         try await connect()
         let carol = try user("carol@example.com"), dana = try user("dana@example.com")
-        for unknown in [nil, ""] as [String?] {
-            await changes.previewTemporaryPassword(carol, connectedAdmin: { unknown })
-            guard case .problem(let message) = changes.state else { Issue.record("\(changes.state)"); return }
-            #expect(message.contains("isn't known"))
-        }
-
-        // The admin, read again at the run, is now the target: refused, nothing run, nothing shown.
-        let admin = AdminBox("admin@example.com")
-        await changes.previewTemporaryPassword(carol, connectedAdmin: { admin.value })
-        let held = try pending()
-        admin.value = "carol@example.com"
-        await changes.confirm(held, OperatorConfirmation(confirmed: true))
-        #expect(writes().isEmpty && changes.signIn == nil)
-
-        // One at a time.
-        await changes.previewTemporaryPassword(carol, connectedAdmin: { "admin@example.com" })
+        await changes.previewTemporaryPassword(carol)
         let first = try pending()
-        await changes.previewTemporaryPassword(dana, connectedAdmin: { "admin@example.com" })
+        await changes.previewTemporaryPassword(dana)
         let second = try pending()
         await changes.confirm(first, OperatorConfirmation(confirmed: true))
         let carolsDetails = try #require(changes.signIn(for: "carol@example.com"))
         #expect(carolsDetails.preview == first.id && changes.signIn(for: "dana@example.com") == nil)
-        await changes.previewTemporaryPassword(dana, connectedAdmin: { "admin@example.com" })
+        await changes.previewTemporaryPassword(dana)
         guard case .problem(let busy) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(busy.contains("carol@example.com"))
         await changes.confirm(second, OperatorConfirmation(confirmed: true))
@@ -591,7 +581,7 @@ final class UserChangesTests {
         clock.advance(by: OnboardChanges.cardLifetime + .seconds(1))
         #expect(changes.signIn == nil)
         changes.dropSignIn(ifExpired: carolsDetails.id)
-        await changes.previewTemporaryPassword(dana, connectedAdmin: { "admin@example.com" })
+        await changes.previewTemporaryPassword(dana)
         #expect((try? pending()) != nil)
     }
 

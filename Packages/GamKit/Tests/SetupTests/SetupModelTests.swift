@@ -14,6 +14,8 @@ struct SetupModelTests {
     let lastDomain = LastDomain.memory()
 
     init() throws {
+        // Check access reads the admin's account from the mock's directory (`info user`).
+        setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         base = try RuntimeDirectory.prepare(
             FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-run-\(UUID().uuidString)"))
     }
@@ -31,8 +33,7 @@ struct SetupModelTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "123"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Data(#"{"decoded_id_token": {"email": "\#(admin)"}, "refresh_token": "placeholder"}"#.utf8)
-            .write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: admin).write(to: folder.appending(path: "oauth2.txt"))
         return folder
     }
 
@@ -66,8 +67,37 @@ struct SetupModelTests {
         #expect(model.active == example)
         #expect(model.generation == 1)
         #expect(model.activity == .done("Connected to example.com as admin@example.com."))
+        #expect(model.connectedAdminID == Fixtures.mockAccountID("admin@example.com"), "the token's sub, as GAM reads the admin")
         await model.checkAccess(example)
         #expect(model.generation == 1, "the same domain re-checked keeps its previews and caches")
+    }
+
+    /// The admin's account ID is the token's `sub` only once GAM reads the same `id` for the admin. Otherwise it's left
+    /// unconfirmed, reads still work, and the result says which cause (the fix differs): no ID in the token, GAM can't read
+    /// the admin (a delegated admin whose role doesn't reach its own account; an admin outside the directory), or GAM reads
+    /// another account. ChangeCore then makes no change that could cut an account off.
+    @Test func theAdminsAccountIDIsConfirmedOrSaidWhyNot() async throws {
+        let example = Domain("example.com")!
+        let alices = Fixtures.mockAccountID("alice@example.com")!
+        for (admin, claims, why) in [
+            ("admin@example.com", #"{"email": "admin@example.com"}"#, "oauth2.txt doesn't say which account it is"),
+            ("admin@example.com", #"{"email": "admin@example.com", "sub": "not-digits"}"#, "oauth2.txt doesn't say which account it is"),
+            ("admin@example.com", #"{"email": "admin@example.com", "sub": "\#(alices)"}"#,
+             "GAM reads admin@example.com as another account than oauth2.txt's"),
+            ("INFOREFUSED-admin@example.com", #"{"email": "INFOREFUSED-admin@example.com", "sub": "100000000000000000123"}"#,
+             "GAM couldn't read inforefused-admin@example.com: "),
+        ] {
+            let model = model()
+            let folder = try gamFolder(admin: admin)
+            try Data(#"{"decoded_id_token": \#(claims)}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+            await model.importFolder(folder, as: "example.com")
+            await model.checkAccess(example)
+            #expect(model.active == example, "reads still work")
+            guard case .done(let said) = model.activity else { Issue.record("\(model.activity)"); continue }
+            #expect(model.connectedAdminID == nil && said.hasPrefix("Connected to example.com as \(admin.lowercased()). Which account "
+                    + "that is isn't confirmed (\(why)"), "\(said)")
+            #expect(said.hasSuffix("), so a change that could sign it out isn't made here."), "\(said)")
+        }
     }
 
     @Test func aFailedCheckOfAnotherDomainKeepsTheConnectedOne() async throws {
@@ -118,6 +148,7 @@ struct SetupModelTests {
         #expect(model.activity == .problem("This domain's oauth2.txt names no admin. Enter the admin address GAM signs in as."))
         await model.checkAccess(Domain("example.com")!, typedAdmin: " Admin@Example.com ")
         #expect(model.active == Domain("example.com")!)
+        #expect(model.connectedAdminID == nil, "a typed admin isn't the token's to confirm")
     }
 
     @Test func aLockedMacIsSaidPlainlyDuringACheck() async throws {

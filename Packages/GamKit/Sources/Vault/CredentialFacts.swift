@@ -8,15 +8,28 @@ public enum CredentialFacts {
     /// (`decoded_id_token`, or `id_token` when an older build stored the claims there), lowercased.
     /// An undecoded JWT is not decoded. Port of GamGUI's `oauth_admin_email`.
     public static func adminEmail(inOAuth2 data: Data) -> String? {
+        adminClaims(inOAuth2: data)?.email
+    }
+
+    /// The connected admin's Google account ID: the `sub` claim beside that `email`, in the same claims, when it's digits as
+    /// Google's are. Setup takes it only once GAM reads the same `id` for the admin (`SetupModel.connectedAdminID`).
+    public static func adminAccountID(inOAuth2 data: Data) -> String? {
+        guard let sub = adminClaims(inOAuth2: data)?.claims["sub"] as? String,
+              !sub.isEmpty, sub.utf8.count <= 64, sub.utf8.allSatisfy({ (0x30...0x39).contains($0) }) else { return nil }
+        return sub
+    }
+
+    /// The first claims holding a usable `email`, and that email lowercased.
+    private static func adminClaims(inOAuth2 data: Data) -> (email: String, claims: [String: Any])? {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         for key in ["decoded_id_token", "id_token"] {
             var claims = object[key]
             if let text = claims as? String {
                 claims = text.data(using: .utf8).flatMap { try? JSONSerialization.jsonObject(with: $0) }
             }
-            if let email = (claims as? [String: Any])?["email"] as? String, email.contains("@"),
+            if let claims = claims as? [String: Any], let email = claims["email"] as? String, email.contains("@"),
                !email.unicodeScalars.contains(where: { $0.properties.isWhitespace || $0.properties.generalCategory == .control }) {
-                return email.lowercased()
+                return (email.lowercased(), claims)
             }
         }
         return nil

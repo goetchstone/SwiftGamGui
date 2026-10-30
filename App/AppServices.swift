@@ -107,7 +107,8 @@ struct AppServices {
         let jobs = JobBoard()
         let executor = runner.map { runner in
             Executor(runner: runner, audit: AuditLog(url: auditURL),
-                     currentActor: { @MainActor [weak setup] in setup?.connectedAdmin }, tenant: { @MainActor [weak setup] in
+                     currentActor: { @MainActor [weak setup] in setup?.connectedAdmin },
+                     adminAccountID: { @MainActor [weak setup] in setup?.connectedAdminID }, tenant: { @MainActor [weak setup] in
                 setup?.active.map { ($0, setup!.generation) }
             }, extraEnvironment: extraEnvironment, jobs: jobs.report)
         }
@@ -151,9 +152,7 @@ struct AppServices {
                            nobodyHas: nobodyHas,
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
-                           // Its own reader: whose account an address is, read live before a suspend or a password reset.
-                           builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory,
-                                                          access: UserAccess(setup: setup, runner: runner)),
+                           builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL)
     }
 
@@ -163,11 +162,13 @@ struct AppServices {
     /// the mock there is no runner at all. The mock's canned output is found beside it.
     private static func demo() -> AppServices {
         let store = MemoryStore()
-        let tokens = ["example.com": "admin@example.com", "example.org": "partialdwd@example.org"]
-        for (name, admin) in tokens {
+        // The admin's account ID (`sub`) is the mock's for admin@example.com, so Check access confirms it as on a real domain.
+        let tokens = ["example.com": #"{"email": "admin@example.com", "sub": "100000000000000000009"}"#,
+                      "example.org": #"{"email": "partialdwd@example.org"}"#]
+        for (name, claims) in tokens {
             let domain = Domain(name)!
             try? store.write(Data(#"{"client_email": "gam@demo.iam.gserviceaccount.com"}"#.utf8), as: .oauth2Service, for: domain)
-            try? store.write(Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8), as: .oauth2, for: domain)
+            try? store.write(Data(#"{"decoded_id_token": \#(claims)}"#.utf8), as: .oauth2, for: domain)
         }
         let auditURL = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-audit/audit.jsonl")
         // The Audit screen's picture, and Respond's email pulled: example records, written fresh in the temporary folder,
