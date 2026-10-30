@@ -37,6 +37,7 @@ final class CompromisedChangesTests {
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         let tenantSetup = setup
         let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), actor: "admin@example.com",
+                                adminAccountID: { @MainActor [weak tenantSetup] in tenantSetup?.connectedAdminID },
                                 tenant: { @MainActor [weak tenantSetup] in tenantSetup.flatMap { s in s.active.map { ($0, s.generation) } } },
                                 extraEnvironment: ["GAM_MOCK_STATE": state.path, "GAM_MOCK_ARGV_LOG": argvLog.path])
         changes = CompromisedChanges(executor: executor, setup: setup, access: access)
@@ -51,7 +52,7 @@ final class CompromisedChangesTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Data(#"{"decoded_id_token": {"email": "\#(admin)"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: admin).write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: "example.com")
         await setup.checkAccess(Domain("example.com")!)
     }

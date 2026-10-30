@@ -92,14 +92,15 @@ final class PhishingChangesTests {
         await changes.find(Self.pasted)
         let search = try search()
         #expect(search.message == Self.message)
-        #expect(search.copies.mailboxes.map(\.email) == ["alice@example.com", "carol@example.com", "dana@example.com"])
-        #expect(search.copies.mailboxes.map(\.finding) == [.copies(1), .none, .copies(2)])
+        #expect(search.copies.mailboxes.map(\.email) == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"])
+        #expect(search.copies.mailboxes.map(\.finding) == [.none, .copies(1), .none, .copies(2)])
         #expect(search.commandLine == "gam all users trash messages query 'rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent' "
                 + "notquick max_to_trash 1")
         #expect(trashCalls() == [GamCommands.findMessageCopies(Self.message).argv])
         let spam = try #require(search.spam, "\(search.spamProblem ?? "")")
         #expect(spam.mailboxes == [.init(email: "alice@example.com", ids: ["19a0c0ffee000002"])])
-        #expect(spam.searched == ["alice@example.com", "carol@example.com", "dana@example.com"] && spam.unsearched.isEmpty)
+        #expect(spam.searched == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"]
+                && spam.unsearched.isEmpty)
         #expect(search.spamCommandLine == "gam all users print messages query 'rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam' "
                 + "includespamtrash headers message-id showlabels")
         #expect(search.mailboxesWithCopies == ["alice@example.com", "dana@example.com"])
@@ -215,7 +216,7 @@ final class PhishingChangesTests {
         FileManager.default.createFile(atPath: state.appending(path: "nogmail/alice@example.com").path, contents: Data())
         await changes.find(Self.pasted)
         let search = try search()
-        #expect(search.copies.mailboxes.first?.finding == .gmailOff)
+        #expect(search.copies.mailboxes.first { $0.email == "alice@example.com" }?.finding == .gmailOff)
         #expect(search.spam?.unsearched == [.init(email: "alice@example.com", why: "Gmail is off")] && search.spam?.mailboxes.isEmpty == true)
         await changes.previewTrash()
         #expect(try #require(changes.pending).trashes == [.init(message: Self.message, email: "dana@example.com", place: .mailbox(copies: 2))])
@@ -318,13 +319,15 @@ final class PhishingChangesTests {
         await changes.find(Self.pasted)
         let search = try search()
         #expect(PhishingChanges.copiesColumns == ["mailbox", "found", "copies", "in spam", "trash"])
-        #expect(PhishingChanges.copiesRows(search, run: nil) == [["alice@example.com", "copies", "1", "1", ""],
+        #expect(PhishingChanges.copiesRows(search, run: nil) == [["admin@example.com", "none", "0", "0", ""],
+                                                                  ["alice@example.com", "copies", "1", "1", ""],
                                                                   ["carol@example.com", "none", "0", "0", ""],
                                                                   ["dana@example.com", "copies", "2", "0", ""]])
         await changes.previewTrash()
         await changes.confirm(try #require(changes.pending), typed("3"))
         let run = try #require(changes.run)
         #expect(PhishingChanges.copiesRows(try #require(run.pending.search(of: search.message)), run: run) == [
+            ["admin@example.com", "none", "0", "0", ""],
             ["alice@example.com", "copies", "1", "1", "trashed; spam: trashed"],
             ["carol@example.com", "none", "0", "0", ""],
             ["dana@example.com", "copies", "2", "0", "trashed"],
@@ -374,12 +377,15 @@ final class PhishingChangesTests {
         let ends = AuditLog.records(at: auditURL).reversed().filter { $0["extra"]?.object?["phase"]?.string == "end" }
         #expect(ends.count == 4 && ends.allSatisfy { $0["action"]?.string == "trashMessage" && $0["ok"]?.bool == true })
         #expect(PhishingChanges.allCopiesRows(found.results, run: run).map { $0[0] + " " + $0[1] + " " + $0[5] } == [
+            "CAPh1sh+Notice=0001@mail.example.com admin@example.com ",
             "CAPh1sh+Notice=0001@mail.example.com alice@example.com trashed; spam: trashed",
             "CAPh1sh+Notice=0001@mail.example.com carol@example.com ",
             "CAPh1sh+Notice=0001@mail.example.com dana@example.com trashed",
+            "CAOther+Note=0002@mail.example.com admin@example.com ",
             "CAOther+Note=0002@mail.example.com alice@example.com trashed",
             "CAOther+Note=0002@mail.example.com carol@example.com ",
             "CAOther+Note=0002@mail.example.com dana@example.com ",
+            "nobody-sent-this@mail.example.com admin@example.com ",
             "nobody-sent-this@mail.example.com alice@example.com ",
             "nobody-sent-this@mail.example.com carol@example.com ",
             "nobody-sent-this@mail.example.com dana@example.com ",

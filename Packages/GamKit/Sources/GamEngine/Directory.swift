@@ -37,6 +37,13 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
         Mirror(self, children: ["primaryEmail": primaryEmail, "suspended": suspended, "orgUnitPath": orgUnitPath])
     }
 
+    /// The Google account ID (the record's `id`), when it's digits as Google's are: the same number through a rename or an
+    /// alias, and the token's `sub` for the account that signed it in.
+    public var accountID: String? {
+        guard case .string(let id)? = record["id"], !id.isEmpty, id.utf8.allSatisfy({ (0x30...0x39).contains($0) }) else { return nil }
+        return id
+    }
+
     public init(record: GamOutput.Record) {
         let name = record["name"].flatMap { $0.truthy ? $0.object : nil } ?? [:]
         let organization = Fields.primary(record["organizations"])

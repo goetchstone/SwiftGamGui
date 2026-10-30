@@ -58,9 +58,23 @@ final class ExecutorTests {
         environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
         if let state { environment["GAM_MOCK_STATE"] = state.path }
         let runner = gam.map { AuthenticatedRunner(runner: GamRunner(binary: $0), vault: vault, runtimeDirectory: base) } ?? runner
-        return Executor(runner: runner, audit: audit, actor: "admin@example.com",
+        return Executor(runner: runner, audit: audit, actor: "admin@example.com", adminAccountID: { Self.adminID },
                         tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
                         extraEnvironment: environment)
+    }
+
+    /// The mock's account IDs (`mock_gam/print_users.json`): the connected admin's, and Alice's.
+    static let adminID = "100000000000000000009", aliceID = "100000000000000000001"
+
+    /// The executor as the app makes it: the admin and its confirmed account ID asked at each preview and run
+    /// (`SetupModel.connectedAdmin`, `connectedAdminID`).
+    private func executor(admin: Shared<(address: String, id: String?)?>) -> Executor {
+        let tenant = tenantState
+        var environment = Fixtures.mockEnvironment
+        environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        return Executor(runner: runner, audit: audit, currentActor: { admin.value.withLock { $0?.address } },
+                        adminAccountID: { admin.value.withLock { $0?.id } },
+                        tenant: { tenant.value.withLock { $0 } }, extraEnvironment: environment)
     }
 
     /// A fresh `GAM_MOCK_STATE` directory.
@@ -98,11 +112,21 @@ final class ExecutorTests {
         return calls
     }
 
+    /// What the mock ran but `info user` reads: the writes. A step that cuts an account off is read first (the connected-admin
+    /// check), and a test about something else counts only what was written.
+    private func wrote() -> [[String]] { ran().filter { $0.prefix(2) != ["info", "user"] } }
+
+    /// The connected-admin check's read of `address`.
+    private func lookup(_ address: String) -> [String] { GamCommands.infoUser(email: address, fields: ["primaryEmail", "id"]).argv }
+
     private var records: [JSONObject] { AuditLog.records(at: auditURL).reversed() }
 
     private let confirmed = OperatorConfirmation(confirmed: true)
     private func suspend(_ email: String = "alice@example.com") -> WriteStep {
         WriteStep(GamCommands.setSuspended(email: email, suspended: true), target: email, summary: "Suspend \(email)")
+    }
+    private func clearRecovery(_ email: String = "alice@example.com") -> WriteStep {
+        WriteStep(GamCommands.clearRecovery(email: email), target: email, summary: "Clear \(email)'s recovery")
     }
 
     // MARK: the confirm runs what was held, once
@@ -113,7 +137,8 @@ final class ExecutorTests {
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(outcome.refusal == nil)
         #expect(outcome.succeeded)
-        #expect(ran() == [["update", "user", "alice@example.com", "suspended", "on"]])
+        // Whose account Alice's address is (the connected-admin check), then the write.
+        #expect(ran() == [lookup("alice@example.com"), ["update", "user", "alice@example.com", "suspended", "on"]])
         let phases = records.compactMap { $0["extra"]?.object?["phase"]?.string }
         #expect(phases == ["begin", "end"])
         let end = try #require(records.last)
@@ -125,7 +150,7 @@ final class ExecutorTests {
 
         let again = await executor.run(preview, confirmation: confirmed)
         #expect(again.refusal == "That preview has expired or was already run — preview again.", "a replay")
-        #expect(ran().count == 1)
+        #expect(wrote().count == 1)
     }
 
     /// GamGUI failure-log 2026-09-23: routes wrote on a bare POST. Here the executor asks the guard.
@@ -221,7 +246,7 @@ final class ExecutorTests {
                 == "A change to alice@example.com is already running — wait for it to finish, then preview again.")
         releaseGate.yield()
         #expect(await running.value.succeeded)
-        #expect(ran().count == 1)
+        #expect(wrote().count == 1)
     }
 
     @Test func onlyTheLatestPreviewsAreKept() async throws {
@@ -257,8 +282,8 @@ final class ExecutorTests {
     /// begins. Onboarding's sign-in card appears the moment the create ends, not when the whole run does.
     @Test func progressSeesEachStepAsItEnds() async throws {
         let executor = executor()
-        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true),
-                             target: "missing@example.com", summary: "Suspend")
+        // A write that cuts no one off, so GAM itself fails it (a suspend of no one is refused before the run).
+        let gone = WriteStep(GamCommands.clearRecovery(email: "missing@example.com"), target: "missing@example.com", summary: "Clear")
         let preview = try await held(executor, [suspend(), gone, suspend("bob@example.com")])
         let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
         let (seen, seenGate) = AsyncStream<Void>.makeStream()
@@ -310,7 +335,7 @@ final class ExecutorTests {
             kind: .scopeMissing))
         guard case .skipped(let reason) = outcome.steps.last else { Issue.record("\(outcome.steps)"); return }
         #expect(reason.hasPrefix("Stopped: A required API scope is not authorized."))
-        #expect(ran().count == 1)
+        #expect(wrote().count == 1)
         #expect(records.last?["ok"]?.bool == false)
         #expect(records.last?["extra"]?.object?["kind"]?.string == "scope_missing")
     }
@@ -327,7 +352,7 @@ final class ExecutorTests {
         guard case .failed = outcome.steps[0] else { Issue.record("\(outcome.steps)"); return }
         #expect(outcome.steps[1] == .skipped(reason: "Step 1 didn't succeed."))
         guard case .succeeded = outcome.steps[2] else { Issue.record("\(outcome.steps)"); return }
-        #expect(ran().count == 2)
+        #expect(wrote().count == 2)
     }
 
     /// GamGUI failure-log 2026-09-23: a hire surnamed "Password" shifted the positional mask. The password
@@ -441,7 +466,7 @@ final class ExecutorTests {
         let outcome = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
         guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
         #expect(message.hasPrefix("The audit log couldn't be written"))
-        #expect(ran().isEmpty)
+        #expect(wrote().isEmpty)
     }
 
     /// GamGUI's write lock: a second write waits for the first, whatever its target.
@@ -463,11 +488,11 @@ final class ExecutorTests {
         for await _ in started { break }
         let two = Task { [executor, second] in await executor.run(second, confirmation: confirm) }
         try await Task.sleep(for: .milliseconds(200))
-        #expect(ran().isEmpty, "the second write didn't start while the first held the lock")
+        #expect(wrote().isEmpty, "the second write didn't start while the first held the lock")
         releaseGate.yield()
         #expect(await one.value.succeeded)
         #expect(await two.value.succeeded)
-        #expect(ran().count == 2)
+        #expect(wrote().count == 2)
     }
 
     /// A lookup Google refused says nothing about whether the address is an alias: the delete waits.
@@ -507,13 +532,14 @@ final class ExecutorTests {
         }
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(outcome.steps.count == 3)
-        #expect(ran().count == 1)
+        #expect(wrote().count == 1)
         #expect(outcome.steps[1] == .skipped(reason: "Stopped: the active domain changed during the run."))
     }
 
     @Test func aRunCancelledBeforeGamStartsIsNotRecordedAsInterrupted() async throws {
         let executor = executor()
-        let preview = try await held(executor, [suspend()])
+        // A write nobody's account is read for first, so the cancel meets the step itself.
+        let preview = try await held(executor, [clearRecovery()])
         let confirm = confirmed
         let task = Task { [executor, preview] in
             try? await Task.sleep(for: .milliseconds(100))
@@ -547,16 +573,17 @@ final class ExecutorTests {
         #expect(a.digest.count == 64)
     }
 
-    /// Live, 2026-10-09: every record said `actor: null`. The connected admin is asked at each run.
+    /// Live, 2026-10-09: every record said `actor: null`. The connected admin is asked at each run, before the static
+    /// `actor` (here, Dana: an account the mock knows, so the connected-admin check can read it).
     @Test func theAuditNamesTheAdminWhoActed() async throws {
         let tenant = tenantState, offset = offset, start = start
         var environment = Fixtures.mockEnvironment
         environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
-        let executor = Executor(runner: runner, audit: audit, currentActor: { "it-admin@example.com" },
-                                tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
+        let executor = Executor(runner: runner, audit: audit, actor: "admin@example.com", currentActor: { "dana@example.com" },
+                                adminAccountID: { "100000000000000000004" }, tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
                                 extraEnvironment: environment)
         _ = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
-        #expect(records.map { $0["actor"]?.string } == ["it-admin@example.com", "it-admin@example.com"])
+        #expect(records.map { $0["actor"]?.string } == ["dana@example.com", "dana@example.com"])
     }
 
     @Test func anUnfinishedWriteCanBeAcknowledged() async throws {
@@ -757,8 +784,8 @@ final class ExecutorTests {
         let executor = executor()
         let slow = WriteStep(GamCommands.setSuspended(email: "alice@example.com", suspended: true), target: "alice@example.com",
                              summary: "", timeout: .nanoseconds(1))
-        let gone = WriteStep(GamCommands.setSuspended(email: "missing@example.com", suspended: true), target: "missing@example.com",
-                             summary: "")
+        // A write that cuts no one off, so GAM itself fails it (a suspend of no one is refused before the run).
+        let gone = WriteStep(GamCommands.clearRecovery(email: "missing@example.com"), target: "missing@example.com", summary: "")
         let outcome = await executor.run(try await held(executor, [slow, gone, suspend("bob@example.com")]), confirmation: confirmed)
         #expect(outcome.steps.map(\.mayHaveChanged) == [true, false, false])
         #expect(RunOutcome.Step.failed(message: Executor.interrupted, kind: nil).mayHaveChanged)
@@ -1259,7 +1286,7 @@ final class ExecutorTests {
         guard case .failed(_, .scopeMissing?) = outcome.steps[0], case .succeeded = outcome.steps[1] else {
             Issue.record("\(outcome.steps)"); return
         }
-        #expect(ran().count == 2)
+        #expect(wrote().count == 2)
         let stops = await executor.run(try await held(executor, [signOut, next]), confirmation: confirmed)
         guard case .skipped = stops.steps[1] else { Issue.record("\(stops.steps)"); return }
     }
@@ -1280,7 +1307,7 @@ final class ExecutorTests {
         guard case .succeeded = outcome.steps[0], case .succeeded = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
         #expect(outcome.steps[2] == .skipped(reason: Executor.stopped))
         #expect(!outcome.succeeded)
-        #expect(ran().count == 2, "the step in flight finished; the next never began")
+        #expect(wrote().count == 2, "the step in flight finished; the next never began")
         #expect(records.compactMap { $0["extra"]?.object?["phase"]?.string } == ["begin", "end", "begin", "end"])
         #expect(await executor.stopAfterCurrentStep(id) == false, "after the run")
         await executor.setBeforeEachStep(nil)
@@ -1321,7 +1348,7 @@ final class ExecutorTests {
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(accepted.value.withLock { $0 }, "the stop was taken while the run was checking")
         #expect(outcome.steps == [.skipped(reason: Executor.stopped), .skipped(reason: Executor.stopped)])
-        #expect(ran().isEmpty && records.isEmpty)
+        #expect(wrote().isEmpty && records.isEmpty)
         #expect(await executor.stopAfterCurrentStep(preview.id) == false, "after the run")
     }
 
@@ -1363,7 +1390,8 @@ final class ExecutorTests {
     @Test func anInterruptedStepIsStillToCheck() async throws {
         let gam = try fakeGam("exec /bin/sleep 30\n")
         let executor = executor(gam: gam)
-        let preview = try await held(executor, [suspend()])
+        // A write nobody's account is read for first, so the call cut off is the write's.
+        let preview = try await held(executor, [clearRecovery()])
         let confirmation = confirmed
         let run = Task { await executor.run(preview, confirmation: confirmation) }
         while ran().isEmpty { try await Task.sleep(for: .milliseconds(20)) }
@@ -1372,8 +1400,183 @@ final class ExecutorTests {
         #expect(outcome.steps == [.failed(message: Executor.interrupted, kind: nil)])
         #expect(records.compactMap { $0["extra"]?.object?["phase"]?.string } == ["begin", "end"])
         let open = Executor.unfinished(in: auditURL)
-        #expect(open.map(\.action) == ["suspendUser"])
+        #expect(open.map(\.action) == ["clearRecovery"])
         try Executor.acknowledge(open, in: auditURL)
         #expect(Executor.unfinished(in: auditURL).isEmpty)
+    }
+
+    // MARK: the connected admin
+
+    /// A change that cuts an account off (`GamWrite.cutsOff`), on the admin this app signs in as, would sign the app out with
+    /// no way back from here: refused at the preview by the address itself, in any case or spacing, for each such write and
+    /// within a plan, with no read. A change that cuts no one off previews for the admin as for anyone.
+    @Test func cuttingOffTheConnectedAdminIsRefusedAtThePreview() async throws {
+        let executor = executor()
+        let typed = " Admin@Example.com "
+        let writes = [GamCommands.setSuspended(email: typed, suspended: true), GamCommands.resetPassword(email: typed),
+                      GamCommands.setPassword(email: typed, password: "p"), GamCommands.signOutUser(email: typed),
+                      GamCommands.deprovisionUser(email: typed), GamCommands.deleteUser(email: typed)]
+        #expect(writes.map(\.cutsOff) == Array(repeating: typed, count: writes.count))
+        let refusal = Executor.PreviewRefusal.cutsOffConnectedAdmin("Admin@Example.com", admin: "admin@example.com")
+        for write in writes {
+            await #expect(throws: refusal) { try await executor.preview([WriteStep(write, target: typed, summary: "")]).get() }
+        }
+        await #expect(throws: refusal) {
+            try await executor.preview([suspend("bob@example.com"), WriteStep(writes[0], target: typed, summary: "")]).get()
+        }
+        #expect(refusal.message == "Admin@Example.com is the admin this app is connected as: this would sign the app out, with no "
+                + "way back from here. Make the change in the Admin console, or from another admin's setup.")
+        for write in [GamCommands.setSuspended(email: typed, suspended: false), GamCommands.clearRecovery(email: typed),
+                      GamCommands.undeleteUser(email: typed), GamCommands.vacationOff(email: typed)] {
+            #expect(write.cutsOff == nil)
+            #expect((try? await executor.preview([WriteStep(write, target: typed, summary: "")]).get()) != nil, "\(write.action)")
+        }
+        #expect(ran().isEmpty)
+    }
+
+    /// Without the admin's confirmed account ID (Setup's: a typed admin has none), nothing that cuts an account off previews
+    /// or runs: whose account it is can't be told. Anything else does. It's asked again at the run: confirmed at the preview
+    /// and gone by then, the run refuses.
+    @Test func cuttingOffAnAccountWaitsForTheAdminToBeConfirmed() async throws {
+        let admin = Shared<(address: String, id: String?)?>(nil)
+        let executor = executor(admin: admin)
+        for unconfirmed in [nil, ("admin@example.com", nil), (" ", Self.adminID), ("admin@example.com", "")] as [(String, String?)?] {
+            admin.value.withLock { $0 = unconfirmed.map { (address: $0.0, id: $0.1) } }
+            await #expect(throws: Executor.PreviewRefusal.adminUnconfirmed) { try await executor.preview([suspend()]).get() }
+        }
+        #expect((try? await executor.preview([clearRecovery()]).get()) != nil)
+        admin.value.withLock { $0 = (address: "admin@example.com", id: Self.adminID) }
+        let preview = try await held(executor, [suspend()])
+        admin.value.withLock { $0 = (address: "admin@example.com", id: nil) }
+        #expect(await executor.run(preview, confirmation: confirmed).refusal == Executor.PreviewRefusal.adminUnconfirmed.message)
+        #expect(ran().isEmpty)
+    }
+
+    /// The admin as it is when the run starts: a preview held for someone else refuses once they're the admin.
+    @Test func theAdminIsAskedAgainAtTheRun() async throws {
+        let admin = Shared<(address: String, id: String?)?>((address: "admin@example.com", id: Self.adminID))
+        let executor = executor(admin: admin)
+        let preview = try await held(executor, [suspend()])
+        admin.value.withLock { $0 = (address: "alice@example.com", id: Self.aliceID) }
+        #expect(await executor.run(preview, confirmation: confirmed).refusal?
+            .hasPrefix("alice@example.com is the admin this app is connected as: this would sign the app out") == true)
+        #expect(ran().isEmpty)
+    }
+
+    /// By another of its addresses: GAM reads each address cut off just before the run (the mock reads a.anders@ and
+    /// alice@alias.example.net as Alice's, as GAM does), and its account ID is the admin's, so it's refused; nothing written.
+    @Test func anAliasOfTheConnectedAdminIsRefusedBeforeTheRun() async throws {
+        let executor = executor(admin: Shared((address: "alice@example.com", id: Self.aliceID)))
+        for alias in ["a.anders@example.com", "ALICE@alias.example.net"] {
+            let preview = try await held(executor, [suspend(alias)])
+            #expect(await executor.run(preview, confirmation: confirmed).refusal
+                    == "\(alias) is the account this app is connected as (alice@example.com): this would sign the app out, with "
+                    + "no way back from here. Make the change in the Admin console, or from another admin's setup.")
+        }
+        #expect(wrote().isEmpty)
+    }
+
+    /// The account ID holds whatever address Setup has for the admin: an alias, or one since renamed and no longer anyone's
+    /// (the review of 2026-10-28 found the address check let that one be suspended). Only the target is read.
+    @Test func theConnectedAdminIsRefusedByItsAccountIDWhateverItsAddress() async throws {
+        for held in ["a.anders@example.com", "renamed-away@example.com"] {
+            let executor = executor(admin: Shared((address: held, id: Self.aliceID)))
+            let outcome = await executor.run(try await self.held(executor, [suspend("alice@example.com")]), confirmation: confirmed)
+            #expect(outcome.refusal?.hasPrefix("alice@example.com is the account this app is connected as (\(held)): this would sign")
+                    == true, "\(outcome)")
+        }
+        #expect(ran() == [lookup("alice@example.com"), lookup("alice@example.com")])
+    }
+
+    /// Someone else's account is cut off as asked, after one read for each spelling of an address however many steps cut it
+    /// off (GAM is sent each as written), and none for the admin's.
+    @Test func cuttingOffSomeoneElseRunsAfterOneReadEach() async throws {
+        let executor = executor()
+        let steps = [WriteStep(GamCommands.resetPassword(email: "alice@example.com"), target: "alice@example.com", summary: ""),
+                     WriteStep(GamCommands.deprovisionUser(email: "Alice@example.com"), target: "alice@example.com", summary: ""),
+                     suspend("bob@example.com")]
+        let outcome = await executor.run(try await held(executor, steps), confirmation: confirmed)
+        #expect(outcome.succeeded, "\(outcome)")
+        #expect(Array(ran().prefix(3)) == [lookup("alice@example.com"), lookup("Alice@example.com"), lookup("bob@example.com")])
+        #expect(wrote().count == 3)
+    }
+
+    /// Only an account GAM reads now can be cut off. An address that's no one's (in the domain, "Does not exist"; outside it,
+    /// "Service not applicable"), or a spelling GAM reads as no one (each spelling is read as it will be sent), refuses before
+    /// any step: GAM would refuse the write anyway, and "no such user" once let plans cut the admin off (review 2026-10-29).
+    @Test func anAddressThatsNoOnesIsntCutOff() async throws {
+        let executor = executor(admin: Shared((address: "alice@example.com", id: Self.aliceID)))
+        let nobody = await executor.run(try await held(executor, [suspend("zed@example.com")]), confirmation: confirmed)
+        #expect(nobody.refusal == "GAM has no account zed@example.com, so nothing ran — preview again.", "\(nobody)")
+        let outside = await executor.run(try await held(executor, [suspend("someone@other.example.org")]), confirmation: confirmed)
+        #expect(outside.refusal?.hasPrefix("Couldn't check whose account someone@other.example.org is (") == true, "\(outside)")
+        let spelled = await executor.run(try await held(executor, [suspend(" a.anders@example.com"), suspend("a.anders@example.com")]),
+                                         confirmation: confirmed)
+        #expect(spelled.refusal != nil, "\(spelled)")
+        #expect(ran().contains(lookup(" a.anders@example.com")) || ran().contains(lookup("a.anders@example.com")))
+        #expect(wrote().isEmpty)
+    }
+
+    /// A read Google refused, or a record without its account ID, says nothing about whose account an address is: nothing is
+    /// cut off on a guess.
+    @Test func anAddressGamCantPlaceIsntCutOff() async throws {
+        let executor = executor()
+        let outcome = await executor.run(try await held(executor, [suspend("INFOREFUSED@example.com")]), confirmation: confirmed)
+        #expect(outcome.refusal?.hasPrefix("Couldn't check whose account INFOREFUSED@example.com is (") == true, "\(outcome)")
+        let gam = try fakeGam("""
+            if [ "$1" = info ]; then echo '{"primaryEmail": "alice@example.com"}'; exit 0; fi
+            echo "User: $3, Updated"
+            """)
+        let noID = self.executor(gam: gam)
+        let unplaced = await noID.run(try await held(noID, [suspend()]), confirmation: confirmed)
+        #expect(unplaced.refusal == "GAM didn't say whose account alice@example.com is, so nothing ran — preview again.", "\(unplaced)")
+        #expect(wrote().isEmpty)
+    }
+
+    /// A switch landing while the account reads run (here, as the admin is asked) refuses the run: the tenant is checked again
+    /// after them, just before the write.
+    @Test func aTenantSwitchDuringTheAccountReadsRefusesIt() async throws {
+        let tenant = tenantState, other = other, asked = Shared(0)
+        var environment = Fixtures.mockEnvironment
+        environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        let executor = Executor(runner: runner, audit: audit, currentActor: {
+            // The preview asks once; the run's check asks next, and the domain changes then.
+            if asked.value.withLock({ $0 += 1; return $0 }) == 2 { tenant.value.withLock { $0 = (other, 2) } }
+            return "admin@example.com"
+        }, adminAccountID: { Self.adminID }, tenant: { tenant.value.withLock { $0 } }, extraEnvironment: environment)
+        let outcome = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
+        #expect(outcome.refusal == "The active domain changed after the preview — preview again, so it runs on this one.")
+        #expect(wrote().isEmpty && records.isEmpty)
+    }
+
+    /// A run that cuts someone off, cancelled before it starts, writes nothing and records nothing: its account reads are
+    /// cancelled with it, and it ends refused rather than run.
+    @Test func aCancelledCutOffRunWritesNothing() async throws {
+        let executor = executor()
+        let preview = try await held(executor, [suspend()])
+        let confirm = confirmed
+        let task = Task { [executor, preview] in
+            try? await Task.sleep(for: .milliseconds(100))
+            return await executor.run(preview, confirmation: confirm)
+        }
+        task.cancel()
+        let outcome = await task.value
+        #expect(outcome.refusal != nil || outcome.steps.allSatisfy { !$0.isSucceeded }, "\(outcome)")
+        #expect(wrote().isEmpty && records.isEmpty)
+    }
+
+    /// The run reads whose account each address is before any step, so an alias an earlier step makes is no one's yet and
+    /// refuses: a plan can't make one for the admin and then cut it off, however GAM spells the alias (a bare name gets the
+    /// domain; a list makes several). Nothing runs, the alias included.
+    @Test func aPlanCantMakeAnAliasAndCutItOff() async throws {
+        let executor = executor()
+        for (alias, cut) in [("fresh@example.com", " Fresh@example.com"), ("fresh", "fresh@example.com"),
+                             ("other@example.com,fresh@example.com", "fresh@example.com")] {
+            let make = WriteStep(GamCommands.createUserAlias(alias: alias, email: "admin@example.com"), target: "admin@example.com",
+                                 summary: "")
+            let outcome = await executor.run(try await held(executor, [make, suspend(cut)]), confirmation: confirmed)
+            #expect(outcome.refusal?.hasPrefix("GAM has no account \(PythonText.strip(cut))") == true, "\(alias): \(outcome)")
+        }
+        #expect(wrote().isEmpty)
     }
 }

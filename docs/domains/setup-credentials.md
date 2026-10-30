@@ -68,6 +68,12 @@ One adversarial reviewer proved five issues, all fixed with tests:
   logic, tested in `Tests/SetupTests` (10 tests):
   - import from a folder or copy from GamGUI
   - Check access as `oauth2.txt`'s admin, or a typed one
+  - **the admin's account ID** (`connectedAdminID`, 2026-10-28): Check access also reads `info user <admin> fields
+    primaryEmail,id` and keeps the token's `sub` (`CredentialFacts.adminAccountID`, beside `email` in the same claims,
+    digits only) only when GAM's `id` is the same. A typed admin, no `sub`, another account's or a failed read leaves it
+    nil, the result line says which (the fix differs: a delegated or outside admin GAM can't read won't pass by checking
+    again), and ChangeCore then makes no change that could cut an account off (guard-audit). That
+    `sub` equals the Directory `id` is checked again on every connection, so if it ever didn't, it fails closed
   - `active` and `generation`: a pass activates the domain, and a switch bumps the generation; a
     failed check keeps the connected domain, shown as "Connected, but the last check failed"
   - removal; errors worded as actions

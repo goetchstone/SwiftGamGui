@@ -61,6 +61,39 @@ check_exists() {  # <entity> <name>: the *missing*/*nonexistent* trigger
 in_directory() { grep -qF "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json"; }
 # A directory user, or an account `create user` made while the mock keeps state: GAM can act as either.
 known_user() { in_directory "$1" || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/created/$1" ]; }; }
+# The record `info user <addr>` prints, by the lowercased address: an alias resolves to the account that owns it
+# (Alice's a.anders@ and alice@alias.example.net), as the Directory API does; an account `create user` made while the
+# mock keeps state, or a SIGNOUTFAIL trigger (an account Google refuses to sign out), is a record of its own, with an
+# account ID. Empty for no such user.
+user_record() {
+  minimal() { printf '{"id": "1000%s", "primaryEmail": "%s", "suspended": false}\n' "$(printf '%s' "$1" | cksum | cut -d' ' -f1)" "$1"; }
+  case "$1" in
+    *signoutfail*) minimal "$1" ;;
+    alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
+    bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;
+    carol@example.com) cat "$GAM_MOCK_FIXTURES/info_user_carol.json" ;;   # her recovery details (the compromised check)
+    *) grep -F "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json" \
+         || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/created/$1" ] && minimal "$1"; } ;;
+  esac
+}
+# No such user, as GAM's entityUnknownWarning says it: "Does not exist" (56) in the domain, "Service not applicable" (73)
+# outside it (example.com), as the report and token handlers below.
+no_such_user() {  # <address as given>
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    *@example.com) does_not_exist "User" "$1" ;;
+    *) printf 'User: %s, Service not applicable\n' "$1" 1>&2; exit 73 ;;
+  esac
+}
+# A write that names a user (`update user`, `delete user`, `signout`, `deprovision`) fails for an address that's no
+# user's, as GAM does and as `info user` here says: they once took any address but the *missing*/*nonexistent*
+# trigger, so a test could suspend an account `info user` called nonexistent (review 2026-10-28). INFOREFUSED stands for
+# an account whose read Google refuses, so a write to it passes.
+check_user() {  # <address>
+  check_exists "User" "$1"
+  a=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  case "$a" in *inforefused*) return 0 ;; esac
+  [ -n "$(user_record "$a")" ] || no_such_user "$1"
+}
 # A per-user Gmail/Calendar command acts AS the user, so GAM first needs a token for that address. For
 # one that isn't a user the token request fails, and GAM reports the token endpoint's words against it
 # (handleOAuthTokenError -> entityActionFailedWarning, ACTION_FAILED_RC; read from the vendored build).
@@ -323,16 +356,8 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   case "$3" in *INFOREFUSED*) printf 'User: %s, Show Failed: Not Authorized to access this resource/api\n' "$3" 1>&2; exit 50 ;; esac
   # An account suspended since the directory was read (the Admin console, another admin): with GAM_MOCK_STATE,
   # $GAM_MOCK_STATE/suspended/<user> makes its record say so.
-  info_record() {
-    case "$1" in
-      alice@example.com|a.anders@example.com|alice@alias.example.net) cat "$GAM_MOCK_FIXTURES/info_user.json" ;;
-      bob@example.com)   cat "$GAM_MOCK_FIXTURES/info_user_suspended.json" ;;
-      carol@example.com) cat "$GAM_MOCK_FIXTURES/info_user_carol.json" ;;   # her recovery details (the compromised check)
-      *) grep -F "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json" ;;
-    esac
-  }
-  record=$(info_record "$addr") || true
-  [ -n "$record" ] || does_not_exist "User" "$3"
+  record=$(user_record "$addr") || true
+  [ -n "$record" ] || no_such_user "$3"
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/suspended/$addr" ]; then
     record=$(printf '%s' "$record" | sed 's/"suspended": false/"suspended": true/')
   fi
@@ -2210,7 +2235,7 @@ if [ "${1:-}" = "update" ] && [ "${2:-}" = "user" ]; then
   [ -n "${3:-}" ] || missing_arg "UserItem"
   user="$3"; shift 3
   check_user_attrs "$@"
-  check_exists "User" "$user"
+  check_user "$user"
   echo "User: $user, Updated"
   exit 0
 fi
@@ -2220,7 +2245,7 @@ if [ "${1:-}" = "delete" ] && [ "${2:-}" = "user" ]; then
   [ -n "${3:-}" ] || missing_arg "UserItem"
   case "${4:-}" in ""|noactionifalias) ;; *) invalid_arg "$4" ;; esac
   [ $# -le 4 ] || invalid_arg "$5"
-  check_exists "User" "$3"
+  check_user "$3"
   echo "User: $3, Deleted"
   exit 0
 fi
@@ -2243,7 +2268,7 @@ signout_refused() {
 }
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "signout" ]; then
   [ $# -eq 3 ] || invalid_arg "$4"
-  check_exists "User" "$2"
+  check_user "$2"
   case "$2" in *SIGNOUTFAIL*) signout_refused "$2" ;; esac
   echo "User: $2, Signed Out"
   exit 0
@@ -2270,7 +2295,7 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "deprovision" ] || [ "${3:-}" = "depr
     esac
     shift
   done
-  check_exists "User" "$user"
+  check_user "$user"
   printf 'Getting Application Specific Password IDs for %s\n' "$user" 1>&2
   echo "User: $user, Application Specific Passwords: 0"
   printf 'Getting Backup Verification Codes for %s\n' "$user" 1>&2

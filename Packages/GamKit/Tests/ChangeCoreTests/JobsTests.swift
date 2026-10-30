@@ -42,7 +42,7 @@ final class JobsTests {
             environment["GAM_MOCK_STATE"] = state.path
         }
         return Executor(runner: runner, audit: AuditLog(url: base.deletingLastPathComponent().appending(path: "audit/audit.jsonl")),
-                        actor: "admin@example.com", tenant: { (example, 1) }, extraEnvironment: environment,
+                        actor: "admin@example.com", adminAccountID: { Fixtures.mockAccountID("admin@example.com") }, tenant: { (example, 1) }, extraEnvironment: environment,
                         jobs: report ?? { event in events.value.withLock { $0.append(event) } })
     }
 

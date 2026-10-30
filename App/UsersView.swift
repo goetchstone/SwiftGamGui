@@ -196,7 +196,7 @@ struct UsersView: View {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
                                chromeProfiles: chromeProfiles, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
-                               openCompromised: openCompromised, connectedAdmin: { [setup] in setup.connectedAdmin })
+                               openCompromised: openCompromised)
                 }
             }
         } else {
@@ -393,9 +393,6 @@ private struct UserDetail: View {
     let calendarReads: CalendarReads
     let openCalendars: (String) -> Void
     let openCompromised: (String) -> Void
-    /// The admin this app is connected as, read when it's needed: Set Temporary Password refuses it (it would sign the app
-    /// out) and refuses when it isn't known.
-    let connectedAdmin: @MainActor @Sendable () -> String?
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var editingPhone = false
@@ -472,7 +469,7 @@ private struct UserDetail: View {
             if tab == "secure" { openCompromised(user.primaryEmail) }
             if tab == "password" {
                 self.tab = .security
-                await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin)
+                await changes.previewTemporaryPassword(user)
             }
             if tab == "search" {
                 self.tab = .mail
@@ -534,7 +531,7 @@ private struct UserDetail: View {
                 Button("Edit Phone…") { editingPhone = true }
                 Divider()
                 Button("Sign Out of All Sessions…") { Task { await changes.previewSignOut(user) } }
-                Button("Set Temporary Password…") { Task { await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin) } }
+                Button("Set Temporary Password…") { Task { await changes.previewTemporaryPassword(user) } }
                     .accessibilityHint("Previews a new password for them to change at their next sign-in. It shows once, after it's set.")
                 Button(user.suspended ? "Unsuspend…" : "Suspend…", role: user.suspended ? nil : .destructive) {
                     Task { await changes.previewSuspend(user, suspend: !user.suspended) }
@@ -626,7 +623,7 @@ private struct UserDetail: View {
                      + "when they next sign in. It shows once, after it's set, and isn't written to the audit log.")
                     .font(.callout).foregroundStyle(.secondary)
                 Button("Set Temporary Password…") {
-                    Task { await changes.previewTemporaryPassword(user, connectedAdmin: connectedAdmin) }
+                    Task { await changes.previewTemporaryPassword(user) }
                 }
                 .disabled(changes.isBusy)
                 .accessibilityLabel("Set a temporary password for \(user.fullName)")

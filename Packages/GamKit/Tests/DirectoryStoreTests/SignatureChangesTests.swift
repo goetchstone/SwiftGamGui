@@ -104,15 +104,15 @@ final class SignatureChangesTests {
     @Test func theDefaultPersonIsTheConnectedAdminWhenActive() async throws {
         try await connect(admin: "Carol@example.com")
         #expect(changes.defaultPerson?.primaryEmail == "carol@example.com")
-        #expect(changes.activePeople.map(\.primaryEmail) == ["alice@example.com", "carol@example.com", "dana@example.com"],
-                "active people only, in code-point order")
+        #expect(changes.activePeople.map(\.primaryEmail) == ["admin@example.com", "alice@example.com", "carol@example.com",
+                                                               "dana@example.com"], "active people only, in code-point order")
     }
 
     /// `test_signatures_test_user_is_an_explicit_choice_otherwise`: an admin outside the directory or a
     /// suspended one: nobody, never the first. A failed check of another domain leaves the connected one's admin.
     @Test func theDefaultPersonIsOtherwiseNobody() async throws {
-        try await connect(admin: "admin@example.com")
-        #expect(setup.connectedAdmin == "admin@example.com")
+        try await connect(admin: "outside@example.com")
+        #expect(setup.connectedAdmin == "outside@example.com")
         #expect(changes.defaultPerson == nil, "not in the directory")
         try await connect(admin: "bob@example.com")
         #expect(setup.connectedAdmin == "bob@example.com")

@@ -29,6 +29,18 @@ public struct GamWrite: GamCommand {
         self.argv = argv
         self.action = action
     }
+
+    /// The account this write cuts off from Google, as its builder put it in the argv; nil for any other write. Deleted,
+    /// suspended, its OAuth tokens deleted (`deprovision`: GamGUI's own token went this way, its failure-log 2026-09-24), its
+    /// password changed or its sessions ended. Whether GAM's token outlives the last two isn't proven, so they count. Run on
+    /// the admin this app signs in as, any of them signs the app out with no way back from here: ChangeCore refuses that.
+    public var cutsOff: String? {
+        switch action {
+        case .deleteUser, .suspendUser, .resetPassword, .setPassword: argv[2]
+        case .signOutUser, .deprovisionUser: argv[1]
+        default: nil
+        }
+    }
 }
 
 /// What a `GamWrite` does, one case per write builder.

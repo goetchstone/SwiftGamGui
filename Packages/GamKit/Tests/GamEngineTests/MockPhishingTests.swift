@@ -47,23 +47,24 @@ struct MockPhishingTests {
         }
     }
 
-    /// GAM's dry run: a count per active user on stderr (bob, suspended, isn't one; Spam and Sent copies aren't
-    /// counted), nothing on stdout, and the last user's exit code, never 0.
+    /// GAM's dry run: a count per active user on stderr (bob, suspended, isn't one; the admin's mailbox is; Spam and Sent
+    /// copies aren't counted), nothing on stdout, and the last user's exit code, never 0.
     @Test func theDryRunCountsEveryActiveMailbox() async throws {
         let result = try await find()
         #expect(lines(result.stdout).isEmpty)
         #expect(lines(result.stderr) == [
-            "User: alice@example.com, Message: 1, Not Trashed: Use the \"doit\" argument to perform action (1/3)",
-            "User: carol@example.com, Messages: 0, Not Trashed: No Messages matched (2/3)",
-            "User: dana@example.com, Messages: 2, Not Trashed: Count 2 exceeds maximum to Trash 1 (3/3)",
+            "User: admin@example.com, Messages: 0, Not Trashed: No Messages matched (1/4)",
+            "User: alice@example.com, Message: 1, Not Trashed: Use the \"doit\" argument to perform action (2/4)",
+            "User: carol@example.com, Messages: 0, Not Trashed: No Messages matched (3/4)",
+            "User: dana@example.com, Messages: 2, Not Trashed: Count 2 exceeds maximum to Trash 1 (4/4)",
         ])
         #expect(result.exitCode == 51)
         // GAM's progress, as show_gettings prints it: skipped by a reader, but for `all users`' own count.
-        #expect(result.stderr.contains("Getting all Messages that match query ((\(Self.query))) for alice@example.com (1/3)"))
-        #expect(result.stderr.contains("Got 3 Users...\r\n"))
+        #expect(result.stderr.contains("Getting all Messages that match query ((\(Self.query))) for alice@example.com (2/4)"))
+        #expect(result.stderr.contains("Got 4 Users...\r\n"))
         let copies = try MessageCopies(result, argv: GamCommands.findMessageCopies(Self.phish).argv)
-        #expect(copies.mailboxes.map(\.email) == ["alice@example.com", "carol@example.com", "dana@example.com"])
-        #expect(copies.mailboxes.map(\.finding) == [.copies(1), .none, .copies(2)] && copies.otherLines.isEmpty)
+        #expect(copies.mailboxes.map(\.email) == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"])
+        #expect(copies.mailboxes.map(\.finding) == [.none, .copies(1), .none, .copies(2)] && copies.otherLines.isEmpty)
         #expect(copies.withCopies.map(\.email) == ["alice@example.com", "dana@example.com"] && copies.totalCopies == 3)
     }
 
@@ -74,9 +75,9 @@ struct MockPhishingTests {
             FileManager.default.createFile(atPath: state.appending(path: "nogmail/dana@example.com").path, contents: Data())
             let result = try await find(state: state)
             #expect(result.exitCode == 73)
-            #expect(lines(result.stderr).last == "User: dana@example.com, Gmail Service/App not enabled (3/3)")
+            #expect(lines(result.stderr).last == "User: dana@example.com, Gmail Service/App not enabled (4/4)")
             let copies = try MessageCopies(result, argv: GamCommands.findMessageCopies(Self.phish).argv)
-            #expect(copies.mailboxes.map(\.finding) == [.copies(1), .none, .gmailOff] && !copies.looksLikeMissingScope)
+            #expect(copies.mailboxes.map(\.finding) == [.none, .copies(1), .none, .gmailOff] && !copies.looksLikeMissingScope)
             // dana, still last, with her copies trashed: no copy (60).
             try FileManager.default.removeItem(at: state.appending(path: "nogmail/dana@example.com"))
             _ = try await trash("dana@example.com", copies: 2, state: state)
@@ -101,7 +102,7 @@ struct MockPhishingTests {
             let trashed = try FileManager.default.contentsOfDirectory(atPath: state.appending(path: "trashed").path).sorted()
             #expect(trashed == ["19a0c0ffee000001", "19a0c0ffee000004", "19a0c0ffee000005"])
             let after = try MessageCopies(try await find(state: state), argv: [])
-            #expect(after.mailboxes.map(\.finding) == [.none, .none, .none])
+            #expect(after.mailboxes.map(\.finding) == [.none, .none, .none, .none])
             // Again: nothing left to trash is GAM's "No Messages matched" (60), not a success.
             let again = try await trash("alice@example.com", copies: 1, state: state)
             #expect(again.exitCode == 60 && lines(again.stderr) == ["User: alice@example.com, Messages: 0, Not Trashed: No Messages matched"])
@@ -117,7 +118,7 @@ struct MockPhishingTests {
             #expect(lines(over.stderr) == ["User: dana@example.com, Messages: 2, Not Trashed: Count 2 exceeds maximum to Trash 1"])
             #expect(!FileManager.default.fileExists(atPath: state.appending(path: "trashed").path))
             let quick = try await run(["all", "users", "trash", "messages", "query", Self.query], state: state)
-            #expect(lines(quick.stderr).last == "User: dana@example.com, Message: 1, Not Trashed: Use the \"doit\" argument to perform action (3/3)")
+            #expect(lines(quick.stderr).last == "User: dana@example.com, Message: 1, Not Trashed: Use the \"doit\" argument to perform action (4/4)")
             // GAM's 0 is no limit at all.
             let unlimited = try await run(["user", "dana@example.com", "trash", "messages", "query", Self.query, "notquick",
                                            "max_to_trash", "0"], state: state)
@@ -180,10 +181,11 @@ struct MockPhishingTests {
                                          "alice@example.com,19a0c0ffee000002,19a0c0ffee000002,<CAPh1sh+Notice=0001@mail.example.com>,1,SPAM"])
         #expect(lines(result.stderr).isEmpty && result.exitCode == 60, "carol and dana have none; dana is last")
         let spamQuery = "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam"
-        #expect(result.stderr.contains("Getting all Messages that match query ((\(spamQuery))) for carol@example.com (2/3)"))
+        #expect(result.stderr.contains("Getting all Messages that match query ((\(spamQuery))) for carol@example.com (3/4)"))
         let copies = try SpamCopies(result, argv: [], message: Self.phish)
         #expect(copies.mailboxes == [.init(email: "alice@example.com", ids: ["19a0c0ffee000002"])] && copies.total == 1)
-        #expect(copies.searched == ["alice@example.com", "carol@example.com", "dana@example.com"] && copies.unsearched.isEmpty)
+        #expect(copies.searched == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"]
+                && copies.unsearched.isEmpty)
     }
 
     /// Gmail off is GAM's warning before that user's search (the labels are read first), numbered as the others are.
@@ -192,11 +194,11 @@ struct MockPhishingTests {
             try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
             FileManager.default.createFile(atPath: state.appending(path: "nogmail/carol@example.com").path, contents: Data())
             let result = try await spam(state: state)
-            #expect(lines(result.stderr) == ["User: carol@example.com, Gmail Service/App not enabled (2/3)"] && result.exitCode == 60)
-            #expect(!result.stderr.contains("for carol@example.com (2/3)"), "no search for carol")
+            #expect(lines(result.stderr) == ["User: carol@example.com, Gmail Service/App not enabled (3/4)"] && result.exitCode == 60)
+            #expect(!result.stderr.contains("for carol@example.com (3/4)"), "no search for carol")
             let copies = try SpamCopies(result, argv: [], message: Self.phish)
             #expect(copies.unsearched == [.init(email: "carol@example.com", why: "Gmail is off")])
-            #expect(copies.searched == ["alice@example.com", "dana@example.com"] && copies.mailboxes.count == 1)
+            #expect(copies.searched == ["admin@example.com", "alice@example.com", "dana@example.com"] && copies.mailboxes.count == 1)
         }
     }
 
@@ -213,7 +215,8 @@ struct MockPhishingTests {
             #expect(lines(after.stdout).last == "alice@example.com,19a0c0ffee000002,19a0c0ffee000002,<CAPh1sh+Notice=0001@mail.example.com>,2,SPAM TRASH")
             #expect(try SpamCopies(after, argv: [], message: Self.phish).mailboxes.isEmpty)
             // The dry run never saw it, and still counts alice's inbox copy.
-            #expect(try MessageCopies(try await find(state: state), argv: []).mailboxes.first?.finding == .copies(1))
+            #expect(try MessageCopies(try await find(state: state), argv: []).mailboxes.first { $0.email == "alice@example.com" }?.finding
+                    == .copies(1))
             let mixed = try await run(try GamCommands.trashMessages(email: "dana@example.com", ids: ["19a0c0ffee000002", "19a0c0ffee000004"]).argv,
                                       state: state)
             #expect(mixed.exitCode == 50)

@@ -160,15 +160,16 @@ struct MockOffboardingTests {
         #expect(result.exitCode == 50)
         let errors = lines(result.stderr)
         #expect(errors.prefix(2) == ["Getting all Users, may take some time on a large Google Workspace Account...",
-                                     "Got 3 Users: alice@example.com - dana@example.com"])
+                                     "Got 4 Users: admin@example.com - dana@example.com"])
         #expect(errors.contains("    Calendar: carol@example.com, Calendar ACL: (Scope: user:carol@example.com), Delete Failed: "
             + "Cannot change your own access level."))
         #expect(errors.contains("    Calendar: alice@example.com, Calendar ACL: (Scope: user:carol@example.com), Delete Failed: Not Found"))
         #expect(lines(result.stdout).filter { $0.hasPrefix("User: ") }.map { $0.split(separator: ",")[0] }
-                == ["User: alice@example.com", "User: carol@example.com", "User: dana@example.com"], "bob@ is suspended")
+                == ["User: admin@example.com", "User: alice@example.com", "User: carol@example.com", "User: dana@example.com"],
+                "bob@ is suspended")
         let error = GamError(exitCode: result.exitCode, stderr: result.stderr)
         #expect(error.kinds == [.notFound, .ownACL], "\(error.kinds)")
-        #expect(error.lineCounts == [.notFound: 2, .ownACL: 1])
+        #expect(error.lineCounts == [.notFound: 3, .ownACL: 1])
         let suspended = try await run(GamCommands.removeAllCalendarACLs(email: "bob@example.com"))
         #expect(GamError(exitCode: suspended.exitCode, stderr: suspended.stderr).kinds == [.notFound])
     }

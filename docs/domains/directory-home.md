@@ -158,8 +158,8 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   `setPassword`). The password is `TemporaryPassword`'s, made at the preview, masked in it and in the audit (by value
   and by position), and shown only after a run that set it or may have (marked unsure), on the shared `SignInCard`
   (`App/OnboardCredentialSheet.swift`, still the one file that reads its text), held fifteen minutes or until Done; Esc
-  doesn't close it. The connected admin is refused (it would sign the app out), an unknown one too, and it's read
-  again when the change runs (the executor's precondition); another super admin gets a warning. One at a time: while a
+  doesn't close it. The connected admin is refused (it would sign the app out), an unknown one too, by the executor, as
+  for Suspend and Sign Out (guard-audit: the connected-admin check); another super admin gets a warning. One at a time: while a
   password's details are held, no second is previewed or confirmed (two windows could otherwise drop the first unseen).
   The page has one sheet, kept through the run and under the preview's identity to the details, so it changes in place
   (review 2026-10-21). Not yet tested: the unsure path (the mock has no per-user timeout; the rule is onboarding's

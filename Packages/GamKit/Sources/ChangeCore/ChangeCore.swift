@@ -291,6 +291,9 @@ public actor Executor {
     private let actor: String?
     /// Who is making the change, asked at each run: the admin the connected domain signs in as.
     private let currentActor: (@Sendable () async -> String?)?
+    /// That admin's Google account ID, once Setup confirmed it (`SetupModel.connectedAdminID`), asked at each preview and run:
+    /// without it, no change that cuts an account off is made.
+    private let adminAccountID: (@Sendable () async -> String?)?
     private let extraEnvironment: [String: String]
     /// Where each run is reported as it starts, as each step ends and as it finishes: the jobs tray (`JobBoard.report`).
     private let jobs: (@Sendable (JobEvent) -> Void)?
@@ -312,7 +315,8 @@ public actor Executor {
     /// `tenant` is the connected domain and its generation (`SetupModel`); `now` and the mock's
     /// environment are for tests.
     public init(runner: AuthenticatedRunner, audit: AuditLog, actor: String? = nil,
-                currentActor: (@Sendable () async -> String?)? = nil, tenant: @escaping Tenant,
+                currentActor: (@Sendable () async -> String?)? = nil, adminAccountID: (@Sendable () async -> String?)? = nil,
+                tenant: @escaping Tenant,
                 now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
                 extraEnvironment: [String: String] = [:], jobs: (@Sendable (JobEvent) -> Void)? = nil) {
         self.jobs = jobs
@@ -320,6 +324,7 @@ public actor Executor {
         self.audit = audit
         self.actor = actor
         self.currentActor = currentActor
+        self.adminAccountID = adminAccountID
         self.tenant = tenant
         self.now = now
         self.extraEnvironment = extraEnvironment
@@ -361,6 +366,14 @@ public actor Executor {
         if let expecting, expecting.domain != current.domain || expecting.generation != current.generation {
             return .failure(.tenantChanged)
         }
+        // The connected-admin check's half that needs no read, so its plain case never reaches a confirm: the run reads the rest.
+        let cutOff = steps.compactMap(\.write.cutsOff)
+        if !cutOff.isEmpty {
+            guard let admin = await connectedAdmin() else { return .failure(.adminUnconfirmed) }
+            if let own = cutOff.first(where: { Self.key($0) == Self.key(admin.address) }) {
+                return .failure(.cutsOffConnectedAdmin(PythonText.strip(own), admin: admin.address))
+            }
+        }
         let preview = HeldPreview(
             id: UUID(), steps: steps, title: title.isEmpty ? Self.title(of: steps) : title, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
@@ -393,6 +406,10 @@ public actor Executor {
 
     public enum PreviewRefusal: Error, Equatable, Sendable {
         case nothingToRun, notConnected, tenantChanged, badPrerequisite(step: Int), badTolerance(step: Int), typedAddressNotATarget
+        /// A change that cuts an account off (`GamWrite.cutsOff`), while the account this app signs in as isn't confirmed.
+        case adminUnconfirmed
+        /// A change that would cut off the account this app signs in as: `admin` by that address, or by another of its own.
+        case cutsOffConnectedAdmin(String, admin: String)
 
         public var message: String {
             switch self {
@@ -402,6 +419,14 @@ public actor Executor {
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
             case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
             case .typedAddressNotATarget: "The address to type isn't one this change acts on."
+            case .adminUnconfirmed:
+                "Which account this app signs in as isn't confirmed, so a change that could sign it out isn't made here. Setup's "
+                    + "Check access says why."
+            case .cutsOffConnectedAdmin(let address, let admin):
+                (Executor.key(address) == Executor.key(admin) ? "\(address) is the admin this app is connected as"
+                    : "\(address) is the account this app is connected as (\(admin))")
+                    + ": this would sign the app out, with no way back from here. Make the change in the Admin console, or from "
+                    + "another admin's setup."
             }
         }
     }
@@ -507,7 +532,10 @@ public actor Executor {
                 return .refused("What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again.")
             }
         }
+        // Whose accounts the steps' addresses are, read on the tenant the preview was made for: not after a switch.
+        guard await isCurrent(taken) else { return .refused(Self.switched) }
         if let why = await aliasRefusal(taken) { return .refused(why) }
+        if let why = await lockoutRefusal(taken) { return .refused(why) }
         guard await isCurrent(taken) else { return .refused(Self.switched) }
         let ran = await execute(taken, progress: progress)
         // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13). Nor does a stopped one: a
@@ -633,25 +661,65 @@ public actor Executor {
     private func aliasRefusal(_ preview: HeldPreview) async -> String? {
         var resolved: [(address: String, primary: String?)] = []
         for address in preview.changes.compactMap(Guard.deletedAccount) {
-            do {
-                let result = try await runner.run(GamCommands.infoUser(email: address, fields: ["primaryEmail"]),
-                                                  as: preview.domain, extraEnvironment: extraEnvironment)
-                if result.exitCode == 0 {
-                    resolved.append((address, GamUser(record: GamOutput.one(result.stdout)).primaryEmail))
-                    continue
-                }
-                // Only GAM's "does not exist" means no such user. A refusal or a rate limit says nothing
-                // about whether the address is an alias, so the delete can't go ahead unresolved.
-                let error = GamError(exitCode: result.exitCode, stderr: result.stderr)
-                guard error.kind == .notFound else {
-                    return "Couldn't check \(address) before deleting it (\(error.message)) — preview again."
-                }
-                resolved.append((address, nil))
-            } catch {
-                return "Couldn't check \(address) before deleting it (\(GamEngineMessage.of(error))) — preview again."
+            switch await account(of: address, in: preview.domain, fields: ["primaryEmail"]) {
+            case .success(let user): resolved.append((address, user?.primaryEmail))
+            case .failure(let problem): return "Couldn't check \(address) before deleting it (\(problem.reason)) — preview again."
             }
         }
         return Guard.aliasDeletes(resolved).first
+    }
+
+    /// No step cuts off the account this app signs in as (`GamWrite.cutsOff`), by any of its addresses: read just before the
+    /// run, as `aliasRefusal`. GAM reads each address cut off, as it will be sent, as an account (an alias reads as its owner),
+    /// whose ID is compared with the admin's confirmed one: the same number through a rename, an alias or an address typed in.
+    /// Only an account GAM reads now with an ID can be cut off: an address it can't read, or that's no one's yet (an alias an
+    /// earlier step would make; a spelling GAM rewrites), refuses, and costs nothing, since GAM would refuse the write too
+    /// (the review of 2026-10-29: "no such user" let three plans through).
+    private func lockoutRefusal(_ preview: HeldPreview) async -> String? {
+        var cutOff: [String] = []
+        for address in preview.steps.compactMap(\.write.cutsOff) where !cutOff.contains(where: { Self.same($0, address) }) {
+            cutOff.append(address)
+        }
+        guard !cutOff.isEmpty else { return nil }
+        guard let admin = await connectedAdmin() else { return PreviewRefusal.adminUnconfirmed.message }
+        for address in cutOff {
+            let refusal = PreviewRefusal.cutsOffConnectedAdmin(PythonText.strip(address), admin: admin.address).message
+            if Self.key(address) == Self.key(admin.address) { return refusal }
+            switch await account(of: address, in: preview.domain, fields: ["primaryEmail", "id"]) {
+            case .success(nil):
+                return "GAM has no account \(PythonText.strip(address)), so nothing ran — preview again."
+            case .success(let user?):
+                guard let id = user.accountID else {
+                    return "GAM didn't say whose account \(address) is, so nothing ran — preview again."
+                }
+                if id.utf8.elementsEqual(admin.accountID.utf8) { return refusal }
+            case .failure(let problem):
+                return "Couldn't check whose account \(address) is (\(problem.reason)), so nothing ran — preview again."
+            }
+        }
+        return nil
+    }
+
+    /// The account `address` is, as GAM reads it now (`info user`: an alias reads as the account that owns it); nil when GAM
+    /// says there's no such user. Only "does not exist" means that: a refusal or a rate limit says nothing about whose
+    /// address it is, so it fails, in GAM's words.
+    private func account(of address: String, in domain: Domain, fields: [String]) async -> Result<GamUser?, PreconditionFailure> {
+        do {
+            let result = try await runner.run(GamCommands.infoUser(email: address, fields: fields), as: domain,
+                                              extraEnvironment: extraEnvironment)
+            if result.exitCode == 0 { return .success(GamUser(record: GamOutput.one(result.stdout))) }
+            let error = GamError(exitCode: result.exitCode, stderr: result.stderr)
+            return error.kind == .notFound ? .success(nil) : .failure(PreconditionFailure(error.message))
+        } catch {
+            return .failure(PreconditionFailure(GamEngineMessage.of(error)))
+        }
+    }
+
+    /// The admin this app signs in as and its confirmed account ID, asked now; nil unless both are known.
+    private func connectedAdmin() async -> (address: String, accountID: String)? {
+        guard let address = await currentActor?() ?? actor, !Self.key(address).isEmpty,
+              let id = await adminAccountID?(), !id.isEmpty else { return nil }
+        return (address, id)
     }
 
     private func isCurrent(_ preview: HeldPreview) async -> Bool {
