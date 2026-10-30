@@ -59,7 +59,8 @@ struct JobsTray: View {
             Button("Stop After This Step", role: .destructive) { Task { await board.stop(job.id) } }
             Button("Keep Running", role: .cancel) {}
         } message: { _ in
-            Text("The step running now finishes. The steps after it won't run: the run may be left part done, so check its screen.")
+            Text("If it's still checking, none of its steps runs. Otherwise the step running now finishes and the steps after it "
+                 + "won't run: the run may be left part done, so check its screen.")
         }
     }
 }
@@ -71,6 +72,7 @@ private struct JobRow: View {
 
     private var symbol: String {
         guard job.finished else { return "arrow.triangle.2.circlepath" }
+        if job.refusal != nil { return "minus.circle.fill" }
         return job.failedTotal > 0 ? "exclamationmark.triangle.fill" : job.notRun + job.waiting > 0 ? "pause.circle.fill" : "checkmark.circle.fill"
     }
 
@@ -91,10 +93,10 @@ private struct JobRow: View {
                     Button("Stop…", action: stop)
                         .disabled(job.stopping)
                         .accessibilityLabel("Stop \(job.title)")
-                        .accessibilityHint("Asks first. The step running finishes; the rest don't run.")
+                        .accessibilityHint("Asks first. The step running finishes, or none if it's still checking; the rest don't run.")
                 }
             }
-            if !job.finished, job.total > 0 {
+            if !job.finished, !job.checking, job.total > 0 {
                 ProgressView(value: Double(job.done), total: Double(job.total))
                     .accessibilityLabel("\(job.done) of \(job.total) steps done")
             }

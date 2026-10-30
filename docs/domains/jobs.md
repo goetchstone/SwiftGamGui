@@ -9,8 +9,10 @@ Stop: GamGUI's jobs tray (plan U5). Plan §12 phase 3's Jobs, slice 1.
 - `Packages/GamKit/Sources/Jobs/Jobs.swift`: `JobEvent` (what the executor reports), `Job` (one run: counts, the newest
   steps, the first failures, where it stands in words), `JobBoard` (the runs since launch, `@MainActor @Observable`, fed in
   order through an `AsyncStream`; `stop`; the tray's rows).
-- `ChangeCore.swift`: `Executor(jobs:)` reports each `execute`: `started` (a fresh job ID, the preview's ID, its title, the
-  steps it will decide), a `step` beside the existing `progress` yield (`Executor.jobStep`), `finished` on the way out.
+- `ChangeCore.swift`: `Executor(jobs:)` reports each `run` and `retry` round: `started` (a fresh job ID, the preview's ID, its
+  title, the steps it will decide) once it passes the Guard, before the write lock and the checks it holds the lock for
+  (`refusalBeforeSteps`, `refusalBeforeRetry`); then `checked`, or `refused` with the refusal's words; then from `execute` a
+  `step` beside the existing `progress` yield (`Executor.jobStep`) and `finished` on the way out.
   `HeldPreview.title`: the screen's (`Executor.preview(title:)`: Offboarding and Onboarding name theirs), else
   `Executor.title(of:)` from the steps (linear, for a run of thousands). One change to what the executor does: a stopped run,
   like a cancelled one, parks nothing for a retry, so a Stop also ends Onboarding's wait for Google (review 2026-10-28: the
@@ -22,8 +24,15 @@ Stop: GamGUI's jobs tray (plan U5). Plan §12 phase 3's Jobs, slice 1.
 
 ## How it works
 - **Every run is a job**, a one-step change too: the tray is "what ran since launch", and Audit stays the full record. A run
-  refused before its first step (unconfirmed, expired, another tenant, a target in flight) is no job: nothing ran. A retry
+  refused at once (unconfirmed, expired, another tenant, a target in flight) is no job: nothing ran or waited. A retry
   round (Onboarding's wait for Google) is a job of its own, of the steps still waiting, titled "(waiting for Google, try N)".
+- **Listed from the click, not from its first step** (2026-10-30: a live offboarding was missing from the tray at first). A
+  confirmed run waits for any other write to end, then reads again what its preview assumed (its precondition: Offboarding's
+  two accounts and the leaver's filters) and whose accounts its addresses are (`aliasRefusal`, `lockoutRefusal`): a `gam` call
+  each, seconds in all. The row says "Checking before it runs (after any change running now)…" through that, has Stop ("none of its steps will run"), and if
+  the checks refuse it ends "Didn't run: " and the refusal its screen shows. A decided step also ends checking, should an
+  event be missed. A deliberate difference from GamGUI, whose offboarding registers its job after its (shorter) check.
+  The screens don't know yet: Offboard, Incident, Phishing and Onboard show step 1 as running through the checks.
 - **Bounded as GamGUI's registry** (`web/jobs.py`): the full counts, the newest 12 steps (`window`), the first 200 failures
   (`failedCap`, "and N more" past it), each reason cut to 300 characters (`detailCap`: GAM can echo a whole body), the newest 10
   finished runs (`finishedKept`, pruned as each ends; a running one never goes), 8 rows in the tray, running first.
@@ -45,5 +54,7 @@ Stop: GamGUI's jobs tray (plan U5). Plan §12 phase 3's Jobs, slice 1.
 - A job's page of its own: the tray's row opens to its steps; the screen that ran it has the whole panel.
 
 ## Testing
-`swift test --package-path Packages/GamKit --filter JobsTests`: a run's events in order against the strict mock, a refused run
-no job, Stop from the board after the step in flight, the bounds and the tray's order. The tray's look: the `jobs` snapshot.
+`swift test --package-path Packages/GamKit --filter JobsTests`: a run's events in order against the strict mock, a run refused at
+once no job, a run listed before its precondition reads anything, one its checks refuse ending in the refusal's words, Stop
+while it checks running no step, Stop from the board after the step in flight, the bounds and the tray's order. The tray's
+look: the `jobs` snapshot (a run checking, one part done, one ended with failures).

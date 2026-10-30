@@ -57,7 +57,7 @@ status=0
 # grammar, its fields and the exact command it runs; nothing is run. builder-change is GamGUI's curated Add member to group
 # (`SWIFTGAMGUI_SELECT` its id) with carol@example.com and the Sales group filled in (`fill`), and builder-confirm its confirm
 # sheet (`preview`): held, never run.
-# The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with two made-up runs (`ContentView.showDemoJobs`): nothing runs.
+# The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with three made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list); Audit on a
