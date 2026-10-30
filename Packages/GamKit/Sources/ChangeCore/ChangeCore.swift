@@ -142,13 +142,26 @@ extension WriteStep: CustomStringConvertible, CustomDebugStringConvertible, Cust
 }
 
 extension WriteAction {
-    /// The action in words, for the screen and VoiceOver ("Suspend user", not `suspendUser`).
+    /// The action in words, for the screen and VoiceOver ("Suspend user", not `suspendUser`). A run of capitals is one word as
+    /// written, and an acronym the case name writes small is said as one: "Remove all calendar ACLs", "IMAP off", never
+    /// "a c ls" (2026-10-30, Audit after an offboarding).
     public var displayName: String {
-        let words = rawValue.reduce(into: "") { text, character in
-            text += character.isUppercase ? " " + character.lowercased() : String(character)
+        var words: [String] = []
+        for character in rawValue {
+            if words.isEmpty || character.isUppercase && words[words.count - 1].last?.isLowercase == true {
+                words.append(String(character))
+            } else {
+                words[words.count - 1].append(character)
+            }
         }
-        return words.prefix(1).uppercased() + words.dropFirst()
+        let said = words.map { word in
+            Self.acronyms[word.lowercased()] ?? (word.count(where: \.isUppercase) > 1 ? word : word.lowercased())
+        }.joined(separator: " ")
+        return said.prefix(1).uppercased() + said.dropFirst()
     }
+
+    /// The acronyms case names write small (`imapOff`, `popOff`), as they're said.
+    private static let acronyms = ["imap": "IMAP", "pop": "POP"]
 
     /// The least risk a write of this kind carries, whatever its caller says: GamGUI's
     /// `RiskLevel.DESTRUCTIVE` writes (`gam_connector.py`, the curated catalog, offboarding's steps).
