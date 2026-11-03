@@ -85,22 +85,25 @@ struct RunnerTests {
         #expect(result.stdout.utf8.count == GamRunner.outputCap)
     }
 
+    /// Stopping a running child cuts its run off. The child is looked for for up to 60 s and sleeps 600 s, far from both
+    /// ends, so a busy CI runner that starts it late still finds it running (failure-log 2026-11-03).
     @Test func quittingStopsARunningChild() async throws {
         // Its own uniquely named script, so it stops only its own child, not other tests' (the app's
         // stopAll() stops every child at quit).
         let script = FileManager.default.temporaryDirectory.appending(path: "long-gam-\(UUID().uuidString)")
-        try Data("#!/bin/sh\nexec /bin/sleep 30\n".utf8).write(to: script)
+        try Data("#!/bin/sh\nexec /bin/sleep 600\n".utf8).write(to: script)
         chmod(script.path, 0o755)
         defer { try? FileManager.default.removeItem(at: script) }
         let run = Task { try await GamRunner(binary: script).runRaw([]) }
+        defer { run.cancel() }   // a child never found isn't left sleeping
         let mine = { Set(GamRunner.children.withLock { $0.filter { $0.value == script.path }.keys }) }
         let clock = SuspendingClock()
-        let deadline = clock.now + .seconds(5)
+        let deadline = clock.now + .seconds(60)
         while mine().isEmpty, clock.now < deadline {
             try await Task.sleep(for: .milliseconds(20))
         }
         let pids = mine()
-        #expect(pids.count == 1)
+        try #require(pids.count == 1)
         GamRunner.stop(pids)
         // Cut off, as a cancelled run is: never a failure of gam's own with SIGTERM's exit code.
         await #expect(throws: CancellationError.self) { try await run.value }
