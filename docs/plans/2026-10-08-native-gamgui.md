@@ -16,8 +16,8 @@ operator (`docs/domains/catalog-builder.md`). Builder slice 2 is built (2026-10-
 curated change previewed through ChangeCore (`BuilderChanges`), confirmed with a click and run once, with the screens' own
 checks; its live checks B2 to B4 wait on the operator. ChangeCore refuses any change that cuts off the connected admin, on
 every screen (2026-10-28). Next for it:
-sequences, and an audit so sensitive reads can run. GAM 7.49.02 is pinned (2026-10-28, #138), and the operator's app connects
-on it. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
+sequences, and an audit so sensitive reads can run. GAM 7.50.00 is pinned (2026-11-03); the operator's app connected on
+7.49.02. Start from `docs/plans/2026-10-09-session-handoff.md`; "Phase 1, slice 2
 progress" before the Appendix has the detail.** This copy in SwiftGamGui is the one that tracks progress; GamGUI's copy is the frozen
 original.
 Written 2026-10-08 at GamGUI `834493c`

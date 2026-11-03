@@ -68,6 +68,16 @@ an allowlisted environment, a timeout, and capped output capture.
   for `password`, which is 5845 at 7.48.34). So a bump renumbers by the text a citation names, not by the shift alone; the
   dated plans in `docs/plans/` keep the numbers of their day. **Live (2026-10-28):** the operator's app connects to its
   domain on 7.49.02 (reconnect and access check). The rest of the acceptance pass, a read per area, is still to do.
+- **Bump to 7.50.00 (2026-11-03):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `2f35285`
+  (`../gamgui` was itself mid-bump). GAM's notes: 7.49.03 adds `print devices deleteduplicates` (with `checkforduplicates`
+  and `checkforapibug` as aliases) and exit code 68 (`DUPLICATE_ITEMS_DELETED_RC`). Despite the name, `doPrintCIDevices`
+  only leaves a repeated device out of the output, warns, and sets 68: no delete call, so it isn't a keyword that
+  changes things. Without it, the one change is a stop on a repeated page token; this app's `print devices query
+  email:…` read never passes it. 7.49.04 fixes that option and speeds `print sheet`; 7.49.05 fixes a Drive copy option;
+  7.50.00 adds `todrive_cellnumberformat` and `todrive_cellwrap` to `gam.cfg`. None reaches a builder. The reviewed dry
+  run holds: the compare touches neither Gmail function (`CommandKindTests.reviewedDryRuns`). The grammar moved only past
+  line 8996 (+12, Sheets) and within `print devices` (one line, no shift), and nothing here cites past 8330, so no citation
+  moved. The fixtures also picked up the mock's admin account, added by #141 without regenerating them.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log

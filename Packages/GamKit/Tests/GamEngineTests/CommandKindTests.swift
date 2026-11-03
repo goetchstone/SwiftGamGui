@@ -31,7 +31,8 @@ struct CommandKindTests {
         // 7.49.02: from v7.48.34, _processMessagesThreads only renames its error map (_GMAIL_PROCESS_ERROR_REASON_TO_MESSAGE_MAP);
         // the doit check and the listing are untouched. printShowMessagesThreads now also makes a bad request or a failed
         // precondition on one message a warning line, as unknownError already was, which Find reads as unsure.
-        "find_message_copies": ("7.49.02", "trash messages without doit: _processMessagesThreads lists and counts, then "
+        // 7.50.00: v7.49.02...v7.50.00 touches neither function (its last hunk is infoPrintShowSheets, ~1,800 lines before).
+        "find_message_copies": ("7.50.00", "trash messages without doit: _processMessagesThreads lists and counts, then "
             + "continues past every user before a trash call"),
     ]
 

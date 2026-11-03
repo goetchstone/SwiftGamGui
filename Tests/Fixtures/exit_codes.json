@@ -1,6 +1,6 @@
 {
  "source": {
-  "gam_version": "7.49.02",
+  "gam_version": "7.50.00",
   "gamgui_commit": "2f35285",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -16,6 +16,7 @@
   "CONFIG_ERROR_RC": 13,
   "DATA_ERROR_RC": 11,
   "DATA_NOT_AVALIABLE_RC": 55,
+  "DUPLICATE_ITEMS_DELETED_RC": 68,
   "ENTITY_DOES_NOT_EXIST_RC": 56,
   "ENTITY_DUPLICATE_RC": 57,
   "ENTITY_IS_AN_UNMANAGED_ACCOUNT_RC": 24,
