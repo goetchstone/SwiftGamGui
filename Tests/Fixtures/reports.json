@@ -6581,10 +6581,24 @@
  "inactive_days": 90,
  "records": [
   {
+   "primaryEmail": "admin@example.com",
+   "id": "100000000000000000009",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-10-20T08:00:00Z",
+   "name": {
+    "familyName": "Admin",
+    "givenName": "IT"
+   },
+   "orgUnitPath": "/Staff",
+   "suspended": false
+  },
+  {
    "primaryEmail": "alice@example.com",
    "aliases": [
     "a.anders@example.com"
    ],
+   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -6612,6 +6626,7 @@
   },
   {
    "primaryEmail": "bob@example.com",
+   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -6630,6 +6645,7 @@
   },
   {
    "primaryEmail": "carol@example.com",
+   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -6642,6 +6658,7 @@
   },
   {
    "primaryEmail": "dana@example.com",
+   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -6661,10 +6678,24 @@
    "suspended": false
   },
   {
+   "primaryEmail": "admin@example.com",
+   "id": "100000000000000000009",
+   "isAdmin": true,
+   "isEnrolledIn2Sv": true,
+   "lastLoginTime": "2026-10-20T08:00:00Z",
+   "name": {
+    "familyName": "Admin",
+    "givenName": "IT"
+   },
+   "orgUnitPath": "/Staff",
+   "suspended": false
+  },
+  {
    "primaryEmail": "alice@example.com",
    "aliases": [
     "a.anders@example.com"
    ],
+   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -6692,6 +6723,7 @@
   },
   {
    "primaryEmail": "bob@example.com",
+   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -6710,6 +6742,7 @@
   },
   {
    "primaryEmail": "carol@example.com",
+   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -6722,6 +6755,7 @@
   },
   {
    "primaryEmail": "dana@example.com",
+   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -10522,7 +10556,9 @@
    "title": "Administrators",
    "description": "Accounts with super or delegated admin privileges.",
    "members": [
+    "admin@example.com",
     "alice@example.com",
+    "admin@example.com",
     "alice@example.com",
     "user0@example.com",
     "user1@example.com",
@@ -10608,8 +10644,10 @@
    "title": "No recovery info",
    "description": "Active users without a recovery email set.",
    "members": [
+    "admin@example.com",
     "carol@example.com",
     "dana@example.com",
+    "admin@example.com",
     "carol@example.com",
     "dana@example.com",
     "user0@example.com",
@@ -10796,7 +10834,9 @@
    "title": "No job title",
    "description": "Active users with no title set \u2014 needed for role-based signatures.",
    "members": [
+    "admin@example.com",
     "carol@example.com",
+    "admin@example.com",
     "carol@example.com",
     "user0@example.com",
     "user6@example.com",
@@ -10912,7 +10952,9 @@
    "title": "No department",
    "description": "Active users with no department set.",
    "members": [
+    "admin@example.com",
     "carol@example.com",
+    "admin@example.com",
     "carol@example.com",
     "user0@example.com",
     "user1@example.com",
@@ -11026,9 +11068,11 @@
    "title": "No phone",
    "description": "Active users with no work phone set.",
    "members": [
+    "admin@example.com",
     "alice@example.com",
     "carol@example.com",
     "dana@example.com",
+    "admin@example.com",
     "alice@example.com",
     "carol@example.com",
     "dana@example.com",
@@ -11153,8 +11197,10 @@
    "title": "No location",
    "description": "Active users with no location set.",
    "members": [
+    "admin@example.com",
     "carol@example.com",
     "dana@example.com",
+    "admin@example.com",
     "carol@example.com",
     "dana@example.com",
     "user1@example.com",
