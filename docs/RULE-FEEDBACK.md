@@ -22,6 +22,26 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
+**Last reviewed 2026-11-05** (`improve-rules`, all 38 entries; each edit proposed as its own PR):
+- **#11, parity carries GamGUI's defects** (seven entries): parity is a floor; a departure is a listed, tested deviation.
+- **"The mock lies", beyond the mock** (eight entries): GAM's output and exit codes, and the data tests build.
+- **Next candidates, not done:** a loss-preventing check belongs with the write, not a screen (2026-10-28); #1 as "one
+  element GAM reads as one value" (2026-10-12); #2 naming its one exception, a task list's id (2026-10-12); #3 as "judged on
+  the argv as sent" (2026-10-28); warnings as errors in CI (2026-10-23); a write claiming "every" says what GAM's selection
+  leaves out (2026-10-21).
+- **The rest:** not a rules problem: fixed with a tripwire, a skill line or a note where they happened.
+
+## 2026-11-05 — The live-verification table drifted from the audit log
+- **What happened:** the operator called the table "a bit much" and said most of it had run. Read against the audit log, it
+  was behind both ways: it recorded one offboarding where three had run, and its wording ("argv-identical", "new to both
+  apps") hid that all of Onboard had never run in this app. It is now two lists per screen, written from the log.
+- **Invariant in force:** none by number: the `live-verify` skill's "Record it".
+- **Why it didn't hold:** wrong layer. A row moved only if a session remembered, while the operator used the app every day
+  and the log recorded each change.
+- **Would a rule have caught it?** only if enforced differently: for a change the log is the record, and the doc is a
+  summary refreshed by reading it.
+- **Enforcement home if changed:** skill (`live-verify`, done).
+
 ## 2026-10-28 — A second door to the same write skipped the first door's checks
 - **What happened:** Builder slice 2 ported GamGUI's curated writes, argv-identical. GamGUI's Builder runs them with none of
   the checks its own screens make for the same write: no delegate check (Users has `_check_delegate`), and Set title /
@@ -105,6 +125,9 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 - **Would a rule have caught it?** not a miss: a false positive cost a round trip each.
 - **Enforcement home if changed:** the hook: match an executed `gam` at a command's head; whether to allow names and sizes
   under `incidents/` is the operator's call (it's tenant data, not credentials).
+- **Recurred 2026-11-05:** a `grep` pattern holding `|gam csv` was blocked the same way; dropping the term was enough. The
+  guard also blocks a shell path to the audit log, which `live-verify` names as the evidence for a change. Read may open that
+  one file, and that's the route, now in the skill.
 
 ## 2026-10-23 — The mock's mailbox search accepted max_to_print and ignored it
 - **What happened:** reviewing scheduled sends (a delete capped at 500 found), the `gam-command-reviewer` agent found the

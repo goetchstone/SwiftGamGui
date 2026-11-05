@@ -1,79 +1,88 @@
-# Live verification
+# What has run live
 
-What this app has run against a real Google Workspace domain. Each write is listed here. **argv-identical** means it sends exactly the command a GamGUI write
-already proven live sent; **confirmed** means this app has itself run it against a real tenant.
+What this app has really done on the operator's domain. Passing tests don't count, because the mock lies.
 
-| Write | Status |
-|---|---|
-| Title and department (Users) | **confirmed** (2026-10-09) |
-| Suspend and unsuspend (Users) | **confirmed** (2026-10-09) |
-| Remove from a group (Users) | **confirmed** (2026-10-09) |
-| Add to a group (Users) | **confirmed** (2026-10-13; the same command as Groups' add as member) |
-| Add a mail delegate (Users) | **confirmed** (2026-10-09) |
-| Remove a mail delegate (Users) | **confirmed** (2026-10-10) |
-| Turn on or change an auto-reply (Users) | **confirmed** (2026-10-09) |
-| Turn off an auto-reply (Users) | **confirmed** (2026-10-10) |
-| Sign out of all sessions (Users) | **confirmed** (2026-10-09) |
-| Set a temporary password, changed at next sign-in (Users) | not yet: new to both apps |
-| Set the phone a signature shows (Users) | **confirmed** (2026-10-24; a shared office number, new to the person) |
-| Change or remove the phone a signature shows (Users) | not yet: new to both apps |
-| Set signature (Signatures) | **confirmed** (2026-10-13) |
-| Add people to a group as members (Groups) | **confirmed** (2026-10-13) |
-| Add people to a group as managers or owners (Groups) | not yet: never run live in either app |
-| Remove a member (Groups) | **confirmed** (2026-10-13) |
-| Share a calendar with a person (Calendars) | argv-identical |
-| Put a shared calendar in their list (Calendars) | argv-identical |
-| Share their own calendar (Users) | **confirmed** (2026-10-13) |
-| Remove someone's access to their own calendar (Users) | **confirmed** (2026-10-13) |
-| Remove someone's access to a calendar (Calendars) | GamGUI's command, which GamGUI never ran live either |
-| Create an account (Onboard) | argv-identical |
-| Task checklist: a task list and its tasks (Onboard) | argv-identical |
-| Subscribe to a calendar (Onboard) | argv-identical |
-| New-account wait: retrying what Google wasn't ready for (Onboard) | never run live (in GamGUI either) |
-| Welcome email (Onboard) | GamGUI's command (sent live 2026-09-30), but the body keeps its line breaks: never run live |
-| Offboarding: reset password, sign out, forwarding off, delegate, auto-reply, transfer, calendar sweep (Offboard) | **confirmed** (2026-10-16; GamGUI ran all eight live, 2026-10-07) |
-| Offboarding: the manager's reminder with an invitee (Offboard) | **confirmed** (2026-10-16): the invitee got the email |
-| Offboarding: clear recovery email & phone, hide from the directory (Offboard, added steps) | **confirmed** (2026-10-16) |
-| Offboarding: hand over secondary calendars (Offboard, added step) | not yet: new to both apps |
-| Offboarding: remove filters that forward (Offboard, added step) | not yet: new to both apps |
-| Offboarding: turn off IMAP, turn off POP (Offboard, added steps) | **confirmed** (2026-10-16) |
-| Compromised account: reset, sign out, forwarding off, IMAP and POP off, clear recovery (Compromised) | **confirmed** (2026-10-19): run from this screen, each step exit 0 in the audit log; the same commands' effect checked on Offboard (2026-10-16) |
-| Compromised account: delete the ticked filters (Compromised) | not yet: Offboard's filter command, also not yet live |
-| Compromised account: remove a delegate (Compromised) | not yet from this screen: Users' command, confirmed there (2026-10-10) |
-| Compromised account: remove a send-as address (Compromised) | not yet: new to both apps |
-| Compromised account: delete drafts, all or by subject (Compromised) | not yet: new to both apps |
-| Compromised account: list and delete the emails scheduled to send (Compromised) | not yet: new to both apps; prove it on a test email you schedule to yourself |
-| Compromised account: Check Account and Pull Incident Logs (Compromised; reads only) | **confirmed** (2026-10-19): Check Account before each of those runs, and Pull Incident Logs since |
-| Pull Incident Logs: a log at the 1,000-activity cap read further back, up to 10 reads (reads only) | not yet: new to both apps |
-| Search a mailbox (Users, Mail; reads only) | not yet from this screen: GamGUI's search |
-| Chrome's log by profile, and a person's Chrome profiles (Compromised, Users' Security tab; reads only) | not yet: new to both apps |
-| Read the logs: findings, drafted fixes, the on-device model's explanation (Incident; changes nothing) | not yet: new to both apps |
-| Incident: turn off the auto-reply; any lock step alone (Incident) | not yet from this screen: Users' auto-reply off, confirmed there |
-| Incident: the phones and tablets syncing an account (reads only) | not yet: new to both apps |
-| Incident: the computers signed in with an account (reads only; needs the Cloud Identity devices scope) | not yet: new to both apps |
-| Read the logs: a device registered at a sign-in from a suspect address | not yet: new to both apps |
-| Incident: a person's Apps Script projects (reads only) | not yet: new to both apps |
-| Incident: a person's connected apps and AI agents, and who acted on each log row (reads only) | not yet: new to both apps |
-| Reports: every account's connected apps and AI agents, its summary, and the on-device model's wording (reads only) | not yet: new to both apps |
-| Builder: GamGUI's curated reads (B2: list delegates, list forwarding addresses, search a mailbox, find users, find Chromebooks, find a person's Drive files; reads only) | not yet from the Builder: GamGUI's builders, argv-identical (`catalog_curated.json`) |
-| Builder: GamGUI's curated changes this app has run on another screen (B3: add or remove a delegate, auto-reply on and off, add or remove a group member, title and department, sign out, suspend, reset password, forwarding off, the Drive and Calendar transfer) | not yet from the Builder: the same commands as Users', Groups' and Offboard's, confirmed there |
-| Setup: the admin's account ID confirmed (C1: Check access reads `info user <admin> fields primaryEmail,id` and keeps the token's `sub` only when it equals GAM's `id`; the result line says nothing more when it's confirmed) | not yet: the first live proof that the token's `sub` is the Directory `id`. Read-only: any Check access or launch does it |
-| ChangeCore: the connected admin refused (C2: Suspend on its own page, refused at Preview; the Builder's suspend of an alias of it, refused at Run after GAM's `info user` read) | not yet: nothing is written either way, so read-only once the operator says go |
-| Builder: GamGUI's curated changes never run live in either app (B4: add a forwarding address, forward on, create or remove an alias, create a group, undelete an account) | not yet: GamGUI's commands, never run live (plan §9); prove each on a scratch object the operator owns |
-| Builder: a catalog command that only reads (B1: `print users`, `print groups`, `info user`, `print domains`, `show` of one person; reads only) | not yet from this app: GamGUI's generic read builder, argv-identical over every one (`catalog_reads.json`); the mock answers only `version` |
-| Read the logs: where each account stands (the lock from the admin log), what a lock leaves in place (reads only) | partly: the lock's admin events seen in real exported logs (2026-10-22); the reader not yet run live |
-| Read the logs: That was them (marks a flagged sign-in as the person's own; this Mac only) | not yet: new to both apps |
-| Incident: a kept incident, made from an export, its saved logs read back after a relaunch (reads; this Mac only) | not yet: new to both apps |
-| Incident: Show the Events and Pull Again on the to-do items (reads) | not yet: new to both apps |
-| Incident: Who it reached: every recipient, received or bounced, the warning picked, Export CSV (Respond; reads only) | not yet: new to both apps (L3w in the compromised-account runbook) |
-| Incident: Pull Incident Logs read whole, oldest first, with Read the Rest (reads) | not yet: new to both apps |
-| Incident: Where it started: the vendor's email listed with its sender, picked, who else here received it (Investigate; reads only) | not yet: new to both apps (L3o in the compromised-account runbook) |
-| Incident: Pull Every Account From the attacker's address, and a wide read's estimate (reads only) | not yet: new to both apps (L1n in the compromised-account runbook) |
-| Read the logs: each account's timeline and Still to do (reads only) | partly: run over real exported logs (2026-10-22), not yet in the app live |
-| Incident: block a computer, or take the account off it (Incident) | not yet: new to both apps |
-| Read the logs: Do It Here on a to-do item (opens the plan with only that fix picked) | not yet: new to both apps |
-| Trash an email from each mailbox that has it (Phishing) | ran live (2026-10-19 and 2026-10-23), each step exit 0 in the audit log; a copy in Trash not yet seen in Gmail |
-| Find and trash the copies of an email in Spam (Phishing) | not yet: new to both apps |
+- **Changes** come from the app's audit log, read on 2026-11-05: 158 runs from 2026-10-09 to 2026-11-03, none failed. A
+  change not under "Ran" has no record of this app running it.
+- **Reads** aren't logged, so they rest on the operator's word.
 
-The Groups rows are checked on a scratch group the operator owns, with throwaway members or the
-operator's own account, never someone's real group without their yes.
+To update this: read the audit log or ask the operator, then move the line and change its date (the `live-verify` skill).
+Dates are 2026, and the last time the command ran from any screen.
+
+## Changes
+
+### Users
+- **Ran:** title and department (10-24), suspend and unsuspend (10-09), sign out (10-19), add to a group (10-17), remove
+  from a group (10-13), add a delegate (11-03), remove a delegate (10-19), auto-reply on (11-03), auto-reply off (10-10),
+  share their own calendar and remove that access (10-13), set or change the phone a signature shows (10-29).
+- **Not run:** a temporary password changed at next sign-in, removing a phone.
+
+### Groups
+- **Ran:** add people as members (10-17), remove a member (10-13).
+- **Not run:** add people as managers or owners.
+
+### Calendars
+- **Not run:** anything from this screen: share a calendar with a person, put it in their list, remove someone's access.
+  Sharing a person's own calendar ran from Users.
+
+### Signatures
+- **Ran:** set a signature (10-29).
+
+### Onboard
+- **Not run:** anything in this app: create an account, the task checklist, subscribe to a calendar, the wait for a new
+  account, the welcome email. GamGUI has run the same create, checklist and subscribe commands, and the welcome email
+  (here its body keeps its line breaks, which is new). The wait hasn't run in either app.
+
+### Offboard
+- **Ran:** the whole 12-step routine, three times (last 11-03): reset the password, clear recovery, sign out, forwarding
+  off, IMAP off, POP off, a delegate, an auto-reply, the Drive and Calendar transfer, the calendar sweep, the manager's
+  reminder, hide from the directory. Each step's effect was checked in Google on 10-16. The sweep ends in exit 50 each
+  time and the run tolerates it: a calendar's owner can't be removed from their own calendar.
+- **Not run:** hand over secondary calendars, remove filters that forward.
+
+### Incident
+- **Ran:** the lock (10-19): reset the password, sign out, forwarding off, IMAP and POP off, clear recovery.
+- **Not run:** delete filters, remove a delegate from this screen (Users' command, which ran), remove a send-as address,
+  delete drafts, delete emails scheduled to send, block a computer or take the account off it, turn off an auto-reply
+  from this screen. No change has come from Do It Here yet.
+
+### Phishing
+- **Ran:** trash an email from each mailbox that has it (10-23). A copy in Trash hasn't been looked at in Gmail yet.
+- **Not run:** copies in Spam, several emails in one preview (Pull All).
+
+### Builder
+- **Not run:** any change from this screen (the log marks a Builder run, and has none).
+  - **B3:** the changes that ran from other screens: add or remove a delegate, auto-reply on and off, add or remove a group
+    member, title and department, sign out, suspend, reset password, forwarding off, the Drive and Calendar transfer.
+  - **B4:** the changes that haven't run in either app: add a forwarding address, forward on, create or remove an alias,
+    create a group, undelete an account. Prove each on a scratch object the operator owns.
+
+## Reads
+
+### Ran, by the operator's word
+- Connect, Check access and load the directory (10-09); connected on GAM 7.49.02 (10-28).
+- The group list and a group's members (10-10).
+- Check Account, Pull Incident Logs and the log export (10-21); a 30-day pull (10-27).
+- Read the logs: findings, each account's timeline, Still to do, and Respond's to-do list (10-28).
+- A kept incident reopened after a rebuild (10-27).
+- Phishing's Find (10-23; the trashes above came from it).
+
+### Probably ran
+On 2026-11-05 the operator said most of what's built has run, without listing it. Move one up when you know.
+
+- A person's page: mailbox search, Chrome profiles, phones and tablets, computers (needs the Cloud Identity devices scope),
+  Apps Script projects, connected apps and agents.
+- Incident: a capped log read further back, Pull Every Account from the attacker's address, Who it reached and its export,
+  Where it started, Show the Events and Pull Again, That was them, the report and its export, the on-device model's
+  wording.
+- Reports: the directory reports, storage and mail usage, every account's connected apps and agents.
+- Calendars: the rooms, a person's calendars and who has access.
+- Builder: **B1**, a catalog command that only reads (`print users`, `print groups`, `info user`, `print domains`, `show`
+  of one person); **B2**, the curated reads (list delegates, list forwarding addresses, search a mailbox, find users,
+  Chromebooks or a person's Drive files).
+- Setup: **C1**, the admin's account ID confirmed; any Check access or launch reads it.
+- The jobs tray, listing a run from the click (fixed after the operator's 10-30 run didn't show).
+
+### Not run
+- ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the
+  Builder's suspend of an alias of it). Nothing is written either way.

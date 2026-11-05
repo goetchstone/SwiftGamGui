@@ -8,7 +8,7 @@ leaver and a manager, every step's `gam` line); **templates** (native) that fill
 operator's routine; and **Off2**, the run, through ChangeCore, adversarially reviewed and fixed. **Added steps**
 (native, 2026-10-13, docs/plans/2026-10-13-offboarding-options.md slices 0-1): clear recovery info and hide from
 the directory, the owned secondary calendars and Vault holds read and warned, and the typed `confirm` a long
-routine needs. Next: the live checks L1 and L2, the plan's next slices, then **Close Out** with **Off3**, the delete
+routine needs. Next: the plan's next slices, then **Close Out** with **Off3**, the delete
 (below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
@@ -282,7 +282,7 @@ its `tolerated_kinds` (record those counts: the first real sweep either app has 
 Google, as GamGUI's runbook lists: the old password fails, no app passwords or connected apps, forwarding
 off, the manager's account switcher offers the mailbox, an outside sender gets the auto-reply, the transfer
 `completed`, a colleague's calendar no longer lists L, the reminder on M's calendar (and the invitee's
-email). Mark the rows confirmed in docs/live-verification.md. A failed step: fix the cause, Preview the Rest (a new yes).
+email). Record it in docs/live-verification.md. A failed step: fix the cause, Preview the Rest (a new yes).
 
 **L2 ran on 2026-10-16**, from the app on the operator's tenant: GamGUI's eight plus clear recovery, IMAP and POP off and
 hide from the directory, twelve steps in 66 s, every one succeeded. The sweep took 50 s and exited 50 on the leaver's
