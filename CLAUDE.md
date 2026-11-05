@@ -51,9 +51,12 @@ wrong there. A change that "simplifies" one is a bug.
 ## The recurring failure mode: the mock lies
 
 GamGUI's defining bug class is **"the mock passed, the live tenant broke."** `Tests/Fixtures/mock_gam.sh`
-is GamGUI's strict mock, copied: when you touch it, make it **fail the way real GAM fails**, checked
-against the vendored grammar `Vendor/gam7/GamCommands.txt`, not memory. A mock more permissive than
-GAM converts a live break into a green test. **Passing tests do not mean a GAM write works.**
+is GamGUI's strict mock, copied: when you touch it, make it **fail and answer the way real GAM does**. The
+vendored grammar `Vendor/gam7/GamCommands.txt` says only what GAM accepts; its words, output and exit codes
+come from GAM's source at the pin, read to the end of the function, not from memory. **Test data lies the
+same way**: a Google field or value a reader matches, whether in the mock, a fixture or an event a test
+builds, cites Google's reference or a real row. A mock more permissive than GAM converts a live break into
+a green test. **Passing tests do not mean a GAM write works.**
 
 ## Rules of engagement
 

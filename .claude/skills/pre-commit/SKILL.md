@@ -20,8 +20,12 @@ Act on the items your diff touches.
    `Tests/Fixtures/argv.json`; never regenerate the fixture to make a Swift builder pass. Compare
    bytes (`Array($0.utf8)`), never `String ==`, which treats "é" and "e" + U+0301 as equal.
 5. **One write path (#2)**: a write runs only from a held preview through ChangeCore's executor.
-6. **The mock lies**: `Tests/Fixtures/mock_gam.sh` must fail the way real GAM fails — check
-   `Vendor/gam7/GamCommands.txt`. A green mock is not a live proof.
+6. **The mock lies**: `Tests/Fixtures/mock_gam.sh` must fail and answer the way real GAM does: what it
+   accepts from `Vendor/gam7/GamCommands.txt`; its words, output and exit code from GAM's source at the pin
+   (the last `setSysExitRC`, read to the end of the function). An option a handler accepts changes its output
+   or is refused. The tests' tenant holds its connected admin. A filtered read's fixture holds a row the filter
+   misses. A Google field or value a reader matches names Google's reference or a real row beside it, in the
+   mock, a fixture or a test's own event. A green mock is not a live proof.
 7. **The pin (#7)**: bump only with `scripts/bump_gam.py`; `FixtureTests` must stay green.
 
 ## If your diff touches secrets, models, Siri or anything streamed
