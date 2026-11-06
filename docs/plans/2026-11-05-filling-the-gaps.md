@@ -8,9 +8,9 @@ or by preventing a loss; the rest is under "Not planned unless asked". What has 
 
 ## Waiting on the operator
 
-- **A name.** Another Mac app over GAM already uses a very similar name, so "GAM GUI" should change. Only the display
-  name moves: `App/en.lproj/InfoPlist.strings`, the on-screen strings, the README, `NOTICE` and `SECURITY.md`. The bundle
-  ID stays, because Keychain items bind to it. One PR once a name is picked.
+- **A name.** The operator expects to change "GAM GUI". Only the display name moves: `App/en.lproj/InfoPlist.strings`, the
+  on-screen strings, the README, `NOTICE` and `SECURITY.md`. The bundle ID stays, because Keychain items bind to it. One PR
+  once a name is picked.
 - **An Apple Developer account** ("soon, but not today"). Slice R waits for it.
 
 ## Run what's built
@@ -97,4 +97,4 @@ before anyone else is pointed at it.
 - Removing limited Drive access: a write across many files, with a large blast radius.
 - A plain-language command finder: parked with Siri. A model would only ever draft a preview (invariant 10).
 - Calendars: find by name, share with a group, delete a calendar or an event (`docs/domains/calendars.md`).
-- Auto-update, license checks and item caps: they serve selling an app, and this one is free.
+- Auto-update: a signed download is enough for one person's use.
