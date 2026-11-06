@@ -14,6 +14,8 @@ Act on the items your diff touches.
 2. **Read before you wrote.** Verify claims against the code and the SDK's `.swiftinterface`, not memory.
 3. **Docs follow code in the same commit**: the area's runbook; a failure-log entry for a regression
    (the hook blocks a `fix:` commit without one); the design doc's Status for a closed plan item.
+- **A time bound in a test**: pure code measures thread CPU time; a bound on a process sits far from both the time it
+  should take and the failure it detects (failure log 2026-10-16, 10-20, 11-03).
 
 ## If your diff touches GAM
 4. **argv-only (#1)** and **byte-identical to GamGUI (#11)**: every builder is checked against

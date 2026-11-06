@@ -1,5 +1,7 @@
 # Session handoff (2026-10-09)
 
+**Superseded (2026-11-05).** Kept as history. Start from the design doc's Status instead.
+
 For the next session working on SwiftGamGui. Read this first, then `CLAUDE.md`, the runbook for the
 area you touch (`docs/domains/`) and `docs/RULE-FEEDBACK.md`. The design is
 `docs/plans/2026-10-08-native-gamgui.md`; this note supersedes its progress sections where they differ.

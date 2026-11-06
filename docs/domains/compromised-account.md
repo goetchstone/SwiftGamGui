@@ -111,7 +111,7 @@ there, its Bcc list matches the message's own. Nothing runs.
 
 **L2 (the operator's yes in chat for "secure P"):** tick the reset as done if it was; tick what the attacker made; run.
 Then in Google: sessions ended, no app passwords or connected apps, forwarding off, the ticked filters, delegates and
-send-as addresses gone, IMAP and POP off. Mark the rows confirmed in docs/live-verification.md.
+send-as addresses gone, IMAP and POP off. Record it in docs/live-verification.md.
 
 ## Leftover drafts (slice 4)
 A taken-over account can be left with thousands of drafts, and phishing batches Google blocked leave drafts anyone

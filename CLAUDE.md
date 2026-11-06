@@ -3,9 +3,9 @@
 **GamGUI as a native macOS app**: SwiftUI, macOS 27 only, driving the vendored GAM7 CLI exactly as the
 Python GamGUI does. On screen and to Siri the app is **GAM GUI** (operator, 2026-10-10: Siri hears
 "Gam Gooey" as "GAM GUI" and matches only the display name); its product, scheme and bundle stay
-**GamGUI**, and this repo and the Xcode project are **SwiftGamGui**. Public repo, Apache-2.0 (as GAM). The design and phases are in
+**GamGUI**, and this repo and the Xcode project are **SwiftGamGui**. Public repo, Apache-2.0 (as GAM), free, and built for the operator's own use. The design and phases are in
 [docs/plans/2026-10-08-native-gamgui.md](docs/plans/2026-10-08-native-gamgui.md); read its Status line
-first.
+first. What's next is in [docs/plans/2026-11-05-filling-the-gaps.md](docs/plans/2026-11-05-filling-the-gaps.md).
 
 The credentials this app reaches are the reason it is careful: **`oauth2service.json` can impersonate
 any user in the domain, and `oauth2.txt` is effectively an admin password.**
@@ -88,7 +88,7 @@ live in `.claude/skills/`, not here. Summarize large tool output instead of re-r
 ```
 App/                      SwiftUI app target "GamGUI" (thin: views over @Observable models; debug spikes)
 Config/                   entitlements (empty: hardened runtime on, App Sandbox off until phase 6)
-Packages/GamKit/          GamEngine · ChangeCore · Vault · Catalog · Jobs · Stores · Assist · TestSupport
+Packages/GamKit/          GamEngine · ChangeCore · Vault · Directory · Setup · Jobs · Stores · Assist · TestSupport
 Tests/Fixtures/           argv.json · exit_codes.json · mock_gam.sh + its data (shared by all tests)
 Vendor/gam7/              vendored GAM (gitignored except VERSION, LICENSE, command_catalog.json)
 scripts/                  fetch_gam.sh · embed_gam.sh · check_app.sh · bump_gam.py · build_command_catalog.py · gen_fixtures.py
@@ -108,7 +108,7 @@ scripts/fetch_gam.sh                                            # vendor GAM aga
 # folder, and every indexed copy of the app is one more app Siri can pick by name (2026-10-10).
 # Look at a screen (debug builds): renders the real window to a PNG and quits. The demo fills the screen
 # from memory and the strict mock, never the real GAM. SWIFTGAMGUI_SCREEN picks it (home, the default,
-# users or setup). The capture is the screen's own pane (the sidebar's and toolbar's system materials don't draw this way).
+# or a name from scripts/screenshots.sh). The capture is the screen's own pane (the sidebar's and toolbar's system materials don't draw this way).
 SWIFTGAMGUI_SCREEN=home SWIFTGAMGUI_SNAPSHOT=/tmp/home.png SWIFTGAMGUI_DEMO=1 \
   SWIFTGAMGUI_GAM_BINARY="$PWD/Tests/Fixtures/mock_gam.sh" \
   build/DerivedData.noindex/Build/Products/Debug/GamGUI.app/Contents/MacOS/GamGUI

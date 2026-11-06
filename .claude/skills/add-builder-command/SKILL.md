@@ -18,5 +18,5 @@ description: Add a curated GAM operation to SwiftGamGui (a typed builder that ru
    read-only by GamGUI's verb rule. A write returns `GamWrite` with its own `WriteAction` case, and runs
    only through ChangeCore (#2) with its authoritative risk level. Never make a write runnable by
    promotion (#3).
-5. **Catalog entry** with typed slots; `swift test` green; record the new command as **not yet** in the
-   live-verification table (`docs/live-verification.md`) until `live-verify` proves it.
+5. **Catalog entry** with typed slots; `swift test` green; list the new command under **Not run** in
+   `docs/live-verification.md` until it has run.
