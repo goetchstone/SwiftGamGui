@@ -236,8 +236,13 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   read.
 - The demo (`SWIFTGAMGUI_DEMO=1`, `SWIFTGAMGUI_SCREEN=home`) connects example.com and loads it.
 
+## Home's Jobs and Recent failures (2026-11-07, GamGUI's parity)
+- **Jobs** (`HomeJobs`): the newest four runs since launch, running first (`JobBoard.tray`), each with where it stands; the toolbar's
+  tray has its steps, failures and Stop. Its own view, so a step redraws it, not all of Home.
+- **Recent failures** (`AuditEntry.recentFailures`, GamGUI's `recent_failures`): the last 3 failed changes in 30 days, newest first,
+  read off the main thread when Home opens and when a run ends, by the board's counter. The read stops at the first record older
+  than that, at most 100,000 records. All Failures in Audit opens Audit narrowed to failures.
+
 ## Not built yet (GamGUI has them; parity audit 2026-10-28)
-- **Home's Recent failures card** (GamGUI `web/routes/home.py`: the last 3 failed writes in 30 days, linking to the audit
-  log) and its Jobs card, which waits on the jobs tray (plan §12, phase 3).
 - **A department for many people** (GamGUI `web/routes/users.py`, `bulk_store.html`: a group or a pasted list, a preview, a
   run, retry the failed ones): a bulk job, so after the jobs tray. Build it only when asked, as with signatures for many.

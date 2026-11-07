@@ -87,6 +87,24 @@ public struct AuditEntry: Sendable, Identifiable {
     public static let summaryLimit = 160
     public static let detailLimit = 4_000
 
+    /// Home's Recent failures (GamGUI's `recent_failures`): the newest `limit` failed records from the last `days`, newest first.
+    /// The log streams newest first, so the read stops at the first record older than that, or once `limit` are found, and at
+    /// most `scanLimit` records (invariant 9). "Recent", since June's already-fixed failures once headlined Home in September. Off
+    /// the main thread: the log can hold a million records.
+    public static func recentFailures(in log: URL, limit: Int = 3, days: Int = 30, now: Date = Date(), scanLimit: Int = 100_000) -> [AuditEntry] {
+        let cutoff = now.addingTimeInterval(-Double(days) * 86_400)
+        var found: [AuditEntry] = [], read = 0
+        AuditLog.forEachRecord(at: log) { record in
+            read += 1
+            // The two fields first: most records aren't failures, and an entry's details are worth cutting only for those that are.
+            let date = instant(AuditText.truthy(record["ts"]))
+            if let date, date < cutoff { return false }
+            if date != nil, record["ok"] == .bool(false) { found.append(AuditEntry(place: read - 1, record: record, unfinished: [:])) }
+            return found.count < limit && read < scanLimit
+        }
+        return found
+    }
+
     init(place: Int, record: JSONObject, unfinished: [String: Executor.Unfinished]) {
         id = place
         let extra = record["extra"]?.object
