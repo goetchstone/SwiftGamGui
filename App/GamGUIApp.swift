@@ -132,6 +132,8 @@ struct ContentView: View {
     @State private var calendarsPerson: String?
     /// The person Users opens on when another screen sends it one (Reports' Show in Users).
     @State private var usersPerson: String?
+    /// Home's All Failures in Audit: Audit opens narrowed to failures, and takes it.
+    @State private var auditFailures = false
     /// The person Incident checks when Users sends it one (Actions → Secure Account…).
     @State private var compromisedPerson: String?
     /// A Message-ID another screen asked Phishing to find (the log reader's "Pull … from Every Mailbox…").
@@ -165,7 +167,11 @@ struct ContentView: View {
             switch screen ?? .home {
             case .home:
                 HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
-                         hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL) { screen = .setup }
+                         hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL, jobs: services.jobs,
+                         openFailures: {
+                             auditFailures = true
+                             screen = .audit
+                         }) { screen = .setup }
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
@@ -231,7 +237,7 @@ struct ContentView: View {
                 }
                 .navigationTitle("Reports")
             case .audit:
-                AuditView(auditURL: services.auditURL)
+                AuditView(auditURL: services.auditURL, showFailures: $auditFailures)
                     .navigationTitle("Audit")
             case .setup:
                 SetupView(model: services.setup)
