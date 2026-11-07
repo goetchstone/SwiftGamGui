@@ -17,6 +17,7 @@ struct UsersView: View {
     let searches: MailboxSearches
     /// A person's Chrome profiles, read from their page (the Security tab).
     let chromeProfiles: ChromeProfileReads
+    let personDevices: PersonDeviceReads
     let drafts: SiriDrafts
     /// Who can see a person's primary calendar (the Calendar tab).
     let calendarReads: CalendarReads
@@ -194,7 +195,7 @@ struct UsersView: View {
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let user = users.first(where: { $0.id == selection }) {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
-                               chromeProfiles: chromeProfiles, editorOpen: $editorOpen,
+                               chromeProfiles: chromeProfiles, personDevices: personDevices, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
                                openCompromised: openCompromised)
                 }
@@ -387,6 +388,7 @@ private struct UserDetail: View {
     let access: UserAccess
     let searches: MailboxSearches
     let chromeProfiles: ChromeProfileReads
+    let personDevices: PersonDeviceReads
     /// Tells the list an editor is open, so Siri doesn't change the person under it.
     @Binding var editorOpen: Bool
     let openSignatures: (String) -> Void
@@ -629,6 +631,7 @@ private struct UserDetail: View {
                 .accessibilityLabel("Set a temporary password for \(user.fullName)")
             }
             ChromeProfilesSection(user: user, reads: chromeProfiles)
+            PersonDevicesSection(user: user, reads: personDevices)
         }
     }
 }
@@ -1130,6 +1133,74 @@ private struct ChromeProfilesSection: View {
         case .read(.success(let profiles))? where profiles.isEmpty: "Google knows of no Chrome profile signed in with this account."
         case .read(.success(let profiles))?:
             "\(profiles.count) Chrome profile\(profiles.count == 1 ? "" : "s") signed in with this account, the most recently used first."
+        }
+    }
+}
+
+/// The phones, tablets and computers signed in with this account, read when asked (GamGUI's Security tab). Reads only: to block a
+/// computer or take the account off it, Secure Account's plan has both, and a wipe is the Admin console's.
+private struct PersonDevicesSection: View {
+    let user: GamUser
+    let reads: PersonDeviceReads
+
+    var body: some View {
+        Section {
+            HStack {
+                Text(summary).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                if isReading { ProgressView().controlSize(.small) }
+                Button(reads.state(for: user.primaryEmail) == nil ? "Check Devices" : "Check Again") {
+                    let reads = reads, email = user.primaryEmail
+                    Task { await reads.read(email) }
+                }
+                .disabled(isReading)
+                .accessibilityLabel("Check \(user.fullName)'s phones and computers")
+            }
+            .accessibilityElement(children: .contain)
+            if case .read(let devices)? = reads.state(for: user.primaryEmail) {
+                switch devices.phones {
+                case .success(let phones): ForEach(phones) { MobileDeviceRow(device: $0) }
+                case .failure(let problem): couldNotRead("phones and tablets", problem)
+                }
+                switch devices.computers {
+                case .success(let computers): ForEach(computers) { ComputerRow(computer: $0) }
+                case .failure(let problem): couldNotRead("computers", problem)
+                }
+            }
+        } header: {
+            Text("Devices")
+        } footer: {
+            Text("Shown, not changed here. To block a computer or take the account off it, use Actions, then Secure Account. To wipe a "
+                 + "device, use the Admin console's Devices.")
+        }
+        .textSelection(.enabled)
+    }
+
+    private func couldNotRead(_ what: String, _ problem: UserAccess.Problem) -> some View {
+        Label("Couldn't read \(what): \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+            .symbolRenderingMode(.multicolor).textSelection(.enabled)
+    }
+
+    private var isReading: Bool {
+        if case .reading? = reads.state(for: user.primaryEmail) { return true }
+        return false
+    }
+
+    private var summary: String {
+        switch reads.state(for: user.primaryEmail) {
+        case nil: "Not checked."
+        case .reading?: "Reading phones and computers…"
+        case .read(let devices)?:
+            [Self.count(devices.phones, "phone or tablet", "phones and tablets"), Self.count(devices.computers, "computer", "computers")]
+                .joined(separator: ", ") + "."
+        }
+    }
+
+    /// "2 computers", "no computers", or "computers not read": a read that failed is never none.
+    private static func count<T>(_ read: Result<[T], UserAccess.Problem>, _ one: String, _ many: String) -> String {
+        switch read {
+        case .failure: "\(many) not read"
+        case .success(let rows) where rows.isEmpty: "no \(many)"
+        case .success(let rows): "\(rows.count) \(rows.count == 1 ? one : many)"
         }
     }
 }

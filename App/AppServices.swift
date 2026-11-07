@@ -57,6 +57,8 @@ struct AppServices {
     let mailboxSearches: MailboxSearches
     /// A person's Chrome profiles, read from their page.
     let chromeProfiles: ChromeProfileReads
+    /// A person's phones and computers, read from their page.
+    let personDevices: PersonDeviceReads
     /// Every account's connected apps and AI agents, read from Reports.
     let connectedApps: ConnectedAppsRead
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
@@ -147,6 +149,7 @@ struct AppServices {
                            phishingChanges: phishingChanges,
                            mailboxSearches: MailboxSearches(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           personDevices: PersonDeviceReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            knownSignIns: knownSignIns,
                            nobodyHas: nobodyHas,
