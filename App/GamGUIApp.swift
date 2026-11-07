@@ -169,7 +169,7 @@ struct ContentView: View {
                     .navigationTitle("Home")
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                          access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
                           requested: $usersPerson,
                           openSignatures: { email in
                               signaturesPerson = email

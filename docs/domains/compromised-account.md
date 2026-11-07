@@ -370,6 +370,9 @@ the same second as the sign-in), and the phones list never shows a computer. Rea
   virtual machine (by model or maker: Hyper-V, VMware, VirtualBox, Parallels, QEMU and KVM, Xen, the clouds') or a
   compromised report in words. The findings count only those still signed in; one blocked or wiped stays listed until
   it's deleted, said as such. Block it, or take the account off it, in the plan ("Undo from the app" below).
+- **From a person's page too** (2026-11-07, GamGUI's parity): Users → a person → Security → **Check Devices**
+  (`PersonDeviceReads`) reads their phones and computers at once, each failing on its own, never as none; `App/DeviceRows.swift` says
+  each row as this check does. Shown, not changed: blocking is Secure Account's plan, and a wipe the Admin console's.
 - **The scope:** GAM reads devices as the admin through the service account, so domain-wide delegation needs
   `https://www.googleapis.com/auth/cloud-identity.devices` (GAM's default service account scope, or its `.readonly` form
   when the service account was set up read-only; Setup's check doesn't test it). Each cause has its own fix
