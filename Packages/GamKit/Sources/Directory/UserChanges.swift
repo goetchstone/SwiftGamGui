@@ -2,6 +2,7 @@ import ChangeCore
 import Foundation
 import GamEngine
 import Observation
+import Setup
 import Vault
 
 /// The user page's writes (GamGUI's `/users/organization` and `/users/suspend/*`), through ChangeCore: a
@@ -13,6 +14,8 @@ import Vault
 public final class UserChanges {
     public enum State: Sendable {
         case idle
+        /// Reading what a preview needs first, in words (Delete Account's holds, calendars and transfers).
+        case checking(String)
         /// The preview the screen shows; confirming runs exactly this.
         case previewing(Pending)
         case running(Pending)
@@ -33,6 +36,8 @@ public final class UserChanges {
         let patch: @Sendable (GamUser) -> GamUser
         /// Set Temporary Password's password: shown after the run (`signIn`), never before.
         let password: TemporaryPassword?
+        /// Delete Account's: a success takes the person out of the cached list.
+        let removes: Bool
 
         public var id: UUID { preview.id }
         public var isDestructive: Bool { preview.decision.maxRisk == .destructive }
@@ -70,6 +75,9 @@ public final class UserChanges {
     private var heldSignIn: SignIn?
     private var signInTimer: Task<Void, Never>?
     private let now: @Sendable () -> ContinuousClock.Instant
+    /// The account last deleted, for the list to say so: its page closes with it, and its result with that. Nil once dismissed.
+    public private(set) var deleted: String?
+    public func dismissDeleted() { deleted = nil }
     /// Counts confirmed changes that succeeded: a screen showing a person's live lists reads them again.
     public private(set) var finished = 0
     /// The address the current state is about, so a panel shows a result only under its own person.
@@ -97,8 +105,10 @@ public final class UserChanges {
     }
 
     public var isBusy: Bool {
-        if case .running = state { return true }
-        return false
+        switch state {
+        case .running, .checking: true
+        case .idle, .previewing, .done, .problem: false
+        }
     }
 
     // MARK: previews
@@ -186,6 +196,92 @@ public final class UserChanges {
             $0.with(suspended: suspend)
         }
     }
+
+    /// GamGUI's `/users/delete/*`, with what the operator asked for it (2026-10-13) and Google's help. The account is read fresh, and
+    /// its name and Google's ID are what the preview holds: the page may be stale, and an address can be someone else's now. Nothing
+    /// is held while a Vault hold or a secondary calendar stands in the way (`Offboarding.deleteRefusal`). The preview says what to know
+    /// first. At the confirm all of it is read again: the same account, no hold or calendar or transfer since, and a read that answered
+    /// at the preview must answer now. The executor holds the rest for every delete: the exact address typed (`Guard`), never an alias
+    /// of another account, never the admin this app is connected as. Never from Siri or a model: the screen only (invariant 10).
+    public func previewDeleteAccount(_ user: GamUser, access: UserAccess) async {
+        guard !isBusy else { return }
+        let email = user.primaryEmail
+        subject = email
+        guard let tenant = access.tenant else {
+            state = .problem("Connect a domain on Setup first.")
+            return
+        }
+        state = .checking("Checking \(email) for Vault holds, secondary calendars and data transfers…")
+        let current: GamUser
+        do {
+            current = try await access.account(email, in: tenant.domain, fields: Self.identityFields)
+        } catch {
+            state = .problem("Couldn't read \(email) now, so nothing is held: \((error as? UserAccess.Problem)?.summary ?? SetupModel.message(for: error))")
+            return
+        }
+        guard let accountID = current.accountID else {
+            state = .problem("Google didn't say which account \(email) is, so nothing is held.")
+            return
+        }
+        // The directory list holds no ID, so its name is what can show the page is stale.
+        if (user.accountID.map { $0 != accountID } ?? false) || (user.record["name"] != nil && Guard.normalized(user.fullName) != Guard.normalized(current.fullName)) {
+            state = .problem("\(email) is \(current.fullName.isEmpty ? "another account" : current.fullName) now, not who this page shows. Refresh Users, and check it's who you mean.")
+            return
+        }
+        typealias Read = Offboarding.Unread
+        async let holdRead = access.vaultHolds(of: email)
+        async let calendarRead = access.ownedSecondaryCalendars(of: email)
+        async let transferRead = access.dataTransfers(of: email)
+        let holds = await holdRead.mapError { Read($0.summary) }, calendars = await calendarRead.mapError { Read($0.summary) }
+        let transfers = await transferRead.mapError { Read($0.summary) }
+        if let refusal = Offboarding.deleteRefusal(user: email, holds: holds, calendars: calendars) {
+            state = .problem(refusal)
+            return
+        }
+        state = .idle
+        let warned = Set(((try? transfers.get()) ?? []).filter { !$0.isFinished }.map(\.key))
+        func answered<T>(_ read: Result<T, Read>) -> Bool { if case .success = read { true } else { false } }
+        let (holdsAnswered, calendarsAnswered, transfersAnswered) = (answered(holds), answered(calendars), answered(transfers))
+        let precondition: @Sendable () async throws -> Bool = { [access] in
+            let now: GamUser
+            do {
+                now = try await access.account(email, in: tenant.domain, fields: Self.identityFields)
+            } catch let problem as UserAccess.Problem {
+                throw PreconditionFailure(problem.summary)
+            }
+            guard now.accountID == accountID else {
+                throw PreconditionRefusal("\(email) is another account now, not the one the preview showed: nothing was deleted. Refresh Users.")
+            }
+            async let holdsNow = access.vaultHolds(of: email)
+            async let calendarsNow = access.ownedSecondaryCalendars(of: email)
+            async let transfersNow = access.dataTransfers(of: email)
+            let (holdRead, calendarRead, transferRead) = await (holdsNow, calendarsNow, transfersNow)
+            if let refusal = Offboarding.deleteRefusal(user: email, holds: holdRead.mapError { Read($0.summary) }, calendars: calendarRead.mapError { Read($0.summary) }) {
+                throw PreconditionRefusal(refusal)
+            }
+            // A read that answered at the preview must answer now: what it would say can't stand unread. One that couldn't was
+            // said in the preview, and the operator went on with that.
+            if holdsAnswered, case .failure(let problem) = holdRead { throw PreconditionFailure(problem.summary) }
+            if calendarsAnswered, case .failure(let problem) = calendarRead { throw PreconditionFailure(problem.summary) }
+            if transfersAnswered, case .failure(let problem) = transferRead { throw PreconditionFailure(problem.summary) }
+            if case .success(let all) = transferRead, all.contains(where: { !$0.isFinished && !warned.contains($0.key) }) {
+                throw PreconditionRefusal("A data transfer from \(email) has started since the preview: wait until it shows completed, then preview again.")
+            }
+            return true
+        }
+        let named = current.fullName.isEmpty ? email : "\(current.fullName) (\(email))"
+        let warnings = Offboarding.deleteWarnings(user: email, holds: holds, calendars: calendars, transfers: transfers)
+        let step = WriteStep(GamCommands.deleteUser(email: email), target: email,
+                             summary: "Delete \(named)'s account, and with it everything only they own: their mail, their Drive files and their "
+                                + "calendars. It can be restored for 20 days, except what Vault's retention rules were keeping: they stop applying, "
+                                + "and that can be purged at once.",
+                             about: warnings.isEmpty ? [:] : ["warned": warnings.joined(separator: " ")])
+        await hold(step, title: "Delete \(current.fullName.isEmpty ? email : current.fullName)", confirmLabel: "Delete Account", email: email,
+                   warning: warnings.isEmpty ? nil : warnings.joined(separator: " "), removes: true, expecting: tenant, precondition: precondition)
+    }
+
+    /// What says which account an address is: read at a delete's preview and its confirm.
+    nonisolated static let identityFields = ["primaryEmail", "id", "name"]
 
     // MARK: groups and delegates
 
@@ -401,7 +497,8 @@ public final class UserChanges {
     }
 
     private func hold(_ step: WriteStep, title: String, confirmLabel: String, email: String, confirmStep: Bool = false,
-                      warning: String? = nil, origin: Origin = .form, password: TemporaryPassword? = nil,
+                      warning: String? = nil, origin: Origin = .form, password: TemporaryPassword? = nil, removes: Bool = false,
+                      expecting: (domain: Domain, generation: Int)? = nil,
                       patch: @escaping @Sendable (GamUser) -> GamUser = { $0 },
                       precondition: (@Sendable () async throws -> Bool)? = nil) async {
         guard !isBusy else { return }
@@ -410,10 +507,10 @@ public final class UserChanges {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
         }
-        switch await executor.preview([step], origin: origin, confirmStep: confirmStep, precondition: precondition) {
+        switch await executor.preview([step], origin: origin, confirmStep: confirmStep, expecting: expecting, precondition: precondition) {
         case .success(let preview):
             state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email,
-                                        warning: warning, patch: patch, password: password))
+                                        warning: warning, patch: patch, password: password, removes: removes))
         case .failure(let refusal):
             state = .problem(refusal.message)
         }
@@ -442,7 +539,12 @@ public final class UserChanges {
         }
         switch outcome.steps.first {
         case .succeeded:
-            directory.patch(pending.email, on: pending.preview.domain, generation: pending.preview.generation, pending.patch)
+            if pending.removes {
+                directory.remove(pending.email, on: pending.preview.domain, generation: pending.preview.generation)
+                deleted = pending.email
+            } else {
+                directory.patch(pending.email, on: pending.preview.domain, generation: pending.preview.generation, pending.patch)
+            }
             finished += 1
             let note = outcome.auditProblem.map { " \($0)" } ?? ""
             state = .done("Done: \(pending.preview.steps.first?.summary ?? pending.title)\(note)")

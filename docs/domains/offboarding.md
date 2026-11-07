@@ -8,7 +8,7 @@ leaver and a manager, every step's `gam` line); **templates** (native) that fill
 operator's routine; and **Off2**, the run, through ChangeCore, adversarially reviewed and fixed. **Added steps**
 (native, 2026-10-13, docs/plans/2026-10-13-offboarding-options.md slices 0-1): clear recovery info and hide from
 the directory, the owned secondary calendars and Vault holds read and warned, and the typed `confirm` a long
-routine needs. Next: the plan's next slices, then **Close Out** with **Off3**, the delete
+routine needs. Next: the plan's next slices, then **Close Out**; **Off3**, the delete, is built
 (below). GamGUI's runbook
 of the same name (`docs/domains/lifecycle-offboarding.md` in GamGUI, 42 KB) is the history this inherits:
 its step table, its "when a step fails" rules, its 2026-09-23 incidents and its first live run
@@ -299,7 +299,29 @@ the domain changes mid-run.
 
 ## Next
 - **Close Out** (the operator, 2026-10-13): groups, org unit, suspend, aliases and archive, after the transfer
-  finishes, with **Off3**, the account delete (GamGUI's pending-transfer warning plus a precondition; refused
-  under a Vault hold or while secondary calendars remain).
+  finishes. Beyond GamGUI, which has only the delete. **Off3**, the delete itself, is built (below).
 - Extra read-only warnings, to decide: a transfer already running for L, and the sign-out scope missing
   from the token.
+
+## Delete Account (Off3, 2026-11-07, GamGUI's parity)
+Users → a person → Actions → **Delete Account…** (`UserChanges.previewDeleteAccount`). Checked against Google's help, last updated 2026-10-26
+(Delete or remove a user; Vault's Delete a user with data on hold), as a platform change already cost one routine its calendars.
+- **Refused, nothing held** (`Offboarding.deleteRefusal`): a Vault hold (Google won't delete an account on hold, and purges what it kept
+  once deleted; clearing one can take 24 to 48 hours) or a secondary calendar (Google deletes it with the account, events and all, and
+  nothing can be transferred after). The operator's rule, stricter than GamGUI.
+- **Said in the preview** (`deleteWarnings`): a transfer not finished (`print datatransfers olduser`, overallTransferStatusCode), none at
+  all (what only they own goes with the account), or a check that couldn't be made, never taken for none.
+- **Which account:** read fresh (`info user`), its name shown and Google's ID held. The list holds no ID, so a page whose name differs is
+  refused ("Refresh Users"): an address can be someone else's since the directory loaded. A preview is held to the tenant it read on.
+- **Read again at the confirm** (the preview's precondition, review 2026-11-07): the same account ID; no hold, calendar or transfer since, a
+  transfer told by its ID so a new one of the same application counts; and a read that answered at the preview must answer now, or
+  nothing runs. One that couldn't was said in the preview, and a good answer then still counts.
+- **GAM's silence on the calendars read isn't none** (`UserAccess.ownedSecondaryCalendars`): its "Getting Calendars for" comes only once
+  the service is built, so none without it is said as not read. The Vault and transfer reads build admin services, which fail out loud.
+- **On the record:** what the operator went past is in the audit record's `warned`.
+- **The executor's, for every delete:** the exact address typed (`Guard`), never an alias of another account (`aliasRefusal`), never the
+  admin connected (`lockoutRefusal`). Never from Siri or a model (invariant 10).
+- **After:** the person leaves the cached list (`DirectoryStore.remove`) and their page closes, so the result is said on the list
+  (`UserChanges.deleted`): it can be restored for 20 days, with Undelete Account in Builder or in the Admin console, except what Vault's
+  retention rules were keeping.
+- **Not run on a real account yet:** its first run is on a real leaver.

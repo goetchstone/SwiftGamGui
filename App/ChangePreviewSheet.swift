@@ -23,9 +23,18 @@ extension UserChanges {
 struct ChangePreviewSheet: View {
     let pending: UserChanges.Pending
     let changes: UserChanges
+    @State private var typed = ""
+
+    /// The address the executor asks for: an account's own, to delete it.
+    private var toType: String? { pending.preview.decision.typedAddresses.first }
+    /// The field matches, as the executor compares it (trimmed, case aside): only then is the button offered.
+    private var matches: Bool {
+        guard let toType else { return true }
+        return typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == toType.lowercased()
+    }
 
     private func confirm() {
-        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
+        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedAddresses: toType == nil ? [] : [typed])) }
     }
 
     var body: some View {
@@ -53,6 +62,13 @@ struct ChangePreviewSheet: View {
                     Label(warning, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 }
             }
+            if let toType {
+                Section("Type \(toType) to delete it") {
+                    TextField("Their address", text: $typed, prompt: Text(verbatim: toType))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the address, \(toType), to delete this account")
+                }
+            }
             Section {
                 if pending.isDestructive {
                     Label("Destructive: confirm to run it.", systemImage: "exclamationmark.octagon.fill")
@@ -71,7 +87,7 @@ struct ChangePreviewSheet: View {
             if pending.isDestructive || pending.preview.origin != .form {
                 ToolbarItem(placement: .primaryAction) {
                     Button(pending.confirmLabel, role: pending.isDestructive ? .destructive : nil) { confirm() }
-                        .disabled(changes.isBusy)
+                        .disabled(changes.isBusy || !matches)
                 }
             } else {
                 ToolbarItem(placement: .confirmationAction) {
