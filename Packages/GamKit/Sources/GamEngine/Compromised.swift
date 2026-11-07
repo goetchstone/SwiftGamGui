@@ -454,6 +454,9 @@ public enum Compromised {
         /// (`firstSyncTime`, which Google sets again at each registration).
         public let firstSync: String
         public let firstSynced: Date?
+        /// When the person first signed in to it, their own `createTime` only: what a to-do item is matched by. Never
+        /// `firstSyncTime`, which Google moves at each registration, so an old computer looks new.
+        public let firstSignedIn: Date?
         public let lastSync: String
         public let lastSynced: Date?
         /// The device says it's compromised (`compromisedState` COMPROMISED).
@@ -500,6 +503,7 @@ public enum Compromised {
             let signedIn = text("createTime", in: mine)
             firstSync = signedIn.isEmpty ? text("firstSyncTime", in: mine) : signedIn
             firstSynced = ChromeProfiles.date(firstSync)
+            firstSignedIn = ChromeProfiles.date(signedIn)
             let last = text("lastSyncTime", in: mine)
             lastSync = last.isEmpty ? text("lastSyncTime") : last
             lastSynced = ChromeProfiles.date(lastSync)
@@ -789,7 +793,9 @@ public enum Compromised {
             guard !result.stdoutTruncated else {
                 throw MessageCopies.Incomplete(reason: "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so the list wasn't all read.")
             }
-            return GamOutput.records(result.stdout).map(Draft.init(record:))
+            let records = GamOutput.records(result.stdout)
+            guard result.exitCode == 60 || !records.isEmpty else { throw MessageCopies.Incomplete(reason: MessageCopies.unanswered) }
+            return records.map(Draft.init(record:))
         }
     }
 

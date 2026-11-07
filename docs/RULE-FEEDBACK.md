@@ -31,6 +31,16 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   leaves out (2026-10-21).
 - **The rest:** not a rules problem: fixed with a tripwire, a skill line or a note where they happened.
 
+## 2026-11-06 — A green test says it works when it works; nothing asks what the screen says when it doesn't
+- **What happened:** GamGUI's port of the incident screens found, by review against GAM's source, reads and steps here that read
+  finished when they weren't (failure log 2026-11-06). The mock had no silent exit 0, and the tests asked only for the right answer.
+- **Invariant in force:** none numbered; CLAUDE.md's "the mock lies" is nearest, and now covers what GAM answers.
+- **Why it didn't hold:** nothing asks of a read or a write what the screen says when it fails, stops short, or answers for less
+  than it seems to.
+- **Would a rule have caught it?** yes, if a read or step that can stand as the record must have tests for its failure and partial
+  cases, and the mock must model GAM's exit 0 without doing it. Review with GAM's source found these, not a rule.
+- **Enforcement home if changed:** the `pre-commit` skill, or a tripwire on `GamWrite.notDone` for writes GAM can leave undone.
+
 ## 2026-11-05 — The live-verification table drifted from the audit log
 - **What happened:** the operator called the table "a bit much" and said most of it had run. Read against the audit log, it
   was behind both ways: it recorded one offboarding where three had run, and its wording ("argv-identical", "new to both

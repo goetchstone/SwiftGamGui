@@ -70,11 +70,21 @@ let only `requires` stop a step; it may not tolerate failures).
 | `info user P fields …recoveryPhone,isEnforcedIn2Sv…` | 5790-5820 | USER_FIELDS_CHOICE_MAP |
 | `user P show vacation`, `user P vacation off` | 8325-8331 | GamGUI's builders (Users' auto-reply), held to argv.json |
 | `report admin user P start -Nh end now maxactivities M` (no `userisactor`) | 4738-4752 | doReport :14779-14788: read as `user all` with the filter `USER_EMAIL==P`, what admins did to P; a non-user reads none |
-| `print mobile query email:P fields resourceid,… formatjson` | 4563-4570 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; a refusal ClientAPIAccessDeniedExit, exit 12 |
+| `print mobile query email:P fields resourceid,… listlimit 0 formatjson` | 4563-4570 | doPrintMobileDevices: CSV `resourceId,JSON`, the row written from `resourceId`; _validateDeviceQuery; `listLimit = 1` by default cuts every list in the JSON to its first, so a shared device lists one owner without `listlimit 0`; a refusal ClientAPIAccessDeniedExit, exit 12 |
 | `user P print filelist showmimetype gscript fields … formatjson` | 7804-7833 | printFileList: the type put in Drive's query beside `'me' in owners`, My Drive only, the bin included; CSV `Owner,id,name,JSON`; exit 60 whenever no row was printed, none and every failure alike (`ScriptProject.list` reads none only from GAM's "Got 0 … for P") |
 | `print devices query email:P fields … userfields … formatjson` | 4367-4375 | doPrintCIDevices: the service account as the admin (before any argument is read); every view; each device's users attached; CSV `name,JSON`; the scope not delegated is "User: <admin>, Cloud Identity API - Devices Service/App not enabled", exit 73; a scope list without the API, exit 12 |
 
 ## Gotchas / mock-lies traps
+- **GAM's silence isn't an answer** (failure log 2026-11-06; GAM 7.50.00's source). A refreshed token it refuses
+  (`REFRESH_PERM_ERRORS`) is dropped without a word: a per-user read does `if not gmail: continue` and exits 0 with the titles
+  alone, and the devices service does `sys.exit(SYSEXITRC)`, exit 0 with nothing. So what always lists something (send-as addresses,
+  the auto-reply), and what says none with its own exit (drafts, scheduled sends, GAM's 60), reads as not read
+  (`MessageCopies.unanswered`), and so do computers on no output (a real none prints its header). A list that can be empty (filters,
+  delegates, forwarding addresses) can't tell, but sits beside those. The writes: `GamWrite.notDone`, in the executor: every
+  per-person Gmail write prints on success, so no output on exit 0 fails the step (forwarding, the auto-reply, IMAP, POP, filters,
+  delegates, send-as, trash; read in the source for each, review 2026-11-07). Not verified live: **if Google usually answers a device
+  block with `done: false`, every real block will read as failed** ("Google took this but hasn't finished it"): look at the first
+  live one, and Check Again says whether it's blocked.
 - **The mock's Gmail reads act as the person** (`gmail_read`): a non-user fails at the token (exit 50), `nogmail/<u>` is
   exit 73 with the titles alone, and any option the app doesn't send isn't modelled. Until 2026-10-19 `print
   forwardingaddresses` answered `fwd@example.com` for anyone, and removing a delegate the person didn't have passed.
@@ -235,7 +245,8 @@ it at its time on its own, with nobody signed in: the lock doesn't stop it. Slic
   <time>" (`Log.through`) with **Read the Rest**, a pull of that log from there to now (`Query.from`/`to`), added to what's
   shown or saved to the incident open. While it reads, each log says how far it's got (`IncidentLogs.readThrough`). The
   export's `about.txt` says it ("read completely through …, later events weren't read"), and reading an export back
-  understands it; a merge is read through the later of two such reads, or whole when either read was.
+  understands it. A merge stays short until a read holds what it left out (`IncidentLogs.stoppedShort`): every account, or each
+  account it was for, over as much of the window; Read the Rest starts where it stopped. Read through the latest of the widest reads.
 - **Windows:** 1, 3, 10, 15 and 30 days, and 6 months (`ActivityLogs.hours`; the Gmail log reads 30 days at most, so its
   start is held there).
 - **What's realistic** (a small domain's every-account Gmail log runs to thousands of events a day): every account's Gmail for 10 or 15 days fits one pull (well over a hundred reads); 30 days is two (the
@@ -551,7 +562,9 @@ account off them from the plan, and a to-do item's fix one press away.
 - **Do It Here** (`Draft.undo`, `Form.pickOnly`): a computer's and a recovery detail's to-do item opens Check Account for
   that person and, after the check, picks only that fix with the lock steps off (the lock is a to-do item of its own).
   The computer is matched by the Devices log's `RESOURCE_ID` as Google's device ID; one found that way but no longer
-  signed in picks nothing. With no ID match, the computer first signed in within two minutes of the registration. When
+  signed in picks nothing. With no ID match, the computer first signed in within two minutes of the registration, by the person's
+  own `createTime` only (`Computer.firstSignedIn`): Google moves `firstSyncTime` at each registration, so an old computer looks new.
+  A phone or tablet's item offers no Do It Here: Check Account's list is computers only. When
   nothing matches, nothing is picked and the computers say so, to pick by hand. A pick waits only for its own check: a
   check by hand, another person, or a run going on drops it.
 - **Done** (`LogReading.deviceWord`): the item leaves once the account's latest word on the device is an unregistration,
@@ -560,6 +573,9 @@ account off them from the plan, and a to-do item's fix one press away.
   the device, a lock or a sign-out isn't gone; approved (either log) or registered again is back, from any address, and
   gone never counts from a suspect's. Names from the Reports API's references (failure log 2026-10-22, a guessed
   device-action status).
+- **Exit 0 isn't done** (`GamWrite.notDone`): GAM exits 0 with no word on a refused token, and with "Action block in progress"
+  while Google's operation runs. Each fails the step in words, on the audit record (`ok: false`, exit 0). So does a `delete messages`
+  short of its count: GAM skips a batch on serviceNotAvailable without a word, and a scheduled email in it still goes out.
 - **The scope:** these write through Cloud Identity's devices API, so the delegation needs
   `https://www.googleapis.com/auth/cloud-identity.devices` itself; the `.readonly` form reads but can't block.
 - **The mock:** `block|delete deviceuser` builds the service first, as GAM does (`denied` 12, `badkey` 12, `noscope` 73,
@@ -630,9 +646,10 @@ Reads and this Mac only: nothing here changes the tenant.
   `name: value` joined back to the value before it (a subject can hold " | "). Not kept by the export, so not read back:
   Google's unique qualifier, and whether a value began with `'` before a formula's lead.
 - **Put together:** rows newest first; the same event in two exports once (by its content, the qualifier being gone),
-  every row of one export kept; the widest window, every account if any export was, the first address given; a log stopped
-  at its cap only while every export of it was (a later read for just the accounts that matter reaches further back, which
-  clears Still to do's "pull again"). An export that can't be read is named, the rest still shown.
+  every row of one export kept; the widest window, every account if any export was, the first address given (`Log.readBy` says
+  whether a log was only that address's); a log stopped at its cap until a read holds what it left out (`stoppedShort`; a read for
+  just some accounts clears Still to do's "pull again" for those alone, `Log.covered`). An export that can't be read is named,
+  the rest still shown.
 - **Opening fast** (2026-10-24, asked for: an incident took long to open): saved logs are read back four at once
   (`IncidentLogs.readBackAtOnce`, invariant 9: each holds its CSV's whole table while read, and a file can be 256 MB),
   each on a core of its own, and all are put together once (`IncidentLogs.evidence`, async; `merged(_:)` over every pull,
@@ -877,6 +894,16 @@ findings. Reads and this Mac only.
   else received it matches the Admin console's Gmail log search for its Message-ID.
 
 ## The report (incidents plan, slice 4, moved up at the operator's ask)
+- **What it rests on** (failure log 2026-11-06; `IncidentLogs.coverage`, `GroupsReached.coverage`, `IncidentReport.coverage`): "What this
+  report can't show", ahead of the numbers on screen and in every export: the logs read, for whom, over what; a log not read or
+  stopped short; the logs an incident normally holds and doesn't; no Gmail log; a group counted on the send, or members with no
+  address; a read not saved with the incident; a saved read that couldn't be read; the audit log read back only so far.
+- **2-Step Verification is "on" only for someone found and enrolled** (`twoStepWords`): blank when the directory isn't read or doesn't
+  hold them, "off (suspended)" for one suspended, who isn't among the next accounts at risk.
+- **Steps taken** counts what was taken: a failure, a no-result or a note is listed and not counted (`Action.isStepTaken`).
+- **A long attack never pushes the lock out of What was done:** the timeline's cap keeps the earliest moments and every admin's or
+  Google's after them, and says how many of the attacker's it left out (`Status.timelineCut`).
+- **One line a block:** a line break in anything written, an attacker's subject among them, can't forge a heading in the text.
 Asked for (2026-10-27, a week after the takeover): "a nice report I can run on the incident and export", drilling into its
 numbers ("like who does not have 2 factor on"), who was emailed, bounced and reached, verifying "someone from here contacted
 them", and "due diligence … the logs to support it and the records we need", then the review meeting, its lessons learned and

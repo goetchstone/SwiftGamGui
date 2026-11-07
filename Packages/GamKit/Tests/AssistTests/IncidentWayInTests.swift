@@ -64,7 +64,7 @@ struct IncidentWayInTests {
             IncidentReport.make(LogReading.read(Self.events, context: LogReading.Context(domains: ["example.com"], people: Reading.people, phish: phish)),
                                 record: IncidentReport.Record(title: "T", domain: "example.com", opened: Reading.event("x", "", "", at: 90).time!,
                                                               openedBy: "", reported: "", notes: [], review: IncidentReport.Review()),
-                                changes: [], evidence: [], no2SV: nil, made: Reading.event("x", "", "", at: 120).time!, madeBy: "",
+                                changes: [], evidence: [], directory: nil, made: Reading.event("x", "", "", at: 120).time!, madeBy: "",
                                 when: IncidentReportTests.when)
         }
         let picked = report("inv-1@mail.vendor.example")
@@ -94,7 +94,7 @@ struct IncidentWayInTests {
         let reading = LogReading.read(Reading.incident, context: LogReading.Context(domains: ["example.com"]))
         let wayIn = try #require(reading.wayIn)
         #expect(wayIn.candidates.isEmpty)
-        let words = IncidentReport.make(reading, record: IncidentReportTests.record, changes: [], evidence: [], no2SV: nil,
+        let words = IncidentReport.make(reading, record: IncidentReportTests.record, changes: [], evidence: [], directory: nil,
                                         made: IncidentReportTests.at(120), madeBy: "", when: IncidentReportTests.when).wayInWords(IncidentReportTests.when)
         #expect(words.hasPrefix("Not found yet: the logs read show no email from outside reaching carol@example.com in the 72 hours"))
         #expect(!words.contains("0 emails"))

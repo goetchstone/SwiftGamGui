@@ -953,6 +953,47 @@ struct LogReadingTests {
         let runAfter = LogReading.read(two, context: LogReading.Context(pulled: [pulled(trashed: 1, at: later.addingTimeInterval(60))],
                                                                        nobodyHas: [nobody()]))
         #expect(runAfter.done.isEmpty && runAfter.emailsToPull.contains(phish), "a run after the check found copies again")
+
+        // A later Find showing a copy, or unsure, takes back "nobody has it" and an earlier run; a run after it decides again.
+        let notGone = LogReading.NobodyHas(messageID: phish, at: later, by: "admin@example.com", gone: false)
+        let foundAgain = LogReading.read(two, context: LogReading.Context(nobodyHas: [nobody(at: at), notGone]))
+        #expect(foundAgain.done.isEmpty && foundAgain.emailsToPull.contains(phish), "the newest Find decides")
+        #expect(foundAgain.toDo.first { $0.words.contains(phish) }?.words.hasSuffix("Phishing's Find last showed a mailbox with it, or couldn't search them all.") == true)
+        let overRun = LogReading.read(two, context: LogReading.Context(pulled: [pulled(steps: 1, trashed: 1, at: at)], nobodyHas: [notGone]))
+        #expect(overRun.done.isEmpty, "a copy found after a whole run")
+        let thenRun = LogReading.read(two, context: LogReading.Context(pulled: [pulled(steps: 1, trashed: 1, at: later.addingTimeInterval(60))], nobodyHas: [notGone]))
+        #expect(thenRun.done.map(\.done?.how) == [.trashed], "a whole run after that copy was found")
+
+        // A delivery the log shows after the last look puts the email back; one before it doesn't. Any Message-ID spelling counts.
+        func delivered(minutes: Int, type: String = "2") -> LogReading.Event {
+            Self.event("gmail", "dana@example.com", "delivery", at: minutes,
+                       ["event_info.mail_event_type": type, "message_info.rfc2822_message_id": "phish-1@mail.example.com"])
+        }
+        let lookedAt = at // minute 60
+        let delivery = LogReading.read(two + [delivered(minutes: 100)], context: LogReading.Context(nobodyHas: [nobody(at: lookedAt)]))
+        #expect(delivery.done.isEmpty && delivery.emailsToPull.contains(phish))
+        #expect(delivery.toDo.first { $0.words.contains(phish) }?.words.hasSuffix("The log shows it after Phishing last looked, so find it again.") == true)
+        #expect(LogReading.read(two + [delivered(minutes: 50)], context: LogReading.Context(nobodyHas: [nobody(at: lookedAt)])).done.count == 1, "before the look")
+        #expect(LogReading.read(two + [delivered(minutes: 100)], context: LogReading.Context(pulled: [pulled(steps: 1, trashed: 1, at: lookedAt)])).done.isEmpty, "after a whole run")
+        #expect(LogReading.read(two + [delivered(minutes: 100, type: "30")], context: LogReading.Context(nobodyHas: [nobody(at: lookedAt)])).done.count == 1, "a bounce delivers nothing")
+    }
+
+    /// A phone or tablet's to-do item never offers Do It Here: Check Account's list is computers only, so it would pick a
+    /// computer by when it signed in (GamGUI's port, 2026-11-06). A computer's does.
+    @Test func aPhonesToDoItemPicksNoComputer() {
+        func item(_ type: String) -> LogReading.Task? {
+            LogReading.read(Self.incident + [Self.event("mobile", "carol@example.com", "DEVICE_REGISTER_UNREGISTER_EVENT", at: 11,
+                                                        ["ACCOUNT_STATE": "REGISTERED", "DEVICE_TYPE": type, "DEVICE_ID": "d-1"])])
+                .toDo.first { $0.kind == .deleteDevice }
+        }
+        for phone in ["ANDROID", "IOS_SYNC", "GOOGLE_SYNC"] {
+            #expect(item(phone)?.drafts.isEmpty == true && item(phone)?.words.hasSuffix("the Admin console's Devices.") == true, "\(phone)")
+            #expect(item(phone)?.words.contains("Do It Here") == false)
+        }
+        for computer in ["WINDOWS", "MAC", "MAC_OS", "LINUX", "CHROME_OS"] {
+            let drafted = item(computer)?.drafts.contains { if case .undo = $0 { true } else { false } }
+            #expect(drafted == true && item(computer)?.words.contains("Do It Here") == true, "\(computer)")
+        }
     }
 
     /// Two phishing emails with one subject are two to pull; a device's task stays until that account's latest word on it

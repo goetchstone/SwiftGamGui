@@ -59,6 +59,24 @@ struct NobodyHasStoreTests {
         #expect(!store.checks.contains { $0.messageID == "m\(NobodyHasStore.cap - 1)@mail.example.com" })
     }
 
+    /// A later Find showing a copy replaces an earlier "gone", read back as such; a check saved before `gone` was one showing it
+    /// gone, and one with anything else there isn't this format's.
+    @Test func aLaterFindTakesBackAnEarlierWord() throws {
+        var store = try NobodyHasStore(root: root)
+        try store.record(domain: "example.com", messageIDs: ["phish-1@mail.example.com"], by: "", at: Self.moment)
+        #expect(try NobodyHasStore(root: root).checks.map(\.gone) == [true])
+        try store.record(domain: "example.com", messageIDs: ["phish-2@mail.example.com"], notGone: ["phish-1@mail.example.com"], by: "",
+                         at: Self.moment.addingTimeInterval(60))
+        #expect(try NobodyHasStore(root: root).checks.map { [$0.messageID, String($0.gone)] }
+                == [["phish-2@mail.example.com", "true"], ["phish-1@mail.example.com", "false"]])
+        let old = #"{"version": 1, "checks": [{"domain": "example.com", "message_id": "a@b.c", "at": "2026-10-23T11:02:00Z", "by": ""}]}"#
+        try Data(old.utf8).write(to: file)
+        #expect(try NobodyHasStore(root: root).checks.map(\.gone) == [true])
+        let odd = #"{"version": 1, "checks": [{"domain": "example.com", "message_id": "a@b.c", "at": "2026-10-23T11:02:00Z", "by": "", "gone": "no"}]}"#
+        try Data(odd.utf8).write(to: file)
+        #expect(try NobodyHasStore(root: root, now: Self.moment).quarantined != nil)
+    }
+
     /// A file this format can't read, or holding a check it wouldn't save, is moved aside and said, never replaced.
     @Test func anUnreadableFileIsMovedAside() throws {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

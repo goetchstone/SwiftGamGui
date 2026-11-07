@@ -25,6 +25,34 @@ public struct GamWrite: GamCommand {
     public let argv: [String]
     public let action: WriteAction
 
+    /// What's wrong with a run GAM exited 0 for, for a command GAM can leave undone without a word; nil when its output says
+    /// it's done, and for every other command. The executor makes it the step's failure, so a step that didn't happen never
+    /// reads as done. GAM builds the devices service first and exits 0 with no word if a refreshed token was refused
+    /// (buildGAPICIDeviceServiceObject, handleOAuthTokenError), and exits 0 too while Google's operation is still going
+    /// (_performCIDeviceUserAction, Msg.ACTION_IN_PROGRESS); it skips a batch of messages on serviceNotAvailable the same way
+    /// (_batchDeleteModifyMessages), and a scheduled email in that batch still goes out. Every per-person Gmail write below is the
+    /// same: `if not gmail: continue` after a refused token (buildGAPIServiceObject), exit 0 with no output, and each prints on success
+    /// (read in GAM 7.50.00's source for each; review 2026-11-07), so saying nothing isn't doing it.
+    public func notDone(output: String) -> String? {
+        switch action {
+        case .setForward, .forwardOff, .setVacation, .vacationOff, .imapOff, .popOff, .deleteFilters, .addDelegate, .removeDelegate,
+             .deleteSendAs, .trashMessage:
+            return output.allSatisfy(\.isWhitespace) ? Self.saidNothing : nil
+        case .blockDeviceUser, .deleteDeviceUser:
+            guard argv.count == 3, output.contains("Device User: \(argv[2]),") else { return Self.saidNothing }
+            return output.contains("Action \(argv[0]) in progress")
+                ? "Google took this but hasn't finished it. Check the account again before counting on it." : nil
+        case .deleteMessages:
+            let wanted = argv.last?.split(separator: ",").count ?? 0
+            let deleted = output.split(whereSeparator: \.isNewline).count { $0.contains(", Deleted") }
+            return deleted >= wanted ? nil : "GAM deleted \(deleted) of \(wanted) messages and said nothing about the rest. Check the account again."
+        default:
+            return nil
+        }
+    }
+
+    static let saidNothing = "GAM exited without saying it did this, so it may not have happened. Check the account again."
+
     init(_ argv: [String], action: WriteAction) {
         self.argv = argv
         self.action = action

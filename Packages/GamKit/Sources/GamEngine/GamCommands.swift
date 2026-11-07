@@ -493,11 +493,13 @@ public enum GamCommands {
 
     /// The phones and tablets that sync `user`'s account (4563-4570; doPrintMobileDevices): `print mobile query
     /// email:<user> fields … formatjson`, the Directory API's mobile search by owner, the address lowercased and only
-    /// Google's address characters (`filterAddress`, so the query is one `field:value`). CSV `resourceId,JSON`. A refusal
-    /// is GAM's ClientAPIAccessDeniedExit, exit 12.
+    /// Google's address characters (`filterAddress`, so the query is one `field:value`). `listlimit 0`: GAM cuts every list in
+    /// the JSON to one by default (doPrintMobileDevices: `listLimit = 1`, `cleanJSON`), so a shared device listed only its first
+    /// owner, and the reader then said the second had no phone. CSV `resourceId,JSON`. A refusal is GAM's
+    /// ClientAPIAccessDeniedExit, exit 12.
     public static func printMobileDevices(user: String) throws -> GamRead {
         guard let account = filterAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
-        return GamRead(["print", "mobile", "query", "email:\(account)", "fields", mobileFields, "formatjson"])
+        return GamRead(["print", "mobile", "query", "email:\(account)", "fields", mobileFields, "listlimit", "0", "formatjson"])
     }
 
     /// What a device says: whose (`email`, which the formatjson row needs `resourceid` beside), what it is, and its syncs.

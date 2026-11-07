@@ -73,6 +73,8 @@ public enum MailboxSearch {
         guard !result.stdoutTruncated else {
             throw MessageCopies.Incomplete(reason: "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so the messages weren't all read.")
         }
-        return GamOutput.records(result.stdout).map(Message.init(record:))
+        let records = GamOutput.records(result.stdout)
+        guard result.exitCode == 60 || !records.isEmpty else { throw MessageCopies.Incomplete(reason: MessageCopies.unanswered) }
+        return records.map(Message.init(record:))
     }
 }
