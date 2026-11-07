@@ -118,8 +118,8 @@ extension CuratedCommand {
     /// GamGUI's curated commands this app runs from another screen, and why.
     public static let elsewhere: [String: String] = [
         "build.set_signature": "A signature is set on Signatures, which keeps the one it replaces so it can be put back.",
-        "build.delete_user": "An account is deleted by offboarding's Close Out, with the checks a delete needs: an alias of another "
-            + "account, a Drive transfer not finished.",
+        "build.delete_user": "An account is deleted from its page on Users (Actions, Delete Account…), with the checks a delete needs: an "
+            + "alias of another account, a Vault hold, secondary calendars, a data transfer not finished.",
     ]
 
     /// Choices GamGUI's form offers that don't run here yet, by command and field, and why.

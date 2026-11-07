@@ -126,9 +126,27 @@ public final class UserAccess {
 
     /// The secondary calendars the person owns, hidden ones included, read now and not kept: offboarding's preview
     /// warns that the transfer doesn't move them and the delete loses them. A failure is GAM's own words.
+    /// GAM skips a refused token without a word (validateCalendar, then `if not cal: continue`): the titles alone, exit 0, which reads
+    /// as none, and the delete loses what it didn't see. Its "Getting Calendars for" comes only once the service is built
+    /// (`show_gettings`, on by default and never turned off here): none without it isn't an answer.
     public func ownedSecondaryCalendars(of email: String) async -> Result<[UserCalendar], Problem> {
-        await readNow(GamCommands.printOwnedSecondaryCalendars(email: email)) { GamOutput.records($0).map(UserCalendar.init(record:)) }
+        guard let domain = setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let read = GamCommands.printOwnedSecondaryCalendars(email: email)
+        do {
+            let result = try await runner.run(read, as: domain, extraEnvironment: environment)
+            return Self.outcome(result, argv: read.argv) { GamOutput.records($0).map(UserCalendar.init(record:)) }.flatMap { calendars in
+                calendars.isEmpty && !result.stderr.contains("Getting Calendars for")
+                    ? .failure(Problem(summary: "GAM returned nothing for this person's calendars, so they may not have been read.")) : .success(calendars)
+            }
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
     }
+
+    /// The tenant reads are on now, for a change to hold its preview to.
+    public var tenant: (domain: Domain, generation: Int)? { setup.active.map { ($0, setup.generation) } }
 
     /// The person's Gmail filters, read now and not kept: offboarding's "Remove filters that forward" deletes those
     /// that forward, and its run reads them again on the plan's `domain` first. A failure is GAM's own words (Gmail off
@@ -141,6 +159,11 @@ public final class UserAccess {
     /// the transfer and the delete. A failure is GAM's own words (an admin without Vault access, say).
     public func vaultHolds(of email: String) async -> Result<[Offboarding.VaultHold], Problem> {
         await readNow(GamCommands.printVaultHolds(email: email)) { GamOutput.records($0).map(Offboarding.VaultHold.init(record:)) }
+    }
+
+    /// The data transfers from the person, read now and not kept: deleting them before one finishes loses what hasn't moved.
+    public func dataTransfers(of email: String) async -> Result<[Offboarding.DataTransfer], Problem> {
+        await readNow(GamCommands.printDataTransfers(oldOwner: email)) { GamOutput.records($0).map(Offboarding.DataTransfer.init(record:)) }
     }
 
     // MARK: Check Account (the compromised-account response): each read now, not kept, GAM's own words when it fails

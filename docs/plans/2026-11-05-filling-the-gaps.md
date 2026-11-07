@@ -1,6 +1,8 @@
 # Plan: filling the gaps
 
-**Status (2026-11-05): not started.** Nothing here is built yet.
+**Status (2026-11-07):** corrected against GamGUI's own routes and builders ("What's left of GamGUI" below). Built since this plan was
+written: the fixes GamGUI's port found (failure log 2026-11-06), Home's Jobs and Recent failures, a person's phones and computers on
+their Security tab, and Delete Account. Slices 1, 2 and 5 aren't started.
 
 The app stays free and is built for the operator's own use, so this isn't a race. A slice earns its place by being used
 or by preventing a loss; the rest is under "Not planned unless asked". What has run is in
@@ -21,6 +23,18 @@ No code and no test session: use the app, and record what ran when it comes up. 
 - **Calendars' sharing**, on a calendar the operator owns.
 - **Incident's other fixes**, the next time one is needed: filters, send-as addresses, drafts, scheduled emails, computers.
 - **Groups' managers and owners**, and the **Builder's changes** (B4), on scratch objects the operator owns.
+
+## What's left of GamGUI
+
+Compared route by route and builder by builder on 2026-11-07, by name and code, nothing run. Each has no way to run here. Built when
+asked, each on its own, because these earn their place by being used.
+
+- **Calendars** (`docs/domains/calendars.md`): delete a secondary calendar; list a calendar's events and delete one; find a calendar by
+  name across the domain (GamGUI's index); share a calendar with a group (one change per member, a background job).
+- **Many people at once** (slice 4): a signature, a department, hires from a CSV.
+- **Builder** (slice 5): sequences with Stop; the 14 sensitive reads, which need an audit record first.
+
+Left out on purpose: Sheet export (design doc §1). Not counted: running in a browser on other systems (macOS-only is deliberate).
 
 ## Slices, in order
 
@@ -55,12 +69,10 @@ Forwarding and delegates are how an attacker stays in, so this prevents a loss. 
 
 Each reader accounts for every user GAM lists, and an unknown line is unread, never absent (rule feedback 2026-10-19).
 
-### 3. Close Out and the delete (Off3)
+### 3. Close Out
 
-The last destructive flow only GamGUI has, and it finishes an offboarding: groups, org unit, suspend, aliases and archive
-after the transfer ends, then the delete (`docs/domains/offboarding.md`). Its first run is on a real leaver. Re-check
-Google's Workspace Updates first: a platform change already made one proven routine lose calendars (rule feedback
-2026-10-13).
+Beyond GamGUI, which has only the delete (built, `docs/domains/offboarding.md`). It would finish an offboarding in one place: groups,
+org unit, suspend, aliases and archive after the transfer ends. Built if the operator wants it.
 
 ### 4. Many people at once
 
@@ -74,9 +86,9 @@ already do, with the typed count, the jobs tray and a retry of what failed.
 ### 5. The Builder's remaining pieces
 
 - Sequences, with Stop (GamGUI has them).
-- An audit record for reads, so the 14 sensitive reads can run.
-- Saved reads, a Builder read kept by name with its values, if the same ones keep coming up.
-- The curated "List a shared drive's files" read.
+- An audit record for reads, so the 14 sensitive reads can run (GamGUI runs them).
+- Beyond GamGUI: saved reads, a Builder read kept by name with its values, if the same ones keep coming up; the curated "List a shared
+  drive's files" read, new to both apps.
 
 ### R. A signed download
 
@@ -86,7 +98,6 @@ before anyone else is pointed at it.
 
 ## Small, any time
 
-- Home's Recent failures card (parity audit 2026-10-28).
 - The Suspended report with Google's reason, once GAM's source shows which field carries it.
 - Refresh the parity fixtures from a pinned GamGUI clone once its catch-up to this app settles.
 
@@ -96,5 +107,4 @@ before anyone else is pointed at it.
 - Scheduled runs, other languages and Classroom sync: nothing in the operator's use needs them.
 - Removing limited Drive access: a write across many files, with a large blast radius.
 - A plain-language command finder: parked with Siri. A model would only ever draft a preview (invariant 10).
-- Calendars: find by name, share with a group, delete a calendar or an event (`docs/domains/calendars.md`).
 - Auto-update: a signed download is enough for one person's use.

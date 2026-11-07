@@ -424,6 +424,76 @@ public enum Offboarding {
     /// The secondary calendars the leaver owns: the transfer doesn't move them, and Google deletes them with the
     /// account (Workspace accounts, from 2026-10-05). A failed read is said too: it's the delete that loses them, so
     /// the operator has to look. Nil when they own none. At most five are named.
+    /// One application of a data transfer from a person (`GamCommands.printDataTransfers`): what's being moved and how far it's got.
+    public struct DataTransfer: Sendable, Equatable {
+        /// Google's ID for the transfer: an application of it is one row (doPrintShowDataTransfers).
+        public let id: String
+        public let application: String
+        /// The first of the transfer's own status and this application's that isn't "completed", else "completed": an application
+        /// that failed under a transfer Google calls completed hasn't moved.
+        public let status: String
+        /// Which transfer and application this is, to tell one begun since a preview from one it warned of.
+        public var key: String { id + "|" + application }
+
+        public init(record: GamOutput.Record) {
+            id = Fields.text(record["id"])
+            let app = Fields.text(record["application"])
+            application = app.isEmpty ? "data" : app
+            let said = [Fields.text(record["overallTransferStatusCode"]), Fields.text(record["status"])].filter { !$0.isEmpty }
+            status = said.first { PythonText.lower($0) != "completed" } ?? said.first ?? ""
+        }
+
+        /// Whatever isn't Google's "completed" hasn't moved, or may not have: a failed transfer's data is still only theirs.
+        public var isFinished: Bool { PythonText.lower(status) == "completed" }
+    }
+
+    /// Why `user`'s account can't be deleted now, or nil (the operator, 2026-10-13, and Google's help). An account on hold can't be
+    /// deleted, and Google purges what the hold kept once it is. Google deletes the secondary calendars a deleted account owns, with
+    /// their events, and nothing can be transferred after. A read that failed isn't a reason: it's a warning (`deleteWarnings`).
+    public static func deleteRefusal(user: String, holds: Result<[VaultHold], Unread>, calendars: Result<[UserCalendar], Unread>) -> String? {
+        if case .success(let held) = holds, let hold = held.first {
+            return "\(user) is on a Vault hold (\(hold.matter): \(hold.hold)\(held.count > 1 ? " and \(held.count - 1) more" : "")), and Google won't "
+                + "delete an account on hold. Check with whoever set it, then release it in Vault: it can take 24 to 48 hours to clear."
+        }
+        if case .success(let owned) = calendars, !owned.isEmpty {
+            let named = owned.prefix(5).map { "“\($0.label)”" }.joined(separator: ", ") + (owned.count > 5 ? " and \(owned.count - 5) more" : "")
+            return "\(user) owns \(owned.count) secondary calendar\(owned.count == 1 ? "" : "s"): \(named). Google deletes "
+                + "\(owned.count == 1 ? "it" : "them") with the account, events and all, and nothing can be transferred after. Hand "
+                + "\(owned.count == 1 ? "it" : "them") over first, on Offboard or in Calendar."
+        }
+        return nil
+    }
+
+    /// What to know before deleting `user`'s account: a transfer not finished, none at all, or a check that couldn't be made.
+    public static func deleteWarnings(user: String, holds: Result<[VaultHold], Unread>, calendars: Result<[UserCalendar], Unread>,
+                                      transfers: Result<[DataTransfer], Unread>) -> [String] {
+        var said: [String] = []
+        switch transfers {
+        case .failure(let unread):
+            said.append("Couldn't read \(user)'s data transfers (\(unread.reason)), so one may still be running: deleting now loses whatever "
+                        + "hasn't moved. Check in the Admin console.")
+        case .success(let all):
+            let left = all.filter { !$0.isFinished }
+            if !left.isEmpty {
+                let named = left.map { "\($0.application) (\($0.status.isEmpty ? "no status" : $0.status))" }.joined(separator: ", ")
+                said.append("A data transfer from \(user) isn't finished: \(named). Deleting now permanently loses whatever hasn't moved. Wait "
+                            + "until it shows completed.")
+            } else if all.isEmpty {
+                said.append("No data transfer from \(user) shows in Google's list. What only they own goes with the account: hand it over on "
+                            + "Offboard first if anyone needs it.")
+            }
+        }
+        if case .failure(let unread) = holds {
+            said.append("Couldn't check \(user) for Vault holds (\(unread.reason)). Google refuses to delete an account on hold, so a hold stops "
+                        + "this rather than losing anything.")
+        }
+        if case .failure(let unread) = calendars {
+            said.append("Couldn't check whether \(user) owns secondary calendars (\(unread.reason)). Google deletes them with the account: "
+                        + "check before deleting.")
+        }
+        return said
+    }
+
     public static func secondaryCalendarsWarning(user: String, calendars: Result<[UserCalendar], Unread>) -> String? {
         switch calendars {
         case .failure(let unread):
