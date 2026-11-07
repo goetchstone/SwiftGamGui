@@ -62,6 +62,10 @@ public struct MessageCopies: Sendable, Equatable {
     static let perUserExitCodes: Set<Int32> = [0, 50, 51, 60, 73]
 
     /// The answer didn't come back whole: some users weren't reported, or GAM's output passed the runner's cap.
+    /// A mailbox's read that exited 0 with nothing where GAM's "none found" is 60: GAM skips a refused token without a word
+    /// (handleOAuthTokenError, then `if not gmail: continue`), so this isn't "none".
+    public static let unanswered = "GAM returned nothing for this mailbox, so it may not have been read."
+
     public struct Incomplete: Error, Sendable, Equatable {
         public let reason: String
     }

@@ -45,6 +45,8 @@ public enum LogReading {
         public let read: Set<String>?
         public let theirs: Set<String>
         public let capped: [String: Date]
+        /// Of those, the accounts a later read holds whole past the cap, lowercased (`IncidentLogs.Log.covered`).
+        public let covered: [String: Set<String>]
         public let pulled: [Pulled]
         public let nobodyHas: [NobodyHas]
         /// The tenant's domains, lowercased: an address at one is inside (`Reach`).
@@ -70,7 +72,7 @@ public enum LogReading {
         /// attacker's needn't be pulled again to see whether a warning reached them (`Reach.unread`).
         public let gmailWhole: [Whole]
 
-        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:],
+        public init(pulledBy: String = "", read: Set<String>? = nil, theirs: Set<String> = [], capped: [String: Date] = [:], covered: [String: Set<String>] = [:],
                     pulled: [Pulled] = [], nobodyHas: [NobodyHas] = [], domains: Set<String> = [], people: [String: String]? = nil,
                     groups: [String: [String]] = [:], everyone: Set<String> = [], warnings: [String: Set<String>] = [:], phish: String? = nil,
                     swept: Set<String> = [], gmailWhole: [Whole] = []) {
@@ -78,6 +80,7 @@ public enum LogReading {
             self.read = read
             self.theirs = theirs
             self.capped = capped
+            self.covered = covered
             self.pulled = pulled
             self.nobodyHas = nobodyHas
             self.domains = domains
@@ -113,9 +116,11 @@ public enum LogReading {
         public let messageID: String
         public let at: Date
         public let by: String
+        /// No mailbox has it, every one searched. False: one has it, or Find couldn't tell, which takes back an earlier word.
+        public let gone: Bool
 
-        public init(messageID: String, at: Date, by: String) {
-            (self.messageID, self.at, self.by) = (messageID, at, by)
+        public init(messageID: String, at: Date, by: String, gone: Bool = true) {
+            (self.messageID, self.at, self.by, self.gone) = (messageID, at, by, gone)
         }
     }
 
@@ -248,6 +253,8 @@ public enum LogReading {
         /// What happened to it, in time order: the attacker's sign-ins and changes, each step of every lock (a forced
         /// sign-out, a reset, apps revoked), what Google did, and the person's own changes.
         public let timeline: [Moment]
+        /// How many of the attacker's events past the timeline's cap aren't in it, the saved logs having them.
+        public var timelineCut = 0
 
         public func words(_ when: (Date) -> String) -> String {
             switch state {
@@ -749,9 +756,12 @@ public enum LogReading {
                                  + "to block or take the account off.", [account], ips, theirs.count,
                                  [.secureAccount(account)],
                                  todo: left.map { device in
+                                    // Check Account's list is computers only: a phone's item must never pick a computer by when it
+                                    // signed in (GamGUI's port, 2026-11-06).
                                     (.deleteDevice, "Block or take \(account) off \(deviceWords(device)) that joined at the attacker's sign-in: "
-                                     + "Do It Here, or the Admin console's Devices.",
-                                     [.undo(account: account, pick: .computer(resourceID: device.parameters["RESOURCE_ID"] ?? "", registeredAt: device.time))])
+                                     + (Self.isComputer(device) ? "Do It Here, or the Admin console's Devices." : "the Admin console's Devices."),
+                                     Self.isComputer(device)
+                                        ? [.undo(account: account, pick: .computer(resourceID: device.parameters["RESOURCE_ID"] ?? "", registeredAt: device.time))] : [])
                                  }))
         }
 
@@ -1000,7 +1010,8 @@ public enum LogReading {
         // here: whose mailbox a Gmail row is isn't certain from the row alone.
         // One Phishing has trashed from every mailbox (its audit log, `Pulled`), or that its Find showed nobody here has
         // (`NobodyHas`), is done: listed with how, when and by whom, and drafted nowhere again. The latest of the two decides:
-        // a run after a check found copies again. A run that left any is still to do, saying what it left.
+        // a run after a check found copies again, and a Find that showed a copy takes back an earlier word (GamGUI's port,
+        // 2026-11-06). So does a delivery the log shows after the last look. A run that left any is still to do, saying what it left.
         var messages: [String: [Event]] = [:], order: [String] = []
         for event in events where event.log == "gmail" && acting.contains(event.ip) && isSent(event) {
             guard let id = event.parameters["message_info.rfc2822_message_id"], !id.isEmpty else { continue }
@@ -1017,6 +1028,14 @@ public enum LogReading {
             let id = bareMessageID(check.messageID)
             if checks[id].map({ $0.at < check.at }) ?? true { checks[id] = check }
         }
+        // A delivery or a resend the log shows after the last look: what that look said is out of date.
+        var newestMail: [String: Date] = [:]
+        for event in events where event.log == "gmail" {
+            guard let raw = event.parameters["message_info.rfc2822_message_id"], !raw.isEmpty, let time = event.time,
+                  let type = Int(event.parameters["event_info.mail_event_type"] ?? ""), [1, 2, 6, 35].contains(type) else { continue }
+            let bare = bareMessageID(raw)
+            if newestMail[bare].map({ $0 < time }) ?? true { newestMail[bare] = time }
+        }
         var pulledDone: Set<String> = [], doneTasks: [(Task.Kind, String, [String], Done)] = []
         for id in order {
             let theirs = messages[id] ?? []
@@ -1024,7 +1043,16 @@ public enum LogReading {
             let named = "“\(subject.isEmpty ? "(no subject)" : subject)” (\(id))"
             let accounts = unique(theirs.map(\.who).filter(isAccount)), run = runs[bareMessageID(id)], check = checks[bareMessageID(id)]
             var todo: [(Task.Kind, String, [Draft])] = []
-            if let check, run.map({ $0.at <= check.at }) ?? true {
+            let looked = [run?.at, check?.at].compactMap(\.self).max()
+            let isStale = looked.flatMap { looked in newestMail[bareMessageID(id)].map { $0 > looked } } ?? false
+            let checkIsLatest = check.map { check in run.map { $0.at <= check.at } ?? true } ?? false
+            let pull = "Pull \(named) from every mailbox: it went out from the attacker's address."
+            if isStale {
+                todo = [(.pullEmail, pull + " The log shows it after Phishing last looked, so find it again.", [.pullEmail(messageID: id, subject: subject)])]
+            } else if checkIsLatest, check?.gone == false {
+                todo = [(.pullEmail, pull + " Phishing's Find last showed a mailbox with it, or couldn't search them all.",
+                         [.pullEmail(messageID: id, subject: subject)])]
+            } else if let check, checkIsLatest {
                 pulledDone.insert(id)
                 doneTasks.append((.pullEmail, "Nobody here has \(named): Phishing's Find searched every mailbox and its Spam.", accounts,
                                   Done(how: .nobodyHasIt, at: check.at, by: check.by)))
@@ -1033,8 +1061,7 @@ public enum LogReading {
                 doneTasks.append((.pullEmail, "Pulled \(named): trashed from " + (run.mailboxes == 1 ? "the one mailbox" : "the \(run.mailboxes) mailboxes")
                                   + " that had it, every mailbox searched first.", accounts, Done(how: .trashed, at: run.at, by: run.by)))
             } else {
-                todo = [(.pullEmail, "Pull \(named) from every mailbox: it went out from the attacker's address." + (run.map { " " + $0.left } ?? ""),
-                         [.pullEmail(messageID: id, subject: subject)])]
+                todo = [(.pullEmail, pull + (run.map { " " + $0.left } ?? ""), [.pullEmail(messageID: id, subject: subject)])]
             }
             found.append(Pending(.mailFromSuspect, "\(named) was sent from " + list(unique(theirs.map(\.ip))) + ".", accounts,
                                  unique(theirs.map(\.ip)), theirs.count, [.pullEmail(messageID: id, subject: subject)], todo: todo))
@@ -1125,8 +1152,12 @@ public enum LogReading {
         var coverage: [(Task.Kind, String, [String], [Draft], Shown?)] = []
         var pullsAgain: [String] = []
         if let first = statuses.compactMap(\.attackedAt).min() {
-            let short = context.capped.filter { $0.value > first }.map(\.key).sorted()
-            let accounts = statuses.map(\.account)
+            // A read for just some accounts reaches further back for them alone: the log stays short for the rest, and the next
+            // pull is for those.
+            let all = statuses.map(\.account)
+            func covered(_ account: String, in log: String) -> Bool { context.covered[log]?.contains(account.lowercased()) == true }
+            let short = context.capped.filter { log in log.value > first && all.contains { !covered($0, in: log.key) } }.map(\.key).sorted()
+            let accounts = all.filter { account in short.contains { !covered(account, in: $0) } }
             if !short.isEmpty {
                 coverage.append((.pullAgain, "Pull the \(list(short.map(logName))) \(short.count == 1 ? "log" : "logs") again for just "
                                  + (accounts.count <= 20 ? list(accounts) : "the accounts above, 20 at a time") + ": read for every account, "
@@ -1776,20 +1807,22 @@ public enum LogReading {
         // A lock before the first suspect event these logs hold: the window may start after the attack did.
         let earlierLockAt = lockedAt == nil ? done.last(where: { lockSteps.contains($0.event) })?.time : nil
         let state: Status.State = backIn != nil ? .stillIn : whole != nil ? .locked : lockedAt != nil ? .partlyLocked : .notLocked
+        let moments = timeline(me, events, acting: acting, since: attackedAt, known: known, joined: joined)
         return Status(account: account, state: state, attackerGotIn: !entries.isEmpty, attackedAt: attackedAt, reset: reset, signOut: signOut,
                       suspended: suspended, lockedAt: lockedAt, backInAt: backIn?.time, backInFrom: backIn?.ip ?? "", triedAt: triedAt,
                       newAddresses: newAddresses, unseen: unseen, earlierLockAt: earlierLockAt,
-                      timeline: timeline(me, events, acting: acting, since: attackedAt, known: known, joined: joined))
+                      timeline: moments.kept, timelineCut: moments.cut)
     }
 
-    /// At most this many moments in an account's timeline (invariant 9): the earliest kept.
+    /// At most this many moments in an account's timeline (invariant 9): the earliest kept, and always what was done about it:
+    /// a long attack must never push the lock out of what the report shows done (GamGUI's port, 2026-11-06).
     static let timelineCap = 200
 
     /// `me`'s timeline, from the attack on: each attacker sign-in (with how it got past the challenge), failure and change
     /// from a suspect address, the device that joined at one, and the rest the attacker did a line per log; each step of
     /// every lock an admin took (a forced sign-out, a reset, apps revoked at once, recovery removed, a suspension); what
     /// Google did; and the person's own changes, said with the address when it's not one they used before the attack.
-    static func timeline(_ me: String, _ events: [Event], acting: Set<String>, since: Date?, known: (String) -> Bool, joined: [Event]) -> [Moment] {
+    static func timeline(_ me: String, _ events: [Event], acting: Set<String>, since: Date?, known: (String) -> Bool, joined: [Event]) -> (kept: [Moment], cut: Int) {
         let from = since ?? .distantPast
         var moments: [Moment] = []
         func add(_ at: Date?, _ kind: Moment.Kind, _ words: String, until: Date? = nil, count: Int = 1, plain: String? = nil) {
@@ -1894,8 +1927,10 @@ public enum LogReading {
         // Once each (a password change is in both the sign-in and account changes logs), in time order.
         var seen: Set<String> = []
         let rank = { (kind: Moment.Kind) in Moment.Kind.allCases.firstIndex(of: kind) ?? 0 }
-        return Array(moments.sorted { ($0.at, rank($0.kind), $0.words) < ($1.at, rank($1.kind), $1.words) }
-            .filter { seen.insert("\($0.at.timeIntervalSince1970)|\($0.words)").inserted }.prefix(timelineCap))
+        let once = moments.sorted { ($0.at, rank($0.kind), $0.words) < ($1.at, rank($1.kind), $1.words) }
+            .filter { seen.insert("\($0.at.timeIntervalSince1970)|\($0.words)").inserted }
+        let past = once.dropFirst(timelineCap), done = past.filter { $0.who == .admin || $0.who == .google }
+        return (Array(once.prefix(timelineCap)) + done, past.count { $0.who == .attacker })
     }
 
     /// The network an address is in, to tell a person's own from a new one: an IPv4 address itself; an IPv6 address's
@@ -2003,6 +2038,11 @@ public enum LogReading {
         case ("admin", "MOBILE_DEVICE_APPROVE"), ("admin", "MOBILE_DEVICE_CANCEL_WIPE_THEN_APPROVE"): return true
         default: return nil
         }
+    }
+
+    /// The Devices log's device is a computer: what Check Account lists.
+    static func isComputer(_ event: Event) -> Bool {
+        ["WINDOWS", "MAC", "MAC_OS", "LINUX", "CHROME_OS"].contains((event.parameters["DEVICE_TYPE"] ?? "").uppercased())
     }
 
     /// A registered device as people say it, mid-sentence: "a Windows computer (Virtual Machine, Windows 10.0.19045)".

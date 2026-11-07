@@ -240,6 +240,68 @@ final class CompromisedChangesTests {
         #expect(byTime && after.computers == ["devices/0maccarol01/deviceUsers/u2": .block], "with no ID, the time decides")
     }
 
+    /// Only the person's own `createTime` ties a computer to a registration: Google moves `firstSyncTime` at each registration, so
+    /// an old computer looks new. It's still what the screen shows when there's no `createTime`.
+    @Test func anOldComputerNeverLooksNewByItsSync() throws {
+        let synced = "2026-10-19T14:13:00Z"
+        let record = try #require(JSONValue.parse(#"{"deviceType": "WINDOWS", "name": "devices/0old", "users": [{"userEmail": "carol@example.com", "firstSyncTime": "\#(synced)", "name": "devices/0old/deviceUsers/u9"}]}"#)?.object)
+        let computer = try #require(Compromised.Computer(record: record, owner: "carol@example.com"))
+        #expect(computer.firstSync == synced && computer.firstSynced != nil && computer.firstSignedIn == nil)
+    }
+
+    /// Read the Rest on Gmail starts where the log stopped, never later: past 30 days it ends 30 days on and stays short, said,
+    /// rather than skipping the stretch between and reading whole (GamGUI's port, 2026-11-06).
+    @Test func readTheRestOnGmailSkipsNothing() async throws {
+        try await connect()
+        let now = Date(timeIntervalSince1970: 1_792_454_400), stopped = now.addingTimeInterval(-40 * 86_400)
+        let logs = IncidentLogs(setup: setup, access: access, cap: 1_000, clock: { now })
+        await logs.pull(IncidentLogs.Query(applications: [.gmail], users: [], hours: 720, ip: "", from: stopped, to: now))
+        let log = try #require(logs.pull?.logs.first)
+        guard case .success = log.rows else { Issue.record("\(log.rows)"); return }
+        #expect(log.capped && log.through == stopped.addingTimeInterval(30 * 86_400))
+        await logs.pull(IncidentLogs.Query(applications: [.gmail], users: [], hours: 720, ip: "", from: now.addingTimeInterval(-86_400), to: now))
+        #expect(logs.pull?.logs.first?.capped == false, "within 30 days: to now, whole")
+        // A read GAM refuses read through nothing.
+        try FileManager.default.createDirectory(at: state.appending(path: "nolog"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "nolog/gmail").path, contents: Data())
+        await logs.pull(IncidentLogs.Query(applications: [.gmail], users: [], hours: 720, ip: "", from: stopped, to: now))
+        let refused = try #require(logs.pull?.logs.first)
+        guard case .failure = refused.rows else { Issue.record("\(refused.rows)"); return }
+        #expect(!refused.capped && refused.through == nil)
+    }
+
+    /// A shared device's second owner has it: GAM cuts a list in the JSON to its first without `listlimit 0`.
+    @Test func aSharedDevicesSecondOwnerHasIt() async throws {
+        try await connect()
+        let check = try await checked("bob@example.com")
+        #expect(try check.devices.get().map(\.model) == ["iPad"])
+    }
+
+    /// What a report rests on, in words: what was read, for whom and over what; a log not read or stopped short; what the
+    /// incident's logs would normally hold and don't; no Gmail log; and a read that isn't saved with the incident.
+    @Test func aPullSaysWhatItRestsOn() async throws {
+        try await connect()
+        let logs = IncidentLogs(setup: setup, access: access)
+        await logs.pull(IncidentLogs.Query(applications: [.login], users: ["carol@example.com"], hours: 72, ip: "198.51.100.23"))
+        let said = IncidentLogs.coverage(of: try #require(logs.pull))
+        #expect(said[0] == "The logs read: Sign-ins (user log), for carol@example.com, over the last 3 days, from 198.51.100.23 only.", "\(said)")
+        #expect(said.contains { $0.hasPrefix("Not pulled, so nothing from them is here: ") && $0.contains(ActivityLogs.Application.gmail.name) })
+        #expect(said.contains("Without the Gmail log, who the attacker emailed and whether they were warned can't be shown."))
+        #expect(said.contains("These numbers come from a read that isn't saved with the incident, so it isn't in the evidence."))
+        let at = Date(timeIntervalSince1970: 1_792_400_000)
+        let stopped = IncidentLogs.Log(application: .gmail, rows: .success([]), hours: 720, capped: true, through: at, covered: ["carol@example.com"])
+        let failed = IncidentLogs.Log(application: .login, rows: .failure(UserAccess.Problem(summary: "No such log.")), hours: 720, capped: false)
+        let short = IncidentLogs.coverage(of: IncidentLogs.Pull(query: IncidentLogs.Query(applications: [.gmail, .login], users: [], hours: 720, ip: ""),
+                                                                logs: [stopped, failed], ended: true, fromEvidence: true))
+        #expect(short[0] == "The logs read: \(ActivityLogs.Application.gmail.name), for every account, over the last 30 days.")
+        let narrower = IncidentLogs.coverage(of: IncidentLogs.Pull(query: IncidentLogs.Query(applications: [.gmail], users: [], hours: 4_320, ip: ""),
+                                                                   logs: [IncidentLogs.Log(application: .gmail, rows: .success([]), hours: 720, capped: false)], ended: true, fromEvidence: true))
+        #expect(narrower.contains("The \(ActivityLogs.Application.gmail.name) log holds only the last 30 days of that."), "\(narrower)")
+        #expect(short.contains("The \(ActivityLogs.Application.login.name) log wasn't read: No such log."))
+        #expect(short.contains { $0.hasPrefix("The \(ActivityLogs.Application.gmail.name) log stopped short. Read completely through ") && $0.hasSuffix("Past that, read only for carol@example.com.") })
+        #expect(!short.contains { $0.contains("isn't saved") || $0.hasPrefix("Without the Gmail") })
+    }
+
     /// The rest of a run is that person's: its "already done" lock steps never carry to the next person checked, who
     /// would then lose their sign-out (review 2026-10-19). The rest itself plans only what's left.
     @Test func theRestIsThePersonsOwn() async throws {
@@ -295,6 +357,108 @@ final class CompromisedChangesTests {
         FileManager.default.createFile(atPath: state.appending(path: "quiet/carol@example.com").path, contents: Data())
         guard case .failure(let problem) = try await checked().scripts else { Issue.record("not refused"); return }
         #expect(problem.summary.contains("exit=60"), "\(problem.summary)")
+    }
+
+    /// A refused token GAM skips without a word, exit 0: what always lists something (send-as addresses, the auto-reply), and
+    /// what says "none" with its own exit (drafts, scheduled sends), each reads as not read, never as none or off. So do the
+    /// computers, where GAM exits 0 with no word and a real none still prints its header (GamGUI's port, 2026-11-06). A list that
+    /// can be empty (filters, delegates) can't tell, but sits beside these.
+    @Test func gamsSilenceIsNeverNoneOrOff() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: state.appending(path: "quiet"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "quiet/carol@example.com").path, contents: Data())
+        FileManager.default.createFile(atPath: state.appending(path: "quiet/devices").path, contents: Data())
+        let check = try await checked()
+        func unanswered<T>(_ read: Result<T, UserAccess.Problem>, line: Int = #line) -> String {
+            guard case .failure(let problem) = read else { Issue.record("read as an answer, line \(line)"); return "" }
+            return problem.summary
+        }
+        #expect(unanswered(check.sendAs) == MessageCopies.unanswered)
+        #expect(unanswered(check.autoReply) == MessageCopies.unanswered)
+        #expect(unanswered(check.drafts) == MessageCopies.unanswered)
+        #expect(unanswered(check.scheduled) == MessageCopies.unanswered)
+        #expect(unanswered(check.computers).hasPrefix("GAM exited without an answer"))
+        // A real none is still none: GAM's 60 for drafts, and the header alone for computers.
+        let dana = try await checked("dana@example.com")
+        #expect(try dana.drafts.get().isEmpty)
+        try FileManager.default.removeItem(at: state.appending(path: "quiet/devices"))
+        #expect(try await checked("bob@example.com").computers.get().isEmpty)
+        #expect(writes().isEmpty)
+    }
+
+    /// GAM exits 0 for a block it never did, one Google hasn't finished, and a batch of deletes it skipped: each step fails in
+    /// words and is on the record as such, never a false "secured" (`GamWrite.notDone`).
+    @Test func aStepGamDidntDoIsNeverDone() throws {
+        let name = "devices/0vmcarol01/deviceUsers/u1"
+        let block = try GamCommands.blockDeviceUser(name: name), remove = try GamCommands.deleteDeviceUser(name: name)
+        #expect(block.notDone(output: "Device User: \(name), Blocked\n  done: True\n") == nil)
+        #expect(remove.notDone(output: "Device User: \(name), Deleted\n") == nil)
+        #expect(block.notDone(output: "")?.hasPrefix("GAM exited without saying") == true)
+        #expect(block.notDone(output: "Device User: devices/other/deviceUsers/u1, Blocked\n")?.hasPrefix("GAM exited without saying") == true)
+        // GAM's own bytes (formatKeyValueList, currentCountNL), with its counts at either show_counts_min.
+        #expect(block.notDone(output: "Device User: \(name), Blocked (1/1)\n") == nil)
+        #expect(block.notDone(output: "Device User: \(name), Blocked: Action block in progress\n  done: False\n")?.hasPrefix("Google took this") == true)
+        #expect(remove.notDone(output: "Device User: \(name), Deleted: Action delete in progress\n")?.hasPrefix("Google took this") == true)
+        let delete = try GamCommands.deleteMessages(email: "carol@example.com", ids: ["a1", "b2", "c3"])
+        #expect(delete.notDone(output: "User: carol@example.com, Delete 3 Messages\n  User: carol@example.com, Message: a1, Deleted (1/3)\n"
+                               + "  User: carol@example.com, Message: b2, Deleted (2/3)\n  User: carol@example.com, Message: c3, Deleted (3/3)\n") == nil)
+        #expect(delete.notDone(output: "User: carol@example.com, Delete 3 Messages\n") == "GAM deleted 0 of 3 messages and said nothing about the rest. Check the account again.")
+        #expect(delete.notDone(output: "User: carol@example.com, Delete 3 Messages (1/1)\n  User: carol@example.com, Message: a1, Deleted (1/3)\n"
+                               + "  User: carol@example.com, Message: b2, Deleted (2/3)\n  User: carol@example.com, Message: c3, Deleted (3/3)\n") == nil)
+        // Every per-person Gmail write: no output is GAM skipping a refused token, and any output is its word.
+        let silent: [GamWrite] = [
+            GamCommands.forwardOff(email: "carol@example.com"), GamCommands.vacationOff(email: "carol@example.com"),
+            GamCommands.imapOff(email: "carol@example.com"), GamCommands.popOff(email: "carol@example.com"),
+            try GamCommands.trashMessages(email: "carol@example.com", ids: ["a1"]),
+            try GamCommands.deleteFilters(email: "carol@example.com", filterIDs: ["f1"]),
+            GamCommands.removeDelegate(email: "carol@example.com", delegate: "x@example.com"),
+            GamCommands.addDelegate(email: "carol@example.com", delegate: "x@example.com"),
+            try GamCommands.deleteSendAs(email: "carol@example.com", address: "x@example.com"),
+        ]
+        for write in silent {
+            #expect(write.notDone(output: "") != nil && write.notDone(output: " \n") != nil, "\(write.argv)")
+            #expect(write.notDone(output: "User: carol@example.com, said so\n") == nil, "\(write.argv)")
+        }
+        #expect(try GamCommands.resetPassword(email: "carol@example.com").notDone(output: "") == nil, "a write through the admin's own service fails out loud")
+    }
+
+    /// Through the executor and the mock's GAM: a lock step GAM skipped without a word fails, on the record, and the rest still run.
+    @Test func aLockStepGamSkippedFailsItsStep() async throws {
+        try await connect()
+        _ = try await checked()
+        var form = form()
+        form.switchedOn = [.forward]
+        let held = try await plan(form)
+        try FileManager.default.createDirectory(at: state.appending(path: "quiet"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "quiet/carol@example.com").path, contents: Data())
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+        let run = try #require(changes.run)
+        guard case .failed(let message, _)? = run.results.first else { Issue.record("\(run.results)"); return }
+        #expect(message.hasPrefix("GAM exited without saying it did this"), "\(message)")
+        #expect(AuditLog.records(at: auditURL).first?["ok"]?.bool == false)
+    }
+
+    /// Through the executor: a block Google hasn't finished, and one GAM said nothing of, fail their step, on the audit record too.
+    @Test func aBlockGamDidntFinishFailsItsStepOnTheRecord() async throws {
+        try await connect()
+        for marker in ["queued/deviceusers", "quiet/devices"] {
+            _ = try await checked()
+            var form = form()
+            form.switchedOn = []
+            form.computers = ["devices/0vmcarol01/deviceUsers/u1": .block]
+            let held = try await plan(form)
+            let file = state.appending(path: marker)
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            FileManager.default.createFile(atPath: file.path, contents: Data())
+            await changes.confirm(held, OperatorConfirmation(confirmed: true, typedAddresses: ["carol@example.com"]))
+            let run = try #require(changes.run)
+            #expect(!run.isComplete, "\(marker): \(run.results)")
+            guard case .failed(let message, _)? = run.results.first else { Issue.record("\(marker): \(run.results)"); continue }
+            #expect(message.hasPrefix(marker.hasPrefix("queued") ? "Google took this" : "GAM exited without saying"), "\(message)")
+            let end = try #require(AuditLog.records(at: auditURL).first)
+            #expect(end["ok"]?.bool == false && end["exit_code"]?.int == 0, "\(end)")
+            try FileManager.default.removeItem(at: file)
+        }
     }
 
     /// A domain whose service account can't read devices: the computers say how to grant the scope, and the rest of the check

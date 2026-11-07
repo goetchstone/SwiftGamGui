@@ -34,12 +34,17 @@ public enum ActivityLogs {
     }
 
     /// Some account's events reached the cap, so its older ones weren't read: counted per account (none given: the
-    /// whole read is one).
+    /// whole read is one). A row whose address isn't one asked (an old name, or none at all) could be any of theirs, so it
+    /// counts toward each: an extra read, never a missed one.
     public static func capped(_ rows: [Row], accounts: [String], cap: Int = cap) -> Bool {
         guard !accounts.isEmpty else { return rows.count >= cap }
-        var counts: [String: Int] = [:]
-        for row in rows { counts[row.who.lowercased(), default: 0] += 1 }
-        return counts.values.contains { $0 >= cap }
+        let asked = Set(accounts.map { $0.lowercased() })
+        var counts: [String: Int] = [:], stray = 0
+        for row in rows {
+            let who = row.who.lowercased()
+            if asked.contains(who) { counts[who, default: 0] += 1 } else { stray += 1 }
+        }
+        return stray >= cap || counts.values.contains { $0 + stray >= cap }
     }
     /// The logs an incident needs first: sign-ins, OAuth, Gmail, Access, Chat and account changes, the other ways in and out
     /// an attacker uses (sign-ins to other apps through Google, Takeout exports, phones syncing the account), Gemini (an

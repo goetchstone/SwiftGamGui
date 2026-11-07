@@ -50,6 +50,11 @@ public final class IncidentLogs {
         public let capped: Bool
         /// When capped by a whole read: the time it was read completely through.
         public internal(set) var through: Date?
+        /// Stopped short, and these accounts (lowercased) read whole past where it stopped, by a later read of just them.
+        public internal(set) var covered: Set<String> = []
+        /// Put together from reads (`merged`): the address they were read by, "" when one read any. A merged pull's query keeps the
+        /// first address given, for the reader, so it can't say whether a log was only that address's. Nil: as its pull's query.
+        public internal(set) var readBy: String?
         /// How many of its events Google flagged, and how many accounts they're of: worked out once, as the log is made, not
         /// by the screen at every redraw (2026-10-24: a 200,000-event log's took about 0.1 s on the main thread each time).
         public let flagged: Int, accounts: Int
@@ -70,12 +75,14 @@ public final class IncidentLogs {
         /// `scope`: the accounts a read with no address filter was for (empty: every account), to work out `whole` from its rows;
         /// nil for a read that can't say. `whole` given instead: a log put together from reads, theirs.
         init(application: ActivityLogs.Application, rows: Result<[ActivityLogs.Row], UserAccess.Problem>, hours: Int, capped: Bool,
-             through: Date? = nil, scope: [String]? = nil, whole: [Whole] = []) {
+             through: Date? = nil, covered: Set<String> = [], readBy: String? = nil, scope: [String]? = nil, whole: [Whole] = []) {
             self.application = application
             self.rows = rows
             self.hours = hours
             self.capped = capped
             self.through = through
+            self.covered = covered
+            self.readBy = readBy
             let read = (try? rows.get()) ?? []
             flagged = read.count { $0.flagged }
             accounts = Set(read.map(\.who)).count
@@ -266,10 +273,21 @@ public final class IncidentLogs {
     private static func read(_ application: ActivityLogs.Application, _ query: Query, cap: Int, now: Date, _ access: UserAccess,
                              _ tenant: Domain, progress: @escaping @Sendable (ActivityLogs.Application, Report) async -> Void) async -> Log {
         await progress(application, .started)
-        // The window: the last `hours`, or from a time to a time; Gmail's at most 30 days back from its end.
-        let end = query.to ?? now
+        // The window: the last `hours`, or from a time to a time; Gmail's at most 30 days at once. Read the Rest on Gmail ends 30
+        // days past where it stopped and never starts later than that, or the stretch between would be skipped and the log claimed
+        // whole (`stopped`: what's past it stays unread, said).
+        var end = query.to ?? now
         var start = query.from ?? end.addingTimeInterval(-Double(query.hours) * 3_600)
-        if application == .gmail { start = max(start, end.addingTimeInterval(-Double(ActivityLogs.gmailMaxHours) * 3_600)) }
+        var stopped: Date?
+        if application == .gmail {
+            let most = Double(ActivityLogs.gmailMaxHours) * 3_600
+            if query.from == nil {
+                start = max(start, end.addingTimeInterval(-most))
+            } else if start.addingTimeInterval(most) < end {
+                end = start.addingTimeInterval(most)
+                stopped = end
+            }
+        }
         let span = Int((end.timeIntervalSince(start) / 3_600).rounded(.up))
         let hours = query.from == nil ? ActivityLogs.window(application, asked: query.hours) : min(max(span, 1), 4_320)
         let reported = { (events: Int, reads: Int) in await progress(application, .read(events: events, reads: reads)) }
@@ -290,7 +308,10 @@ public final class IncidentLogs {
         } estimated: { estimate in
             await progress(application, .estimate(estimate))
         }
-        return Log(application: application, rows: rows, hours: hours, capped: through != nil, through: through,
+        // A read that failed read through nothing: its words say so.
+        let answered = if case .success = rows { true } else { false }
+        let stoppedAt = through ?? (answered ? stopped : nil)
+        return Log(application: application, rows: rows, hours: hours, capped: stoppedAt != nil, through: stoppedAt,
                    scope: ip.isEmpty && events.isEmpty ? query.users : nil)
     }
 
@@ -382,10 +403,13 @@ public final class IncidentLogs {
             // Every row of one read is that read's, whatever address it carries.
             open = rows.count >= cap ? [(users, rows)] : []
         } else {
+            // A row whose address isn't one asked (an old name, or none at all) could be any of theirs, so it counts toward each:
+            // an extra read, never a missed one. With nothing to go on from, it's capped.
+            let asked = Set(users.map { $0.lowercased() })
+            let stray = rows.count { !asked.contains($0.who.lowercased()) }
             open = users.map { account in ([account], rows.filter { $0.who.lowercased() == account.lowercased() }) }
-                .filter { $0.page.count >= cap }
-            let going = Set(open.flatMap(\.users).map { $0.lowercased() })
-            capped = Dictionary(grouping: rows) { $0.who.lowercased() }.contains { !going.contains($0.key) && $0.value.count >= cap }
+                .filter { !$0.page.isEmpty && $0.page.count + stray >= cap }
+            capped = stray >= cap
         }
         while !open.isEmpty {
             let (who, page) = open.removeFirst()
@@ -563,7 +587,8 @@ public final class IncidentLogs {
         // In the app's order of the logs, as every pull put together is.
         let order = ActivityLogs.Application.allCases
         logs.sort { order.firstIndex(of: $0.application)! < order.firstIndex(of: $1.application)! }
-        return Pull(query: Query(applications: logs.map(\.application), users: about.users, hours: about.hours, ip: about.ip),
+        return Pull(query: Query(applications: logs.map(\.application), users: about.users, hours: about.hours, ip: about.ip,
+                                 from: about.from, to: about.until),
                     logs: logs, ended: true, fromEvidence: true)
     }
 
@@ -572,22 +597,26 @@ public final class IncidentLogs {
 
     /// `pulls` (at least one, oldest first) put together at once, as adding each to those before it would: each log's rows
     /// newest first, an event an earlier pull read once (by `identity`; within one pull every row stays, as two events can
-    /// match in every column), a log stopped at its cap only while every read of it was (a read for just the accounts that
-    /// matter reaches further back), and a log a pull couldn't read taken from those that could. The widest window, every
-    /// account if any pull was, and the first address given.
+    /// match in every column), a log stopped at its cap until a read holds what it left out (`stoppedShort`), and a log a pull
+    /// couldn't read taken from those that could. The widest window, every account if any pull was, and the first address given.
     nonisolated static func merged(_ pulls: [Pull]) -> Pull {
         if pulls.count == 1 { return pulls[0] }
         var logs: [Log] = []
         for application in ActivityLogs.Application.allCases {
-            let all = pulls.compactMap { pull in pull.logs.first { $0.application == application } }
-            let read = all.filter { if case .success = $0.rows { true } else { false } }
+            let all = pulls.compactMap { pull in pull.logs.first { $0.application == application }.map { (query: pull.query, log: $0) } }
+            let read = all.filter { if case .success = $0.log.rows { true } else { false } }
             guard read.count > 1 else {
                 // Read by one pull alone, or by none (the last one's words for why not).
-                if let only = read.first ?? all.last { logs.append(only) }
+                if let only = read.first ?? all.last {
+                    // The put-together query keeps the first address given, which may not be this log's.
+                    var log = only.log
+                    log.readBy = log.readBy ?? only.query.ip
+                    logs.append(log)
+                }
                 continue
             }
             var known: Set<String> = [], kept: [ActivityLogs.Row] = []
-            for log in read {
+            for (_, log) in read {
                 let rows = (try? log.rows.get()) ?? []
                 kept += rows.filter { !known.contains($0.identity) }
                 known.formUnion(rows.map(\.identity))
@@ -595,10 +624,11 @@ public final class IncidentLogs {
             let rows = kept.enumerated().sorted { a, b in
                 (a.element.date ?? .distantPast, b.offset) > (b.element.date ?? .distantPast, a.offset)
             }.map(\.element)
-            // Every read stopped short: read through the latest of them; one read whole: whole.
-            let capped = read.allSatisfy(\.capped)
-            logs.append(Log(application: application, rows: .success(rows), hours: read.map(\.hours).max() ?? 0, capped: capped,
-                            through: capped ? read.compactMap(\.through).max() : nil, whole: read.flatMap(\.whole)))
+            let short = stoppedShort(read)
+            let addresses = read.map { $0.log.readBy ?? $0.query.ip }
+            logs.append(Log(application: application, rows: .success(rows), hours: read.map(\.log.hours).max() ?? 0, capped: short.stopped,
+                            through: short.through, covered: short.covered, readBy: addresses.contains("") ? "" : addresses[0],
+                            whole: read.flatMap(\.log.whole)))
         }
         var seen: Set<String> = []
         let users = pulls.contains { $0.query.users.isEmpty } ? []
@@ -606,6 +636,33 @@ public final class IncidentLogs {
         let query = Query(applications: logs.map(\.application), users: users, hours: pulls.map(\.query.hours).max() ?? 0,
                           ip: pulls.first { !$0.query.ip.isEmpty }?.query.ip ?? "")
         return Pull(query: query, logs: logs, ended: pulls.allSatisfy(\.ended), fromEvidence: pulls.allSatisfy(\.fromEvidence))
+    }
+
+    /// Whether `reads` of one log, put together, still leave part of it unread. One that stopped short stays so until a read holds
+    /// what it left out: of every account, or of each account it was for. A read of just some accounts covers those alone (a
+    /// merge once cleared the whole log on it, so a read for one person made every account's log read whole: GamGUI's port,
+    /// 2026-11-06), a read by another address holds only that address's, and a read over less of the window can't hold what it
+    /// left out (Read the Rest says where it starts). Read through the latest of the widest reads: a later read of just some
+    /// accounts says nothing of the rest.
+    nonisolated static func stoppedShort(_ reads: [(query: Query, log: Log)]) -> (stopped: Bool, through: Date?, covered: Set<String>) {
+        let short = reads.filter(\.log.capped), whole = reads.filter { !$0.log.capped }
+        func holds(_ read: (query: Query, log: Log), whatIsLeftBy left: (query: Query, log: Log)) -> Bool {
+            let address = read.log.readBy ?? read.query.ip
+            return (address.isEmpty || address == left.log.readBy ?? left.query.ip) && (read.query.from != nil || read.log.hours >= left.log.hours)
+        }
+        func lowered(_ users: [String]) -> Set<String> { Set(users.map { $0.lowercased() }) }
+        let carried = reads.reduce(into: Set<String>()) { $0.formUnion($1.log.covered) }
+        let stopped = short.contains { left in
+            let holding = whole.filter { holds($0, whatIsLeftBy: left) }
+            if holding.contains(where: { $0.query.users.isEmpty }) { return false }
+            let accounts = holding.reduce(into: carried) { $0.formUnion(lowered($1.query.users)) }
+            return left.query.users.isEmpty || !lowered(left.query.users).isSubset(of: accounts)
+        }
+        guard stopped else { return (false, nil, []) }
+        let every = short.filter { $0.query.users.isEmpty }
+        let covered = whole.filter { read in short.allSatisfy { holds(read, whatIsLeftBy: $0) } }
+            .reduce(into: carried) { $0.formUnion(lowered($1.query.users)) }
+        return (true, (every.isEmpty ? short : every).compactMap(\.log.through).max(), covered)
     }
 
     /// Reads `query`'s logs and adds them to the pull shown (`merged`), as "Pull Again" does for the accounts that matter:
@@ -675,6 +732,8 @@ public final class IncidentLogs {
     /// passed over; one missing leaves its default (every account, any address, no window).
     struct About {
         var hours = 0, users: [String] = [], ip = ""
+        /// Read from a time to a time (Read the Rest): what a merge needs to know it reaches where another read stopped.
+        var from: Date?, until: Date?
         /// It says both whose events and from which address: what a read holding a mailbox whole is judged by.
         var saysWhose: Bool { saidAccounts && saidAddress }
         private var saidAccounts = false, saidAddress = false
@@ -694,6 +753,7 @@ public final class IncidentLogs {
                           let from = try? Date(String(line[line.index(line.startIndex, offsetBy: 5)..<to.lowerBound]), strategy: .iso8601),
                           let until = try? Date(String(line[to.upperBound...].dropLast(line.hasSuffix(".") ? 1 : 0)), strategy: .iso8601) {
                     hours = max(1, Int((until.timeIntervalSince(from) / 3_600).rounded(.up)))
+                    (self.from, self.until) = (from, until)
                 } else if line.hasPrefix("Accounts: ") {
                     let list = line.dropFirst(10).trimmingCharacters(in: CharacterSet(charactersIn: "."))
                     users = list == "every account" ? [] : list.components(separatedBy: ", ")
@@ -789,6 +849,36 @@ public final class IncidentLogs {
         return about.users.isEmpty && !about.ip.isEmpty ? about.ip : nil
     }
 
+    /// What a pull's numbers rest on and what they can't show, in the words the other screens use: a report gets handed on
+    /// without them (GamGUI's port, 2026-11-06: a capped or unread log could give a clean-looking report).
+    public nonisolated static func coverage(of pull: Pull) -> [String] {
+        let read = pull.logs.filter { if case .success = $0.rows { true } else { false } }
+        let query = pull.query
+        let who = query.users.isEmpty ? "every account" : query.users.joined(separator: ", ")
+        let onlyByIt = !query.ip.isEmpty && pull.logs.allSatisfy { ($0.readBy ?? query.ip) == query.ip }
+        var said = ["The logs read: \(read.isEmpty ? "none" : read.map(\.application.name).joined(separator: ", ")), for \(who), over the last "
+            + window(query.hours) + (onlyByIt ? ", from \(query.ip) only." : ".")]
+        for log in pull.logs {
+            if case .failure(let problem) = log.rows { said.append("The \(log.application.name) log wasn't read: \(problem.summary)") }
+        }
+        for log in read where log.capped {
+            let also = log.covered.isEmpty ? "" : " Past that, read only for \(log.covered.sorted().joined(separator: ", "))."
+            let far = log.through.map { "Read completely through \(time($0)): later events weren't read." } ?? "Older events past the cap weren't read."
+            said.append("The \(log.application.name) log stopped short. \(far)\(also)")
+        }
+        for log in read where log.hours < query.hours {
+            said.append("The \(log.application.name) log holds only the last \(window(log.hours)) of that.")
+        }
+        let pulled = Set(pull.logs.map(\.application))
+        let missing = ActivityLogs.incidentDefault.filter { !pulled.contains($0) }
+        if !missing.isEmpty { said.append("Not pulled, so nothing from them is here: \(missing.map(\.name).joined(separator: ", ")).") }
+        if !read.contains(where: { $0.application == .gmail }) {
+            said.append("Without the Gmail log, who the attacker emailed and whether they were warned can't be shown.")
+        }
+        if !pull.fromEvidence { said.append("These numbers come from a read that isn't saved with the incident, so it isn't in the evidence.") }
+        return said
+    }
+
     nonisolated static func about(_ pull: Pull, read: [Log], unread: [Log], exported: String) -> String {
         let query = pull.query
         let span: String = if let from = query.from { "From \(time(from)) to \(time(query.to ?? .now))." } else {
@@ -799,10 +889,11 @@ public final class IncidentLogs {
                      "From IP address: " + (query.ip.isEmpty ? "any" : query.ip) + ".", ""]
         for log in read {
             let count = (try? log.rows.get().count) ?? 0
+            let also = log.covered.isEmpty ? "" : ", and past that only for \(log.covered.sorted().joined(separator: ", "))"
             let stopped: String = if !log.capped { "" } else if let through = log.through {
-                "; read completely through \(time(through)), later events weren't read"
+                "; read completely through \(time(through)), later events weren't read" + also
             } else {
-                "; older events past the cap weren't read"
+                "; older events past the cap weren't read" + also
             }
             lines.append("\(log.application.rawValue)-log.csv: the \(log.application.name) log, \(count) events"
                          + (log.hours < query.hours ? ", the last \(window(log.hours)) (the most it reads)" : "") + stopped + ".")

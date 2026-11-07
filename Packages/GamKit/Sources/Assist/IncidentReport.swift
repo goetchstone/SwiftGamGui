@@ -128,14 +128,29 @@ public struct IncidentReport: Sendable, Equatable {
     public static let gotItColumns = ["Email", "Where", "Got it", "First got", "Emails", "Subjects", "Warned", "To warn",
                                       "First contacted after", "Contacted by", "Contact subject", "Through group", "2-Step Verification"]
 
-    /// `got` as a table under `gotItColumns`; 2-Step Verification said for a person here only with the directory read (`no2SV`).
-    public static func gotItTable(_ got: [GotIt], no2SV: Set<String>?) -> Table {
+    /// What the directory holds of a person's 2-Step Verification.
+    public struct TwoStep: Sendable, Equatable {
+        public let enrolled: Bool
+        public let suspended: Bool
+
+        public init(enrolled: Bool, suspended: Bool) { (self.enrolled, self.suspended) = (enrolled, suspended) }
+    }
+
+    /// What the directory says of them: "on" only for an account found and enrolled. Blank when it isn't read, or doesn't hold
+    /// them: never "on" for what isn't known (GamGUI's port, 2026-11-06: anyone not on the list of those without it read "on").
+    public static func twoStepWords(_ address: String, _ directory: [String: TwoStep]?) -> String {
+        guard let found = directory?[address.lowercased()] else { return "" }
+        return found.enrolled ? "on" : found.suspended ? "off (suspended)" : "off"
+    }
+
+    /// `got` as a table under `gotItColumns`; 2-Step Verification said for a person here only (`twoStepWords`).
+    public static func gotItTable(_ got: [GotIt], directory: [String: TwoStep]?) -> Table {
         Table(columns: gotItColumns, rows: got.map { one in
             [.text(one.address), .text(one.inside ? "inside" : "outside"),
              .text(one.received ? "received" : "sent, no bounce or failure in the logs read"), .time(one.at), .text(String(one.emails)),
              .text(one.subjects.joined(separator: "; ")), .text(one.warned ? "yes" : ""), .text(one.toWarn ? "yes" : ""),
              .time(one.contacted?.at), .text(one.contacted?.sender ?? ""), .text(one.contacted?.subject ?? ""), .text(one.through),
-             .text(one.inside && one.mailbox ? no2SV.map { $0.contains(one.address.lowercased()) ? "off" : "on" } ?? "" : "")]
+             .text(one.inside && one.mailbox ? twoStepWords(one.address, directory) : "")]
         })
     }
 
@@ -206,6 +221,8 @@ public struct IncidentReport: Sendable, Equatable {
         public let what: String
         public let account: String
         public let source: String
+        /// A step that was taken: not one that failed or shows no result, nor a note. Listed either way.
+        public var isStepTaken = true
     }
 
     /// When the attack began, was seen, and was contained.
@@ -241,22 +258,27 @@ public struct IncidentReport: Sendable, Equatable {
     public let reached: Table
     /// Where it started: the first account taken over and the email picked as the phish that got it (Investigate).
     public let wayIn: LogReading.WayIn?
+    /// What the numbers rest on and what they can't show, in words: a report gets handed on without the screens that say it.
+    public let coverage: [String]
+    /// How many of the attacker's events past the timeline's cap aren't in it, the saved logs having them.
+    public let timelineCut: Int
 
     public static func == (a: Self, b: Self) -> Bool {
         a.record == b.record && a.made == b.made && a.madeBy == b.madeBy && a.times == b.times && a.counts == b.counts
             && a.actions == b.actions && a.standing.map { [$0.account, $0.words] } == b.standing.map { [$0.account, $0.words] }
             && a.toDo == b.toDo && a.timeline == b.timeline && a.evidence == b.evidence && a.emails == b.emails && a.reached == b.reached && a.wayIn == b.wayIn
+            && a.coverage == b.coverage && a.timelineCut == b.timelineCut
     }
 
     /// A count by its ID.
     public func count(_ id: String) -> Count? { counts.first { $0.id == id } }
 
     /// The report from `reading`. `changes` is this app's audit log's (only those to an account the attacker touched or a
-    /// person here an email of theirs reached are kept); `no2SV` the directory's people here with 2-Step Verification off,
-    /// lowercased (nil while the directory isn't read: nothing is said of it then); `when` says a time in words, as the screen
-    /// does.
-    public static func make(_ reading: LogReading.Reading, record: Record, changes: [Change], evidence: [Evidence], no2SV: Set<String>?,
-                            made: Date, madeBy: String, when: (Date) -> String) -> IncidentReport {
+    /// person here an email of theirs reached are kept); `directory` each address the directory holds, lowercased, with its
+    /// 2-Step Verification (nil while the directory isn't read: nothing is said of it then); `coverage` what the numbers rest on
+    /// and can't show; `when` says a time in words, as the screen does.
+    public static func make(_ reading: LogReading.Reading, record: Record, changes: [Change], evidence: [Evidence], directory: [String: TwoStep]?,
+                            coverage: [String] = [], made: Date, madeBy: String, when: (Date) -> String) -> IncidentReport {
         let statuses = reading.statuses
         let accounts = Set(statuses.map { $0.account.lowercased() })
         let firstSign = statuses.compactMap(\.attackedAt).min()
@@ -270,11 +292,16 @@ public struct IncidentReport: Sendable, Equatable {
             case .stillIn: "may still be in"
             }
         }
-        func twoStep(_ address: String) -> Cell { .text(no2SV.map { $0.contains(address.lowercased()) ? "off" : "on" } ?? "") }
+        func twoStep(_ address: String) -> Cell { .text(twoStepWords(address, directory)) }
+        /// Not enrolled, by the directory's word. A person still to worry about, for the next accounts at risk, is one who's active.
+        func off(_ address: String, activeOnly: Bool = false) -> Bool {
+            guard let found = directory?[address.lowercased()] else { return false }
+            return !found.enrolled && !(activeOnly && found.suspended)
+        }
 
         // Everyone the attacker's emails got to, once each, and the emails a sentence and a row each.
         let got = gotIt(reading.reaches)
-        func gotTable(_ keep: (GotIt) -> Bool) -> Table { gotItTable(got.filter(keep), no2SV: no2SV) }
+        func gotTable(_ keep: (GotIt) -> Bool) -> Table { gotItTable(got.filter(keep), directory: directory) }
         var emails: [String] = [], emailRows: [[Cell]] = []
         for reach in reading.reaches {
             let subject = reach.subject.isEmpty ? "(no subject)" : reach.subject
@@ -306,7 +333,7 @@ public struct IncidentReport: Sendable, Equatable {
         for change in changes where change.at >= since && (accounts.contains(change.target.lowercased()) || reached.contains(change.target.lowercased())) {
             let outcome = change.ok.map { $0 ? "" : " (failed)" } ?? " (no result recorded)"
             actions.append(Action(at: change.at, what: change.what + outcome + (change.by.isEmpty ? "" : " by \(change.by)"),
-                                  account: change.target, source: "This app's audit log"))
+                                  account: change.target, source: "This app's audit log", isStepTaken: change.ok == true))
         }
         for task in reading.done {
             guard let done = task.done else { continue }
@@ -329,7 +356,7 @@ public struct IncidentReport: Sendable, Equatable {
                                       source: "Google's Gmail log"))
             }
         }
-        for note in record.notes { actions.append(Action(at: note.at, what: note.text, account: "", source: "A note on the incident")) }
+        for note in record.notes { actions.append(Action(at: note.at, what: note.text, account: "", source: "A note on the incident", isStepTaken: false)) }
         actions.sort { $0.at < $1.at }
 
         let accountTable = Table(columns: ["account", "status", "the attacker got in", "first attacked", "locked", "2-Step Verification"],
@@ -354,11 +381,11 @@ public struct IncidentReport: Sendable, Equatable {
                   about: "Accounts the logs don't show locked: not locked, partly locked, or signed in to after the lock.",
                   table: accountRows { $0.state != .locked }),
         ]
-        if let no2SV {
+        if directory != nil {
             counts.append(Count(id: "accounts2SV", label: "Touched with 2-Step Verification off",
-                                number: statuses.filter { no2SV.contains($0.account.lowercased()) }.count,
-                                about: "Accounts the attacker touched that the directory shows without 2-Step Verification.",
-                                table: accountRows { no2SV.contains($0.account.lowercased()) }))
+                                number: statuses.filter { off($0.account) }.count,
+                                about: "Accounts the attacker touched that the directory shows without 2-Step Verification, suspended or not.",
+                                table: accountRows { off($0.account) }))
         }
         counts += [
             Count(id: "emails", label: "Emails the attacker sent", number: reading.reaches.count,
@@ -391,11 +418,11 @@ public struct IncidentReport: Sendable, Equatable {
                                     [.text(address), .text(accounts.contains(address.lowercased()) ? "yes" : "")]
                                 })))
         }
-        if let no2SV {
-            counts.append(Count(id: "reached2SV", label: "Got it here with 2-Step Verification off",
-                                number: got.filter { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }.count,
+        if directory != nil {
+            func hereOff(_ one: GotIt) -> Bool { one.inside && one.mailbox && off(one.address, activeOnly: true) }
+            counts.append(Count(id: "reached2SV", label: "Got it here with 2-Step Verification off", number: got.filter(hereOff).count,
                                 about: "People here an email of the attacker's got to who have 2-Step Verification off: the next accounts at risk.",
-                                table: gotTable { $0.inside && $0.mailbox && no2SV.contains($0.address.lowercased()) }))
+                                table: gotTable(hereOff)))
         }
         counts += [
             Count(id: "pulled", label: "Emails pulled from every mailbox", number: pulled.count,
@@ -407,9 +434,14 @@ public struct IncidentReport: Sendable, Equatable {
                                 about: "What no log can show done, marked done on the incident: how, when and by whom, as typed.",
                                 table: Table(columns: ["what", "how", "when", "by"], rows: byHand.map { [.text($0.task.words), .text($0.how), .time($0.at), .text($0.by)] })))
         }
+        // A step that failed, or a note, is listed and isn't a step taken.
+        let noted = actions.count { $0.source == "A note on the incident" }, untaken = actions.count { !$0.isStepTaken } - noted
+        let listedToo = [untaken > 0 ? "\(untaken) that failed or showed no result" : "", noted > 0 ? "\(noted) note\(noted == 1 ? "" : "s")" : ""]
+            .filter { !$0.isEmpty }.joined(separator: " and ")
         counts += [
-            Count(id: "actions", label: "Steps taken", number: actions.count,
-                  about: "Every step taken, oldest first, with the record that shows it.", table: actionTable),
+            Count(id: "actions", label: "Steps taken", number: actions.count(where: \.isStepTaken),
+                  about: "Every step taken, oldest first, with the record that shows it." + (listedToo.isEmpty ? "" : " Listed too: \(listedToo)."),
+                  table: actionTable),
             Count(id: "toDo", label: "Still to do", number: reading.toDo.count, about: "What the logs show is left, most urgent first.",
                   table: Table(columns: ["item", "to do"], rows: reading.toDo.map { [.text($0.id), .text($0.words)] })),
         ]
@@ -427,7 +459,7 @@ public struct IncidentReport: Sendable, Equatable {
                               toDo: reading.toDo.map { "\($0.id): \($0.words)" }, timeline: timeline, evidence: evidence, emails: emails,
                               reached: Table(columns: ["email", "Message-ID"] + LogReading.Reach.columns, rows: reading.reaches.flatMap { reach in
                                   reach.rows.map { [.text(reach.subject.isEmpty ? "(no subject)" : reach.subject), .text(reach.messageID)] + $0.map(Cell.text) }
-                              }), wayIn: reading.wayIn)
+                              }), wayIn: reading.wayIn, coverage: coverage, timelineCut: statuses.reduce(0) { $0 + $1.timelineCut })
     }
 
     // MARK: the report as text
@@ -464,16 +496,19 @@ public struct IncidentReport: Sendable, Equatable {
     /// evidence's files' SHA-256, when the export has worked them out.
     public func blocks(_ when: (Date) -> String, zone: String = "", hashes: [(file: String, sha256: String)] = []) -> [Block] {
         var out: [Block] = []
-        func heading(_ text: String) { out.append(.heading(text)) }
-        func line(_ text: String) { out.append(.line(text)) }
-        func item(_ text: String) { out.append(.item(text)) }
+        // Each on one line: a subject or a note with a line break must never read as a heading of the report's own (a text
+        // export's headings are lines; GamGUI's port, 2026-11-06).
+        func flat(_ text: String) -> String { String(text.map { $0.isNewline ? " " : $0 }) }
+        func heading(_ text: String) { out.append(.heading(flat(text))) }
+        func line(_ text: String) { out.append(.line(flat(text))) }
+        func item(_ text: String) { out.append(.item(flat(text))) }
         func field(_ label: String, _ value: String) { if !value.isEmpty { line("\(label): \(value)") } }
         func paragraphs(_ text: String) -> [String] {
             text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         }
         let review = record.review
 
-        out.append(.title(record.title))
+        out.append(.title(flat(record.title)))
         line("Domain: \(record.domain)")
         line("Opened (identified): \(when(record.opened))" + (record.openedBy.isEmpty ? "" : " by \(record.openedBy)"))
         field("How it was reported", record.reported)
@@ -490,6 +525,11 @@ public struct IncidentReport: Sendable, Equatable {
             if review.summaryDrafted {
                 line("First drafted by the on-device model from this report's counts and steps, then checked before it was kept.")
             }
+        }
+
+        if !coverage.isEmpty {
+            heading("What this report can't show")
+            for said in coverage { item(said) }
         }
 
         heading("At a glance")
@@ -531,7 +571,10 @@ public struct IncidentReport: Sendable, Equatable {
 
         heading("Timeline")
         if timeline.rows.isEmpty { line("Nothing in the logs read.") } else {
-            out.append(.table(columns: timeline.columns, rows: timeline.rows.map { $0.map { $0.words(when) } }))
+            out.append(.table(columns: timeline.columns, rows: timeline.rows.map { $0.map { flat($0.words(when)) } }))
+        }
+        if timelineCut > 0 {
+            line("The earliest events and everything done about them: \(timelineCut) more of the attacker's events are in the saved logs, not here.")
         }
 
         heading("Notes")
@@ -562,7 +605,7 @@ public struct IncidentReport: Sendable, Equatable {
         if !hashes.isEmpty {
             out.append(.gap)
             line("SHA-256 of each evidence file, to show it is unchanged:")
-            out.append(.fixed(hashes.map { "\($0.sha256)  \($0.file)" }))
+            out.append(.fixed(hashes.map { flat("\($0.sha256)  \($0.file)") }))
         }
         return out
     }

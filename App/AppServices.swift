@@ -119,8 +119,8 @@ struct AppServices {
         let calendarReads = CalendarReads(setup: setup, runner: runner)
         // What Find shows nobody has is kept, with who was connected, for the log reader (phishing.md D14).
         let phishingChanges = PhishingChanges(setup: setup, runner: runner, executor: executor)
-        phishingChanges.keepNobodyHas = { [weak setup, weak nobodyHas] domain, messageIDs, at in
-            nobodyHas?.record(domain: domain, messageIDs: messageIDs, by: setup?.connectedAdmin ?? "", at: at)
+        phishingChanges.keepNobodyHas = { [weak setup, weak nobodyHas] domain, messageIDs, notGone, at in
+            nobodyHas?.record(domain: domain, messageIDs: messageIDs, notGone: notGone, by: setup?.connectedAdmin ?? "", at: at)
         }
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor, jobs: jobs,
                            userChanges: UserChanges(executor: executor, directory: directory),

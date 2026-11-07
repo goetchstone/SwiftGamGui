@@ -415,8 +415,11 @@ final class PhishingChangesTests {
     /// an email that couldn't be searched at all is a CSV row of its own.
     @Test func pullAllNeverCallsAnUnsearchedEmailClear() async throws {
         try await connect()
-        var kept: [[String]] = []
-        changes.keepNobodyHas = { domain, ids, _ in kept.append([domain] + ids) }
+        var kept: [[String]] = [], notGone: [String] = []
+        changes.keepNobodyHas = { domain, ids, others, _ in
+            if !ids.isEmpty { kept.append([domain] + ids) }
+            notGone += others
+        }
         try FileManager.default.createDirectory(at: state.appending(path: "nogmail"), withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: state.appending(path: "nogmail/alice@example.com").path, contents: Data())
         await changes.find([Self.pasted, Self.other].joined(separator: "\n"))
@@ -424,6 +427,7 @@ final class PhishingChangesTests {
         #expect(found.withCopies.map(\.message) == [Self.message] && found.unsure.map(\.message.id) == ["CAOther+Note=0002@mail.example.com"])
         #expect(found.nobodyHas.isEmpty)
         #expect(kept.isEmpty, "an unsure email is never kept as nobody having it")
+        #expect(Set(notGone) == Set(found.withCopies.map(\.message.id) + found.unsure.map(\.message.id)), "each kept, taking back an earlier word")
         let failed = try GamCommands.MessageID(validating: "<gone@mail.example.com>")
         let rows = PhishingChanges.allCopiesRows([(failed, .failure(PhishingChanges.Problem(summary: "GAM stopped.", detail: nil)))], run: nil)
         #expect(rows == [["gone@mail.example.com", "", "not searched: GAM stopped.", "", "", ""]])
@@ -547,12 +551,15 @@ final class PhishingChangesTests {
     /// emails someone has are not. Find is a read: nothing reaches the audit log.
     @Test func findHandsOnWhatNobodyHas() async throws {
         try await connect()
-        var kept: [[String]] = []
-        changes.keepNobodyHas = { domain, ids, _ in kept.append([domain] + ids) }
+        var kept: [[String]] = [], notGone: [String] = []
+        changes.keepNobodyHas = { domain, ids, others, _ in
+            if !ids.isEmpty { kept.append([domain] + ids) }
+            notGone += others
+        }
         await changes.find([Self.pasted, Self.nobody].joined(separator: "\n"))
-        #expect(kept == [["example.com", "nobody-sent-this@mail.example.com"]])
+        #expect(kept == [["example.com", "nobody-sent-this@mail.example.com"]] && notGone == [Self.message.id])
         await changes.find(Self.pasted)
-        #expect(kept.count == 1, "someone has it")
+        #expect(kept.count == 1 && notGone == [Self.message.id, Self.message.id], "someone has it")
         #expect(AuditLog.records(at: auditURL).isEmpty)
     }
 

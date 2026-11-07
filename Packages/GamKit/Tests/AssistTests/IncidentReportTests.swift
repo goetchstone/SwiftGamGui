@@ -25,10 +25,15 @@ struct IncidentReportTests {
                                               reported: "A Google alert", notes: [IncidentReport.Note(at: at(95), text: "Called the bank.")],
                                               review: IncidentReport.Review())
 
+    /// The directory holding everyone the reader's people hold, enrolled but for `off`.
+    static func directory(_ off: Set<String>) -> [String: IncidentReport.TwoStep] {
+        Dictionary(uniqueKeysWithValues: Reading.people.keys.map { ($0.lowercased(), IncidentReport.TwoStep(enrolled: !off.contains($0), suspended: false)) })
+    }
+
     static func report(changes: [IncidentReport.Change] = [], no2SV: Set<String>? = ["dana@example.com", "alice@example.com"]) -> IncidentReport {
         IncidentReport.make(reading(), record: record, changes: changes,
                             evidence: [IncidentReport.Evidence(name: "Incident logs 2026-10-19 1500", about: "Over the last 3 days.")],
-                            no2SV: no2SV, made: at(120), madeBy: "pat@example.com", when: when)
+                            directory: no2SV.map(directory), made: at(120), madeBy: "pat@example.com", when: when)
     }
 
     /// Who each recipient was contacted by after the phish: the first email from an account here that reached them, picked as
@@ -62,7 +67,7 @@ struct IncidentReportTests {
         let alice = try #require(got.first { $0.address == "alice@example.com" })
         #expect(alice.received && alice.warned && !alice.toWarn && alice.emails == 1)
         #expect(got.first { $0.address == "team@example.com" }.map { $0.inside && !$0.mailbox } == true, "a group here not read: sent to it")
-        let table = IncidentReport.gotItTable(got, no2SV: ["dana@example.com"])
+        let table = IncidentReport.gotItTable(got, directory: Self.directory(["dana@example.com"]))
         #expect(table.columns.first == "Email" && table.rows.count == 6 && table.rows.allSatisfy { $0.count == table.columns.count })
         #expect(table.rows[2][12] == .text("off") && table.rows[0][12] == .text(""), "2SV only for a person here, with the directory read")
     }
@@ -77,7 +82,7 @@ struct IncidentReportTests {
         let accounts = try #require(report.count("accounts"))
         #expect(accounts.table.rows.map { $0[0] } == [.text("carol@example.com"), .text("dana@example.com"), .text("erin@example.com")])
         #expect(accounts.table.rows.map { $0[1] } == [.text("locked"), .text("partly locked"), .text("not locked")])
-        #expect(accounts.table.rows.map { $0[5] } == [.text("on"), .text("off"), .text("on")])
+        #expect(accounts.table.rows.map { $0[5] } == [.text("on"), .text("off"), .text("")], "erin@ isn't in this directory: unknown, never on")
         #expect(number("notLocked") == 2 && number("accounts2SV") == 1)
         #expect(number("emails") == 2, "the phish and the attacker's Re to pat@")
         #expect(report.count("emails")?.table.rows.map { $0[4] } == [.text("6"), .text("1")], "a row each email, how many it got to")
@@ -111,8 +116,68 @@ struct IncidentReportTests {
         #expect(!report.actions.contains { $0.account == "zed@example.com" }, "zed@ isn't in the incident")
         #expect(report.actions.filter { $0.source == "This app's audit log" }.count == 2, "never one from before the attack")
         #expect(report.actions.contains { $0.source == "Google's Gmail log" && $0.what.hasPrefix("Warning “Don't open “Shared file”” sent by bob@example.com: 2 of those") })
-        #expect(report.actions.last == IncidentReport.Action(at: Self.at(95), what: "Called the bank.", account: "", source: "A note on the incident"))
-        #expect(report.count("actions")?.number == report.actions.count)
+        #expect(report.actions.last == IncidentReport.Action(at: Self.at(95), what: "Called the bank.", account: "", source: "A note on the incident", isStepTaken: false))
+        // A step that failed, or a note, is listed and isn't a step taken.
+        #expect(report.count("actions")?.number == report.actions.count - 2)
+        #expect(report.count("actions")?.about.hasSuffix("Listed too: 1 that failed or showed no result and 1 note.") == true, "\(report.count("actions")?.about ?? "")")
+    }
+
+    /// 2-Step Verification is said only of those the directory holds: on for one found and enrolled, blank for one it doesn't
+    /// hold, off (suspended) for one suspended. A suspended person isn't among the next accounts at risk.
+    @Test func twoStepIsSaidOnlyOfThoseTheDirectoryHolds() {
+        typealias Step = IncidentReport.TwoStep
+        let directory = ["carol@example.com": Step(enrolled: true, suspended: false), "dana@example.com": Step(enrolled: false, suspended: true)]
+        #expect(IncidentReport.twoStepWords("Carol@Example.com", directory) == "on")
+        #expect(IncidentReport.twoStepWords("dana@example.com", directory) == "off (suspended)")
+        #expect(IncidentReport.twoStepWords("erin@example.com", directory) == "")
+        #expect(IncidentReport.twoStepWords("carol@example.com", nil) == "")
+        let report = IncidentReport.make(Self.reading(), record: Self.record, changes: [], evidence: [], directory: directory, made: Self.at(120), madeBy: "", when: Self.when)
+        #expect(report.count("accounts2SV")?.number == 1, "dana@, suspended or not")
+        #expect(report.count("reached2SV")?.table.rows.contains { $0[0] == .text("dana@example.com") } == false, "a suspended person isn't next at risk")
+    }
+
+    /// A line break in anything an attacker wrote, or a note, can't forge a heading in the text export: each block is one line.
+    @Test func aLineBreakCantForgeAHeading() {
+        var record = Self.record
+        record.notes = [IncidentReport.Note(at: Self.at(95), text: "Fine.\n\nWHERE EACH ACCOUNT STANDS\n=======\r\ncarol@: all clear\u{2028}done")]
+        let report = IncidentReport.make(Self.reading(), record: record, changes: [], evidence: [], directory: nil, made: Self.at(120), madeBy: "", when: Self.when)
+        let lines = report.text(Self.when).components(separatedBy: "\n")
+        #expect(lines.filter { $0 == "WHERE EACH ACCOUNT STANDS" }.count == 1, "the report's own heading alone")
+        #expect(!lines.contains("carol@: all clear") && !lines.contains("=======") && !report.text(Self.when).contains("\u{2028}"))
+        #expect(report.blocks(Self.when).allSatisfy { block in
+            if case .item(let text) = block { !text.contains(where: \.isNewline) } else { true }
+        })
+    }
+
+    /// What the numbers rest on goes with the report, ahead of the numbers, in the text and the Markdown alike.
+    @Test func theReportSaysWhatItRestsOn() {
+        let report = IncidentReport.make(Self.reading(), record: Self.record, changes: [], evidence: [], directory: nil,
+                                         coverage: ["The Gmail log stopped short. Read completely through 2026-10-21."], made: Self.at(120), madeBy: "", when: Self.when)
+        let text = report.text(Self.when)
+        let heading = try? #require(text.range(of: "WHAT THIS REPORT CAN'T SHOW")), glance = try? #require(text.range(of: "AT A GLANCE"))
+        #expect(heading.flatMap { a in glance.map { a.lowerBound < $0.lowerBound } } == true)
+        #expect(text.contains("• The Gmail log stopped short."))
+        #expect(report.markdown(Self.when).contains("## What this report can't show"))
+        let none = IncidentReport.make(Self.reading(), record: Self.record, changes: [], evidence: [], directory: nil, made: Self.at(120), madeBy: "", when: Self.when)
+        #expect(!none.text(Self.when).contains("CAN'T SHOW"))
+    }
+
+    /// A long attack never pushes the lock out of What was done: the earliest moments are kept, and always what was done about
+    /// them, with how many of the attacker's events aren't in the timeline said.
+    @Test func aLongAttackKeepsTheLockInWhatWasDone() throws {
+        let attacks = (0..<(LogReading.timelineCap + 50)).map { hour in
+            Reading.event("login", "carol@example.com", "login_failure", ip: Reading.attacker, at: 5 + hour * 60)
+        }
+        let late = 5 + (LogReading.timelineCap + 60) * 60
+        let events = Reading.reachEvents + attacks + [Reading.done("CHANGE_PASSWORD", at: late), Reading.done("RESET_SIGNIN_COOKIES", at: late + 1)]
+        let reading = LogReading.read(events, context: LogReading.Context(domains: ["example.com"], people: Reading.people))
+        let carol = try #require(reading.statuses.first { $0.account == "carol@example.com" })
+        #expect(carol.timeline.count > LogReading.timelineCap && carol.timelineCut > 0, "\(carol.timeline.count) \(carol.timelineCut)")
+        #expect(carol.state == .locked && carol.timeline.contains { $0.who == .admin && $0.words.hasPrefix("Password reset") })
+        let report = IncidentReport.make(reading, record: Self.record, changes: [], evidence: [], directory: nil, made: Self.at(120), madeBy: "", when: Self.when)
+        #expect(report.actions.contains { $0.what.hasPrefix("Password reset") && $0.account == "carol@example.com" })
+        #expect(report.timelineCut == carol.timelineCut + reading.statuses.filter { $0.account != carol.account }.reduce(0) { $0 + $1.timelineCut })
+        #expect(report.text(Self.when).contains("more of the attacker's events are in the saved logs, not here."))
     }
 
     /// The times: the first sign of the attacker, detected when opened, contained only once every account touched is locked.
@@ -143,7 +208,7 @@ struct IncidentReportTests {
         report = IncidentReport.make(Self.reading(), record: IncidentReport.Record(
             title: "T", domain: "example.com", opened: Self.at(90), openedBy: "", reported: "", notes: [],
             review: IncidentReport.Review(severity: "High", meeting: Self.at(200), cause: "A phishing page.", plan: "Enforce 2SV — Pat\n\n Train — Sam ")),
-            changes: [], evidence: [], no2SV: nil, made: Self.at(120), madeBy: "", when: Self.when)
+            changes: [], evidence: [], directory: nil, made: Self.at(120), madeBy: "", when: Self.when)
         let reviewed = report.text(Self.when)
         #expect(reviewed.contains("Severity: High") && reviewed.contains("Review meeting: minute 200") && reviewed.contains("How they got in: A phishing page."))
         #expect(reviewed.contains("The plan going forward:\n• Enforce 2SV — Pat\n• Train — Sam\n"))
@@ -179,7 +244,7 @@ struct IncidentReportTests {
         #expect(summary.isEmpty, "a summary alone isn't a review")
         let report = IncidentReport.make(ticked, record: IncidentReport.Record(title: "T", domain: "example.com", opened: Self.at(90), openedBy: "",
                                                                               reported: "", notes: [], review: summary),
-                                         changes: [], evidence: [], no2SV: nil, made: Self.at(120), madeBy: "", when: Self.when)
+                                         changes: [], evidence: [], directory: nil, made: Self.at(120), madeBy: "", when: Self.when)
         #expect(report.actions.contains { $0.source == "Marked done on the incident"
             && $0.what == "Done by hand (by pat@example.com): \(task.words) How: Called them." })
         #expect(report.count("byHand")?.number == 1 && report.count("pulled")?.number == 0)

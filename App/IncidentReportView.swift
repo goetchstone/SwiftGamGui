@@ -17,15 +17,18 @@ struct ReportInputs {
         let directory: String
         let madeBy: String
         let changes: Int
-        /// The 2SV list itself: the directory's key stays when only enrolment changes.
-        let no2SV: Set<String>?
+        /// 2-Step Verification itself: the directory's key stays when only enrolment changes.
+        let twoStep: [String: DirectoryIndex.TwoStep]?
+        let coverage: [String]
     }
 
     let record: IncidentStore.Record
     /// Each saved read's folder name, and what it read in a line.
     let evidence: [(name: String, about: String)]
-    /// People here with 2-Step Verification off (Reports' list), lowercased; nil while the directory isn't read.
-    let no2SV: Set<String>?
+    /// Each address the directory holds, lowercased, with its 2-Step Verification; nil while the directory isn't read.
+    let twoStep: [String: DirectoryIndex.TwoStep]?
+    /// What the numbers rest on and can't show, in words.
+    let coverage: [String]
     let directoryKey: String
     let madeBy: String
     /// Copies the incident's evidence into a new folder, each file with its SHA-256. Off the main thread.
@@ -105,6 +108,15 @@ struct IncidentReportView: View {
             Text("At the top of the report, for whoever reads it first. The on-device model can draft it from the numbers and steps "
                  + "below, never from anything the attacker wrote; you check it before it's kept.")
         }
+        if !report.coverage.isEmpty {
+            Section {
+                ForEach(report.coverage, id: \.self) { said in
+                    Text(said).font(.callout)
+                }
+            } header: {
+                Text("What this report can't show").accessibilityAddTraits(.isHeader)
+            }
+        }
         Section {
             ForEach(report.counts) { count in
                 Button { shown = count } label: {
@@ -123,7 +135,7 @@ struct IncidentReportView: View {
         } header: {
             Text("In numbers").accessibilityAddTraits(.isHeader)
         } footer: {
-            Text(inputs.no2SV == nil ? "Each number opens its list. Load the directory to see who has 2-Step Verification off."
+            Text(inputs.twoStep == nil ? "Each number opens its list. Load the directory to see who has 2-Step Verification off."
                  : "Each number opens its list. 2-Step Verification is as Reports shows it, from the directory.")
         }
         Section {

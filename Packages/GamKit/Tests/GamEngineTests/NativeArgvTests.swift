@@ -61,7 +61,7 @@ struct NativeArgvTests {
         // is written from `resourceId`, so it's among the fields.
         ("print_mobile_devices", try! GamCommands.printMobileDevices(user: "P@Example.com"),
          ["print", "mobile", "query", "email:p@example.com", "fields",
-          "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "formatjson"]),
+          "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "listlimit", "0", "formatjson"]),
         // 4367-4375 `print devices … [(query <QueryDevice>)…] … [fields <DeviceFieldNameList>] [userfields
         // <DeviceUserFieldNameList>] … [formatjson]`, 4292-4337 the field names: every view (GAM's default), with users.
         ("print_devices", try! GamCommands.printDevices(user: "P@Example.com"),

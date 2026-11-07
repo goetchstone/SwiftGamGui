@@ -5,6 +5,18 @@ import TestSupport
 
 /// The activity logs (docs/plans/2026-10-19-compromised-account.md slice 2): every log in one row shape, each event in
 /// words, what Google flagged, the addresses to filter by, and the mock answering as GAM's doReport prints.
+/// A row whose address isn't one asked (an old name, or none at all) could be any of theirs: it counts toward each, an extra read,
+/// never a missed one (GamGUI's port, 2026-11-06).
+@Test func aStrayRowCountsTowardEachAccountsCap() throws {
+    let header = "id.time,actor.email,name\n"
+    func rows(_ who: [String]) -> [ActivityLogs.Row] {
+        ActivityLogs.rows(header + who.enumerated().map { "2026-10-19T1\($0.offset):00:00Z,\($0.element),login_success\n" }.joined(), application: .login)
+    }
+    #expect(ActivityLogs.capped(rows(["old@example.com", "carol@example.com", "carol@example.com"]), accounts: ["carol@example.com", "dana@example.com"], cap: 3))
+    #expect(!ActivityLogs.capped(rows(["carol@example.com", "carol@example.com"]), accounts: ["carol@example.com", "dana@example.com"], cap: 3))
+    #expect(ActivityLogs.capped(rows(["a@example.com", "b@example.com", "c@example.com"]), accounts: ["carol@example.com"], cap: 3), "all stray")
+}
+
 @Suite("Activity logs")
 struct ActivityLogsTests {
     let mock = GamRunner(binary: Fixtures.mockGam)
