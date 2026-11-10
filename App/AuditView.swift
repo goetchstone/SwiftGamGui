@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 /// runs no `gam`. An outcome unknown (a write the app stopped in the middle of) can be marked as checked, as on Home.
 struct AuditView: View {
     let auditURL: URL
+    /// Home's All Failures in Audit: narrows to failures, then it's taken.
+    @Binding var showFailures: Bool
     @State private var query = ""
     @State private var failuresOnly = false
     @State private var page = 1
@@ -37,6 +39,11 @@ struct AuditView: View {
     var body: some View {
         content
             .task(id: ReadKey(filter: filter, page: page, reloads: reloads)) { await read() }
+            .onChange(of: showFailures, initial: true) {
+                guard showFailures else { return }
+                failuresOnly = true
+                showFailures = false
+            }
             // A new search or filter starts on its first page, as GamGUI's form does.
             .onChange(of: filter) { page = 1 }
             .onChange(of: page) {

@@ -43,6 +43,28 @@ struct AuditScreenTests {
         }
     }
 
+    /// Home's Recent failures: the newest few failed changes from the last 30 days, newest first. A record older than that ends
+    /// the read, a success or a begin record isn't one, and the failure's own words are what it says.
+    @Test func recentFailuresAreTheNewestFew() throws {
+        let now = Date(timeIntervalSince1970: 1_792_400_000), url = folder.appending(path: "audit.jsonl")
+        func line(_ daysAgo: Double, _ action: String, ok: String, _ target: String = "carol@example.com", error: String = "") -> String {
+            let ts = AuditLog.timestamp(now.addingTimeInterval(-daysAgo * 86_400))
+            let extra = error.isEmpty ? #"{"phase": "begin"}"# : #"{"error": "\#(error)"}"#
+            return #"{"ts": "\#(ts)", "action": "\#(action)", "target": "\#(target)", "\#(ok.isEmpty ? "note" : "ok")": \#(ok.isEmpty ? "1" : ok), "extra": \#(extra)}"#
+        }
+        let oldest = line(40, "suspend_user", ok: "false", error: "too old")
+        try Data((oldest + "\n" + [line(20, "suspend_user", ok: "false", error: "first"), line(15, "reset_password", ok: "true"),
+                                   line(10, "sign_out", ok: "false", error: "second"), line(5, "imap_off", ok: "", error: ""),
+                                   line(2, WriteAction.popOff.rawValue, ok: "false", "dana@example.com", error: "third"),
+                                   line(1, "delete_user", ok: "false", error: "fourth")].joined(separator: "\n") + "\n").utf8).write(to: url)
+        let three = AuditEntry.recentFailures(in: url, now: now)
+        #expect(three.map(\.summary) == ["fourth", "third", "second"])
+        #expect(three[1].actionName == "POP off" && three[1].target == "dana@example.com" && three[1].outcome == .failed)
+        #expect(AuditEntry.recentFailures(in: url, limit: 9, now: now).map(\.summary) == ["fourth", "third", "second", "first"], "never the one past 30 days")
+        #expect(AuditEntry.recentFailures(in: url, limit: 9, days: 3, now: now).count == 2)
+        #expect(AuditEntry.recentFailures(in: folder.appending(path: "none.jsonl"), now: now).isEmpty)
+    }
+
     @Test func everyQueryShowsGamGUIsPage() throws {
         let url = try log()
         #expect(AuditPage.size == fixture["constants"]!["PAGE_SIZE"]!.int)

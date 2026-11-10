@@ -1,11 +1,12 @@
 import ChangeCore
 import Directory
 import GamEngine
+import Jobs
 import Setup
 import SwiftUI
 
-/// Home: the connection, the bundled GAM, and the directory's counts. It makes no Google call of its
-/// own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's Home, plan U4).
+/// Home: the connection, the bundled GAM, the directory's counts, the newest runs and the last few failed changes. It makes no
+/// Google call of its own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's Home, plan U4).
 struct HomeView: View {
     let setup: SetupModel
     let directory: DirectoryStore
@@ -13,10 +14,15 @@ struct HomeView: View {
     let hasGam: Bool
     let executor: Executor?
     let auditURL: URL
+    let jobs: JobBoard
+    /// Opens Audit on its failures.
+    let openFailures: () -> Void
     let openSetup: () -> Void
     /// Writes that began and never ended (the app quit or crashed mid-call), read from the audit log.
     @State private var unfinished: [Executor.Unfinished] = []
     @State private var acknowledgeProblem: String?
+    /// The last few failed changes, from the audit log; nil until read.
+    @State private var failures: [AuditEntry]?
 
     var body: some View {
         Form {
@@ -52,9 +58,48 @@ struct HomeView: View {
             Section("Directory") {
                 directorySection
             }
+            Section("Jobs") {
+                // Its own view: a step of a run redraws the list, not all of Home.
+                HomeJobs(board: jobs)
+            }
+            Section("Recent failures") {
+                recentFailures
+            }
         }
         .formStyle(.grouped)
         .task { await loadUnfinished() }
+        // Read again when a run ends: by the board's counter, so a step reads nothing.
+        .task(id: jobs.finishedCount) { await loadFailures() }
+    }
+
+    @ViewBuilder private var recentFailures: some View {
+        if let failures {
+            if failures.isEmpty {
+                Text("No failed changes in the last 30 days. Older ones are in Audit.").foregroundStyle(.secondary)
+            }
+            ForEach(failures) { entry in
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(entry.actionName + (entry.target.isEmpty ? "" : " for \(entry.target)"), systemImage: "xmark.circle")
+                    Text(entry.date.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? entry.time)
+                        .font(.callout).foregroundStyle(.secondary)
+                    if !entry.summary.isEmpty {
+                        Text(entry.summary).font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            Button(failures.isEmpty ? "Open Audit's Failures" : "All Failures in Audit", action: openFailures)
+                .accessibilityHint("Opens Audit, narrowed to the changes that failed.")
+        } else {
+            HStack { ProgressView().controlSize(.small); Text("Reading the audit log…") }
+                .accessibilityElement(children: .combine)
+        }
+    }
+
+    /// The audit log can hold a million records: read it off the main actor.
+    private func loadFailures() async {
+        let url = auditURL
+        failures = await Task.detached(priority: .utility) { AuditEntry.recentFailures(in: url) }.value
     }
 
     /// The audit log can hold a million records: read it off the main actor.
@@ -153,6 +198,28 @@ struct HomeView: View {
             if let detail = problem.detail {
                 Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
             }
+        }
+    }
+}
+
+/// Home's Jobs card (GamGUI's): the newest few runs since launch, running first, each with where it stands. The tray in the toolbar
+/// has each one's steps, its failures and Stop.
+private struct HomeJobs: View {
+    let board: JobBoard
+    private static let shown = 4
+
+    var body: some View {
+        let tray = board.tray
+        if tray.rows.isEmpty {
+            Text("Nothing has run since GAM GUI started.").foregroundStyle(.secondary)
+        } else {
+            ForEach(tray.rows.prefix(Self.shown)) { job in
+                LabeledContent(job.title, value: job.status)
+                    .accessibilityElement(children: .combine)
+            }
+            let more = tray.more + max(0, tray.rows.count - Self.shown)
+            Text((more > 0 ? "And \(more) more. " : "") + "Jobs in the toolbar has each one's steps, its failures and Stop.")
+                .font(.callout).foregroundStyle(.secondary)
         }
     }
 }
