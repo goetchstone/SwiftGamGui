@@ -413,6 +413,27 @@ struct GroupStoreTests {
         #expect(reached.members.isEmpty && reached.problems.isEmpty, "example.com's groups, shown as example.org's")
     }
 
+    /// A group that lists no one isn't "nobody got it", and a member with no address isn't dropped without a word: both are said
+    /// (GamGUI's port, 2026-11-06).
+    @Test func aGroupListingNoOneAndAMemberWithNoAddressAreSaid() async throws {
+        let state = scratch.appending(path: "state")
+        try FileManager.default.createDirectory(at: state.appending(path: "groups"), withIntermediateDirectories: true)
+        try Data().write(to: state.appending(path: "groups/it@example.com"))
+        try Data(("{\"email\": \"carol@example.com\", \"group\": \"sales@example.com\", \"id\": \"1\", \"role\": \"MEMBER\", \"status\": \"ACTIVE\", \"type\": \"USER\"}\n"
+                  + "{\"group\": \"sales@example.com\", \"id\": \"2\", \"role\": \"MEMBER\", \"status\": \"ACTIVE\", \"type\": \"USER\"}\n").utf8)
+            .write(to: state.appending(path: "groups/sales@example.com"))
+        let runner = try runner(), app = app(runner)
+        let reached = GroupsReached(setup: app.setup, runner: runner)
+        reached.environment = ["GAM_MOCK_STATE": state.path]
+        try await connect("example.com", in: app.setup)
+        await reached.read(["it@example.com", "sales@example.com"])
+        #expect(reached.members == ["sales@example.com": ["carol@example.com"]], "\(reached.members)")
+        #expect(reached.problems == ["it@example.com": "GAM lists no one in it now, and who was in it when the email went isn't known"])
+        #expect(reached.nameless == ["sales@example.com": 1])
+        #expect(reached.coverage == ["The group it@example.com counts on the warning's send, not by its members: GAM lists no one in it now, and who was in it when the email went isn't known.",
+                                     "1 of sales@example.com's members have no address, so aren't listed."])
+    }
+
     /// Past the limit a group isn't read, and is said not read (invariant 9).
     @Test func pastTheLimitAGroupIsSaidNotRead() async throws {
         let runner = try runner(), app = app(runner)

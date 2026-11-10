@@ -19,8 +19,15 @@ public final class GroupsReached {
     public var members: [String: [String]] { current ? read.members : [:] }
     /// The groups read with GAM's CUSTOMER member: everyone in the organization.
     public var everyone: Set<String> { current ? read.everyone : [] }
-    /// Why a group's members weren't read, in words: GAM's failure, or the limit.
+    /// Why a group's members weren't read, in words: GAM's failure, the limit, or that it lists no one.
     public var problems: [String: String] { current ? read.problems : [:] }
+    /// How many of a read group's members have no address, so aren't listed: said, never dropped without a word.
+    public var nameless: [String: Int] { current ? read.nameless : [:] }
+    /// What the groups read mean for a report's numbers, in words.
+    public var coverage: [String] {
+        problems.sorted { $0.key < $1.key }.map { "The group \($0.key) counts on the warning's send, not by its members: \($0.value)." }
+            + nameless.sorted { $0.key < $1.key }.map { "\($0.value) of \($0.key)'s members have no address, so aren't listed." }
+    }
     /// Which reads these are: changed when a round of reads ends with anything new, and by a switch or `forget`. What a
     /// reading of them is keyed by, never the members hashed at every redraw.
     public var key: String { "\(setup.active?.name ?? "")|\(setup.generation)|\(revision)" }
@@ -32,6 +39,7 @@ public final class GroupsReached {
         var members: [String: [String]] = [:]
         var everyone: Set<String> = []
         var problems: [String: String] = [:]
+        var nameless: [String: Int] = [:]
         /// Every group asked, read or not: never asked again (but `failed`, by `forgetFailures`).
         var asked: Set<String> = []
         /// The groups whose read failed (not those past the limit).
@@ -117,8 +125,19 @@ public final class GroupsReached {
             guard self.epoch == epoch, current else { return }
             switch result {
             case .success(let found):
-                read.members[group] = found.map { Guard.normalized($0.email) }.filter { !$0.isEmpty }
-                if found.contains(where: { $0.memberType == "CUSTOMER" }) { read.everyone.insert(group) }
+                // A group that lists no one isn't "nobody got it": members are read as they are now, not as they were when the
+                // email went, so it counts on the warning's send (GamGUI's port, 2026-11-06).
+                let customer = found.contains { $0.memberType == "CUSTOMER" }
+                let others = found.filter { $0.memberType != "CUSTOMER" }.map { Guard.normalized($0.email) }
+                let named = others.filter { $0.contains("@") }
+                guard !named.isEmpty || customer else {
+                    read.problems[group] = "GAM lists no one in it now, and who was in it when the email went isn't known"
+                    read.failed.insert(group)
+                    continue
+                }
+                read.members[group] = named
+                if customer { read.everyone.insert(group) }
+                if named.count < others.count { read.nameless[group] = others.count - named.count }
                 queue += found.filter { $0.memberType == "GROUP" }.map { Guard.normalized($0.email) }
             case .failure(let problem):
                 read.problems[group] = problem.summary

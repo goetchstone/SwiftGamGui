@@ -921,7 +921,12 @@ public actor Executor {
                                            extraEnvironment: extraEnvironment)
             exitCode = ran.exitCode
             stdout = ran.stdout
-            if ran.exitCode == 0 {
+            if ran.exitCode == 0, let notDone = step.write.notDone(output: ran.stdout) {
+                // GAM exited 0 and didn't do it (`GamWrite.notDone`): this step's failure, on the record, never a false "done".
+                extra["error"] = .string(notDone)
+                result = .failed(message: notDone, kind: nil)
+                stop = nil
+            } else if ran.exitCode == 0 {
                 result = .succeeded(output: Self.masked(ran.stdout, secrets: secrets))
                 stop = nil
             } else {

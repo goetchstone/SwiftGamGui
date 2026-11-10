@@ -236,7 +236,9 @@ This is read from its source (`_processMessagesThreads`, its printers and `glmsg
   bare Message-ID, with the time and the admin connected; read and written as that file is, at most 2,000, the oldest
   dropped). The log reader shows each done, said as checked: "Nobody here has “…” (id): Phishing's Find searched every
   mailbox and its Spam", then "Checked <time> by <admin>, as Phishing's Find showed".
-  - An email unsure (a mailbox or its Spam unsearched) or that couldn't be searched is never kept: it stays to do.
+  - An email unsure (a mailbox or its Spam unsearched), or that a mailbox has, is kept as not gone (`Check.gone`, 2026-11-06): it
+    takes back an earlier "nobody has it" and an earlier whole run, and stays to do. One that couldn't be searched keeps nothing.
+  - A delivery or resend the log shows after the last look (types 1, 2, 6, 35) puts the email back: "find it again".
   - The latest fact decides: a run after a check found copies again, so the email is to do until that run is whole; a
     check after a partial run is done.
   - This covers the runs from before D13 too: Find Again on those emails shows nobody has them.

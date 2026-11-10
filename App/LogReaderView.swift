@@ -114,6 +114,8 @@ struct LogReaderView: View {
         fileprivate var read: (key: String, reading: LogReading.Reading)?
         /// What this app's audit log shows it ran since the attack, read with that reading, for the report.
         fileprivate var changes: [IncidentReport.Change] = []
+        /// How far back that read of the audit log got when its bound stopped it first; nil when it got there.
+        fileprivate var changesStopped: Date?
         /// The last report made, and what it was made of: made again only when one of those changed.
         @ObservationIgnored fileprivate var report: (made: ReportInputs.Key, report: IncidentReport)?
         /// The read under way, by its pull's key, and whether it's still wanted (not, once the reading shown is asked again).
@@ -175,7 +177,7 @@ struct LogReaderView: View {
                     return (reading, LogReaderView.changes(in: auditURL, since: LogReaderView.since(reading), to: LogReaderView.involved(reading)))
                 }.value
                 guard let self, let reading = self.reading, reading.key == key else { return }
-                if reading.wanted { (self.read, self.changes) = ((key, found.0), found.1) }
+                if reading.wanted { (self.read, self.changes, self.changesStopped) = ((key, found.0), found.1.changes, found.1.stopped) }
                 self.reading = nil
                 if let next = self.queued {
                     self.queued = nil
@@ -279,15 +281,16 @@ struct LogReaderView: View {
                                     warnings: [IncidentStore.Warning] = [], phish: String? = nil, swept: Set<String> = []) -> LogReading.Reading {
         let read = Set(pull.logs.filter { (try? $0.rows.get()) != nil }.map(\.application.rawValue))
         let theirs = Set(marks.map { LogReading.key(account: $0.account, address: $0.address) })
-        var capped: [String: Date] = [:]
+        var capped: [String: Date] = [:], covered: [String: Set<String>] = [:]
         for log in pull.logs where log.capped {
             if let oldest = ((try? log.rows.get()) ?? []).compactMap(\.date).min() { capped[log.application.rawValue] = oldest }
+            covered[log.application.rawValue] = log.covered
         }
         let runs = pulled.map { run in
             LogReading.Pulled(messageID: run.messageID, at: run.at, by: run.by, steps: run.steps, trashed: run.trashed,
                               failed: run.failed, mailboxes: run.mailboxes, searchedEverywhere: run.searchedEverywhere)
         }
-        let checks = nobodyHas.map { LogReading.NobodyHas(messageID: $0.messageID, at: $0.at, by: $0.by) }
+        let checks = nobodyHas.map { LogReading.NobodyHas(messageID: $0.messageID, at: $0.at, by: $0.by, gone: $0.gone) }
         // The warnings picked, by the email they warn about (Who it reached).
         var picked: [String: Set<String>] = [:]
         for warning in warnings { picked[warning.email, default: []].insert(warning.warning) }
@@ -296,7 +299,7 @@ struct LogReaderView: View {
             LogReading.Whole(accounts: read.accounts.map { Set($0.map { people?[$0] ?? $0 }) }, from: read.from, to: read.to)
         }
         return LogReading.read(events(pull), context: LogReading.Context(pulledBy: pull.query.ip, read: read, theirs: theirs,
-                                                                         capped: capped, pulled: runs, nobodyHas: checks,
+                                                                         capped: capped, covered: covered, pulled: runs, nobodyHas: checks,
                                                                          domains: domains, people: people, groups: groups,
                                                                          everyone: everyone, warnings: picked, phish: phish, swept: swept,
                                                                          gmailWhole: whole))
@@ -318,20 +321,26 @@ struct LogReaderView: View {
     /// first, so the read stops at the first older record), at most `PhishingAudit.scanLimit` records read and 5,000 kept
     /// (invariant 9; only the incident's count toward it, so others never push its first steps out). Phishing's trash steps
     /// are left out: the report says each email pulled once. Off the main thread.
-    nonisolated static func changes(in log: URL, since: Date?, to involved: Set<String>) -> [IncidentReport.Change] {
-        guard let since else { return [] }
-        var found: [IncidentReport.Change] = [], read = 0
+    nonisolated static func changes(in log: URL, since: Date?, to involved: Set<String>) -> (changes: [IncidentReport.Change], stopped: Date?) {
+        guard let since else { return ([], nil) }
+        var found: [IncidentReport.Change] = [], read = 0, oldest: Date?, reached = false
         AuditLog.forEachRecord(at: log) { record in
             read += 1
             guard let at = record["ts"]?.string.flatMap(AuditEntry.instant) else { return read < PhishingAudit.scanLimit }
-            guard at >= since else { return false }
+            guard at >= since else {
+                reached = true
+                return false
+            }
+            oldest = at
             guard case .bool(let ok)? = record["ok"], let action = record["action"]?.string, action != WriteAction.trashMessage.rawValue,
                   let target = record["target"]?.string, involved.contains(target.lowercased()) else { return read < PhishingAudit.scanLimit }
             found.append(IncidentReport.Change(at: at, what: WriteAction(rawValue: action)?.displayName ?? action.replacingOccurrences(of: "_", with: " "),
                                                target: target, by: record["actor"]?.string ?? "", ok: ok))
             return read < PhishingAudit.scanLimit && found.count < 5_000
         }
-        return found.reversed()
+        // Stopped by a bound with older records left: an older step isn't "none". The log simply ending isn't a stop.
+        let stopped = !reached && (read >= PhishingAudit.scanLimit || found.count >= 5_000) ? oldest : nil
+        return (found.reversed(), stopped)
     }
 
     /// The logs that couldn't be read: their events aren't in the findings, and that is said.
@@ -569,7 +578,7 @@ struct LogReaderView: View {
     private func report(of reading: LogReading.Reading, key: String, _ incident: ReportInputs) -> IncidentReport {
         let made = ReportInputs.Key(reading: key, record: incident.record, evidence: incident.evidence.map(\.name),
                                     directory: incident.directoryKey, madeBy: incident.madeBy, changes: memory.changes.count,
-                                    no2SV: incident.no2SV)
+                                    twoStep: incident.twoStep, coverage: incident.coverage)
         if let kept = memory.report, kept.made == made { return kept.report }
         let record = incident.record
         let report = IncidentReport.make(reading, record: IncidentReport.Record(
@@ -580,7 +589,11 @@ struct LogReaderView: View {
                                           improve: record.review.improve, plan: record.review.plan, summary: record.review.summary,
                                           summaryDrafted: record.review.summaryDrafted)),
             changes: memory.changes, evidence: incident.evidence.map { IncidentReport.Evidence(name: $0.name, about: $0.about) },
-            no2SV: incident.no2SV, made: Date(), madeBy: incident.madeBy, when: IncidentReportView.when)
+            directory: incident.twoStep?.mapValues { IncidentReport.TwoStep(enrolled: $0.enrolled, suspended: $0.suspended) },
+            coverage: incident.coverage + (memory.changesStopped.map {
+                ["This app's audit log was read back only to \(IncidentReportView.when($0)), so an earlier step of its own may be missing."]
+            } ?? []),
+            made: Date(), madeBy: incident.madeBy, when: IncidentReportView.when)
         memory.report = (made, report)
         return report
     }
@@ -1319,7 +1332,7 @@ private struct GotItSection: View {
         panel.allowedContentTypes = [.commaSeparatedText]
         panel.canCreateDirectories = true
         panel.message = "Everyone the attacker's emails got to, once each. It names people: keep it private."
-        let rows = IncidentReport.gotItTable(got, no2SV: nil).csv
+        let rows = IncidentReport.gotItTable(got, directory: nil).csv
         let finish: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let destination = panel.url else { return }
             Task {

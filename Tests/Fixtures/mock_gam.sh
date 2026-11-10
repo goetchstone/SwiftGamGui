@@ -108,6 +108,9 @@ token_refused() {  # <address> <Action>
   printf 'User: %s, User %s Failed: invalid_grant: Invalid email or User ID\n' "$1" "$2" 1>&2
   exit 50
 }
+# GAM_MOCK_STATE/quiet/<user>: a refresh error handleOAuthTokenError drops without a word (REFRESH_PERM_ERRORS, softErrors), so
+# buildGAPIServiceObject returns no service and each per-user read does `if not gmail: continue`: exit 0, no row, the titles alone.
+is_quiet() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/$1" ]; }
 need_user() {  # <address> <Show|Print>: a fixture-directory user, or one the mock keeps state for
   in_directory "$1" && return 0
   if [ -n "${GAM_MOCK_STATE:-}" ] && { [ -e "$GAM_MOCK_STATE/vacation/$1" ] || [ -e "$GAM_MOCK_STATE/delegates/$1" ]; }; then
@@ -402,6 +405,7 @@ fi
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "vacation" ]; then
   [ $# -eq 4 ] || invalid_arg "$5"
   need_user "$2" Show
+  if is_quiet "$2"; then exit 0; fi
   # Gmail off for this user (a GAM_MOCK_STATE/nogmail/<user> marker): GAM's per-user service refusal, in
   # the wording GamGUI's error fixture records ("<Service> Service/App not enabled"), exit 1.
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$2" ]; then
@@ -755,6 +759,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] 
   case "$max" in ''|*[!0-9]*) usage_error "Invalid argument: Expected <integer x>=0>" ;; esac
   columns="User threadId id Subject Date LabelsCount Labels"
   if ! known_user "$user"; then gam_row $columns; token_refused "$user" Print; fi
+  if is_quiet "$user"; then gam_row $columns; exit 0; fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
     printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; gam_row $columns; exit 73
   fi
@@ -784,13 +789,15 @@ fi
 # the mailbox doesn't have (messages.csv, not already deleted) failing whole, "  User: <u>, Message: <the first five>,...,
 # Delete Failed: Invalid message id(s) (a-b/N)" on stderr (entityActionFailedWarning, exit 50), the other batches done.
 # Gmail's word for a valid-looking but missing ID is approximate. With GAM_MOCK_STATE a deleted message is
-# $GAM_MOCK_STATE/deleted/<id>. Only a list of ASCII letters, digits, `-`, `_` and commas is modelled: GAM splits on
-# whitespace too, and reads a file for a list selector.
+# $GAM_MOCK_STATE/deleted/<id>. $GAM_MOCK_STATE/unavailable/<user>: Gmail's serviceNotAvailable, which _batchDeleteModifyMessages
+# passes over without a word (mcount += bcount), every batch skipped, exit 0. Only a list of ASCII letters, digits, `-`, `_` and
+# commas is modelled: GAM splits on whitespace too, and reads a file for a list selector.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "ids" ]; then
   user=$2
   [ $# -ge 6 ] || missing_arg "MessageIDEntity"
   [ $# -eq 6 ] || invalid_arg "$7"
   case "$6" in *[!A-Za-z0-9_,-]*) not_modelled "a message ID list like $6" ;; esac
+  if is_quiet "$user"; then exit 0; fi
   case "$(printf '%s' "$6" | tr '[:upper:]' '[:lower:]' | tr -d '_-')" in csvkmd|csvsubkey|csv|csvfile|file|csvdata) not_modelled "delete messages ids from $6" ;; esac
   known_user "$user" || token_refused "$user" Delete
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
@@ -807,6 +814,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "messages" ]
   while [ $# -gt 0 ]; do
     batch=""; k=0
     while [ $# -gt 0 ] && [ "$k" -lt 50 ]; do batch="$batch $1"; k=$((k + 1)); shift; done
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/unavailable/$user" ]; then done_count=$((done_count + k)); continue; fi
     bad=""
     for id in $batch; do have "$id" || bad=1; done
     if [ -n "$bad" ]; then
@@ -867,6 +875,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "messages" ] 
   { [ -n "$spamtrash" ] && [ -n "$all" ] && [ -n "$labels" ] && [ -n "$dates" ]; } \
     || not_modelled "an rfc822msgid: search other than the recipients read"
   [ -n "$query" ] || empty_arg "Query"
+  if is_quiet "$user"; then echo "User,threadId,id,Date,LabelsCount,Labels"; exit 0; fi
   set -f
   for term in $query; do
     case "$term" in
@@ -1070,6 +1079,7 @@ fi
 # that GAM takes there (doit, a count, csv…) isn't modelled, any other is GAM's invalid argument; and a suspended user's
 # mailbox isn't, as for the trash by query: what GAM says for one is unknown.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "trash" ] && [ "${4:-}" = "messages" ] && [ "${5:-}" = "ids" ]; then
+  if is_quiet "$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; then exit 0; fi
   user=$2
   [ $# -ge 6 ] || missing_arg "MessageIDEntity"
   if [ $# -gt 6 ]; then
@@ -1128,6 +1138,7 @@ fi
 #   - `all users … doit`, a domain-wide trash the app never sends, is refused as not modelled.
 if { { [ "${1:-}" = "all" ] && [ "${2:-}" = "users" ]; } || [ "${1:-}" = "user" ]; } && [ "${3:-}" = "trash" ] \
    && [ "${4:-}" = "messages" ]; then
+  if [ "${1:-}" = "user" ] && is_quiet "$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; then exit 0; fi
   entity=$1; target=${2:-}
   shift 4
   query=""; queries=0; quick=1; doit=""; max=1
@@ -1297,9 +1308,13 @@ fi
 # refusal: ClientAPIAccessDeniedExit, the error then "Reauthentication is needed", API_ACCESS_DENIED_RC 12. Not modelled:
 # Google's search beyond an owner's prefix.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
-  shift 2; fj=""; owner=""; fields=""
+  shift 2; fj=""; owner=""; fields=""; listlimit=1
   while [ $# -gt 0 ]; do
     case "$1" in
+      listlimit) need_value $# "integer x>=-1"
+        case "$2" in -1|[0-9]*) listlimit=$2 ;; *) usage_error "Invalid argument: Expected <integer x>=-1>" ;; esac
+        [ "$listlimit" = 0 ] || [ "$listlimit" = 1 ] || not_modelled "print mobile listlimit $2"
+        shift 2 ;;
       query) need_value $# "QueryMobile"
         case "$2" in *\?*|:*|*:) usage_error "Invalid Mobile Device query: $2" ;; email:?*) owner=${2#email:} ;;
           *:*) not_modelled "print mobile query $2" ;; *) usage_error "Invalid Mobile Device query: $2" ;; esac
@@ -1330,7 +1345,11 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "mobile" ]; then
   fi
   echo "resourceId,JSON"
   while IFS= read -r record; do
-    case "$record" in *"\"$owner"*) gam_row "$(json_text resourceId "$record")" "$record" ;; esac   # a prefix, as the API's
+    case "$record" in *"\"$owner"*)
+      # cleanJSON(mobile, listLimit=listLimit): GAM's default of 1 cuts a shared device's owners to the first, in the row it prints.
+      if [ "$listlimit" = 1 ]; then record=$(printf '%s' "$record" | sed -E 's/("email": \["[^"]*")(, "[^"]*")*\]/\1]/'); fi
+      gam_row "$(json_text resourceId "$record")" "$record" ;;
+    esac   # a prefix, as the API's
   done < "$GAM_MOCK_FIXTURES/mobile_devices.json"
   exit 0
 fi
@@ -1355,6 +1374,9 @@ if { [ "${1:-}" = "block" ] || [ "${1:-}" = "delete" ]; } && [ "${2:-}" = "devic
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/noscope/devices" ]; then
     printf 'User: admin@example.com, Cloud Identity API - Devices Service/App not enabled\n' 1>&2; exit 73
   fi
+  # buildGAPICIDeviceServiceObject: `if not ci: sys.exit(GM.Globals[GM.SYSEXITRC])`, and handleOAuthTokenError drops a
+  # REFRESH_PERM_ERRORS refusal without a word or a code: exit 0, nothing done, nothing said.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/devices" ]; then exit 0; fi
   [ $# -ge 3 ] || missing_arg "DeviceUserEntity"
   [ $# -eq 3 ] || not_modelled "$verb deviceuser with $4"
   name=$3
@@ -1365,6 +1387,12 @@ if { [ "${1:-}" = "block" ] || [ "${1:-}" = "delete" ]; } && [ "${2:-}" = "devic
     does_not_exist "Device User" "$name"
   fi
   case "$verb" in block) done_word=Blocked; failed_word="Block Failed" ;; *) done_word=Deleted; failed_word="Delete Failed" ;; esac
+  # Google's operation not done yet: entityActionPerformedMessage, Msg.ACTION_IN_PROGRESS, exit 0 (_performCIDeviceUserAction). It
+  # isn't done, whatever the word before it says.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/queued/deviceusers" ]; then
+    printf 'Device User: %s, %s: Action %s in progress\n  done: False\n' "$name" "$done_word" "$verb"
+    exit 0
+  fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/refused/deviceusers" ]; then
     printf 'Device User: %s, %s: Precondition check failed.\n' "$name" "$failed_word" 1>&2; exit 50
   fi
@@ -1391,6 +1419,8 @@ fi
 # own fields only, as the fixture holds them (GAM fetches only the fields named). Not modelled: Google's search beyond a
 # user's prefix, the views (company, personal), and the other options.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "devices" ]; then
+  # As `block deviceuser`: a refused token, exit 0 with no word. A real none still prints its header.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/devices" ]; then exit 0; fi
   denied='ERROR: API access Denied\nPlease make sure the Service Account Client ID: 1 is authorized for the appropriate API or scopes: Cloud Identity API - Devices\n\nRun: gam user admin@example.com update serviceaccount\n'
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/devices" ]; then printf "\n$denied" 1>&2; exit 12; fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/badkey/devices" ]; then
@@ -1806,6 +1836,7 @@ fi
 gmail_off() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$1" ]; }
 gmail_read() {  # <user> <items> <titles>: the token, the "Getting" line, and Gmail off
   need_user "$1" Print
+  if is_quiet "$1"; then printf '%s\n' "$3"; exit 0; fi
   getting "$2" "$1"
   if gmail_off "$1"; then printf 'User: %s, Gmail Service/App not enabled\n' "$1" 1>&2; printf '%s\n' "$3"; exit 73; fi
 }
@@ -1874,6 +1905,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "sendas" ]; 
   case "$5" in *[,[:space:]]*) not_modelled "a send-as list like $5" ;; esac
   address=$(lower "$5")
   need_user "$user" Delete
+  if is_quiet "$user"; then exit 0; fi
   printf 'User: %s, Delete 1 SendAs Address\n' "$user"
   if gmail_off "$user"; then printf '  User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; exit 73; fi
   if [ "$address" = "$user" ]; then
@@ -1964,6 +1996,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "delete" ] && [ "${4:-}" = "filters" ];
   case "$5" in *[!A-Za-z0-9_,-]*) not_modelled "a filter ID list like $5" ;; esac
   case "$(lower "$5" | tr -d '_-')" in csvkmd|csvsubkey|csv|csvfile|file|csvdata) not_modelled "delete filters from $5" ;; esac
   need_user "$user" Delete
+  if is_quiet "$user"; then exit 0; fi
   set -f; ids=$(printf '%s' "$5" | tr ',' ' '); set +f
   n=$(printf '%s\n' $ids | grep -c . || true); i=0; failed=""
   if [ "$n" -eq 1 ]; then noun=Filter; else noun=Filters; fi
@@ -2382,6 +2415,7 @@ fi
 
 # `gam user <email> add|create|delete delegate|delegates [convertalias] <UserEntity>`
 if [ "${1:-}" = "user" ] && { [ "${4:-}" = "delegate" ] || [ "${4:-}" = "delegates" ]; }; then
+  if is_quiet "$(lower "$2")"; then exit 0; fi
   case "${3:-}" in
     add|create) verb="Add" ;;
     delete) verb="Delete" ;;
@@ -2431,6 +2465,7 @@ fi
 # (getVacation), overwrites only the fields the command names and writes the result back — a flag or
 # date left out keeps its old value. With GAM_MOCK_STATE the mock keeps them the same way.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "vacation" ]; then
+  if is_quiet "$(lower "$2")"; then exit 0; fi
   user="$2"; shift 3
   v_on=""; v_co=""; v_do=""; v_start=""; v_end=""; v_subject=""; v_message=""; has_subject=""; has_message=""
   if is_bool "${1:-}"; then v_on="$(bool_word "$1")"; shift; fi
@@ -2476,6 +2511,7 @@ fi
 # Stricter than GAM, never looser: GAM strips the Boolean, ignores a word after `off`, and takes `on`'s action and address in any order
 # and case (so a bad action is the mock's own invalid choice; GAM reads a lone word as the address).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "forward" ]; then
+  if is_quiet "$(lower "$2")"; then exit 0; fi
   user=$2
   [ $# -ge 4 ] || missing_arg "true|false"
   boolean=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
@@ -2514,6 +2550,7 @@ fi
 # first, then per user a token (not_a_user, "Set Failed") and one Gmail settings call, Gmail off its
 # userGmailServiceNotEnabledWarning (exit 73); printed as _showImap and _showPop print the settings Gmail returns.
 if [ "${1:-}" = "user" ] && case "${3:-}" in imap|imap4|pop|pop3) true ;; *) false ;; esac; then
+  if is_quiet "$(lower "$2")"; then exit 0; fi
   user=$2; setting=$3
   [ $# -ge 4 ] || missing_arg "true|false"
   boolean=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')

@@ -67,8 +67,8 @@ public final class CompromisedChanges {
                 computer = pickable.contains(named) ? named : nil
             } else {
                 computer = registeredAt.flatMap { at in
-                    pickable.filter { ($0.firstSynced.map { abs($0.timeIntervalSince(at)) } ?? .infinity) <= 120 }
-                        .min { abs(($0.firstSynced ?? at).timeIntervalSince(at)) < abs(($1.firstSynced ?? at).timeIntervalSince(at)) }
+                    pickable.filter { ($0.firstSignedIn.map { abs($0.timeIntervalSince(at)) } ?? .infinity) <= 120 }
+                        .min { abs(($0.firstSignedIn ?? at).timeIntervalSince(at)) < abs(($1.firstSignedIn ?? at).timeIntervalSince(at)) }
                 }
             }
             guard let computer else { return false }

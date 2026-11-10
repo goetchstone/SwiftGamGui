@@ -269,7 +269,7 @@ public final class PhishingChanges {
     /// Given, after each Find, the domain and the emails it showed nobody there has (`Found.nobodyHas`: every mailbox and its
     /// Spam searched), and when: the app keeps them, for the log reader to show those emails done (D14). Never an email
     /// unsure or that couldn't be searched.
-    public var keepNobodyHas: (@MainActor (_ domain: String, _ messageIDs: [String], _ at: Date) -> Void)?
+    public var keepNobodyHas: (@MainActor (_ domain: String, _ messageIDs: [String], _ notGone: [String], _ at: Date) -> Void)?
 
     public init(setup: SetupModel, runner: AuthenticatedRunner?, executor: Executor?) {
         self.setup = setup
@@ -365,7 +365,10 @@ public final class PhishingChanges {
         // A newer search, or a switch while this one ran: it no longer speaks for what's shown.
         guard ask == asked, setup.active == domain, setup.generation == generation, results.count == messages.count else { return }
         let found = Found(results: messages.indices.compactMap { index in results[index].map { (messages[index], $0) } })
-        if !found.nobodyHas.isEmpty { keepNobodyHas?(domain.name, found.nobodyHas.map(\.message.id), Date()) }
+        // A copy or an unsure answer is kept too: it takes back an earlier word that the email was gone.
+        if !found.searches.isEmpty {
+            keepNobodyHas?(domain.name, found.nobodyHas.map(\.message.id), (found.withCopies + found.unsure).map(\.message.id), Date())
+        }
         if found.results.count == 1, case .failure(let problem) = found.results[0].result {
             shown = (.problem(problem), domain, generation)
         } else {

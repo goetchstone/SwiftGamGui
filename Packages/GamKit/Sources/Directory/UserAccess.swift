@@ -200,6 +200,12 @@ public final class UserAccess {
         do {
             let result = try await runner.run(read, as: domain, extraEnvironment: environment)
             guard result.exitCode == 0 else { throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv) }
+            // GAM builds the service first and exits 0 with no word if a refreshed token was refused; a real none still prints
+            // its header. Never a false all-clear on an attacker's computer.
+            guard !PythonText.strip(result.stdout).isEmpty else {
+                return .failure(Problem(summary: "GAM exited without an answer, so whether a computer is signed in can't be told. "
+                    + "Its sign-in may have been refused: check the service account on Setup."))
+            }
             return Self.outcome(result, argv: read.argv) { stdout in
                 GamOutput.records(stdout).compactMap { Compromised.Computer(record: $0, owner: email) }
             }
@@ -234,13 +240,19 @@ public final class UserAccess {
         }
     }
 
-    /// The auto-reply as it is now (`show vacation`), read on its own: Check Account's, never a page's cached lists.
+    /// The auto-reply as it is now (`show vacation`), read on its own: Check Account's, never a page's cached lists. GAM's
+    /// silence is unknown, never an auto-reply that's off (`MessageCopies.unanswered`).
     public func autoReply(of email: String) async -> Result<Vacation, Problem> {
-        await readNow(GamCommands.showVacation(email: email)) { Vacation(showText: $0) }
+        await readNow(GamCommands.showVacation(email: email)) { $0 }.flatMap { text in
+            text.contains("Enabled:") ? .success(Vacation(showText: text)) : .failure(Problem(summary: MessageCopies.unanswered))
+        }
     }
 
+    /// Gmail always lists the primary, so an empty list is GAM's silence, never no send-as addresses.
     public func sendAs(of email: String) async -> Result<[Compromised.SendAs], Problem> {
-        await readNow(GamCommands.printSendAs(email: email)) { GamOutput.records($0).map(Compromised.SendAs.init(record:)) }
+        await readNow(GamCommands.printSendAs(email: email)) { GamOutput.records($0).map(Compromised.SendAs.init(record:)) }.flatMap { rows in
+            rows.isEmpty ? .failure(Problem(summary: MessageCopies.unanswered)) : .success(rows)
+        }
     }
 
     /// The person's drafts, the newest `Compromised.Draft.cap`: an attacker's session can leave thousands. None is no drafts.

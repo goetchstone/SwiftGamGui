@@ -1,11 +1,13 @@
 import Foundation
 import GamEngine
 
-/// The emails Phishing's Find showed no mailbox here has, every mailbox and its Spam searched (`Search.nobodyHasIt`), by
-/// domain and Message-ID, with when and who was connected: the log reader shows such an email done, said as checked, never
-/// ticked silently (phishing.md D14). Find is a read, so the audit log never has it, and the usual outcome of Pull All for an
+/// What Phishing's Find last showed of each email, by domain and Message-ID, with when and who was connected. Gone: no mailbox
+/// here has it, every mailbox and its Spam searched (`Search.nobodyHasIt`): the log reader shows such an email done, said as
+/// checked, never ticked silently (phishing.md D14). Not gone: a mailbox has it, or Find couldn't tell, kept because it takes
+/// back an earlier word that it was gone. Find is a read, so the audit log never has it, and the usual outcome of Pull All for an
 /// email is that nobody here has it (sent only outside, removed since, never delivered). `nobody-has.json` in the folder
-/// it's given, `{"version": 1, "checks": [{"domain", "message_id", "at", "by"}]}`, handled as the marked sign-ins' file is
+/// it's given, `{"version": 1, "checks": [{"domain", "message_id", "at", "by", "gone"}]}` (a check saved before `gone` was
+/// one showing it gone), handled as the marked sign-ins' file is
 /// (`SignatureStore.load` and `writeFile`): read by descriptor, a file this format can't read moved aside and reported,
 /// never replaced, and written atomically, `0600` in a `0700` folder. It names emails: it stays on this Mac. At most `cap`
 /// checks (invariant 9), the oldest dropped first: a check is kept by itself, so it never refuses one.
@@ -17,6 +19,8 @@ public struct NobodyHasStore: Sendable {
         public let at: Date
         /// The admin connected when Find ran; "" when none was known.
         public let by: String
+        /// Find showed no mailbox has it, every one searched. False: one has it, or Find couldn't tell.
+        public let gone: Bool
         /// One check per domain and email: the newest.
         public var id: String { domain + "|" + messageID }
     }
@@ -46,10 +50,11 @@ public struct NobodyHasStore: Sendable {
     /// The checks for `domain`, newest first.
     public func checks(for domain: String) -> [Check] { checks.filter { $0.domain == domain.lowercased() } }
 
-    /// Keeps that Find showed nobody on `domain` has these emails, at `at`, replacing an older check of each. A Message-ID
-    /// Phishing couldn't search by, or a domain or admin that isn't one, keeps nothing.
-    public mutating func record(domain: String, messageIDs: [String], by: String, at: Date = Date()) throws(SignatureStore.Problem) {
-        let new = messageIDs.compactMap { Self.valid(domain: domain, messageID: $0, at: at, by: by) }
+    /// Keeps what Find showed on `domain`, at `at`: `messageIDs` gone, `notGone` in a mailbox or left unsure, replacing an older
+    /// check of each. A Message-ID Phishing couldn't search by, or a domain or admin that isn't one, keeps nothing.
+    public mutating func record(domain: String, messageIDs: [String], notGone: [String] = [], by: String, at: Date = Date()) throws(SignatureStore.Problem) {
+        let new = messageIDs.compactMap { Self.valid(domain: domain, messageID: $0, at: at, by: by, gone: true) }
+            + notGone.compactMap { Self.valid(domain: domain, messageID: $0, at: at, by: by, gone: false) }
         guard !new.isEmpty else { return }
         let ids = Set(new.map(\.id))
         let changed = Array((new + checks.filter { !ids.contains($0.id) }).prefix(Self.cap))
@@ -59,12 +64,12 @@ public struct NobodyHasStore: Sendable {
 
     /// A check as this store saves it, or nil: one domain, a Message-ID Phishing can search by (kept bare), and an admin's
     /// address or none.
-    static func valid(domain: String, messageID: String, at: Date, by: String) -> Check? {
+    static func valid(domain: String, messageID: String, at: Date, by: String, gone: Bool = true) -> Check? {
         let domain = domain.trimmingCharacters(in: .whitespaces).lowercased(), by = by.trimmingCharacters(in: .whitespaces).lowercased()
         guard domain.contains("."), domain.count <= 253, domain.allSatisfy({ "abcdefghijklmnopqrstuvwxyz0123456789.-".contains($0) }),
               let message = try? GamCommands.MessageID(validating: messageID), by.isEmpty || Address.looksLikeEmail(by)
         else { return nil }
-        return Check(domain: domain, messageID: message.id, at: at, by: by)
+        return Check(domain: domain, messageID: message.id, at: at, by: by, gone: gone)
     }
 
     /// The checks in this format's file, or nil for anything else, a check this store wouldn't save among it.
@@ -76,7 +81,8 @@ public struct NobodyHasStore: Sendable {
         for entry in entries {
             guard let domain = entry["domain"]?.string, let messageID = entry["message_id"]?.string, let by = entry["by"]?.string,
                   let stamp = entry["at"]?.string, let at = try? Date(stamp, strategy: .iso8601),
-                  let check = valid(domain: domain, messageID: messageID, at: at, by: by), check.messageID == messageID
+                  entry["gone"] == nil || entry["gone"]?.bool != nil,
+                  let check = valid(domain: domain, messageID: messageID, at: at, by: by, gone: entry["gone"]?.bool ?? true), check.messageID == messageID
             else { return nil }
             checks.append(check)
         }
@@ -87,7 +93,7 @@ public struct NobodyHasStore: Sendable {
     private func write(_ checks: [Check]) throws(SignatureStore.Problem) {
         let entries = checks.map { check -> JSONValue in
             .object(["domain": .string(check.domain), "message_id": .string(check.messageID), "at": .string(check.at.formatted(.iso8601)),
-                     "by": .string(check.by)])
+                     "by": .string(check.by), "gone": .bool(check.gone)])
         }
         let file = JSONValue.object(["version": .number(String(Self.format)), "checks": .array(entries)])
         do {

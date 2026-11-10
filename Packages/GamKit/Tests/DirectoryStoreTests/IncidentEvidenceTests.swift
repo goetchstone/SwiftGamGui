@@ -66,8 +66,8 @@ struct IncidentEvidenceTests {
     }
 
     /// Exports put together: rows newest first, an event both saved once, the widest window, every account when any export
-    /// was; a log stopped at its cap only while every export of it was (a later read for just the accounts that matter
-    /// reaches further back). One that can't be read is named, the rest still read.
+    /// was; a log stopped at its cap until a read holds what it left out (`aLogStaysShortUntilAReadHoldsWhatItLeftOut`). One
+    /// that can't be read is named, the rest still read.
     @Test func exportsArePutTogether() async {
         let capped = "Over the last 30 days.\nAccounts: every account.\nFrom IP address: any.\nlogin-log.csv: the Sign-ins (user log) log, 1 events; older events past the cap weren't read.\n"
         let whole = "Over the last 7 days.\nAccounts: carol@example.com.\nFrom IP address: any.\nlogin-log.csv: the Sign-ins (user log) log, 2 events.\n"
@@ -76,7 +76,7 @@ struct IncidentEvidenceTests {
         let together = await IncidentLogs.evidence([first, second])
         let rows = (try? together.pull.logs.first?.rows.get()) ?? []
         #expect(rows.map(\.time) == ["2026-10-22T09:00:00Z", "2026-10-19T13:00:00Z"], "the repeat counted once, newest first")
-        #expect(together.pull.logs.first?.capped == false && together.pull.query.hours == 720 && together.pull.query.users.isEmpty)
+        #expect(together.pull.logs.first?.capped == true && together.pull.query.hours == 720 && together.pull.query.users.isEmpty)
         #expect(await IncidentLogs.evidence([first, first]).pull.logs.first?.capped == true, "still at the cap in every export")
         // Whose events each read holds whole, and between when, kept through the merge: carol's read whole; the first, read newest
         // first to its cap, can't say. A read by an address holds none.
@@ -188,21 +188,27 @@ struct IncidentEvidenceTests {
         func same(_ a: IncidentLogs.Pull, _ b: IncidentLogs.Pull) -> Bool {
             a.query == b.query && a.ended == b.ended && a.fromEvidence == b.fromEvidence && a.logs.count == b.logs.count
                 && zip(a.logs, b.logs).allSatisfy { x, y in
-                    x.application == y.application && bytes(x) == bytes(y) && x.hours == y.hours && x.capped == y.capped && x.through == y.through
+                    x.application == y.application && bytes(x) == bytes(y) && x.hours == y.hours
                 }
+        }
+        // Whether a log is short, added one by one with the rule as it is.
+        func sameShort(_ a: IncidentLogs.Pull, _ b: IncidentLogs.Pull) -> Bool {
+            zip(a.logs, b.logs).allSatisfy { $0.capped == $1.capped && $0.through == $1.through && $0.covered == $1.covered && $0.readBy == $1.readBy }
         }
         for count in 2...pulls.count {
             for start in 0...(pulls.count - count) {
                 let these = Array(pulls[start..<(start + count)])
                 #expect(same(IncidentLogs.merged(these), these.dropFirst().reduce(these[0], before)), "pulls \(start)..<\(start + count)")
+                #expect(sameShort(IncidentLogs.merged(these), these.dropFirst().reduce(these[0]) { IncidentLogs.merged($0, $1) }), "pulls \(start)..<\(start + count)")
             }
         }
         // The cases it covers: a tie kept in the pulls' order, a repeat inside one pull kept, an undated row last, a log read
-        // whole by one pull (not capped), a log one pull couldn't read taken from another, and every account when any was.
+        // whole only by one account from one address (still short), a log one pull couldn't read taken from another, and every
+        // account when any was.
         let all = IncidentLogs.merged(pulls)
         let login = try #require(all.logs.first { $0.application == .login }).rows.get()
         #expect(login.map(\.who) == ["carol@example.com", "dana@example.com", "fay@example.com", "carol@example.com", "carol@example.com", "erin@example.com"])
-        #expect(all.logs.first { $0.application == .login }?.capped == false && all.query.users == ["carol@example.com", "dana@example.com"])
+        #expect(all.logs.first { $0.application == .login }?.capped == true && all.query.users == ["carol@example.com", "dana@example.com"])
         #expect(try all.logs.first { $0.application == .token }?.rows.get().count == 1 && all.query.ip == "198.51.100.23")
         #expect(IncidentLogs.merged(Array(pulls.prefix(2))).logs.first { $0.application == .login }?.through == at("2026-10-22T00:00:00Z"))
         // Each log's counts, made with it: the flagged events and the accounts, the same as counting its rows.
@@ -211,6 +217,51 @@ struct IncidentEvidenceTests {
             #expect(log.flagged == read.filter(\.flagged).count && log.accounts == Set(read.map(\.who)).count, "\(log.application)")
         }
         #expect(all.logs.first { $0.application == .login }.map { [$0.flagged, $0.accounts] } == [2, 4] && failed.accounts == 0)
+    }
+
+    /// A log that stopped short stays so until a read holds what it left out (GamGUI's port, 2026-11-06: any read whole cleared
+    /// it, so a read for one person made every account's log read whole, and the narrow read's "through" stood for the wide
+    /// one's). A read of just some accounts covers those alone; a read by an address, or over less of the window, holds none of
+    /// what was left; every account read whole, or Read the Rest, does.
+    @Test func aLogStaysShortUntilAReadHoldsWhatItLeftOut() throws {
+        let at = { (time: String) in try? Date(time, strategy: .iso8601) }
+        let stoppedAt = try #require(at("2026-10-21T00:00:00Z")), laterAt = try #require(at("2026-10-25T00:00:00Z"))
+        let rows = try #require(ActivityLogs.rows(exported: Self.header + Self.early + "\r\n", application: .login))
+        func pull(_ users: [String] = [], hours: Int = 720, ip: String = "", from: Date? = nil, through: Date? = nil, capped: Bool = false) -> IncidentLogs.Pull {
+            IncidentLogs.Pull(query: IncidentLogs.Query(applications: [.login], users: users, hours: hours, ip: ip, from: from, to: from == nil ? nil : .now),
+                              logs: [IncidentLogs.Log(application: .login, rows: .success(rows), hours: hours, capped: capped || through != nil, through: through)],
+                              ended: true)
+        }
+        func log(_ pulls: IncidentLogs.Pull...) -> IncidentLogs.Log { IncidentLogs.merged(pulls).logs[0] }
+        let wide = pull(through: stoppedAt)
+        let carol = log(wide, pull(["Carol@example.com"]))
+        #expect(carol.capped && carol.through == stoppedAt && carol.covered == ["carol@example.com"], "the rest of the accounts aren't read")
+        #expect(!log(wide, pull()).capped, "every account read whole")
+        #expect(log(wide, pull(ip: "198.51.100.23")).capped, "a read by an address holds only that address's")
+        #expect(log(wide, pull(hours: 24)).capped, "a read over less of the window")
+        #expect(log(wide, pull(["carol@example.com"], hours: 24)).covered.isEmpty)
+        #expect(!log(wide, pull(hours: 96, from: stoppedAt)).capped, "Read the Rest starts where it stopped")
+        #expect(log(wide, pull(["carol@example.com"], through: laterAt)).through == stoppedAt, "a narrow read's through never stands for the wide one's")
+        #expect(log(wide, pull(hours: 96, from: stoppedAt, through: laterAt)).through == laterAt, "read through the later of two wide reads")
+        // For named accounts: each read whole by a later read clears it, in one read or two, in any grouping.
+        let two = pull(["carol@example.com", "dana@example.com"], through: stoppedAt)
+        #expect(log(two, pull(["carol@example.com"])).capped)
+        #expect(!log(two, pull(["carol@example.com"]), pull(["dana@example.com"])).capped)
+        #expect(!IncidentLogs.merged(IncidentLogs.merged(two, pull(["carol@example.com"])), pull(["dana@example.com"])).logs[0].capped)
+        // A wide read and a read by an address put together: their query keeps the address, for the reader, but the log isn't
+        // only that address's: Read the Rest reads every address, and a read by that address alone doesn't clear it.
+        let byAddress = IncidentLogs.merged(wide, pull(ip: "198.51.100.23", through: stoppedAt))
+        #expect(byAddress.query.ip == "198.51.100.23" && byAddress.logs[0].readBy == "")
+        #expect(IncidentLogs.merged(byAddress, pull(ip: "198.51.100.23")).logs[0].capped)
+        #expect(!IncidentLogs.merged(pull(ip: "198.51.100.23", through: stoppedAt), pull(hours: 96, ip: "198.51.100.23", from: stoppedAt)).logs[0].capped, "its own Read the Rest")
+        // A log only one pull read keeps its own address: the put-together query's first address isn't it.
+        let token = IncidentLogs.Pull(query: IncidentLogs.Query(applications: [.token], users: [], hours: 720, ip: "198.51.100.23"),
+                                      logs: [IncidentLogs.Log(application: .token, rows: .success([]), hours: 720, capped: false)], ended: true)
+        let apart = IncidentLogs.merged(wide, token)
+        #expect(apart.query.ip == "198.51.100.23" && apart.logs.first { $0.application == .login }?.readBy == "")
+        #expect(apart.logs.first { $0.application == .token }?.readBy == "198.51.100.23")
+        // An every-account read stopped newest first says nothing of how far: a narrow read's time doesn't stand for it.
+        #expect(log(pull(through: nil, capped: true), pull(["carol@example.com"], through: laterAt)).through == nil)
     }
 
     /// Show the Events: an account's events, from some addresses, in some logs, through an app or by an agent; a log with

@@ -303,16 +303,22 @@ struct CompromisedView: View {
         ticks: open?.ticks ?? [], tick: open.map { record in
             { kind, words, basis, how in incidents.tick(kind: kind, words: words, basis: basis, how: how, by: setup.connectedAdmin ?? "", in: record.id) }
         },
-        incident: part == .report ? open.map { reportInputs($0, index: index) } : nil,
+        incident: part == .report ? open.map { reportInputs($0, pull: pull, index: index) } : nil,
         anchor: part == .findings ? Self.readerAnchor : part == .toDo ? Self.toDoAnchor : Self.reportAnchor)
     }
 
     /// What the report of the incident `record` is made with: its saved reads, the directory's people with 2-Step Verification
     /// off, who's connected, and copying its evidence and keeping its review, both on this Mac.
-    private func reportInputs(_ record: IncidentStore.Record, index: DirectoryIndex.Index) -> ReportInputs {
+    private func reportInputs(_ record: IncidentStore.Record, pull: IncidentLogs.Pull, index: DirectoryIndex.Index) -> ReportInputs {
         let names = incidents.evidence.flatMap { $0.id == record.id ? $0.names : nil } ?? []
         let store = incidents.store, id = record.id
-        return ReportInputs(record: record, evidence: names.map { ($0, incidents.abouts[$0] ?? "") }, no2SV: index.no2SV, directoryKey: index.key,
+        let unreadable = incidents.evidence.flatMap { $0.id == record.id ? $0.unreadable : nil } ?? []
+        var coverage = IncidentLogs.coverage(of: pull) + groupsReached.coverage
+        if !unreadable.isEmpty { coverage.append("Saved reads that couldn't be read, so aren't counted: \(unreadable.joined(separator: ", ")).") }
+        if index.twoStep != nil, let read = directory.loadedAt {
+            coverage.append("2-Step Verification is from the directory as read at \(IncidentReportView.when(read)).")
+        }
+        return ReportInputs(record: record, evidence: names.map { ($0, incidents.abouts[$0] ?? "") }, twoStep: index.twoStep, coverage: coverage, directoryKey: index.key,
                             madeBy: setup.connectedAdmin ?? "", copyEvidence: { folder in
             guard let store else { throw IncidentStore.Problem.invalid("The incidents couldn't be opened.") }
             return try store.copyEvidence(of: id, to: folder)
@@ -1477,7 +1483,7 @@ private struct IncidentLogsSection: View {
                         LogGroup(log: log, asked: pull.query.hours, flaggedOnly: flaggedOnly, startsOpen: log.application == .login,
                                  readRest: log.through.map { through in {
                                      readMore(IncidentLogs.Query(applications: [log.application], users: pull.query.users, hours: pull.query.hours,
-                                                                 ip: pull.query.ip, from: through, to: .now))
+                                                                 ip: log.readBy ?? pull.query.ip, from: through, to: .now))
                                  } }) {
                             export(log, of: pull.query)
                         }
@@ -1658,7 +1664,9 @@ private struct LogGroup: View {
                 // Read oldest first and stopped at its bound: the older part is whole, the newer part unread.
                 HStack(alignment: .firstTextBaseline) {
                     Label("Read completely through \(through.formatted(date: .abbreviated, time: .shortened)): the later events "
-                          + "weren't read yet, and the CSV doesn't have them either.", systemImage: "exclamationmark.triangle.fill")
+                          + "weren't read yet, and the CSV doesn't have them either."
+                          + (log.covered.isEmpty ? "" : " Past that, read only for \(log.covered.sorted().joined(separator: ", ")).")
+                          , systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor).font(.callout)
                     Spacer()
                     if let readRest {
@@ -1751,37 +1759,50 @@ private struct ActivityList: View {
 /// never at every redraw (review 2026-10-24); nil people until the directory is read.
 @MainActor
 final class DirectoryIndex {
+    /// A person's 2-Step Verification, as the directory holds it. Not the report's own type: this file reaches writes, so it never
+    /// imports the model's module (`WriteRouteTests.noIntentReachesAWrite`).
+    struct TwoStep: Equatable {
+        let enrolled: Bool
+        let suspended: Bool
+    }
+
     /// The directory as Who it reached and the report read it.
     struct Index {
         let key: String
         let people: [String: String]?
         let domains: Set<String>
-        /// The people Reports lists without 2-Step Verification (active, not enrolled), lowercased; nil until the directory is read.
-        let no2SV: Set<String>?
+        /// Each address the directory holds, lowercased, with its 2-Step Verification; nil until the directory is read.
+        let twoStep: [String: TwoStep]?
     }
 
-    private var built: (revision: String, key: String, people: [String: String]?, domains: Set<String>, no2SV: Set<String>?)?
+    private var built: (revision: String, key: String, people: [String: String]?, domains: Set<String>, twoStep: [String: TwoStep]?)?
 
     func index(_ directory: DirectoryStore, domain: String) -> Index {
         let revision = "\(domain.lowercased())|\(directory.revision.map(String.init) ?? "-")"
-        if let built, built.revision == revision { return Index(key: built.key, people: built.people, domains: built.domains, no2SV: built.no2SV) }
-        var people: [String: String]?
+        if let built, built.revision == revision { return Index(key: built.key, people: built.people, domains: built.domains, twoStep: built.twoStep) }
+        var people: [String: String]?, twoStep: [String: TwoStep]?
         if let users = directory.users {
-            var map: [String: String] = [:]
-            for user in users { map[user.primaryEmail.lowercased()] = user.primaryEmail.lowercased() }
+            var map: [String: String] = [:], steps: [String: TwoStep] = [:]
+            for user in users {
+                map[user.primaryEmail.lowercased()] = user.primaryEmail.lowercased()
+                steps[user.primaryEmail.lowercased()] = TwoStep(enrolled: user.isEnrolledIn2SV, suspended: user.suspended)
+            }
             for user in users {
                 let aliases = user.aliases + (user.record["nonEditableAliases"]?.array ?? []).compactMap(\.string)
-                for alias in aliases where map[alias.lowercased()] == nil { map[alias.lowercased()] = user.primaryEmail.lowercased() }
+                for alias in aliases where map[alias.lowercased()] == nil {
+                    map[alias.lowercased()] = user.primaryEmail.lowercased()
+                    steps[alias.lowercased()] = TwoStep(enrolled: user.isEnrolledIn2SV, suspended: user.suspended)
+                }
             }
             people = map
+            twoStep = steps
         }
         let domains = Set(((people.map { Array($0.keys) } ?? []) + ["@" + domain])
             .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })
         // A revision that changes nothing read here keeps its key: a password reset or a suspension elsewhere re-reads no pull
         // (final review 2026-10-25).
         let key = built.flatMap { $0.people == people && $0.domains == domains ? $0.key : nil } ?? revision
-        let no2SV = directory.reports?.first { $0.key == "no_2sv" }.map { Set($0.users.map { $0.primaryEmail.lowercased() }) }
-        built = (revision, key, people, domains, no2SV)
-        return Index(key: key, people: people, domains: domains, no2SV: no2SV)
+        built = (revision, key, people, domains, twoStep)
+        return Index(key: key, people: people, domains: domains, twoStep: twoStep)
     }
 }
