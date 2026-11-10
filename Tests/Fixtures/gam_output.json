@@ -16,7 +16,7 @@
  },
  "cases": [
   {
-   "stdout": "GAM 7.50.00 - mock",
+   "stdout": "GAM 7.51.00 - mock",
    "records": "[]"
   },
   {
@@ -60,7 +60,7 @@
    "records": "[{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:c_team@group.calendar.google.com\", \"role\": \"owner\", \"scope\": {\"type\": \"user\", \"value\": \"c_team@group.calendar.google.com\"}}, {\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:alice@example.com\", \"role\": \"owner\", \"scope\": {\"type\": \"user\", \"value\": \"alice@example.com\"}}, {\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:carol@example.com\", \"role\": \"writer\", \"scope\": {\"type\": \"user\", \"value\": \"carol@example.com\"}}, {\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"user:bob@example.com\", \"role\": \"reader\", \"scope\": {\"type\": \"user\", \"value\": \"bob@example.com\"}}, {\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"group:sales@example.com\", \"role\": \"reader\", \"scope\": {\"type\": \"group\", \"value\": \"sales@example.com\"}}, {\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"domain:example.com\", \"role\": \"freeBusyReader\", \"scope\": {\"type\": \"domain\", \"value\": \"example.com\"}}]"
   },
   {
-   "stdout": "id,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application",
+   "stdout": "id",
    "records": "[]"
   },
   {

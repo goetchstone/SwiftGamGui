@@ -27,7 +27,9 @@ Act on the items your diff touches.
    (the last `setSysExitRC`, read to the end of the function). An option a handler accepts changes its output
    or is refused. The tests' tenant holds its connected admin. A filtered read's fixture holds a row the filter
    misses. A Google field or value a reader matches names Google's reference or a real row beside it, in the
-   mock, a fixture or a test's own event. A green mock is not a live proof.
+   mock, a fixture or a test's own event. A green mock is not a live proof. A mock change that changes any answer
+   re-runs `scripts/gen_fixtures.py` from the pinned GamGUI clone in its own PR: the fixtures are generated from the mock
+   only then, and a stale one stops the next bump (gam-runner.md, 7.48.34 and 7.51.00).
 7. **The pin (#7)**: bump only with `scripts/bump_gam.py`; `FixtureTests` must stay green.
 
 ## If your diff touches secrets, models, Siri or anything streamed

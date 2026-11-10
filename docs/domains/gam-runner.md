@@ -78,6 +78,25 @@ an allowlisted environment, a timeout, and capped output capture.
   run holds: the compare touches neither Gmail function (`CommandKindTests.reviewedDryRuns`). The grammar moved only past
   line 8996 (+12, Sheets) and within `print devices` (one line, no shift), and nothing here cites past 8330, so no citation
   moved. The fixtures also picked up the mock's admin account, added by #141 without regenerating them.
+- **Bump to 7.51.00 (2026-11-10):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `2f35285`.
+  GAM now builds for macOS 27, and the pin takes that asset (`macos27.0-arm64`, the highest `macosNN`), which is what
+  this Mac and CI's `xcode-27` run. GAM's notes: `move drivefile` takes `copy drivefile`'s sub-file filters
+  (`movesubfiles`, `filenamematchpattern`, `filemimetype`, a modified-time range, `movesubfilesownedby`; any of them keeps
+  the source folders), and `update events` takes `mapattendeedomain <old> <new>`. The source also compares versions as
+  numbers in `version checkrc`, names a Homebrew install (only outside a frozen build, so `gam version` still says
+  `pyinstaller`) and changes `todrive`'s Sheets formatting. None reaches a builder: the app runs neither command, and
+  `mapattendeedomain` parses only under `update` (`_getCalendarEventAttribute`), so the reminder's `create event` is
+  unchanged. The reviewed dry run holds: the compare's last hunk is ~9,600 lines before the Gmail functions. The grammar
+  grew 14 lines (from line 1837 on, +1 to +14): 126 citations in 9 files were renumbered, a script checking each lands on
+  the grammar line it named before. Five were already wrong and were renumbered by the text they name: `print tokens`
+  (still 7.49's 9089, missed by the last bump's "nothing cites past 8330"), and the spans given for `<DriveFieldName>`,
+  `print filelist`, `<CalendarListField>` and `USER_FIELDS_CHOICE_MAP`'s names. **The generator stopped on stale test
+  data:** GamGUI at `2f35285` reads transfers for `leaver@example.com`, who isn't a user in the mock, and since #153 the
+  mock ends that read as GAM does (`convertEmailAddressToUID` → `entityDoesNotExistExit`). GamGUI fixed its read in
+  `7f8cf18` (carol@); `mock_outputs` reads carol@ too, and stops the generator once the fixtures name a GamGUI commit that
+  has the fix. `gam_output.json` now records #153's no-transfer answer, the header `id` alone. The second stale-fixture stop
+  (after 7.48.34's): the note there said to regenerate after a mock change that *adds* data, and #153 made the mock
+  *refuse* one, so the `pre-commit` skill now says it for any mock change that changes an answer.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log

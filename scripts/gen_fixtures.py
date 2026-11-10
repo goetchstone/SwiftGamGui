@@ -727,8 +727,18 @@ def mock_outputs(mock: Path) -> dict:
     import subprocess
     import tempfile
 
+    from gamgui.core.gam.commands import GAMCommands
     from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests.test_mock_gam import READS
+
+    # GamGUI at 2f35285 reads transfers for leaver@example.com, who isn't a user in the mock. GAM ends that read
+    # (convertEmailAddressToUID -> entityDoesNotExistExit, gam/__init__.py:6028 at 7.51.00), and the mock has since
+    # #153; GamGUI's own fix (7f8cf18) reads carol@example.com, so this does too. Delete this once the fixtures name a
+    # GamGUI commit that has that fix: the check below stops the generator then.
+    reads = dict(READS)
+    if reads["print_datatransfers"] != [GAMCommands.print_datatransfers("leaver@example.com")]:
+        raise SystemExit("GamGUI's print_datatransfers read moved: delete the leaver@ override in mock_outputs")
+    reads["print_datatransfers"] = [GAMCommands.print_datatransfers("carol@example.com")]
 
     data = mock.parent / "mock_gam"
     for path in sorted(data.rglob("*.json")):
@@ -740,7 +750,7 @@ def mock_outputs(mock: Path) -> dict:
         for name in ("oauth2service.json", "oauth2.txt"):
             Path(config, name).write_text('{"placeholder": true}')
         environment = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": config, "GAM_MOCK_FIXTURES": str(data)}
-        for builder, argvs in READS.items():
+        for builder, argvs in reads.items():
             for argv in argvs:
                 run = subprocess.run([str(mock), *argv], capture_output=True, text=True, env=environment)
                 if builder in NOT_MODELLED:

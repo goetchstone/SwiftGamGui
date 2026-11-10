@@ -200,7 +200,7 @@ Suspend had none (RULE-FEEDBACK 2026-10-28).
   alias an earlier step makes (however GAM spells it: a bare name gets the domain), a second spelling of an address read
   once, an error line that reads as "not found". The admin is asked again at the run.
 - **Sign-out and the password change are in the set unproven.** GAM's grammar lists the token delete apart from `signout`
-  (7912), so its token may outlive both; refusing costs a trip to the Admin console, a wrong guess the app's authorization.
+  (7926), so its token may outlive both; refusing costs a trip to the Admin console, a wrong guess the app's authorization.
 - A run that cuts someone off costs one `info user` read per address. `ExecutorTests` "the connected admin" holds it; a
   test about something else counts the writes (`wrote()`). The mock's directory has `admin@example.com`, as a real tenant
   has its admin (its mailbox and calendar are swept too), and every mock user has an `id`; a test's token gets the mock's
