@@ -32,7 +32,8 @@ struct CommandKindTests {
         // the doit check and the listing are untouched. printShowMessagesThreads now also makes a bad request or a failed
         // precondition on one message a warning line, as unknownError already was, which Find reads as unsure.
         // 7.50.00: v7.49.02...v7.50.00 touches neither function (its last hunk is infoPrintShowSheets, ~1,800 lines before).
-        "find_message_copies": ("7.50.00", "trash messages without doit: _processMessagesThreads lists and counts, then "
+        // 7.51.00: v7.50.00...v7.51.00 touches neither function (its last hunk is in move drivefile, ~9,600 lines before).
+        "find_message_copies": ("7.51.00", "trash messages without doit: _processMessagesThreads lists and counts, then "
             + "continues past every user before a trash call"),
     ]
 
