@@ -86,6 +86,17 @@ public final class DirectoryStore {
                                  loadedAt: snapshot.loadedAt, domain: domain, generation: generation, revision: revisions)
     }
 
+    /// Takes a deleted account out of the cached list, as `patch` does: only if the cache still belongs to the tenant and generation
+    /// the delete ran on.
+    public func remove(_ email: String, on domain: Domain, generation: Int) {
+        guard let snapshot, snapshot.domain == domain, snapshot.generation == generation else { return }
+        let users = snapshot.users.filter { Guard.normalized($0.primaryEmail) != Guard.normalized(email) }
+        guard users.count < snapshot.users.count else { return }
+        revisions += 1
+        self.snapshot = Snapshot(users: users, reports: DirectoryReport.build(users, now: snapshot.loadedAt),
+                                 loadedAt: snapshot.loadedAt, domain: domain, generation: generation, revision: revisions)
+    }
+
     /// The users a list shows, filtered and sorted, worked out again only when the list, the filter or the
     /// order changes. A click that only selects someone does no work: re-sorting the whole directory on
     /// every click held up the person page's opening.

@@ -91,6 +91,12 @@ final class UserChangesTests {
         return pending
     }
 
+    /// Whether the mock was asked to delete this account.
+    private func deleted(_ email: String) -> Bool {
+        guard let data = try? Data(contentsOf: argvLog) else { return false }
+        return String(decoding: data, as: UTF8.self).contains("delete\u{0}user\u{0}\(email)")
+    }
+
     /// The writes the mock ran, as argv (it logs each as a count then its elements, NUL-separated).
     private func writes() -> [[String]] {
         guard let data = try? Data(contentsOf: argvLog) else { return [] }
@@ -264,6 +270,220 @@ final class UserChangesTests {
         await changes.previewSuspend(try user("alice@example.com"), suspend: false)
         await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true))
         #expect(try !user("alice@example.com").suspended)
+    }
+
+    /// Delete Account: the exact address typed, then it runs once, audited, and the person leaves the list, the result said there as
+    /// their page closes. What to know first is in the preview, each in words.
+    @Test func deletingAnAccountNeedsItsAddressTypedAndLeavesTheList() async throws {
+        try await connect()
+        let bob = try user("bob@example.com")
+        await changes.previewDeleteAccount(bob, access: access)
+        let pending = try pending()
+        #expect(pending.isDestructive && pending.preview.decision.typedAddresses == ["bob@example.com"])
+        #expect(pending.preview.steps.first?.shownArgv == ["gam", "delete", "user", "bob@example.com"] || pending.preview.steps.first?.shownArgv == ["delete", "user", "bob@example.com"])
+        #expect(pending.preview.steps.first?.summary.contains("restored for 20 days") == true)
+        #expect(pending.warning?.hasPrefix("No data transfer from bob@example.com shows") == true, "\(pending.warning ?? "")")
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedAddresses: ["bob"]))
+        guard case .problem(let wrong) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(wrong == "Type the exact email address to confirm." && !deleted("bob@example.com"))
+        await changes.previewDeleteAccount(bob, access: access)
+        await changes.confirm(try self.pending(), OperatorConfirmation(confirmed: true, typedAddresses: [" BOB@example.com "]))
+        #expect(deleted("bob@example.com"), "\(changes.state)")
+        #expect(directory.users?.contains { $0.primaryEmail == "bob@example.com" } == false && changes.deleted == "bob@example.com")
+        #expect(directory.reports?.first { $0.key == "suspended" }?.count == directory.users?.filter(\.suspended).count)
+        changes.dismissDeleted()
+        #expect(changes.deleted == nil)
+    }
+
+    /// A Vault hold or a secondary calendar refuses it, nothing held; each in words, and no preview to confirm.
+    @Test func aHoldOrASecondaryCalendarRefusesADelete() async throws {
+        try await connect()
+        await changes.previewDeleteAccount(try user("dana@example.com"), access: access)
+        guard case .problem(let held) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(held.hasPrefix("dana@example.com is on a Vault hold (Contract audit: Mail and Drive)"), "\(held)")
+        await changes.previewDeleteAccount(try user("carol@example.com"), access: access)
+        guard case .problem(let owned) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(owned.hasPrefix("carol@example.com owns ") && owned.contains("Hand them over first") || owned.contains("Hand it over first"), "\(owned)")
+        #expect(!deleted("dana@example.com") && !deleted("carol@example.com"))
+    }
+
+    /// A transfer not finished warns, in the preview. A check that couldn't be made says so, and isn't taken for none. An admin this app
+    /// signs in as, and an alias of another account, are the executor's to refuse, as for every delete.
+    @Test func whatToKnowBeforeADeleteIsSaid() async throws {
+        try await connect()
+        let state = scratch.appending(path: "mock-state")
+        try FileManager.default.createDirectory(at: state.appending(path: "datatransfers"), withIntermediateDirectories: true)
+        try Data("id,requestTime,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application,applicationId,status\nT1,2026-11-01T09:00:00Z,bob@example.com,mgr@example.com,inProgress,Drive and Docs,1,inProgress\nT2,2026-10-20T09:00:00Z,bob@example.com,mgr@example.com,completed,Calendar,2,completed\n".utf8)
+            .write(to: state.appending(path: "datatransfers/bob@example.com"))
+        let bob = try user("bob@example.com")
+        await changes.previewDeleteAccount(bob, access: access)
+        #expect(try pending().warning?.hasPrefix("A data transfer from bob@example.com isn't finished: Drive and Docs (inProgress).") == true)
+        changes.dismiss()
+        FileManager.default.createFile(atPath: state.appending(path: "novault").path, contents: Data())
+        await changes.previewDeleteAccount(bob, access: access)
+        #expect(try pending().warning?.contains("Couldn't check bob@example.com for Vault holds") == true, "a read that failed is never none")
+        changes.dismiss()
+        try FileManager.default.removeItem(at: state.appending(path: "novault"))
+        await changes.previewDeleteAccount(GamUser(record: ["primaryEmail": .string("Admin@example.com")]), access: access)
+        guard case .problem(let own) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(own.hasPrefix("Admin@example.com is the admin this app is connected as"), "\(own)")
+    }
+
+    /// Read again at the confirm: a hold or a transfer since the preview stops it, in words, with nothing run.
+    @Test func aHoldOrATransferSinceThePreviewStopsADelete() async throws {
+        try await connect()
+        let state = scratch.appending(path: "mock-state"), bob = try user("bob@example.com")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        await changes.previewDeleteAccount(bob, access: access)
+        let held = try pending()
+        try Data("bob@example.com,m_new,New matter,h_new,All mail,,\n".utf8).write(to: state.appending(path: "vault_holds.csv"))
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedAddresses: ["bob@example.com"]))
+        guard case .problem(let hold) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(hold.contains("is on a Vault hold (New matter: All mail)") && !deleted("bob@example.com"), "\(hold)")
+        try FileManager.default.removeItem(at: state.appending(path: "vault_holds.csv"))
+
+        await changes.previewDeleteAccount(bob, access: access)
+        let again = try pending()
+        try FileManager.default.createDirectory(at: state.appending(path: "datatransfers"), withIntermediateDirectories: true)
+        try Data("id,requestTime,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application,applicationId,status\nT9,2026-11-02T09:00:00Z,bob@example.com,mgr@example.com,inProgress,Drive and Docs,1,inProgress\n".utf8)
+            .write(to: state.appending(path: "datatransfers/bob@example.com"))
+        await changes.confirm(again, OperatorConfirmation(confirmed: true, typedAddresses: ["bob@example.com"]))
+        guard case .problem(let transfer) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(transfer.contains("has started since the preview") && !deleted("bob@example.com"), "\(transfer)")
+    }
+
+    /// The review of Delete Account (2026-11-07), each a way it could run when it shouldn't. A cached page for an address that's another
+    /// account's now is refused, by its ID or its name; the name shown is Google's.
+    @Test func anAddressThatsAnotherAccountsNowIsNotDeleted() async throws {
+        try await connect()
+        let otherID = GamUser(record: ["primaryEmail": .string("bob@example.com"), "id": .string("999999999999999999999"),
+                                       "name": .object(["fullName": .string("Bob Brown")])])
+        await changes.previewDeleteAccount(otherID, access: access)
+        guard case .problem(let byID) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(byID.contains("not who this page shows"), "\(byID)")
+        let otherName = GamUser(record: ["primaryEmail": .string("bob@example.com"), "name": .object(["fullName": .string("Someone Else")])])
+        await changes.previewDeleteAccount(otherName, access: access)
+        guard case .problem(let byName) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(byName.contains("not who this page shows") && !deleted("bob@example.com"), "\(byName)")
+    }
+
+    /// The ID the preview held is read again at the confirm: an address reassigned in between deletes no one. (The mock's record is
+    /// fixed, so this goes through the state's account ID override.)
+    @Test func anAccountChangedSinceThePreviewIsNotDeleted() async throws {
+        try await connect()
+        let state = try stateDir()
+        await changes.previewDeleteAccount(try user("bob@example.com"), access: access)
+        let held = try pending()
+        try FileManager.default.createDirectory(at: state.appending(path: "reassigned"), withIntermediateDirectories: true)
+        try Data("100000000000000000999".utf8).write(to: state.appending(path: "reassigned/bob@example.com"))
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedAddresses: ["bob@example.com"]))
+        guard case .problem(let why) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(why.hasPrefix("bob@example.com is another account now") && !deleted("bob@example.com"), "\(why)")
+    }
+
+    /// A read that answered at the preview must answer at the confirm. One that couldn't was said, and the operator went on; a good
+    /// answer then still counts.
+    @Test func aReReadAtTheConfirmFailsClosed() async throws {
+        try await connect()
+        let bob = try user("bob@example.com")
+        await changes.previewDeleteAccount(bob, access: access)
+        let calendars = try pending()
+        try touch("nocalendar/bob@example.com")
+        try await confirm(calendars, "bob@example.com")
+        #expect(!deleted("bob@example.com"), "\(changes.state)")
+        guard case .problem(let unread) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(unread.hasPrefix("What the preview showed couldn't be checked again"), "\(unread)")
+        try FileManager.default.removeItem(at: stateDir().appending(path: "nocalendar/bob@example.com"))
+
+        await changes.previewDeleteAccount(bob, access: access)
+        let transfers = try pending()
+        try touch("notransfers")
+        try await confirm(transfers, "bob@example.com")
+        #expect(!deleted("bob@example.com"), "\(changes.state)")
+
+        // Unread at the preview, read at the confirm, and one is running.
+        await changes.previewDeleteAccount(bob, access: access)
+        let unsure = try pending()
+        #expect(unsure.warning?.contains("Couldn't read bob@example.com's data transfers") == true)
+        try FileManager.default.removeItem(at: stateDir().appending(path: "notransfers"))
+        try transfer("bob@example.com", "T9,2026-11-02T09:00:00Z,bob@example.com,mgr@example.com,inProgress,Drive and Docs,1,inProgress\n")
+        try await confirm(unsure, "bob@example.com")
+        guard case .problem(let running) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(running.contains("has started since the preview") && !deleted("bob@example.com"), "\(running)")
+    }
+
+    /// One the preview warned of is one transfer: a new one of the same application, begun since, stops it. An application that failed
+    /// under a transfer Google calls completed hasn't moved.
+    @Test func aTransferIsOneTransfer() async throws {
+        try await connect()
+        let bob = try user("bob@example.com")
+        let failed = "T1,2026-10-20T09:00:00Z,bob@example.com,mgr@example.com,failed,Drive and Docs,1,failed\n"
+        try transfer("bob@example.com", failed)
+        await changes.previewDeleteAccount(bob, access: access)
+        let held = try pending()
+        try transfer("bob@example.com", failed + "T2,2026-11-02T09:00:00Z,bob@example.com,mgr@example.com,inProgress,Drive and Docs,1,inProgress\n")
+        try await confirm(held, "bob@example.com")
+        guard case .problem(let again) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(again.contains("has started since the preview") && !deleted("bob@example.com"), "\(again)")
+        try transfer("bob@example.com", "T3,2026-10-20T09:00:00Z,bob@example.com,mgr@example.com,completed,Drive and Docs,1,failed\n")
+        await changes.previewDeleteAccount(bob, access: access)
+        #expect(try pending().warning?.contains("Drive and Docs (failed)") == true)
+    }
+
+    /// GAM's silence on the calendars read isn't none: the delete says so, where it would otherwise lose them unseen.
+    @Test func aSilentCalendarReadIsNotNone() async throws {
+        try await connect()
+        try touch("quiet/carol@example.com")
+        await changes.previewDeleteAccount(try user("carol@example.com"), access: access)
+        #expect(try pending().warning?.contains("Couldn't check whether carol@example.com owns secondary calendars") == true)
+    }
+
+    /// A switch of tenant during the checks holds no preview: what was read was the other tenant's.
+    @Test func aSwitchDuringTheChecksHoldsNoPreview() async throws {
+        try await connect()
+        try touch("slowvault")
+        let bob = try user("bob@example.com"), before = setup.generation
+        let running = Task { await changes.previewDeleteAccount(bob, access: access) }
+        // The checks have begun, and the Vault read waits for the file to go: the switch comes during them however slow the runner.
+        while !changes.isBusy { await Task.yield() }
+        await setup.importFolder(scratch.appending(path: "gamcfg"), as: "example.com")
+        await setup.checkAccess(Domain("example.com")!)
+        #expect(setup.generation != before)
+        try FileManager.default.removeItem(at: stateDir().appending(path: "slowvault"))
+        await running.value
+        if case .previewing(let held) = changes.state { Issue.record("held on generation \(held.preview.generation), read on \(before)") }
+    }
+
+    /// What the operator went past is on the audit record, and a delete Google refuses for a hold says so, as the mock's GAM now does.
+    @Test func whatTheOperatorWentPastIsOnTheRecord() async throws {
+        try await connect()
+        await changes.previewDeleteAccount(try user("bob@example.com"), access: access)
+        try await confirm(try pending(), "bob@example.com")
+        let end = try #require(AuditLog.records(at: auditURL).first)
+        #expect(end["extra"]?.object?["warned"]?.string?.hasPrefix("No data transfer from bob@example.com shows") == true, "\(end)")
+    }
+
+    private func stateDir() throws -> URL {
+        let state = scratch.appending(path: "mock-state")
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        return state
+    }
+
+    private func touch(_ path: String) throws {
+        let url = try stateDir().appending(path: path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: url.path, contents: Data())
+    }
+
+    /// `rows` as the person's data transfers, as GAM prints them.
+    private func transfer(_ email: String, _ rows: String) throws {
+        let url = try stateDir().appending(path: "datatransfers/\(email)")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(("id,requestTime,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application,applicationId,status\n" + rows).utf8).write(to: url)
+    }
+
+    private func confirm(_ pending: UserChanges.Pending, _ email: String) async throws {
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedAddresses: [email]))
     }
 
     /// Suspend and Sign Out once had no check for the admin this app signs in as (only Set Temporary Password did): the

@@ -1,7 +1,7 @@
 # Plan: SwiftGamGui — GamGUI as a native Mac app, with GAM still the engine
 
 **Status (2026-11-05): in daily use on a real domain; free, and built for the operator's own use.** Built: Setup, Home,
-Users, Groups, Calendars, Signatures, Onboard, Offboard (the routine; Close Out and the delete aren't built), Incident,
+Users, Groups, Calendars, Signatures, Onboard, Offboard (the routine; Close Out isn't built, and an account is deleted from Users), Incident,
 Phishing, Builder (reads and GamGUI's curated commands; sequences aren't built), Reports, Audit and the jobs tray. Of the
 phases below, 1 to 4 are built but for those pieces, 5 is parked with Siri, and 6's signing waits for an Apple Developer
 account. GAM 7.50.00 is pinned. What has really run is in `docs/live-verification.md`, what's next in

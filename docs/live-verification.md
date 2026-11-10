@@ -15,7 +15,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Ran:** title and department (10-24), suspend and unsuspend (10-09), sign out (10-19), add to a group (10-17), remove
   from a group (10-13), add a delegate (11-03), remove a delegate (10-19), auto-reply on (11-03), auto-reply off (10-10),
   share their own calendar and remove that access (10-13), set or change the phone a signature shows (10-29).
-- **Not run:** a temporary password changed at next sign-in, removing a phone.
+- **Not run:** a temporary password changed at next sign-in, removing a phone, deleting an account (new 2026-11-07; its first run is
+  on a real leaver).
 
 ### Groups
 - **Ran:** add people as members (10-17), remove a member (10-13).

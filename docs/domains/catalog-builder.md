@@ -70,8 +70,8 @@ it) and 11 (parity is a test).
 - **Risk is GamGUI's, never below ChangeCore's floor** (`WriteAction.minimumRisk`): a random password reset and an alias removed
   are destructive here, as on every other screen. Transfer and suspend are destructive in GamGUI too.
 - **Two of GamGUI's 26 run elsewhere** (`CuratedCommand.elsewhere`): a signature is set on Signatures, which keeps the one it
-  replaces to put back; an account is deleted by offboarding's Close Out (Off3), with the delete's own checks (an alias of
-  another account, a Drive transfer still running). Plan §9 puts the first native delete there.
+  replaces to put back; an account is deleted from its page on Users (Off3), with the delete's own checks (an alias of
+  another account, a Vault hold, secondary calendars, a data transfer still running).
 - **Deliberate differences from GamGUI's Builder**, each where a run would do what wasn't meant: a person, group or address
   field must be one address GAM acts on as given (`GamCommands.isOneAddress`: GAM reads a bare name, `oauthuser` or a list as
   someone else, a group's member is a `<UserTypeEntity>`, and GAM rewrites `uid:a@b`, `id:a@b` and `Name <a@b>` to `a@b`);

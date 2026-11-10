@@ -572,6 +572,8 @@ public actor Executor {
         guard let precondition = preview.precondition else { return nil }
         do {
             return try await precondition() ? nil : "What the preview showed has changed since — preview again."
+        } catch let refusal as PreconditionRefusal {
+            return refusal.reason
         } catch {
             return "What the preview showed couldn't be checked again (\(GamEngineMessage.of(error))) — preview again."
         }
@@ -1102,6 +1104,12 @@ extension Executor {
 /// Why a preview's precondition couldn't check what it assumed (a read refused), in words the run's refusal
 /// carries: the precondition's own errors would otherwise read as their type's name.
 public struct PreconditionFailure: Error, Sendable {
+    public let reason: String
+    public init(_ reason: String) { self.reason = reason }
+}
+
+/// A precondition that checked, and found what stops the run: its words are the refusal, never "couldn't be checked".
+public struct PreconditionRefusal: Error, Sendable {
     public let reason: String
     public init(_ reason: String) { self.reason = reason }
 }

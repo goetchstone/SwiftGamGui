@@ -74,7 +74,14 @@ user_record() {
     carol@example.com) cat "$GAM_MOCK_FIXTURES/info_user_carol.json" ;;   # her recovery details (the compromised check)
     *) grep -F "\"primaryEmail\": \"$1\"" "$GAM_MOCK_FIXTURES/print_users.json" \
          || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/created/$1" ] && minimal "$1"; } ;;
-  esac
+  esac | {
+    # GAM_MOCK_STATE/reassigned/<address> holds the account ID the address belongs to now: another account has it since.
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/reassigned/$1" ]; then
+      sed -E "s/\"id\": \"[0-9]+\"/\"id\": \"$(cat "$GAM_MOCK_STATE/reassigned/$1")\"/"
+    else
+      cat
+    fi
+  }
 }
 # No such user, as GAM's entityUnknownWarning says it: "Does not exist" (56) in the domain, "Service not applicable" (73)
 # outside it (example.com), as the report and token handlers below.
@@ -1602,6 +1609,9 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]
   if [ -n "$owned" ]; then
     [ "$want" = " id summary " ] || not_modelled "print calendars ownedsecondary with fields$want"
     known_user "$user" || not_a_user "$user" Print
+    # validateCalendar: a refused token GAM drops without a word (REFRESH_PERM_ERRORS), `if not cal: continue`: no "Getting" line, the
+    # titles alone, exit 0.
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/$user" ]; then echo "primaryEmail,calendarId,JSON"; exit 0; fi
     getting Calendars "$user"
     if calendar_off "$user"; then calendar_service_off "$user"; fi
     echo "primaryEmail,calendarId,JSON"
@@ -2094,12 +2104,25 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "check" ] && [ "${4:-}" = "serviceaccou
   exit 0
 fi
 
-# `gam print datatransfers olduser <email>` -> CSV; a *pending* user has an in-flight transfer.
+# `gam print datatransfers [olduser <email>]` (doPrintShowDataTransfers) -> CSV, a row per application of each transfer, under
+# DATA_TRANSFER_SORT_TITLES; the header alone is `id` (CSVPrintFile(['id'], ...)). An old owner who isn't a user is
+# entityDoesNotExistExit; any other option isn't modelled, and an unknown one is unknownArgumentExit. A *pending* address has an in-flight
+# transfer, GAM_MOCK_STATE/datatransfers/<email> is that person's CSV (a transfer made since, or finished), and GAM_MOCK_STATE/notransfers
+# is the API refusing the read (entityActionFailedExit).
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "datatransfers" ]; then
-  case "${4:-}" in
-    *pending*) cat "$GAM_MOCK_FIXTURES/datatransfers_pending.csv" ;;
-    *)         printf 'id,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application\n' ;;
-  esac
+  shift 2; old=""
+  while [ $# -gt 0 ]; do
+    case "$(lower "$1")" in
+      olduser|oldowner) [ $# -ge 2 ] || missing_arg "EmailAddress"; old=$(lower "$2"); shift 2 ;;
+      newuser|newowner|status|delimiter|todrive|addcsvdata) not_modelled "print datatransfers with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/notransfers" ]; then echo "Transfer Request Print Failed: Backend Error" 1>&2; exit 50; fi
+  case "$old" in *pending*) cat "$GAM_MOCK_FIXTURES/datatransfers_pending.csv"; exit 0 ;; esac
+  if [ -n "$old" ]; then known_user "$old" || does_not_exist "User" "$old"; fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/datatransfers/$old" ]; then cat "$GAM_MOCK_STATE/datatransfers/$old"; exit 0; fi
+  echo id
   exit 0
 fi
 
@@ -2117,6 +2140,11 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "vaultholds
   if [ $# -gt 0 ]; then
     case "$1" in todrive) not_modelled "print vaultholds todrive" ;; *) invalid_arg "$1" ;; esac
   fi
+  # A read that waits, for a test to do something while it runs: until GAM_MOCK_STATE/slowvault is gone, at most a minute.
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    waited=0
+    while [ -e "$GAM_MOCK_STATE/slowvault" ] && [ "$waited" -lt 600 ]; do sleep 0.1; waited=$((waited + 1)); done
+  fi
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/novault" ]; then
     echo "Vault Hold Print Failed: Request had insufficient authentication scopes." 1>&2; exit 50
   fi
@@ -2125,6 +2153,8 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "vaultholds
   fi
   echo "User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath"
   grep -i "^$user," "$GAM_MOCK_FIXTURES/vault_holds.csv" || true
+  # A hold set since (GAM_MOCK_STATE/vault_holds.csv, the same rows).
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/vault_holds.csv" ]; then grep -i "^$user," "$GAM_MOCK_STATE/vault_holds.csv" || true; fi
   exit 0
 fi
 
@@ -2279,6 +2309,12 @@ if [ "${1:-}" = "delete" ] && [ "${2:-}" = "user" ]; then
   case "${4:-}" in ""|noactionifalias) ;; *) invalid_arg "$4" ;; esac
   [ $# -le 4 ] || invalid_arg "$5"
   check_user "$3"
+  # deleteUsers: the API's conditionNotMet for an account on hold, entityActionFailedWarning, ACTION_FAILED_RC, Msg.CAN_NOT_DELETE_USER_WITH_VAULT_HOLD.
+  a=$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')
+  if grep -qi "^$a," "$GAM_MOCK_FIXTURES/vault_holds.csv" || { [ -n "${GAM_MOCK_STATE:-}" ] && grep -qi "^$a," "$GAM_MOCK_STATE/vault_holds.csv" 2>/dev/null; }; then
+    printf 'User: %s, Delete Failed: Precondition check failed: The user may be (or have recently been) on Google Vault Hold and thus not eligible for deletion.\n' "$3" 1>&2
+    exit 50
+  fi
   echo "User: $3, Deleted"
   exit 0
 fi

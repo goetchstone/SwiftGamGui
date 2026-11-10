@@ -179,6 +179,16 @@ struct UsersView: View {
                             .buttonStyle(.borderless)
                             .accessibilityLabel("Dismiss")
                     }
+                    if let deleted = changes.deleted {
+                        // Its page closed with it, and the result with that: said here.
+                        Label("Deleted \(deleted). It can be restored for 20 days, with Undelete Account in Builder or in the Admin console.",
+                              systemImage: "checkmark.circle.fill")
+                            .lineLimit(2)
+                            .onAppear { AccessibilityNotification.Announcement("Deleted \(deleted).").post() }
+                        Button { changes.dismissDeleted() } label: { Image(systemName: "xmark") }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Dismiss")
+                    }
                     if directory.isLoading {
                         HStack { ProgressView().controlSize(.small); Text("Refreshing…").foregroundStyle(.secondary) }
                             .accessibilityElement(children: .combine)
@@ -542,6 +552,10 @@ private struct UserDetail: View {
                 Button("Secure Account…") { openCompromised(user.primaryEmail) }
                     .accessibilityLabel("Secure \(user.fullName)'s account")
                     .accessibilityHint("Opens Incident and checks it. Nothing changes until you preview and confirm there.")
+                Divider()
+                Button("Delete Account…", role: .destructive) { Task { await changes.previewDeleteAccount(user, access: access) } }
+                    .accessibilityLabel("Delete \(user.fullName)'s account")
+                    .accessibilityHint("Checks for Vault holds, secondary calendars and data transfers, then previews it. You type the address to confirm.")
             } label: {
                 Label("Actions", systemImage: "ellipsis.circle")
             }
@@ -664,7 +678,7 @@ private struct ResultBanner: View {
     var body: some View {
         if let (text, symbol, tint) = content {
             HStack(alignment: .firstTextBaseline) {
-                if case .running = changes.state {
+                if changes.isBusy {
                     ProgressView().controlSize(.small)
                 } else {
                     Image(systemName: symbol).foregroundStyle(tint)
@@ -691,6 +705,7 @@ private struct ResultBanner: View {
         case .done(let text): (text, "checkmark.circle.fill", .green)
         case .problem(let text): (text, "exclamationmark.triangle.fill", .orange)
         case .running(let pending): ("\(pending.title)…", "hourglass", .blue)
+        case .checking(let text): (text, "hourglass", .blue)
         case .idle, .previewing: nil
         }
     }
