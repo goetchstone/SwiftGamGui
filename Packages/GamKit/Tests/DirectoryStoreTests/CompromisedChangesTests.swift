@@ -474,6 +474,26 @@ final class CompromisedChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// A person's phones and computers, read from their page: both kept for the person, each failing on its own, never as none,
+    /// and nothing written. A read for another tenant isn't this one's.
+    @Test func aPersonsDevicesAreReadTogetherEachFailingOnItsOwn() async throws {
+        try await connect()
+        let reads = PersonDeviceReads(setup: setup, access: access)
+        #expect(reads.state(for: "carol@example.com") == nil)
+        await reads.read("carol@example.com")
+        guard case .read(let devices)? = reads.state(for: "carol@example.com") else { Issue.record("not read"); return }
+        #expect(try devices.phones.get().map(\.words) == ["Pixel 8, Android 15 (Android)", "A device (Exchange sync (Google Sync))"])
+        #expect(try devices.computers.get().map(\.model) == ["Virtual Machine", "MacBook Pro"], "only hers, computers only")
+        try FileManager.default.createDirectory(at: state.appending(path: "noscope"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "noscope/devices").path, contents: Data())
+        await reads.read("carol@example.com")
+        guard case .read(let again)? = reads.state(for: "carol@example.com") else { Issue.record("not read"); return }
+        #expect(try again.phones.get().count == 2, "the phones still read")
+        guard case .failure(let problem) = again.computers else { Issue.record("taken for none"); return }
+        #expect(problem.summary.hasSuffix(Compromised.Computer.delegationNote))
+        #expect(writes().isEmpty)
+    }
+
     /// Every account's connected apps, read for Reports: AI assistants and agents first, never a suspended account's grants,
     /// counted and said in words, kept for the tenant; a refusal is GAM's words.
     @Test func everyAccountsConnectedAppsAreRead() async throws {

@@ -84,5 +84,6 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 - The jobs tray, listing a run from the click (fixed after the operator's 10-30 run didn't show).
 
 ### Not run
+- A person's phones and computers on their Security tab (new 2026-11-07; Incident's check runs the same two reads).
 - ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the
   Builder's suspend of an alias of it). Nothing is written either way.

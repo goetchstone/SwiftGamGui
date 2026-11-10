@@ -989,20 +989,7 @@ private struct DevicesSection: View {
             case .success(let devices) where devices.isEmpty:
                 Text("No phone or tablet syncs this account.").foregroundStyle(.secondary)
             case .success(let devices):
-                ForEach(devices) { device in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(device.words).fontWeight(.semibold)
-                        Text("Last synced " + (device.lastSynced?.formatted(date: .abbreviated, time: .shortened) ?? device.lastSync)
-                             + (device.firstSync.isEmpty ? "" : " · first "
-                                + (device.firstSynced?.formatted(date: .abbreviated, time: .shortened) ?? device.firstSync))
-                             + (device.status.isEmpty ? "" : " · \(device.status)"))
-                            .font(.callout).foregroundStyle(.secondary)
-                        if device.reportsCompromise {
-                            Label("Reports it's rooted or jailbroken", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                }
+                ForEach(devices) { device in MobileDeviceRow(device: device) }
             case .failure(let problem): Unread(what: "the devices", problem: problem)
             }
         } header: {
@@ -1021,24 +1008,7 @@ private struct DevicesSection: View {
                 Text("No computer is signed in with this account in Google's endpoint management.").foregroundStyle(.secondary)
             case .success(let computers):
                 ForEach(computers) { computer in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(computer.words).fontWeight(.semibold)
-                        Text("Last synced " + (computer.lastSynced?.formatted(date: .abbreviated, time: .shortened) ?? computer.lastSync)
-                             + (computer.firstSync.isEmpty ? "" : " · first signed in "
-                                + (computer.firstSynced?.formatted(date: .abbreviated, time: .shortened) ?? computer.firstSync))
-                             + (computer.ownership.isEmpty ? "" : " · \(computer.ownership)")
-                             + (computer.state.isEmpty ? "" : " · \(computer.state)")
-                             + (computer.serialNumber.isEmpty ? "" : " · serial \(computer.serialNumber)"))
-                            .font(.callout).foregroundStyle(.secondary)
-                        if computer.looksVirtual {
-                            Label("A virtual machine, as a remote attacker's often is", systemImage: "exclamationmark.triangle.fill")
-                                .symbolRenderingMode(.multicolor)
-                        }
-                        if computer.reportsCompromise {
-                            Label("Reports it's compromised", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
+                    ComputerRow(computer: computer)
                     // Only a computer still signed in, by the person's own sign-in on it, can be blocked or left.
                     if computer.isActive, !computer.deviceUser.isEmpty {
                         Picker("What to do with it", selection: choice(computer)) {
