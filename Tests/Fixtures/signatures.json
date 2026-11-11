@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "2f35285",
+  "gamgui_commit": "487be35",
   "gam_version": "7.51.00",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -16370,19 +16370,19 @@
  ],
  "parse_signature": [
   {
-   "text": "SendAs Address: <admin@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    None",
+   "text": "SendAs Address: <admin@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    None\n",
    "body": ""
   },
   {
-   "text": "SendAs Address: <alice@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Best,<br>Alice",
+   "text": "SendAs Address: <alice@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Best,<br>Alice\n",
    "body": "Best,<br>Alice"
   },
   {
-   "text": "SendAs Address: <bob@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    None",
+   "text": "SendAs Address: <bob@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    None\n",
    "body": ""
   },
   {
-   "text": "SendAs Address: <carol@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Carol Clark<br>Operations",
+   "text": "SendAs Address: <carol@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Carol Clark<br>Operations\n",
    "body": "Carol Clark<br>Operations"
   },
   {
@@ -16435,11 +16435,11 @@
   },
   {
    "text": "  Signature:\n    a\u2028b\n    c\n",
-   "body": "a"
+   "body": "a\u2028b\nc"
   },
   {
    "text": "  Signature:\n    a\u0085b\fc\n",
-   "body": "a"
+   "body": "a\u0085b\fc"
   },
   {
    "text": "SendAs Address: <a@example.com>\n  Signature:\n    first\nSendAs Address: <b@example.com>\n  Signature:\n    second\n",

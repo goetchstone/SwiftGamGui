@@ -4,7 +4,7 @@ import Testing
 import TestSupport
 
 /// GamGUI parity for reading records into users, groups and members (invariant 11): every record in
-/// `Tests/Fixtures/gam_models.json`, generated from frozen GamGUI's models, gives the same fields.
+/// `Tests/Fixtures/gam_models.json`, generated from GamGUI's models, gives the same fields.
 @Suite("Directory models")
 struct DirectoryTests {
     struct Fixture<Model: Decodable>: Decodable {

@@ -19,7 +19,7 @@ public struct Vacation: Sendable, Equatable {
     public init(showText text: String) {
         var messageLines: [String] = [], inMessage = false
         var dates = ["Start Date:": "", "End Date:": ""]
-        for line in PythonText.lines(text) {
+        for line in PythonText.splitLF(text) {   // a subject or message holding U+2028 doesn't end there
             let s = PythonText.strip(line)
             if inMessage {
                 // The message is the last thing GAM prints: a line like a setting is the reply's own text. Only GAM's

@@ -144,7 +144,7 @@ struct UsageReportTests {
         await app.usage.load()
         let third = walk("third")
         #expect(reports() == third["argv"]!.array!.map { $0.array!.map { $0.string! } })
-        #expect(app.usage.report?.requested == third["result"]!["date"]!.string)
+        #expect(app.usage.report?.date == third["result"]!["date"]!.string, "GamGUI's date is the one its rows are for")
         #expect(app.usage.report?.rows.map(\.email) == ["bob@example.com", "alice@example.com", "carol@example.com"])
     }
 

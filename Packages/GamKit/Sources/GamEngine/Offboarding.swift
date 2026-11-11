@@ -5,7 +5,7 @@ import Foundation
 /// offboarding runs, in order, each one `gam` write built by `GamCommands` with what it needs to have
 /// succeeded first, and the directory's verdict on the two addresses. No suspend and no group removal:
 /// the leaver keeps a live mailbox so the delegate, the auto-reply and the transfer work. Held byte for
-/// byte to Tests/Fixtures/offboarding.json, generated from frozen GamGUI. A template can add native steps to
+/// byte to Tests/Fixtures/offboarding.json, generated from GamGUI. A template can add native steps to
 /// GamGUI's eight (`Step.addable`, docs/plans/2026-10-13-offboarding-options.md); with none added, every routine
 /// is GamGUI's. Text is handled by Unicode scalar, as Python does, never by `Character`.
 public enum Offboarding {
@@ -22,7 +22,7 @@ public enum Offboarding {
         case calacls, reminder
         case hideFromDirectory = "hide_from_directory"
 
-        /// GamGUI's eight, in its run order: every routine its fixture holds.
+        /// The routine's own eight, in run order, as GamGUI's: the rest are added by a template (`addable`).
         public static let gamgui: [Step] = [.password, .revoke, .forward, .delegate, .vacation, .transfer, .calacls, .reminder]
         /// The native steps a template may add, in run order. Each runs only when added.
         public static let addable: [Step] = [.clearRecovery, .forwardingFilters, .imapOff, .popOff, .secondaryCalendars,

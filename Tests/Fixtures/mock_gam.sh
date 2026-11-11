@@ -17,7 +17,7 @@
 #   - every call except `version` must find the credentials materialized in $GAMCFGDIR;
 #   - each write the app issues has a STRICT handler accepting only the argv shape the vendored grammar
 #     (gamgui/resources/gam7/GamCommands.txt) allows for it, and failing a malformed one the way GAM
-#     does a usage error (echo the command, "ERROR: ...", exit 2);
+#     does a usage error (echo the command, "ERROR: ...", GAM's two "Help:" lines, exit 2);
 #   - anything unhandled FAILS. Add a handler for a new command; never make the catch-all succeed.
 # Failure triggers, by argument substring: *missing*/*nonexistent* -> "Does not exist" for the user,
 # group, calendar, event or delegate (on `create user`'s org unit, GAM's "Invalid Organizational Unit");
@@ -42,8 +42,10 @@ fi
 
 ARGS="$*"
 
-usage_error() {  # GAM's usage error: the command line, then the reason; USAGE_ERROR_RC
+usage_error() {  # GAM's usage error (usageErrorExit, 7.51.00): the command line, the reason, where help is; USAGE_ERROR_RC
   printf 'Command: gam %s\n\nERROR: %s\n' "$ARGS" "$1" 1>&2
+  printf 'Help: Syntax in file %s/GamCommands.txt\nHelp: Documentation is at https://github.com/GAM-team/GAM/wiki\n' \
+    "$(dirname "$0")" 1>&2
   exit 2
 }
 missing_arg() { usage_error "Missing argument: Expected <$1>"; }

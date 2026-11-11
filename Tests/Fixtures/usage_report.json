@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "2f35285",
+  "gamgui_commit": "487be35",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -15,11 +15,11 @@
  "csv_from": [
   [
    "Getting Reports for all users\nGot 3 Reports for all users on 2026-06-16...\nemail,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent\na@example.com,2026-06-16,1,2,3,4\n",
-   "email,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent\na@example.com,2026-06-16,1,2,3,4"
+   "email,date,accounts:used_quota_in_mb,drive:num_items_created,gmail:num_emails_received,gmail:num_emails_sent\na@example.com,2026-06-16,1,2,3,4\n"
   ],
   [
    "  Email,date\r\nb@example.com,2026-06-16\r\n",
-   "  Email,date\nb@example.com,2026-06-16"
+   "  Email,date\r\nb@example.com,2026-06-16\r\n"
   ],
   [
    "\u3000EMAIL,x\nrow",
@@ -27,7 +27,7 @@
   ],
   [
    "x\u2028email,date\u2028a,b",
-   "email,date\na,b"
+   "x\u2028email,date\u2028a,b"
   ],
   [
    "progress\nemail\nx",
@@ -47,11 +47,11 @@
   ],
   [
    "\n\nemail,date\n\na@example.com,1\n\n",
-   "email,date\n\na@example.com,1\n"
+   "email,date\n\na@example.com,1\n\n"
   ],
   [
    "email,date\u001cc@example.com,2\u000bd",
-   "email,date\nc@example.com,2\nd"
+   "email,date\u001cc@example.com,2\u000bd"
   ],
   [
    "e-mail,x\nemail,y",
@@ -854,7 +854,7 @@
     ]
    ],
    "result": {
-    "date": "2026-10-04",
+    "date": "2026-06-16",
     "emails": [
      "alice@example.com",
      "bob@example.com",
@@ -973,7 +973,7 @@
     ]
    ],
    "result": {
-    "date": "2028-02-27",
+    "date": "2026-06-16",
     "emails": [
      "alice@example.com",
      "bob@example.com",

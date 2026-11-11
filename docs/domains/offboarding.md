@@ -114,9 +114,10 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   mail is moved or deleted), and each sets that setting's other values back to Gmail's defaults. Belt and braces (the
   operator's ask): the reset and the sign-out already cut off the mail apps the leaver had, these stop only IMAP and
   POP (not the Gmail app), and anyone who can still sign in can turn them back on. An added step that works
-  over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). No GamGUI builder:
-  `NativeArgvTests` holds each exact argv, checked against the grammar (5843, 5854-5855, 5954, 8399, 8405) and GAM's
-  source (the calendar handover against the source, not 1685). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
+  over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). Each argv was checked
+  against the grammar (5843, 5854-5855, 5954, 8399, 8405) and GAM's source (the calendar handover against the source, not
+  1685); GamGUI has had each step since its back-port, so `GoldenArgvTests` holds each to GamGUI's builder, and its
+  name, needs and left-out cost to GamGUI's routine (`OffboardingTests`, 2026-11-11). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
   audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
   `effectiveRequires` routes the others around it (no delegate: the auto-reply and the transfer need only

@@ -6,7 +6,7 @@ import TestSupport
 import Testing
 
 /// The signature template store (design doc D2). GamGUI's half (seeds, name rules, `names()` order and
-/// messages) is held to Tests/Fixtures/signatures.json, generated from frozen GamGUI's store pointed at
+/// messages) is held to Tests/Fixtures/signatures.json, generated from GamGUI at a pinned commit's store pointed at
 /// a temporary file, and to what that store did for the crafted names below. The native half: a format
 /// number, atomic `0600` writes in a `0700` folder, an unreadable file moved aside rather than replaced,
 /// replacing asked first, and the one-time copy of GamGUI's templates read by descriptor.
@@ -136,7 +136,7 @@ struct SignatureStoreTests {
                      String(repeating: "\u{1D400}", count: 60), String(repeating: "e\u{301}", count: 30)] {
             try store.save(name, body: "<b>x</b>")
         }
-        // GamGUI's `names()` for the same saves (frozen GamGUI's store, probed): Python's `sorted`, code
+        // GamGUI's `names()` for the same saves (GamGUI's store, probed): Python's `sorted`, code
         // point by code point.
         let gamGUIs = ["B", "Classic", "Minimal", "Modern accent", "Spaced", "Z", "a", "b", "classic",
                        String(repeating: "e", count: 60), "e\u{301}", String(repeating: "e\u{301}", count: 30), "\u{E9}",

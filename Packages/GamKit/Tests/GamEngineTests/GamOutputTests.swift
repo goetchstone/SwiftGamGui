@@ -4,16 +4,14 @@ import Testing
 import TestSupport
 
 /// GamGUI parity for reading GAM's output (invariant 11): every case in `Tests/Fixtures/gam_output.json`,
-/// generated from frozen GamGUI's `parse_records` reading CSV in GAM's dialect, gives the same records.
-/// Strings compare as bytes, numbers by value (Python reads `1E2` as 100.0 and writes it back as `100.0`).
-/// Where frozen GamGUI's reader, which lacks GAM's escape character, reads a case differently, the case
-/// also holds its records (`gamgui`): the documented deviation, held narrow below.
+/// generated from GamGUI's `parse_records`, which reads CSV in GAM's dialect (escape character included) since its #67,
+/// gives the same records. Strings compare as bytes, numbers by value (Python reads `1E2` as 100.0 and writes it back
+/// as `100.0`).
 @Suite("GAM output")
 struct GamOutputTests {
     struct Case: Decodable {
         let stdout: String
         let records: String
-        let gamgui: String?
     }
 
     struct Dialect: Decodable {
@@ -45,7 +43,7 @@ struct GamOutputTests {
     }
 
     @Test func everyCaseReadsAsGamWritesIt() throws {
-        var deeper = 0, deviations = 0
+        var deeper = 0
         for item in document.cases {
             let actual = JSONValue.array(GamOutput.records(item.stdout).map(JSONValue.object))
             guard let expected = JSONValue.parse(item.records) else {
@@ -56,17 +54,8 @@ struct GamOutputTests {
                 continue
             }
             #expect(Self.same(actual, expected), "\(item.stdout.prefix(160).debugDescription)")
-            guard let gamgui = item.gamgui else { continue }
-            // The deviation from frozen GamGUI: only its reader lacks the escape character, so a listed
-            // case holds a backslash, reads as CSV, and GamGUI's records really differ.
-            deviations += 1
-            let csv = JSONValue.array(GamOutput.csvRecords(PythonText.strip(item.stdout)).map(JSONValue.object))
-            #expect(item.stdout.unicodeScalars.contains("\\") && Self.same(actual, csv),
-                    "\(item.stdout.prefix(160).debugDescription)")
-            #expect(!Self.same(try #require(JSONValue.parse(gamgui)), expected))
         }
         #expect(deeper <= 1)
-        #expect(deviations > 0 && deviations < document.cases.count / 4)
         #expect(document.cases.count > 500)
     }
 

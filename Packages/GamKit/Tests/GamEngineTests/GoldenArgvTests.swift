@@ -4,20 +4,24 @@ import Testing
 import TestSupport
 
 /// Invariant 11: every Swift builder emits exactly the argv GamGUI's live-proven builder emits, for
-/// every case in `Tests/Fixtures/argv.json` (generated from frozen GamGUI by `scripts/gen_fixtures.py`).
+/// every case in `Tests/Fixtures/argv.json` (generated from GamGUI by `scripts/gen_fixtures.py`).
 /// The fixture is never edited to pass. A GamGUI builder is either ported (`implemented`) or listed in
 /// `notPorted` with the reason.
 @Suite("Golden argv")
 struct GoldenArgvTests {
-    enum Value: Decodable, Equatable, Sendable {
-        case string(String), bool(Bool), strings([String]), null
+    /// A keyword argument as the generator writes it: GamGUI's typed values (`MessageId`, `Phone`) as their fields by name.
+    indirect enum Value: Decodable, Equatable, Sendable {
+        case string(String), bool(Bool), int(Int), strings([String]), objects([[String: Value]]), object([String: Value]), null
 
         init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
             if container.decodeNil() { self = .null }
             else if let bool = try? container.decode(Bool.self) { self = .bool(bool) }
+            else if let int = try? container.decode(Int.self) { self = .int(int) }
             else if let string = try? container.decode(String.self) { self = .string(string) }
-            else { self = .strings(try container.decode([String].self)) }
+            else if let strings = try? container.decode([String].self) { self = .strings(strings) }
+            else if let objects = try? container.decode([[String: Value]].self) { self = .objects(objects) }
+            else { self = .object(try container.decode([String: Value].self)) }
         }
     }
 
@@ -84,6 +88,43 @@ struct GoldenArgvTests {
 
         func flag(_ key: String) throws -> Bool {
             guard case .bool(let value) = take(key) else { throw Missing.argument(key) }
+            return value
+        }
+
+        func int(_ key: String) throws -> Int {
+            guard case .int(let value) = take(key) else { throw Missing.argument(key) }
+            return value
+        }
+
+        /// GamGUI's `MessageId`, already checked as it was made, so the Swift one is made from the same ID.
+        func messageID(_ key: String) throws -> GamCommands.MessageID {
+            guard case .object(let fields) = take(key), case .string(let id)? = fields["id"], fields.count == 1 else {
+                throw Missing.argument(key)
+            }
+            return try GamCommands.MessageID(validating: id)
+        }
+
+        /// GamGUI's `Phone`s, field for field (an empty list is `[]`, which decodes as strings).
+        func phones(_ key: String) throws -> [GamUser.Phone] {
+            switch take(key) {
+            case .strings(let empty) where empty.isEmpty: return []
+            case .objects(let objects):
+                return try objects.map { fields in
+                    guard fields.count == 4, case .string(let type)? = fields["type"], case .string(let custom)? = fields["custom_type"],
+                          case .string(let value)? = fields["value"], case .bool(let primary)? = fields["primary"] else {
+                        throw Missing.argument(key)
+                    }
+                    return GamUser.Phone(type: type, customType: custom, value: value, primary: primary)
+                }
+            default: throw Missing.argument(key)
+            }
+        }
+
+        /// A name GamGUI checks against a closed set, which Swift holds as an enum. An unknown one is the adapter's `Missing`,
+        /// never `Invalid`: a case GamGUI refuses for it then fails here rather than passing with no Swift builder run (review
+        /// 2026-11-11). The sets themselves are held to GamGUI's in `theClosedSetsAndFieldListsAreGamGUIsInOrder`.
+        func choice<T>(_ key: String, _ make: (String) -> T?) throws -> T {
+            guard let value = make(try string(key)) else { throw Missing.argument(key) }
             return value
         }
     }
@@ -192,6 +233,49 @@ struct GoldenArgvTests {
                                            role: .init(validating: $0.string("role")))
         },
         "remove_group_member": { try GamCommands.removeGroupMember(group: $0.string("group"), member: $0.string("member")) },
+        // Ported back to GamGUI from here (its 2026-10-30 back-port), so held to it as every builder is.
+        "clear_recovery": { try GamCommands.clearRecovery(email: $0.string("email")) },
+        "set_password": { try GamCommands.setPassword(email: $0.string("email"), password: $0.string("password")) },
+        "hide_from_directory": { try GamCommands.hideFromDirectory(email: $0.string("email")) },
+        "imap_off": { try GamCommands.imapOff(email: $0.string("email")) },
+        "pop_off": { try GamCommands.popOff(email: $0.string("email")) },
+        "update_phones": { try GamCommands.updatePhones(email: $0.string("email"), phones: $0.phones("phones")) },
+        "transfer_calendar_ownership": {
+            try GamCommands.transferCalendarOwnership(calendarIDs: $0.strings("calendar_ids"), to: $0.string("new_owner"))
+        },
+        "print_owned_calendars": { try GamCommands.printOwnedSecondaryCalendars(email: $0.string("email")) },
+        "print_filters": { try GamCommands.printFilters(email: $0.string("email")) },
+        "delete_filters": { try GamCommands.deleteFilters(email: $0.string("email"), filterIDs: $0.strings("filter_ids")) },
+        "print_vault_holds": { try GamCommands.printVaultHolds(email: $0.string("email")) },
+        "print_forward": { try GamCommands.printForward(email: $0.string("email")) },
+        "print_send_as": { try GamCommands.printSendAs(email: $0.string("email")) },
+        "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
+        "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
+        "print_tokens": { _ in try GamCommands.printTokens() },
+        "print_user_tokens": { try GamCommands.printTokens(user: $0.string("user")) },
+        "print_chrome_profiles": { try GamCommands.printChromeProfiles(user: $0.string("user")) },
+        "print_mobile_devices": { try GamCommands.printMobileDevices(user: $0.string("user")) },
+        "print_devices": { try GamCommands.printDevices(user: $0.string("user")) },
+        "print_script_projects": { try GamCommands.printScriptProjects(user: $0.string("user")) },
+        "block_device_user": { try GamCommands.blockDeviceUser(name: $0.string("name")) },
+        "delete_device_user": { try GamCommands.deleteDeviceUser(name: $0.string("name")) },
+        "list_drafts": { try GamCommands.listMessages(email: $0.string("email"), query: "in:drafts", max: $0.int("most")) },
+        "search_scheduled": {
+            try GamCommands.searchMessages(email: $0.string("email"), query: Compromised.ScheduledSend.query, max: $0.int("most"))
+        },
+        "delete_messages": { try GamCommands.deleteMessages(email: $0.string("email"), ids: $0.strings("ids")) },
+        "find_message_copies": { try GamCommands.findMessageCopies($0.messageID("message")) },
+        "find_spam_copies": { try GamCommands.findSpamCopies($0.messageID("message")) },
+        "trash_message": { try GamCommands.trashMessage(email: $0.string("email"), $0.messageID("message"), copies: $0.int("copies")) },
+        "trash_messages": { try GamCommands.trashMessages(email: $0.string("email"), ids: $0.strings("ids")) },
+        "report_activity": { args in
+            try GamCommands.reportActivity(
+                args.choice("application", GamCommands.ActivityApplication.init(rawValue:)), users: args.strings("users"),
+                hours: args.int("hours"), start: args.string("start"), end: args.string("end"), ip: args.string("ip"),
+                events: args.strings("events"), maxActivities: args.int("max_activities"),
+                chrome: args.choice("chrome") { ["profile": .profile, "device": .device][$0] },
+                admin: args.choice("admin") { ["actor": .actor, "affected": .affected][$0] })
+        },
     ]
 
     /// Each builder that has defaults, called with only its required arguments.
@@ -215,6 +299,9 @@ struct GoldenArgvTests {
         "print_groups": { GamCommands.printGroups() },
         "print_resources": { GamCommands.printResources() },
         "print_users": { GamCommands.printUsers() },
+        // GamGUI's hours (72) and max_activities (1000) are defaults; Swift has every caller say them, so they're passed
+        // as GamGUI's, and the rest (users, the window, ip, events, chrome, admin) are Swift's own defaults.
+        "report_activity": { try! GamCommands.reportActivity(.login, hours: 72, maxActivities: 1000) },
         "search_messages": { GamCommands.searchMessages(email: "<email>") },
         "send_email": { GamCommands.sendEmail(to: "<to>", subject: "<subject>", body: "<body>") },
         "set_forward": { GamCommands.setForward(email: "<email>", address: "<address>") },
@@ -271,6 +358,7 @@ struct GoldenArgvTests {
             "FORWARD_ACTIONS": GamCommands.ForwardAction.allCases.map(\.rawValue),
             "TRANSFER_PRIVACY": GamCommands.TransferPrivacy.allCases.map(\.rawValue),
             "MESSAGE_DETAIL": GamCommands.MessageDetail.allCases.map(\.rawValue),
+            "REPORT_APPLICATIONS": GamCommands.ActivityApplication.allCases.map(\.rawValue),
             "USER_LIST_FIELDS": GamCommands.userListFields,
             "USER_DETAIL_FIELDS": GamCommands.userDetailFields,
             "GROUP_LIST_FIELDS": GamCommands.groupListFields,

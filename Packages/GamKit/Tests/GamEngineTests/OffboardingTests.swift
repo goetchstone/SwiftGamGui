@@ -87,10 +87,11 @@ struct OffboardingTests {
 
     @Test func theConstantsAreGamGUIs() {
         let constants = document.constants
-        #expect(Set(Offboarding.Step.gamgui.map(\.rawValue)) == Set(constants.requires.keys))
+        // GamGUI has every step since its back-port (the six addable ones included), so each is held to it.
+        #expect(Set(Offboarding.Step.allCases.map(\.rawValue)) == Set(constants.requires.keys))
         #expect(Offboarding.Step.allCases.filter(Offboarding.Step.gamgui.contains) == Offboarding.Step.gamgui, "GamGUI's order")
         #expect(Offboarding.Step.allCases.filter { !Offboarding.Step.gamgui.contains($0) } == Offboarding.Step.addable)
-        for step in Offboarding.Step.gamgui {
+        for step in Offboarding.Step.allCases {
             #expect(bytes(step.name) == bytes(constants.step_names[step.rawValue]!), "\(step)")
             #expect(Offboarding.requires(step).map(\.rawValue) == constants.requires[step.rawValue]!, "\(step)")
             #expect(step.leftOutCost.map(bytes) == constants.not_applicable_cost[step.rawValue].map(bytes), "\(step)")
@@ -142,7 +143,9 @@ struct OffboardingTests {
     }
 
     @Test func effectiveRequiresIsGamGUIsForEveryLeftOutSet() {
-        #expect(document.effective_requires.count == 8 * 256)
+        // Every step over every set of the steps another requires: leaving any other out can't change the answer.
+        let required = Set(Offboarding.Step.allCases.flatMap(Offboarding.requires))
+        #expect(document.effective_requires.count == Offboarding.Step.allCases.count * (1 << required.count))
         for item in document.effective_requires {
             let made = Offboarding.effectiveRequires(Offboarding.Step(rawValue: item.key)!, notApplicable: steps(item.not_applicable))
             #expect(made.map(\.rawValue) == item.requires, "\(item.key) without \(item.not_applicable)")

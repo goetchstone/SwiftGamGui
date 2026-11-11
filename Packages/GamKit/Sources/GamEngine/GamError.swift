@@ -1,6 +1,6 @@
 /// A failed GAM run, read as GamGUI reads one (`core/gam/errors.py`): a kind that drives the remediation
 /// and whether a bulk loop stops, the message an operator sees, and GAM's output with any echoed secret
-/// masked. Held to `Tests/Fixtures/gam_errors.json` (generated from frozen GamGUI by
+/// masked. Held to `Tests/Fixtures/gam_errors.json` (generated from GamGUI by
 /// `scripts/gen_fixtures.py`) by `GamErrorTests`. The patterns are GamGUI's, each placed and ordered by
 /// an incident in its failure log; the comments say which.
 public struct GamError: Error, Equatable, Sendable {
@@ -145,7 +145,7 @@ public struct GamError: Error, Equatable, Sendable {
     /// failure-log 2026-09-23).
     static func errorLines(_ stderr: String) -> [(kind: Kind, line: String)] {
         PythonText.lines(stderr).map { PythonText.strip($0) }
-            .filter { !$0.isEmpty && !isProgress($0) && !isInstruction($0) && !isCommandEcho($0) }
+            .filter { !$0.isEmpty && !isProgress($0) && !isInstruction($0) && !isFraming($0) }
             .map { (classify($0), $0) }
     }
 
@@ -180,13 +180,16 @@ public struct GamError: Error, Equatable, Sendable {
         instructions.contains { $0.utf8.elementsEqual(line.utf8) }
     }
 
-    /// GAM's echo of the command it refused (glclargs `CommandLineWithBadArgumentMarked`): "Command: " and the
-    /// arguments, the bad one marked >>>like this<<<, before a usage error or an entity that doesn't exist. It says
-    /// what ran, not what failed: read as an error line, it outranked GAM's "User: x, Does not exist" and became the
-    /// message. A deviation from GamGUI's reader, held to `gam_errors.json` (its `gamgui` readings) by
-    /// `GamErrorTests` (failure-log 2026-10-13, "GAM's command echo read as the failure").
-    static func isCommandEcho(_ line: String) -> Bool {
-        line.unicodeScalars.starts(with: "Command: ".unicodeScalars)
+    /// GAM's framing of a command it refused, which says what ran and where to read, not what failed. Before a usage
+    /// error or an entity that doesn't exist, the command echoed with the bad argument marked >>>like this<<<
+    /// (glclargs `CommandLineWithBadArgumentMarked`, "Command: "); after a usage error, where the syntax and the wiki
+    /// are (usageErrorExit: `Msg.HELP_SYNTAX`, "Help: Syntax in file {0}", and `HELP_WIKI`, "Help: Documentation is at
+    /// {0}", read from the 7.51.00 build's gamlib.glmsgs). Read as error lines, the echo outranked "User: x, Does not
+    /// exist" (failure-log 2026-10-13) and a usage error's message was the help line (2026-11-11). GamGUI's
+    /// `_FRAMING_LINE`, held by `gam_errors.json`. GAM's one other message starting "Command", "Command can not be
+    /// nested.", is an error and isn't matched.
+    static func isFraming(_ line: String) -> Bool {
+        ["Command: ", "Help: Syntax in file ", "Help: Documentation is at "].contains { line.unicodeScalars.starts(with: $0.unicodeScalars) }
     }
 
     /// One line's kind, first match wins. Order matters: more specific first.

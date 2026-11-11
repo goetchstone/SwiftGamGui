@@ -15,8 +15,7 @@ public enum GamOutput {
         // Newline-delimited JSON, when the first non-blank line is JSON. Split on "\n" only: a name
         // holding U+2028 (left raw by GAM's JSON) once became a bogus record (GamGUI failure-log
         // 2026-09-30).
-        let lines = text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false)
-            .map(PythonText.string).filter { !PythonText.strip($0).isEmpty }
+        let lines = PythonText.splitLF(text).filter { !PythonText.strip($0).isEmpty }
         if let first = lines.first, json(first) != nil {
             var found: [Record] = []
             for line in lines {

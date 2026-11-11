@@ -106,7 +106,7 @@ struct MessageRecipientsTests {
             #expect(refused.exitCode == 2 && refused.stderr.contains("isn't modelled"), "\(argv): \(refused.stderr)")
         }
         let bad = try await read("", argv: base + ["max_to_print", "fifty"])
-        #expect(bad.exitCode == 2 && bad.stderr.hasSuffix("ERROR: Invalid argument: Expected <integer x>=0>\n"))
+        #expect(bad.exitCode == 2 && bad.stderr.contains("ERROR: Invalid argument: Expected <integer x>=0>\nHelp: Syntax in file "))
     }
 
     /// RFC 5322 address lists as GAM prints them decoded: a display name (quoted or not, with a comma or an @), a

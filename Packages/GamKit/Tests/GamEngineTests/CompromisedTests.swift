@@ -4,8 +4,8 @@ import Testing
 import TestSupport
 
 /// The compromised-account core (docs/plans/2026-10-19-compromised-account.md): the lock is offboarding's builders, the
-/// picks one step each, and the reads said in words. No GamGUI builder holds these: each argv is held here and in
-/// `NativeArgvTests`, against the grammar and GAM 7.48.30's source.
+/// picks one step each, and the reads said in words. Each argv is held here, against the grammar and GAM 7.48.30's source, and
+/// to GamGUI's own builder since its back-port (`GoldenArgvTests`).
 @Suite("Compromised account")
 struct CompromisedTests {
     private func filter(_ json: String) throws -> Compromised.Filter {

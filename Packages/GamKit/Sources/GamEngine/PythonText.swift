@@ -121,6 +121,14 @@ package enum PythonText {
         return string(scalars[...last])
     }
 
+    /// `str.split("\n")`: on LF alone, keeping a CR. For GAM's output, where a value can hold any other line break
+    /// (U+2028, a form feed, a bare CR) as part of itself, which `lines` would split it on: the output reader, the
+    /// runner's noise filter, and the signature, auto-reply and usage readers (GamGUI #83, failure-log 2026-11-11). On
+    /// scalars, since "\r\n" is one Character.
+    package static func splitLF(_ text: String) -> [String] {
+        text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false).map { string($0) }
+    }
+
     /// `str.splitlines()`.
     package static func lines(_ text: String) -> [String] {
         var lines: [String] = [], current = String.UnicodeScalarView()

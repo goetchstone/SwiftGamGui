@@ -181,7 +181,7 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
   reader (25 texts), its seeds, its store's messages and order, and GAM's own stored form and keyword
   reading.
 - `SignatureStoreTests` holds the store to the fixture's messages, names and seeds (`Signature.seeds`,
-  the one copy), and to what frozen GamGUI's store did for crafted names.
+  the one copy), and to what GamGUI's store did for crafted names.
 - Mutants of the core and the mock (2026-10-10, 19, all killed): `{role}` from another field, a token
   skipped short, blocks dropped when set, `]]` overlapped, a curly quote left out, the warning's words,
   a blank line ending the read, `None` kept, only `\n` splitting lines, CR kept, `<br>` for `<br/>`,

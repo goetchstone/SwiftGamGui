@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the parity fixtures SwiftGamGui's tests hold the Swift code to.
 
-GamGUI (the Python app) is frozen and its argv builders are live-proven, so they are the reference:
+GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned commit:
 
   Tests/Fixtures/argv.json        every GAMCommands builder, called over GamGUI's own test inputs
                                   (the grammar contract's enumeration, the mock tests' concrete calls)
@@ -9,14 +9,10 @@ GamGUI (the Python app) is frozen and its argv builders are live-proven, so they
                                   records the full keyword arguments and either the argv or the error.
   Tests/Fixtures/gam_errors.json  GamGUI's classification, message and scrubbing of failed GAM runs
                                   (core/gam/errors.py) over its own and generated stderr, with the
-                                  Unicode tables its regexes use. GAM's progress lines are read as GAM
-                                  writes them, which GamGUI's rule isn't (gam_progress); each case it
-                                  reads differently keeps its reading too.
+                                  Unicode tables its regexes use.
   Tests/Fixtures/gam_output.json  GamGUI's parse_records over the mock's output for every read, its
                                   property tests' JSON/CSV shapes and noise, and the inputs its
-                                  failure log names. CSV is read in GAM's dialect, which GamGUI's
-                                  reader isn't (gam_reader); each case it reads differently keeps its
-                                  records too.
+                                  failure log names, CSV read in GAM's dialect.
   Tests/Fixtures/gam_models.json  GamGUI's user, group and member models over the mock's records and
                                   seeded variants.
   Tests/Fixtures/guard.json       GamGUI's guard (evaluate, enforce, alias_deletes) over seeded change
@@ -60,6 +56,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
+import dataclasses
 import functools
 import importlib.util
 import inspect
@@ -151,74 +148,35 @@ def csv_as_the_build_writes(oracle: GamOracle) -> None:
                              f"{text[:80]!r}: read the new writer, then update the Swift reader and the mock's gam_cell")
 
 
-@contextlib.contextmanager
-def gam_reader():
-    """GamGUI's parse_records reading CSV in GAM's dialect: its parser module's csv swapped, in memory only,
-    for one whose DictReader knows GAM's escape character. Frozen GamGUI reads GAM's CSV without it, so a
-    JSON cell holding an escaped quote is dropped, a backslash comes back doubled and an escaped newline as
-    "\\n" (failure-log 2026-10-10, "GAM's CSV escapes"). The Swift reader reads it as GAM wrote it; the
-    fixtures are generated with this, and gam_output.json keeps frozen GamGUI's records beside each case
-    where the two differ."""
-    from gamgui.core.gam import parser
-
-    frozen = parser.csv
-    parser.csv = types.SimpleNamespace(DictReader=functools.partial(csv.DictReader, escapechar="\\"),
-                                       field_size_limit=csv.field_size_limit)
-    try:
-        yield parser.parse_records
-    finally:
-        parser.csv = frozen
-
-
 # GAM 7.48.22's progress lines (show_gettings, on by default): every one its printers write starts with
 # Msg.GETTING or Msg.GOT and a count (gam/__init__.py:2681-2722, the page counts :2736-2763), and no error it
 # writes starts with "Getting " (those start "ERROR:", "WARNING:" or an entity's name).
 GAM_PROGRESS = r"(Getting |Got \d+ )"
 
 
-# GAM's echo of the command it refused (glclargs CommandLineWithBadArgumentMarked, read from the 7.48.26 build):
-# "Command: " and the arguments, the bad one marked >>>like this<<<, before a usage error or an entity that
-# doesn't exist. It says what ran, not what failed.
-GAM_COMMAND_ECHO = r"Command: .*"
+def parse_records(text: str) -> list:
+    """GamGUI's reader of GAM's output (core/gam/parser.py), as the pinned commit has it."""
+    from gamgui.core.gam.parser import parse_records as read
+
+    return read(text)
 
 
-@contextlib.contextmanager
-def gam_command_echo():
-    """GamGUI's GAMError reading GAM's command echo as context, not a failure: its errors module's
-    _INSTRUCTION_LINE widened, in memory only, to GAM_COMMAND_ECHO as well. Frozen GamGUI reads the echo as an
-    unknown error line, which outranks the real one after it, so GAM's "User: x, Does not exist" read as an
-    unknown failure whose message was the command (failure-log 2026-10-13, "GAM's command echo read as the
-    failure"). gam_errors.json is generated with this and keeps frozen GamGUI's reading where they differ."""
-    import re
+def require_gamgui_reads_gam() -> None:
+    """Refuse a GamGUI pin that misreads GAM where the Swift app reads it right. Until 487be35 the generator patched
+    three GamGUI readings in memory and kept GamGUI's own beside each case it read differently: CSV without GAM's
+    backslash escape (failure-log 2026-10-10), only "Getting all " as progress, and GAM's command echo as the
+    failure (both 2026-10-13). GamGUI fixed all three (its #67 and the 2026-10-30/31 failure-log entries), so the
+    fixtures are GamGUI's own reading, and a pin from before the fixes is refused rather than patched."""
+    from gamgui.core.gam import errors, parser
 
-    from gamgui.core.gam import errors
-
-    frozen = errors._INSTRUCTION_LINE
-    errors._INSTRUCTION_LINE = re.compile(f"(?:{frozen.pattern})|{GAM_COMMAND_ECHO}")
-    try:
-        yield frozen
-    finally:
-        errors._INSTRUCTION_LINE = frozen
-
-
-@contextlib.contextmanager
-def gam_progress():
-    """GamGUI's GAMError reading GAM's progress lines as GAM writes them: its errors module's _PROGRESS_LINE
-    swapped, in memory only, for GAM_PROGRESS. Frozen GamGUI knows only "Getting all " and "Got <n> ", so a
-    per-entity line ("Getting Reports for all users", "Getting Group sales@example.com (1/3)") reads as an
-    unknown failure that outranks the real one beside it (failure-log 2026-10-13, "GAM's progress read as an
-    error"). The Swift GamError reads it as progress; gam_errors.json is generated with this and keeps frozen
-    GamGUI's reading beside each case where the two differ."""
-    import re
-
-    from gamgui.core.gam import errors
-
-    frozen = errors._PROGRESS_LINE
-    errors._PROGRESS_LINE = re.compile(GAM_PROGRESS)
-    try:
-        yield frozen
-    finally:
-        errors._PROGRESS_LINE = frozen
+    # The record {"a": 'x\"'} as GAM prints it: its JSON's three backslashes doubled, each quote doubled.
+    escaped = "primaryEmail,JSON\n" + r'a@example.com,"{""a"": ""x\\\\\\""""}"' + "\n"
+    if parser.parse_records(escaped) != [{"primaryEmail": "a@example.com", "a": 'x\\"'}]:
+        raise SystemExit("this GamGUI reads GAM's CSV without its escape character: pin a commit from #67 on")
+    if errors._PROGRESS_LINE.pattern != GAM_PROGRESS:
+        raise SystemExit(f"this GamGUI's progress rule is {errors._PROGRESS_LINE.pattern!r}, not GAM's {GAM_PROGRESS!r}")
+    if not getattr(errors, "_FRAMING_LINE", None) or not errors._FRAMING_LINE.match("Command: gam info user >>>x<<<"):
+        raise SystemExit("this GamGUI reads GAM's command echo as the failure: pin a commit from 2026-10-31 on")
 
 
 def variants(value: str) -> list:
@@ -233,6 +191,9 @@ def variants(value: str) -> list:
 def jsonable(value):
     if isinstance(value, (list, tuple)):
         return [jsonable(v) for v in value]
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        # GamGUI's typed values (MessageId, Phone): their fields by name, as the Swift adapter reads them.
+        return {f.name: jsonable(getattr(value, f.name)) for f in dataclasses.fields(value)}
     return value
 
 
@@ -256,6 +217,11 @@ def strategy_values(strategy) -> list:
     kind = type(inner).__name__
     if kind == "BooleansStrategy":
         return [True, False]
+    if kind == "IntegersStrategy":
+        # A bounded count (trash_message's copies, 1 to 9): both ends, so the Swift builder is held at each.
+        if inner.start is None or inner.end is None:
+            raise SystemExit("unbounded st.integers in a Spec: give it bounds, or name the values here")
+        return sorted({inner.start, inner.end})
     if hasattr(inner, "value"):
         return [inner.value]
     if hasattr(inner, "elements"):
@@ -277,12 +243,10 @@ def ranges(predicate) -> list:
 
 
 def errors_fixture() -> dict:
-    """GamGUI's GAMError.from_run, reading GAM's progress lines as GAM writes them (gam_progress), over GAM's
+    """GamGUI's GAMError.from_run over GAM's
     known stderr lines and their case, indent and counter variants, mixed stderrs, progress chatter in each
     shape GAM prints it and instructions, timeouts, missing-scope lines, echoed passwords, Unicode and
-    boundary edges, and seeded random text: what the Swift GamError must say. A case frozen GamGUI reads
-    differently also holds its reading, as `gamgui`: a missed progress line or a command echo read as an error is
-    the only difference (gam_progress, gam_command_echo)."""
+    boundary edges, and seeded random text: what the Swift GamError must say."""
     import random
     import re
     import unicodedata
@@ -296,21 +260,12 @@ def errors_fixture() -> dict:
                 "remediation_suffix": err.remediation[len(_REMEDIATION[err.kind]):]}
 
     def run(exit_code, stderr, argv=None, stdout=""):
-        frozen = read(GAMError.from_run(exit_code, stderr, argv, stdout=stdout))
-        with gam_progress() as frozen_rule, gam_command_echo():
-            err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
-            ours = read(err)
-            case = {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
-                    "kind": ours["kind"], "kinds": ours["kinds"], "message": ours["message"],
-                    "scrubbed_stderr": err.stderr, "scrubbed_stdout": err.stdout, "redacted_argv": err.argv,
-                    "remediation_suffix": ours["remediation_suffix"]}
-        if frozen != {k: case[k] for k in frozen}:
-            missed = [line for line in (raw.strip() for raw in stderr.splitlines())
-                      if (re.match(GAM_PROGRESS, line) and not frozen_rule.match(line)) or re.fullmatch(GAM_COMMAND_ECHO, line)]
-            if not missed:   # nothing else was swapped: a missed progress line or an echo is the only difference
-                raise SystemExit(f"the two readings differ without a line GamGUI misreads: {stderr[:80]!r}")
-            case["gamgui"] = frozen
-        return case
+        err = GAMError.from_run(exit_code, stderr, argv, stdout=stdout)
+        ours = read(err)
+        return {"exit_code": exit_code, "stderr": stderr, "argv": argv, "stdout": stdout,
+                "kind": ours["kind"], "kinds": ours["kinds"], "message": ours["message"],
+                "scrubbed_stderr": err.stderr, "scrubbed_stdout": err.stdout, "redacted_argv": err.argv,
+                "remediation_suffix": ours["remediation_suffix"]}
 
     cases = []
     known = [line for line, _ in _KNOWN]
@@ -335,7 +290,6 @@ def errors_fixture() -> dict:
     # GAM's progress in each shape its printers write (gam/__init__.py:2681-2722), with the per-entity counter
     # where they print one (currentCountNL), alone and before a real failure, as GAM lays them out (an
     # "ERROR:" line after a blank one), and in case and position variants GAM never writes, which are errors.
-    # Frozen GamGUI misses every "Getting <item> …" line (gam_progress).
     progress = [
         ("Getting all Users, may take some time on a large Google Workspace Account...", False),
         ("Got 3 Groups", False),
@@ -401,7 +355,7 @@ def errors_fixture() -> dict:
                 cases.append(run(2, stderr, argv, stdout=stderr))
     # GAM's entityDoesNotExistExit (gam/__init__.py:800-805 at 7.48.22): the command echoed with the address that
     # isn't one marked, then ERROR and the entity, ENTITY_DOES_NOT_EXIST_RC. A transfer to or from a non-user ends
-    # this way (convertEmailAddressToUID, :5997-6013). Frozen GamGUI's message was the echo.
+    # this way (convertEmailAddressToUID, :5997-6013).
     from tests.test_props_errors import _quoted
     for argv, at, entity in (
             (["gam", "create", "datatransfer", "nobody@example.com", "drive,calendar", "alice@example.com", "all"], 3, "User"),
@@ -514,13 +468,12 @@ def errors_fixture() -> dict:
 
 
 def output_fixture(mock: Path, oracle: GamOracle) -> dict:
-    """GamGUI's parse_records, reading CSV in GAM's dialect (gam_reader), over GAM's output shapes: what
+    """GamGUI's parse_records, reading CSV in GAM's dialect, over GAM's output shapes: what
     the strict mock prints for every read the app makes; the JSON, CSV and formatjson shapes and the noise
-    GamGUI's property tests generate (drawn deterministically, the CSV ones printed by GAM's writer); the
+    GamGUI's property tests generate (drawn deterministically, the CSV ones as GAM prints them); the
     inputs its failure log names (a long cell, a bare CR, deep nesting, raw line separators in NDJSON, an
     empty header) with JSON's and CSV's own edges; and GAM's escaping. The records are stored as Python's
-    json.dumps text, NaN and Infinity included. A case frozen GamGUI reads differently also holds its
-    records, as `gamgui`: the escape character is the only difference, so each holds a backslash."""
+    json.dumps text, NaN and Infinity included."""
     from hypothesis import HealthCheck, Phase, given, seed, settings
     from hypothesis import strategies as st
 
@@ -530,25 +483,15 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
     cases = []
 
     def add(stdout: str) -> None:
-        frozen = json.dumps(parse_records(stdout), ensure_ascii=True)
-        with gam_reader() as read:
-            case = {"stdout": stdout, "records": json.dumps(read(stdout), ensure_ascii=True)}
-        if frozen != case["records"]:
-            if "\\" not in stdout:   # nothing else was swapped: an escape character is the only difference
-                raise SystemExit(f"the two readers differ on text without a backslash: {stdout[:80]!r}")
-            case["gamgui"] = frozen
-        cases.append(case)
+        cases.append({"stdout": stdout, "records": json.dumps(parse_records(stdout), ensure_ascii=True)})
 
     def as_gam_prints(draw) -> str:
-        """A drawn CSV as GAM prints it. GamGUI's test writer (props._csv) leaves a backslash single, which
-        GAM never does: its rows, read back in the dialect they were written in, are written again in GAM's.
-        Read in GAM's dialect they must give the draw's own records, an oracle neither reader made."""
+        """A drawn CSV, which GamGUI's strategies write as GAM prints it (its _gam_csv, GAM's escape character
+        included). Read back it must give the draw's own records, an oracle the reader didn't make."""
         text, expected = draw
-        printed = gam_csv(csv.reader(io.StringIO(text, newline="")))
-        with gam_reader() as read:
-            if read(printed) != expected:
-                raise SystemExit(f"a draw printed as GAM prints it reads back wrong: {printed[:80]!r}")
-        return printed
+        if parse_records(text) != expected:
+            raise SystemExit(f"a draw printed as GAM prints it reads back wrong: {text[:80]!r}")
+        return text
 
     for stdouts in mock_outputs(mock).values():
         for stdout in stdouts:
@@ -727,18 +670,10 @@ def mock_outputs(mock: Path) -> dict:
     import subprocess
     import tempfile
 
-    from gamgui.core.gam.commands import GAMCommands
     from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests.test_mock_gam import READS
 
-    # GamGUI at 2f35285 reads transfers for leaver@example.com, who isn't a user in the mock. GAM ends that read
-    # (convertEmailAddressToUID -> entityDoesNotExistExit, gam/__init__.py:6028 at 7.51.00), and the mock has since
-    # #153; GamGUI's own fix (7f8cf18) reads carol@example.com, so this does too. Delete this once the fixtures name a
-    # GamGUI commit that has that fix: the check below stops the generator then.
     reads = dict(READS)
-    if reads["print_datatransfers"] != [GAMCommands.print_datatransfers("leaver@example.com")]:
-        raise SystemExit("GamGUI's print_datatransfers read moved: delete the leaver@ override in mock_outputs")
-    reads["print_datatransfers"] = [GAMCommands.print_datatransfers("carol@example.com")]
 
     data = mock.parent / "mock_gam"
     for path in sorted(data.rglob("*.json")):
@@ -784,8 +719,7 @@ def models_fixture(mock: Path) -> dict:
     from gamgui.core.gam.models import GAMGroup, GAMUser, GroupMember
 
     outputs = mock_outputs(mock)
-    with gam_reader() as read:
-        records = {name: [r for out in found for r in read(out)] for name, found in outputs.items()}
+    records = {name: [r for out in found for r in parse_records(out)] for name, found in outputs.items()}
     rng = random.Random(20261008)
     flags = [True, False, "TRUE", "false", " yes ", "1", "0", "on", "off", "", None, 0, 1, 2]
     texts = ["", None, "Zo" + chr(0xEB) + " " + chr(0xC5) + "ngstr" + chr(0xF6) + "m", "a@example.com", " padded "]
@@ -1094,8 +1028,7 @@ def reports_fixture(mock: Path) -> dict:
     from gamgui.core.reports import build_reports
 
     now = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
-    with gam_reader() as read:
-        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
+    records = [r for out in mock_outputs(mock)["print_users"] for r in parse_records(out)]
     rng = random.Random(20261008)
     logins = ["2026-10-01T09:30:00.000Z", "2026-07-10T12:00:00.000Z", "2026-07-10T11:59:59Z", "2026-07-10T12:00:00Z",
               "1970-01-01T00:00:00.000Z", "2026-09-30T23:00:00+02:00", "2026-09-30", "2026-09-30 08:00:00",
@@ -1316,8 +1249,7 @@ def usage_fixture(mock: Path) -> dict:
                "email,date\x1cc@example.com,2\x0bd", "e-mail,x\nemail,y"]
     csv_from = [[out, gam_connector._csv_from(out)] for out in outputs]
     report = mock_outputs(mock)["report_users"][0]
-    with gam_reader() as read:
-        mocked = read(gam_connector._csv_from(report))
+    mocked = parse_records(gam_connector._csv_from(report))
     values = ["608873", "", None, "12.7", "-5", " 42 ", "1e3", "1.5E+2", "+.5e1", "nan", "-NaN", "abc", "1_000", "1__0",
               "_1", "1_", "١٢", "١٢.٥", "0x10", "9007199254740993", "-0.5", "1.", ".", "\x1c7",
               "7\x0c", "\xa07" + chr(0x3000), "7 7", "1e", "infinite", "256", "768", "1126", "51", "52", "1048576"]
@@ -1354,7 +1286,7 @@ def usage_fixture(mock: Path) -> dict:
             connector.runner, connector.domain = Runner(answers), "example.com"
             clock = patching.Mock(wraps=datetime)
             clock.now = lambda tz=None, today=today: today
-            with patching.patch.object(gam_connector, "datetime", clock), gam_reader():
+            with patching.patch.object(gam_connector, "datetime", clock):
                 try:
                     found = asyncio.run(connector.usage_report(reports.USAGE_PARAMS))
                     result = {"date": found["date"], "emails": [r.get("email") for r in found["rows"]]}
@@ -1507,8 +1439,7 @@ def signature_fixture(mock: Path, oracle: GamOracle) -> dict:
     from gamgui.core.gam.runner import strip_cfgdir_noise
 
     # The people a template renders for: the mock's directory as GAM prints it, then crafted records.
-    with gam_reader() as read:
-        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
+    records = [r for out in mock_outputs(mock)["print_users"] for r in parse_records(out)]
     records += [
         {"primaryEmail": "a@e.com", "name": {"givenName": "Al", "familyName": "Ant"},
          "organizations": [{"title": "Director", "primary": True}]},
@@ -1615,7 +1546,7 @@ def signature_fixture(mock: Path, oracle: GamOracle) -> dict:
 def offboarding_fixture(mock: Path) -> dict:
     """GamGUI's offboarding routine (core/lifecycle.py) and its preview's helpers (web/routes/lifecycle.py),
     over curated and seeded inputs: build_offboard_steps (each step's key, label, summary, requires and
-    command lines), effective_requires over every left-out set, fill_autoreply, command_line,
+    command lines), effective_requires over every left-out set that can change it, fill_autoreply, command_line,
     check_addresses, the preview's display names (_resolve_name, _manager_contact, _compose_autoreply) and
     its delegate warning (_delegate_warning). The helpers are handed a stand-in that holds only a directory
     or a delegate list: never GamGUI's AppState or a connector, which reach its app data and GAM."""
@@ -1694,8 +1625,12 @@ def offboarding_fixture(mock: Path) -> dict:
                                 notify=rng.choice(notifies), employee_name=rng.choice(display),
                                 manager_contact=rng.choice(display), na=na))
 
+    # effective_requires reads a left-out set only for steps another step requires (`req in not_applicable`), so
+    # leaving any other out can't change it: every key over every set of the required ones covers every left-out
+    # set (14 steps x 2**14 was 52 MB). A step that comes to be required joins `required` by itself.
+    required = [k for k in keys if any(k in reqs for reqs in lifecycle.REQUIRES.values())]
     requires = [{"key": k, "not_applicable": na, "requires": list(lifecycle.effective_requires(k, frozenset(na)))}
-                for k in keys for na in subsets(keys)]
+                for k in keys for na in subsets(required)]
 
     fill = [{"text": t, "employee": e, "manager": m, "out": lifecycle.fill_autoreply(t, e, m)}
             for t in texts for e, m in (("Lee Ver", "Mo Gr (mgr@example.com)"), ("{manager}", "{employee}"),
@@ -1719,8 +1654,7 @@ def offboarding_fixture(mock: Path) -> dict:
     command = [{"argv": a, "line": lifecycle.command_line(a)} for a in argvs]
 
     # check_addresses: the mock's directory as GAM prints it, then crafted records the checks turn on.
-    with gam_reader() as read:
-        records = [r for out in mock_outputs(mock)["print_users"] for r in read(out)]
+    records = [r for out in mock_outputs(mock)["print_users"] for r in parse_records(out)]
     records += [
         {"primaryEmail": "Dee@Example.com", "name": {"givenName": "Dee", "familyName": "Dell"}, "isDelegatedAdmin": True},
         {"primaryEmail": "eve@example.com", "isAdmin": True, "isDelegatedAdmin": True, "suspended": True,
@@ -1776,13 +1710,12 @@ def offboarding_fixture(mock: Path) -> dict:
                {"exit": 1, "stderr": "ERROR: 400: failedPrecondition - Mail service not enabled\n"},
                {"exit": 50, "stderr": "User: carol@example.com, User:, Print Failed: invalid_grant: Invalid email or User ID\n"}]
     delegate = []
-    with gam_progress():   # GAM's progress lines read as the Swift GamError reads them (gam_errors.json)
-        for answer in answers:
-            for manager in ("alice@example.com", "kim@example.com"):
-                given = GAMError.from_run(answer["exit"], answer["stderr"]) if isinstance(answer, dict) else answer
-                delegate.append({"user": "carol@example.com", "manager": manager, "delegates": answer,
-                                 "warning": asyncio.run(route._delegate_warning(Delegates(given), "carol@example.com",
-                                                                                 manager))})
+    for answer in answers:
+        for manager in ("alice@example.com", "kim@example.com"):
+            given = GAMError.from_run(answer["exit"], answer["stderr"]) if isinstance(answer, dict) else answer
+            delegate.append({"user": "carol@example.com", "manager": manager, "delegates": answer,
+                             "warning": asyncio.run(route._delegate_warning(Delegates(given), "carol@example.com",
+                                                                             manager))})
     return {"constants": {"step_names": lifecycle.STEP_NAMES, "requires": {k: list(v) for k, v in lifecycle.REQUIRES.items()},
                           "optional_steps": optional, "not_applicable_cost": lifecycle.NOT_APPLICABLE_COST,
                           "default_subject": lifecycle.DEFAULT_SUBJECT, "default_message": lifecycle.DEFAULT_MESSAGE,
@@ -1841,10 +1774,7 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
 
     # not_ready_yet over the classifier's own corpus (by index into gam_errors.json), then the live lines
     # and their case and fold variants, read with GAM's progress lines as progress, as gam_errors.json is
-    # (gam_progress; failure-log 2026-10-13): frozen GamGUI's misreading would make a not-ready refusal behind a
-    # "Getting …" line look like an unknown failure here too.
-    with gam_progress():
-        flags = [onboarding.not_ready_yet(GAMError.from_run(c["exit_code"], c["stderr"])) for c in gam_error_cases]
+    flags = [onboarding.not_ready_yet(GAMError.from_run(c["exit_code"], c["stderr"])) for c in gam_error_cases]
     extra = [(50, "User: new@example.com, User Set Failed: access_denied: Requested client not authorized\n"),
              (73, "User: new@example.com, Calendar Service/App not enabled\n"),
              (50, "User: new@example.com, Tasklist Create Failed: access_denied: REQUESTED CLIENT NOT AUTHORIZED\n"),
@@ -2090,6 +2020,7 @@ def main() -> int:
         pending.append((name, text))
     gamgui = Path(args.gamgui).resolve()
     sys.path.insert(0, str(gamgui))
+    require_gamgui_reads_gam()
 
     # Before anything is read: the build must answer, under its own Python, and still write GAM_DIALECT's CSV.
     oracle = GamOracle(Path(args.gam_binary), args.gam_python)
@@ -2180,9 +2111,12 @@ def main() -> int:
     for name in builders:
         params = inspect.signature(originals[name]).parameters.values()
         if any(p.default is not p.empty for p in params):
-            required = {p.name: (["<" + p.name + ">"] if "Sequence" in str(p.annotation) else "<" + p.name + ">")
+            # A placeholder, or the first value GamGUI's own contract test passes where the builder checks it.
+            required = {p.name: (ENUM_ARGS[name, p.name][0] if (name, p.name) in ENUM_ARGS
+                                 else ["<" + p.name + ">"] if "Sequence" in str(p.annotation) else "<" + p.name + ">")
                         for p in params if p.default is p.empty}
-            defaults[name] = {"kwargs": required, "argv": list(originals[name](**required))}
+            defaults[name] = {"kwargs": {k: jsonable(v) for k, v in required.items()},
+                              "argv": list(originals[name](**required))}
 
     # Stable order, no duplicates.
     seen, unique = set(), []
@@ -2211,7 +2145,7 @@ def main() -> int:
         "builders": builders,
         "signatures": signatures,
         "constants": {k: jsonable(getattr(GAMCommands, k)) for k in ("TRANSFER_PRIVACY", "FORWARD_ACTIONS",
-                                                                      "MESSAGE_DETAIL")}
+                                                                      "MESSAGE_DETAIL", "REPORT_APPLICATIONS")}
         | {k: jsonable(getattr(commands_mod, k)) for k in ("GROUP_ROLES", "CALENDAR_ACL_ROLES", "USER_LIST_FIELDS",
                                                            "USER_DETAIL_FIELDS", "GROUP_LIST_FIELDS",
                                                            "CROS_LIST_FIELDS", "FILE_LIST_FIELDS", "CACHE_FIELDS")}

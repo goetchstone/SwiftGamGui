@@ -49,12 +49,12 @@ struct HTMLTextTests {
         }
     }
 
-    /// GamGUI's readings, but one: a setting's line below `Message:` is the reply's own text, never the setting (GAM prints
-    /// the message last). GamGUI takes it, so a reply that says `Enabled: False` reads as off (failure-log 2026-10-21).
+    /// GamGUI's readings, every one. A setting's line below `Message:` is the reply's own text, never the setting (GAM prints
+    /// the message last), so a reply that says `Enabled: False` doesn't read as off (failure-log 2026-10-21; GamGUI since).
     @Test func showVacationIsReadAsGamGUIReadsIt() {
         let attackersOwnLine = "  Enabled: true\r\n  Subject:   Away  \r\n  Message:\r\n   line one\r\n   line two\r\n  Enabled: False\r\n"
-        #expect(document.show_vacation.contains { $0.text == attackersOwnLine && !$0.enabled }, "GamGUI's reading, recorded")
-        for show in document.show_vacation where show.text != attackersOwnLine {
+        #expect(document.show_vacation.contains { $0.text == attackersOwnLine && $0.enabled }, "GamGUI's reading, recorded")
+        for show in document.show_vacation {
             let vacation = Vacation(showText: show.text)
             #expect(vacation.enabled == show.enabled && vacation.contactsOnly == show.contacts_only
                     && vacation.domainOnly == show.domain_only, "\(show.text)")
