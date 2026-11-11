@@ -43,7 +43,7 @@ struct CommandKindTests {
     }
 
     /// Arguments drawn from a closed set: they keep the fixture's valid value.
-    static let closedArguments: Set = ["role", "privacy", "action", "detail", "application", "chrome", "admin"]
+    static let closedArguments: Set = ["role", "privacy", "action", "detail", "application", "chrome", "admin", "states"]
 
     /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
     static let sharedBuilders: [String: String] = [
@@ -70,7 +70,7 @@ struct CommandKindTests {
             for (key, value) in item.kwargs {
                 switch value {
                 case .string where !closedArguments.contains(key): kwargs[key] = .string("<\(key)>")
-                case .strings: kwargs[key] = .strings(["<\(key)>"])
+                case .strings where !closedArguments.contains(key): kwargs[key] = .strings(["<\(key)>"])
                 default: kwargs[key] = value
                 }
             }
@@ -99,7 +99,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 39 + Self.sharedBuilders.count, "both shared builders are reads")
+        #expect(reads == 41 + Self.sharedBuilders.count, "both shared builders are reads")
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -170,7 +170,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 40 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
+        #expect(reads == 42 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

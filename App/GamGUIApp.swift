@@ -41,6 +41,8 @@ enum Screen: String, CaseIterable, Identifiable {
     case users = "Users"
     case groups = "Groups"
     case calendars = "Calendars"
+    /// Google Classroom, read only: find a class by name or teacher, see who is in it.
+    case classroom = "Classroom"
     case signatures = "Signatures"
     case onboard = "Onboard"
     case offboard = "Offboard"
@@ -61,6 +63,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .users: "person.2"
         case .groups: "person.3"
         case .calendars: "calendar"
+        case .classroom: "graduationcap"
         case .signatures: "signature"
         case .onboard: "person.badge.plus"
         case .offboard: "person.badge.minus"
@@ -196,6 +199,9 @@ struct ContentView: View {
                 CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
                               changes: services.calendarChanges, requested: $calendarsPerson)
                     .navigationTitle("Calendars")
+            case .classroom:
+                ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom)
+                    .navigationTitle("Classroom")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
                                access: services.userAccess, templates: services.signatureTemplates,

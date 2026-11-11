@@ -25,7 +25,7 @@ status=0
 # alice@example.com, and a group's page for sales@example.com, alone and under a sheet (for a group the tab
 # names the sheet: `add`, the Add Members form; `remove`, the preview of removing its first member; the
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
-# open. Signatures opens on nobody (the demo admin
+# open. Classroom lists the open classes, then Chemistry's card (its ID in the calendar field), then alice's classes. Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. Onboard opens on the demo role
 # Salesperson with Create and the welcome email ticked, onboard-result on a made-up finished run (no gam
@@ -97,6 +97,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
+            classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
+            narrow-classroom-class:classroom:::smallest::500000000002 \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
             builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \

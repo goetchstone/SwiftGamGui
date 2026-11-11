@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "487be35",
+  "gamgui_commit": "3c8d909",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
