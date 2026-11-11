@@ -6,7 +6,7 @@ import TestSupport
 import Testing
 import Vault
 
-/// GamGUI's guided setup, held to `Tests/Fixtures/setup.json` (generated from frozen GamGUI): the
+/// GamGUI's guided setup, held to `Tests/Fixtures/setup.json` (generated from GamGUI): the
 /// fresh-setup Terminal commands, the delegation step's client ID, link and sign-out-scope note; and
 /// the import from the setup folder, which wipes GAM's plain-text copies only once the Vault has them.
 @MainActor

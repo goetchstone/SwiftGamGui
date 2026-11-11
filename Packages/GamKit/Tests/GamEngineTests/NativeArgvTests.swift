@@ -1,119 +1,11 @@
 import Testing
 @testable import GamEngine
 
-/// Builders with no GamGUI builder to hold them to (invariant 11 can't): each one's exact argv, as checked against
-/// the vendored GAM 7.48.26's grammar (`Vendor/gam7/GamCommands.txt`, cited) and its source. A change here changes
-/// what runs: check the grammar and the source again, and make the mock fail as GAM does. `CommandKindTests` holds
-/// these to the read-only rule with GamGUI's builders.
+/// The refusals of the builders this app wrote before GamGUI had them: each one's argv is now held to GamGUI's own (its
+/// back-port, `Tests/Fixtures/argv.json`, `GoldenArgvTests`), and these hold what each refuses beyond GamGUI's cases, as
+/// checked against the vendored GAM's grammar (`Vendor/gam7/GamCommands.txt`) and its source. Make the mock fail as GAM does.
 @Suite("Native argv")
 struct NativeArgvTests {
-    static let cases: [(name: String, command: any GamCommand, argv: [String])] = [
-        // 5954 `gam update user <UserItem> <UserAttribute>*`; 5854-5855 `recoveryemail <EmailAddress>`,
-        // `recoveryphone <String>`: GAM reads an empty value as the field cleared.
-        ("clear_recovery", GamCommands.clearRecovery(email: "<email>"),
-         ["update", "user", "<email>", "recoveryemail", "", "recoveryphone", ""]),
-        // 5954 update user <UserItem> <UserAttribute>*; 5850-5853 `password <Password>`, 5837 `changepassword
-        // <Boolean>`: the temporary password, changed by the person at their next sign-in.
-        ("set_password", GamCommands.setPassword(email: "<email>", password: "Abcd-Efgh-Jkmn"),
-         ["update", "user", "<email>", "password", "Abcd-Efgh-Jkmn", "changepassword", "on"]),
-        // 5886-5890 `phone [type <type>|(custom <String>)] [value <String>] notprimary|primary`, one per phone: GAM sends
-        // them as the whole list (getUserAttributes, gam/__init__.py:47476-47489 at 7.48.30); 5911 `phone clear` when none is left.
-        ("update_phones",
-         try! GamCommands.updatePhones(email: "<email>", phones: [
-            GamUser.Phone(type: "work", value: "+1 555 0100", primary: true), GamUser.Phone(type: "Mobile", value: "+1 555 0199", primary: false),
-            GamUser.Phone(type: "custom", customType: "Desk", value: "100", primary: false), GamUser.Phone(type: "", value: "200", primary: false)]),
-         ["update", "user", "<email>", "phone", "type", "work", "value", "+1 555 0100", "primary",
-          "phone", "type", "mobile", "value", "+1 555 0199", "notprimary", "phone", "type", "custom", "Desk", "value", "100", "notprimary",
-          "phone", "value", "200", "notprimary"]),
-        // 5843 `gal|includeinglobaladdresslist [<Boolean>]`: optional, true when bare, so `off` always.
-        ("hide_from_directory", GamCommands.hideFromDirectory(email: "<email>"), ["update", "user", "<email>", "gal", "off"]),
-        // 8399 `<UserTypeEntity> imap|imap4 <Boolean>`, 8405 `pop|pop3 <Boolean>`: required; `off` is getBoolean's.
-        ("imap_off", GamCommands.imapOff(email: "<email>"), ["user", "<email>", "imap", "off"]),
-        ("pop_off", GamCommands.popOff(email: "<email>"), ["user", "<email>", "pop", "off"]),
-        // 6296-6297: `ownedsecondary` keeps the calendars the person is dataOwner of; `showhidden` is a
-        // <CalendarSelectProperty> the same parser loop takes (printShowCalendars), without which hidden ones are missed.
-        ("print_owned_secondary_calendars", GamCommands.printOwnedSecondaryCalendars(email: "<email>"),
-         ["user", "<email>", "print", "calendars", "ownedsecondary", "showhidden", "fields", "id,summary", "formatjson"]),
-        // 1685 omits `ownership`; GAM's source (CALENDARS_SUBCOMMANDS_WITH_OBJECTS) takes only `transfer ownership`.
-        ("transfer_calendar_ownership",
-         try! GamCommands.transferCalendarOwnership(calendarIDs: ["id1@group.calendar.google.com", "id2@group.calendar.google.com"],
-                                                    to: "<email>"),
-         ["calendars", "id1@group.calendar.google.com,id2@group.calendar.google.com", "transfer", "ownership", "<email>"]),
-        // 7986-7987 `print filters [labelidsonly] … [formatjson]`; 7982 `delete filters <FilterIDEntity>`.
-        ("print_filters", GamCommands.printFilters(email: "<email>"), ["user", "<email>", "print", "filters", "labelidsonly", "formatjson"]),
-        ("delete_filters", try! GamCommands.deleteFilters(email: "<email>", filterIDs: ["ANe1Bmj1", "ANe1Bmj2"]),
-         ["user", "<email>", "delete", "filters", "ANe1Bmj1,ANe1Bmj2"]),
-        // 5716 `gam <UserTypeEntity> print vaultholds|holds`: no formatjson; CSV.
-        ("print_vault_holds", GamCommands.printVaultHolds(email: "<email>"), ["user", "<email>", "print", "vaultholds"]),
-        // The compromised-account check (GAM 7.48.30): 8028 `print forward|forwards [enabledonly]`; 8324 `print sendas
-        // [compact] [primary|default] [verifyonly]`; 1579-1582 `print admins [user|group <EmailAddress>|<UniqueID>]`.
-        ("print_forward", GamCommands.printForward(email: "<email>"), ["user", "<email>", "print", "forward"]),
-        ("print_sendas", GamCommands.printSendAs(email: "<email>"), ["user", "<email>", "print", "sendas", "verifyonly"]),
-        ("print_admins", GamCommands.printAdmins(user: "<email>"), ["print", "admins", "user", "<email>"]),
-        // 4740-4754 `report <ActivityApplicationName> … [(user all|<UserItem>)|(select <UserTypeEntity>)] … [start <Time>]
-        // [end <Time>] … [event|events <EventNameList>] [ip <String>] … [maxactivities <Number>]`; `-72h` is getDeltaTime's,
-        // `now` TODAY_NOW's; `select users a,b` the grammar's `users <UserList>`.
-        ("report_activity", try! GamCommands.reportActivity(.login, users: ["p@example.com"], hours: 72, ip: "198.51.100.23", maxActivities: 1000),
-         ["report", "login", "user", "p@example.com", "start", "-72h", "end", "now", "ip", "198.51.100.23", "maxactivities", "1000"]),
-        // 2373-2384 `print chromeprofiles … [filter <String>] … [fields <ChromeProfileFieldNameList>] [formatjson]`; the filter's
-        // `user_email` is the Chrome Management API's own field (customers.profiles.list), the address quoted as one value.
-        // 4565-4572 `print mobile … [(query <QueryMobile>)…] … [fields <MobileFieldNameList>] [formatjson]`; formatjson's row
-        // is written from `resourceId`, so it's among the fields.
-        ("print_mobile_devices", try! GamCommands.printMobileDevices(user: "P@Example.com"),
-         ["print", "mobile", "query", "email:p@example.com", "fields",
-          "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus", "listlimit", "0", "formatjson"]),
-        // 4369-4377 `print devices … [(query <QueryDevice>)…] … [fields <DeviceFieldNameList>] [userfields
-        // <DeviceUserFieldNameList>] … [formatjson]`, 4294-4339 the field names: every view (GAM's default), with users.
-        ("print_devices", try! GamCommands.printDevices(user: "P@Example.com"),
-         ["print", "devices", "query", "email:p@example.com", "fields",
-          "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,compromisedstate,createtime,"
-            + "lastsynctime",
-          "userfields", "name,useremail,createtime,firstsynctime,lastsynctime,managementstate", "formatjson"]),
-        // 7818-7845 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] … (fields <DriveFieldNameList>) …
-        // [formatjson]`, 223 `gscript`: the person's own Apps Script projects (GAM's default `'me' in owners`).
-        ("print_script_projects", try! GamCommands.printScriptProjects(user: "p@example.com"),
-         ["user", "p@example.com", "print", "filelist", "showmimetype", "gscript", "fields",
-          "id,name,createdtime,modifiedtime,trashed,lastmodifyinguser", "formatjson"]),
-        // 9115-9124 `[<UserTypeEntity>] print tokens|token …`: no entity is GAM's default, every account but the suspended.
-        ("print_tokens", try! GamCommands.printTokens(), ["print", "tokens"]),
-        ("print_chrome_profiles", try! GamCommands.printChromeProfiles(user: "p@example.com"),
-         ["print", "chromeprofiles", "filter", "user_email=\"p@example.com\"", "fields",
-          "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,browserversion,browserchannel,"
-            + "deviceinfo,affiliationstate", "formatjson"]),
-        // 8257-8265 `print messages … query <QueryGmail> … [max_to_print <Number>] … [headers all|<SMTPHeaderList>] …
-        // [showlabels] … [showdate]`; 8195-8199 `delete messages … (ids <MessageIDEntity>)`.
-        ("list_messages", GamCommands.listMessages(email: "<email>", query: "in:drafts", max: 5000),
-         ["user", "<email>", "print", "messages", "query", "in:drafts", "max_to_print", "5000", "headers", "subject",
-          "showlabels", "showdate"]),
-        ("delete_messages", try! GamCommands.deleteMessages(email: "<email>", ids: ["19a0c0ffee000011", "19a0c0ffee000012"]),
-         ["user", "<email>", "delete", "messages", "ids", "19a0c0ffee000011,19a0c0ffee000012"]),
-        // 8320 `delete sendas <EmailAddressEntity>` (deleteInfoSendAs).
-        ("delete_sendas", try! GamCommands.deleteSendAs(email: "<email>", address: "a@example.net"),
-         ["user", "<email>", "delete", "sendas", "a@example.net"]),
-        // 4385-4388 `delete|block deviceuser <DeviceUserEntity> [doit]`: one device user by its name, which GAM acts on
-        // without `doit` (getCIDeviceUserEntity).
-        ("block_deviceuser", try! GamCommands.blockDeviceUser(name: "devices/d1/deviceUsers/u1"),
-         ["block", "deviceuser", "devices/d1/deviceUsers/u1"]),
-        ("delete_deviceuser", try! GamCommands.deleteDeviceUser(name: "devices/d1/deviceUsers/u1"),
-         ["delete", "deviceuser", "devices/d1/deviceUsers/u1"]),
-        // 8211-8215 `<UserTypeEntity> trash messages (query <QueryGmail>)+ [quick|notquick] [doit] [max_to_trash <Number>]`.
-        // The dry run has no `doit` (GAM 7.48.30's _processMessagesThreads then trashes nothing); the run is one mailbox's.
-        ("find_message_copies", GamCommands.findMessageCopies(phish),
-         ["all", "users", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent",
-          "notquick", "max_to_trash", "1"]),
-        ("trash_message", try! GamCommands.trashMessage(email: "<email>", phish, copies: 2),
-         ["user", "<email>", "trash", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com -in:sent",
-          "notquick", "max_to_trash", "2", "doit"]),
-        // 8257-8266 `<UserTypeEntity> print messages … query <QueryGmail> … [includespamtrash] … [headers <SMTPHeaderList>] …
-        // [showlabels]`: the copies in Spam, which the dry run's list leaves out; 8211-8215 `trash messages … (ids
-        // <MessageIDEntity>)`, 770 `<MessageIDList>`: one mailbox's of them by ID, with no list to leave Spam out.
-        ("find_spam_copies", GamCommands.findSpamCopies(phish),
-         ["all", "users", "print", "messages", "query", "rfc822msgid:CAPh1sh+Notice=0001@mail.example.com in:spam",
-          "includespamtrash", "headers", "message-id", "showlabels"]),
-        ("trash_messages", try! GamCommands.trashMessages(email: "<email>", ids: ["19a0c0ffee000002", "19a0c0ffee000008"]),
-         ["user", "<email>", "trash", "messages", "ids", "19a0c0ffee000002,19a0c0ffee000008"]),
-    ]
-
     static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
 
     /// A temporary password is never one of GAM's words in `password`'s place (5850-5853), so GAM always sets it as
@@ -127,12 +19,6 @@ struct NativeArgvTests {
             #expect(!GamCommandLine.text(ArgvRedaction.redact(write.argv)).contains(password.shownOnTheSheet))
         }
         #expect(GamCommands.setPassword(email: "c@example.com", password: "x").action == .setPassword)
-    }
-
-    @Test func eachIsExactlyItsArgv() {
-        for item in Self.cases {
-            #expect(item.command.argv.map { Array($0.utf8) } == item.argv.map { Array($0.utf8) }, "\(item.name)")
-        }
     }
 
     /// A phone GAM wouldn't send back as it is never reaches it: two primaries (GAM's usage error), a type GAM would
@@ -151,6 +37,10 @@ struct NativeArgvTests {
         #expect(write.argv == ["update", "user", "c@example.com", "phone", "type", "work", "value", "x primary phone clear", "primary"])
         #expect(write.action == .updatePhones)
         #expect(try GamCommands.updatePhones(email: "c@example.com", phones: []).argv == ["update", "user", "c@example.com", "phone", "clear"])
+        // A type as Google spells it on screen goes as GAM's word, lowercased (no golden case has one: review 2026-11-11).
+        #expect(try GamCommands.updatePhones(email: "c@example.com", phones: [phone("Mobile"), phone("WORK")]).argv
+                == ["update", "user", "c@example.com", "phone", "type", "mobile", "value", "1", "notprimary",
+                    "phone", "type", "work", "value", "1", "notprimary"])
     }
 
     /// An operator value is one element, whatever it holds.

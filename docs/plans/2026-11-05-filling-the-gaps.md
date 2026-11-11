@@ -4,6 +4,13 @@
 written: the fixes GamGUI's port found (failure log 2026-11-06), Home's Jobs and Recent failures, a person's phones and computers on
 their Security tab, and Delete Account. Slices 1, 2 and 5 aren't started.
 
+**Superseded for what's next (2026-11-11)** by two plans for both apps, kept in GamGUI's repo, where each item is built in GamGUI first
+and then here, from fixtures regenerated at its merge:
+[finish the roadmap](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-07-finish-the-roadmap.md) and
+[Classroom reads and SIS roster planning](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md).
+This plan's slices map onto the first: 1 → 3.1, 2 → 3.2, 3 → 2.9 and 4.5, 4 → 2.1 to 2.3 and 3.5, 5 → 2.4 and 2.5, R → 5.5. Its 0.2,
+the fixtures refreshed from GamGUI, is done (GamGUI `487be35`; failure log 2026-11-11). The rest of this file is the record.
+
 The app stays free and is built for the operator's own use, so this isn't a race. A slice earns its place by being used
 or by preventing a loss; the rest is under "Not planned unless asked". What has run is in
 [live-verification.md](../live-verification.md).
@@ -99,12 +106,14 @@ before anyone else is pointed at it.
 ## Small, any time
 
 - The Suspended report with Google's reason, once GAM's source shows which field carries it.
-- Refresh the parity fixtures from a pinned GamGUI clone once its catch-up to this app settles.
+- ~~Refresh the parity fixtures from a pinned GamGUI clone once its catch-up to this app settles.~~ Done at GamGUI `487be35`.
 
 ## Not planned unless asked
 
 - Sheet export: dropped by decision (design doc §1), and `todrive` is a write.
-- Scheduled runs, other languages and Classroom sync: nothing in the operator's use needs them.
+- Scheduled runs and other languages: nothing in the operator's use needs them. Classroom moved out of this list (operator,
+  2026-11-11): reads and roster planning only, no Classroom writes, offline until there's an Education domain to check it on
+  (the Classroom plan above).
 - Removing limited Drive access: a write across many files, with a large blast radius.
 - A plain-language command finder: parked with Siri. A model would only ever draft a preview (invariant 10).
 - Auto-update: a signed download is enough for one person's use.

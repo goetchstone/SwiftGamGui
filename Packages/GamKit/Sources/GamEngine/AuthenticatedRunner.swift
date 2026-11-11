@@ -88,14 +88,13 @@ public struct AuthenticatedRunner: Sendable {
     /// GamGUI's `strip_cfgdir_noise`: GAM's stdout without the lines naming this call's config
     /// directory. Each call gets a fresh one, so GAM prints its first-run banner on every call
     /// (`Created: <dir>/gamcache`, `Config File: <dir>/gam.cfg, Initialized`), and those lines never
-    /// belong to real data. Lines split at each "\n" scalar, a deliberate difference: GamGUI's
-    /// `splitlines()` also cut data apart at U+2028. Not at `Character`s: "\r\n" is one `Character`, so a
-    /// CRLF banner line and the data after it would have been one line, dropped together.
+    /// belong to real data. Lines split at each "\n" scalar (`PythonText.splitLF`), as GamGUI's `split("\n")` does since
+    /// its #83: never at U+2028, which would cut data apart, and not at `Character`s, where "\r\n" is one, so a CRLF
+    /// banner line and the data after it would have been one line, dropped together.
     static func withoutConfigNoise(_ stdout: String, configDirectory: URL) -> String {
         let needles = Set([configDirectory.path, configDirectory.resolvingSymlinksInPath().path]).filter { !$0.isEmpty }
         guard needles.contains(where: { stdout.contains($0) }) else { return stdout }
-        return stdout.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false)
-            .map(PythonText.string)
+        return PythonText.splitLF(stdout)
             .filter { line in !needles.contains { line.contains($0) } }
             .joined(separator: "\n")
     }

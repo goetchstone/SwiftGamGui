@@ -1,6 +1,6 @@
 /// Gmail signatures: GamGUI's template render, its curly-quote check and its reader of
 /// `gam user X show signature` (`core/signatures.py`, `gam_connector._parse_signature`), and what GAM does
-/// with the signature it's given. Held to Tests/Fixtures/signatures.json, generated from frozen GamGUI and
+/// with the signature it's given. Held to Tests/Fixtures/signatures.json, generated from GamGUI and
 /// from the vendored GAM's own functions. Text is compared as Python does, by Unicode scalars, never by
 /// `Character`: a combining mark after `}` or `]]` joins it into one Character but not one code point.
 public enum Signature {
@@ -118,7 +118,7 @@ public enum Signature {
     /// whitespace inside the body is lost, as it is in GamGUI.
     public static func parseShown(_ text: String) -> String {
         var body: [String] = [], capturing = false
-        for line in PythonText.lines(text) {
+        for line in PythonText.splitLF(text) {   // a body holding U+2028 or a form feed doesn't end there
             let stripped = PythonText.strip(line)
             if capturing {
                 if !stripped.isEmpty && !line.hasScalarPrefix(" ") { break }

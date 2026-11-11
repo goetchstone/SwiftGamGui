@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "2f35285",
+  "gamgui_commit": "487be35",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -24444,15 +24444,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24512,16 +24504,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -24536,16 +24519,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24560,16 +24534,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24584,16 +24549,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24608,16 +24564,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -24632,16 +24579,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Group sales@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24656,15 +24594,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24724,16 +24654,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -24748,16 +24669,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24772,16 +24684,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24796,16 +24699,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24820,16 +24714,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -24844,16 +24729,7 @@
    "scrubbed_stderr": "Getting Group sales@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Group sales@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24868,15 +24744,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24936,16 +24804,7 @@
    "scrubbed_stderr": "Getting Reports for all users\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -24960,16 +24819,7 @@
    "scrubbed_stderr": "Getting Reports for all users\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -24984,16 +24834,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25008,16 +24849,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25032,16 +24864,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -25056,16 +24879,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25080,15 +24894,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25148,16 +24954,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -25172,16 +24969,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25196,16 +24984,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25220,16 +24999,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25244,16 +25014,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -25268,16 +25029,7 @@
    "scrubbed_stderr": "Getting Reports for all users (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Reports for all users (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25292,15 +25044,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25360,16 +25104,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -25384,16 +25119,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25408,16 +25134,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25432,16 +25149,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25456,16 +25164,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -25480,16 +25179,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Access Tokens for alice@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25504,15 +25194,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25572,16 +25254,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -25596,16 +25269,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25620,16 +25284,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25644,16 +25299,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25668,16 +25314,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -25692,16 +25329,7 @@
    "scrubbed_stderr": "Getting Access Tokens for alice@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Access Tokens for alice@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25716,15 +25344,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25784,16 +25404,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -25808,16 +25419,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25832,16 +25434,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25856,16 +25449,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25880,16 +25464,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -25904,16 +25479,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Calendars for carol@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25928,15 +25494,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -25996,16 +25554,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -26020,16 +25569,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26044,16 +25584,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26068,16 +25599,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26092,16 +25614,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -26116,16 +25629,7 @@
    "scrubbed_stderr": "Getting Calendars for carol@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Calendars for carol@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26140,15 +25644,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26208,16 +25704,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -26232,16 +25719,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26256,16 +25734,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26280,16 +25749,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26304,16 +25764,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -26328,16 +25779,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Application Specific Password ***redacted*** for dave@example.com",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26352,15 +25794,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26420,16 +25854,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\nUser: alice@example.com, Gmail Service/App not enabled\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "service_not_enabled",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=73): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 50,
@@ -26444,16 +25869,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\nUser: bob@example.com, Service not applicable/Does not exist\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=50): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26468,16 +25884,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 404: Resource Not Found: groupKey - notFound\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26492,16 +25899,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 403: forbidden - insufficientPermissions\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26516,16 +25914,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: 403: Request had insufficient authentication scopes\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "scope_missing",
-    "kinds": [
-     "scope_missing",
-     "unknown"
-    ],
-    "message": "GAM failed (scope_missing, exit=1): ERROR: 403: Request had insufficient authentication scopes",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 61,
@@ -26540,16 +25929,7 @@
    "scrubbed_stderr": "Getting Application Specific Password ***redacted*** for dave@example.com (2/4)\n\nERROR: Customer ID: my_customer, Domain: example.com, User: admin@example.com, Access Forbidden\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "permission_denied",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=61): Getting Application Specific Password ***redacted*** for dave@example.com (2/4)",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 1,
@@ -26564,15 +25944,7 @@
    "scrubbed_stderr": "Getting Reports for all users\n\rGot 3 Reports for all users on 2026-06-16...\r\n",
    "scrubbed_stdout": "",
    "redacted_argv": null,
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=1): Getting Reports for all users",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": null,
@@ -28971,7 +28343,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>create<<< user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>create<<< user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29020,7 +28392,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace >>>password<<< S3cr3t!x changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace >>>password<<< S3cr3t!x changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29069,7 +28441,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted*** \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted*** \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29118,7 +28490,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29167,7 +28539,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace >>>password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace >>>password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29216,7 +28588,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29265,7 +28637,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted*** >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user new.hire@example.com firstname Ada lastname Lovelace password ***redacted*** changepassword on notify boss@example.com notifypassword ***redacted*** >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29310,7 +28682,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>create<<< user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>create<<< user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29351,7 +28723,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user o@example.com firstname \"O'Brien\" >>>lastname<<< \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user o@example.com firstname \"O'Brien\" >>>lastname<<< \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29392,7 +28764,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org >>>\"/Staff/New Hires\"<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org >>>\"/Staff/New Hires\"<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29433,7 +28805,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29474,7 +28846,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user o@example.com firstname \"O'Brien\" >>>lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user o@example.com firstname \"O'Brien\" >>>lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29515,7 +28887,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org >>>\"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org >>>\"/Staff/New Hires\"<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29556,7 +28928,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\" >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam create user o@example.com firstname \"O'Brien\" lastname \"Smith, Jr\" PassWord ***redacted*** org \"/Staff/New Hires\" >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29593,7 +28965,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>update<<< user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>update<<< user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29626,7 +28998,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com >>>NOTIFYPASSWORD<<< x\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com >>>NOTIFYPASSWORD<<< x\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29659,7 +29031,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted*** \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted*** \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29692,7 +29064,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29725,7 +29097,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com >>>NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com >>>NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29758,7 +29130,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29791,7 +29163,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted*** >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com NOTIFYPASSWORD ***redacted***\u3000y password ***redacted*** >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29822,7 +29194,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>user<<< x@example.com signature <b>Hi</b> html\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>user<<< x@example.com signature <b>Hi</b> html\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29851,7 +29223,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam user x@example.com >>>signature<<< <b>Hi</b> html\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam user x@example.com >>>signature<<< <b>Hi</b> html\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29880,7 +29252,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam user x@example.com signature <b>Hi</b> >>>html<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam user x@example.com signature <b>Hi</b> >>>html<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29909,7 +29281,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>user x@example.com signature <b>Hi</b> html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>user x@example.com signature <b>Hi</b> html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29938,7 +29310,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam user x@example.com >>>signature <b>Hi</b> html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam user x@example.com >>>signature <b>Hi</b> html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29967,7 +29339,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam user x@example.com signature <b>Hi</b> >>>html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam user x@example.com signature <b>Hi</b> >>>html<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -29996,7 +29368,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam user x@example.com signature <b>Hi</b> html >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam user x@example.com signature <b>Hi</b> html >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30030,7 +29402,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2)",
    "scrubbed_stderr": "Command: gam >>>update<<< user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted*** Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>update<<< user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted*** Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30069,7 +29441,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2)",
    "scrubbed_stderr": "Command: gam update user x@example.com recoveryemail >>>me@home.example<<< recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted*** Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com recoveryemail >>>me@home.example<<< recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted*** Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30108,7 +29480,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com >>>password<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com >>>password<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30147,7 +29519,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30186,7 +29558,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com recoveryemail >>>me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com recoveryemail >>>me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30225,7 +29597,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com >>>password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com >>>password<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30264,7 +29636,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam update user x@example.com recoveryemail me@home.example recoveryphone \"+1 555\" alternateemail alt@example.com password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30296,7 +29668,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>password<<< password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>password<<< password ***redacted***\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30321,7 +29693,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam password ***redacted*** secret\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam password ***redacted*** secret\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30346,7 +29718,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam password ***redacted*** >>>secret<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam password ***redacted*** >>>secret<<< \nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30371,7 +29743,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam >>>password ***redacted*** secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam >>>password ***redacted*** secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30396,7 +29768,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam password ***redacted*** secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam password ***redacted*** secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30421,7 +29793,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam password ***redacted*** >>>secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam password ***redacted*** >>>secret<<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30446,7 +29818,7 @@
    "kinds": [
     "unknown"
    ],
-   "message": "GAM failed (unknown, exit=2): Help: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt",
+   "message": "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>",
    "scrubbed_stderr": "Command: gam password ***redacted*** secret >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "scrubbed_stdout": "Command: gam password ***redacted*** secret >>><<<\nERROR: Invalid argument: expected <String>\nHelp: Syntax in file /Applications/GamGUI.app/gam7/GamCommands.txt\n",
    "redacted_argv": [
@@ -30486,16 +29858,7 @@
     "alice@example.com",
     "all"
    ],
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=56): Command: gam create datatransfer >>>nobody@example.com<<< \"drive,calendar\" alice@example.com all",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 56,
@@ -30526,16 +29889,7 @@
     "sales@example.com",
     "all"
    ],
-   "remediation_suffix": "",
-   "gamgui": {
-    "kind": "unknown",
-    "kinds": [
-     "not_found",
-     "unknown"
-    ],
-    "message": "GAM failed (unknown, exit=56): Command: gam create datatransfer carol@example.com \"drive,calendar\" >>>sales@example.com<<< all",
-    "remediation_suffix": ""
-   }
+   "remediation_suffix": ""
   },
   {
    "exit_code": 56,

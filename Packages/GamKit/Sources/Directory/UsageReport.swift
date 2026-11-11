@@ -43,9 +43,10 @@ public enum UsageReport {
     }
 
     /// `_csv_from`: from the first line that starts "email," (after leading spaces, any case) to the end, lines
-    /// split as `str.splitlines()` splits them and joined by "\n"; the text unchanged when no line does.
+    /// split on "\n" and joined by it; the text unchanged when no line does.
     static func csv(from stdout: String) -> String {
-        let lines = PythonText.lines(stdout), header = Array("email,".unicodeScalars)
+        let lines = PythonText.splitLF(stdout)   // a value's U+2028 or form feed is part of its row
+        let header = Array("email,".unicodeScalars)
         guard let start = lines.firstIndex(where: { line in
             let trimmed = String(String.UnicodeScalarView(line.unicodeScalars.drop(while: PythonText.isSpace)))
             return Array(PythonText.lower(trimmed).unicodeScalars.prefix(header.count)) == header

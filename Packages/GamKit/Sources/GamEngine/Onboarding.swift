@@ -2,7 +2,7 @@ import Foundation
 import Vault
 
 /// Onboarding's pure core: GamGUI's `core/onboarding.py`, ported to the letter where its words or decisions
-/// reach the operator or GAM. Held to `Tests/Fixtures/onboarding.json` (generated from frozen GamGUI by
+/// reach the operator or GAM. Held to `Tests/Fixtures/onboarding.json` (generated from GamGUI by
 /// `scripts/gen_fixtures.py`) by `OnboardingTests`.
 public enum Onboarding {
     // MARK: one hire

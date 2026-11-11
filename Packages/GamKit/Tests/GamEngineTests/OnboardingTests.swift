@@ -5,7 +5,7 @@ import Testing
 import Vault
 
 /// GamGUI's onboarding core (`core/onboarding.py`), held byte for byte to `Tests/Fixtures/onboarding.json`,
-/// which `scripts/gen_fixtures.py` generates from frozen GamGUI without touching the operator's stores.
+/// which `scripts/gen_fixtures.py` generates from GamGUI without touching the operator's stores.
 @Suite("Onboarding")
 struct OnboardingTests {
     struct Password: Decodable { let alphabet: String, groups: Int, size: Int }

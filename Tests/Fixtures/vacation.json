@@ -1,11 +1,11 @@
 {
  "source": {
-  "gamgui_commit": "2f35285",
+  "gamgui_commit": "487be35",
   "generator": "scripts/gen_fixtures.py"
  },
  "show_vacation": [
   {
-   "text": "User: alice@example.com, Vacation:\n  Enabled: True\n  Contacts Only: False\n  Domain Only: False\n  Subject: Out of office\n  Message:\n    I am away until next week.",
+   "text": "User: alice@example.com, Vacation:\n  Enabled: True\n  Contacts Only: False\n  Domain Only: False\n  Subject: Out of office\n  Message:\n    I am away until next week.\n",
    "enabled": true,
    "subject": "Out of office",
    "message": "I am away until next week.",
@@ -15,7 +15,7 @@
    "end": ""
   },
   {
-   "text": "User: bob@example.com, Vacation:\n  Enabled: False\n  Contacts Only: False\n  Domain Only: False\n  Subject: None\n  Message:\n    None",
+   "text": "User: bob@example.com, Vacation:\n  Enabled: False\n  Contacts Only: False\n  Domain Only: False\n  Subject: None\n  Message:\n    None\n",
    "enabled": false,
    "subject": "None",
    "message": "None",
@@ -25,7 +25,7 @@
    "end": ""
   },
   {
-   "text": "User: carol@example.com, Vacation:\n  Enabled: False\n  Contacts Only: False\n  Domain Only: False\n  Subject: Conference week\n  Message:\n    Carol is at a conference.",
+   "text": "User: carol@example.com, Vacation:\n  Enabled: False\n  Contacts Only: False\n  Domain Only: False\n  Subject: Conference week\n  Message:\n    Carol is at a conference.\n",
    "enabled": false,
    "subject": "Conference week",
    "message": "Carol is at a conference.",
@@ -56,9 +56,9 @@
   },
   {
    "text": "  Enabled: true\r\n  Subject:   Away  \r\n  Message:\r\n   line one\r\n   line two\r\n  Enabled: False\r\n",
-   "enabled": false,
+   "enabled": true,
    "subject": "Away",
-   "message": "line one\nline two",
+   "message": "line one\nline two\nEnabled: False",
    "contacts_only": false,
    "domain_only": false,
    "start": "",
@@ -87,8 +87,8 @@
   {
    "text": "Subject: \u00e9t\u00e9\u2028Message:\nx\u2029y\u0085z\u001cw\n",
    "enabled": false,
-   "subject": "\u00e9t\u00e9",
-   "message": "x\ny\nz\nw",
+   "subject": "\u00e9t\u00e9\u2028Message:",
+   "message": "",
    "contacts_only": false,
    "domain_only": false,
    "start": "",

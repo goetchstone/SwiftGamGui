@@ -154,8 +154,12 @@ struct MockPhishingTests {
         ]
         for (argv, error) in cases {
             let result = try await run(argv)
-            // By prefix: GAM marks the bad word on its command line, which the mock's shared helper approximates.
-            #expect(result.exitCode == 2 && lines(result.stderr).last?.hasPrefix(error) == true, "\(argv): \(result.stderr)")
+            // By prefix: GAM marks the bad word on its command line, which the mock's shared helper approximates. The ERROR
+            // line comes before GAM's two help lines (usageErrorExit), and is what GamError reads as the failure.
+            let said = lines(result.stderr)
+            #expect(result.exitCode == 2 && said.dropLast(2).last?.hasPrefix(error) == true
+                    && said.last?.hasPrefix("Help: Documentation is at ") == true, "\(argv): \(result.stderr)")
+            #expect(GamError(exitCode: result.exitCode, stderr: result.stderr).message.contains(error), "\(argv)")
         }
         // GAM's getArgument: keywords in any case, underscores dropped.
         let spelled = try await run(base + ["QUERY", Self.query, "NotQuick", "Max_To_Trash", "1"])

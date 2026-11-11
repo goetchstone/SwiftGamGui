@@ -5,9 +5,9 @@ import TestSupport
 
 /// GamGUI parity for failed runs (invariant 11): every case in `Tests/Fixtures/gam_errors.json`,
 /// generated from GamGUI's `GAMError.from_run`, gets the same kind, kinds, message, masked output, masked
-/// argv and named scopes. Compared as bytes. The fixture is never edited to pass. It is generated with
-/// GamGUI's progress rule widened to GAM's own progress lines (`gen_fixtures.py`'s `gam_progress`); a case
-/// frozen GamGUI reads differently also holds its reading (`gamgui`), the deviation held narrow below.
+/// argv and named scopes. Compared as bytes. The fixture is never edited to pass. It is GamGUI's own reading at the
+/// pinned commit, which reads GAM's progress and framing as GAM writes them (`gen_fixtures.py` refuses a pin that
+/// doesn't).
 @Suite("GAM errors")
 struct GamErrorTests {
     struct Case: Decodable {
@@ -22,16 +22,8 @@ struct GamErrorTests {
         let scrubbed_stdout: String
         let redacted_argv: [String]?
         let remediation_suffix: String
-        let gamgui: Frozen?
     }
 
-    /// How frozen GamGUI reads a case, where it differs.
-    struct Frozen: Decodable {
-        let kind: String
-        let kinds: [String]
-        let message: String
-        let remediation_suffix: String
-    }
 
     struct Constants: Decodable {
         let unicode_version: String
@@ -70,29 +62,15 @@ struct GamErrorTests {
         #expect(document.cases.count > 1500)
     }
 
-    /// GAM's per-entity progress line that frozen GamGUI's `_PROGRESS_LINE` ("Getting all " or "Got <n> ")
-    /// misses: "Getting Reports for all users", "Getting Group sales@… (1/3)".
-    static func gamGUIMisses(_ line: String) -> Bool {
-        line.unicodeScalars.starts(with: "Getting ".unicodeScalars) && !line.unicodeScalars.starts(with: "Getting all ".unicodeScalars)
-    }
-
-    /// The two deliberate differences from frozen GamGUI, each a line it reads as an unknown failure: GAM's
-    /// per-entity "Getting …" progress (failure-log 2026-10-13, "GAM's progress read as an error") and GAM's echo of
-    /// the command it refused (same day, "GAM's command echo read as the failure"). Each listed case has such a
-    /// line, GamGUI's reading counts it unknown and differs from ours, and the list is a small share.
-    @Test func theDeviationsFromGamGUIAreOnlyItsMissedProgressAndEchoLines() {
-        var deviations = 0
-        for item in document.cases {
-            guard let frozen = item.gamgui else { continue }
-            deviations += 1
-            let label = item.stderr.debugDescription
-            #expect(PythonText.lines(item.stderr).map { PythonText.strip($0) }
-                .contains { Self.gamGUIMisses($0) || GamError.isCommandEcho($0) }, "\(label)")
-            #expect(frozen.kinds.contains("unknown"), "GamGUI read the progress or echo line as unknown: \(label)")
-            #expect(frozen.kind != item.kind || frozen.kinds != item.kinds || Self.bytes(frozen.message) != Self.bytes(item.message)
-                    || Self.bytes(frozen.remediation_suffix) != Self.bytes(item.remediation_suffix), "\(label)")
-        }
-        #expect(deviations > 0 && deviations < document.cases.count / 10)
+    /// GAM's framing of a refused command, in its own words (GAM 7.51.00's glclargs and gamlib.glmsgs): skipped, so a
+    /// usage error's message is its ERROR line, never where the syntax file is. "Command can not be nested." is an error.
+    @Test func gamsFramingIsNeverTheFailure() {
+        let stderr = ["Command: gam create datatransfer >>>nobody@example.com<<< drive alice@example.com all",
+                      "ERROR: Invalid argument: expected <String>",
+                      "Help: Syntax in file /Applications/GAM GUI.app/Contents/Resources/gam7/GamCommands.txt",
+                      "Help: Documentation is at https://github.com/GAM-team/GAM/wiki"].joined(separator: "\n")
+        #expect(GamError(exitCode: 2, stderr: stderr).message == "GAM failed (unknown, exit=2): ERROR: Invalid argument: expected <String>")
+        #expect(GamError.errorLines("Command can not be nested.").count == 1)
     }
 
     /// Each shape GAM's progress printers write (`gam/__init__.py:2681-2722`, the page counts :2736-2763),

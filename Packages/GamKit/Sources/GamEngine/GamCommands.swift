@@ -84,8 +84,9 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "suspended", suspended ? "on" : "off"], action: suspended ? .suspendUser : .unsuspendUser)
     }
 
-    // MARK: native (no GamGUI builder)
-    // Each is held to its exact argv by NativeArgvTests, against the vendored grammar and GAM's source, not GamGUI.
+    // MARK: written here first
+    // Each was checked against the vendored grammar and GAM's source; GamGUI has since taken each one, so its argv is held
+    // to GamGUI's (GoldenArgvTests), and what each refuses beyond GamGUI's cases by NativeArgvTests.
 
     /// One of a person's phones as Google keeps it: its type (GAM's word for it, or `custom` with `customType`), the
     /// number, and whether it's the primary one. `GamUser.Phone` is this; it lives here so the fuzz build has it.

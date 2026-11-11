@@ -51,7 +51,7 @@ struct FixtureTests {
     @Test func goldenArgvCoversEveryGamGUIBuilder() throws {
         let doc = try decode(ArgvDoc.self, Fixtures.argvJSON)
         #expect(doc.source.gam_version == GamVersion.expected)
-        #expect(doc.builders.count == 59)
+        #expect(doc.builders.count == 90)
         let covered = Set(doc.cases.map(\.builder))
         #expect(covered == Set(doc.builders))
         for item in doc.cases {

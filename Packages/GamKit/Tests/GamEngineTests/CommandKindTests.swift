@@ -43,7 +43,13 @@ struct CommandKindTests {
     }
 
     /// Arguments drawn from a closed set: they keep the fixture's valid value.
-    static let closedArguments: Set = ["role", "privacy", "action", "detail"]
+    static let closedArguments: Set = ["role", "privacy", "action", "detail", "application", "chrome", "admin"]
+
+    /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
+    static let sharedBuilders: [String: String] = [
+        "search_scheduled": "searchMessages, as search_messages, for in:scheduled",
+        "print_user_tokens": "printTokens(user:), as print_tokens without the user",
+    ]
 
     /// The first known verb in `argv`, GamGUI's way, or nil when none is known (uncertain).
     static func verb(_ argv: [String]) -> String? {
@@ -51,14 +57,14 @@ struct CommandKindTests {
     }
 
     /// Each builder called once with placeholder values (`<email>`), so no operator value can be
-    /// mistaken for a verb: the verb comes from the builder's own tokens.
+    /// mistaken for a verb: the verb comes from the builder's own tokens. A builder that checks its value (a device
+    /// user's name, one address, a calendar ID) refuses a placeholder, so it keeps the fixture's valid one, none a verb.
     static let builtOnce = Result { try buildAll() }
     func commands() throws -> [(name: String, command: any GamCommand)] { try Self.builtOnce.get() }
 
     static func buildAll() throws -> [(name: String, command: any GamCommand)] {
         let document = GoldenArgvTests().document
-        let native = NativeArgvTests.cases.map { (name: $0.name, command: $0.command) }
-        return try native + GoldenArgvTests.implemented.keys.sorted().map { name in
+        return try GoldenArgvTests.implemented.keys.sorted().map { name in
             let item = try #require(document.cases.first { $0.builder == name && $0.argv != nil }, "\(name) has no case")
             var kwargs: [String: GoldenArgvTests.Value] = [:]
             for (key, value) in item.kwargs {
@@ -68,7 +74,10 @@ struct CommandKindTests {
                 default: kwargs[key] = value
                 }
             }
-            return (name, try GoldenArgvTests.implemented[name]!(GoldenArgvTests.Args(kwargs)))
+            let build = GoldenArgvTests.implemented[name]!
+            do { return (name, try build(GoldenArgvTests.Args(kwargs))) } catch is GamCommands.Invalid {
+                return (name, try build(GoldenArgvTests.Args(item.kwargs)))
+            }
         }
     }
 
@@ -90,7 +99,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 39)
+        #expect(reads == 39 + Self.sharedBuilders.count, "both shared builders are reads")
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -135,7 +144,7 @@ struct CommandKindTests {
         "create_group": .createGroup, "add_group_member": .addGroupMember, "remove_group_member": .removeGroupMember,
         "clear_recovery": .clearRecovery, "hide_from_directory": .hideFromDirectory,
         "transfer_calendar_ownership": .transferCalendarOwnership, "delete_filters": .deleteFilters,
-        "imap_off": .imapOff, "pop_off": .popOff, "delete_sendas": .deleteSendAs, "block_deviceuser": .blockDeviceUser, "delete_deviceuser": .deleteDeviceUser, "delete_messages": .deleteMessages, "trash_message": .trashMessage,
+        "imap_off": .imapOff, "pop_off": .popOff, "delete_send_as": .deleteSendAs, "block_device_user": .blockDeviceUser, "delete_device_user": .deleteDeviceUser, "delete_messages": .deleteMessages, "trash_message": .trashMessage,
         "trash_messages": .trashMessage,
         "set_password": .setPassword, "update_phones": .updatePhones,
     ]
@@ -161,11 +170,12 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 40 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests or NativeArgvTests")
+        #expect(reads == 40 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
         #expect(source.contains("public static func catalogRead(_ command: CommandCatalog.Command"))
-        #expect(try commands().count == reads + writes - 1)
+        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count)
+        #expect(Set(Self.sharedBuilders.keys).isSubset(of: GoldenArgvTests.implemented.keys))
     }
 }

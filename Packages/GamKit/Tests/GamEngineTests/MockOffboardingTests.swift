@@ -61,7 +61,7 @@ struct MockOffboardingTests {
                            ("A.Anders@example.com", "ALICE@example.com")] {
             let result = try await run(transfer(old, to: new))
             #expect(result.exitCode == 2, "\(old) → \(new)")
-            #expect(result.stderr.hasSuffix("ERROR: New owner must differ from old owner\n"), "\(result.stderr)")
+            #expect(result.stderr.contains("ERROR: New owner must differ from old owner\nHelp: Syntax in file "), "\(result.stderr)")
         }
     }
 
@@ -127,14 +127,14 @@ struct MockOffboardingTests {
         let upper = try await run(GamWrite(["user", "carol@example.com", "forward", "OFF"], action: .forwardOff))
         #expect(upper.exitCode == 0, "getBoolean lowercases: \(upper.stderr)")
         let bare = try await run(GamWrite(["user", "carol@example.com", "forward"], action: .forwardOff))
-        #expect(bare.exitCode == 2 && bare.stderr.hasSuffix("ERROR: Missing argument: Expected <true|false>\n"))
+        #expect(bare.exitCode == 2 && bare.stderr.contains("ERROR: Missing argument: Expected <true|false>\nHelp: Syntax in file "))
         for argv in [["user", "carol@example.com", "forward", "OF"], ["user", "nobody@example.com", "forward", "of"]] {
             let odd = try await run(GamWrite(argv, action: .forwardOff))
-            #expect(odd.exitCode == 2 && odd.stderr.hasSuffix("ERROR: Invalid choice (of): Expected <true|false>\n"), "\(argv)")
+            #expect(odd.exitCode == 2 && odd.stderr.contains("ERROR: Invalid choice (of): Expected <true|false>\nHelp: Syntax in file "), "\(argv)")
         }
         let noAction = try await run(GamWrite(["user", "carol@example.com", "forward", "on"], action: .setForward))
         #expect(noAction.exitCode == 2
-                && noAction.stderr.hasSuffix("ERROR: Missing argument: Expected <archive|delete|keep|leaveininbox|markread|trash>\n"))
+                && noAction.stderr.contains("ERROR: Missing argument: Expected <archive|delete|keep|leaveininbox|markread|trash>\nHelp: Syntax in file "))
         for write in [GamCommands.forwardOff(email: "nobody@example.com"),
                       GamCommands.setForward(email: "nobody@example.com", address: "x@example.org")] {
             let nobody = try await run(write)
@@ -191,9 +191,9 @@ struct MockOffboardingTests {
         let pop = try await run(GamCommands.popOff(email: "carol@example.com"))
         #expect(pop.exitCode == 0 && lines(pop.stdout) == ["User: carol@example.com, POP Enabled: False"])
         let bare = try await run(GamWrite(["user", "carol@example.com", "imap"], action: .imapOff))
-        #expect(bare.exitCode == 2 && bare.stderr.hasSuffix("ERROR: Missing argument: Expected <true|false>\n"))
+        #expect(bare.exitCode == 2 && bare.stderr.contains("ERROR: Missing argument: Expected <true|false>\nHelp: Syntax in file "))
         let odd = try await run(GamWrite(["user", "carol@example.com", "pop", "of"], action: .popOff))
-        #expect(odd.exitCode == 2 && odd.stderr.hasSuffix("ERROR: Invalid choice (of): Expected <true|false>\n"))
+        #expect(odd.exitCode == 2 && odd.stderr.contains("ERROR: Invalid choice (of): Expected <true|false>\nHelp: Syntax in file "))
         let extra = try await run(GamWrite(["user", "carol@example.com", "imap", "off", "for", "allmail"], action: .imapOff))
         #expect(extra.exitCode == 2 && extra.stderr.contains("ERROR: Invalid argument"), "`for` is POP's")
         // Review 2026-10-16: an option is matched whole, each setting takes only its own, and the options are read before
