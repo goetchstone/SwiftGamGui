@@ -139,7 +139,7 @@ Ten or more steps with a destructive one is GamGUI's "destructive bulk change": 
 do. The confirm sheet asks for the word beside the leaver's address whenever the held preview's decision says
 so, and the executor checks it whatever the sheet sends (`addedStepsRunAndALongRoutineNeedsConfirmTyped`).
 
-## Grammar check (`Vendor/gam7/GamCommands.txt`, lines as at GAM 7.51.00)
+## Grammar check (`Vendor/gam7/GamCommands.txt`, lines as at GAM 7.52.01)
 Re-read 2026-10-13 at 7.48.22; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 
 | Step | Grammar line |

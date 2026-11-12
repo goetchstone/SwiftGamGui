@@ -256,7 +256,7 @@ acl_notify_tail() {
 
 case "${1:-}" in
   version)
-    echo "GAM 7.51.00 - mock"
+    echo "GAM 7.52.01 - mock"
     # As the real build does in a fresh config directory: its config line, then the cache it created.
     if [ -n "${GAMCFGDIR:-}" ]; then
       printf 'Config File: %s/gam.cfg, Section: DEFAULT\nCreated: %s/gamcache\n' "$GAMCFGDIR" "$GAMCFGDIR"

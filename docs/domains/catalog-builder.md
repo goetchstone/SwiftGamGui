@@ -39,7 +39,7 @@ it) and 11 (parity is a test).
   of its first six words after `gam` holding a known verb holds a read verb and no destructive one; the verb sets are held to
   GamGUI's by the fixture), the same rule holds for the keywords the argv actually emits (`readOnly(literals:)`: the template
   keeps a word's first alternative and passes over fragments, so an edited `gam update|print user …` emitted `update`; review
-  2026-10-28), and it isn't **sensitive**, judged by the verb taken from the grammar line (`verb(of:)`), never the file's. 515 of 1,052 are promoted (GAM 7.51.00), as in GamGUI; 14 of
+  2026-10-28), and it isn't **sensitive**, judged by the verb taken from the grammar line (`verb(of:)`), never the file's. 515 of 1,052 are promoted (GAM 7.52.01), as in GamGUI; 14 of
   those are sensitive (GamGUI's `_is_sensitive`: every `get`, which saves a file, and `show`/`print backupcodes` and
   `browsertokens`; and here `info browsertoken` too, one enrollment token, new in GAM 7.49.00 and not named by GamGUI's
   frozen list: `CommandCatalogTests.sensitiveHereOnly`), so 501 run.
