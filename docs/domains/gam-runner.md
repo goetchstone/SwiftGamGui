@@ -97,6 +97,14 @@ an allowlisted environment, a timeout, and capped output capture.
   has the fix. `gam_output.json` now records #153's no-transfer answer, the header `id` alone. The second stale-fixture stop
   (after 7.48.34's): the note there said to regenerate after a mock change that *adds* data, and #153 made the mock
   *refuse* one, so the `pre-commit` skill now says it for any mock change that changes an answer.
+- **Bump to 7.52.01 (2026-11-12):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `487be35`
+  (7.52.00 was skipped: 7.52.01 followed it within a day). GAM's notes: `gam version update [quiet]` downloads the latest
+  release, checks its SHA-256, and installs it over the running GAM. That must never run here: it would replace the
+  pinned, attested build inside the app bundle. Nothing reaches it: the app runs only `version`, and the Builder's runnable
+  `gam version` keeps only the line's required words (`catalog_reads.json`: argv `["version"]`), so `update` in its
+  optional group is never offered. Bare `gam version` prints what it did before, and GAM's startup update check still
+  only reports. The grammar changed only on that line (1394), so no citation moved. The reviewed dry run holds: the
+  compare's last hunk, `doVersion`, is ~65,000 lines before the Gmail functions.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
