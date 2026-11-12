@@ -159,6 +159,12 @@ public final class ClassroomReads {
         store(&cards, Kept(key: courseID, tenant: tenant, serial: mine, value: card))
     }
 
+    /// Owner ID → address, from the directory as already cached (the index is read without `owneremail`): each person's
+    /// Google account ID (`accountID`, never `GamUser.id`, which is the address), the first person kept for an ID.
+    public static func owners(_ users: [GamUser]) -> [String: String] {
+        Dictionary(users.compactMap { user in user.accountID.map { ($0, user.primaryEmail) } }, uniquingKeysWith: { first, _ in first })
+    }
+
     // MARK: keeping
 
     /// A teacher's address as Google compares it.

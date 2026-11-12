@@ -158,6 +158,20 @@ final class ClassroomReadsTests {
         #expect(try courseReads().filter { $0.contains("500000000002") }.count == 4, "the record and the roster, twice")
     }
 
+    /// The index names no owner's address: the directory does, by Google account ID (never `GamUser.id`, the address, which
+    /// matched no class and left every owner blank: found in the screen's first render, 2026-11-12).
+    @Test func ownersAreNamedFromTheDirectoryByAccountID() async throws {
+        try await connect()
+        await reads.loadIndex()
+        // The mock's directory, one record a line as GAM prints each.
+        let lines = try String(contentsOf: Fixtures.mockGamData.appending(path: "print_users.json"), encoding: .utf8).split(separator: "\n")
+        let users = lines.compactMap { JSONValue.parse(String($0))?.object }.map(GamUser.init(record:))
+        #expect(!users.isEmpty && users.allSatisfy { $0.id.contains("@") }, "GamUser.id is the address")
+        let owners = ClassroomReads.owners(users)
+        let index = try #require(reads.indexState?.value)
+        #expect(index.map { owners[$0.ownerID] } == ["alice@example.com", "alice@example.com", "alice@example.com"])
+    }
+
     @Test func onlyTheLastFewCardsAreKept() async throws {
         try await connect()
         let small = ClassroomReads(setup: setup, access: access, keep: 2)

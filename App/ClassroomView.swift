@@ -30,9 +30,7 @@ struct ClassroomView: View {
     }
 
     /// Owner ID → address, from the directory as already cached: the index is read without `owneremail`. Never a fetch.
-    private var owners: [String: String] {
-        Dictionary((directory.users ?? []).filter { !$0.id.isEmpty }.map { ($0.id, $0.primaryEmail) }, uniquingKeysWith: { a, _ in a })
-    }
+    private var owners: [String: String] { ClassroomReads.owners(directory.users ?? []) }
 
     var body: some View {
         // Worked out once per redraw: the index can hold thousands of classes and the directory thousands of people.
@@ -116,7 +114,8 @@ struct ClassroomView: View {
                 .onSubmit(submit)
             Text("Read only: GAM GUI never changes Classroom. Classroom support hasn't been checked on a real school domain yet.")
                 .font(.callout).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                // It wraps by itself. `fixedSize(horizontal: false, vertical: true)` here, above the list in the split view's
+                // column, looped AppKit's layout until it crashed the app (failure-log 2026-11-12).
         }
         .padding()
     }
