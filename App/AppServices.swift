@@ -61,6 +61,8 @@ struct AppServices {
     let personDevices: PersonDeviceReads
     /// Every account's connected apps and AI agents, read from Reports.
     let connectedApps: ConnectedAppsRead
+    /// Google Classroom's classes and rosters, read only (the Classroom screen).
+    let classroom: ClassroomReads
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
     let knownSignIns: KnownSignIns
     /// The emails Phishing's Find showed nobody here has, which Incident's log reader shows done.
@@ -151,6 +153,7 @@ struct AppServices {
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            personDevices: PersonDeviceReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           classroom: ClassroomReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            knownSignIns: knownSignIns,
                            nobodyHas: nobodyHas,
                            incidents: incidents,

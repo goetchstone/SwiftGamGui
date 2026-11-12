@@ -32,6 +32,13 @@ beside the new one, each rendered or as HTML.
 |---|---|---|
 | ![Calendars: the rooms, by name, address and kind](screenshots/calendars.png) | ![A person's calendars, and Team Calendar's page: a field to share it, the access level, and who has access, each with Remove…](screenshots/calendars-alice.png) | ![Signatures: the current signature and the new one from a saved template, each Rendered or HTML](screenshots/signatures-alice.png) |
 
+Classroom, read only: the open classes, found by name, section, room or a teacher's address, and a class's card
+with its teachers and students.
+
+| Classroom | A class |
+|---|---|
+| ![Classroom: the open classes, each with its section, room, owner and state](screenshots/classroom.png) | ![A class's card: its section, room, state, owner and class ID, a link to it in Classroom, and its teachers and students](screenshots/classroom-class.png) |
+
 Onboard: one new hire from a role, and the one-time sign-in card. Offboard: a leaver's offboarding from a
 saved template (Hand-over by default), and every step's exact command before it runs.
 

@@ -329,6 +329,66 @@ public final class UserAccess {
         }
     }
 
+    // MARK: Google Classroom (read only)
+
+    /// Classes a teacher or student is in, or every class, in the given states (`GamCommands.printCourses`). A person
+    /// Classroom doesn't know is GAM's not-found, said by name; an admin token without the Classroom scopes points at Setup.
+    /// `ownerEmail` off spares GAM a Directory read per owner (the class index).
+    public func courses(teacher: String = "", student: String = "", states: [GamCommands.CourseState] = [],
+                        ownerEmail: Bool = true, in pinned: Domain? = nil) async -> Result<[Classroom.Course], Problem> {
+        let read: GamRead
+        do {
+            read = try GamCommands.printCourses(teacher: teacher, student: student, states: states, ownerEmail: ownerEmail)
+        } catch {
+            return .failure(Problem(summary: "“\(teacher.isEmpty ? student : teacher)” isn't one email address."))
+        }
+        let whose = teacher.isEmpty ? student : teacher
+        return await classroom(read, in: pinned, about: whose.isEmpty ? "" : "“\(whose)”").map(Classroom.courses)
+    }
+
+    /// One class by its ID. A class GAM answered without a record for is a read that fell short, never "no such class".
+    public func course(_ courseID: String, in pinned: Domain? = nil) async -> Result<Classroom.Course, Problem> {
+        guard let read = try? GamCommands.printCourses(courseIDs: [courseID]) else {
+            return .failure(Problem(summary: "“\(courseID)” isn't a Classroom class ID: it's digits only."))
+        }
+        return await classroom(read, in: pinned, about: "class \(courseID)").flatMap { records in
+            guard let course = Classroom.courses(records).first(where: { $0.id == courseID }) else {
+                return .failure(Problem(summary: "GAM answered without this class's record, so it can't be shown. Try again."))
+            }
+            return .success(course)
+        }
+    }
+
+    /// One class's teachers and students. A roster GAM printed in a shape this can't read says so (`unreadable`).
+    public func roster(_ courseID: String, in pinned: Domain? = nil) async -> Result<Classroom.Roster, Problem> {
+        guard let read = try? GamCommands.printCourseParticipants(courseID: courseID) else {
+            return .failure(Problem(summary: "“\(courseID)” isn't a Classroom class ID: it's digits only."))
+        }
+        return await classroom(read, in: pinned, about: "class \(courseID)").map { Classroom.roster($0, courseID: courseID) }
+    }
+
+    /// A Classroom read, its failure in words: a missing scope points at Setup, not-found names what Classroom doesn't know
+    /// (`about`: a teacher's address in quotes, or "class <id>"; empty for the index). Only fixed sentences and GAM's own
+    /// scrubbed message reach the screen, never a Swift error's text.
+    private func classroom(_ read: GamRead, in pinned: Domain?, about: String) async -> Result<[GamOutput.Record], Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        do {
+            return .success(try Classroom.records(try await runner.run(read, as: domain, extraEnvironment: environment), argv: read.argv))
+        } catch let error as GamError {
+            if Classroom.needsScope(error) { return .failure(Problem(summary: Classroom.scopeNote)) }
+            if error.kind == .notFound, !about.isEmpty { return .failure(Problem(summary: "Classroom doesn't know \(about).")) }
+            return .failure(Problem(summary: error.message))
+        } catch let incomplete as MessageCopies.Incomplete {
+            return .failure(Problem(summary: incomplete.reason))
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch is CancellationError {
+            return .failure(Problem(summary: "The read was stopped before it finished."))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+    }
+
     /// The emails scheduled to send from `email` (`Compromised.ScheduledSend`): every one, with its recipients.
     public func scheduledSends(of email: String, in pinned: Domain? = nil) async -> Result<[MailboxSearch.Message], Problem> {
         await searchMailbox(of: email, query: Compromised.ScheduledSend.query, in: pinned, max: Compromised.ScheduledSend.cap)

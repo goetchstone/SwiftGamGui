@@ -268,6 +268,16 @@ struct GoldenArgvTests {
         "find_spam_copies": { try GamCommands.findSpamCopies($0.messageID("message")) },
         "trash_message": { try GamCommands.trashMessage(email: $0.string("email"), $0.messageID("message"), copies: $0.int("copies")) },
         "trash_messages": { try GamCommands.trashMessages(email: $0.string("email"), ids: $0.strings("ids")) },
+        "print_courses": { args in
+            try GamCommands.printCourses(
+                teacher: args.string("teacher"), student: args.string("student"),
+                states: args.strings("states").map { name in
+                    guard let state = GamCommands.CourseState(rawValue: name) else { throw Missing.argument("states") }
+                    return state
+                },
+                courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"))
+        },
+        "print_course_participants": { try GamCommands.printCourseParticipants(courseID: $0.string("course_id")) },
         "report_activity": { args in
             try GamCommands.reportActivity(
                 args.choice("application", GamCommands.ActivityApplication.init(rawValue:)), users: args.strings("users"),
@@ -293,6 +303,7 @@ struct GoldenArgvTests {
         "info_user": { GamCommands.infoUser(email: "<email>") },
         "print_calendar_acls": { GamCommands.printCalendarACLs(email: "<email>") },
         "print_cros": { GamCommands.printCros() },
+        "print_courses": { try! GamCommands.printCourses() },
         "print_datatransfers": { GamCommands.printDataTransfers() },
         "print_events": { GamCommands.printEvents(calendarID: "<calendar_id>") },
         "print_filelist": { GamCommands.printFileList(email: "<email>") },
@@ -359,6 +370,7 @@ struct GoldenArgvTests {
             "TRANSFER_PRIVACY": GamCommands.TransferPrivacy.allCases.map(\.rawValue),
             "MESSAGE_DETAIL": GamCommands.MessageDetail.allCases.map(\.rawValue),
             "REPORT_APPLICATIONS": GamCommands.ActivityApplication.allCases.map(\.rawValue),
+            "COURSE_STATES": GamCommands.CourseState.allCases.map(\.rawValue),
             "USER_LIST_FIELDS": GamCommands.userListFields,
             "USER_DETAIL_FIELDS": GamCommands.userDetailFields,
             "GROUP_LIST_FIELDS": GamCommands.groupListFields,

@@ -561,6 +561,59 @@ public enum GamCommands {
         GamRead(["print", "admins", "user", user])
     }
 
+    // MARK: Google Classroom (read only)
+    // GAM reads Classroom with the ADMIN token (buildGAPIObject(CLASSROOM)), so its scopes are picked when the admin token is
+    // made, not delegated: without them GAM exits NO_SCOPES_FOR_API_RC (15). A teacher, student or course it can't find is a
+    // warning and ENTITY_DOES_NOT_EXIST_RC (56). Read from the 7.51.00 build (doPrintCourses, doPrintCourseParticipants,
+    // _getCoursesInfo) by GamGUI, and held to its builders (`argv.json`); never run on a tenant (plan 2026-11-11 E1).
+
+    /// The grammar's <CourseState>, in GamGUI's order (`COURSE_STATES`).
+    public enum CourseState: String, CaseIterable, Sendable {
+        case active, archived, provisioned, declined, suspended
+    }
+
+    /// A class's fields (3328 <CourseFieldName>), never `enrollmentcode`, which lets anyone who has it join the class.
+    static let courseFields = "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink"
+
+    /// A Classroom course ID as Google gives it: ASCII digits, at most 30. GAM reads a comma as a list and `d:` as an alias, so
+    /// nothing else is one course.
+    public static func isCourseID(_ value: String) -> Bool {
+        !value.isEmpty && value.unicodeScalars.count <= 30 && value.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
+    }
+
+    /// Classes, read only (3328 `print courses`): by ID, or every class a teacher or a student is in, or every class, in the
+    /// given states. CSV `id,JSON`. `ownerEmail` has GAM look up each distinct owner's address, one Directory read per owner:
+    /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`.
+    public static func printCourses(teacher: String = "", student: String = "", states: [CourseState] = [],
+                                    courseIDs: [String] = [], ownerEmail: Bool = true) throws -> GamRead {
+        var argv = ["print", "courses"]
+        if !courseIDs.isEmpty {
+            guard teacher.isEmpty, student.isEmpty, states.isEmpty else {
+                throw Invalid.argument("Classes by ID take no teacher, student or state filter")
+            }
+            for id in courseIDs {
+                guard isCourseID(id) else { throw Invalid.argument("Not a Classroom course ID: “\(id)”") }
+                argv += ["course", id]
+            }
+        }
+        for (keyword, address) in [("teacher", teacher), ("student", student)] where !address.isEmpty {
+            guard isOneAddress(address) else { throw Invalid.argument("Not one address: “\(address)”") }
+            argv += [keyword, address]
+        }
+        if !states.isEmpty {
+            var seen: Set<CourseState> = []
+            argv += ["states", states.filter { seen.insert($0).inserted }.map(\.rawValue).joined(separator: ",")]
+        }
+        return GamRead(argv + (ownerEmail ? ["owneremail"] : []) + ["fields", courseFields, "formatjson"])
+    }
+
+    /// One class's teachers and students (3339 `print course-participants`). CSV
+    /// `courseId,courseName,JSON-teachers,JSON-students`: one row per class, each `JSON-` cell a list of people.
+    public static func printCourseParticipants(courseID: String) throws -> GamRead {
+        guard isCourseID(courseID) else { throw Invalid.argument("Not a Classroom course ID: “\(courseID)”") }
+        return GamRead(["print", "course-participants", "course", courseID, "show", "all", "formatjson"])
+    }
+
     // MARK: calendar access, as the calendar's user
 
     public static func printCalendarACLs(email: String, calendar: String = "primary") -> GamRead {

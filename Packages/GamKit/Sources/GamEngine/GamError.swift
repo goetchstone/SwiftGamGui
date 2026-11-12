@@ -203,6 +203,9 @@ public struct GamError: Error, Equatable, Sendable {
         if text.has("invalid_grant") || text.has("token has been expired or revoked") { return .authExpired }
         if text.has("insufficient", thenLater: "scope") || text.has("access_denied", thenLater: "scope")
             || text.has("not authorized to access") { return .scopeMissing }
+        // The admin token holds no scope for the API at all (buildGAPIObject → Msg.NO_SCOPES_FOR_API, exit
+        // NO_SCOPES_FOR_API_RC 15): "There are no scopes authorized for the API(s): Classroom API". GamGUI's, 3c8d909.
+        if text.has("no scopes authorized for the api") { return .scopeMissing }
         // `rate.?limit` also covers "userRateLimitExceeded".
         if text.has("rate", thenAtMostOneThen: "limit") || text.has("quota") || text.has("too many requests")
             || text.hasWord("429") { return .rateLimited }

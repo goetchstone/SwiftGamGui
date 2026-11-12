@@ -217,6 +217,12 @@ def strategy_values(strategy) -> list:
     kind = type(inner).__name__
     if kind == "BooleansStrategy":
         return [True, False]
+    if kind == "OneOfStrategy":
+        # Each branch's values, in order, once (print_courses' teacher: none, or one address).
+        out = []
+        for branch in inner.original_strategies:
+            out += [v for v in strategy_values(branch) if v not in out]
+        return out
     if kind == "IntegersStrategy":
         # A bounded count (trash_message's copies, 1 to 9): both ends, so the Swift builder is held at each.
         if inner.start is None or inner.end is None:
@@ -693,7 +699,7 @@ def mock_outputs(mock: Path) -> dict:
                         raise SystemExit(f"the mock answered a read it doesn't model: {argv}")
                     continue
                 if run.returncode != 0:
-                    raise SystemExit(f"the mock refused a read: {argv}")
+                    raise SystemExit(f"the mock refused a read (exit {run.returncode}): {argv}\n{run.stderr[-600:]}")
                 # As GamGUI's runner hands it on: without the first-run banner naming the config dir.
                 stdout = strip_cfgdir_noise(run.stdout, Path(config))
                 if builder in GAM_PRINTED:   # its bytes after the banner, the last line ending kept
@@ -2147,7 +2153,7 @@ def main() -> int:
         "constants": {k: jsonable(getattr(GAMCommands, k)) for k in ("TRANSFER_PRIVACY", "FORWARD_ACTIONS",
                                                                       "MESSAGE_DETAIL", "REPORT_APPLICATIONS")}
         | {k: jsonable(getattr(commands_mod, k)) for k in ("GROUP_ROLES", "CALENDAR_ACL_ROLES", "USER_LIST_FIELDS",
-                                                           "USER_DETAIL_FIELDS", "GROUP_LIST_FIELDS",
+                                                           "USER_DETAIL_FIELDS", "GROUP_LIST_FIELDS", "COURSE_STATES",
                                                            "CROS_LIST_FIELDS", "FILE_LIST_FIELDS", "CACHE_FIELDS")}
         | {"PY_WHITESPACE": [ord(c) for c in PY_WHITESPACE]}
         # The catalog's verb rule (invariant 3), which CommandKindTests holds every GamRead to.
