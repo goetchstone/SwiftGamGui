@@ -66,6 +66,7 @@ struct CalendarsView: View {
         VStack(spacing: 0) {
             controls
             Divider()
+            if deletedResultShown { CalendarResultBanner(changes: changes).padding(.top, 8) }
             list
         }
         // The list clips rather than widen the screen past the window when a calendar's page is open
@@ -74,6 +75,10 @@ struct CalendarsView: View {
         // Rooms are read when Rooms is first shown for a tenant, a person's calendars when they're chosen.
         .task(id: "\(setup.generation)#\(source.rawValue)#\(person)") { await loadIfNeeded() }
         .onChange(of: setup.generation) { select(nil) }
+        // A calendar deleted: it has left the list, so its page closes; the result stays above the list.
+        .onChange(of: deletedCalendar) { _, deleted in
+            if let deleted, selection.map({ $0.lowercased() == deleted.lowercased() }) == true { select(nil) }
+        }
         .onChange(of: source) { select(nil) }
         .onChange(of: person) { select(nil) }
         .onChange(of: requested, initial: true) { _, email in
@@ -107,6 +112,15 @@ struct CalendarsView: View {
             }
         }
     }
+
+    /// The calendar the last change deleted, while its result is shown.
+    private var deletedCalendar: String? {
+        if case .done(let done) = changes.state { return done.deletedCalendar }
+        return nil
+    }
+
+    /// A delete's result goes above the list once its page has closed.
+    private var deletedResultShown: Bool { deletedCalendar != nil && selection == nil }
 
     private func loadIfNeeded() async {
         guard setup.active != nil, let read = listRead, reads.revision(of: read) == nil, !reads.isReading(read) else { return }
@@ -290,6 +304,7 @@ private struct CalendarPage: View {
     let changes: CalendarChanges
     /// The calendar this page last had access rules for: if they go (sixteen more reads since), it reads again.
     @State private var readFor: String?
+    @State private var debugApplied = false
     @State private var target = ""
     /// GamGUI's picker starts on "See all details".
     @State private var role = GamCommands.CalendarRole.reader.rawValue
@@ -310,6 +325,9 @@ private struct CalendarPage: View {
             CalendarAccessList(read: read, reads: reads, empty: "No access rules returned.", calendarName: row.label,
                                busy: changes.isBusy) { rule in
                 Task { await changes.previewUnshare(calendarID: row.id, name: row.label, rule: rule) }
+            } more: { rules in
+                CalendarEventSection(calendarID: row.id, calendarName: row.label, changes: changes)
+                CalendarDeleteSection(calendarID: row.id, calendarName: row.label, rules: rules, changes: changes)
             }
         }
         // Long values wrap or clip rather than widen the inspector past its bounds (ColumnWidths).
@@ -318,7 +336,16 @@ private struct CalendarPage: View {
                               max: ColumnWidths.inspector.max)
         // A quarter second later, so arrowing down the list starts no gam for the calendars passed over.
         .task(id: row.id) { await reads.load(read, after: .milliseconds(250)) }
+        // The data owner the Delete section decides from, read once per page open: on the page, not on its section, which the
+        // lazy List would start again whenever it scrolled back into view. Later too, for the same reason as the access.
+        .task(id: row.id) {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            await changes.lookUpOwner(of: row.id)
+        }
         .onChange(of: row.id) { target = "" }
+        // A preview still reading (a group's members) is for what the form said then: it's dropped, never shown.
+        .onChange(of: "\(row.id)#\(target)#\(role)") { changes.edited() }
         .onChange(of: reads.access(read) != nil || reads.problem(for: read) != nil, initial: true) { _, has in
             if has {
                 readFor = row.id
@@ -330,15 +357,45 @@ private struct CalendarPage: View {
         .sheet(item: Binding(get: { changes.sheetPending(for: row.id) }, set: { if $0 == nil { changes.dismissPreview() } })) { pending in
             CalendarPreviewSheet(pending: pending, changes: changes)
         }
+        .task(id: reads.access(read) != nil) { await debugAction() }
     }
 
-    /// GamGUI's share form: one person's address and the access, then a preview.
+    /// Debug builds: `SWIFTGAMGUI_TAB` shows a change's state for the snapshots, once the access is read: a group share's
+    /// confirm (`share-group`, the mock's twelve-member allhands@, held, never run), a made-up finished group share with
+    /// failures (`group-result`, no gam), the calendar delete's confirm (`delete`), the event search's results (`events`)
+    /// and an event delete's confirm (`event-delete`).
+    private func debugAction() async {
+        #if DEBUG
+        let environment = ProcessInfo.processInfo.environment
+        guard !debugApplied, reads.access(read) != nil, environment["SWIFTGAMGUI_SNAPSHOT"] != nil,
+              let tab = environment["SWIFTGAMGUI_TAB"] else { return }
+        debugApplied = true
+        switch tab {
+        case "share-group":
+            await changes.previewShare(calendarID: row.id, name: row.label, target: "allhands@example.com",
+                                       role: GamCommands.CalendarRole.reader.rawValue)
+        case "group-result":
+            let failed = ["member10@example.com", "member11@example.com", "member12@example.com"]
+            let why = GamError.Kind.serviceNotEnabled.remediation
+            changes.showDemo(CalendarChanges.Done(
+                message: "Shared with allhands@example.com. It now appears in 9 of 12 members' Google Calendars. Couldn't add "
+                    + "it for 3 \u{2014} they can add it manually.", partial: true,
+                failures: failed.map { "\($0) \u{2014} \(why)" }, failedCount: 3), about: row.id)
+        case "delete": await changes.previewDeleteCalendar(calendarID: row.id, name: row.label)
+        case "events": await changes.events.search(calendarID: row.id, .init(text: "stand"))
+        case "event-delete": await changes.previewDeleteEvent(calendarID: row.id, name: row.label, eventID: "4j3k2m1n0p9q8r7s6t5u")
+        default: break
+        }
+        #endif
+    }
+
+    /// GamGUI's share form: a person's or a group's address and the access, then a preview.
     private var shareForm: some View {
         VStack(alignment: .leading, spacing: 6) {
-            TextField("Share with", text: $target, prompt: Text(verbatim: "person@example.com"))
+            TextField("Share with", text: $target, prompt: Text(verbatim: "person or group@example.com"))
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(share)
-                .accessibilityLabel("Share \(row.label) with (email)")
+                .accessibilityLabel("Share \(row.label) with (a person's or a group's address)")
             HStack {
                 Picker("Access", selection: $role) {
                     ForEach(CalendarSharing.pickerRoles, id: \.role) { choice in
@@ -367,10 +424,13 @@ private struct CalendarPage: View {
     }
 }
 
-/// The last change's result for this calendar, at the top of its page, and spoken by VoiceOver: done, done but
-/// not added to their list (in words, not only amber), or why not.
-private struct CalendarResultBanner: View {
+/// The last change's result for this calendar, at the top of its page (or above the list, once a deleted calendar's
+/// page has closed), and spoken by VoiceOver: done, done in part (said in words, not only amber), or why not. A group
+/// share shows how far it is as it runs, with Stop, and then who it couldn't be added for.
+struct CalendarResultBanner: View {
     let changes: CalendarChanges
+    /// GamGUI lists ten of a run's failures before "and N more" here; the rest are in the jobs tray and Audit.
+    static let failuresShown = 10
 
     var body: some View {
         if let (text, detail, symbol, tint) = content {
@@ -378,16 +438,38 @@ private struct CalendarResultBanner: View {
                 if case .running = changes.state {
                     ProgressView().controlSize(.small)
                 } else {
-                    Image(systemName: symbol).foregroundStyle(tint)
+                    Image(systemName: symbol).foregroundStyle(tint).accessibilityHidden(true)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(text)
                     if let detail {
                         Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                     }
+                    if case .done(let done) = changes.state, !done.failures.isEmpty {
+                        // A bounded box that scrolls (GamGUI's `max-h-24`): the access list below keeps its room in the
+                        // smallest window.
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 2) {
+                                ForEach(done.failures.prefix(Self.failuresShown), id: \.self) { failure in
+                                    Text(failure).font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 96)
+                        if done.failedCount > Self.failuresShown {
+                            Text("and \(done.failedCount - Self.failuresShown) more (the jobs tray and Audit list each)")
+                                .font(.callout).foregroundStyle(.secondary)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if !changes.isBusy {
+                if let progress = changes.progress {
+                    Button(progress.stopping ? "Stopping…" : "Stop") { Task { await changes.stop() } }
+                        .disabled(progress.stopping)
+                        .accessibilityLabel("Stop adding the calendar to members' lists")
+                        .accessibilityHint("The member being added finishes; no further member is added.")
+                } else if !changes.isBusy {
                     Button { changes.dismiss() } label: { Image(systemName: "xmark") }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Dismiss")
@@ -395,12 +477,18 @@ private struct CalendarResultBanner: View {
             }
             .padding(10)
             .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .padding(.horizontal)
             .padding(.bottom, 8)
             .onAppear { AccessibilityNotification.Announcement(text).post() }
-            .onChange(of: text) { _, new in AccessibilityNotification.Announcement(new).post() }
+            .onChange(of: announced) { _, new in AccessibilityNotification.Announcement(new).post() }
         }
+    }
+
+    /// What is spoken: the result, never each member's progress (which would talk over everything).
+    private var announced: String {
+        if case .running(let pending) = changes.state { return "\(pending.title)…" }
+        return content?.0 ?? ""
     }
 
     private var content: (String, String?, String, Color)? {
@@ -408,7 +496,13 @@ private struct CalendarResultBanner: View {
         case .done(let done): (done.message, nil, done.partial ? "exclamationmark.circle.fill" : "checkmark.circle.fill",
                                done.partial ? .orange : .green)
         case .problem(let problem): (problem.summary, problem.detail, "exclamationmark.triangle.fill", .orange)
-        case .running(let pending): ("\(pending.title)…", nil, "hourglass", .blue)
+        case .running(let pending):
+            if let progress = changes.progress {
+                ("Adding to calendars… \(progress.done) of \(progress.total) \u{B7} \(progress.added) added"
+                    + (progress.failed > 0 ? " \u{B7} \(progress.failed) failed" : ""), nil, "hourglass", .blue)
+            } else {
+                ("\(pending.title)…", nil, "hourglass", .blue)
+            }
         case .idle, .previewing: nil
         }
     }
@@ -417,7 +511,7 @@ private struct CalendarResultBanner: View {
 /// Who has access to a calendar, in GAM's order: who, then the role in words, and a Remove on each rule that
 /// isn't an owner's (GamGUI shows none on an owner's). A problem replaces the list (GamGUI's error partial),
 /// never a spinner with no read behind it.
-struct CalendarAccessList: View {
+struct CalendarAccessList<More: View>: View {
     let read: CalendarReads.Read
     let reads: CalendarReads
     /// What an empty list says (GamGUI's words differ between its two panels).
@@ -425,6 +519,8 @@ struct CalendarAccessList: View {
     let calendarName: String
     let busy: Bool
     let remove: (CalendarACL) -> Void
+    /// The page's sections after who has access (finding an event, the delete), given the rules read.
+    @ViewBuilder let more: ([CalendarACL]) -> More
 
     var body: some View {
         if let rules = reads.access(read) {
@@ -435,6 +531,7 @@ struct CalendarAccessList: View {
                         CalendarRuleRow(rule: rule, calendarName: calendarName, busy: busy, remove: remove)
                     }
                 }
+                more(rules)
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -566,5 +663,167 @@ struct PersonCalendarSection: View {
     private var readAgain: some View {
         Button("Read Again") { Task { await reads.load(read) } }
             .accessibilityLabel("Read Again: who can see \(user.fullName)'s calendar")
+    }
+}
+
+/// GamGUI's "Find an event" (`_calendar_detail.html`, `_event_results.html`): a title fragment and/or days, never every
+/// event; each result with what it is in words (a series says so), and Delete…, which reads it again and opens its
+/// confirm. GamGUI's dates are optional, so each has its switch.
+struct CalendarEventSection: View {
+    let calendarID: String
+    let calendarName: String
+    let changes: CalendarChanges
+    @State private var text = ""
+    @State private var useAfter = false
+    @State private var after = Date()
+    @State private var useBefore = false
+    @State private var before = Date()
+
+    private var search: CalendarEventSearch { changes.events }
+
+    /// GAM's `yyyy-mm-dd`, the day as the operator's calendar has it (GamGUI's browser date field).
+    static func day(_ date: Date) -> String {
+        let parts = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    private var searching: Bool {
+        if case .searching = search.state(for: calendarID) { return true }
+        return false
+    }
+
+    var body: some View {
+        Section("Find an event") {
+            TextField("Title contains", text: $text, prompt: Text("Event title contains"))
+                .onSubmit(find)
+                .accessibilityLabel("Event title contains")
+            Toggle("On or after a day", isOn: $useAfter)
+            if useAfter {
+                DatePicker("On or after", selection: $after, displayedComponents: .date)
+            }
+            Toggle("Before a day", isOn: $useBefore)
+            if useBefore {
+                DatePicker("Before", selection: $before, displayedComponents: .date)
+            }
+            Button("Search Events", action: find)
+                .disabled(searching)
+                .accessibilityHint("Reads only the events that match; nothing changes.")
+            results
+        }
+        .onChange(of: calendarID) {
+            text = ""
+            useAfter = false
+            useBefore = false
+        }
+    }
+
+    private func find() {
+        let query = CalendarEventSearch.Query(text: text, after: useAfter ? Self.day(after) : "", before: useBefore ? Self.day(before) : "")
+        Task { await search.search(calendarID: calendarID, query) }
+    }
+
+    @ViewBuilder private var results: some View {
+        switch search.state(for: calendarID) {
+        case .idle:
+            EmptyView()
+        case .needsFilter:
+            Text("Enter a title to search for, or a date range.").foregroundStyle(.secondary)
+        case .searching:
+            HStack { ProgressView().controlSize(.small); Text("Searching…") }
+                .accessibilityElement(children: .combine)
+        case .problem(_, let problem):
+            Label(problem.summary, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            if let detail = problem.detail {
+                Text(detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+        case .found(_, let events, let capped):
+            if events.isEmpty {
+                Text("No matching events.").foregroundStyle(.secondary)
+            }
+            if capped {
+                Label("Showing the first \(events.count) matches \u{2014} narrow your search to see the rest.",
+                      systemImage: "exclamationmark.circle")
+            }
+            ForEach(events) { event in
+                EventRow(event: event, busy: changes.isBusy) {
+                    Task { await changes.previewDeleteEvent(calendarID: calendarID, name: calendarName, eventID: event.eventID) }
+                }
+            }
+        }
+    }
+}
+
+/// One event: the title, "Recurring" in words beside it, then when and the organizer; read as one sentence, with Delete…
+/// named for what it deletes.
+private struct EventRow: View {
+    let event: CalendarEvent
+    let busy: Bool
+    let delete: () -> Void
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.isRecurring ? "\(event.summary) (recurring)" : event.summary).lineLimit(1).truncationMode(.tail)
+                Text(event.details).font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            Button("Delete…", action: delete)
+                .disabled(busy)
+                .accessibilityLabel("Delete \(event.summary), \(event.when)")
+                .accessibilityHint("Shows the event first; nothing is deleted until you confirm.")
+        }
+    }
+}
+
+/// GamGUI's danger zone (`_calendar_detail.html`): on a secondary calendar, the data owner read when the page opens (the
+/// owner the delete acts as, `CalendarChanges.lookUpOwner`); while that account is active, what a delete costs and the
+/// button; otherwise why it can't be deleted here, in the preview's own words. Nothing on a primary, room or holiday calendar.
+struct CalendarDeleteSection: View {
+    let calendarID: String
+    let calendarName: String
+    let rules: [CalendarACL]
+    let changes: CalendarChanges
+
+    var body: some View {
+        if CalendarDeletion.isSecondary(calendarID) {
+            Section("Delete this calendar") {
+                if let active = changes.activeAddresses {
+                    switch changes.ownerLookup(for: calendarID) {
+                    case nil, .reading?:
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("Checking who owns this calendar\u{2026}").foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    case .gone?:
+                        Text(CalendarChanges.calendarGone).foregroundStyle(.secondary)
+                    case .failed(let problem)?:
+                        Text("Couldn't check who owns this calendar, so it can't be deleted here yet. \(problem.summary)")
+                            .foregroundStyle(.secondary)
+                        Button("Check Again") { Task { await changes.lookUpOwner(of: calendarID) } }
+                            .accessibilityHint("Reads who owns this calendar again.")
+                    case .read(let dataOwner)?:
+                        switch CalendarDeletion.owner(of: calendarID, dataOwner: dataOwner, active: active) {
+                        case .refused(let why):
+                            Text(why).foregroundStyle(.secondary)
+                        case .owner(let owner):
+                            Text("Permanently delete this calendar. It's removed for everyone with access (\(rules.count) access "
+                                + "rule\(rules.count == 1 ? "" : "s") above) and can't be undone \u{2014} make sure it's truly unused, "
+                                + "not an active shared calendar. It's deleted acting as its owner, \(owner).")
+                            Button("Delete This Calendar\u{2026}", role: .destructive) {
+                                Task { await changes.previewDeleteCalendar(calendarID: calendarID, name: calendarName) }
+                            }
+                            .disabled(changes.isBusy)
+                            .accessibilityLabel("Delete \(calendarName) for everyone")
+                            .accessibilityHint("Shows what is deleted first, and asks you to type DELETE.")
+                        }
+                    }
+                } else {
+                    Text("Load the directory (Home or Users) to check who owns this calendar before deleting it.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }

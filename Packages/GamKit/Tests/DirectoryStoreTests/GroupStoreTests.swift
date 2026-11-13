@@ -34,11 +34,16 @@ struct GroupStoreTests {
     }
 
     /// The mock, each call's argv logged (NUL-separated, as the mock logs it). Given `slow`, that command
-    /// takes two seconds; like real GAM (one process), it ends on SIGTERM at once.
-    private func runner(slow: String? = nil) throws -> AuthenticatedRunner {
+    /// takes two seconds, its first call `first` (a test that times a stop uses one far past its bound, failure log
+    /// 2026-11-13, and a later load still ends); like real GAM (one process), it ends on SIGTERM at once.
+    private func runner(slow: String? = nil, first: Int = 2) throws -> AuthenticatedRunner {
         let script = scratch.appending(path: "mock-\(UUID().uuidString).sh")
-        let delay = slow.map { "case \"$1 $2\" in \"\($0)\") sleep 2 >/dev/null 2>&1 & wait $! ;; esac\n" } ?? ""
-        try Data(("#!/bin/sh\ntrap 'exit 143' TERM\n\(delay)"
+        let marker = script.path + ".first"
+        let delay = slow.map {
+            "case \"$1 $2\" in \"\($0)\") if [ -e '\(marker)' ]; then s=2; else : > '\(marker)'; s=\(first); fi\n"
+                + "  sleep $s >/dev/null 2>&1 & wait $! ;; esac\n"
+        } ?? ""
+        try Data(("#!/bin/sh\ntrap 'kill $! 2>/dev/null; exit 143' TERM\n\(delay)"
                   + "GAM_MOCK_ARGV_LOG='\(argvLog.path)' exec '\(Fixtures.mockGam.path)' \"$@\"\n").utf8)
             .write(to: script)
         chmod(script.path, 0o755)
@@ -145,7 +150,7 @@ struct GroupStoreTests {
     }
 
     @Test func aTenantSwitchStopsTheOldLoad() async throws {
-        let app = app(try runner(slow: "print groups"))
+        let app = app(try runner(slow: "print groups", first: 600))
         try await connect("example.com", in: app.setup)
         let clock = SuspendingClock(), started = clock.now
         let groups = app.groups
@@ -154,7 +159,8 @@ struct GroupStoreTests {
         try await connect("example.org", in: app.setup)
         #expect(!groups.isLoading, "a switch starts no group load")
         await old.value
-        #expect(clock.now - started < .seconds(1.5), "the old load's gam was stopped, not waited for")
+        // Far from a stop on a busy runner and from the 600 s a gam left running takes (failure log 2026-11-13).
+        #expect(clock.now - started < .seconds(60), "the old load's gam was stopped, not waited for")
         #expect(groups.groups == nil && groups.problem == nil)
         await groups.load()
         #expect(groups.groups?.isEmpty == false, "example.org loads")

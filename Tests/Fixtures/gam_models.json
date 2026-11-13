@@ -22456,5 +22456,2569 @@
     "building_id": ""
    }
   }
+ ],
+ "calendar_events": [
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"creator\": {\"email\": \"alice@example.com\"}, \"end\": {\"dateTime\": \"2026-06-22T09:30:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer\": {\"displayName\": \"Team Calendar\", \"email\": \"c_team@group.calendar.google.com\", \"self\": true}, \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"], \"start\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"status\": \"confirmed\", \"summary\": \"Weekly Standup\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "Weekly Standup",
+    "start": "2026-06-22T09:00:00-04:00",
+    "end": "2026-06-22T09:30:00-04:00",
+    "organizer": "c_team@group.calendar.google.com",
+    "creator": "alice@example.com",
+    "status": "confirmed",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-06-22T09:00:00-04:00"
+   }
+  },
+  {
+   "record": "{\"calendarId\": \"c_team@group.calendar.google.com\", \"id\": \"0a1b2c3d4e5f6g7h8i9j\", \"creator\": {\"email\": \"carol@example.com\"}, \"end\": {\"date\": \"2026-07-02\"}, \"organizer\": {\"displayName\": \"Team Calendar\", \"email\": \"c_team@group.calendar.google.com\", \"self\": true}, \"start\": {\"date\": \"2026-07-01\"}, \"status\": \"confirmed\", \"summary\": \"All Hands\"}",
+   "model": {
+    "id": "0a1b2c3d4e5f6g7h8i9j",
+    "summary": "All Hands",
+    "start": "2026-07-01",
+    "end": "2026-07-02",
+    "organizer": "c_team@group.calendar.google.com",
+    "creator": "carol@example.com",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"summary\": null, \"start.date\": true, \"end\": 0, \"organizer\": \"Zo\\u00eb\", \"creator\": null, \"status\": null, \"recurrence\": []}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "",
+    "organizer": "Zo\u00eb",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"end.dateTime\": null, \"organizer\": {}, \"status\": 0, \"recurrence\": 0}",
+   "model": {
+    "id": " padded ",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"Summary\": 0, \"end\": null, \"creator.email\": 1.5, \"recurrence\": null, \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "1.5",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": 0, \"start.date\": 1.5, \"end\": {\"date\": \"2026-07-01\"}, \"organizer\": {}, \"creator\": null, \"status\": \"Zo\\u00eb\", \"recurrence\": true, \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "2026-07-01",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"start\": \"\", \"end\": null, \"organizer\": false, \"creator.email\": 0, \"recurringEventId\": true}",
+   "model": {
+    "id": "True",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 0, \"summary\": null, \"start.dateTime\": \"Zo\\u00eb\", \"end\": {\"date\": \"2026-07-01\"}, \"organizer\": 1.5, \"creator\": 1.5, \"recurrence\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "0",
+    "summary": "(no title)",
+    "start": "Zo\u00eb",
+    "end": "2026-07-01",
+    "organizer": "1.5",
+    "creator": "1.5",
+    "status": "",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"eventId\": null, \"Summary\": \"\\u3000x\\u3000\", \"start\": {\"date\": \"2026-07-01\"}, \"end.dateTime\": false, \"organizer.email\": \"\", \"creator\": null, \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "2026-07-01",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"summary\": true, \"start\": 1.5, \"organizer.email\": \"Zo\\u00eb\", \"creator\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "True",
+    "summary": "True",
+    "start": "1.5",
+    "end": "",
+    "organizer": "Zo\u00eb",
+    "creator": "\u3000x\u3000",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"start.date\": \"\\u3000x\\u3000\", \"end\": false, \"organizer.email\": \"\\u3000x\\u3000\", \"status\": \"confirmed\", \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "\u3000x\u3000",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"summary\": \"Weekly Standup\", \"start.date\": \"\", \"status\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Weekly Standup\", \"end\": \"2026-07-03\", \"organizer\": \"\\u3000x\\u3000\", \"creator\": \"Zo\\u00eb\", \"recurringEventId\": null}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "2026-07-03",
+    "organizer": "\u3000x\u3000",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"Summary\": 0, \"start\": \"Zo\\u00eb\", \"organizer\": \"\", \"creator\": false, \"status\": 1.5}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "(no title)",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"summary\": \"Q3 \\\"Planning\\\", Room B\", \"organizer\": \" padded \", \"creator\": \"Zo\\u00eb\", \"recurrence\": \" padded \", \"recurringEventId\": null}",
+   "model": {
+    "id": "True",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"start.dateTime\": null, \"organizer\": \"\\u3000x\\u3000\", \"creator.email\": 1.5, \"status\": \" padded \", \"recurrence\": 0}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "1.5",
+    "status": " padded ",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"end.dateTime\": false, \"organizer.email\": \" padded \", \"recurringeventid\": true}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"\\u3000x\\u3000\", \"start.dateTime\": \"\\u3000x\\u3000\", \"end\": null, \"creator.email\": \"Zo\\u00eb\", \"status\": 1.5, \"recurrence\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "\u3000x\u3000",
+    "end": "",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"summary\": true, \"end.date\": \" padded \", \"status\": null, \"recurrence\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "True",
+    "start": "",
+    "end": " padded ",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"organizer\": true, \"creator.email\": null}",
+   "model": {
+    "id": "False",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"Zo\\u00eb\", \"summary\": \"Q3 \\\"Planning\\\", Room B\", \"organizer\": {\"email\": \"alice@example.com\", \"self\": true}, \"status\": null}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "",
+    "organizer": "alice@example.com",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"abc_20260622T130000Z\", \"summary\": \"Zo\\u00eb\", \"end.date\": \"2026-07-01T10:00:00Z\", \"organizer.email\": 0, \"recurringeventid\": null}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "2026-07-01T10:00:00Z",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"end\": \"\\u3000x\\u3000\", \"creator.email\": \"\\u3000x\\u3000\", \"status\": null}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "\u3000x\u3000",
+    "organizer": "",
+    "creator": "\u3000x\u3000",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"start\": \"\\u3000x\\u3000\", \"end\": {}, \"recurrence\": false, \"recurringeventid\": \"\"}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "\u3000x\u3000",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": true, \"end\": \"Zo\\u00eb\", \"organizer.email\": null, \"status\": \"\\u3000x\\u3000\", \"recurrence\": \"Zo\\u00eb\", \"recurringeventid\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start.dateTime\": \"2026-07-01T10:00:00Z\", \"end\": {\"date\": \"2026-07-01\"}, \"organizer.email\": true, \"creator.email\": null, \"recurrence\": 0, \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "2026-07-01T10:00:00Z",
+    "end": "2026-07-01",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "2026-07-01T10:00:00Z"
+   }
+  },
+  {
+   "record": "{\"eventId\": null, \"summary\": \" padded \", \"start\": \"Zo\\u00eb\", \"end.dateTime\": \"\", \"creator\": {\"email\": \"alice@example.com\", \"self\": true}, \"recurringEventId\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": " padded ",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": "alice@example.com",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"start.date\": 0, \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer.email\": true, \"status\": 0, \"recurrence\": null, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "True",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"summary\": \"\\u3000x\\u3000\", \"start\": \"Zo\\u00eb\", \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer.email\": \"bob@example.com\", \"creator\": 1.5, \"recurringEventId\": \" padded \"}",
+   "model": {
+    "id": "False",
+    "summary": "\u3000x\u3000",
+    "start": "Zo\u00eb",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "bob@example.com",
+    "creator": "1.5",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\\u3000x\\u3000\", \"summary\": 0, \"start\": \"2026-07-03\", \"end\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"organizer\": true, \"status\": \" padded \", \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"], \"recurringeventid\": null}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "(no title)",
+    "start": "2026-07-03",
+    "end": "2026-07-02",
+    "organizer": "True",
+    "creator": "",
+    "status": " padded ",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-07-03"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": \"Weekly Standup\", \"creator\": false, \"recurrence\": 0}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start.date\": 1.5, \"end.dateTime\": false, \"organizer\": true, \"creator\": \"\", \"recurrence\": \" padded \", \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\\u3000x\\u3000\", \"start.date\": 1.5, \"end.dateTime\": \" padded \", \"organizer\": true, \"status\": \"\", \"recurrence\": false, \"recurringeventid\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": " padded ",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "Zo\u00eb",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"start\": {}, \"organizer.email\": false, \"creator.email\": null, \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"start.date\": \"Zo\\u00eb\", \"end.date\": \"\", \"organizer\": {\"displayName\": \"Team\"}, \"status\": 0, \"recurrence\": \" padded \", \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "True",
+    "summary": "(no title)",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "0",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Weekly Standup\", \"start.dateTime\": true, \"creator\": 1.5, \"status\": 1.5, \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "True",
+    "end": "",
+    "organizer": "",
+    "creator": "1.5",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"summary\": true, \"start\": null, \"end\": {\"date\": \"2026-07-01\"}, \"creator\": \"\", \"recurrence\": null, \"recurringeventid\": 0}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "2026-07-01",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Summary\": \" padded \", \"start\": \" padded \", \"end\": 0, \"organizer.email\": \" padded \", \"creator\": false, \"recurrence\": \"\\u3000x\\u3000\", \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": " padded ",
+    "start": " padded ",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"summary\": \"Weekly Standup\", \"start\": {}, \"end\": {\"date\": \"2026-07-01\"}, \"organizer\": 0, \"status\": false, \"recurrence\": \"\\u3000x\\u3000\", \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "2026-07-01",
+    "organizer": "",
+    "creator": "",
+    "status": "False",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"organizer.email\": \"\", \"creator.email\": 0, \"status\": \" padded \", \"recurrence\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "True",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": " padded ",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"summary\": \"\", \"start.date\": \"2026-07-01\", \"end.dateTime\": \"\", \"organizer.email\": \"Zo\\u00eb\", \"creator.email\": \"bob@example.com\", \"status\": \"\\u3000x\\u3000\", \"recurrence\": \"\\u3000x\\u3000\", \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "2026-07-01",
+    "end": "",
+    "organizer": "Zo\u00eb",
+    "creator": "bob@example.com",
+    "status": "\u3000x\u3000",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"summary\": 0, \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"]}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"Zo\\u00eb\", \"Summary\": \"\\u3000x\\u3000\", \"start.dateTime\": \"\", \"end.dateTime\": null, \"creator\": \" padded \", \"status\": 0, \"recurrence\": null, \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"Summary\": \"Zo\\u00eb\", \"end\": {\"date\": \"2026-07-01\"}, \"creator\": true, \"status\": false, \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"]}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "2026-07-01",
+    "organizer": "",
+    "creator": "True",
+    "status": "False",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"abc_20260622T130000Z\", \"summary\": \"Zo\\u00eb\", \"start\": 0, \"end.dateTime\": \"Zo\\u00eb\", \"organizer.email\": \"Zo\\u00eb\", \"status\": 0, \"recurringeventid\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "Zo\u00eb",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "Zo\u00eb",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": true, \"start\": false, \"end\": {}, \"organizer.email\": 0, \"status\": \"tentative\", \"recurrence\": 0, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "tentative",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"end.date\": \"2026-07-01T10:00:00Z\", \"organizer\": {\"displayName\": \"Team\"}, \"creator.email\": null, \"status\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "2026-07-01T10:00:00Z",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"start\": {}, \"organizer\": true, \"creator\": \" padded \", \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": null, \"summary\": \"\\u3000x\\u3000\", \"start\": null, \"end\": false, \"organizer\": \"\", \"creator\": 1.5, \"status\": 0, \"recurrence\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "1.5",
+    "status": "0",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"start\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"end.dateTime\": \"Zo\\u00eb\", \"creator\": {}, \"status\": null, \"recurrence\": true, \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "2026-06-22T09:00:00-04:00",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-06-22T09:00:00-04:00"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": 0, \"end.dateTime\": \"\", \"organizer\": 0, \"creator.email\": 0, \"recurrence\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": true, \"start.date\": 1.5, \"end.date\": 1.5, \"organizer.email\": false, \"status\": \"\\u3000x\\u3000\", \"recurrence\": \"Zo\\u00eb\", \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "1.5",
+    "end": "1.5",
+    "organizer": "",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"organizer\": null, \"recurrence\": \"Zo\\u00eb\", \"recurringeventid\": true}",
+   "model": {
+    "id": " padded ",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \" padded \", \"Summary\": \"\\u3000x\\u3000\", \"start\": \"Zo\\u00eb\", \"organizer.email\": null, \"creator\": false, \"recurrence\": 1.5, \"recurringEventId\": true}",
+   "model": {
+    "id": " padded ",
+    "summary": "\u3000x\u3000",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"summary\": 1.5, \"end.date\": \" padded \", \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "1.5",
+    "start": "",
+    "end": " padded ",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"Summary\": 0, \"start.dateTime\": false, \"end.dateTime\": \"\", \"organizer.email\": \" padded \", \"recurrence\": 0}",
+   "model": {
+    "id": "True",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start\": {}, \"organizer\": true, \"creator\": false, \"recurrence\": 1.5, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": \"\\u3000x\\u3000\", \"end\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"organizer\": \" padded \", \"status\": \"Zo\\u00eb\", \"recurrence\": null, \"recurringeventid\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "2026-07-02",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [],
+    "recurring_event_id": "Zo\u00eb",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"start\": {}, \"organizer.email\": 1.5, \"creator\": true, \"status\": \"cancelled\", \"recurrence\": 1.5, \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "1.5",
+    "creator": "True",
+    "status": "cancelled",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"summary\": \"Q3 \\\"Planning\\\", Room B\", \"start.dateTime\": \"\", \"end.date\": false, \"organizer\": false, \"creator\": false, \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": 0, \"start\": 1.5, \"creator.email\": 1.5, \"status\": 0, \"recurrence\": true, \"recurringEventId\": true}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "",
+    "organizer": "",
+    "creator": "1.5",
+    "status": "0",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"start.date\": \" padded \", \"organizer\": {}, \"creator\": false, \"recurrence\": \"RRULE:FREQ=DAILY\", \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": " padded ",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "RRULE:FREQ=DAILY"
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"start.date\": \"2026-07-01\", \"end\": {}, \"creator\": {}, \"recurrence\": \"\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "2026-07-01",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\\u3000x\\u3000\", \"Summary\": \" padded \", \"start\": {\"date\": \"2026-07-01\"}, \"end\": \"2026-07-03\", \"organizer\": {}, \"creator\": false, \"status\": true, \"recurrence\": \"RRULE:FREQ=DAILY\", \"recurringEventId\": \" padded \"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": " padded ",
+    "start": "2026-07-01",
+    "end": "2026-07-03",
+    "organizer": "",
+    "creator": "",
+    "status": "True",
+    "recurrence": [
+     "RRULE:FREQ=DAILY"
+    ],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"summary\": 1.5, \"start\": \"Zo\\u00eb\", \"end.date\": \"Zo\\u00eb\", \"creator\": \"\", \"status\": \"Zo\\u00eb\", \"recurrence\": [], \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "False",
+    "summary": "1.5",
+    "start": "Zo\u00eb",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"start\": \"2026-07-03\", \"status\": false, \"recurrence\": true, \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "2026-07-03",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "False",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "2026-07-03"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"\", \"start.date\": 1.5, \"end\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"organizer.email\": null, \"creator\": 0, \"status\": true, \"recurrence\": \"\\u3000x\\u3000\", \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "2026-07-02",
+    "organizer": "",
+    "creator": "",
+    "status": "True",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"summary\": \"\", \"end\": null, \"organizer\": 1.5, \"creator.email\": false, \"status\": \"\", \"recurrence\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "1.5",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"start.date\": \"2026-07-01\", \"end.dateTime\": \"Zo\\u00eb\", \"organizer\": true, \"status\": true, \"recurrence\": true, \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "2026-07-01",
+    "end": "Zo\u00eb",
+    "organizer": "True",
+    "creator": "",
+    "status": "True",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"id\": \"abc_20260622T130000Z\", \"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"end.dateTime\": true, \"organizer\": 0, \"creator\": \" padded \"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "True",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": 0, \"start\": {}, \"organizer\": \" padded \", \"status\": 1.5, \"recurrence\": 1.5, \"recurringEventId\": 1.5}",
+   "model": {
+    "id": " padded ",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "1.5",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"end\": \"\\u3000x\\u3000\", \"organizer\": {\"email\": \"alice@example.com\", \"self\": true}, \"creator\": true, \"status\": true, \"recurringeventid\": 0}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "\u3000x\u3000",
+    "organizer": "alice@example.com",
+    "creator": "True",
+    "status": "True",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"Zo\\u00eb\", \"Summary\": false, \"start\": {}, \"end\": \"Zo\\u00eb\", \"status\": \"cancelled\", \"recurringeventid\": 1.5}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "(no title)",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "cancelled",
+    "recurrence": [],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \" padded \", \"start\": true, \"creator\": \" padded \", \"status\": \"\", \"recurringeventid\": 1.5}",
+   "model": {
+    "id": " padded ",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"Summary\": null, \"start\": null, \"end.dateTime\": false, \"organizer\": \"\", \"status\": 0, \"recurrence\": \"\", \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"abc_20260622T130000Z\", \"summary\": \"Weekly Standup\", \"start\": \"2026-07-03\", \"end\": \"\\u3000x\\u3000\", \"organizer\": \"\", \"creator\": null, \"recurrence\": false, \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Weekly Standup",
+    "start": "2026-07-03",
+    "end": "\u3000x\u3000",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "2026-07-03"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"4j3k2m1n0p9q8r7s6t5u\", \"Summary\": \"\\u3000x\\u3000\", \"start\": {\"date\": \"2026-07-01\"}, \"end.date\": 1.5, \"organizer.email\": \"Zo\\u00eb\", \"recurrence\": \"Zo\\u00eb\", \"recurringEventId\": false}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "\u3000x\u3000",
+    "start": "2026-07-01",
+    "end": "1.5",
+    "organizer": "Zo\u00eb",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"start.date\": \"2026-07-01T10:00:00Z\", \"end.date\": \"Zo\\u00eb\", \"status\": \"confirmed\", \"recurringeventid\": true}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "start": "2026-07-01T10:00:00Z",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "2026-07-01T10:00:00Z"
+   }
+  },
+  {
+   "record": "{\"start\": false, \"end\": 0, \"status\": \"Zo\\u00eb\", \"recurringeventid\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"summary\": 0, \"start\": 0, \"end.dateTime\": \"\", \"organizer\": \"Zo\\u00eb\", \"creator\": {\"email\": \"alice@example.com\", \"self\": true}, \"status\": false, \"recurrence\": null, \"recurringEventId\": true}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "Zo\u00eb",
+    "creator": "alice@example.com",
+    "status": "False",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": \"Q3 \\\"Planning\\\", Room B\", \"end\": \"Zo\\u00eb\", \"status\": \"Zo\\u00eb\", \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringeventid\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": true, \"start\": {}, \"organizer.email\": \"bob@example.com\", \"status\": \"Zo\\u00eb\", \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "bob@example.com",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"summary\": \"Zo\\u00eb\", \"start.date\": \"\", \"end.dateTime\": null, \"organizer.email\": true, \"status\": null, \"recurrence\": 1.5, \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"4j3k2m1n0p9q8r7s6t5u\", \"summary\": \"Q3 \\\"Planning\\\", Room B\", \"organizer.email\": false, \"creator\": null, \"recurrence\": 1.5, \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"summary\": true, \"start.date\": false, \"creator\": 0, \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": 1.5, \"end\": \" padded \", \"organizer.email\": \"Zo\\u00eb\", \"creator.email\": \"\\u3000x\\u3000\", \"status\": \"confirmed\", \"recurrence\": 0}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "start": "",
+    "end": " padded ",
+    "organizer": "Zo\u00eb",
+    "creator": "\u3000x\u3000",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start.dateTime\": 1.5, \"organizer.email\": \"\\u3000x\\u3000\", \"status\": true, \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"], \"recurringeventid\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "",
+    "status": "True",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"Summary\": \"\\u3000x\\u3000\", \"creator\": \"Zo\\u00eb\", \"status\": \"confirmed\", \"recurrence\": null}",
+   "model": {
+    "id": " padded ",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"end\": 0, \"organizer\": null, \"creator.email\": \"Zo\\u00eb\", \"status\": \"\", \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"Summary\": 0, \"end\": 0, \"organizer.email\": \" padded \", \"status\": 1.5, \"recurrence\": [], \"recurringEventId\": 0}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"start\": \"\\u3000x\\u3000\", \"end\": \"2026-07-03\", \"organizer\": \"\\u3000x\\u3000\", \"creator\": {\"displayName\": \"Team\"}, \"status\": false, \"recurrence\": \"\\u3000x\\u3000\", \"recurringEventId\": null}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "\u3000x\u3000",
+    "end": "2026-07-03",
+    "organizer": "\u3000x\u3000",
+    "creator": "",
+    "status": "False",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"id\": 1.5, \"Summary\": \"Zo\\u00eb\", \"start.date\": null, \"organizer\": true, \"creator.email\": \"\", \"recurrence\": [], \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": false, \"start.dateTime\": \"2026-07-01T10:00:00Z\", \"end\": false, \"organizer.email\": \"\\u3000x\\u3000\", \"creator\": 1.5, \"recurrence\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "2026-07-01T10:00:00Z",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "1.5",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-07-01T10:00:00Z"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"start\": false, \"end\": true, \"organizer\": {}, \"creator.email\": true, \"status\": 1.5, \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"]}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "(no title)",
+    "start": "",
+    "end": "True",
+    "organizer": "",
+    "creator": "True",
+    "status": "1.5",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"start.date\": 1.5, \"end\": \"\", \"organizer.email\": null, \"status\": \"\\u3000x\\u3000\", \"recurrence\": false}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "start": "1.5",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"eventId\": 0, \"summary\": \"\", \"end.dateTime\": null, \"creator.email\": \"Zo\\u00eb\", \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "0",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": \" padded \", \"start\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"end.dateTime\": false, \"creator\": null, \"recurrence\": \" padded \", \"recurringEventId\": 0}",
+   "model": {
+    "id": "",
+    "summary": " padded ",
+    "start": "2026-06-22T09:00:00-04:00",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "2026-06-22T09:00:00-04:00"
+   }
+  },
+  {
+   "record": "{\"eventId\": \" padded \", \"Summary\": \" padded \", \"start.date\": 0, \"creator\": \"\", \"status\": \"Zo\\u00eb\", \"recurrence\": \" padded \", \"recurringEventId\": false}",
+   "model": {
+    "id": " padded ",
+    "summary": " padded ",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"abc_20260622T130000Z\", \"Summary\": 0, \"start.dateTime\": \" padded \", \"creator\": false, \"recurrence\": 0, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "(no title)",
+    "start": " padded ",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"id\": \"Zo\\u00eb\", \"Summary\": \"\", \"start\": 1.5, \"end\": \"\\u3000x\\u3000\", \"status\": \"tentative\", \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "\u3000x\u3000",
+    "organizer": "",
+    "creator": "",
+    "status": "tentative",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"summary\": 1.5, \"start.dateTime\": \"2026-07-01\", \"end\": \"Zo\\u00eb\", \"organizer\": 0, \"status\": \"tentative\", \"recurringEventId\": 0}",
+   "model": {
+    "id": "False",
+    "summary": "1.5",
+    "start": "2026-07-01",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "tentative",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"Summary\": 1.5, \"end\": true, \"organizer\": {\"displayName\": \"Team\"}, \"creator\": null, \"status\": false, \"recurrence\": \"Zo\\u00eb\", \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "",
+    "summary": "1.5",
+    "start": "",
+    "end": "True",
+    "organizer": "",
+    "creator": "",
+    "status": "False",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"4j3k2m1n0p9q8r7s6t5u\", \"Summary\": 0, \"start\": {}, \"end\": \" padded \", \"creator\": {\"email\": \"alice@example.com\", \"self\": true}, \"status\": \"cancelled\", \"recurrence\": 0, \"recurringEventId\": false}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "(no title)",
+    "start": "",
+    "end": " padded ",
+    "organizer": "",
+    "creator": "alice@example.com",
+    "status": "cancelled",
+    "recurrence": [],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": \"Weekly Standup\", \"end\": false, \"organizer\": null, \"creator\": {\"email\": \"alice@example.com\", \"self\": true}, \"status\": \"cancelled\", \"recurrence\": \"RRULE:FREQ=DAILY\", \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "alice@example.com",
+    "status": "cancelled",
+    "recurrence": [
+     "RRULE:FREQ=DAILY"
+    ],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": \"Weekly Standup\", \"start\": {\"date\": \"2026-07-01\"}, \"creator\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "True",
+    "summary": "Weekly Standup",
+    "start": "2026-07-01",
+    "end": "",
+    "organizer": "",
+    "creator": "\u3000x\u3000",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"4j3k2m1n0p9q8r7s6t5u\", \"Summary\": true, \"start\": null, \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer.email\": \"\\u3000x\\u3000\", \"creator.email\": \"\\u3000x\\u3000\", \"status\": null, \"recurrence\": false, \"recurringEventId\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "True",
+    "start": "",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "\u3000x\u3000",
+    "creator": "\u3000x\u3000",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"summary\": false, \"start\": true, \"organizer.email\": \"\\u3000x\\u3000\", \"creator\": true, \"status\": \" padded \", \"recurrence\": 1.5}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "True",
+    "status": " padded ",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"Summary\": true, \"start\": false, \"status\": 1.5, \"recurrence\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "True",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "1.5",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": false, \"organizer\": 1.5, \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "1.5",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"abc_20260622T130000Z\", \"start\": \"2026-07-03\", \"end\": {}, \"organizer\": 0, \"creator.email\": true, \"status\": true, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "(no title)",
+    "start": "2026-07-03",
+    "end": "",
+    "organizer": "",
+    "creator": "True",
+    "status": "True",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "2026-07-03"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\", \"summary\": \"\\u3000x\\u3000\", \"start.dateTime\": true, \"end.dateTime\": \"\\u3000x\\u3000\", \"creator\": null, \"recurrence\": true, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "True",
+    "end": "\u3000x\u3000",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"summary\": false, \"creator\": {\"displayName\": \"Team\"}, \"status\": \"confirmed\", \"recurrence\": false, \"recurringEventId\": \" padded \"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"start\": \" padded \", \"end\": \"\", \"organizer.email\": \"\", \"creator\": \"\", \"status\": \"\\u3000x\\u3000\", \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": " padded ",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"summary\": true, \"start.dateTime\": \"Zo\\u00eb\", \"end\": \"\\u3000x\\u3000\", \"organizer\": 1.5, \"creator.email\": 0, \"status\": 0, \"recurrence\": false, \"recurringeventid\": \"\"}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "True",
+    "start": "Zo\u00eb",
+    "end": "\u3000x\u3000",
+    "organizer": "1.5",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\", \"summary\": \"\\u3000x\\u3000\", \"start.dateTime\": null, \"end.dateTime\": null, \"organizer\": {}, \"creator\": null, \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringeventid\": 0}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": true, \"summary\": \" padded \", \"start\": \"Zo\\u00eb\", \"organizer.email\": \"\", \"creator\": {}, \"status\": null, \"recurrence\": false, \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "True",
+    "summary": " padded ",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": true, \"Summary\": false, \"start.date\": \"2026-07-01T10:00:00Z\", \"organizer\": \"\", \"recurrence\": \"\", \"recurringEventId\": true}",
+   "model": {
+    "id": "True",
+    "summary": "(no title)",
+    "start": "2026-07-01T10:00:00Z",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "2026-07-01T10:00:00Z"
+   }
+  },
+  {
+   "record": "{\"summary\": \"Weekly Standup\", \"start\": true, \"end\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"organizer\": 0, \"status\": false, \"recurrence\": null}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "True",
+    "end": "2026-07-02",
+    "organizer": "",
+    "creator": "",
+    "status": "False",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Zo\\u00eb\", \"start\": \"Zo\\u00eb\", \"end\": {\"date\": \"2026-07-01\"}, \"organizer\": true, \"creator.email\": 1.5, \"status\": \"\\u3000x\\u3000\", \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"], \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "",
+    "summary": "Zo\u00eb",
+    "start": "Zo\u00eb",
+    "end": "2026-07-01",
+    "organizer": "True",
+    "creator": "1.5",
+    "status": "\u3000x\u3000",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"id\": \"abc_20260622T130000Z\", \"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"start\": \" padded \", \"end\": \"Zo\\u00eb\", \"organizer\": 0, \"creator.email\": null, \"status\": \"Zo\\u00eb\", \"recurrence\": true}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": " padded ",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"start\": \"2026-07-03\", \"organizer\": {}, \"creator\": {\"displayName\": \"Team\"}, \"status\": 0, \"recurrence\": false, \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "2026-07-03",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "2026-07-03"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"\\u3000x\\u3000\", \"start\": 1.5, \"end\": {}, \"organizer\": \"\", \"creator.email\": true, \"status\": \" padded \", \"recurrence\": \"\", \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "1.5",
+    "end": "",
+    "organizer": "",
+    "creator": "True",
+    "status": " padded ",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"summary\": \"Zo\\u00eb\", \"end\": \"\", \"organizer\": \"\\u3000x\\u3000\", \"status\": \" padded \", \"recurrence\": true}",
+   "model": {
+    "id": " padded ",
+    "summary": "Zo\u00eb",
+    "start": "",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "",
+    "status": " padded ",
+    "recurrence": [
+     "True"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start.date\": null, \"end\": \"Zo\\u00eb\", \"status\": \"cancelled\", \"recurrence\": false, \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "cancelled",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": null, \"start.dateTime\": \"\", \"organizer\": \"\", \"status\": null, \"recurrence\": 1.5, \"recurringeventid\": true}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "1.5"
+    ],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"start.date\": true, \"organizer\": \"\", \"creator\": null, \"status\": \"confirmed\"}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"id\": null, \"Summary\": 0, \"start.date\": 1.5, \"end\": 1.5, \"organizer\": {}}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "1.5",
+    "end": "1.5",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "1.5"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"start.dateTime\": \" padded \", \"end.date\": \"\\u3000x\\u3000\", \"organizer.email\": \"Zo\\u00eb\", \"creator.email\": \"\\u3000x\\u3000\", \"status\": \"confirmed\", \"recurringEventId\": \" padded \"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": " padded ",
+    "end": "\u3000x\u3000",
+    "organizer": "Zo\u00eb",
+    "creator": "\u3000x\u3000",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": " padded "
+   }
+  },
+  {
+   "record": "{\"eventId\": \"Zo\\u00eb\", \"summary\": \"\\u3000x\\u3000\", \"end\": 1.5, \"recurringEventId\": 1.5}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "1.5",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "1.5",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"abc_20260622T130000Z\", \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"status\": \"tentative\", \"recurrence\": \"\", \"recurringeventid\": \"4j3k2m1n0p9q8r7s6t5u\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "(no title)",
+    "start": "",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "",
+    "creator": "",
+    "status": "tentative",
+    "recurrence": [],
+    "recurring_event_id": "4j3k2m1n0p9q8r7s6t5u",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \" padded \", \"start.date\": \"Zo\\u00eb\", \"end.dateTime\": null, \"creator\": \" padded \", \"recurrence\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": " padded ",
+    "summary": "(no title)",
+    "start": "Zo\u00eb",
+    "end": "",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "Zo\u00eb"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"\", \"summary\": \"Weekly Standup\", \"start.dateTime\": \"\\u3000x\\u3000\", \"end.date\": \"Zo\\u00eb\", \"organizer\": 0, \"creator\": \"\\u3000x\\u3000\", \"status\": \"confirmed\", \"recurrence\": \" padded \", \"recurringeventid\": false}",
+   "model": {
+    "id": "",
+    "summary": "Weekly Standup",
+    "start": "\u3000x\u3000",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "\u3000x\u3000",
+    "status": "confirmed",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"start\": \"\", \"creator.email\": \"Zo\\u00eb\", \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"organizer\": {\"email\": \"alice@example.com\", \"self\": true}, \"status\": \"cancelled\", \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringEventId\": false}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "alice@example.com",
+    "creator": "",
+    "status": "cancelled",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"Zo\\u00eb\", \"start\": {}, \"organizer\": \" padded \", \"creator\": \"\\u3000x\\u3000\", \"status\": \"\\u3000x\\u3000\", \"recurrence\": \"\", \"recurringeventid\": \" padded \"}",
+   "model": {
+    "id": "Zo\u00eb",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": " padded ",
+    "creator": "\u3000x\u3000",
+    "status": "\u3000x\u3000",
+    "recurrence": [],
+    "recurring_event_id": " padded ",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"start\": 0, \"end.dateTime\": \"\\u3000x\\u3000\", \"creator.email\": \"Zo\\u00eb\", \"status\": null, \"recurrence\": \"\\u3000x\\u3000\", \"recurringeventid\": null}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "",
+    "end": "\u3000x\u3000",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [
+     "\u3000x\u3000"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"\\u3000x\\u3000\", \"start\": true, \"end\": {\"date\": \"2026-07-01\"}, \"organizer\": {}, \"creator\": \"Zo\\u00eb\", \"status\": null, \"recurringeventid\": 0}",
+   "model": {
+    "id": "\u3000x\u3000",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "2026-07-01",
+    "organizer": "",
+    "creator": "Zo\u00eb",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"abc_20260622T130000Z\", \"Summary\": \"Zo\\u00eb\", \"start\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"end\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"status\": \"Zo\\u00eb\", \"recurrence\": [\"RRULE:FREQ=WEEKLY;BYDAY=MO\"], \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Zo\u00eb",
+    "start": "2026-07-02",
+    "end": "2026-07-02",
+    "organizer": "",
+    "creator": "",
+    "status": "Zo\u00eb",
+    "recurrence": [
+     "RRULE:FREQ=WEEKLY;BYDAY=MO"
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "2026-07-02"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"start\": true, \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer.email\": 0, \"creator.email\": \" padded \", \"recurringeventid\": 0}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "True",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "0",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"id\": false, \"start.date\": \"2026-07-01\", \"organizer\": \"\\u3000x\\u3000\", \"creator.email\": 1.5}",
+   "model": {
+    "id": "False",
+    "summary": "(no title)",
+    "start": "2026-07-01",
+    "end": "",
+    "organizer": "\u3000x\u3000",
+    "creator": "1.5",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "2026-07-01"
+   }
+  },
+  {
+   "record": "{\"start\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"end.date\": \"2026-07-01T10:00:00Z\", \"creator.email\": \" padded \", \"recurrence\": \" padded \", \"recurringEventId\": true}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "2026-07-02",
+    "end": "2026-07-01T10:00:00Z",
+    "organizer": "",
+    "creator": " padded ",
+    "status": "",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "2026-07-02"
+   }
+  },
+  {
+   "record": "{\"id\": 0, \"summary\": \"Weekly Standup\", \"start\": {}, \"organizer.email\": true, \"status\": \"\", \"recurringEventId\": \"Zo\\u00eb\"}",
+   "model": {
+    "id": "0",
+    "summary": "Weekly Standup",
+    "start": "",
+    "end": "",
+    "organizer": "True",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "Zo\u00eb",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"id\": \"4j3k2m1n0p9q8r7s6t5u\", \"Summary\": \"Weekly Standup\", \"start\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"organizer\": {}, \"status\": \"confirmed\", \"recurrence\": null, \"recurringEventId\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "4j3k2m1n0p9q8r7s6t5u",
+    "summary": "Weekly Standup",
+    "start": "2026-07-02",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "confirmed",
+    "recurrence": [],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "2026-07-02"
+   }
+  },
+  {
+   "record": "{\"id\": \"\", \"Summary\": false, \"status\": 0}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "0",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": \"\\u3000x\\u3000\", \"end.date\": \"Zo\\u00eb\", \"status\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"Summary\": false, \"end\": \"\", \"creator\": \"\", \"recurrence\": [\"RRULE:A\", \"EXDATE:B\"], \"recurringEventId\": false}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [
+     "RRULE:A",
+     "EXDATE:B"
+    ],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"eventId\": \"abc_20260622T130000Z\", \"summary\": \"Weekly Standup\", \"start.date\": \"\\u3000x\\u3000\", \"end\": {}, \"organizer.email\": true, \"creator.email\": \" padded \", \"status\": 1.5}",
+   "model": {
+    "id": "abc_20260622T130000Z",
+    "summary": "Weekly Standup",
+    "start": "\u3000x\u3000",
+    "end": "",
+    "organizer": "True",
+    "creator": " padded ",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u3000x\u3000"
+   }
+  },
+  {
+   "record": "{\"eventId\": 1.5, \"organizer\": 0, \"creator.email\": 1.5, \"status\": 1.5, \"recurrence\": \"\", \"recurringEventId\": true}",
+   "model": {
+    "id": "1.5",
+    "summary": "(no title)",
+    "start": "",
+    "end": "",
+    "organizer": "",
+    "creator": "1.5",
+    "status": "1.5",
+    "recurrence": [],
+    "recurring_event_id": "True",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"start\": {\"dateTime\": \"\", \"date\": \"2026-07-02\"}, \"end\": \"Zo\\u00eb\", \"organizer.email\": \" padded \", \"creator\": false, \"status\": \"\\u3000x\\u3000\", \"recurrence\": \"Zo\\u00eb\", \"recurringEventId\": \"\"}",
+   "model": {
+    "id": "",
+    "summary": "(no title)",
+    "start": "2026-07-02",
+    "end": "Zo\u00eb",
+    "organizer": " padded ",
+    "creator": "",
+    "status": "\u3000x\u3000",
+    "recurrence": [
+     "Zo\u00eb"
+    ],
+    "recurring_event_id": "",
+    "is_recurring": true,
+    "when": "2026-07-02"
+   }
+  },
+  {
+   "record": "{\"Summary\": \"Q3 \\\"Planning\\\", Room B\", \"start.dateTime\": false, \"end\": {\"dateTime\": \"2026-06-22T09:00:00-04:00\", \"timeZone\": \"America/New_York\"}, \"organizer\": \"Zo\\u00eb\", \"status\": \"\", \"recurrence\": 0}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "",
+    "end": "2026-06-22T09:00:00-04:00",
+    "organizer": "Zo\u00eb",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "",
+    "is_recurring": false,
+    "when": "\u2014"
+   }
+  },
+  {
+   "record": "{\"summary\": \"Q3 \\\"Planning\\\", Room B\", \"start\": true, \"organizer.email\": 1.5, \"creator\": {\"email\": \"alice@example.com\", \"self\": true}, \"recurrence\": \" padded \", \"recurringeventid\": \"\\u3000x\\u3000\"}",
+   "model": {
+    "id": "",
+    "summary": "Q3 \"Planning\", Room B",
+    "start": "True",
+    "end": "",
+    "organizer": "1.5",
+    "creator": "alice@example.com",
+    "status": "",
+    "recurrence": [
+     " padded "
+    ],
+    "recurring_event_id": "\u3000x\u3000",
+    "is_recurring": true,
+    "when": "True"
+   }
+  },
+  {
+   "record": "{\"eventId\": \" padded \", \"summary\": \"\\u3000x\\u3000\", \"start.date\": \"\", \"end.dateTime\": \"Zo\\u00eb\", \"creator\": \"\", \"recurrence\": false, \"recurringeventid\": false}",
+   "model": {
+    "id": " padded ",
+    "summary": "\u3000x\u3000",
+    "start": "",
+    "end": "Zo\u00eb",
+    "organizer": "",
+    "creator": "",
+    "status": "",
+    "recurrence": [],
+    "recurring_event_id": "False",
+    "is_recurring": true,
+    "when": "\u2014"
+   }
+  }
  ]
 }

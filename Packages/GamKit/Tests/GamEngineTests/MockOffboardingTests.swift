@@ -297,6 +297,8 @@ struct MockOffboardingTests {
         #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "carol@example.com")) == ["Operations", "Old projects"])
         #expect(try await labels(GamRead(["user", "carol@example.com", "print", "calendars", "ownedsecondary", "fields", "id,summary",
                                           "formatjson"])) == ["Operations"])
-        #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "alice@example.com")).isEmpty)
+        // alice is Team Calendar's data owner (the calendar delete acts as her); bob owns none.
+        #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "alice@example.com")) == ["Team Calendar"])
+        #expect(try await labels(GamCommands.printOwnedSecondaryCalendars(email: "bob@example.com")).isEmpty)
     }
 }
