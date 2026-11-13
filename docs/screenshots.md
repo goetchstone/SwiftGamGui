@@ -25,12 +25,31 @@ each member.
 | ![Groups: the domain's groups by name and address](screenshots/groups.png) | ![A group's page: its description, Add Members…, and its members, owners first, each with Remove… and a nested group with Show Group](screenshots/group-sales.png) |
 
 Calendars: the rooms, and a person's calendars with who has access to each; a calendar is shared with a
-person, or their access taken away, from its page. Signatures: one person at a time, their current signature
-beside the new one, each rendered or as HTML.
+person or a group, or their access taken away, from its page. Signatures: one person, a group's members, an
+org unit or the whole company, the new signature beside the current one, each rendered or as HTML.
 
 | Calendars | A person's calendars | Signatures |
 |---|---|---|
 | ![Calendars: the rooms, by name, address and kind](screenshots/calendars.png) | ![A person's calendars, and Team Calendar's page: a field to share it, the access level, and who has access, each with Remove…](screenshots/calendars-alice.png) | ![Signatures: the current signature and the new one from a saved template, each Rendered or HTML](screenshots/signatures-alice.png) |
+
+Sharing a calendar with a group lists its members and asks for the number of changes typed; the result says
+who it couldn't be added for. Deleting a calendar asks for DELETE; an event is found by title or day, then
+deleted from its own confirm.
+
+| Share with a group | A group share's result | Delete a calendar |
+|---|---|---|
+| ![The confirm for sharing Team Calendar with allhands@example.com: the group's access, then the calendar added to its 12 members' calendars, the first ten named, and a field to type 13, the number of changes, with Share off until it matches](screenshots/calendars-share-group.png) | ![Team Calendar's page after a group share: it now appears in 9 of 12 members' Google Calendars, and the 3 it couldn't be added for, each with why](screenshots/calendars-group-result.png) | ![The confirm for deleting Team Calendar: everything in it is gone for everyone with access, it runs as its owner alice@example.com, and a field to type DELETE, with Delete Calendar off until it's typed](screenshots/calendars-delete.png) |
+
+| Find an event | Delete an event |
+|---|---|
+| ![Team Calendar's page with Find an event: a title, on or after a day, before a day, Search Events, and a found recurring event with Delete…](screenshots/calendars-events.png) | ![The confirm for deleting Weekly Standup from Team Calendar: no updates sent to its guests, the warning that deleting a recurring event removes every occurrence, and Delete Event](screenshots/calendars-event-delete.png) |
+
+A signature for many at once: everyone in /Staff, its confirm naming the count and a sample, and a finished run
+with the two that failed and Retry.
+
+| Everyone in an org unit | Its confirm | The result |
+|---|---|---|
+| ![Signatures set for everyone in an org unit: Who, /Staff and the units inside it, suspended accounts left out, the new signature as the first of them gets it, and Review for 14 People…](screenshots/signatures-staff.png) | ![The confirm for setting the signature for 14 people in /Staff: the first ten named and Show all 14, the new signature as one of them would get it, the warning that Gmail keeps no copy, and Replace 14 Signatures](screenshots/signatures-staff-confirm.png) | ![Signatures after a run for /Staff: applied to 12 of 14 users, Failed (2), and Retry the 2 That Failed…](screenshots/signatures-staff-result.png) |
 
 Classroom, read only: the open classes, found by name, section, room or a teacher's address, and a class's card
 with its teachers and students.
