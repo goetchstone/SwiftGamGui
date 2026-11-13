@@ -85,7 +85,10 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 - The jobs tray, listing a run from the click (fixed after the operator's 10-30 run didn't show).
 
 ### Not run
-- Classroom (new 2026-11-11): the class index, a teacher's classes and a class's card. Can't run here: no Education domain.
+- Classroom (new 2026-11-11 to 11-13): the class index, a teacher's classes and a class's card; a person's classes, the
+  owned classes at offboarding, who can create classes; Plan an Import (OneRoster 1.1/1.2, Clever, a mapped spreadsheet),
+  Compare with Classroom and the hand-over files. Can't run here: no Education domain. A tester's report comes in on the
+  "I tried it on a real domain" issue form.
 - A person's phones and computers on their Security tab (new 2026-11-07; Incident's check runs the same two reads).
 - ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the
   Builder's suspend of an alias of it). Nothing is written either way.

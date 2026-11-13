@@ -198,7 +198,7 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   copy of the app**: the in-process lock plus `flock(LOCK_EX)` on the folder's descriptor, so while the store is held no
   save is in progress anywhere and every `.saving-*` file is abandoned. (An in-process lock alone let a second copy's
   save or Purge delete the first's temporary file mid-save; a pid/mtime guess kept a crash leftover whose pid was reused
-  or whose mtime was ahead of the clock. GamGUI's `roster_store.py` has the same in-process-only `RLock`.) The folder
+  or whose mtime was ahead of the clock. GamGUI's `roster_store.py` had only an in-process `RLock`, and took this design in gamgui#120, found by this port.) The folder
   opened is checked by descriptor against the one checked by path, and again after the lock is taken: a folder moved
   or swapped meanwhile is refused, never written into. The listing's descriptor is close-on-exec, since it shares the
   locked description and a child that kept it would hold the store.
@@ -345,9 +345,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - **The map step** (C5.3): **Save Map As** saves without reading (GamGUI saves only with Read, which also saves here);
   the role words stay as typed while the map takes the words read from them (GamGUI redraws them joined); a column
   named twice in the header is offered once; a held spreadsheet is tied to the tenant generation as well as the domain.
-  Its preview checks an address as the read does before lowercasing it, and marks a row the read leaves out by its
-  address (GamGUI lowercases first, so a Kelvin sign U+212A shows as an ASCII k and "Teacher" for a row `read_mapped`
-  refuses as `bad_email`; `RosterMapStepTests`). Role words, saved map names and columns are compared and picked by
+  Its preview checks an address as the read does before lowercasing it, and says why the read would leave a row out (no
+  class ID, no address, not one address, in the read's order, each once its field is mapped). GamGUI at 07c505d
+  lowercased first, so a Kelvin sign U+212A showed as an ASCII k and "Teacher" for a row `read_mapped` refuses; it
+  matched this in gamgui#123 (found by this port): drop this sentence when the fixtures move past it. Role words, saved map names and columns are compared and picked by
   exact text (Swift's `String ==` takes NFC and NFD spellings as one). Cancel has no Escape shortcut, and Cancel and a
   new pick wait while the map's read runs.
 - **The saved maps file**, as this app's other stores: an unreadable one is moved aside to
@@ -362,8 +363,9 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   be read"); the bytes are bounded by `fstat` before reading (GamGUI's server spools the upload first); a link is refused.
 - **The kept roster's file** is this app's framed JSON, not SQLite; a head that can't be read is said in fixed words,
   without the error's own text.
-- **An unknown-owner 56 with no table is a shortfall.** GamGUI raises the 56 (not-found), which its offboarding read would
-  take as "owns none"; here it's `Incomplete`, said, never none. GAM prints its header whenever it prints the table.
+- **An unknown-owner 56 with no table is a shortfall.** GamGUI at 07c505d raised the 56 (not-found), which its offboarding
+  read took as "owns none"; here it's `Incomplete`, said, never none. GamGUI matched it in gamgui#119 (found by this port):
+  drop this line when the fixtures move past that commit.
 - **The owned list is the one in hand.** GamGUI's CSV route reads the classes again; here the list the plan shows is saved,
   so the file is exactly what was shown.
 - **A stopped read is never kept.** Leaving the screen mid-read cancels it; the store keeps nothing, so the next look reads

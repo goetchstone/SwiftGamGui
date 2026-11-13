@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/goetchstone/SwiftGamGui/security/advisories/new
+    about: Privately, never in a public issue. GAM GUI holds domain-wide credentials.
+  - name: A GAM question, not a GAM GUI one
+    url: https://github.com/GAM-team/GAM/wiki
+    about: How a gam command behaves, or an error GAM itself prints for the same command.

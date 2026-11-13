@@ -31,6 +31,31 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   leaves out (2026-10-21).
 - **The rest:** not a rules problem: fixed with a tripwire, a skill line or a note where they happened.
 
+## 2026-11-13 — Parity reaches past GamGUI's code into the libraries it calls
+- **What happened:** porting GamGUI's roster reader (C2 to C5), the adversarial rounds found Swift reading packages GamGUI
+  refuses, and the reverse, though every line matched GamGUI's logic. The behaviour lived in Python's libraries: `zipfile`
+  and `zlib` (Apple's Compression framework can't tell a corrupt deflate stream from a cut-off one, and inflated in
+  smaller steps than `ZipExtFile.read`), CPython's incremental UTF-8 decoder (a surrogate's first two bytes held at a
+  chunk's end), and the `csv` module. Fixed by calling zlib itself and copying each library's steps
+  (`docs/domains/classroom.md`); `roster.json` now records GamGUI's reader on 158 packages built to reach those edges.
+- **Invariant in force:** #11, GamGUI parity is a test, and a floor.
+- **Why it didn't hold:** the fixtures held what GamGUI's tests built, and those tests never reach a library's edge cases;
+  a port read from GamGUI's source alone can't see them either.
+- **Would a rule have caught it?** only if enforced differently: a parity fixture for a reader of hostile input should be
+  generated over inputs built to reach the library's edges, not only GamGUI's own test cases.
+- **Enforcement home if changed:** skill (`pre-commit`'s GAM items, or a parity-port line in `add-builder-command`).
+
+## 2026-11-13 — Swift's `String ==` is not Python's: text compared as a key must be compared by its exact characters
+- **What happened:** three times in one port (C2 IDs, C5 role words, C5 saved maps and column pickers) Swift merged two
+  spellings Python keeps apart: `String ==`, `Set<String>` and `firstIndex(of:)` treat NFC and NFD as one. A role word typed
+  in the other spelling was silently ignored; two IDs an export keeps apart would have been one. Fixed with exact-text keys
+  (`ExactKey`, `sameWords`, `exactIndex`), each with a test.
+- **Invariant in force:** #11 for parity; `pre-commit` item 4 already says to compare argv bytes, never `String ==`.
+- **Why it didn't hold:** item 4 covers argv only; the same trap sits in any key, set or lookup a port moves from Python.
+- **Would a rule have caught it?** yes but unworded: "compare bytes, never `String ==`" should cover every key a ported reader
+  matches, not only argv.
+- **Enforcement home if changed:** skill (`pre-commit` item 4 widened).
+
 ## 2026-11-06 — A green test says it works when it works; nothing asks what the screen says when it doesn't
 - **What happened:** GamGUI's port of the incident screens found, by review against GAM's source, reads and steps here that read
   finished when they weren't (failure log 2026-11-06). The mock had no silent exit 0, and the tests asked only for the right answer.
