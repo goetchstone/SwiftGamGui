@@ -79,8 +79,8 @@ struct UsageReportTests {
     /// `state`: the mock's state folder.
     private func runner(empty: [String] = [], state: URL? = nil, slow: Bool = false) throws -> AuthenticatedRunner {
         let script = scratch.appending(path: "mock-\(UUID().uuidString).sh")
-        var body = "#!/bin/sh\ntrap 'exit 143' TERM\n"
-        if slow { body += "if [ \"$1 $2\" = 'report users' ]; then sleep 2 >/dev/null 2>&1 & wait $!; fi\n" }
+        var body = "#!/bin/sh\ntrap 'kill $! 2>/dev/null; exit 143' TERM\n"
+        if slow { body += "if [ \"$1 $2\" = 'report users' ]; then sleep 600 >/dev/null 2>&1 & wait $!; fi\n" }
         for date in empty {
             body += "if [ \"$4\" = '\(date)' ]; then printf '%s\\0' \"$#\" \"$@\" >> '\(argvLog.path)'; echo 'email,date'; exit 0; fi\n"
         }
@@ -203,7 +203,9 @@ struct UsageReportTests {
         try await connect("example.org", in: app.setup)
         #expect(!usage.isLoading)
         await old.value
-        #expect(clock.now - started < .seconds(1.5), "the old load's gam was stopped, not waited for")
+        // Far from both the time a stop takes on a busy runner and the 600 s a gam left running would take (failure log
+        // 2026-10-20, 2026-11-13): the bound once sat at 1.5 s against a 2 s sleep.
+        #expect(clock.now - started < .seconds(60), "the old load's gam was stopped, not waited for")
         #expect(usage.report == nil && usage.problem == nil)
     }
 
