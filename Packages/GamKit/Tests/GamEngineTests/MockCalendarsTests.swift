@@ -549,4 +549,18 @@ struct MockCalendarsTests {
         let odd = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2026-07-14T00:00").argv)
         #expect(odd.exitCode == 2 && odd.stderr.contains("isn't modelled"))
     }
+
+    /// A day the calendar doesn't have is GAM's usage error (getTimeOrDeltaFromNow: strptime, then arrow.get, refuse it),
+    /// never a day rolled forward the way macOS `date -j` rolls 2026-02-30 to March 2 (GamGUI's mock did, 2026-11-13).
+    @Test func anImpossibleDayIsRefusedAsGamRefusesIt() async throws {
+        let bare = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2026-02-30").argv)
+        #expect(bare.exitCode == 2 && bare.stderr.contains("ERROR: Invalid argument: Expected <yyyy-mm-dd>\n"), "\(bare.stderr)")
+        let full = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2027-02-29T00:00:00-05:00").argv)
+        #expect(full.exitCode == 2
+            && full.stderr.contains("ERROR: Invalid argument: Expected <yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))>\n"), "\(full.stderr)")
+        for day in ["2028-02-29", "2026-12-31", "2000-02-29"] {
+            let read = try await run(GamCommands.printEvents(calendarID: Self.team, after: day).argv)
+            #expect(read.exitCode == 0 || read.exitCode == 60, "\(day): \(read.stderr)")
+        }
+    }
 }

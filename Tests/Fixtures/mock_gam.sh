@@ -2070,11 +2070,21 @@ epoch() {  # <time>
     days = era * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
     printf "%d\n", days * 86400 + h * 3600 + mi * 60 + sec - off }'
 }
-need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2091-2116): a yyyy-mm-dd day, or a full time with Z or an offset
+# A real calendar day (yyyy-mm-dd): month 1-12, a day the month has, year 1 or later. GAM's strptime and arrow refuse
+# 2026-02-30; macOS `date -j` would roll it to Mar 2, so this checks by arithmetic.
+real_day() {  # <yyyy-mm-dd...>
+  printf '%s\n' "$1" | awk '{ y = substr($0, 1, 4) + 0; m = substr($0, 6, 2) + 0; d = substr($0, 9, 2) + 0
+    split("31 28 31 30 31 30 31 31 30 31 30 31", n, " ")
+    if (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) n[2] = 29
+    exit !(y >= 1 && m >= 1 && m <= 12 && d >= 1 && d <= n[m]) }'
+}
+need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2093-2118 at 7.52.01): a yyyy-mm-dd day, or a full time with Z or an offset
   case "${1:-}" in
-    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
-    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][+-][0-9][0-9]:[0-9][0-9]) ;;
-    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+      real_day "$1" || usage_error "Invalid argument: Expected <yyyy-mm-dd>" ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][+-][0-9][0-9]:[0-9][0-9] \
+    | [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z)
+      real_day "$1" || usage_error "Invalid argument: Expected <yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))>" ;;
     "") missing_arg "yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))" ;;
     *) not_modelled "an event time like $1" ;;
   esac
