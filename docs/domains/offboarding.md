@@ -70,6 +70,12 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
    - the Vault holds that cover the leaver: `user L print vaultholds` (5716, CSV only; holds on an org unit above
      them count). Google doesn't transfer held data, and a held account can't be deleted;
    - a refused read (Calendar off, no Vault access) is said in GAM's words, never taken as "none".
+7. **The Classroom classes the leaver owns** (Classroom C1.5, GamGUI 07c505d; `OffboardChanges.OwnedClasses`, read with the
+   others): `print courses teacher L owneremail …` in every state, kept where the owner is L. Named in the plan with
+   "GAM GUI doesn't change Classroom" and **Download the List (CSV)** (GamGUI's columns and file name, formula-safe,
+   0600). Classroom not knowing L as a teacher (exit 56) is none; any other failure is said; an admin token known to lack
+   the Classroom scopes (`SetupModel.classroomReadable == false`) reads nothing and says nothing. A warning, never a step:
+   no Classroom write exists. See [classroom.md](classroom.md).
 
 ### The steps (`Offboarding.steps`, GamGUI's `build_offboard_steps`)
 

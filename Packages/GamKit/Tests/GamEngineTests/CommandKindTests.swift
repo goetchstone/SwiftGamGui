@@ -100,7 +100,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 41 + Self.sharedBuilders.count, "both shared builders are reads")
+        #expect(reads == 42 + Self.sharedBuilders.count, "both shared builders are reads")
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -171,7 +171,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 42 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
+        #expect(reads == 43 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

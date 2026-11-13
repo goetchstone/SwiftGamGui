@@ -455,6 +455,20 @@ def errors_fixture() -> dict:
             seen.add(key)
             unique.append(case)
 
+    # Whether a `print courses … owneremail` exit 56 is only unknown owners (only_unknown_owners, #113): GamGUI's own
+    # cases and their neighbours.
+    from gamgui.core.gam.errors import only_unknown_owners
+    warn = "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist"
+    owner_stderrs = [
+        warn, f"Getting all Courses that match query ()\n{warn} (1/2)\n", "", "   \n", f"{warn}\nTeacher: nobody@example.com, Does not exist",
+        "Course: 999, Does not exist", f"{warn} (1/2) extra", f"  {warn} (3/40)  ", f"{warn} (1/)", f"{warn} (/2)", f"{warn}(1/2)",
+        f"{warn} (" + chr(0x661) + "/" + chr(0x662) + ")", "Course: x1, Owner ID: 9, Does not exist",
+        "Course: 1,2, Owner ID: 9, Does not exist", "Course: , Owner ID: 9, Does not exist", "Course: 1, Owner ID: , Does not exist",
+        "course: 1, Owner ID: 9, Does not exist", "Course: 1, Owner ID: 9, does not exist", f"{warn}\r\n{warn} (2/2)",
+        f"Command: gam print courses\n{warn}", f"ERROR: x\n{warn}", f"{warn}\nPlease run",
+        "Course: 1, Owner ID: 9, Owner ID: 8, Does not exist", "Course: \u00e9t\u00e9, Owner ID: 9\u200b, Does not exist"]
+    owners = [{"stderr": e, "only_unknown_owners": only_unknown_owners(e)} for e in owner_stderrs]
+
     folds = [[point, ord(letter)] for letter in "abcdefghijklmnopqrstuvwxyz"
              for point in range(0x80, 0x110000) if re.fullmatch("(?i)" + letter, chr(point))]
     return {
@@ -470,6 +484,7 @@ def errors_fixture() -> dict:
             "ACCOUNT_WIDE": sorted(kind.value for kind in ACCOUNT_WIDE_KINDS),
         },
         "cases": unique,
+        "only_unknown_owners": owners,
     }
 
 
@@ -1330,6 +1345,21 @@ def setup_fixture() -> dict:
         granted = setup._json_field(oauth, "scopes")
         security.append({"oauth2": oauth,
                          "user_security": (setup.USER_SECURITY_SCOPE in granted) if isinstance(granted, list) else None})
+    # Whether the admin token reads Classroom (classroom_readable, C1.4): False only on a token known to lack its scopes.
+    from gamgui.core.classroom import CLASSROOM_SCOPES
+    from gamgui.core.secrets.vault import InMemoryBackend, SecretsVault
+    every = [scope for scope, _, _ in CLASSROOM_SCOPES]
+    readable_jsons = oauth_jsons + [
+        _json.dumps({"scopes": every}), _json.dumps({"scopes": [s + ".readonly" for s in every]}),
+        _json.dumps({"scopes": every[:2]}), _json.dumps({"scopes": [every[0], every[1] + ".readonly", every[2], 7, None]}),
+        _json.dumps({"scopes": [every[0] + ".READONLY", every[1], every[2]]}), _json.dumps({"scopes": {"a": every}}),
+        _json.dumps({"scopes": None}), "[]", _json.dumps([{"scopes": every}])]
+    classroom = []
+    for oauth in readable_jsons:
+        vault = SecretsVault(InMemoryBackend())
+        if oauth:
+            vault.set("example.com", "oauth2", oauth)
+        classroom.append({"oauth2": oauth, "readable": setup.classroom_readable(vault, "example.com")})
     commands = []
     for admin in ("admin@example.com", "it.admin+gam@sub.example.org"):
         for cfgdir, gam in (("/Users/operator/GAM Setup/setup", "/Applications/GAM Tools/gam7/gam"),
@@ -1350,7 +1380,7 @@ def setup_fixture() -> dict:
     return {"looks_like_email": checks, "dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
             "user_security_scope": setup.USER_SECURITY_SCOPE,
             "admin_console_dwd_url": setup.ADMIN_CONSOLE_DWD_URL,
-            "facts": facts, "user_security": security, "setup_commands": commands}
+            "facts": facts, "user_security": security, "classroom_readable": classroom, "setup_commands": commands}
 
 
 def vacation_fixture(mock: Path) -> dict:

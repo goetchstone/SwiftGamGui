@@ -19,13 +19,20 @@ demo="$(mktemp -d)"
 trap 'rm -rf "$demo"' EXIT
 cp -R Tests/Fixtures/mock_gam "$demo/mock_gam"
 cat Tests/Fixtures/demo/extra_users.jsonl >> "$demo/mock_gam/print_users.json"
+# Classroom's default teachers group, so Classroom shows who can create classes (its found state) rather than none
+# found: in GAM's order (by address), after allhands; like allhands, its members aren't modelled.
+awk '{ print } /"email": "allhands@example.com"/ {
+  print "{\"directMembersCount\": \"4\", \"email\": \"classroom_teachers@example.com\", \"name\": \"Classroom Teachers\"}" }' \
+  Tests/Fixtures/mock_gam/groups.json > "$demo/mock_gam/groups.json"
 
 status=0
 # name:screen[:selected:tab[:window[:template[:calendar]]]] — the person page is captured once per tab, for
 # alice@example.com, and a group's page for sales@example.com, alone and under a sheet (for a group the tab
 # names the sheet: `add`, the Add Members form; `remove`, the preview of removing its first member; the
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
-# open. Classroom lists the open classes, then Chemistry's card (its ID in the calendar field), then alice's classes. Signatures opens on nobody (the demo admin
+# open. Classroom lists the open classes (and who can create classes under them), then Chemistry's card (its ID in the
+# calendar field), then alice's classes; person-classes is alice's page with her classes read (tab `classes`, on Profile, scrolled to them).
+# Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. Onboard opens on the demo role
 # Salesperson with Create and the welcome email ticked, onboard-result on a made-up finished run (no gam
@@ -37,7 +44,8 @@ status=0
 # Offboard is filled in for carol@example.com leaving and alice@example.com taking over: the form, then (tab
 # `plan`) the plan it runs, scrolled into view; `confirm`, the confirm sheet over it; `result`, a finished
 # run's panel (made up: nothing runs); `-added`, with this app's own steps added (ten steps: the sheet asks for
-# `confirm` too). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
+# `confirm` too). offboard-classes plans alice@example.com leaving (carol@ taking over): she owns the demo's classes, so the
+# plan says so with the list to download (Classroom, C1.5). Compromised checks carol@example.com (the mock's taken-over account), then (`plan`) plans with
 # every filter that hides or forwards mail, her delegate and her other send-as address ticked; `confirm`, the confirm
 # sheet (the plan also deletes the drafts sharing the newest one's subject); `result`, a made-up finished run; `reports`, Pull Incident Logs for her, then every account's by the address on
 # her flagged sign-in; users-secure, carol's page in Users taking Actions → Secure Account…, which opens Compromised
@@ -99,6 +107,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
             classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
             narrow-classroom-class:classroom:::smallest::500000000002 \
+            person-classes:users:alice@example.com:classes:1100x940 narrow-person-classes:users:alice@example.com:classes:smallest \
+            offboard-classes:offboard:alice@example.com:plan \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
             builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \

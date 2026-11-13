@@ -149,6 +149,41 @@ public struct GamError: Error, Equatable, Sendable {
             .map { (classify($0), $0) }
     }
 
+    /// True when every line GAM reported is an unknown-owner warning (and there is at least one): `print courses …
+    /// owneremail` when a class's owner can't be looked up (a deleted account). GAM then writes the owner as "Unknown user",
+    /// warns once per such owner (_convertCourseUserIdToEmailName → entityDoesNotHaveItemWarning: entities Course and Owner
+    /// ID), sets ENTITY_DOES_NOT_EXIST_RC (56) and still prints every class. GamGUI's `only_unknown_owners` (#113), a
+    /// full match of `Course: [^,]+, Owner ID: [^,]+, Does not exist(?: \(\d+/\d+\))?` on each error line, held by
+    /// `gam_errors.json`. Anything else on stderr means the read failed as usual.
+    public static func onlyUnknownOwners(_ stderr: String) -> Bool {
+        let lines = errorLines(stderr).map(\.line)
+        return !lines.isEmpty && lines.allSatisfy(isUnknownOwner)
+    }
+
+    static func isUnknownOwner(_ line: String) -> Bool {
+        let scalars = Array(line.unicodeScalars)
+        var index = 0
+        func literal(_ text: String) -> Bool {
+            let wanted = Array(text.unicodeScalars)
+            guard scalars.count - index >= wanted.count, Array(scalars[index..<(index + wanted.count)]) == wanted else { return false }
+            index += wanted.count
+            return true
+        }
+        func noComma() -> Bool {
+            let start = index
+            while index < scalars.count, scalars[index] != "," { index += 1 }
+            return index > start
+        }
+        func digits() -> Bool {
+            let start = index
+            while index < scalars.count, PythonText.isDecimal(scalars[index]) { index += 1 }
+            return index > start
+        }
+        guard literal("Course: "), noComma(), literal(", Owner ID: "), noComma(), literal(", Does not exist") else { return false }
+        if index == scalars.count { return true }
+        return literal(" (") && digits() && literal("/") && digits() && literal(")") && index == scalars.count
+    }
+
     static func worst(_ kinds: Set<Kind>) -> Kind {
         Kind.bySeverity.first(where: kinds.contains) ?? .unknown
     }

@@ -39,6 +39,10 @@ with its teachers and students.
 |---|---|
 | ![Classroom: the open classes, each with its section, room, owner and state](screenshots/classroom.png) | ![A class's card: its section, room, state, owner and class ID, a link to it in Classroom, and its teachers and students](screenshots/classroom-class.png) |
 
+| A person's classes | At offboarding |
+|---|---|
+| ![A person's Profile with their Classroom classes: what they teach, each marked Owner, and what they're in](screenshots/person-classes.png) | ![Offboarding: the classes the leaver owns, a note that each needs a new owner first, and Download the List (CSV)](screenshots/offboard-classes.png) |
+
 Onboard: one new hire from a role, and the one-time sign-in card. Offboard: a leaver's offboarding from a
 saved template (Hand-over by default), and every step's exact command before it runs.
 

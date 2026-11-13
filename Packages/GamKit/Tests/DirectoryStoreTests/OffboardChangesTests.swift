@@ -57,12 +57,12 @@ final class OffboardChangesTests {
         try? FileManager.default.removeItem(at: scratch)
     }
 
-    private func connect(_ domain: String = "example.com", admin: String = "admin@example.com") async throws {
+    private func connect(_ domain: String = "example.com", admin: String = "admin@example.com", scopes: [String]? = nil) async throws {
         let folder = scratch.appending(path: "config-\(domain)-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Fixtures.oauth2(admin: admin).write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: admin, scopes: scopes).write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: domain)
         await setup.checkAccess(Domain(domain)!)
         await directory.load()
@@ -694,6 +694,43 @@ final class OffboardChangesTests {
         let full = try await self.plan(form())
         #expect(full.steps.filter { !$0.tolerating.isEmpty }.map(\.action) == [.removeAllCalendarACLs])
         #expect(full.steps.first?.about["not_applicable"] == nil)
+    }
+
+    // MARK: Classroom (C1.5; GamGUI's tests/test_classroom_people.py at 07c505d)
+
+    /// The `print courses` reads the mock ran.
+    private func courseReads() -> Int {
+        guard let data = try? Data(contentsOf: argvLog) else { return 0 }
+        return data.split(separator: 0).map { String(decoding: $0, as: UTF8.self) }.filter { $0 == "courses" }.count
+    }
+
+    @Test func theClassesTheLeaverOwnsAreNamedWithAListToHandOver() async throws {
+        try await connect()
+        let classes = try #require(try await plan(form("alice@example.com", "carol@example.com")).classes)
+        #expect(classes.owned.count == 3 && classes.problem == nil && !classes.isEmpty)
+        #expect(classes.summary.contains("alice@example.com owns 3 Classroom classes. GAM GUI doesn't change Classroom"))
+        #expect(classes.owned.map(OffboardChanges.OwnedClasses.line)
+                == ["Algebra · Period 1 (Not yet accepted)", "Biology · Period 2 (Active)", "Chemistry, \"Honors\" · Period 4 (Active)"])
+        #expect(classes.more == nil)
+    }
+
+    @Test func someoneWhoOwnsNoneSaysNothingAboutClassroom() async throws {
+        try await connect()
+        #expect(try await plan(form()).classes?.isEmpty == true)
+    }
+
+    @Test func aClassReadThatFailedIsSaidNeverTakenAsNone() async throws {
+        try await connect()
+        try marker("noclassroom")
+        let classes = try #require(try await plan(form("alice@example.com", "carol@example.com")).classes)
+        #expect(classes.owned.isEmpty && classes.problem == Classroom.scopeNote)
+        #expect(classes.summary.hasPrefix("Couldn't read the Classroom classes alice@example.com owns ("))
+    }
+
+    @Test func aDomainWithoutClassroomReadsNone() async throws {
+        try await connect(scopes: ["https://www.googleapis.com/auth/admin.directory.user"])
+        #expect(try await plan(form("alice@example.com", "carol@example.com")).classes == nil)
+        #expect(courseReads() == 0)
     }
 }
 

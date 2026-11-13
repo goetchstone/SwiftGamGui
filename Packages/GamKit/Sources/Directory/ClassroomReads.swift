@@ -33,6 +33,24 @@ public final class ClassroomReads {
         public var isReading: Bool { if case .reading = self { true } else { false } }
     }
 
+    /// A person's classes (C1.4): what they teach and what they're in, each its own read, archived ones too.
+    public struct PersonClasses: Sendable {
+        public let email: String
+        public let teaches: Result<[Classroom.Course], Problem>
+        public let attends: Result<[Classroom.Course], Problem>
+
+        /// The cause when both reads failed for the same one: said once, not twice (GamGUI's `_person`).
+        public var oneCause: Problem? {
+            if case .failure(let a) = teaches, case .failure(let b) = attends, a == b { return a }
+            return nil
+        }
+
+        /// The person owns this class (a class can have several teachers, one owner).
+        public func owns(_ course: Classroom.Course) -> Bool {
+            !Classroom.owned([course], by: email).isEmpty
+        }
+    }
+
     /// One class's card: its record and its roster, read side by side.
     public struct Card: Sendable {
         public var course: State<Classroom.Course>
@@ -61,6 +79,7 @@ public final class ClassroomReads {
     private var index: Index?
     private var teachers: [Kept<State<[Classroom.Course]>>] = []
     private var cards: [Kept<Card>] = []
+    private var people: [Kept<State<PersonClasses>>] = []
     private var serial = 0
     private let keep: Int
     private let setup: SetupModel
@@ -157,6 +176,54 @@ public final class ClassroomReads {
         guard cards.first(where: { $0.key == courseID && $0.tenant == tenant })?.serial == mine else { return }
         guard !Task.isCancelled else { cards.removeAll { $0.serial == mine }; return }
         store(&cards, Kept(key: courseID, tenant: tenant, serial: mine, value: card))
+    }
+
+    // MARK: a person's classes (C1.4)
+
+    /// A person's classes as last read for the connected tenant; nil until asked.
+    public func person(_ address: String) -> State<PersonClasses>? {
+        let key = Self.key(address)
+        return people.first { $0.key == key && $0.tenant == tenant }?.value
+    }
+
+    /// Reads what `address` teaches and what they're in, side by side, in `Classroom.personStates`, each class's owner with
+    /// it. Only when asked ("Show their classes"). On an admin token known to lack Classroom's scopes nothing is read: the
+    /// read could only fail, so the scope note is said (GamGUI's `classroom_readable` is False).
+    public func readPerson(_ address: String) async {
+        guard let tenant else { return }
+        let key = Self.key(address)
+        serial += 1
+        let mine = serial
+        guard setup.classroomReadable != false else {
+            let unread = Result<[Classroom.Course], Problem>.failure(Problem(summary: Classroom.scopeNote))
+            store(&people, Kept(key: key, tenant: tenant, serial: mine,
+                                value: .read(.success(PersonClasses(email: address, teaches: unread, attends: unread)))))
+            return
+        }
+        store(&people, Kept(key: key, tenant: tenant, serial: mine, value: .reading))
+        async let teaches = access.courses(teacher: address, states: Classroom.personStates, in: tenant.domain)
+        async let attends = access.courses(student: address, states: Classroom.personStates, in: tenant.domain)
+        let classes = PersonClasses(email: address, teaches: await teaches, attends: await attends)
+        guard people.first(where: { $0.key == key && $0.tenant == tenant })?.serial == mine else { return }
+        guard !Task.isCancelled else { people.removeAll { $0.serial == mine }; return }
+        store(&people, Kept(key: key, tenant: tenant, serial: mine, value: .read(.success(classes))))
+    }
+
+    // MARK: who can create classes (C1.6)
+
+    /// The group Classroom's settings name for teachers, by default.
+    public static let teachersGroupName = "Classroom Teachers"
+
+    /// The teachers group in a group list: the one named "Classroom Teachers" (case and spaces around aside) or at
+    /// `classroom_teachers@…`, the first in GAM's order (GamGUI's `/classroom/creators`). Which group really may create
+    /// classes is set in the Admin console's Classroom settings; this is the default's name.
+    public static func teachersGroup(in groups: [GamGroup]) -> GamGroup? {
+        let name = PythonText.lower(teachersGroupName)
+        return groups.first { group in
+            PythonText.lower(PythonText.strip(group.name)).unicodeScalars.elementsEqual(name.unicodeScalars)
+                || PythonText.lower(String(group.email.split(separator: "@", omittingEmptySubsequences: false).first ?? ""))
+                    .unicodeScalars.elementsEqual("classroom_teachers".unicodeScalars)
+        }
     }
 
     /// Owner ID → address, from the directory as already cached (the index is read without `owneremail`): each person's

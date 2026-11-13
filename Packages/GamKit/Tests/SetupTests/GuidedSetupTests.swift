@@ -15,12 +15,14 @@ final class GuidedSetupTests {
     struct Document: Decodable {
         struct Fact: Decodable { let oauth2service: String; let domain: String; let client_id: String; let auth_url: String }
         struct Security: Decodable { let oauth2: String; let user_security: Bool? }
+        struct Readable: Decodable { let oauth2: String; let readable: Bool? }
         struct Commands: Decodable { let admin: String; let cfgdir: String; let gam: String; let env: String; let commands: [String] }
         let dwd_scopes: [[String]]
         let user_security_scope: String
         let admin_console_dwd_url: String
         let facts: [Fact]
         let user_security: [Security]
+        let classroom_readable: [Readable]
         let setup_commands: [Commands]
     }
 
@@ -49,6 +51,14 @@ final class GuidedSetupTests {
         for item in document.user_security {
             #expect(CredentialFacts.grantsUserSecurity(inOAuth2: Data(item.oauth2.utf8)) == item.user_security, "\(item.oauth2)")
         }
+    }
+
+    /// GamGUI's `classroom_readable` (C1.4): false only on a token known to lack Classroom's scopes, nil when unknown.
+    @Test func whetherTheTokenReadsClassroomIsGamGUIs() {
+        for item in document.classroom_readable {
+            #expect(SetupModel.classroomReadable(inOAuth2: Data(item.oauth2.utf8)) == item.readable, "\(item.oauth2)")
+        }
+        #expect(document.classroom_readable.contains { $0.readable == false } && document.classroom_readable.contains { $0.readable == true })
     }
 
     @Test func theTerminalCommandsAreGamGUIsByteForByte() throws {

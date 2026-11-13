@@ -275,7 +275,13 @@ struct GoldenArgvTests {
                     guard let state = GamCommands.CourseState(rawValue: name) else { throw Missing.argument("states") }
                     return state
                 },
-                courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"))
+                courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"), aliases: args.flag("aliases"))
+        },
+        "print_all_course_participants": { args in
+            try GamCommands.printAllCourseParticipants(states: args.strings("states").map { name in
+                guard let state = GamCommands.CourseState(rawValue: name) else { throw Missing.argument("states") }
+                return state
+            })
         },
         "print_course_participants": { try GamCommands.printCourseParticipants(courseID: $0.string("course_id")) },
         "report_activity": { args in

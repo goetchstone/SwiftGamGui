@@ -13,6 +13,9 @@ struct GroupsView: View {
     let groups: GroupStore
     let members: GroupMembers
     let changes: GroupChanges
+    /// A group another screen asked to open, by address (Classroom's who can create classes), cleared once it's open;
+    /// empty opens the list.
+    @Binding var requested: String?
     @State private var query = ""
     @State private var selection: GamGroup.ID?
     /// Only the window in front speaks a load's outcome (every window sees the same groups).
@@ -37,6 +40,8 @@ struct GroupsView: View {
                 if let problem { announce("Couldn't load the groups. \(problem.summary)") }
             }
             .task(id: groups.groups?.count ?? 0) { selectForSnapshot() }
+            // Asked for by address: opened once the list holds it.
+            .task(id: "\(requested ?? "")#\(groups.loadedAt?.timeIntervalSince1970 ?? 0)") { openRequested() }
             .toolbar {
                 ToolbarItem {
                     Button(groups.groups == nil ? "Load" : "Refresh", systemImage: "arrow.clockwise") {
@@ -74,6 +79,18 @@ struct GroupsView: View {
     private func announce(_ text: String) {
         guard appearsActive else { return }
         AccessibilityNotification.Announcement(text).post()
+    }
+
+    private func openRequested() {
+        guard let address = requested else { return }
+        if address.isEmpty { requested = nil; return }
+        guard let group = groups.group(at: address) else {
+            // Not in the list read: said by the list itself; a later load is tried once more, then the request goes.
+            if groups.groups != nil, !groups.isLoading { requested = nil }
+            return
+        }
+        requested = nil
+        show(group)
     }
 
     /// Debug builds: `SWIFTGAMGUI_SELECT` opens that group's page, for the snapshot of it.

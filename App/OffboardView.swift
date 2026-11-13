@@ -1,8 +1,10 @@
+import AppKit
 import ChangeCore
 import Directory
 import GamEngine
 import Setup
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Offboard: the form GamGUI's offboarding takes, filled from a saved template, the plan it runs, step by
 /// step with each exact `gam` line, its warnings, what a failure stops, and the auto-reply as senders will
@@ -181,7 +183,8 @@ struct OffboardView: View {
         chosen = name
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over, and
+    /// Debug builds: `SWIFTGAMGUI_SELECT` fills the form for that leaver with alice@example.com taking over (carol@ for
+    /// alice@ herself), and
     /// `SWIFTGAMGUI_TAB` shows, for the snapshots, once the directory is loaded: its plan (`plan`), the confirm
     /// sheet over it (`confirm`), or a finished run's panel (`result`, made up: nothing runs). `-added` after any
     /// of them adds every one of this app's own steps first.
@@ -191,7 +194,8 @@ struct OffboardView: View {
         guard directory.users != nil, !debugApplied, let leaver = environment["SWIFTGAMGUI_SELECT"] else { return }
         debugApplied = true
         form.leaver = leaver
-        form.manager = "alice@example.com"
+        // alice@ owns the demo's Classroom classes: her offboarding (the plan's Classroom warning) is taken over by carol@.
+        form.manager = leaver == "alice@example.com" ? "carol@example.com" : "alice@example.com"
         guard var tab = environment["SWIFTGAMGUI_TAB"] else { return }
         if tab.hasSuffix("-added") {
             tab.removeLast("-added".count)
@@ -582,6 +586,7 @@ private struct PlanSection: View {
                     .foregroundStyle(.orange)
                     .accessibilityLabel("Warning: \(warning)")
             }
+            if let classes = plan.classes, !classes.isEmpty { OwnedClassesNote(classes: classes) }
             Text("Each step shows the exact gam command it would run, in order.")
                 .font(.callout).foregroundStyle(.secondary)
             ForEach(Array(plan.rows.enumerated()), id: \.element.id) { index, row in
@@ -606,6 +611,73 @@ private struct PlanSection: View {
                 .textSelection(.enabled)
                 .accessibilityAddTraits(.isHeader)
         }
+    }
+}
+
+/// The Classroom classes the leaver owns (plan 2026-11-11 C1.5; GamGUI's `_offboard_preview.html`): GAM GUI changes nothing in
+/// Classroom, so they're named, not moved, with the list to hand to whoever gives them a new owner. A warning, not a step.
+/// A read that failed is said, never taken as none.
+private struct OwnedClassesNote: View {
+    let classes: OffboardChanges.OwnedClasses
+    @State private var notice: (text: String, failed: Bool)?
+    @Environment(\.appearsActive) private var appearsActive
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(classes.summary, systemImage: "graduationcap.fill")
+                .symbolRenderingMode(.multicolor)
+                .foregroundStyle(.orange)
+                .textSelection(.enabled)
+                .accessibilityLabel("Warning: \(classes.summary)")
+            if classes.problem == nil {
+                ForEach(Array(classes.owned.prefix(OffboardChanges.OwnedClasses.shown).enumerated()), id: \.offset) { _, course in
+                    Text("• " + OffboardChanges.OwnedClasses.line(course)).font(.callout)
+                        .accessibilityLabel(OffboardChanges.OwnedClasses.line(course))
+                }
+                if let more = classes.more { Text(more).font(.callout).foregroundStyle(.secondary) }
+                HStack {
+                    Button("Download the List (CSV)…", action: export)
+                        .accessibilityHint("Saves the classes \(classes.leaver) owns as a spreadsheet, to hand to whoever gives them a new owner")
+                    if let notice {
+                        Label(notice.text, systemImage: notice.failed ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                            .symbolRenderingMode(.multicolor).font(.callout)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Saved as the Audit screen saves its log: a save panel, then the file written private (0600) and whole, off the main
+    /// actor, each cell formula-safe (`AuditExport`, GamGUI's `csv_safe`). GamGUI's columns and file name.
+    private func export() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = Classroom.ownedFileName(classes.leaver)
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        let rows = Classroom.ownedRows(classes.owned)
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task { await write(rows, to: destination) }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
+    }
+
+    private func write(_ rows: [[String]], to destination: URL) async {
+        let name = destination.lastPathComponent
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                try AuditExport.writePrivately(AuditExport.csv(rows), to: destination)
+            }.value
+            say("Saved \(rows.count - 1) class\(rows.count == 2 ? "" : "es") to \(name).", failed: false)
+        } catch {
+            // Fixed words, never the error's own text.
+            say("Couldn't save \(name). Choose another folder and try again.", failed: true)
+        }
+    }
+
+    private func say(_ text: String, failed: Bool) {
+        notice = (text, failed)
+        if appearsActive { AccessibilityNotification.Announcement(text).post() }
     }
 }
 
