@@ -80,6 +80,12 @@ public enum Guard {
         public let typedAddresses: [String]
 
         public var affectedCount: Int { affected.count }
+
+        /// Whether `typed` is the count this decision asks for (stripped as Python strips, exact), or none is asked for. The
+        /// guard's own check, so a screen can say a mismatch before the run spends its preview.
+        public func typedCountMatches(_ typed: String) -> Bool {
+            !requiresTypedCount || PythonText.strip(typed).utf8.elementsEqual(String(affectedCount).utf8)
+        }
     }
 
     public static func evaluate(
@@ -131,7 +137,7 @@ public enum Guard {
             return "This change needs confirmation — preview it, then confirm."
         }
         let count = decision.affectedCount
-        if decision.requiresTypedCount, !PythonText.strip(confirmation.typedCount).utf8.elementsEqual(String(count).utf8) {
+        if !decision.typedCountMatches(confirmation.typedCount) {
             return "This changes \(count) accounts: preview again, and type \(count) to confirm."
         }
         let typed = Set(confirmation.typedAddresses.map { Array(normalized($0).utf8) })

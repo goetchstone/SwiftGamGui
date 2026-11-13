@@ -179,6 +179,26 @@ public final class CalendarReads {
         if loaded.count > keep { loaded.removeLast(loaded.count - keep) }
     }
 
+    /// A calendar was deleted (GamGUI drops it from its index, `idx.remove`): it leaves every person's list read, and its
+    /// access read goes, so no page shows it as if it were still there.
+    public func forget(calendar calendarID: String) {
+        let key = Guard.normalized(calendarID)
+        revisions += 1
+        loaded = loaded.compactMap { entry in
+            switch entry.key.read {
+            case .access(let calendar) where calendar == key:
+                return nil
+            case .calendars:
+                guard case .success(.calendars(let list)) = entry.result,
+                      list.contains(where: { Guard.normalized($0.calendarID) == key }) else { return entry }
+                return Loaded(key: entry.key, revision: revisions, serial: entry.serial,
+                              result: .success(.calendars(list.filter { Guard.normalized($0.calendarID) != key })))
+            default:
+                return entry
+            }
+        }
+    }
+
     /// What a finished run found, or why nothing. A calendar with no rules exits 60 with the header alone (F3),
     /// which is none, not a failure (plan Q4); a list never does. GAM's "Getting … for …" line before a failure is
     /// progress to GamError (failure-log 2026-10-13). Output the runner cut at its cap is refused.

@@ -41,7 +41,9 @@ jobs:
     # here, so the app builds ad-hoc with the empty entitlements — the contributor-without-a-team path.
     name: build + test (macOS 27)
     runs-on: xcode-27
-    timeout-minutes: 30
+    # About 28 minutes on main by 2026-11-13 (14 of them screenshots, which grow with each screen); 30 cancelled PR #161's
+    # run once it added 16 shots. Room for growth, still a stop for a hung step.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

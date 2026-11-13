@@ -116,6 +116,22 @@ struct MockCalendarsTests {
         }
     }
 
+    /// A calendar share tells a group from a person by GAM's member lookup: an address that isn't a group is GAM's
+    /// entityUnknownWarning (gam/__init__.py:2578, getGroupMembers :37647-37649 at 7.52.01), "Does not exist" exit 56 in
+    /// the domain and "Service not applicable/Does not exist" exit 73 outside it (glmsgs.py:508). Both read as not-found,
+    /// so an outside address is shared as a person; any other failure stays a problem.
+    @Test func aGroupLookupOfANonGroupFailsAsGamDoes() async throws {
+        let inside = try await run(GamCommands.printGroupMembers(group: "Nobody@example.com").argv)
+        #expect(inside.exitCode == 56 && inside.stdout.isEmpty)
+        #expect(Array(inside.stderr.utf8) == Array("Group: Nobody@example.com, Does not exist\n".utf8))
+        let outside = try await run(GamCommands.printGroupMembers(group: "Guest@Example.net").argv)
+        #expect(outside.exitCode == 73 && outside.stdout.isEmpty)
+        #expect(Array(outside.stderr.utf8) == Array("Group: Guest@Example.net, Service not applicable/Does not exist\n".utf8))
+        for read in [inside, outside] {
+            #expect(GamError(exitCode: read.exitCode, stderr: read.stderr).kind == .notFound, "\(read.stderr)")
+        }
+    }
+
     /// F3/F4: a person with Calendar off is GAM's per-user refusal, exit 73. Listing their calendars says "Getting
     /// Calendars for …" first, which GamError reads as progress, so the refusal keeps its own kind (GamGUI's
     /// `_PROGRESS_LINE` knows only "Getting all …"; failure-log 2026-10-13).
@@ -361,6 +377,38 @@ struct MockCalendarsTests {
         #expect(unknown.exitCode == 50 && GamError(exitCode: unknown.exitCode, stderr: unknown.stderr).kind == .notFound)
     }
 
+    /// Google's calendarList.insert finds only a calendar the person can see: without a rule for them, a group they are in,
+    /// their domain or `default`, the subscribe fails "Not Found", exit 50, as a missing calendar does. A group's access
+    /// reaches its members, those of a group inside it (carol, through it@ in sales@), and everyone when the CUSTOMER row is
+    /// a member (staff@); never a person outside it. A bare address is a person's rule (GAM's `normalizeRuleId`), so a group
+    /// shared that way gives its members nothing.
+    @Test func aSubscribeNeedsAccessToTheCalendar() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        // Dana's own calendar: only she has a rule, and nobody else lists it.
+        let dana = "dana@example.com"
+        func subscribe(_ who: String, _ calendar: String = dana) async throws -> (exitCode: Int32, stdout: String, stderr: String) {
+            try await run(GamCommands.subscribeCalendar(email: who, calendarID: calendar).argv, state: state)
+        }
+        func share(_ scope: String) async throws -> Int32 {
+            try await run(GamCommands.addCalendarACL(email: dana, target: scope).argv, state: state).exitCode
+        }
+        let before = try await subscribe("alice@example.com")
+        #expect(before.exitCode == 50 && before.stderr == "  User: alice@example.com, Calendar: \(dana), Add Failed: Not Found\n",
+                "\(before.stderr)")
+        #expect(try await share("sales@example.com") == 0)
+        #expect(try await subscribe("alice@example.com").exitCode == 50, "a bare address made a person's rule")
+        #expect(try await share("group:sales@example.com") == 0)
+        #expect(try await subscribe("alice@example.com").exitCode == 0, "a member")
+        #expect(try await subscribe("carol@example.com").exitCode == 0, "a member of a group inside it")
+        let outsider = try await subscribe("admin@example.com")
+        #expect(outsider.exitCode == 50 && outsider.stderr.hasSuffix("Add Failed: Not Found\n"), "admin isn't sales'")
+        #expect(try await share("group:staff@example.com") == 0)
+        #expect(try await subscribe("admin@example.com").exitCode == 0, "staff@ holds the CUSTOMER row: everyone")
+        // The domain's rule on Team Calendar gives everyone in example.com access.
+        #expect(try await subscribe(dana, Self.team).exitCode == 0)
+    }
+
     /// A person with Calendar off: GAM's per-user refusal, exit 73, for a subscribe and for their own rules.
     @Test func subscribeWithCalendarOffExits73() async throws {
         let state = try stateFolder()
@@ -371,5 +419,148 @@ struct MockCalendarsTests {
         #expect(GamError(exitCode: subscribe.exitCode, stderr: subscribe.stderr).kind == .serviceNotEnabled, "\(subscribe.stderr)")
         let share = try await run(GamCommands.addCalendarACL(email: "dana@example.com", target: "bob@example.com").argv, state: state)
         #expect(share.exitCode == 73)
+    }
+
+    // MARK: events and a calendar's delete (docs/domains/calendars.md, "Events")
+
+    /// `print events` prints `calendarId,id,JSON` with each event the query selects, in GAM's dialect, after the "Getting"
+    /// line (_printShowCalendarEvents, :43257-43302 at 7.51.00); none is the titles alone and exit 60; an event id reads
+    /// that one event, and one Google lacks fails "Print Failed: Not Found", exit 50, as does an unknown calendar.
+    @Test func eventReadsPrintGamsBytesAndFailAsGamFails() async throws {
+        let events = try lines("calendar_events/\(Self.team).json")
+        let standup = try #require(events.first { $0.contains("Weekly Standup") })
+        let found = try await run(GamCommands.printEvents(calendarID: Self.team, query: "STAND").argv)
+        #expect(found.exitCode == 0 && found.stderr == "Getting Events for \(Self.team)\n")
+        #expect(bytes(found.stdout) == bytes(GamOutputTests.gamRow(["calendarId", "id", "JSON"])
+            + GamOutputTests.gamRow([Self.team, try value("id", in: standup), standup])))
+        let none = try await run(GamCommands.printEvents(calendarID: Self.team, query: "nothing like it").argv)
+        #expect(none.exitCode == 60 && none.stdout == "calendarId,id,JSON\n")
+        let one = try await run(GamCommands.getEvent(calendarID: Self.team, eventID: "0a1b2c3d4e5f6g7h8i9j").argv)
+        #expect(one.exitCode == 0 && GamOutput.records(one.stdout).count == 1)
+        let missing = try await run(GamCommands.getEvent(calendarID: Self.team, eventID: "0000000000").argv)
+        #expect(missing.exitCode == 50 && missing.stderr.hasSuffix("Calendar: \(Self.team), Event: 0000000000, Print Failed: Not Found\n"))
+        #expect(GamError(exitCode: missing.exitCode, stderr: missing.stderr).kind == .notFound)
+        let unknown = try await run(GamCommands.printEvents(calendarID: "nosuch@group.calendar.google.com", query: "x").argv)
+        #expect(unknown.exitCode == 50 && unknown.stderr.contains("Calendar: nosuch@group.calendar.google.com, Print Failed: Not Found"))
+        // Never an unbounded read: GAM's other selectors aren't modelled, and a field GAM doesn't know is its invalid choice.
+        let other = try await run(["calendars", Self.team, "print", "events", "matchfield", "summary", "x", "formatjson"])
+        #expect(other.exitCode == 2 && other.stderr.contains("isn't modelled"))
+        let field = try await run(["calendars", Self.team, "print", "events", "fields", "id,bogus", "formatjson"])
+        #expect(field.exitCode == 2 && field.stderr.contains("Invalid choice (bogus)"))
+    }
+
+    /// `delete events` without `doit` deletes nothing (exit 51); with it the event is gone, a second delete is Google's 410,
+    /// and reading it by ID returns it cancelled. Every record the data holds is GAM's shape: base32hex ids, keys sorted.
+    @Test func anEventDeleteNeedsDoitAndStays() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let id = "0a1b2c3d4e5f6g7h8i9j"
+        let dry = try await run(GamCommands.deleteEvent(calendarID: Self.team, eventID: id, doit: false).argv, state: state)
+        #expect(dry.exitCode == 51)
+        let gone = try await run(GamCommands.deleteEvent(calendarID: Self.team, eventID: id).argv, state: state)
+        #expect(gone.exitCode == 0 && gone.stdout == "Calendar: \(Self.team), Delete 1 Event\n  Calendar: \(Self.team), Event: \(id), Deleted\n")
+        let again = try await run(GamCommands.deleteEvent(calendarID: Self.team, eventID: id).argv, state: state)
+        #expect(again.exitCode == 50 && again.stderr.contains("Delete Failed: Resource has been deleted"))
+        // Google's events.get always returns a deleted event, `status` "cancelled" (Events reference): GAM prints it, exit 0.
+        let read = try await run(GamCommands.getEvent(calendarID: Self.team, eventID: id).argv, state: state)
+        let original = try #require(try lines("calendar_events/\(Self.team).json").first { $0.contains(id) })
+        let cancelled = original.replacingOccurrences(of: #""status": "confirmed""#, with: #""status": "cancelled""#)
+        #expect(read.exitCode == 0 && bytes(read.stdout) == bytes(GamOutputTests.gamRow(["calendarId", "id", "JSON"])
+            + GamOutputTests.gamRow([Self.team, id, cancelled])), "\(read.stdout)\(read.stderr)")
+        // events.list leaves it out.
+        let listed = try await run(GamCommands.printEvents(calendarID: Self.team, query: "all hands").argv, state: state)
+        #expect(listed.exitCode == 60)
+        for line in try lines("calendar_events/\(Self.team).json") {
+            let event = try #require(JSONValue.parse(line))
+            #expect(Self.sortedKeys(event), "\(line)")
+            let eventID = try value("id", in: line)
+            #expect((5...1024).contains(eventID.count) && eventID.unicodeScalars.allSatisfy { ("a"..."v").contains($0) || ("0"..."9").contains($0) },
+                    "Google's event ids are base32hex: \(eventID)")
+        }
+    }
+
+    /// `remove calendars` acts as the data owner: "Removed" one level in; anyone else is refused, a co-owner (an `owner`
+    /// rule) too, as is their primary; afterwards the calendar is unknown to every read and leaves each list.
+    @Test func aCalendarRemoveActsAsItsOwner() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let notOwner = try await run(GamCommands.removeCalendar(owner: "bob@example.com", calendarID: Self.team).argv, state: state)
+        #expect(notOwner.exitCode == 50 && notOwner.stderr.contains("Remove Failed: Forbidden"))
+        try marker("acls/\(Self.team)", in: state, try lines("calendar_acls/\(Self.team).json").joined(separator: "\n")
+            + "\n" + #"{"id": "user:carol@example.com", "role": "owner", "scope": {"type": "user", "value": "carol@example.com"}}"# + "\n")
+        let coOwner = try await run(GamCommands.removeCalendar(owner: "carol@example.com", calendarID: Self.team).argv, state: state)
+        #expect(coOwner.exitCode == 50 && coOwner.stderr.contains("Remove Failed: Forbidden"), "only the data owner deletes it")
+        let primary = try await run(GamCommands.removeCalendar(owner: "alice@example.com", calendarID: "alice@example.com").argv, state: state)
+        #expect(primary.exitCode == 50)
+        let stranger = try await run(GamCommands.removeCalendar(owner: "nobody@example.com", calendarID: Self.team).argv, state: state)
+        #expect(stranger.exitCode == 50 && GamError(exitCode: stranger.exitCode, stderr: stranger.stderr).kind == .notFound)
+        let removed = try await run(GamCommands.removeCalendar(owner: "alice@example.com", calendarID: Self.team).argv, state: state)
+        #expect(removed.exitCode == 0
+                && removed.stdout == "User: alice@example.com, Remove 1 Calendar\n  User: alice@example.com, Calendar: \(Self.team), Removed\n")
+        let rules = try await run(GamCommands.printCalendarACLs(calendarID: Self.team).argv, state: state)
+        #expect(rules.exitCode == 50)
+        let bob = try await run(GamCommands.printUserCalendars(email: "bob@example.com").argv, state: state)
+        #expect(bob.exitCode == 0 && !bob.stdout.contains(Self.team))
+        let twice = try await run(GamCommands.removeCalendar(owner: "alice@example.com", calendarID: Self.team).argv, state: state)
+        #expect(twice.exitCode == 50 && twice.stderr.contains("Remove Failed: Not Found"))
+    }
+
+    /// `calendars <c> print settings fields id,dataowner formatjson` is `calendarId,JSON` with Google's `dataOwner` (set only for a
+    /// secondary calendar), the keys sorted; one with no owner has none; one GAM can't get fails "Print Failed: Not Found",
+    /// exit 50, with the titles alone; a handover moves it; only the app's fields are modelled.
+    @Test func aCalendarsSettingsNameItsDataOwner() async throws {
+        let state = try stateFolder()
+        defer { try? FileManager.default.removeItem(at: state) }
+        let team = try await run(GamCommands.printCalendarSettings(calendarID: Self.team).argv, state: state)
+        #expect(team.exitCode == 0 && team.stderr.isEmpty)
+        #expect(bytes(team.stdout) == bytes(GamOutputTests.gamRow(["calendarId", "JSON"])
+            + GamOutputTests.gamRow([Self.team, #"{"dataOwner": "alice@example.com", "id": "c_team@group.calendar.google.com"}"#])))
+        #expect(CalendarDeletion.dataOwner(GamOutput.records(team.stdout)) == "alice@example.com")
+        let ops = try await run(GamCommands.printCalendarSettings(calendarID: "c_ops@group.calendar.google.com").argv, state: state)
+        #expect(CalendarDeletion.dataOwner(GamOutput.records(ops.stdout)) == "carol@example.com")
+        let allhands = try await run(GamCommands.printCalendarSettings(calendarID: "c_allhands@group.calendar.google.com").argv, state: state)
+        #expect(allhands.exitCode == 0 && CalendarDeletion.dataOwner(GamOutput.records(allhands.stdout)) == nil)
+        let unknown = try await run(GamCommands.printCalendarSettings(calendarID: "nosuch@group.calendar.google.com").argv, state: state)
+        #expect(unknown.exitCode == 50 && unknown.stdout == "calendarId,JSON\n"
+                && unknown.stderr == "Calendar: nosuch@group.calendar.google.com, Print Failed: Not Found\n")
+        #expect(GamError(exitCode: unknown.exitCode, stderr: unknown.stderr).kind == .notFound)
+        try marker("calendar_owner/\(Self.team)", in: state, "carol@example.com")
+        let handed = try await run(GamCommands.printCalendarSettings(calendarID: Self.team).argv, state: state)
+        #expect(CalendarDeletion.dataOwner(GamOutput.records(handed.stdout)) == "carol@example.com")
+        let other = try await run(["calendars", Self.team, "print", "settings", "fields", "id,summary", "formatjson"])
+        #expect(other.exitCode == 2 && other.stderr.contains("isn't modelled"))
+    }
+
+    /// `after`/`before` are instants, as getTimeOrDeltaFromNow passes them on: a full time with its offset, or a bare day as
+    /// midnight UTC. Google keeps an event ending after `timeMin` and starting before `timeMax`: a 2-3pm meeting (New York) is
+    /// on its day either way, and gone from a range that ends as it starts.
+    @Test func eventTimesCompareInstants() async throws {
+        func ids(_ after: String, _ before: String) async throws -> [String] {
+            let result = try await run(GamCommands.printEvents(calendarID: Self.team, after: after, before: before).argv)
+            #expect(result.exitCode == 0 || result.exitCode == 60, "\(result.stderr)")
+            return GamOutput.records(result.stdout).compactMap { $0["id"]?.string }
+        }
+        let planning = "q3planning0v1u2t3s4r"
+        #expect(try await ids("2026-07-14", "2026-07-15") == [planning])
+        #expect(try await ids("2026-07-14T00:00:00-04:00", "2026-07-15T00:00:00-04:00") == [planning])
+        #expect(try await ids("2026-07-14T15:00:00-04:00", "2026-07-15T00:00:00-04:00").isEmpty, "it ends as the range begins")
+        #expect(try await ids("2026-07-14T00:00:00Z", "2026-07-14T18:00:00Z").isEmpty, "it starts as the range ends")
+        #expect(try await ids("2026-07-14T00:00:00Z", "2026-07-14T18:00:01Z") == [planning])
+        let odd = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2026-07-14T00:00").argv)
+        #expect(odd.exitCode == 2 && odd.stderr.contains("isn't modelled"))
+    }
+
+    /// A day the calendar doesn't have is GAM's usage error (getTimeOrDeltaFromNow: strptime, then arrow.get, refuse it),
+    /// never a day rolled forward the way macOS `date -j` rolls 2026-02-30 to March 2 (GamGUI's mock did, 2026-11-13).
+    @Test func anImpossibleDayIsRefusedAsGamRefusesIt() async throws {
+        let bare = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2026-02-30").argv)
+        #expect(bare.exitCode == 2 && bare.stderr.contains("ERROR: Invalid argument: Expected <yyyy-mm-dd>\n"), "\(bare.stderr)")
+        let full = try await run(GamCommands.printEvents(calendarID: Self.team, after: "2027-02-29T00:00:00-05:00").argv)
+        #expect(full.exitCode == 2
+            && full.stderr.contains("ERROR: Invalid argument: Expected <yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))>\n"), "\(full.stderr)")
+        for day in ["2028-02-29", "2026-12-31", "2000-02-29"] {
+            let read = try await run(GamCommands.printEvents(calendarID: Self.team, after: day).argv)
+            #expect(read.exitCode == 0 || read.exitCode == 60, "\(day): \(read.stderr)")
+        }
     }
 }

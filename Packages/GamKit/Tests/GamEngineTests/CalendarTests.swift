@@ -29,10 +29,16 @@ struct CalendarTests {
         let resource_id: String, name: String, email: String, resource_type: String, building_id: String
     }
 
+    struct Event: Decodable {
+        let id: String, summary: String, start: String, end: String, organizer: String, creator: String, status: String
+        let recurrence: [String], recurring_event_id: String, is_recurring: Bool, when: String
+    }
+
     struct Document: Decodable {
         let calendar_acls: [Fixture<ACL>]
         let user_calendars: [Fixture<Listed>]
         let resources: [Fixture<Room>]
+        let calendar_events: [Fixture<Event>]
     }
 
     let document = try! JSONDecoder().decode(Document.self, from: Data(contentsOf: Fixtures.gamModelsJSON))
@@ -162,5 +168,57 @@ struct CalendarTests {
         #expect(definitions.count >= 3 && Set(definitions) == [roles.joined(separator: "|")])
         #expect(CalendarSharing.pickerRoles.map(\.role) == [.reader, .freeBusyReader, .writer, .owner])
         #expect(CalendarSharing.pickerRoles.map(\.label) == ["See all details", "Free/busy only", "Make changes", "Make changes & manage"])
+    }
+
+    /// GamGUI's `CalendarEvent.from_json` over the mock's event reads and seeded variants of GAM's shapes.
+    @Test func eventsReadAsGamGUIReadsThem() {
+        for item in document.calendar_events {
+            let event = CalendarEvent(record: item.value), want = item.model
+            #expect(Self.same(event.eventID, want.id) && Self.same(event.summary, want.summary) && Self.same(event.start, want.start)
+                    && Self.same(event.end, want.end) && Self.same(event.organizer, want.organizer)
+                    && Self.same(event.creator, want.creator) && Self.same(event.status, want.status)
+                    && event.recurrence.count == want.recurrence.count && zip(event.recurrence, want.recurrence).allSatisfy(Self.same)
+                    && Self.same(event.recurringEventID, want.recurring_event_id) && event.isRecurring == want.is_recurring
+                    && Self.same(event.when, want.when), "\(item.value)")
+        }
+        #expect(document.calendar_events.count > 150)
+        #expect(document.calendar_events.contains { $0.model.summary == "(no title)" } && document.calendar_events.contains { $0.model.is_recurring })
+    }
+
+    /// GamGUI's delete rules (`calendars.py`): only a secondary calendar (`_is_secondary`); the page's note from its owner
+    /// rules (`_owner_candidates`, `_pick_owner`), never the calendar's own self-owner rule; DELETE typed in capitals. The
+    /// delete itself acts as the data owner only (`dataOwner`), a deviation from GamGUI's first active owner rule.
+    @Test func deletionIsGamGUIs() {
+        #expect(CalendarDeletion.isSecondary(" C_X@Group.Calendar.Google.com "))
+        for id in ["alice@example.com", "aspen@resource.calendar.google.com", "en.usa#holiday@group.v.calendar.google.com",
+                   "x@import.calendar.google.com", "", "c#x@group.calendar.google.com"] {
+            #expect(!CalendarDeletion.isSecondary(id), "\(id)")
+        }
+        let cal = "c_x@group.calendar.google.com"
+        // The delete acts as the data owner only (a listed difference from GamGUI's first active owner rule): never a co-owner
+        // instead, whatever the rules' order.
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: " carol@example.com ", active: ["carol@example.com", "bob@example.com"])
+                == .owner("carol@example.com"))
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: "Carol@example.com", active: ["carol@example.com"]) == .owner("Carol@example.com"))
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: "carol@example.com", active: ["bob@example.com"]) == .refused(
+            "carol@example.com, the calendar's owner, is suspended or no longer exists \u{2014} transfer ownership to an active user, then delete."))
+        for none in [nil, "", "  "] {
+            #expect(CalendarDeletion.owner(of: cal, dataOwner: none, active: ["bob@example.com"]) == .refused(
+                "Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. Transfer ownership to an active user first."))
+        }
+        #expect(CalendarDeletion.owner(of: "alice@example.com", dataOwner: "alice@example.com", active: ["alice@example.com"])
+                == .refused(CalendarDeletion.notSecondary))
+        #expect(CalendarDeletion.dataOwner(GamOutput.records("calendarId,JSON\n\(cal),\"{\"\"dataOwner\"\": \"\"carol@example.com\"\", \"\"id\"\": \"\"\(cal)\"\"}\"\n"))
+                == "carol@example.com")
+        #expect(CalendarDeletion.dataOwner(GamOutput.records("calendarId,JSON\n\(cal),\"{\"\"id\"\": \"\"\(cal)\"\"}\"\n")) == nil)
+        #expect(CalendarDeletion.dataOwner([]) == nil)
+        #expect(CalendarDeletion.typedMatches(" DELETE ") && !CalendarDeletion.typedMatches("delete") && !CalendarDeletion.typedMatches("DELETE!"))
+    }
+
+    /// The event delete GamGUI live-proved the shape of (`delete_event`, `argv.json`): `doit`, or GAM only reports what it
+    /// would delete, and no updates sent to the guests.
+    @Test func theEventDeleteIsGamGUIs() {
+        #expect(GamCommands.deleteEvent(calendarID: "c", eventID: "e").argv == ["calendars", "c", "delete", "events", "eventid", "e", "doit", "sendupdates", "none"])
+        #expect(GamCommands.removeCalendar(owner: "o@x", calendarID: "c").argv == ["user", "o@x", "remove", "calendars", "c"])
     }
 }

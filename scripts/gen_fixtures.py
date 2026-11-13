@@ -655,7 +655,7 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
 
 # GamGUI's reads whose GAM shape the mock doesn't model (they printed NDJSON, which GAM never prints for
 # them): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_events", "get_event"}
+NOT_MODELLED = {"print_filelist", "print_all_calendars"}
 
 
 def _keyed(key: str, name: str):
@@ -680,7 +680,29 @@ GAM_PRINTED = {
     # doPrintShowResourceCalendars (:41543-41546).
     "print_resources": lambda argv: (["resourceId", "resourceName", "JSON"], "resources.json",
                                      lambda record: [record["resourceId"], record["resourceName"]]),
+    # _printCalendarEvent (:43237-43255 at 7.51.00): the calendar, then the event's id.
+    "print_events": lambda argv: (["calendarId", "id", "JSON"], f"calendar_events/{argv[1]}.json",
+                                  lambda record: [argv[1], record["id"]]),
+    "get_event": lambda argv: (["calendarId", "id", "JSON"], f"calendar_events/{argv[1]}.json",
+                               lambda record: [argv[1], record["id"]]),
 }
+
+
+def _after(argv: list, word: str) -> str:
+    return argv[argv.index(word) + 1] if word in argv else ""
+
+
+# The records of a read's data file it prints, where it selects some: a group's members; the events a query (the
+# mock's: a case-insensitive substring of the title) or an event id selects.
+GAM_SELECTED = {
+    "print_group_members": lambda argv, record: record["group"] == argv[3].lower(),
+    "print_events": lambda argv, record: _after(argv, "query").lower() in record.get("summary", "").lower(),
+    "get_event": lambda argv, record: record["id"] == _after(argv, "eventid"),
+}
+
+# GamGUI's mock reads one event by an id its own data holds ("evt-allhands"); this mock's ids are Google's base32hex
+# (a-v, 0-9), so its All Hands is read by that.
+MOCK_EVENT_ID = "0a1b2c3d4e5f6g7h8i9j"
 
 
 def mock_outputs(mock: Path) -> dict:
@@ -695,6 +717,7 @@ def mock_outputs(mock: Path) -> dict:
     from tests.test_mock_gam import READS
 
     reads = dict(READS)
+    reads["get_event"] = [argv[:5] + [MOCK_EVENT_ID] + argv[6:] for argv in reads["get_event"]]
 
     data = mock.parent / "mock_gam"
     for path in sorted(data.rglob("*.json")):
@@ -720,8 +743,9 @@ def mock_outputs(mock: Path) -> dict:
                 if builder in GAM_PRINTED:   # its bytes after the banner, the last line ending kept
                     printed = "\n".join(line for line in run.stdout.split("\n") if config not in line)
                     header, name, keys = GAM_PRINTED[builder](argv)
+                    selected = GAM_SELECTED.get(builder, lambda argv, record: True)
                     records = [line for line in (data / name).read_text(encoding="utf-8").splitlines()
-                               if builder != "print_group_members" or json.loads(line)["group"] == argv[3].lower()]
+                               if selected(argv, json.loads(line))]
                     if printed != gam_csv([header] + [keys(json.loads(line)) + [line] for line in records]):
                         raise SystemExit(f"the mock's bytes aren't GAM's for {argv}")
                 outputs.setdefault(builder, []).append(stdout)
@@ -867,6 +891,39 @@ def models_fixture(mock: Path) -> dict:
         maybe(room, "buildingId", ["id:hq", "hq"] + scalars)
         rooms.append(room)
 
+    # Events (GamGUI's CalendarEvent): the mock's records, then seeded variants of GAM's shapes: start and end as a
+    # date or a dateTime object, or flattened keys; a person as an object or a flat address; recurrence as a list or a
+    # single rule; an instance's recurringEventId; no title.
+    from gamgui.core.gam.models import CalendarEvent
+
+    events = records["print_events"] + records["get_event"]
+    times = [{"dateTime": "2026-06-22T09:00:00-04:00", "timeZone": "America/New_York"}, {"date": "2026-07-01"},
+             {"dateTime": "", "date": "2026-07-02"}, {}, "2026-07-03"] + scalars
+    people = [{"email": "alice@example.com", "self": True}, {"displayName": "Team"}, {}] + scalars
+    for _ in range(150):
+        event = {}
+        maybe(event, rng.choice(["id", "eventId"]), ["4j3k2m1n0p9q8r7s6t5u", "abc_20260622T130000Z"] + scalars)
+        maybe(event, rng.choice(["summary", "Summary"]), ["Weekly Standup", 'Q3 "Planning", Room B'] + scalars)
+        for key in ("start", "end"):
+            if rng.random() < 0.6:
+                maybe(event, key, times)
+            else:
+                maybe(event, rng.choice([key + ".dateTime", key + ".date"]), ["2026-07-01T10:00:00Z", "2026-07-01"] + scalars)
+        for key in ("organizer", "creator"):
+            if rng.random() < 0.6:
+                maybe(event, key, people)
+            else:
+                maybe(event, key + ".email", ["bob@example.com"] + scalars)
+        maybe(event, "status", ["confirmed", "cancelled", "tentative"] + scalars)
+        maybe(event, "recurrence", [["RRULE:FREQ=WEEKLY;BYDAY=MO"], [], "RRULE:FREQ=DAILY", ["RRULE:A", "EXDATE:B"]] + scalars)
+        maybe(event, rng.choice(["recurringEventId", "recurringeventid"]), ["4j3k2m1n0p9q8r7s6t5u"] + scalars)
+        events.append(event)
+
+    def event_fields(model) -> dict:
+        found = dataclasses.asdict(model)
+        found.pop("raw")
+        return found | {"is_recurring": model.is_recurring, "when": model.when}
+
     def calendar_fields(model) -> dict:
         found = dataclasses.asdict(model)
         found.pop("raw")
@@ -907,6 +964,7 @@ def models_fixture(mock: Path) -> dict:
         "calendar_acls": [{"record": json.dumps(r), "model": calendar_fields(CalendarACL.from_json(r))} for r in acls],
         "user_calendars": [{"record": json.dumps(r), "model": calendar_fields(UserCalendar.from_json(r))} for r in calendars],
         "resources": [{"record": json.dumps(r), "model": calendar_fields(ResourceCalendar.from_json(r))} for r in rooms],
+        "calendar_events": [{"record": json.dumps(r), "model": event_fields(CalendarEvent.from_json(r))} for r in events],
     }
 
 

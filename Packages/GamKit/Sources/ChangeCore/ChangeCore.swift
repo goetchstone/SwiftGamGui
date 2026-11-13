@@ -205,6 +205,10 @@ public struct HeldPreview: Sendable, Identifiable {
     /// An address the operator must type to run it (offboarding's leaver), checked by the executor, never only
     /// the sheet. Nil: none.
     public let typedAddress: String?
+    /// A word the operator must type exactly, case and all once stripped (a calendar delete's `DELETE`, GamGUI's exact-case
+    /// gate), checked by the executor, never only the sheet. Nil: none. Carried in `OperatorConfirmation.typedWord`, so a
+    /// preview needing it is never one the guard also wants `confirm` typed for.
+    public let typedExactWord: String?
     let createdAt: ContinuousClock.Instant
     let precondition: (@Sendable () async throws -> Bool)?
 
@@ -356,8 +360,8 @@ public actor Executor {
     /// `stopsAtAccountWideFailure` and `typedAddress` are for a routine (offboarding): see `HeldPreview`.
     public func preview(_ steps: [WriteStep], origin: Origin = .form, confirmStep: Bool = false,
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
-                        stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil, title: String = "",
-                        precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
+                        stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil, typedExactWord: String? = nil,
+                        title: String = "", precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated()
         where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
@@ -375,6 +379,11 @@ public actor Executor {
             || !steps.contains(where: { Self.key($0.target) == Self.key(typedAddress) }) {
             return .failure(.typedAddressNotATarget)
         }
+        let decision = Guard.evaluate(steps.map(\.change), typedCountAbove: typedCountAbove)
+        // The word to type is a real word, and the only one typed: the guard's `confirm` would share its field.
+        if let typedExactWord, PythonText.strip(typedExactWord).isEmpty || decision.requiresTypedConfirmation {
+            return .failure(.typedWordUnusable)
+        }
         guard let current = await tenant() else { return .failure(.notConnected) }
         if let expecting, expecting.domain != current.domain || expecting.generation != current.generation {
             return .failure(.tenantChanged)
@@ -390,9 +399,9 @@ public actor Executor {
         let preview = HeldPreview(
             id: UUID(), steps: steps, title: title.isEmpty ? Self.title(of: steps) : title, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
-            decision: Guard.evaluate(steps.map(\.change), typedCountAbove: typedCountAbove),
+            decision: decision,
             confirmStep: confirmStep, typedCountAbove: typedCountAbove, stopsAtAccountWideFailure: stopsAtAccountWideFailure,
-            typedAddress: typedAddress, createdAt: now(), precondition: precondition)
+            typedAddress: typedAddress, typedExactWord: typedExactWord.map { PythonText.strip($0) }, createdAt: now(), precondition: precondition)
         dropExpired()
         while order.count >= Self.previewsKept { held[order.removeFirst()] = nil }
         held[preview.id] = preview
@@ -419,6 +428,8 @@ public actor Executor {
 
     public enum PreviewRefusal: Error, Equatable, Sendable {
         case nothingToRun, notConnected, tenantChanged, badPrerequisite(step: Int), badTolerance(step: Int), typedAddressNotATarget
+        /// A word to type that is empty, or on a change the guard already wants `confirm` typed for.
+        case typedWordUnusable
         /// A change that cuts an account off (`GamWrite.cutsOff`), while the account this app signs in as isn't confirmed.
         case adminUnconfirmed
         /// A change that would cut off the account this app signs in as: `admin` by that address, or by another of its own.
@@ -432,6 +443,7 @@ public actor Executor {
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
             case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
             case .typedAddressNotATarget: "The address to type isn't one this change acts on."
+            case .typedWordUnusable: "The word to type to confirm this can't be asked for here."
             case .adminUnconfirmed:
                 "Which account this app signs in as isn't confirmed, so a change that could sign it out isn't made here. Setup's "
                     + "Check access says why."
@@ -526,6 +538,9 @@ public actor Executor {
         }
         if let typed = taken.typedAddress, !confirmation.typedAddresses.contains(where: { Self.key($0) == Self.key(typed) }) {
             return .refused("Type \(typed) to run this.")
+        }
+        if let word = taken.typedExactWord, !PythonText.strip(confirmation.typedWord).utf8.elementsEqual(word.utf8) {
+            return .refused("Type \(word) (exactly) to run this.")
         }
         let targets = Set(taken.steps.map { Self.key($0.target) })
         if let busy = taken.steps.first(where: { inFlight.contains(Self.key($0.target)) }) {
