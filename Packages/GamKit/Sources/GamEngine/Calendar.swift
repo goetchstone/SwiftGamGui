@@ -314,7 +314,7 @@ public struct CalendarEvent: Sendable, Identifiable, CustomReflectable {
 }
 
 /// What the Calendars screen checks before a calendar is deleted (GamGUI's `calendars.py`): only a secondary calendar,
-/// and only acting as one of its owners who still has an active account.
+/// and only acting as its data owner while their account is active.
 public enum CalendarDeletion {
     /// GamGUI's `SECONDARY_SUFFIX`: a primary calendar's ID is the person's address, a holiday or system one ends
     /// `@group.v.calendar.google.com` or holds `#`, a room's ends `@resource.calendar.google.com`.
@@ -353,18 +353,31 @@ public enum CalendarDeletion {
     public static let notSecondary = "Only secondary calendars can be deleted here. Primary, holiday and room calendars "
         + "can't be removed this way."
 
-    public static func owner(of calendarID: String, rules: [CalendarACL], active: Set<String>) -> Owner {
+    /// Who the delete acts as: the calendar's data owner (Google's Calendars resource, `dataOwner`: "The email of the owner of
+    /// the calendar. Set only for secondary calendars."; GAM's `print settings`, CALENDAR_SETTINGS_FIELDS_CHOICE_MAP), and only
+    /// while that account is active (`active`, lowercased). Never another owner instead: Google gives a secondary calendar one
+    /// data owner, and only they can delete it. A deliberate difference from GamGUI's `_resolve_delete_owner`, which acted as
+    /// the first active `owner` rule in GAM's order (`_owner_candidates`, `_pick_owner`): a co-owner who isn't the data owner.
+    public static func owner(of calendarID: String, dataOwner: String?, active: Set<String>) -> Owner {
         guard isSecondary(calendarID) else { return .refused(notSecondary) }
-        let candidates = ownerCandidates(rules, calendarID: calendarID)
-        guard !candidates.isEmpty else {
-            return .refused("Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. "
-                + "Transfer ownership to an active user first.")
-        }
-        guard let owner = pickOwner(candidates, active: active) else {
-            return .refused("Owner(s) \(candidates.joined(separator: ", ")) are suspended or no longer exist \u{2014} reassign "
-                + "ownership to an active user, then delete.")
+        let owner = PythonText.strip(dataOwner ?? "")
+        guard !owner.isEmpty else { return .refused(noOwner) }
+        guard active.contains(PythonText.lower(owner)) else {
+            return .refused("\(owner), the calendar's owner, is suspended or no longer exists \u{2014} transfer ownership to an "
+                + "active user, then delete.")
         }
         return .owner(owner)
+    }
+
+    /// GamGUI's words for a calendar with no owner account to act as.
+    public static let noOwner = "Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. "
+        + "Transfer ownership to an active user first."
+
+    /// The data owner `print settings` names (`calendarId,JSON`, the JSON's `dataOwner`), or nil when it names none.
+    public static func dataOwner(_ records: [GamOutput.Record]) -> String? {
+        guard let record = records.first else { return nil }
+        let owner = PythonText.strip(Fields.text(Fields.first(record, "dataOwner")))
+        return owner.isEmpty ? nil : owner
     }
 
     /// What the page says in place of the delete button (GamGUI's `delete_note`), or nil when it can be deleted or

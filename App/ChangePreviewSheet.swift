@@ -247,6 +247,10 @@ struct SignatureScopePreviewSheet: View {
                 Section("This overwrites the Gmail signature of \(count) people") {
                     TextField("Type \(count) to confirm", text: $typedCount)
                         .accessibilityLabel("Type the number of people, \(count), to confirm")
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if let problem = changes.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
                 }
             }
             Section {
@@ -275,10 +279,15 @@ struct SignatureScopePreviewSheet: View {
             // Gmail keeps no copy and there is no Put Back for many people: Return alone never runs it (not the default
             // button), as the calendar sheet's deletes.
             ToolbarItem(placement: .primaryAction) {
+                // Off until the count typed is the guard's (GamGUI's `data-unlocks`); the model refuses a mismatch too.
                 Button(pending.confirmLabel) { confirm() }
-                    .disabled(changes.isBusy || (needsCount && typedCount.trimmingCharacters(in: .whitespaces).isEmpty))
+                    .disabled(changes.isBusy || !pending.preview.decision.typedCountMatches(typedCount))
                     .accessibilityLabel("Replace the Gmail signatures of \(count) \(count == 1 ? "person" : "people")")
             }
+        }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
         }
     }
 }
@@ -431,6 +440,8 @@ struct CalendarPreviewSheet: View {
                     TextField("Type \(count) to confirm", text: $typedCount)
                         .accessibilityLabel("Type the number of changes, \(count), to confirm")
                         .disabled(running)
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if pending.kind != .deleteCalendar, let problem = changes.typedProblem { problemLabel(problem) }
                 }
             }
             if pending.kind == .deleteCalendar {
@@ -439,10 +450,8 @@ struct CalendarPreviewSheet: View {
                         .autocorrectionDisabled()
                         .accessibilityLabel("Type DELETE, in capitals, to delete \(pending.calendarName)")
                         .disabled(running)
-                    if let problem = changes.typedProblem {
-                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                            .onAppear { AccessibilityNotification.Announcement(problem).post() }
-                    }
+                        .onChange(of: typedWord) { changes.typingChanged() }
+                    if let problem = changes.typedProblem { problemLabel(problem) }
                 }
             }
             Section {
@@ -472,12 +481,22 @@ struct CalendarPreviewSheet: View {
                                             : "Delete this event from \(pending.calendarName)")
                 }
             } else {
+                // The default button, so Return runs it: off until the count typed is the guard's (GamGUI's `data-unlocks`),
+                // and the model refuses a mismatch too.
                 ToolbarItem(placement: .confirmationAction) {
                     Button(pending.confirmLabel) { confirm() }
-                        .disabled(running || (needsCount && typedCount.trimmingCharacters(in: .whitespaces).isEmpty))
+                        .disabled(running || !pending.preview.decision.typedCountMatches(typedCount))
                 }
             }
         }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+
+    private func problemLabel(_ problem: String) -> some View {
+        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
     }
 
     private var runningText: String {

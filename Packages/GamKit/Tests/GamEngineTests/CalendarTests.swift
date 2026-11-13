@@ -185,9 +185,9 @@ struct CalendarTests {
         #expect(document.calendar_events.contains { $0.model.summary == "(no title)" } && document.calendar_events.contains { $0.model.is_recurring })
     }
 
-    /// GamGUI's delete rules (`calendars.py`): only a secondary calendar (`_is_secondary`), acting as its first owner with
-    /// an active account (`_owner_candidates`, `_pick_owner`), never the calendar's own self-owner rule; DELETE typed in
-    /// capitals; GamGUI's words for each refusal.
+    /// GamGUI's delete rules (`calendars.py`): only a secondary calendar (`_is_secondary`); the page's note from its owner
+    /// rules (`_owner_candidates`, `_pick_owner`), never the calendar's own self-owner rule; DELETE typed in capitals. The
+    /// delete itself acts as the data owner only (`dataOwner`), a deviation from GamGUI's first active owner rule.
     @Test func deletionIsGamGUIs() {
         #expect(CalendarDeletion.isSecondary(" C_X@Group.Calendar.Google.com "))
         for id in ["alice@example.com", "aspen@resource.calendar.google.com", "en.usa#holiday@group.v.calendar.google.com",
@@ -203,13 +203,23 @@ struct CalendarTests {
                      #"{"id": "user:dana@example.com", "role": "writer", "scope": {"type": "user", "value": "dana@example.com"}}"#]
             .map { CalendarACL(record: Self.record($0)) }
         #expect(CalendarDeletion.ownerCandidates(rules, calendarID: cal) == ["Bob@example.com", "carol@example.com"])
-        #expect(CalendarDeletion.owner(of: cal, rules: rules, active: ["carol@example.com", "bob@example.com"]) == .owner("Bob@example.com"))
-        #expect(CalendarDeletion.owner(of: cal, rules: rules, active: ["carol@example.com"]) == .owner("carol@example.com"))
-        #expect(CalendarDeletion.owner(of: cal, rules: rules, active: []) == .refused(
-            "Owner(s) Bob@example.com, carol@example.com are suspended or no longer exist \u{2014} reassign ownership to an active user, then delete."))
-        #expect(CalendarDeletion.owner(of: cal, rules: Array(rules.prefix(1)), active: ["bob@example.com"]) == .refused(
-            "Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. Transfer ownership to an active user first."))
-        #expect(CalendarDeletion.owner(of: "alice@example.com", rules: rules, active: []) == .refused(CalendarDeletion.notSecondary))
+        // The delete acts as the data owner only (a listed difference from GamGUI's first active owner rule): never a co-owner
+        // instead, whatever the rules' order.
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: " carol@example.com ", active: ["carol@example.com", "bob@example.com"])
+                == .owner("carol@example.com"))
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: "Carol@example.com", active: ["carol@example.com"]) == .owner("Carol@example.com"))
+        #expect(CalendarDeletion.owner(of: cal, dataOwner: "carol@example.com", active: ["bob@example.com"]) == .refused(
+            "carol@example.com, the calendar's owner, is suspended or no longer exists \u{2014} transfer ownership to an active user, then delete."))
+        for none in [nil, "", "  "] {
+            #expect(CalendarDeletion.owner(of: cal, dataOwner: none, active: ["bob@example.com"]) == .refused(
+                "Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. Transfer ownership to an active user first."))
+        }
+        #expect(CalendarDeletion.owner(of: "alice@example.com", dataOwner: "alice@example.com", active: ["alice@example.com"])
+                == .refused(CalendarDeletion.notSecondary))
+        #expect(CalendarDeletion.dataOwner(GamOutput.records("calendarId,JSON\n\(cal),\"{\"\"dataOwner\"\": \"\"carol@example.com\"\", \"\"id\"\": \"\"\(cal)\"\"}\"\n"))
+                == "carol@example.com")
+        #expect(CalendarDeletion.dataOwner(GamOutput.records("calendarId,JSON\n\(cal),\"{\"\"id\"\": \"\"\(cal)\"\"}\"\n")) == nil)
+        #expect(CalendarDeletion.dataOwner([]) == nil)
         #expect(CalendarDeletion.note(for: cal, rules: rules, active: ["carol@example.com"]) == nil)
         #expect(CalendarDeletion.note(for: cal, rules: rules, active: [])?.hasSuffix("Reassign ownership to an active user first.") == true)
         #expect(CalendarDeletion.note(for: "alice@example.com", rules: rules, active: []) == nil)

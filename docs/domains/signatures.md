@@ -93,7 +93,12 @@ ChangeCore.
   order (a group inside it, the customer, a suspended account are not). The screen opens on one person.
   GamGUI's department and location scopes aren't built (not asked for).
 - **Preview:** each person's render held as `user <email> signature <render> html`, confirm step always,
-  the count typed above 25 (`typedCountAbove`, `Guard.countConfirmAbove`). The sheet shows "Applies to N
+  the count typed above 25 (`typedCountAbove`, `Guard.countConfirmAbove`). Replace stays off until the count typed is the
+  guard's (`Guard.Decision.typedCountMatches`, stripped and exact; GamGUI's `data-unlocks`), and `SignatureChanges.confirm`
+  refuses a mismatch itself, "Type N, the number of people, to confirm." on the sheet, which stays with its preview unspent
+  (the executor spends a preview it refuses); each refusal is announced to VoiceOver, a repeat too (`typedRefusals`), and
+  editing the count clears it (`typingChanged`). `SignatureScopeTests.overTheThresholdTheCountIsTyped`,
+  `theExecutorRefusesAnotherCount`. The sheet shows "Applies to N
   users · previewing as <first>", the first one's render exactly as held (`Pending.body`), ten addresses
   and "and N more" with the full list behind a disclosure, the warnings (GamGUI's curly quote; "renders
   empty for N of them"; GAM's stored form of the first), the guard's own warnings (over 200), and the

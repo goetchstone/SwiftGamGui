@@ -85,12 +85,13 @@ user_record() {
     fi
   }
 }
-# No such user, as GAM's entityUnknownWarning says it: "Does not exist" (56) in the domain, "Service not applicable" (73)
+# No such user, as GAM's entityUnknownWarning says it: "Does not exist" (56) in the domain, "Service not applicable/Does
+# not exist" (73, glmsgs.py:508)
 # outside it (example.com), as the report and token handlers below.
 no_such_user() {  # <address as given>
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     *@example.com) does_not_exist "User" "$1" ;;
-    *) printf 'User: %s, Service not applicable\n' "$1" 1>&2; exit 73 ;;
+    *) printf 'User: %s, Service not applicable/Does not exist\n' "$1" 1>&2; exit 73 ;;
   esac
 }
 # A write that names a user (`update user`, `delete user`, `signout`, `deprovision`) fails for an address that's no
@@ -532,9 +533,11 @@ fi
 # member into columns this mock doesn't model. The address matches a group's whole address,
 # case-insensitively, as the Directory API's groupKey does: a substring once answered for `xsales@` and
 # refused `SALES@`. Anything else, a user's address included, isn't a group: code that has to tell a person
-# from a group would otherwise pass here and break live. GAM's groupNotFound -> entityUnknownWarning:
-# "Group: <addr>, Does not exist", ENTITY_DOES_NOT_EXIST_RC (read from the vendored build; wording
-# approximate).
+# from a group would otherwise pass here and break live. GAM's groupNotFound/domainNotFound/forbidden ->
+# entityUnknownWarning (getGroupMembers, gam/__init__.py:37647-37649 at 7.52.01; :2578): in the domain (example.com) or
+# google.com "Group: <addr>, Does not exist", ENTITY_DOES_NOT_EXIST_RC 56; any other domain (a personal or partner
+# address) entityServiceNotApplicableWarning, "Group: <addr>, Service not applicable/Does not exist" (glmsgs.py:508),
+# SERVICE_NOT_APPLICABLE_RC 73.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
   [ $# -ge 3 ] || { echo "ERROR: mock: print group-members without a group isn't modelled" 1>&2; exit 2; }
   [ "$3" = "group" ] || invalid_arg "$3"
@@ -544,7 +547,12 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "group-members" ]; then
   [ "$5" = "formatjson" ] || invalid_arg "$5"
   [ $# -eq 5 ] || invalid_arg "$6"
   addr=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
-  is_group "$addr" || does_not_exist "Group" "$4"
+  if ! is_group "$addr"; then
+    case "$addr" in
+      *@example.com|*@google.com) does_not_exist "Group" "$4" ;;
+      *) printf 'Group: %s, Service not applicable/Does not exist\n' "$4" 1>&2; exit 73 ;;
+    esac
+  fi
   echo "group,JSON"
   members_of "$addr" | while IFS= read -r member; do
     gam_row "$addr" "$member"
@@ -634,7 +642,7 @@ fi
 # `maxactivities` the newest N per account; an account listed twice is read once (GAM's entity list drops repeats). No
 # fixture is the titles alone ("name"): no events. An account that isn't a user is the API's badRequest,
 # entityUnknownWarning: "User: <u>, Does not exist", exit 56, after the others' rows; outside the domain (example.com)
-# it is "Service not applicable", exit 73. The admin log's accounts are the actor only with `userisactor` (without it GAM
+# it is "Service not applicable/Does not exist", exit 73. The admin log's accounts are the actor only with `userisactor` (without it GAM
 # filters USER_EMAIL==<u>, the events affecting them, read as `user all`, :14779-14788: the API sees no account to refuse,
 # so one that isn't a user reads none). Gmail over 30 days is the API's bad request (doReport's own
 # comment: no more than 30 days apart): exit 56 for a named account, "ERROR: Bad Request" exit 53 for all. With
@@ -754,7 +762,7 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
       if [ -z "$filtered" ] && ! in_directory "$account"; then
         case "$account" in
           *@example.com) printf 'User: %s, Does not exist\n' "$account" 1>&2; rc=56 ;;   # setSysExitRC: the last one wins
-          *) printf 'User: %s, Service not applicable\n' "$account" 1>&2; rc=73 ;;
+          *) printf 'User: %s, Service not applicable/Does not exist\n' "$account" 1>&2; rc=73 ;;
         esac
         missing=1; continue
       fi
@@ -1649,7 +1657,7 @@ fi
 # mock_gam/tokens.csv, for every account but the suspended ones (GAM's default entity, all users), or that account's,
 # a row per grant, the scopes space-joined (csv_output_field_delimiter's default); an account with none writes no row. An
 # address that isn't a user is entityUnknownWarning: "User: <u>, Does not exist", ENTITY_DOES_NOT_EXIST_RC 56, outside the
-# domain "Service not applicable", 73. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. No option is modelled.
+# domain "Service not applicable/Does not exist", 73. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. No option is modelled.
 if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token" ]; }; } \
     || { [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "tokens" ] || [ "${4:-}" = "token" ]; }; }; then
   if [ "$1" = "user" ]; then owner=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); [ $# -eq 4 ] || not_modelled "print tokens with $5"
@@ -1662,7 +1670,7 @@ if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token"
     echo "user,clientId,displayText,anonymous,nativeApp,userKey,scopes"
     case "$owner" in
       *@example.com) printf 'User: %s, Does not exist\n' "$owner" 1>&2; exit 56 ;;
-      *) printf 'User: %s, Service not applicable\n' "$owner" 1>&2; exit 73 ;;
+      *) printf 'User: %s, Service not applicable/Does not exist\n' "$owner" 1>&2; exit 73 ;;
     esac
   fi
   suspended=$(grep -F '"suspended": true' "$GAM_MOCK_FIXTURES/print_users.json" | sed -n 's/.*"primaryEmail": "\([^"]*\)".*/\1/p')
@@ -1877,6 +1885,41 @@ if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "calen
   exit 0
 fi
 
+# `gam calendars <id> print settings fields id,dataowner formatjson` (doCalendarsPrintShowSettings, :43687-43730 at 7.51.00,
+# unchanged at 7.52.01) -> calendarId,JSON: `calendars.get` as the admin (validateCalendar, as above), the JSON keys sorted.
+# `dataowner` is in CALENDAR_SETTINGS_FIELDS_CHOICE_MAP (:43669-43678), which the grammar's <CalendarSettingsField> leaves
+# out; `id` is always fetched (initialField). Google's Calendars resource: `dataOwner` "The email of the owner of the
+# calendar. Set only for secondary calendars. Read-only." Here a secondary calendar's data owner is calendar_owner (the
+# `user_owned_calendars` file that lists it, or whoever it was handed to), and a calendar with none has no `dataOwner`. A
+# calendar GAM can't get is validateCalendar's "Calendar: <id>, Print Failed: Not Found", exit 50, then the titles alone
+# (the file is written at the end). Only the app's fields are modelled.
+if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "settings" ]; then
+  cal="$2"; key=$(calendar_key "$2"); shift 4; fj=""; fields=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      fields) need_value $# "CalendarSettingsFieldList"; fields=$(lower "$2"); shift 2 ;;
+      formatjson) fj=1; shift ;;
+      todrive|quotechar|autoacceptinvitations|conferenceproperties|dataowner|description|id|location|summary|timezone)
+        not_modelled "print settings with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print settings without formatjson"
+  [ "$fields" = "id,dataowner" ] || not_modelled "print settings with fields ${fields:-(none)}: the app asks for id,dataowner"
+  if [ -z "$(acl_file "$key")" ]; then
+    printf 'Calendar: %s, Print Failed: Not Found\n' "$cal" 1>&2; echo "calendarId,JSON"; exit 50
+  fi
+  owner=""
+  case "$key" in *@group.calendar.google.com) owner=$(calendar_owner "$key") ;; esac
+  echo "calendarId,JSON"
+  if [ -n "$owner" ]; then
+    gam_row "$cal" "{\"dataOwner\": \"$owner\", \"id\": \"$key\"}"
+  else
+    gam_row "$cal" "{\"id\": \"$key\"}"
+  fi
+  exit 0
+fi
+
 # `gam print resources fields id,name,email,resourcetype,buildingid formatjson` (doPrintShowResourceCalendars,
 # :41423-41548) -> resourceId,resourceName,JSON; buildingId as `id:<id>` beside a looked-up buildingName, which
 # is the raw id for a building GAM can't name (:41515-41517, :40799-40802). Each field must be a
@@ -1982,12 +2025,28 @@ events_file() {  # <calendar key>: its events, or /dev/null for a calendar the m
 event_has() {  # <calendar key> <event id>: an event the calendar holds, deleted or not
   grep -qF "\"id\": \"$2\"" "$(events_file "$1")"
 }
-event_day() {  # <json line> <start|end>: the first ten characters of its date or dateTime (yyyy-mm-dd)
-  printf '%s' "$1" | sed -n "s/.*\"$2\": {\"date[A-Za-z]*\": \"\([0-9-]\{10\}\).*/\1/p"
+event_time() {  # <json line> <start|end>: its date or dateTime as Google gives it
+  printf '%s' "$1" | sed -n "s/.*\"$2\": {\"date[A-Za-z]*\": \"\([^\"]*\)\".*/\1/p"
 }
-need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2091-2116): only yyyy-mm-dd is modelled
+# Seconds since the epoch of a time GAM passes on: `yyyy-mm-ddThh:mm:ss` with `Z` or an offset, or a bare `yyyy-mm-dd`, which
+# getTimeOrDeltaFromNow (:2091-2116) makes midnight in GAM's `timezone` setting (`utc` unless set; the app sets none).
+epoch() {  # <time>
+  printf '%s\n' "$1" | awk '{
+    s = $0; y = substr(s, 1, 4) + 0; m = substr(s, 6, 2) + 0; d = substr(s, 9, 2) + 0; h = 0; mi = 0; sec = 0; off = 0
+    if (length(s) > 10) {
+      h = substr(s, 12, 2) + 0; mi = substr(s, 15, 2) + 0; sec = substr(s, 18, 2) + 0; z = substr(s, 20)
+      if (z != "Z") off = (substr(z, 1, 1) == "-" ? -1 : 1) * (substr(z, 2, 2) * 3600 + substr(z, 5, 2) * 60)
+    }
+    yy = y - (m <= 2 ? 1 : 0); era = int(yy / 400); yoe = yy - era * 400
+    doy = int((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + d - 1
+    days = era * 146097 + yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy - 719468
+    printf "%d\n", days * 86400 + h * 3600 + mi * 60 + sec - off }'
+}
+need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2091-2116): a yyyy-mm-dd day, or a full time with Z or an offset
   case "${1:-}" in
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9][+-][0-9][0-9]:[0-9][0-9]) ;;
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
     "") missing_arg "yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))" ;;
     *) not_modelled "an event time like $1" ;;
   esac
@@ -1999,12 +2058,16 @@ need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2091-2116): only yyy
 # first (printGettingEntityItemForWhom, :2731), acts as the admin for an id ending .calendar.google.com (validateCalendar,
 # :41652-41669), and a calendar it can't get is "Calendar: <cal>, Print Failed: Not Found", exit 50. Each field must be in
 # EVENT_FIELDS_CHOICE_MAP (:43310-43356; else an invalid choice, exit 2); GAM fetches only those, `id` first. `eventid`
-# gets that one event (events.get): one it can't get is "Calendar: <cal>, Event: <id>, Print Failed: <why>", exit 50 (a
-# deleted one "Resource has been deleted", Google's 410; wording approximate). Otherwise events.list with `q`
-# (`query`), `timeMin` (`after`) and `timeMax` (`before`); none found is the titles alone and NO_ENTITIES_FOUND_RC (60).
-# Approximate: Google's `q` searches more than the title (description, location, attendees), and its time bounds
-# compare instants; here `query` is a case-insensitive substring of the summary, `after` keeps an event ending after
-# that day and `before` one starting before it. The CSV is written at the end, so its titles come after any warning.
+# gets that one event (events.get): one Google never had is "Calendar: <cal>, Event: <id>, Print Failed: Not Found", exit
+# 50; a deleted one is printed, `"status": "cancelled"`, exit 0 (Google's Events reference, `status`: "The get method always
+# returns" cancelled events). Otherwise events.list with `q` (`query`), `timeMin` (`after`) and `timeMax` (`before`), which
+# list leaves deleted events out; none found is the titles alone and NO_ENTITIES_FOUND_RC (60). The times compare instants
+# as Google does (Events: list, `timeMin` "Lower bound (exclusive) for an event's end time", `timeMax` "Upper bound
+# (exclusive) for an event's start time"): an event is kept when it ends after `after` and starts before `before`; a bare
+# day is midnight UTC (GAM's `timezone`, see epoch). Approximate: Google's `q` searches more than the title (description,
+# location, attendees), here a case-insensitive substring of the summary; an all-day event's date is midnight UTC, where
+# Google reads it in the calendar's zone; and a series is compared by its first occurrence, where Google keeps one with any
+# occurrence in range. The CSV is written at the end, so its titles come after any warning.
 if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "events" ]; then
   cal="$2"; key=$(calendar_key "$2"); shift 4; fj=""; only=""; query=""; after=""; before=""; fields=""
   while [ $# -gt 0 ]; do
@@ -2042,26 +2105,29 @@ if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "events"
     printf 'Calendar: %s, Print Failed: Not Found\n' "$cal" 1>&2; echo "calendarId,id,JSON"; exit 50
   fi
   file=$(events_file "$key")
-  if [ -n "$only" ]; then
-    if event_has "$key" "$only" && event_deleted "$key" "$only"; then
-      printf 'Calendar: %s, Event: %s, Print Failed: Resource has been deleted\n' "$cal" "$only" 1>&2
-      echo "calendarId,id,JSON"; exit 50
-    elif ! event_has "$key" "$only"; then
-      printf 'Calendar: %s, Event: %s, Print Failed: Not Found\n' "$cal" "$only" 1>&2
-      echo "calendarId,id,JSON"; exit 50
-    fi
+  if [ -n "$only" ] && ! event_has "$key" "$only"; then
+    printf 'Calendar: %s, Event: %s, Print Failed: Not Found\n' "$cal" "$only" 1>&2
+    echo "calendarId,id,JSON"; exit 50
   fi
   needle=$(lower "$query")
+  [ -z "$after" ] || after=$(epoch "$after")
+  [ -z "$before" ] || before=$(epoch "$before")
   rows=$(while IFS= read -r record; do
     id=$(json_text id "$record")
+    if [ -n "$only" ]; then
+      [ "$id" = "$only" ] || continue
+      # events.get returns a deleted event, cancelled (its other fields as they were; keys stay sorted).
+      if event_deleted "$key" "$id"; then record=$(printf '%s' "$record" | sed 's/"status": "[a-z]*"/"status": "cancelled"/'); fi
+      gam_row "$cal" "$id" "$record"
+      continue
+    fi
     event_deleted "$key" "$id" && continue
-    if [ -n "$only" ]; then [ "$id" = "$only" ] || continue; fi
     if [ -n "$needle" ]; then
       summary=$(printf '%s' "$record" | sed -n 's/.*"summary": "\(.*\)"}$/\1/p')
       case "$(lower "$summary")" in (*"$needle"*) ;; (*) continue ;; esac
     fi
-    if [ -n "$after" ]; then [ "$(event_day "$record" end)" \> "$after" ] || continue; fi
-    if [ -n "$before" ]; then [ "$(event_day "$record" start)" \< "$before" ] || continue; fi
+    if [ -n "$after" ]; then [ "$(epoch "$(event_time "$record" end)")" -gt "$after" ] || continue; fi
+    if [ -n "$before" ]; then [ "$(epoch "$(event_time "$record" start)")" -lt "$before" ] || continue; fi
     gam_row "$cal" "$id" "$record"
   done < "$file")
   echo "calendarId,id,JSON"
@@ -3255,8 +3321,10 @@ fi
 # (removeCalendars, _modifyRemoveCalendars, :55658-55685 at 7.51.00; GAM's footgun: `delete calendars` only unsubscribes).
 # _validateUserGetCalendarIds (:55396-55451) acts as the owner: one who isn't a user fails at the token, Calendar off exits
 # 73; then "User: <u>, Remove 1 Calendar" (entityPerformActionNumItems), and one level in, "  User: <u>, Calendar: <c>,
-# Removed", or "…, Remove Failed: <why>", exit 50: a calendar Google can't find ("Not Found"), one the person doesn't own
-# (Google's 403, "Forbidden"; wording approximate), and their own primary ("Cannot delete primary calendar."; approximate).
+# Removed", or "…, Remove Failed: <why>", exit 50: a calendar Google can't find ("Not Found"), one the person isn't the data
+# owner of (Google's 403, "Forbidden"; wording approximate), and their own primary ("Cannot delete primary calendar.";
+# approximate). Google gives a secondary calendar one data owner (Calendars resource, `dataOwner`), and only they can delete
+# it: a co-owner (an `owner` rule) is refused like anyone else. Unproved live: docs/live-verification.md, Calendars.
 # With GAM_MOCK_STATE the calendar is then gone: its rules, events and list entries read as an unknown calendar.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "remove" ] && [ "${4:-}" = "calendars" ]; then
   [ -n "${5:-}" ] || missing_arg "UserCalendarEntity"
@@ -3270,7 +3338,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "remove" ] && [ "${4:-}" = "calendars" 
     printf '  User: %s, Calendar: %s, Remove Failed: Cannot delete primary calendar.\n' "$user" "$cal" 1>&2; exit 50
   elif [ -z "$file" ] || calendar_removed "$key"; then
     printf '  User: %s, Calendar: %s, Remove Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
-  elif ! grep -qF "{\"id\": \"user:$user\", \"role\": \"owner\"" "$file"; then
+  elif [ "$(calendar_owner "$key")" != "$user" ]; then
     printf '  User: %s, Calendar: %s, Remove Failed: Forbidden\n' "$user" "$cal" 1>&2; exit 50
   fi
   if [ -n "${GAM_MOCK_STATE:-}" ]; then

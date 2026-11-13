@@ -1521,14 +1521,16 @@ final class ExecutorTests {
     }
 
     /// Only an account GAM reads now can be cut off. An address that's no one's (in the domain, "Does not exist"; outside it,
-    /// "Service not applicable"), or a spelling GAM reads as no one (each spelling is read as it will be sent), refuses before
-    /// any step: GAM would refuse the write anyway, and "no such user" once let plans cut the admin off (review 2026-10-29).
+    /// "Service not applicable/Does not exist", glmsgs.py:508, which reads as no account too), or a spelling GAM reads as no
+    /// one (each spelling is read as it will be sent), refuses before any step: GAM would refuse the write anyway, and "no such
+    /// user" once let plans cut the admin off (review 2026-10-29). The mock once printed only "Service not applicable", so
+    /// the outside address read as an unplaceable answer instead.
     @Test func anAddressThatsNoOnesIsntCutOff() async throws {
         let executor = executor(admin: Shared((address: "alice@example.com", id: Self.aliceID)))
         let nobody = await executor.run(try await held(executor, [suspend("zed@example.com")]), confirmation: confirmed)
         #expect(nobody.refusal == "GAM has no account zed@example.com, so nothing ran — preview again.", "\(nobody)")
         let outside = await executor.run(try await held(executor, [suspend("someone@other.example.org")]), confirmation: confirmed)
-        #expect(outside.refusal?.hasPrefix("Couldn't check whose account someone@other.example.org is (") == true, "\(outside)")
+        #expect(outside.refusal == "GAM has no account someone@other.example.org, so nothing ran — preview again.", "\(outside)")
         let spelled = await executor.run(try await held(executor, [suspend(" a.anders@example.com"), suspend("a.anders@example.com")]),
                                          confirmation: confirmed)
         #expect(spelled.refusal != nil, "\(spelled)")

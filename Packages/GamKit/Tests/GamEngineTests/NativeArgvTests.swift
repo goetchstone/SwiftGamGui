@@ -50,6 +50,12 @@ struct NativeArgvTests {
         #expect(GamCommands.printVaultHolds(email: odd).argv == ["user", odd, "print", "vaultholds"])
     }
 
+    /// The calendar delete's owner read (not GamGUI's): the admin's `calendars.get` with `id` and `dataOwner`, the ID one element.
+    @Test func aCalendarsDataOwnerIsReadByItsID() {
+        #expect(GamCommands.printCalendarSettings(calendarID: "c_x y@group.calendar.google.com").argv
+                == ["calendars", "c_x y@group.calendar.google.com", "print", "settings", "fields", "id,dataowner", "formatjson"])
+    }
+
     /// The list is one element GAM splits on commas: an ID that would split, or isn't a calendar ID, is refused.
     @Test func eachCalendarHandedOverIsOneID() throws {
         // The last four split in Python but not by Swift's Character (review 2026-10-14); then a user's address, which

@@ -49,6 +49,8 @@ public final class CalendarEventSearch {
     private let runner: AuthenticatedRunner?
     /// Tests only: the mock's state folder.
     var environment: [String: String] = [:]
+    /// The zone a day is read in: the operator's (tests fix one).
+    var timeZone: TimeZone = .current
 
     public init(setup: SetupModel, runner: AuthenticatedRunner?) {
         self.setup = setup
@@ -73,7 +75,8 @@ public final class CalendarEventSearch {
             return state = .problem(query, .init(summary: "Connect a domain on Setup first.", detail: nil))
         }
         state = .searching(query)
-        let command = GamCommands.printEvents(calendarID: calendarID, query: query.text, after: query.after, before: query.before)
+        let command = GamCommands.printEvents(calendarID: calendarID, query: query.text, after: Self.instant(query.after, in: timeZone),
+                                              before: Self.instant(query.before, in: timeZone))
         let result: State
         do {
             let output = try await runner.run(command, as: domain, extraEnvironment: environment)
@@ -85,6 +88,32 @@ public final class CalendarEventSearch {
         // A newer search, or a switch while this one ran: this one's answer is dropped.
         guard mine == serial, setup.active == domain else { return }
         state = result
+    }
+
+    /// A `yyyy-mm-dd` day as the instant it begins in `zone`, with its offset (`2026-07-14T00:00:00-04:00`), which GAM passes
+    /// to Google as it is (getTimeOrDeltaFromNow: anything `arrow.get` parses). A bare day GAM reads as midnight in its own
+    /// `timezone` setting, UTC unless set, which this app never sets: "on or after" a day then began hours away from the
+    /// operator's midnight, and Google keeps an event whose end is after `timeMin` and whose start is before `timeMax`, so an
+    /// afternoon meeting could drop out of its own day. A deliberate difference from GamGUI, which sends the bare day.
+    /// Anything else (empty, not a real day) goes as it is: GAM refuses what it can't read.
+    nonisolated static func instant(_ day: String, in zone: TimeZone) -> String {
+        let scalars = Array(day.unicodeScalars)
+        guard scalars.count == 10, scalars[4] == "-", scalars[7] == "-",
+              scalars.enumerated().allSatisfy({ $0.offset == 4 || $0.offset == 7 || ("0"..."9").contains($0.element) }),
+              let year = Int(String(day.prefix(4))), let month = Int(String(day.dropFirst(5).prefix(2))),
+              let date = Int(String(day.suffix(2))) else { return day }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        // From noon: a zone whose clocks skip midnight that day still has a start of the day.
+        guard let noon = calendar.date(from: DateComponents(year: year, month: month, day: date, hour: 12)),
+              calendar.component(.year, from: noon) == year, calendar.component(.month, from: noon) == month,
+              calendar.component(.day, from: noon) == date else { return day }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = zone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssxxxxx"
+        return formatter.string(from: calendar.startOfDay(for: noon))
     }
 
     /// The events a finished `print events` found. None is exit 60 with the titles alone (`_validateCalendarGetEvents`

@@ -27,7 +27,12 @@ Dates are 2026, and the last time the command ran from any screen.
   Sharing a person's own calendar ran from Users.
 - **Not run:** share a calendar with a group and add it to each member's list, with Stop (new 2026-11-13; GamGUI's never ran
   either). The rule's scope is `group:<address>`.
-- **Not run:** delete a secondary calendar, acting as its owner, after DELETE typed (new 2026-11-13; GamGUI's ran).
+- **Not run:** delete a secondary calendar, acting as its data owner, after DELETE typed (new 2026-11-13; GamGUI's ran,
+  acting as the first owner rule). The check must include a calendar with a co-owner who is not the data owner: the preview
+  must name the data owner (`print settings`' `dataOwner`, unproved live, as is the admin's read of it on a calendar it isn't
+  on), and a remove as the co-owner should be Google's refusal, which the mock assumes ("Forbidden", wording approximate).
+- **Not run:** find an event by days: each day goes as the operator's midnight with its offset; check a meeting late in the
+  operator's day is found on that day and not the next.
 - **Not run:** delete one event, with `doit` and no updates sent (new 2026-11-13; GamGUI's never ran).
 
 ### Signatures
@@ -92,8 +97,9 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 
 ### Not run
 - Signatures (new 2026-11-13): a group's members read before a signature preview.
-- Calendars (new 2026-11-13): find an event by title or days; one event read again before its delete; a group's members
-  read before a share.
+- Calendars (new 2026-11-13): find an event by title or days (each day as an instant with its offset); one event read again
+  before its delete (a deleted one read back `cancelled`); a group's members read before a share; a calendar's data owner
+  (`calendars <c> print settings fields id,dataowner formatjson`) before its delete.
 - Classroom (new 2026-11-11): the class index, a teacher's classes and a class's card. Can't run here: no Education domain.
 - A person's phones and computers on their Security tab (new 2026-11-07; Incident's check runs the same two reads).
 - ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the

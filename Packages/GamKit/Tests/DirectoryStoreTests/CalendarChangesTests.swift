@@ -118,6 +118,22 @@ final class CalendarChangesTests {
 
     private func lookups() -> [[String]] { calls().filter { $0.starts(with: ["print", "group-members"]) } }
 
+    /// The mock's data owner of `calendar` (as a `transfer ownership` would leave it).
+    private func setDataOwner(_ calendar: String, _ owner: String) throws {
+        let folder = state.appending(path: "calendar_owner")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(owner.utf8).write(to: folder.appending(path: calendar))
+    }
+
+    /// A lookups runner whose reads matching `test` (shell, on the argv) answer `stderr` and exit `code` once `flag` exists.
+    private func failing(_ test: String, once flag: URL, stderr: String, code: Int32 = 50) throws -> AuthenticatedRunner {
+        let script = try Self.logging(Fixtures.mockGam, to: argvLog, in: scratch, prefix: """
+            if [ -e '\(flag.path)' ] && \(test); then printf '%s\\n' '\(stderr)' >&2; exit \(code); fi
+
+            """)
+        return AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
+    }
+
     private func bytes(_ calls: [[String]]) -> [[[UInt8]]] { calls.map { $0.map { Array($0.utf8) } } }
 
     private func pending(_ changes: CalendarChanges) throws -> CalendarChanges.Pending {
@@ -301,10 +317,9 @@ final class CalendarChangesTests {
         #expect(pending.preview.decision.requiresTypedCount && pending.preview.decision.requiresConfirmation)
         #expect(writes().isEmpty)
         await changes.confirm(pending, confirmed)
-        #expect(try problem(changes).summary == "This changes 13 accounts: preview again, and type 13 to confirm.")
-        #expect(writes().isEmpty)
-        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
-        await changes.confirm(try self.pending(changes), OperatorConfirmation(confirmed: true, typedCount: "13"))
+        #expect(changes.typedProblem == "Type 13, the number of changes, to confirm." && writes().isEmpty)
+        #expect(try self.pending(changes).id == pending.id, "the sheet stays, its preview unspent")
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: "13"))
         #expect(try done(changes).message == "Shared with allhands@example.com. It now appears in 12 of 12 members' Google Calendars.")
         let ran = writes()
         #expect(bytes([ran[0]]) == bytes([["calendars", Self.team, "add", "calendaracls", "reader", "group:allhands@example.com"]]))
@@ -601,6 +616,30 @@ final class CalendarChangesTests {
         #expect(changes.concerns(Self.team) && !changes.concerns("alice@example.com"))
     }
 
+    /// A count typed that isn't the guard's is said on the sheet and runs nothing: the preview isn't spent (the executor
+    /// spends one it refuses), and a second wrong try is said again; typing clears it. Then the right count runs it.
+    @Test func aWrongCountKeepsTheGroupSharesPreview() async throws {
+        try await connect()
+        let allhands = (1...12).map { String(format: "member%02d@example.com", $0) }
+        try makeUsers(allhands)
+        let changes = changes()
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
+        let pending = try pending(changes)
+        #expect(pending.preview.decision.requiresTypedCount && pending.preview.decision.affectedCount == 13)
+        for typed in ["12", " 13x", "1 3"] {
+            await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: typed))
+            #expect(changes.typedProblem == "Type 13, the number of changes, to confirm.", "\(typed)")
+            #expect(try self.pending(changes).id == pending.id, "the sheet stays")
+        }
+        #expect(changes.typedRefusals == 3, "each refusal is said again")
+        #expect(writes().isEmpty)
+        changes.typingChanged()
+        #expect(changes.typedProblem == nil)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: " 13 "))
+        #expect(try done(changes).message.hasPrefix("Shared with allhands@example.com."), "the same preview, not spent")
+        #expect(writes().count == 13)
+    }
+
     // MARK: deleting a calendar
 
     /// `test_calendars_delete_preview_shows_owner_and_confirm`, `…_requires_exact_case_confirm` and
@@ -620,6 +659,10 @@ final class CalendarChangesTests {
         await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedWord: "delete"))
         #expect(changes.typedProblem == "Type DELETE (in capitals) to confirm." && writes().isEmpty)
         #expect(try self.pending(changes).id == pending.id, "the sheet stays")
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedWord: "Delete"))
+        #expect(changes.typedRefusals == 2, "a repeated wrong word is said again")
+        changes.typingChanged()
+        #expect(changes.typedProblem == nil)
         await changes.confirm(pending, OperatorConfirmation(typedWord: "DELETE"))
         #expect(try problem(changes).summary == "This change needs confirmation — preview it, then confirm.")
         #expect(writes().isEmpty)
@@ -646,32 +689,78 @@ final class CalendarChangesTests {
         #expect(calls().allSatisfy { !$0.contains("calendaracls") && !$0.contains("remove") })
     }
 
-    /// `test_calendars_delete_refuses_when_owner_suspended` (`:1039-1043`) and a calendar whose only owner is itself.
+    /// `test_calendars_delete_refuses_when_owner_suspended` (`:1039-1043`) and a calendar Google names no owner for. The
+    /// owner is the data owner (`print settings`'s `dataOwner`), read now: a suspended one is refused, never a co-owner instead.
     @Test func aCalendarWithoutAnActiveOwnerIsRefused() async throws {
         try await connect()
         let orphan = "c_orphan@group.calendar.google.com"
         try setRules(orphan, [
             #"{"id": "user:c_orphan@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_orphan@group.calendar.google.com"}}"#,
             #"{"id": "user:bob@example.com", "role": "owner", "scope": {"type": "user", "value": "bob@example.com"}}"#])
+        try setDataOwner(orphan, "bob@example.com")
         let changes = changes()
         await changes.previewDeleteCalendar(calendarID: orphan, name: "Orphan")
-        #expect(try problem(changes).summary == "Owner(s) bob@example.com are suspended or no longer exist — reassign ownership to an "
-            + "active user, then delete.")
+        #expect(try problem(changes).summary == "bob@example.com, the calendar's owner, is suspended or no longer exists — transfer "
+            + "ownership to an active user, then delete.")
+        #expect(calls().contains(GamCommands.printCalendarSettings(calendarID: orphan).argv))
         await changes.previewDeleteCalendar(calendarID: "c_allhands@group.calendar.google.com", name: "All Hands")
         #expect(try problem(changes).summary.hasPrefix("Couldn't find an owner account to act as"))
         #expect(writes().isEmpty)
     }
 
-    /// GamGUI's delete resolves the owner again (`_resolve_delete_owner` in `/delete`): an owner gone since the preview
-    /// is refused, and nothing is deleted.
+    /// A deliberate difference from GamGUI's `_owner_candidates`, which acted as the first active `owner` rule: Google gives a
+    /// secondary calendar one data owner, and only they can delete it. A co-owner, first in the rules and active, is never
+    /// acted as: the delete acts as the data owner, or, while the data owner is suspended, is refused.
+    @Test func theDeleteActsAsTheDataOwnerNotACoOwner() async throws {
+        try await connect()
+        try setRules(Self.team, [
+            #"{"id": "user:c_team@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_team@group.calendar.google.com"}}"#,
+            #"{"id": "user:carol@example.com", "role": "owner", "scope": {"type": "user", "value": "carol@example.com"}}"#,
+            #"{"id": "user:alice@example.com", "role": "owner", "scope": {"type": "user", "value": "alice@example.com"}}"#])
+        let changes = changes()
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let pending = try pending(changes)
+        #expect(bytes(pending.preview.steps.map(\.shownArgv)) == bytes([["user", "alice@example.com", "remove", "calendars", Self.team]]),
+                "the data owner, though carol is first among the owner rules")
+        try setDataOwner(Self.team, "bob@example.com")
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        #expect(try problem(changes).summary.hasPrefix("bob@example.com, the calendar's owner, is suspended or no longer exists"))
+        #expect(writes().isEmpty)
+    }
+
+    /// GamGUI's delete resolves the owner again (`_resolve_delete_owner` in `/delete`): the data owner read again, one changed
+    /// since the preview is refused, and nothing is deleted.
     @Test func theRunChecksTheOwnerAgain() async throws {
         try await connect()
         let changes = changes()
         await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
         let held = try pending(changes)
-        try setRules(Self.team, [#"{"id": "user:alice@example.com", "role": "reader", "scope": {"type": "user", "value": "alice@example.com"}}"#])
+        try setDataOwner(Self.team, "carol@example.com")
         await changes.confirm(held, OperatorConfirmation(confirmed: true, typedWord: "DELETE"))
-        #expect(try problem(changes).summary == "alice@example.com is no longer an owner of this calendar — preview the delete again.")
+        #expect(try problem(changes).summary == "alice@example.com is no longer this calendar's owner — preview the delete again.")
+        #expect(writes().isEmpty)
+    }
+
+    /// The run's owner read failing is said in fixed words, never an error's type name: a calendar gone since the preview,
+    /// or GAM refusing the read (its remediation).
+    @Test func theRunsOwnerReadFailingIsSaidInWords() async throws {
+        try await connect()
+        let flag = scratch.appending(path: "fail-settings")
+        let changes = changes(lookups: try failing(#"[ "$3 $4" = "print settings" ]"#, once: flag,
+                                                   stderr: "Calendar: \(Self.team), Print Failed: Forbidden"))
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        try Data().write(to: flag)
+        await changes.confirm(try pending(changes), OperatorConfirmation(confirmed: true, typedWord: "DELETE"))
+        #expect(try problem(changes).summary == "What the preview showed couldn't be checked again (Couldn't check who owns the "
+            + "calendar before deleting it. \(GamError.Kind.permissionDenied.remediation)) — preview again.")
+        try FileManager.default.removeItem(at: flag)
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let held = try pending(changes)
+        let removed = state.appending(path: "calendars_removed")
+        try FileManager.default.createDirectory(at: removed, withIntermediateDirectories: true)
+        try Data().write(to: removed.appending(path: Self.team))
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedWord: "DELETE"))
+        #expect(try problem(changes).summary == "That calendar no longer exists — nothing was deleted.")
         #expect(writes().isEmpty)
     }
 
@@ -715,6 +804,7 @@ final class CalendarChangesTests {
         try await connect()
         let changes = changes()
         let search = changes.events
+        search.timeZone = try #require(TimeZone(identifier: "America/New_York"))
         await search.search(calendarID: Self.team, .init(text: "  ", after: "", before: ""))
         guard case .needsFilter = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
         #expect(eventReads().isEmpty)
@@ -753,7 +843,7 @@ final class CalendarChangesTests {
         #expect(writes().count == 1)
         guard case .found(_, let left, _) = changes.events.state(for: Self.team) else { throw NotPreviewing(state: "search") }
         #expect(left.isEmpty)
-        // Gone now: Google's 410 for it, said in GamGUI's words; and an ID it never had.
+        // Gone now: Google's get returns it cancelled, said in GamGUI's words; and an ID it never had (Not Found).
         await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: standup)
         #expect(try problem(changes).summary == "That event no longer exists.")
         await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: "0000000000")
@@ -775,7 +865,8 @@ final class CalendarChangesTests {
         #expect(CalendarChanges.deleteWarnings(event([:])).isEmpty)
     }
 
-    /// The run reads the event again first: one deleted after the preview is refused, not deleted twice.
+    /// The run reads the event again first: one deleted after the preview (Google's get returns it `cancelled`) is refused,
+    /// not deleted twice.
     @Test func anEventDeletedSinceThePreviewIsRefused() async throws {
         try await connect()
         let changes = changes()
@@ -789,5 +880,80 @@ final class CalendarChangesTests {
         await changes.confirm(held, confirmed)
         #expect(try problem(changes).summary == "That event no longer exists.")
         #expect(writes().isEmpty)
+    }
+
+    /// The run's re-read failing says so in its own words, not the preview's "so nothing was previewed".
+    @Test func theRunsEventReadFailingIsSaidInItsOwnWords() async throws {
+        try await connect()
+        let allHands = "0a1b2c3d4e5f6g7h8i9j"
+        let flag = scratch.appending(path: "fail-event")
+        let changes = changes(lookups: try failing(#"[ "$5" = eventid ]"#, once: flag,
+                                                   stderr: "Calendar: \(Self.team), Event: \(allHands), Print Failed: Forbidden"))
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: allHands)
+        let held = try pending(changes)
+        try Data().write(to: flag)
+        await changes.confirm(held, confirmed)
+        #expect(try problem(changes).summary == "What the preview showed couldn't be checked again (Couldn't re-read the event "
+            + "before deleting it. \(GamError.Kind.permissionDenied.remediation)) — preview again.")
+        #expect(writes().isEmpty)
+    }
+
+    /// What the sheet said (a series loses every occurrence, an instance one, a single event itself) must still hold at the
+    /// run: an event that became a series, or stopped being one, since the preview is refused.
+    @Test func anEventThatChangedSinceThePreviewIsRefused() async throws {
+        try await connect()
+        let allHands = "0a1b2c3d4e5f6g7h8i9j"
+        let flag = scratch.appending(path: "now-a-series")
+        let line = try String(contentsOf: Fixtures.mockGamData.appending(path: "calendar_events/\(Self.team).json"), encoding: .utf8)
+            .split(separator: "\n").map(String.init).first { $0.contains(allHands) }!
+        let series = line.replacingOccurrences(of: #", "start""#, with: #", "recurrence": ["RRULE:FREQ=YEARLY"], "start""#)
+        let csv = scratch.appending(path: "series.csv")
+        try Data(("calendarId,id,JSON\n\(Self.team),\(allHands),\"" + series.replacingOccurrences(of: "\"", with: "\"\"") + "\"\n").utf8)
+            .write(to: csv)
+        let script = try Self.logging(Fixtures.mockGam, to: argvLog, in: scratch, prefix: """
+            if [ -e '\(flag.path)' ] && [ "$5" = eventid ]; then echo 'Getting Events for \(Self.team)' >&2; cat '\(csv.path)'; exit 0; fi
+
+            """)
+        let changes = changes(lookups: AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base))
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: allHands)
+        let held = try pending(changes)
+        #expect(held.warnings.isEmpty)
+        try Data().write(to: flag)
+        await changes.confirm(held, confirmed)
+        #expect(try problem(changes).summary == CalendarChanges.eventChanged)
+        #expect(writes().isEmpty)
+    }
+
+    /// The days searched are the operator's: each sent as the instant it begins in their zone, with its offset (GAM reads a
+    /// bare day as midnight UTC), and Google keeps an event ending after the first and starting before the second. An
+    /// afternoon meeting is found on its own day, in New York and in Auckland, where it is the next day. A listed difference
+    /// from GamGUI, which sent the bare day.
+    @Test func eventDaysAreTheOperatorsOwn() async throws {
+        try await connect()
+        let changes = changes()
+        let search = changes.events
+        search.timeZone = try #require(TimeZone(identifier: "America/New_York"))
+        await search.search(calendarID: Self.team, .init(text: "", after: "2026-07-14", before: "2026-07-15"))
+        guard case .found(_, let ny, _) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(ny.map(\.eventID) == ["q3planning0v1u2t3s4r"])
+        #expect(bytes(eventReads().suffix(1)) == bytes([GamCommands.printEvents(calendarID: Self.team, after: "2026-07-14T00:00:00-04:00",
+                                                                              before: "2026-07-15T00:00:00-04:00").argv]))
+        search.timeZone = try #require(TimeZone(identifier: "Pacific/Auckland"))
+        await search.search(calendarID: Self.team, .init(text: "", after: "2026-07-15", before: "2026-07-16"))
+        guard case .found(_, let nz, _) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(nz.map(\.eventID) == ["q3planning0v1u2t3s4r"], "2-3pm in New York is the next morning in Auckland")
+        await search.search(calendarID: Self.team, .init(text: "", after: "2026-07-14", before: "2026-07-15"))
+        guard case .found(_, let none, _) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(none.isEmpty)
+    }
+
+    @Test func aDayIsTheInstantItBegins() throws {
+        let newYork = try #require(TimeZone(identifier: "America/New_York")), utc = try #require(TimeZone(identifier: "UTC"))
+        #expect(CalendarEventSearch.instant("2026-07-14", in: newYork) == "2026-07-14T00:00:00-04:00")
+        #expect(CalendarEventSearch.instant("2026-01-14", in: newYork) == "2026-01-14T00:00:00-05:00")
+        #expect(CalendarEventSearch.instant("2026-07-14", in: utc) == "2026-07-14T00:00:00+00:00")
+        for odd in ["", "2026-02-31", "2026-7-14", "today", "2026-07-14T00:00:00Z"] {
+            #expect(CalendarEventSearch.instant(odd, in: newYork) == odd, "\(odd)")
+        }
     }
 }

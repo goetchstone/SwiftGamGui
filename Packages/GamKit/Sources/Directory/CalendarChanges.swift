@@ -123,8 +123,11 @@ public final class CalendarChanges {
     public private(set) var subject: String?
     /// A group share running: how far it is.
     public private(set) var progress: Progress?
-    /// The calendar delete's typed word didn't match: said on its sheet, which stays.
+    /// What the operator typed didn't match (a calendar delete's DELETE, a group share's count): said on its sheet, which
+    /// stays, and its preview isn't spent. Cleared once the typing changes (`typingChanged`).
     public private(set) var typedProblem: String?
+    /// Counts each typed refusal, so the sheet says it again on a repeated wrong attempt, not only the first.
+    public private(set) var typedRefusals = 0
     /// The page's event search.
     public let events: CalendarEventSearch
     /// Each preview, edit and dismissal counts one: a preview whose reads end after a newer one began (or after the form
@@ -319,10 +322,11 @@ public final class CalendarChanges {
 
     // MARK: deleting
 
-    /// GamGUI's `/calendars/delete/preview`: a secondary calendar, deleted for everyone acting as one of its owners
-    /// (`remove_calendar`, GAM's `remove calendars`). Who it acts as is resolved here from the calendar's access read
-    /// now and the directory's active accounts (`_resolve_delete_owner`), never taken from the screen; the run reads the
-    /// access again first and is refused if that owner is no longer one, or no longer active. The confirm wants DELETE
+    /// GamGUI's `/calendars/delete/preview`: a secondary calendar, deleted for everyone acting as its data owner
+    /// (`remove_calendar`, GAM's `remove calendars`). Who it acts as is the data owner read now (`print settings`), while the
+    /// directory has them active, never taken from the screen and never another owner (GamGUI's `_resolve_delete_owner` took
+    /// the first active owner rule: a listed deviation); the run reads the data owner again first and is refused if it
+    /// changed, or the account is no longer active. The confirm wants DELETE
     /// typed, in capitals: the executor holds that word with the preview and refuses a run without it.
     public func previewDeleteCalendar(calendarID: String, name: String) async {
         guard !isBusy else { return }
@@ -337,12 +341,25 @@ public final class CalendarChanges {
         guard isCurrent(serial) else { return }
         if let problem = reads.problem(for: read) { return state = .problem(Problem(problem.summary, detail: problem.detail)) }
         guard let rules = reads.access(read) else { return refuse("Couldn't read who has access to \(name), so nothing was previewed.") }
+        guard let domain = tenant?.domain, let runner else { return refuse("Connect a domain on Setup first.") }
+        let dataOwner: String?
+        switch await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment) {
+        case .owner(let found): dataOwner = found
+        case .gone:
+            guard isCurrent(serial) else { return }
+            return refuse(Self.calendarGone)
+        case .failed(let problem):
+            guard isCurrent(serial) else { return }
+            return state = .problem(Problem("Couldn't read who owns \(name), so nothing was previewed. \(problem.summary)",
+                                            detail: problem.detail))
+        }
+        guard isCurrent(serial) else { return }
         let owner: String
-        switch CalendarDeletion.owner(of: calendarID, rules: rules, active: active) {
+        switch CalendarDeletion.owner(of: calendarID, dataOwner: dataOwner, active: active) {
         case .owner(let found): owner = found
         case .refused(let why): return refuse(why)
         }
-        let precondition = ownerStillOwns(owner, calendarID: calendarID, domain: tenant?.domain)
+        let precondition = ownerStillOwns(owner, calendarID: calendarID, domain: domain)
         let step = WriteStep(GamCommands.removeCalendar(owner: owner, calendarID: calendarID), target: calendarID,
                              summary: "Delete \(name) and all of its events, for everyone, acting as its owner \(owner).",
                              risk: .destructive, about: ["owner": owner])
@@ -351,25 +368,32 @@ public final class CalendarChanges {
                    confirmStep: true, typedWord: CalendarDeletion.typedWord, expecting: tenant, precondition: precondition, serial: serial)
     }
 
-    /// The run's check (GamGUI's delete re-resolves the owner, `_resolve_delete_owner`): the calendar's access read again,
-    /// `owner` still an owner, and their account read now (`info user`) still active: GAM can't act as a suspended or
-    /// deleted account. GamGUI would then act as another active owner; here the operator previews again, which picks one.
-    private func ownerStillOwns(_ owner: String, calendarID: String, domain: Domain?) -> @Sendable () async throws -> Bool {
+    /// The run's check (GamGUI's delete re-resolves the owner, `_resolve_delete_owner`): the calendar's data owner read again
+    /// (`print settings`), still `owner`, and their account read now (`info user`) still active: GAM can't act as a suspended or
+    /// deleted account. Never another owner instead: the operator previews again. Each failure is said in fixed words, never
+    /// an error's type name.
+    private func ownerStillOwns(_ owner: String, calendarID: String, domain: Domain) -> @Sendable () async throws -> Bool {
         let runner = runner, environment = environment
         return {
-            guard let runner, let domain else { throw PreconditionRefusal("Connect a domain on Setup first.") }
-            let command = GamCommands.printCalendarACLs(calendarID: calendarID)
-            let output = try await runner.run(command, as: domain, extraEnvironment: environment)
-            guard case .access(let rules) = try CalendarReads.found(from: output, for: .access(calendar: calendarID), argv: command.argv)
-            else { return false }
-            guard CalendarDeletion.ownerCandidates(rules, calendarID: calendarID).contains(where: {
-                Guard.normalized($0) == Guard.normalized(owner)
-            }) else {
-                throw PreconditionRefusal("\(owner) is no longer an owner of this calendar \u{2014} preview the delete again.")
+            guard let runner else { throw PreconditionRefusal("Connect a domain on Setup first.") }
+            switch await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment) {
+            case .gone: throw PreconditionRefusal(Self.calendarGoneAtRun)
+            case .failed(let problem):
+                throw PreconditionFailure("Couldn't check who owns the calendar before deleting it. \(problem.summary)")
+            case .owner(let found):
+                guard let found, Guard.normalized(found) == Guard.normalized(owner) else {
+                    throw PreconditionRefusal("\(owner) is no longer this calendar's owner \u{2014} preview the delete again.")
+                }
             }
             let info = GamCommands.infoUser(email: owner, fields: ["primaryEmail", "suspended"])
-            let account = try await runner.run(info, as: domain, extraEnvironment: environment)
             let inactive = PreconditionRefusal("\(owner) is suspended or no longer exists \u{2014} preview the delete again.")
+            let account: GamResult
+            do {
+                account = try await runner.run(info, as: domain, extraEnvironment: environment)
+            } catch {
+                throw PreconditionFailure("Couldn't check that \(owner) is still active. "
+                    + DirectoryStore.problem(for: error, argv: info.argv).summary)
+            }
             guard account.exitCode == 0 else {
                 let error = GamError(exitCode: account.exitCode, stderr: account.stderr, argv: info.argv)
                 if error.kind == .notFound { throw inactive }
@@ -377,6 +401,39 @@ public final class CalendarChanges {
             }
             if GamUser(record: GamOutput.one(account.stdout)).suspended { throw inactive }
             return true
+        }
+    }
+
+    /// A calendar Google can't find: at the preview, and at the run (nothing ran).
+    public nonisolated static let calendarGone = "That calendar no longer exists."
+    public nonisolated static let calendarGoneAtRun = "That calendar no longer exists \u{2014} nothing was deleted."
+
+    /// What the data owner read found.
+    enum OwnerRead: Sendable {
+        /// The data owner Google names, or nil when it names none.
+        case owner(String?)
+        /// Google has no such calendar (GAM's "Not Found").
+        case gone
+        /// Couldn't read it: the remediation in `summary`, GAM's line in `detail`.
+        case failed(Problem)
+    }
+
+    /// The calendar's data owner read now (`print settings fields id,dataowner`): GAM's `Owner`, Google's `dataOwner`.
+    nonisolated static func readDataOwner(_ calendarID: String, runner: AuthenticatedRunner, domain: Domain,
+                                          environment: [String: String]) async -> OwnerRead {
+        let command = GamCommands.printCalendarSettings(calendarID: calendarID)
+        do {
+            let output = try await runner.run(command, as: domain, extraEnvironment: environment)
+            guard output.exitCode == 0 else {
+                let error = GamError(exitCode: output.exitCode, stderr: output.stderr, argv: command.argv, stdout: output.stdout)
+                if error.kind == .notFound { return .gone }
+                return .failed(Problem(error.remediation, detail: error.message))
+            }
+            guard !output.stdoutTruncated else { return .failed(Problem("GAM's answer was longer than one call can return.")) }
+            return .owner(CalendarDeletion.dataOwner(GamOutput.records(output.stdout)))
+        } catch {
+            let problem = DirectoryStore.problem(for: error, argv: command.argv)
+            return .failed(Problem(problem.summary, detail: problem.detail))
         }
     }
 
@@ -394,13 +451,21 @@ public final class CalendarChanges {
         switch read {
         case .success(let found?): event = found
         case .success(nil): return refuse(Self.eventGone)
-        case .failure(let problem): return state = .problem(problem)
+        case .failure(let problem):
+            return state = .problem(Problem("Couldn't read the event, so nothing was previewed. \(problem.summary)", detail: problem.detail))
         }
         let environment = environment
+        let shown = (recurrence: event.recurrence, recurringEventID: event.recurringEventID)
         let precondition: @Sendable () async throws -> Bool = {
             switch await Self.readEvent(eventID, on: calendarID, runner: runner, domain: domain, environment: environment) {
-            case .success(let found): if found == nil { throw PreconditionRefusal(Self.eventGone) }; return true
-            case .failure(let problem): throw PreconditionFailure(problem.summary)
+            case .success(nil): throw PreconditionRefusal(Self.eventGone)
+            case .success(let found?):
+                // A series' event deletes every occurrence, an instance's only one: what the sheet said must still hold.
+                guard found.recurrence == shown.recurrence, found.recurringEventID == shown.recurringEventID else {
+                    throw PreconditionRefusal(Self.eventChanged)
+                }
+                return true
+            case .failure(let problem): throw PreconditionFailure("Couldn't re-read the event before deleting it. \(problem.summary)")
             }
         }
         let warnings = Self.deleteWarnings(event)
@@ -426,9 +491,13 @@ public final class CalendarChanges {
 
     /// GamGUI's words for an event that isn't there any more.
     public nonisolated static let eventGone = "That event no longer exists."
+    /// An event made a series, or no longer one, since its preview: what the delete removes isn't what the sheet said.
+    public nonisolated static let eventChanged = "That event has changed since the preview (whether it repeats) \u{2014} nothing "
+        + "was deleted. Preview the delete again."
 
-    /// One event read now: nil when Google has no such event (GAM's "Not Found", or 410 "Resource has been deleted", or a
-    /// cancelled event), else the event or why it couldn't be read.
+    /// One event read now: nil when Google has no such event (GAM's "Not Found") or it is deleted (`status` "cancelled":
+    /// Google's events.get always returns a deleted event, Events reference; a 410 "Resource has been deleted" is read the
+    /// same way), else the event, or why it couldn't be read (the remediation in `summary`, GAM's line in `detail`).
     nonisolated static func readEvent(_ eventID: String, on calendarID: String, runner: AuthenticatedRunner, domain: Domain,
                                       environment: [String: String]) async -> Result<CalendarEvent?, Problem> {
         let command = GamCommands.getEvent(calendarID: calendarID, eventID: eventID)
@@ -439,19 +508,35 @@ public final class CalendarChanges {
                 if output.exitCode == 50, error.kind == .notFound || output.stderr.contains("Resource has been deleted") {
                     return .success(nil)
                 }
-                return .failure(Problem("Couldn't read the event, so nothing was previewed. \(error.remediation)", detail: error.message))
+                return .failure(Problem(error.remediation, detail: error.message))
             }
             let event = GamOutput.records(output.stdout).map(CalendarEvent.init(record:)).first { $0.eventID == eventID }
             guard let event, event.status != "cancelled" else { return .success(nil) }
             return .success(event)
         } catch {
             let problem = DirectoryStore.problem(for: error, argv: command.argv)
-            return .failure(Problem("Couldn't read the event, so nothing was previewed. \(problem.summary)", detail: problem.detail))
+            return .failure(Problem(problem.summary, detail: problem.detail))
         }
     }
 
     private func refuse(_ summary: String) {
         state = .problem(Problem(summary))
+    }
+
+    /// The typed word or count didn't match: said on the sheet, counted so a repeat is said again; nothing runs.
+    private func refuseTyped(_ why: String) {
+        typedProblem = why
+        typedRefusals += 1
+    }
+
+    /// The count a group share wants typed, in words.
+    public nonisolated static func typedCountRefusal(_ count: Int) -> String {
+        "Type \(count), the number of changes, to confirm."
+    }
+
+    /// The typed word or count changed: an earlier mismatch no longer stands.
+    public func typingChanged() {
+        typedProblem = nil
     }
 
     private func hold(_ steps: [WriteStep], kind: Pending.Kind, title: String, confirmLabel: String, calendarID: String,
@@ -539,13 +624,17 @@ public final class CalendarChanges {
     /// Runs `pending` once, exactly as held, while it's the preview the sheet shows: an older one (the target or
     /// role changed since) never runs, though the executor still holds it. Then the calendar's access is read
     /// again. `confirmation` is what the operator gave; the executor decides whether it's enough. A calendar delete
-    /// also wants its `typedWord` to be DELETE (GamGUI's exact-case gate): the executor refuses the run without it, and a
-    /// mistyped word is said here first, so the sheet stays and its preview isn't spent.
+    /// also wants its `typedWord` to be DELETE (GamGUI's exact-case gate), and a large group share the number of changes
+    /// typed (the guard's): the executor refuses a run without them, and a mistyped one is said here first, so the sheet
+    /// stays and its preview isn't spent (the executor spends a preview it refuses).
     public func confirm(_ pending: Pending, _ confirmation: OperatorConfirmation) async {
         guard !isBusy, let executor, case .previewing(let shown) = state, shown.id == pending.id else { return }
         if pending.kind == .deleteCalendar, !CalendarDeletion.typedMatches(confirmation.typedWord) {
-            typedProblem = CalendarDeletion.typedRefusal
-            return
+            return refuseTyped(CalendarDeletion.typedRefusal)
+        }
+        let decision = pending.preview.decision
+        if !decision.typedCountMatches(confirmation.typedCount) {
+            return refuseTyped(Self.typedCountRefusal(decision.affectedCount))
         }
         typedProblem = nil
         state = .running(pending)

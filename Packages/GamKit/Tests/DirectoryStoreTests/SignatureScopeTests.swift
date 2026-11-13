@@ -270,22 +270,43 @@ final class SignatureScopeTests {
     }
 
     /// `test_signatures_apply_over_the_threshold_needs_the_count_typed` (the threshold lowered, as GamGUI's test does):
-    /// the click alone, or another count, runs nothing.
+    /// the click alone, or another count, runs nothing. It is said on the sheet, which stays with its preview unspent (the
+    /// executor spends one it refuses), each wrong try counted so it is said again; typing clears it; the right count then
+    /// runs that same preview.
     @Test func overTheThresholdTheCountIsTyped() async throws {
         try await connect()
         let changes = changes()
         changes.typedCountAbove = 1
-        for typed in ["", "3", "all", "04"] {
-            await changes.previewScope(.company, template: "{name}")
-            let pending = try pending(changes)
-            #expect(pending.preview.decision.requiresTypedCount)
-            await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: typed))
-            #expect(try problem(changes).summary.contains("type 4 to confirm"), "\(typed)")
-        }
-        #expect(writes().isEmpty)
         await changes.previewScope(.company, template: "{name}")
-        await changes.confirm(try pending(changes), OperatorConfirmation(confirmed: true, typedCount: "4"))
+        let pending = try pending(changes)
+        #expect(pending.preview.decision.requiresTypedCount)
+        for typed in ["", "3", "all", "04"] {
+            await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: typed))
+            #expect(changes.typedProblem == "Type 4, the number of people, to confirm.", "\(typed)")
+            #expect(try self.pending(changes).id == pending.id, "the sheet stays")
+        }
+        #expect(changes.typedRefusals == 4)
+        #expect(writes().isEmpty)
+        changes.typingChanged()
+        #expect(changes.typedProblem == nil)
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: " 4 "))
         #expect(writes().map { $0[1] } == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"])
+    }
+
+    /// The executor still refuses another count itself (the screen's check is not the only one).
+    @Test func theExecutorRefusesAnotherCount() async throws {
+        try await connect()
+        let setup = setup
+        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
+            setup.active.map { ($0, setup.generation) }
+        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
+                              "GAM_MOCK_STATE": state.path])
+        let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner)
+        changes.typedCountAbove = 1
+        await changes.previewScope(.company, template: "{name}")
+        let outcome = await executor.run(try pending(changes).preview, confirmation: OperatorConfirmation(confirmed: true, typedCount: "3"))
+        #expect(outcome.refusal == "This changes 4 accounts: preview again, and type 4 to confirm.")
+        #expect(writes().isEmpty)
     }
 
     /// `test_write_routes_guarded.py`'s signature case: a scope or template edited after the preview, a bare confirm or a

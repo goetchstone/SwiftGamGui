@@ -128,6 +128,11 @@ public final class SignatureChanges {
     public private(set) var finished = 0
     /// A scope running: how far it is.
     public private(set) var progress: Progress?
+    /// The count typed on a scope's sheet didn't match: said there, the sheet stays and its preview isn't spent (the
+    /// executor spends a preview it refuses). Cleared once the typing changes (`typingChanged`) or the preview goes.
+    public private(set) var typedProblem: String?
+    /// Counts each typed refusal, so the sheet says it again on a repeated wrong attempt, not only the first.
+    public private(set) var typedRefusals = 0
     /// Above this many people the count must be typed (D5, GamGUI's `COUNT_CONFIRM_ABOVE`); tests lower it, as GamGUI's do.
     var typedCountAbove = Guard.countConfirmAbove
     /// Tests only: the mock's state folder, for the group read.
@@ -178,6 +183,7 @@ public final class SignatureChanges {
     public func preview(person: GamUser, template: String, current: String?) async {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         // The tenant the screen's reads (the person, their current signature) belong to, before any await.
         let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
         let render = Signature.render(template, for: person)
@@ -198,6 +204,7 @@ public final class SignatureChanges {
     public func previewPutBack(previous: Previous) async {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         if Signature.readAsKeyword(previous.body) != nil {
             state = .problem(Problem(Self.keywordRefusal(previous.body)))
             return
@@ -236,6 +243,7 @@ public final class SignatureChanges {
     public func previewScope(_ scope: SignatureScope, template: String) async {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         let serial = serial
         // The tenant the directory and the group read belong to, before any await.
         let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
@@ -264,6 +272,7 @@ public final class SignatureChanges {
     public func previewRetry(_ retry: Retry) async {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         guard let users = directory.users else {
             state = .problem(Problem("Load the directory on Users first."))
             return
@@ -444,9 +453,17 @@ public final class SignatureChanges {
 
     /// Runs `pending` once, exactly as held, while it's the preview the screen shows: an older one (the
     /// template edited or the person changed since) never runs, though the executor still holds it.
-    /// `confirmation` is what the operator gave; the executor decides whether it's enough.
+    /// `confirmation` is what the operator gave; the executor decides whether it's enough. A count typed that isn't the
+    /// guard's is said here first (`typedProblem`), so nothing runs and the preview isn't spent.
     public func confirm(_ pending: Pending, _ confirmation: OperatorConfirmation) async {
         guard !isBusy, let executor, case .previewing(let shown) = state, shown.id == pending.id else { return }
+        let decision = pending.preview.decision
+        if !decision.typedCountMatches(confirmation.typedCount) {
+            typedProblem = Self.typedCountRefusal(decision.affectedCount)
+            typedRefusals += 1
+            return
+        }
+        typedProblem = nil
         state = .running(pending)
         if pending.isScoped { return await confirmScope(pending, confirmation, executor: executor) }
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
@@ -489,7 +506,18 @@ public final class SignatureChanges {
     public func dismiss() {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         state = .idle
+    }
+
+    /// The count a scope wants typed, in words.
+    public nonisolated static func typedCountRefusal(_ count: Int) -> String {
+        "Type \(count), the number of people, to confirm."
+    }
+
+    /// The typed count changed: an earlier mismatch no longer stands.
+    public func typingChanged() {
+        typedProblem = nil
     }
 
     /// The scope, the person or the template changed after a preview: it's dropped, so its confirm runs nothing
@@ -497,6 +525,7 @@ public final class SignatureChanges {
     public func edited() {
         guard !isBusy else { return }
         serial += 1
+        typedProblem = nil
         if case .previewing = state { state = .idle }
     }
 
