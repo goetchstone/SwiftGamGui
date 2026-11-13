@@ -1,9 +1,10 @@
 # Domain: Google Classroom (read only)
 
 **One line:** Reads Google Classroom for school domains (classes, who teaches and who is in each), and reads a student
-information system's roster export on this Mac (Plan an Import). Per the two-app
-[Classroom plan](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md) it will
-also compare that roster with Classroom and hand the changes over as files. **The app never writes to Classroom.**
+information system's roster export on this Mac (Plan an Import), compares that roster with Classroom into one change
+list, and hands the changes over as files someone runs with GAM outside the app (the two-app
+[Classroom plan](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md), C1–C4).
+**The app never writes to Classroom.**
 
 **Owns invariant(s):** none of its own. It leans on #1 (course IDs and addresses validated, one argv element each), #9
 (the index, teachers and cards kept bounded) and #11 (both builders held to GamGUI's argv), and on #2 by having no write.
@@ -11,8 +12,10 @@ also compare that roster with Classroom and hand the changes over as files. **Th
 `ClassroomTests` (builders, the mock, the reader), `ClassroomReadsTests` (the screen's reads, a person's classes, who can
 create classes, the classes someone owns), `OffboardChangesTests` (the leaver's classes), `GamErrorTests` and
 `GuidedSetupTests` (`only_unknown_owners` and `classroom_readable`, held to `gam_errors.json` and `setup.json`),
-`RosterParityTests` (the roster reader, held to `roster.json`) and `RosterStoreTests` (the kept roster, the picker, the
-issues).
+`RosterParityTests` (the roster reader, held to `roster.json`), `RosterStoreTests` (the kept roster, the picker, the
+issues), `ClassroomStateTests` (the compare's read, held to `roster_plan.json`'s `managed_from`), `RosterPlanTests` (the
+change list, held to `roster_plan.json`), `RosterHandoverTests` (the hand-over, byte for byte with `Tests/Fixtures/handover/`
+and the grammar) and `RosterCompareTests` (the compare and the hand-over end to end through the mock).
 
 GamGUI's runbook of the same name (`docs/domains/classroom.md` in its repo) is the reference: this app ports each piece from
 GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamGUI's repo.
@@ -35,6 +38,13 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   `RosterZip.swift` (the ZIP reader, `CRC32`), `RosterCSV.swift` (`RosterLines`, `RosterCSV`, `Roster.rows`, `clean`),
   `RosterSnapshot.swift` (the model, `issueWords`), `RosterStore.swift` (the kept roster), `RosterImport.swift` (the
   picker's reads, the issues grouped, the Issues CSV's rows). `App/RosterImportView.swift` (`RosterKeeper`, the screen).
+- `GamEngine/ClassroomState.swift` (`Classroom.Managed`, `Classroom.state`, `aliases`: GamGUI's `managed_from`),
+  `Directory/UserAccess.swift` (`classroomState`, `directoryAddresses`), `Stores/Roster/RosterPlan.swift` (the planner, the
+  list's pages), `Stores/Roster/RosterHandover.swift` (the files and the ZIP), `Directory/RosterCompare.swift` (the compare
+  and the hand-over held per tenant and roster, audited), `App/RosterCompareView.swift` (the screen's part).
+- `Tests/Fixtures/roster_plan.json` (GamGUI's `plan` over every call its planner tests make and its web test's compare,
+  with `roster_handover`'s files for each), `Tests/Fixtures/roster_handover.json` and `Tests/Fixtures/handover/` (GamGUI's
+  own hand-over fixture, byte for byte), all from `scripts/gen_fixtures.py`.
 - `Tests/Fixtures/roster.json` (GamGUI's `read_upload` over 142 packages, from `scripts/gen_fixtures.py`),
   `Tests/Fixtures/demo/roster/` (the snapshots' OneRoster export: made-up people, a problem of each common kind).
 - `Tests/Fixtures/mock_gam.sh` (`print courses`, `print course-participants`), `mock_gam/courses.json`,
@@ -174,7 +184,96 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   next appears; a read that ends on another domain keeps nothing and says so.
 - **Snapshots**: `classroom-import` (`SWIFTGAMGUI_TAB=import`) with the demo package kept in a temporary store.
 
+## Compare with Classroom (C3, from GamGUI 07c505d)
+- **`RosterPlan.plan(snapshot, classroom:, directory:, unread:)`** is GamGUI's `roster_plan.plan`, pure: a `ChangeList`
+  (changes in run order, counts, flags, notes, `summary`). No GAM, nothing written. It is held to
+  `Tests/Fixtures/roster_plan.json`: the generator wraps GamGUI's `plan` while every synchronous test in its
+  `tests/test_roster_plan.py` runs, and records the web test's compare (its SIS files through `read_upload`, Classroom
+  through `managed_from` from GamGUI's mock, plain and with the lowered `LIMITS` its flagged test uses), so each call's
+  inputs and its whole ChangeList, plus `roster_handover`'s files for it, are a case `RosterPlanTests` must equal.
+- **The app's classes carry its alias**, `d:gg-<sourcedId>` (`RosterPlan.alias(for:)`: the ID when it's `[A-Za-z0-9._-]`,
+  1 to 80, else `h` and 24 hex of its UTF-8's SHA-256). Only those are compared, updated or archived; a hand-made class
+  is counted as left alone. GAM may print an alias with or without `d:`; both are read.
+- **Kinds and run order, risk and notes** are GamGUI's (its runbook's C3 section is the reference): `Change.swap` (a role
+  swap's removal first), `Change.late` (an outgoing owner's student add after the teacher removals), `RosterPlan.limits`
+  (count and share, both past) with each flag's sentence, the duplicate-create guard (a class matching an unaliased one by
+  name and section is noted, never created), a directory that only limits who is added, an owner not read (no removals
+  there), and the headline that never says "already matches" when the list is incomplete or has notes.
+- **Text is compared by its code points** (`ExactKey`), as Python's `str`: a Swift `String` takes "é" and "e" + U+0301 for
+  one address or title, and would sort, dedupe and match differently. Sorting is Python's (code point; a stable sort's
+  ties by position). `f"{n:,}"`, `.1%` and `.0%` are `RosterPlan.grouped` and `%.1f`/`%.0f` of the share × 100.
+- **The read** (`UserAccess.classroomState`, GamGUI's `classroom_state`): `print courses states active,provisioned,archived
+  owneremail aliases fields … formatjson` then `print course-participants states … show all formatjson`, one after the
+  other, the domain-wide timeout each, paired by `Classroom.state` (GamGUI's `managed_from`): each record as read (none
+  merged), a later participants row for an ID replacing an earlier one, aliases read as objects (`[{"alias": …}]`; a bare
+  string too; anything else makes the cell unread), no `JSON-aliases` cell read as no alias. A class whose aliases can't
+  be read, whose row is missing, or whose roster is unreadable or hides an address is **unread**, and any unread class
+  makes the list incomplete. `ClassroomStateTests` holds the pairing to every `managed_from` case the generator recorded,
+  and the Swift mock's two reads to the classes GamGUI's mock gave its web test.
+- **The directory** (`UserAccess.directoryAddresses`): `print users` with the cache's fields, read fresh each compare,
+  primary addresses lowercased. Unread, the plan has no directory and says so (`RosterPlan.directoryUnread`, GamGUI's note).
+- **The compare** (`RosterCompare`, in Directory so it's tested; the app's `RosterKeeper` holds it): one at a time, not
+  stoppable (the screen going away doesn't cancel it), its change list held in memory only, for the tenant and generation
+  and the kept roster's SHA-256 it was made from. A new upload or a purge drops it (`drop()`), and so does a tenant switch
+  (`onTenantChange`). `drop()` drops a compare still reading too: its reads finish unseen and store nothing (no change
+  list, no failure, no audit), and the next ask starts at once. Before, a switch or a new upload mid-read left the old
+  compare holding the one slot, so Compare on the new tenant did nothing and said nothing, and a new roster showed the
+  old one's spinner, failure or announcement. `compare()` returns what the ask came to (`Outcome`: compared, failed,
+  busy, dropped) and the screen says that, never what it reads back later. Audited as `roster_compare` (when, the roster's
+  hash, counts, flagged kinds, incomplete, unread and unmanaged counts; never a row).
+- **The screen** (`RosterCompareView`, under the issues on Plan an Import): **Compare with Classroom**; while it reads,
+  GamGUI's sentence; a failure as "Couldn't compare with Classroom." and the read's fixed words (the scope note, or GAM's
+  scrubbed message), with Try Again; then "Change list · compared <when>" with **Compare Again**, the summary (focused for
+  VoiceOver and announced), each flag (icon and "held back", not color alone), the notes, a chip per kind with its count
+  (a wrapping row), and the list searched (class, alias or person) and paged by 50 (`RosterPlan.page`, GamGUI's
+  `_changes_ctx`), off the main actor: the search waits a quarter second after typing (GamGUI's `delay:250ms`) and runs
+  over `Held.haystack`, each change's search text lowered once per compare, never in the view body (a district's list is
+  tens of thousands of rows). A held-back row has the chip's icon, not orange alone. The screen resets on `Held.id`,
+  each compare's own (two in one minute share `when`). Compare, Compare Again and Try Again take ⌘R (the toolbar's
+  Refresh is the Classes part's). The hand-over's split, CSV, ZIP and CRC run detached too (`RosterCompare.package`).
+  The planner's "GamGUI" reads "GAM GUI" on the screen (`shown`); the files keep GamGUI's words.
+
+## Hand it over (C4, from GamGUI 07c505d)
+- **`RosterHandover.build`** is GamGUI's `roster_handover.build`, pure: `README.txt`, `review.csv` and a numbered CSV per
+  kind (`steps`, GamGUI's `STEPS`), each with its `shlex.join`ed `gam csv <file> noescapechar true gam …` line. Nothing
+  runs GAM. `Refusal.incomplete` / `.nothing` carry GamGUI's fixed words; `kept(_:including:)` is `kept_changes` (a flagged
+  kind not ticked is left out, and what needs it).
+- **Bytes are GamGUI's.** `Tests/Fixtures/handover/` is GamGUI's own `tests/fixtures/handover/`, written by the generator
+  only when GamGUI still writes exactly that; `RosterHandoverTests` builds GamGUI's test list and equals each file byte for
+  byte, and equals the files for a list of values Python's csv writer treats specially (CR, LF, quotes, a lead space, a
+  one-empty-field row written `""`, formula leads, combining marks). The plain CSV is Python's `QUOTE_MINIMAL` (comma,
+  quote, CR or LF quoted, quotes doubled, CRLF), scalar by scalar.
+- **`review.csv` is formula-safe** with `RosterHandover.csvSafe`: GamGUI's `csv_safe`, the same rule as ChangeCore's
+  `AuditExport.safe` (Stores doesn't depend on ChangeCore; `RosterCompareTests` holds the two to one rule). The GAM files
+  keep values exact.
+- **The grammar:** `eachCommandIsOneTheGrammarHas` is GamGUI's `test_each_command_is_one_the_grammar_has` over
+  `Vendor/gam7/GamCommands.txt` (each word a choice, a `~field` in a `<slot>`, a keyword in its nonterminal's definition,
+  the fields among the columns); `eachReadmeLineRunsAsWrittenInZsh` runs zsh's `print` over each line.
+- **The ZIP** (`RosterHandover.zip`) is written here: stored, entries in name order, each dated with the compare's minute
+  (DOS time) and `0600` (made on Unix), so one compare gives one set of bytes; a test reads it back with the C2 reader
+  (`RosterZip`). It's named `classroom-changes-<domain>-<yyyymmddhhmm>.zip` (GamGUI's `_zip_name`).
+- **Saved, never opened:** **Download the Hand-over…** is a save panel; `RosterCompare.handOver` writes through
+  `AuditExport.writePrivately(bytes:to:)` (0600, created exclusively, never through a link, whole or not at all) and
+  audits `roster_handover` (when compared, the kept changes' counts, the flagged kinds included; never a row). The
+  statement comes before the button (C4.3): the files run outside GAM GUI's preview, confirmation and audit log, and
+  Classroom support hasn't been checked on a real school domain. A flagged kind is a checkbox to include it; any other
+  kind asked for is ignored.
+- **Compare Again** (C4.4) reads Classroom again: what's left is what didn't happen.
+- **Snapshots**: `classroom-compare` and `narrow-classroom-compare` (`SWIFTGAMGUI_TAB=compare`): the demo roster compared
+  with the mock's Classroom before the picture (`Spikes`): a rename, adds, a create, the hand-over's statement. Not run
+  locally (a hook blocks launching the app); CI renders them.
+
 ## Deviations from GamGUI (each tested)
+- **The compare:** one read of the directory, fresh, every compare (GamGUI uses its user cache within its TTL); an empty
+  directory is taken as unread, never as "nobody has an account". An unknown-owner exit 56 is accepted as the C1 reads
+  accept it (`Classroom.records`; the owner reads as not read, so the plan notes it): GamGUI's `classroom_state` runs
+  without that rule and fails the whole compare on one deleted owner. The compare is also audited (`roster_compare`);
+  GamGUI lists it only in its jobs tray.
+- **The hand-over is saved through a save panel**, not a browser download, and its ZIP is stored, not deflated: the ZIP's
+  bytes differ from GamGUI's; every file inside is the same.
+- **The screen says "GAM GUI"** where the planner's sentences say "GamGUI"; the hand-over's files keep "GamGUI" (they are
+  the two apps' shared contract).
+- **Flagged kinds are ticked, then one download** (GamGUI has a second link that includes every flagged kind).
 - **The roster reader refuses what `zipfile` would read, where a roster export never needs it** (`roster.json` marks each
   `swift: refused`, or the Swift tests hold it): ZIP64 (said in its own sentence; a full 32-bit size or offset counts), a
   NUL in a member's name (`zipfile` cuts the name at it; here it isn't a plain file name), BZIP2 and LZMA members (only
@@ -214,6 +313,6 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   `$GAM_MOCK_STATE/noclassroom` is a token without the scopes, `classroom_silent` GAM answering nothing.
 
 ## Testing / live-verification status
-Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The roster's parity
-fixture is regenerated with the others (`scripts/gen_fixtures.py` against a pinned GamGUI clone); never hand-edit it. **Never run live, and can't be here:** the
+Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The roster's, the
+change list's and the hand-over's parity fixtures are regenerated with the others (`scripts/gen_fixtures.py` against a pinned GamGUI clone); never hand-edit it. **Never run live, and can't be here:** the
 operator has no Education domain (plan E1).

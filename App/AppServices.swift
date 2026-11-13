@@ -161,7 +161,9 @@ struct AppServices {
                            personDevices: PersonDeviceReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            classroom: ClassroomReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
-                           roster: RosterKeeper(store: roster, auditURL: auditURL, setup: setup),
+                           roster: RosterKeeper(store: roster, auditURL: auditURL, setup: setup,
+                                                compare: RosterCompare(setup: setup, access: UserAccess(setup: setup, runner: runner),
+                                                                       store: roster, auditURL: auditURL)),
                            knownSignIns: knownSignIns,
                            nobodyHas: nobodyHas,
                            incidents: incidents,
@@ -221,10 +223,11 @@ struct AppServices {
     }
 
     /// The demo's kept roster: a store in a fresh temporary folder each launch, never the operator's. For Plan an Import's
-    /// snapshots (`SWIFTGAMGUI_TAB=import`), `Tests/Fixtures/demo/roster`'s OneRoster export read into it for example.com.
+    /// snapshots (`SWIFTGAMGUI_TAB=import`, and `compare`, which compares it with the mock's Classroom), `Tests/Fixtures/demo/roster`'s
+    /// OneRoster export read into it for example.com.
     private static func demoRoster(beside mock: URL?) -> RosterStore {
         let store = RosterStore(root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roster-\(UUID().uuidString)"))
-        if Screen.initial == .classroom, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "import",
+        if Screen.initial == .classroom, ["import", "compare"].contains(ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]),
            let folder = mock?.deletingLastPathComponent().appending(path: "demo/roster") {
             RosterKeeper.seedForDemo(store, from: folder)
         }

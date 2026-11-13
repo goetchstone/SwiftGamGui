@@ -26,7 +26,7 @@ let package = Package(
         .target(name: "Stores", dependencies: ["GamEngine"]),
         .target(name: "Assist"),
         .target(name: "Setup", dependencies: ["GamEngine", "Vault"]),
-        .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault", "ChangeCore"]),
+        .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault", "ChangeCore", "Stores"]),
         .target(name: "TestSupport", dependencies: ["GamEngine", "Vault"]),
         .testTarget(name: "GamEngineTests", dependencies: ["GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "VaultTests", dependencies: ["Vault"]),

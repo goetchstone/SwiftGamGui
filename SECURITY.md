@@ -75,6 +75,12 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   **Purge**; a half-written copy is swept, and one a quit or crash left is swept at the next launch. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it
   at rest. GAM GUI never sends it anywhere and never writes to Classroom; the import and the purge are audited as local
   events, never with a row.
+- **The Classroom hand-over runs outside GAM GUI, and the screen says so before the button.** Compare with Classroom only
+  reads; the change list is held in memory for that tenant and roster. Download the Hand-over saves a ZIP (README, a
+  formula-safe review sheet, and a numbered CSV per kind with the `gam csv` line that runs it) as a `0600` file, never
+  opened, and audits what was handed over (counts and the held-back kinds included), never a row. Whoever runs those
+  files with GAM does so outside GAM GUI's preview, guard and audit log, and the commands haven't been run on a real
+  school domain. The ZIP lists students' addresses: keep it as you would the roster export.
 - **The vendored `gam` is checksum-pinned and fails closed.** `scripts/bump_gam.py` writes a pin only
   after GitHub's build attestation shows GAM-team's release workflow built it.
 - **Every GitHub Action is pinned by commit SHA**, and the fuzzing container by digest.

@@ -18,7 +18,7 @@ struct ClassroomView: View {
         /// The part a launch opens on: Classes, or in debug builds Plan an Import with `SWIFTGAMGUI_TAB=import` (snapshots).
         static var initial: Part {
             #if DEBUG
-            if ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "import" { return .plan }
+            if ["import", "compare"].contains(ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]) { return .plan }
             #endif
             return .classes
         }

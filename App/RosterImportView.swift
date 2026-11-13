@@ -1,5 +1,6 @@
 import AppKit
 import ChangeCore
+import Directory
 import Foundation
 import GamEngine
 import Setup
@@ -34,9 +35,14 @@ final class RosterKeeper {
 
     static let moved = "GAM GUI switched to another domain while the file was read, so nothing was kept. Pick it again on its domain."
 
-    init(store: RosterStore, auditURL: URL, setup: SetupModel) {
+    /// Compare with Classroom (C3) and the hand-over (C4): its change list is of the roster kept now, so a new one or a
+    /// purge drops it.
+    let compare: RosterCompare
+
+    init(store: RosterStore, auditURL: URL, setup: SetupModel, compare: RosterCompare) {
         self.store = store
         self.auditURL = auditURL
+        self.compare = compare
         // A switch made anywhere (Setup, a reconnect) drops the last domain's roster and its students' issue rows at
         // once, not when Plan an Import next appears: nothing of one domain is held, or drawn, under another.
         setup.onTenantChange { [weak self] in self?.forget() }
@@ -135,6 +141,7 @@ final class RosterKeeper {
             case .failure(let failure):
                 refusal = failure.message
             case .success(let auditProblem):
+                compare.drop()
                 notice = auditProblem
                 justRead = true
                 await reload(domain)
@@ -165,6 +172,7 @@ final class RosterKeeper {
         case .failure(let failure):
             refusal = failure.message
         case .success(let (deleted, auditProblem)):
+            compare.drop()
             notice = (deleted ? "The kept roster was deleted from this Mac." : "There was no roster kept to delete.")
                 + (auditProblem.map { " \($0)" } ?? "")
             announce(notice ?? "")
@@ -222,7 +230,7 @@ extension RosterStore.Failure {
 }
 
 /// Plan an Import (GamGUI's `classroom_import.html` and `_roster_kept.html`): the picker and what to export beside the
-/// kept roster's counts and its problems for the SIS team.
+/// kept roster's counts, its problems for the SIS team, and Compare with Classroom with its hand-over (`RosterCompareView`).
 struct RosterImportView: View {
     let setup: SetupModel
     let roster: RosterKeeper
@@ -316,6 +324,9 @@ struct RosterImportView: View {
             } else if let meta = roster.meta {
                 summary(meta)
                 problems
+                Divider()
+                RosterCompareView(compare: roster.compare, meta: meta)
+                Divider()
                 purge
             } else {
                 Text("No roster is kept on this Mac. Choose your SIS's export to read it.").foregroundStyle(.secondary)

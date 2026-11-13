@@ -39,6 +39,12 @@ GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned
   Tests/Fixtures/roster.json      GamGUI's roster reader (read_upload) over the packages its tests build and more:
                                   every refusal in its words, or the snapshot and its issues. The inputs are kept as
                                   base64, with any cap a case lowers; a case marked `swift` is a listed deviation.
+  Tests/Fixtures/roster_plan.json GamGUI's change list (roster_plan.plan) over every call its planner tests make and the
+                                  web tests' compare: each call's inputs and its ChangeList (changes, counts, flags, notes,
+                                  summary), with what roster_handover hands over for it; alias_for and managed_from too.
+  Tests/Fixtures/roster_handover.json and handover/  GamGUI's hand-over files for its byte test's list (handover/ equals
+                                  GamGUI's own tests/fixtures/handover byte for byte), each step's gam csv line, and the
+                                  files for a list of values Python's csv writer treats specially.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary,
                                   plus GamGUI's own constants that branch on it.
 
@@ -2458,6 +2464,176 @@ def roster_fixture(gamgui: Path) -> dict:
     return {"cases": cases}
 
 
+def roster_plan_fixture(gamgui: Path) -> dict:
+    """GamGUI's change list (core/roster_plan.py, plan C3) and its hand-over (core/roster_handover.py, C4), recorded by
+    running GamGUI's own tests: `plan` is wrapped while every synchronous test in tests/test_roster_plan.py runs, so each
+    call's inputs (the snapshot, the Classroom classes as read, the directory, the unread count, the risk limits) and its
+    ChangeList are kept as plain JSON. The compare test_roster_web.py makes end to end is recorded too: the SIS files it
+    uploads read by `read_upload`, and Classroom read by `managed_from` from GamGUI's own mock (never GAM), plain and with
+    the limits its flagged test lowers. Each case also keeps what `roster_handover.build` hands over for it (every file's
+    text, or the refusal's words), with the flagged kinds left out and then ticked, and `kept_changes`' indexes.
+
+    Also `alias_for` over IDs plain and not, and `managed_from` over the alias and roster cells its tests read and more."""
+    import tempfile
+
+    from gamgui.core import roster as roster_mod
+    from gamgui.core import roster_handover as handover
+    from gamgui.core import roster_plan
+    from gamgui.core.gam.commands import GAMCommands
+    from gamgui.core.gam.runner import strip_cfgdir_noise
+    from tests import test_roster as tr
+    from tests import test_roster_plan as tp
+    from tests import test_roster_web as tw
+
+    def snapshot(snap) -> dict:
+        return {"terms": [[t.id, t.title] for t in snap.terms.values()],
+                "classes": [[c.id, c.title, list(c.term_ids)] for c in snap.classes.values()],
+                "people": [[p.id, p.role, p.email] for p in snap.people.values()],
+                "enrollments": [[e.class_id, e.person_id, e.role, e.primary] for e in snap.enrollments]}
+
+    def managed(m) -> dict:
+        c = m.course
+        return {"course": {"id": c.id, "name": c.name, "section": c.section, "state": c.state,
+                           "owner_email": c.owner_email},
+                "aliases": list(m.aliases), "teachers": list(m.teachers), "students": list(m.students)}
+
+    def handed(out, include) -> dict:
+        try:
+            files = handover.build(out, "example.com", "2026-11-11 18:00 UTC", include)
+        except handover.HandoverError as exc:
+            return {"error": type(exc).MESSAGE}
+        return {"files": {name: body.decode("utf-8") for name, body in sorted(files.items())}}
+
+    def result(out) -> dict:
+        kept = handover.kept_changes(out)
+        everything = handover.kept_changes(out, list(out.flags))
+        return {"changes": [change_row(c) for c in out.changes], "counts": dict(out.counts), "flags": dict(out.flags),
+                "notes": list(out.notes), "summary": out.summary(), "managed": out.managed, "enrolled": out.enrolled,
+                "unmanaged_ignored": out.unmanaged_ignored, "incomplete": out.incomplete,
+                "kept": [out.changes.index(c) for c in kept],
+                "kept_with_flagged": [out.changes.index(c) for c in everything],
+                "handover": handed(out, ()), "handover_with_flagged": handed(out, list(out.flags))}
+
+    cases: list = []
+    real_plan = roster_plan.plan
+
+    def record(name: str, snap, classroom, directory=None, unread=0):
+        entry = {"name": name, "snapshot": snapshot(snap), "classroom": [managed(m) for m in classroom],
+                 "directory": None if directory is None else sorted(directory), "unread": unread,
+                 "limits": {k: list(v) for k, v in roster_plan.LIMITS.items()}}
+        out = real_plan(snap, classroom, directory, unread)
+        entry["expect"] = result(out)
+        cases.append(entry)
+        return out
+
+    # 1. Every synchronous test of the planner, its `plan` calls recorded.
+    for test_name, fn in sorted(vars(tp).items()):
+        if not test_name.startswith("test_") or inspect.iscoroutinefunction(fn) or inspect.signature(fn).parameters:
+            continue
+        calls = [0]
+
+        def wrapped(snap, classroom, directory=None, unread=0, _name=test_name, _calls=calls):
+            _calls[0] += 1
+            return record(f"{_name} #{_calls[0]}", snap, classroom, directory, unread)
+        tp.plan = wrapped
+        try:
+            fn()
+        finally:
+            tp.plan = real_plan
+    if len(cases) < 20:
+        raise SystemExit(f"only {len(cases)} plan() calls recorded from tests/test_roster_plan.py")
+
+    # 2. The web tests' compare: their SIS files read, and Classroom read from GamGUI's mock as classroom_state reads it.
+    fixtures = gamgui / "tests" / "fixtures"
+
+    def mock(argv) -> str:
+        with tempfile.TemporaryDirectory() as cfg:
+            for name, body in (("oauth2service.json", '{"client_id": "x"}'), ("oauth2.txt", '{"refresh_token": "x"}'),
+                               ("client_secrets.json", "{}")):
+                Path(cfg, name).write_text(body)
+            env = {"PATH": "/usr/bin:/bin", "GAMCFGDIR": cfg, "GAM_MOCK_FIXTURES": str(fixtures)}
+            run = subprocess.run(["/bin/sh", str(fixtures / "mock_gam.sh"), *argv], capture_output=True, text=True,
+                                 env=env, check=False)
+            if run.returncode != 0:
+                raise SystemExit(f"GamGUI's mock refused {argv}: {run.stderr}")
+            return strip_cfgdir_noise(run.stdout, Path(cfg))   # as GamGUI's runner reads it
+
+    states = ("active", "provisioned", "archived")
+    courses = parse_records(mock(GAMCommands.print_courses(states=states, aliases=True)))
+    people = parse_records(mock(GAMCommands.print_all_course_participants(states)))
+    classroom, unread = roster_plan.managed_from(courses, people)
+    if unread:
+        raise SystemExit(f"GamGUI's mock left classes unread: {unread}")
+    directory = {str(r.get("primaryEmail") or "").lower() for r in parse_records(mock(GAMCommands.print_users()))}
+    web = tr._files(**{"classes.csv": tw.SIS_CLASSES, "users.csv": tw.SIS_USERS, "enrollments.csv": tw.SIS_ENROLL})
+    snap = roster_mod.read_upload(list(web.items()))
+    flagged = {"remove_student": (0, 0.0), "remove_teacher": (99, 1.0), "archive": (99, 1.0)}
+    for name, limits in (("test_roster_web compare", None), ("test_roster_web flagged", flagged)):
+        saved = roster_plan.LIMITS
+        try:
+            if limits is not None:
+                roster_plan.LIMITS = limits
+            out = record(name, snap, classroom, directory, len(unread))
+        finally:
+            roster_plan.LIMITS = saved
+        if limits is None and out.summary() != "Would remove 1 person; would create 1 class, add 1 person and rename 2 classes.":
+            raise SystemExit(f"the web compare planned {out.summary()!r}, not what test_roster_web asserts")
+
+    # 3. The pieces: alias_for, and managed_from over the cells its tests read (and more GAM could print).
+    alias_ids = ["C-101.a_b", "class #1 / ünï", "C1", "x" * 80, "x" * 81, "a b", "é", "OLD", "C/1",
+                 "d:gg-x", "\U0001F600", "x.y-z_0", "é", "C1\n", "ı"]
+    aliases = [[i, roster_plan.alias_for(i)] for i in alias_ids]
+    row = {"courseId": "9", "courseName": "X", "JSON-teachers": "[]", "JSON-students": "[]"}
+    cells = ['[{"alias": "d:gg-C9"}, {"alias": "d:other"}]', '[{"etag": "x"}]', '["d:gg-C9"]', "{oops", "[]",
+             '{"alias": "d:gg-C9"}', '[{"alias": ""}]', '[{"alias": 7}]', "[null]", '[["d:gg-C9"]]', '"d:gg-C9"',
+             '[{"alias": "gg-C9"}]', None]
+    managed_cases = []
+    for cell in cells:
+        rec = {"id": "9", "name": "X"} | ({} if cell is None else {"JSON-aliases": cell})
+        for participants in ([row], [], [{**row, "JSON-students": "{bad"}],
+                             [{**row, "JSON-students": '[{"profile": {"name": {"fullName": "No Address"}}}]'}]):
+            got, unread_ids = roster_plan.managed_from([rec], participants)
+            managed_cases.append({"courses": [rec], "participants": participants,
+                                  "managed": [managed(m) for m in got], "unread": unread_ids})
+    return {"cases": cases, "web_reads": {"courses": courses, "participants": people, "directory": sorted(directory)},
+            "alias_for": aliases, "managed_from": managed_cases}
+
+
+def change_row(c) -> list:
+    """A planner `Change` as the fixtures keep it: its fields in their order."""
+    return [c.kind, c.alias, c.title, c.person, c.before, c.after, c.course_id, c.swap, c.late, c.name, c.section]
+
+
+def handover_fixture(gamgui: Path) -> dict:
+    """GamGUI's hand-over (core/roster_handover.py) over the list its byte test uses (tests/test_roster_handover.py's
+    `_plan`, every kind with a district's awkward values), dated as that test dates it. The files go to
+    Tests/Fixtures/handover/ only when they equal GamGUI's own tests/fixtures/handover/ byte for byte. Also each step's
+    `gam csv` line, and the files for a list of values Python's csv writer and csv_safe treat specially."""
+    from gamgui.core import roster_handover as handover
+    from gamgui.core.roster_plan import Change, ChangeList
+    from tests import test_roster_handover as th
+
+    files = handover.build(th._plan(), "example.com", "2026-11-11 18:00 UTC")
+    theirs = {p.name: p.read_bytes() for p in (gamgui / "tests" / "fixtures" / "handover").iterdir()}
+    if theirs != files:
+        raise SystemExit("GamGUI's roster_handover no longer writes its own tests/fixtures/handover byte for byte")
+    odd = ["", " lead", "trail ", "a\nb", "a\rb", "a\r\nb", 'q"uote', "comma,", "\tTab", "=SUM(A1)", "+1", "-1", "@x",
+           "\rCR", "'already", "café", "é", "\U0001F600", "back\\slash", "semi;colon", "\u2028"]
+    changes = [Change("create", f"d:gg-V{i}", v or "Untitled", person="ann@x.com", after=v, name=v, section=v)
+               for i, v in enumerate(odd)]
+    changes += [Change("rename", f"d:gg-R{i}", v, before=v, after=v, name=v, section="", course_id="1")
+                for i, v in enumerate(odd)]
+    changes += [Change("archive", v, v or "Unnamed") for v in ("", "a,b")]
+    odd_list = ChangeList(changes=changes)
+    for c in changes:
+        odd_list.counts[c.kind] = odd_list.counts.get(c.kind, 0) + 1
+    odd_files = handover.build(odd_list, "exämple.com", "2026-11-11 18:00 UTC")
+    return {"files": files,
+            "lines": {s.file: handover.gam_line(s) for s in handover.STEPS},
+            "odd": {"changes": [change_row(c) for c in changes],
+                    "files": {name: body.decode("utf-8") for name, body in sorted(odd_files.items())}}}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -2714,9 +2890,24 @@ def main() -> int:
     roster_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_fixture(gamgui)
     emit("roster.json", json.dumps(roster_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"roster.json: {len(roster_doc['cases'])} packages")
+    # The change list (C3) and its hand-over (C4): GamGUI's plan over every call its tests make, and the hand-over's bytes.
+    plan_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_plan_fixture(gamgui)
+    emit("roster_plan.json", json.dumps(plan_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"roster_plan.json: {len(plan_doc['cases'])} change lists")
+    handover_doc = handover_fixture(gamgui)
+    handover_files = handover_doc.pop("files")
+    emit("roster_handover.json", json.dumps({"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}}
+                                            | handover_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"handover/: {len(handover_files)} files, GamGUI's own byte for byte")
     csv_as_the_build_writes(oracle)
     for name, text in pending:
         (OUT / name).write_text(text)
+    # The hand-over's bytes, written as they are (CRLF kept): the folder holds exactly GamGUI's files.
+    (OUT / "handover").mkdir(exist_ok=True)
+    for old in (OUT / "handover").iterdir():
+        old.unlink()
+    for name, body in handover_files.items():
+        (OUT / "handover" / name).write_bytes(body)
     print(f"CSV: {len(CSV_WRITTEN)} writes, byte for byte as the build's CPython {oracle.version} writes them")
     return 0
 

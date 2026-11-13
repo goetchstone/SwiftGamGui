@@ -34,6 +34,8 @@ status=0
 # calendar field), then alice's classes; person-classes is alice's page with her classes read (tab `classes`, on Profile, scrolled to them).
 # classroom-import is Classroom's Plan an Import (tab `import`) with the demo's OneRoster export
 # (Tests/Fixtures/demo/roster) kept for example.com in a temporary store: its counts and its problems for the SIS team.
+# classroom-compare is the same roster compared with the mock's Classroom (tab `compare`, read before the picture): the change
+# list, its kinds, and the hand-over's statement and button (C3, C4); nothing is handed over or run.
 # Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. Onboard opens on the demo role
@@ -110,6 +112,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
             narrow-classroom-class:classroom:::smallest::500000000002 \
             classroom-import:classroom::import narrow-classroom-import:classroom::import:smallest \
+            classroom-compare:classroom::compare:1100x1100 narrow-classroom-compare:classroom::compare:smallest \
             person-classes:users:alice@example.com:classes:1100x940 narrow-person-classes:users:alice@example.com:classes:smallest \
             offboard-classes:offboard:alice@example.com:plan \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \

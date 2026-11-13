@@ -1,4 +1,5 @@
 import AppKit
+import Directory
 import Foundation
 import GamEngine
 import Setup
@@ -51,6 +52,8 @@ enum Spikes {
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "usage" { await services.usage.load() }
                     // …and its connected apps (`apps`): every account's, from the mock's tokens.
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "apps" { await services.connectedApps.read() }
+                    // Plan an Import compared with the mock's Classroom (`SWIFTGAMGUI_TAB=compare`): the demo roster's change list.
+                    if Screen.initial == .classroom, environment["SWIFTGAMGUI_TAB"] == "compare" { await services.roster.compare.compare() }
                 } else {
                     await setup.checkAccess(Domain("example.org")!)
                 }
