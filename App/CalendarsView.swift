@@ -336,6 +336,13 @@ private struct CalendarPage: View {
                               max: ColumnWidths.inspector.max)
         // A quarter second later, so arrowing down the list starts no gam for the calendars passed over.
         .task(id: row.id) { await reads.load(read, after: .milliseconds(250)) }
+        // The data owner the Delete section decides from, read once per page open: on the page, not on its section, which the
+        // lazy List would start again whenever it scrolled back into view. Later too, for the same reason as the access.
+        .task(id: row.id) {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            await changes.lookUpOwner(of: row.id)
+        }
         .onChange(of: row.id) { target = "" }
         // A preview still reading (a group's members) is for what the form said then: it's dropped, never shown.
         .onChange(of: "\(row.id)#\(target)#\(role)") { changes.edited() }
@@ -769,8 +776,9 @@ private struct EventRow: View {
     }
 }
 
-/// GamGUI's danger zone (`_calendar_detail.html`): on a secondary calendar with an owner who is still active, what a
-/// delete costs and the button; otherwise why it can't be deleted here. Nothing on a primary, room or holiday calendar.
+/// GamGUI's danger zone (`_calendar_detail.html`): on a secondary calendar, the data owner read when the page opens (the
+/// owner the delete acts as, `CalendarChanges.lookUpOwner`); while that account is active, what a delete costs and the
+/// button; otherwise why it can't be deleted here, in the preview's own words. Nothing on a primary, room or holiday calendar.
 struct CalendarDeleteSection: View {
     let calendarID: String
     let calendarName: String
@@ -781,18 +789,35 @@ struct CalendarDeleteSection: View {
         if CalendarDeletion.isSecondary(calendarID) {
             Section("Delete this calendar") {
                 if let active = changes.activeAddresses {
-                    if let note = CalendarDeletion.note(for: calendarID, rules: rules, active: active) {
-                        Text(note).foregroundStyle(.secondary)
-                    } else {
-                        Text("Permanently delete this calendar. It's removed for everyone with access (\(rules.count) access "
-                            + "rule\(rules.count == 1 ? "" : "s") above) and can't be undone \u{2014} make sure it's truly unused, "
-                            + "not an active shared calendar.")
-                        Button("Delete This Calendar…", role: .destructive) {
-                            Task { await changes.previewDeleteCalendar(calendarID: calendarID, name: calendarName) }
+                    switch changes.ownerLookup(for: calendarID) {
+                    case nil, .reading?:
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("Checking who owns this calendar\u{2026}").foregroundStyle(.secondary)
                         }
-                        .disabled(changes.isBusy)
-                        .accessibilityLabel("Delete \(calendarName) for everyone")
-                        .accessibilityHint("Shows what is deleted first, and asks you to type DELETE.")
+                        .accessibilityElement(children: .combine)
+                    case .gone?:
+                        Text(CalendarChanges.calendarGone).foregroundStyle(.secondary)
+                    case .failed(let problem)?:
+                        Text("Couldn't check who owns this calendar, so it can't be deleted here yet. \(problem.summary)")
+                            .foregroundStyle(.secondary)
+                        Button("Check Again") { Task { await changes.lookUpOwner(of: calendarID) } }
+                            .accessibilityHint("Reads who owns this calendar again.")
+                    case .read(let dataOwner)?:
+                        switch CalendarDeletion.owner(of: calendarID, dataOwner: dataOwner, active: active) {
+                        case .refused(let why):
+                            Text(why).foregroundStyle(.secondary)
+                        case .owner(let owner):
+                            Text("Permanently delete this calendar. It's removed for everyone with access (\(rules.count) access "
+                                + "rule\(rules.count == 1 ? "" : "s") above) and can't be undone \u{2014} make sure it's truly unused, "
+                                + "not an active shared calendar. It's deleted acting as its owner, \(owner).")
+                            Button("Delete This Calendar\u{2026}", role: .destructive) {
+                                Task { await changes.previewDeleteCalendar(calendarID: calendarID, name: calendarName) }
+                            }
+                            .disabled(changes.isBusy)
+                            .accessibilityLabel("Delete \(calendarName) for everyone")
+                            .accessibilityHint("Shows what is deleted first, and asks you to type DELETE.")
+                        }
                     }
                 } else {
                     Text("Load the directory (Home or Users) to check who owns this calendar before deleting it.")

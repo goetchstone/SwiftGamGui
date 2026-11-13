@@ -183,6 +183,75 @@ public final class CalendarChanges {
         serial += 1
     }
 
+    /// A secondary calendar's data owner as its page last read it (GamGUI's `delete_note`, which reads `dataOwner` on each
+    /// page open): the page offers Delete only when the preview would act as that owner, so the two never disagree.
+    public enum OwnerLookup: Sendable {
+        case reading
+        /// The data owner Google names, or nil when it names none.
+        case read(String?)
+        /// Google has no such calendar.
+        case gone
+        case failed(Problem)
+    }
+
+    /// Lookups for the tenant they were read on (`lookupsGeneration`), by normalized calendar ID. Each read (the page's or the
+    /// preview's) takes the next number for its calendar, and only the newest read's answer is kept: a slower older one never
+    /// replaces it.
+    private var ownerLookups: [String: OwnerLookup] = [:]
+    private var ownerReadNumbers: [String: Int] = [:]
+    private var lookupsGeneration = -1
+
+    /// Starts a data owner read of `key` on the lookups' tenant, clearing another tenant's first: its number.
+    private func beginOwnerRead(_ key: String) -> Int {
+        if lookupsGeneration != setup.generation {
+            ownerLookups = [:]; ownerReadNumbers = [:]; lookupsGeneration = setup.generation
+        }
+        let number = (ownerReadNumbers[key] ?? 0) + 1
+        ownerReadNumbers[key] = number
+        return number
+    }
+
+    /// What the page knows of `calendarID`'s data owner on the active tenant, or nil before it is looked up.
+    public func ownerLookup(for calendarID: String) -> OwnerLookup? {
+        lookupsGeneration == setup.generation ? ownerLookups[Guard.normalized(calendarID)] : nil
+    }
+
+    /// Reads `calendarID`'s data owner for its page (`print settings fields id,dataowner`, the read the preview makes),
+    /// once per call: the page calls it when it opens and on Check Again. A lookup already reading isn't doubled.
+    public func lookUpOwner(of calendarID: String) async {
+        guard CalendarDeletion.isSecondary(calendarID) else { return }
+        let generation = setup.generation
+        let key = Guard.normalized(calendarID)
+        if lookupsGeneration == generation, case .reading = ownerLookups[key] { return }
+        let number = beginOwnerRead(key)
+        guard let domain = setup.active, let runner else {
+            ownerLookups[key] = .failed(Problem("Connect a domain on Setup first."))
+            return
+        }
+        ownerLookups[key] = .reading
+        let read = await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment)
+        // The page closed or moved on (its task cancelled, so GAM was stopped): nothing was learned, and the next open reads.
+        if Task.isCancelled || read.isCancelled {
+            if lookupsGeneration == generation, ownerReadNumbers[key] == number, case .reading = ownerLookups[key] {
+                ownerLookups[key] = nil
+            }
+            return
+        }
+        guard setup.generation == generation else { return }
+        remember(read, for: key, number: number)
+    }
+
+    /// Keeps a data owner read as the page's lookup when it is the newest read of that calendar on the lookups' tenant.
+    private func remember(_ read: OwnerRead, for key: String, number: Int) {
+        guard lookupsGeneration == setup.generation, ownerReadNumbers[key] == number else { return }
+        switch read {
+        case .owner(let owner): ownerLookups[key] = .read(owner)
+        case .gone: ownerLookups[key] = .gone
+        case .failed(let problem): ownerLookups[key] = .failed(problem)
+        case .cancelled: break
+        }
+    }
+
     /// The directory's active people, lowercased (GamGUI's `_active_emails`), or nil before it is loaded.
     public var activeAddresses: Set<String>? {
         directory.users.map { users in Set(users.filter { !$0.suspended }.map { PythonText.lower($0.primaryEmail) }) }
@@ -343,7 +412,11 @@ public final class CalendarChanges {
         guard let rules = reads.access(read) else { return refuse("Couldn't read who has access to \(name), so nothing was previewed.") }
         guard let domain = tenant?.domain, let runner else { return refuse("Connect a domain on Setup first.") }
         let dataOwner: String?
-        switch await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment) {
+        let ownerKey = Guard.normalized(calendarID), ownerNumber = beginOwnerRead(ownerKey)
+        let ownerRead = await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment)
+        if setup.generation == tenant?.generation { remember(ownerRead, for: ownerKey, number: ownerNumber) }
+        switch ownerRead {
+        case .cancelled: return
         case .owner(let found): dataOwner = found
         case .gone:
             guard isCurrent(serial) else { return }
@@ -378,6 +451,7 @@ public final class CalendarChanges {
             guard let runner else { throw PreconditionRefusal("Connect a domain on Setup first.") }
             switch await Self.readDataOwner(calendarID, runner: runner, domain: domain, environment: environment) {
             case .gone: throw PreconditionRefusal(Self.calendarGoneAtRun)
+            case .cancelled: throw PreconditionRefusal("Stopped before the calendar was deleted \u{2014} nothing was deleted.")
             case .failed(let problem):
                 throw PreconditionFailure("Couldn't check who owns the calendar before deleting it. \(problem.summary)")
             case .owner(let found):
@@ -416,6 +490,10 @@ public final class CalendarChanges {
         case gone
         /// Couldn't read it: the remediation in `summary`, GAM's line in `detail`.
         case failed(Problem)
+        /// The task that asked was cancelled (GAM was stopped): no answer, and never shown as a failure.
+        case cancelled
+
+        var isCancelled: Bool { if case .cancelled = self { true } else { false } }
     }
 
     /// The calendar's data owner read now (`print settings fields id,dataowner`): GAM's `Owner`, Google's `dataOwner`.
@@ -431,6 +509,8 @@ public final class CalendarChanges {
             }
             guard !output.stdoutTruncated else { return .failed(Problem("GAM's answer was longer than one call can return.")) }
             return .owner(CalendarDeletion.dataOwner(GamOutput.records(output.stdout)))
+        } catch is CancellationError {
+            return .cancelled
         } catch {
             let problem = DirectoryStore.problem(for: error, argv: command.argv)
             return .failed(Problem(problem.summary, detail: problem.detail))
@@ -672,6 +752,7 @@ public final class CalendarChanges {
             state = .done(Done(message: "Removed access for \(who).\(note)", partial: false))
         case (.deleteCalendar, .succeeded, _):
             reads.forget(calendar: pending.calendarID)
+            ownerLookups[Guard.normalized(pending.calendarID)] = nil
             state = .done(Done(message: "Calendar deleted: \u{201C}\(pending.calendarName)\u{201D}.\(note)", partial: false,
                                deletedCalendar: pending.calendarID))
         case (.deleteEvent, .succeeded, _):

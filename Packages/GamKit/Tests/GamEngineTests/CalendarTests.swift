@@ -195,14 +195,6 @@ struct CalendarTests {
             #expect(!CalendarDeletion.isSecondary(id), "\(id)")
         }
         let cal = "c_x@group.calendar.google.com"
-        let rules = [#"{"id": "user:c_x@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_x@group.calendar.google.com"}}"#,
-                     #"{"id": "user:Bob@example.com", "role": "owner", "scope": {"type": "user", "value": "Bob@example.com"}}"#,
-                     #"{"id": "group:g@example.com", "role": "owner", "scope": {"type": "group", "value": "g@example.com"}}"#,
-                     #"{"id": "user:carol@example.com", "role": "OWNER", "scope": {"type": "user", "value": "carol@example.com"}}"#,
-                     #"{"id": "user:bob@example.com", "role": "owner", "scope": {"type": "user", "value": "bob@example.com"}}"#,
-                     #"{"id": "user:dana@example.com", "role": "writer", "scope": {"type": "user", "value": "dana@example.com"}}"#]
-            .map { CalendarACL(record: Self.record($0)) }
-        #expect(CalendarDeletion.ownerCandidates(rules, calendarID: cal) == ["Bob@example.com", "carol@example.com"])
         // The delete acts as the data owner only (a listed difference from GamGUI's first active owner rule): never a co-owner
         // instead, whatever the rules' order.
         #expect(CalendarDeletion.owner(of: cal, dataOwner: " carol@example.com ", active: ["carol@example.com", "bob@example.com"])
@@ -220,9 +212,6 @@ struct CalendarTests {
                 == "carol@example.com")
         #expect(CalendarDeletion.dataOwner(GamOutput.records("calendarId,JSON\n\(cal),\"{\"\"id\"\": \"\"\(cal)\"\"}\"\n")) == nil)
         #expect(CalendarDeletion.dataOwner([]) == nil)
-        #expect(CalendarDeletion.note(for: cal, rules: rules, active: ["carol@example.com"]) == nil)
-        #expect(CalendarDeletion.note(for: cal, rules: rules, active: [])?.hasSuffix("Reassign ownership to an active user first.") == true)
-        #expect(CalendarDeletion.note(for: "alice@example.com", rules: rules, active: []) == nil)
         #expect(CalendarDeletion.typedMatches(" DELETE ") && !CalendarDeletion.typedMatches("delete") && !CalendarDeletion.typedMatches("DELETE!"))
     }
 

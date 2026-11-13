@@ -213,15 +213,17 @@ templates' words. No builder is new (each is GamGUI's, held to `argv.json`); not
 - One person still shares with the rule and the subscribe, as before (GamGUI's single-person auto-subscribe).
 
 ### Deleting a calendar (C3b)
-- The page's last section, only on a secondary calendar (`CalendarDeletion.isSecondary`, GamGUI's `_is_secondary`): GamGUI's
-  danger-zone words and Delete This Calendar…, or why it can't be (no owner but itself; owners suspended or gone), or "Load
-  the directory…" before the directory is in hand (GamGUI read it on demand).
+- The page's last section, only on a secondary calendar (`CalendarDeletion.isSecondary`, GamGUI's `_is_secondary`): the
+  data owner read when the page opens (`CalendarChanges.lookUpOwner`, the preview's own `print settings` read, one per page
+  open, as GamGUI's page does since its #124 branch), then GamGUI's danger-zone words, the owner it acts as and Delete This
+  Calendar… while that owner is active, or the preview's own words for why not (no data owner; suspended or gone), "That
+  calendar no longer exists.", or a failed read with Check Again. "Load the directory…" before the directory is in hand
+  (GamGUI read it on demand). The page and the preview decide from the same read, so a Delete button never then refuses
+  for its owner (the preview keeps what it read as the page's).
 - **The preview** reads the access again now (the sheet's rule count) and the data owner (F13, `printCalendarSettings`),
   and acts as the data owner while the directory has them active: never from the screen, never a co-owner instead. No data
   owner is GamGUI's "Couldn't find an owner account to act as…"; a suspended or deleted one is "X, the calendar's owner, is
-  suspended or no longer exists — transfer ownership to an active user, then delete." The page's note before the preview
-  still reads the owner rules (GamGUI's `delete_note`): the data owner holds an owner rule, so a calendar the note says can't
-  be deleted can't be. The step is destructive (`removeCalendar`'s floor). The sheet: GamGUI's "Permanently delete this
+  suspended or no longer exists — transfer ownership to an active user, then delete." The step is destructive (`removeCalendar`'s floor). The sheet: GamGUI's "Permanently delete this
   calendar?", the access rule count, "Runs as owner X.", a field for DELETE.
 - **The confirm:** DELETE, stripped, exact case, and the click. The word is held with the preview (`typedExactWord`) and the
   executor refuses a run without it ("Type DELETE (exactly) to run this."), as it does an offboarding's typed address;

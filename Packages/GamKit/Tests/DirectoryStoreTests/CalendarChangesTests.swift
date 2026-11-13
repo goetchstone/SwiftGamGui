@@ -728,6 +728,47 @@ final class CalendarChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// The page decides its Delete section from the data owner, read when it opens (GamGUI's `delete_note` since its #124
+    /// branch), so it never offers a Delete the preview then refuses for its owner; the preview's own read becomes the page's.
+    @Test func thePageAndThePreviewDecideFromOneDataOwner() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.lookUpOwner(of: "alice@example.com")
+        #expect(changes.ownerLookup(for: "alice@example.com") == nil, "a primary calendar is never looked up")
+        await changes.lookUpOwner(of: Self.team)
+        guard case .read(let owner)? = changes.ownerLookup(for: Self.team.uppercased()) else {
+            Issue.record("\(String(describing: changes.ownerLookup(for: Self.team)))"); return
+        }
+        #expect(owner == "alice@example.com")
+        try setDataOwner(Self.team, "bob@example.com")
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        guard case .read(let now)? = changes.ownerLookup(for: Self.team) else { Issue.record("not read"); return }
+        #expect(now == "bob@example.com", "the preview's read is the page's")
+        let gone = "c_nowhere@group.calendar.google.com"
+        await changes.lookUpOwner(of: gone)
+        guard case .gone? = changes.ownerLookup(for: gone) else {
+            Issue.record("\(String(describing: changes.ownerLookup(for: gone)))"); return
+        }
+        #expect(writes().isEmpty)
+    }
+
+    /// A page closed while its owner read runs cancels the read (GAM is stopped): that is no answer, never "Couldn't check
+    /// who owns this calendar", and leaves nothing that would stop the next open reading again (review 2026-11-13).
+    @Test func aCancelledOwnerReadIsNeverAFailure() async throws {
+        try await connect()
+        let changes = changes()
+        let task = Task { await changes.lookUpOwner(of: Self.team) }
+        task.cancel()
+        await task.value
+        switch changes.ownerLookup(for: Self.team) {
+        case nil, .read?: break
+        case let other?: Issue.record("a cancelled read left \(other)")
+        }
+        await changes.lookUpOwner(of: Self.team)
+        guard case .read(let owner)? = changes.ownerLookup(for: Self.team) else { Issue.record("the next open didn't read"); return }
+        #expect(owner == "alice@example.com")
+    }
+
     /// GamGUI's delete resolves the owner again (`_resolve_delete_owner` in `/delete`): the data owner read again, one changed
     /// since the preview is refused, and nothing is deleted.
     @Test func theRunChecksTheOwnerAgain() async throws {

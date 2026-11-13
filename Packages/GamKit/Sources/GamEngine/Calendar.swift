@@ -326,24 +326,6 @@ public enum CalendarDeletion {
         return !id.isEmpty && !id.unicodeScalars.contains("#") && id.unicodeScalars.reversed().starts(with: secondarySuffix.unicodeScalars.reversed())
     }
 
-    /// GamGUI's `_owner_candidates`: each owner rule scoped to a person's address, in GAM's order, once each, never
-    /// the calendar's own ID (a secondary calendar lists itself as an owner, F2).
-    public static func ownerCandidates(_ rules: [CalendarACL], calendarID: String) -> [String] {
-        let calendar = PythonText.lower(PythonText.strip(calendarID))
-        var found: [String] = [], seen: Set<String> = []
-        for rule in rules where rule.role == "owner" && rule.scopeType == "user" {
-            let who = PythonText.strip(rule.scopeValue), key = PythonText.lower(who)
-            guard who.unicodeScalars.contains("@"), key != calendar, seen.insert(key).inserted else { continue }
-            found.append(who)
-        }
-        return found
-    }
-
-    /// GamGUI's `_pick_owner`: the first candidate whose account is active (`active` lowercased addresses).
-    public static func pickOwner(_ candidates: [String], active: Set<String>) -> String? {
-        candidates.first { active.contains(PythonText.lower($0)) }
-    }
-
     /// Who the delete acts as, or why it can't be deleted here, in GamGUI's words (`_resolve_delete_owner`).
     public enum Owner: Equatable, Sendable {
         case owner(String)
@@ -380,19 +362,6 @@ public enum CalendarDeletion {
         return owner.isEmpty ? nil : owner
     }
 
-    /// What the page says in place of the delete button (GamGUI's `delete_note`), or nil when it can be deleted or
-    /// isn't a secondary calendar (which says nothing).
-    public static func note(for calendarID: String, rules: [CalendarACL], active: Set<String>) -> String? {
-        guard isSecondary(calendarID) else { return nil }
-        let candidates = ownerCandidates(rules, calendarID: calendarID)
-        if candidates.isEmpty {
-            return "This calendar can't be deleted here: no owner account was found to act as (its original owner may "
-                + "have been deleted)."
-        }
-        guard pickOwner(candidates, active: active) == nil else { return nil }
-        return "This calendar can't be deleted here: owner(s) \(candidates.joined(separator: ", ")) are suspended or no "
-            + "longer exist. Reassign ownership to an active user first."
-    }
 
     /// GamGUI's exact-case gate: the word typed, stripped, must be `DELETE`.
     public static let typedWord = "DELETE"
