@@ -102,13 +102,15 @@ struct AppServices {
                         knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot),
                         nobodyHas: NobodyHasChecks(root: SignatureStore.defaultRoot),
                         incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")),
-                        roster: roster)
+                        roster: roster,
+                        // Column names and role words only, beside the offboarding templates.
+                        rosterMaps: RosterMaps(root: SignatureStore.defaultRoot))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
-                                 nobodyHas: NobodyHasChecks, incidents: Incidents, roster: RosterStore,
+                                 nobodyHas: NobodyHasChecks, incidents: Incidents, roster: RosterStore, rosterMaps: RosterMaps,
                                  lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
@@ -163,7 +165,8 @@ struct AppServices {
                            classroom: ClassroomReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            roster: RosterKeeper(store: roster, auditURL: auditURL, setup: setup,
                                                 compare: RosterCompare(setup: setup, access: UserAccess(setup: setup, runner: runner),
-                                                                       store: roster, auditURL: auditURL)),
+                                                                       store: roster, auditURL: auditURL),
+                                                maps: rosterMaps),
                            knownSignIns: knownSignIns,
                            nobodyHas: nobodyHas,
                            incidents: incidents,
@@ -200,7 +203,7 @@ struct AppServices {
             (try? RuntimeDirectory.prepare(FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-run")))
                 .map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
-        return assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
+        let services = assemble(vault: Vault(store: store), gam: gam, gamgui: GamGUIKeychain { _, _ in nil },
                         setupFolderURL: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-setup"),
                         auditURL: auditURL,
                         // A fresh folder each launch, never the operator's templates, and no copy from GamGUI.
@@ -219,17 +222,39 @@ struct AppServices {
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-incidents-\(UUID().uuidString)"),
                             defaults: nil),
                         roster: demoRoster(beside: mock),
+                        rosterMaps: demoRosterMaps(beside: mock),
                         lastDomain: .memory())
+        // Plan an Import's map step (`SWIFTGAMGUI_TAB=map`): the demo spreadsheet picked, held for its map, never kept.
+        if Screen.initial == .classroom, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "map",
+           let sheet = mock?.deletingLastPathComponent().appending(path: "demo/schedule.csv") {
+            services.roster.demoPick = [sheet]
+        }
+        return services
+    }
+
+    /// The demo's saved column maps: a fresh temporary folder each launch, never the operator's. For the map step's
+    /// snapshot, one saved map that fits the demo spreadsheet (so the step opens on it, with Delete).
+    private static func demoRosterMaps(beside mock: URL?) -> RosterMaps {
+        let maps = RosterMaps(root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-maps-\(UUID().uuidString)"))
+        if Screen.initial == .classroom, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "map" {
+            _ = maps.save("District schedule", RosterColumnMap(classID: "Section ID", className: "Class Title", section: "Term",
+                                                                email: "Email Address", role: "User Type", primary: "Lead",
+                                                                teacherWords: ["teacher"], studentWords: ["student", "pupil"]))
+        }
+        return maps
     }
 
     /// The demo's kept roster: a store in a fresh temporary folder each launch, never the operator's. For Plan an Import's
     /// snapshots (`SWIFTGAMGUI_TAB=import`, and `compare`, which compares it with the mock's Classroom), `Tests/Fixtures/demo/roster`'s
-    /// OneRoster export read into it for example.com.
+    /// OneRoster export read into it for example.com; for `clever`, Clever's export (`Tests/Fixtures/roster/clever`, GamGUI's
+    /// own test files).
     private static func demoRoster(beside mock: URL?) -> RosterStore {
         let store = RosterStore(root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roster-\(UUID().uuidString)"))
-        if Screen.initial == .classroom, ["import", "compare"].contains(ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]),
-           let folder = mock?.deletingLastPathComponent().appending(path: "demo/roster") {
-            RosterKeeper.seedForDemo(store, from: folder)
+        let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
+        let folder = tab == "clever" ? "roster/clever" : "demo/roster"
+        if Screen.initial == .classroom, ["import", "compare", "clever"].contains(tab),
+           let folder = mock?.deletingLastPathComponent().appending(path: folder) {
+            RosterKeeper.seedForDemo(store, from: folder, label: tab == "clever" ? "Clever export" : "District export.zip")
         }
         return store
     }

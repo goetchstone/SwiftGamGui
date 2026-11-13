@@ -39,6 +39,10 @@ GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned
   Tests/Fixtures/roster.json      GamGUI's roster reader (read_upload) over the packages its tests build and more:
                                   every refusal in its words, or the snapshot and its issues. The inputs are kept as
                                   base64, with any cap a case lowers; a case marked `swift` is a listed deviation.
+  Tests/Fixtures/roster_mapped.json  GamGUI's Clever reader and column map (C5.2, C5.3), recorded by running its own tests:
+                                  every read_clever, read_upload, guess, preview, read_mapped, problem and from_json call
+                                  with its result or its words; header_of, the form's role words and a map name's rules.
+  Tests/Fixtures/roster/clever/   GamGUI's tests/fixtures/roster/clever/ byte for byte (checked as it's written).
   Tests/Fixtures/roster_plan.json GamGUI's change list (roster_plan.plan) over every call its planner tests make and the
                                   web tests' compare: each call's inputs and its ChangeList (changes, counts, flags, notes,
                                   summary), with what roster_handover hands over for it; alias_for and managed_from too.
@@ -2053,6 +2057,21 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
 
 
 
+def roster_snapshot(snap) -> dict:
+    """A roster `Snapshot` as the fixtures keep it: its dataclasses as lists, in their order."""
+    return {"source": snap.source,
+            "schools": [[s.id, s.name] for s in snap.schools.values()],
+            "terms": [[x.id, x.title, x.kind, x.start, x.end] for x in snap.terms.values()],
+            "courses": [[c.id, c.title, c.code, c.school_id] for c in snap.courses.values()],
+            "classes": [[c.id, c.title, c.course_id, c.school_id, list(c.term_ids), c.code, c.location]
+                        for c in snap.classes.values()],
+            "people": [[p.id, p.role, p.email, p.given, p.family] for p in snap.people.values()],
+            "enrollments": [[e.class_id, e.person_id, e.role, e.primary] for e in snap.enrollments],
+            "issue_counts": [[k, v] for k, v in snap.issue_counts.items()],
+            "issue_sample": [[i.code, i.file, i.row, i.source_id, i.detail] for i in snap.issue_sample],
+            "others": snap.others, "counts": snap.counts}
+
+
 def roster_fixture(gamgui: Path) -> dict:
     """GamGUI's `read_upload` (core/roster.py) over packages built here: every case tests/test_roster.py and the reader's
     parts of tests/test_roster_web.py make, and the ZIP and CSV shapes behind them (stored, a comment, prepended data, cp437
@@ -2074,21 +2093,10 @@ def roster_fixture(gamgui: Path) -> dict:
     caps_names = {"UPLOAD_CAP": "upload", "MEMBER_CAP": "member", "TOTAL_CAP": "total", "RATIO_CAP": "ratio",
                   "MEMBERS_CAP": "members", "CENTRAL_DIRECTORY_CAP": "centralDirectory", "MANIFEST_CAP": "manifest",
                   "COLUMNS_CAP": "columns", "LINE_CAP": "line", "ROWS_CAP": "rows", "FIELD_CAP": "field",
-                  "ISSUE_SAMPLE": "issueSample"}
+                  "ISSUE_SAMPLE": "issueSample", "HEADER_CELL_CAP": "headerCell"}
     cases: list = []
 
-    def snapshot(snap) -> dict:
-        return {"source": snap.source,
-                "schools": [[s.id, s.name] for s in snap.schools.values()],
-                "terms": [[x.id, x.title, x.kind, x.start, x.end] for x in snap.terms.values()],
-                "courses": [[c.id, c.title, c.code, c.school_id] for c in snap.courses.values()],
-                "classes": [[c.id, c.title, c.course_id, c.school_id, list(c.term_ids), c.code, c.location]
-                            for c in snap.classes.values()],
-                "people": [[p.id, p.role, p.email, p.given, p.family] for p in snap.people.values()],
-                "enrollments": [[e.class_id, e.person_id, e.role, e.primary] for e in snap.enrollments],
-                "issue_counts": [[k, v] for k, v in snap.issue_counts.items()],
-                "issue_sample": [[i.code, i.file, i.row, i.source_id, i.detail] for i in snap.issue_sample],
-                "others": snap.others, "counts": snap.counts}
+    snapshot = roster_snapshot
 
     def case(name: str, uploads, caps=None, swift: str = "") -> None:
         caps = caps or {}
@@ -2456,12 +2464,199 @@ def roster_fixture(gamgui: Path) -> dict:
     case("an unknown file picked loose", listed() + [("notes.txt", b"x")])
     case("Mac litter picked loose is ignored", listed() + [(".DS_Store", b"\x00\x01"), ("._users.csv", b"\x00")])
 
-    # --- Clever is read by the next slice: detected here, its snapshot recorded for then ---------------------------------
+    # --- Clever (C5.2): the shared fixture, picked and zipped (roster_mapped.json has every call its tests make) ----------
     clever = gamgui / "tests" / "fixtures" / "roster" / "clever"
     clever_files = [(p.name, p.read_bytes()) for p in sorted(clever.iterdir()) if p.suffix == ".csv"]
     case("Clever's CSV files", clever_files)
     case("Clever's ZIP", [("clever.zip", zipped(dict(clever_files)))])
     return {"cases": cases}
+
+
+def roster_mapped_fixture(gamgui: Path) -> dict:
+    """GamGUI's C5.2 and C5.3 readers (core/roster_clever.py, roster_mapped.py, roster_maps.py) recorded by running GamGUI's
+    own tests: every synchronous test in tests/test_roster_clever.py and tests/test_roster_mapped.py that takes no fixture
+    but its parameters runs once per parameter set, with `read_clever`, `read_upload`, `guess`, `preview`, `read_mapped`,
+    `ColumnMap.problem` and `ColumnMap.from_json` wrapped, so each call's inputs and its result (or its error's words) are
+    kept. The web tests' map step readers are recorded too (`header_of` over their sheets and more, the form's role words
+    as `_map_from` reads them), and `roster_maps._name_problem` over the store tests' names and more.
+
+    Also `clever`: GamGUI's tests/fixtures/roster/clever/ files, which main() copies to Tests/Fixtures/roster/clever/ and
+    checks byte for byte."""
+    import base64
+
+    from gamgui.core import roster, roster_maps
+    from gamgui.core import roster_mapped as mapped_mod
+    from gamgui.core.roster_mapped import ColumnMap
+    from gamgui.web.routes import roster as routes
+    from tests import test_roster_clever as tc
+    from tests import test_roster_mapped as tm
+    from tests import test_roster_web as tw
+
+    b64 = lambda body: base64.b64encode(body).decode()     # noqa: E731
+    out: dict = {"read_clever": [], "uploads": [], "guess": [], "problem": [], "from_json": [], "preview": [],
+                 "read_mapped": [], "header_of": [], "typed_words": [], "name_problem": []}
+    current = [""]
+    counter: dict = {}
+
+    def label(kind: str) -> str:
+        counter[(current[0], kind)] = counter.get((current[0], kind), 0) + 1
+        return f"{current[0]} #{counter[(current[0], kind)]}"
+
+    def outcome(call, keep):
+        try:
+            value = call()
+        except roster.PackageError as exc:
+            return {"error": str(exc)}, exc
+        except roster.NeedsMap as needs:
+            return {"needs_map": needs.name}, needs
+        return {k: v for k, v in keep(value).items()}, None
+
+    real_read_clever, real_read_upload = tc.read_clever, roster.read_upload
+    real_guess, real_preview, real_read_mapped = mapped_mod.guess, mapped_mod.preview, mapped_mod.read_mapped
+    real_problem, real_from_json = ColumnMap.problem, ColumnMap.from_json.__func__
+
+    def read_clever(files):
+        entry = {"name": label("read_clever"), "files": [[n, b64(b)] for n, b in files.items()]}
+        result, exc = outcome(lambda: real_read_clever(files), lambda s: {"snapshot": roster_snapshot(s)})
+        entry["expect"], entry["left"] = result, sorted(files)
+        out["read_clever"].append(entry)
+        if exc is not None:
+            raise exc
+        # The call recorded above consumed its files (read_clever pops them): the test gets a fresh read of the same bytes.
+        return real_read_clever({n: base64.b64decode(b) for n, b in entry["files"]})
+
+    def read_upload(uploads):
+        uploads = list(uploads)
+        entry = {"name": label("read_upload"), "uploads": [[n, b64(b)] for n, b in uploads], "caps": {}}
+        result, exc = outcome(lambda: real_read_upload(uploads), lambda s: {"snapshot": roster_snapshot(s)})
+        entry["expect"] = result
+        out["uploads"].append(entry)
+        if exc is not None:
+            raise exc
+        return real_read_upload(uploads)
+
+    def guess(header):
+        value = real_guess(header)
+        out["guess"].append({"name": label("guess"), "header": list(header), "expect": value.as_json()})
+        return value
+
+    def problem(self, header):
+        value = real_problem(self, header)
+        out["problem"].append({"name": label("problem"), "map": self.as_json(), "header": list(header), "expect": value})
+        return value
+
+    def from_json(cls, data):
+        value = real_from_json(cls, data)
+        out["from_json"].append({"name": label("from_json"), "json": data, "expect": value.as_json()})
+        return value
+
+    def preview(name, body, cmap, n=3):
+        entry = {"name": label("preview"), "file": name, "body": b64(body), "map": cmap.as_json(), "n": n}
+        result, exc = outcome(lambda: real_preview(name, body, cmap, n), lambda rows: {"rows": rows})
+        entry["expect"] = result
+        out["preview"].append(entry)
+        if exc is not None:
+            raise exc
+        return result["rows"]
+
+    def read_mapped(name, body, cmap):
+        entry = {"name": label("read_mapped"), "file": name, "body": b64(body), "map": cmap.as_json()}
+        result, exc = outcome(lambda: real_read_mapped(name, body, cmap), lambda s: {"snapshot": roster_snapshot(s)})
+        entry["expect"] = result
+        out["read_mapped"].append(entry)
+        if exc is not None:
+            raise exc
+        return real_read_mapped(name, body, cmap)
+
+    def run_tests(module) -> int:
+        ran = 0
+        for test_name, fn in sorted(vars(module).items()):
+            if not test_name.startswith("test_") or inspect.iscoroutinefunction(fn):
+                continue
+            params = list(inspect.signature(fn).parameters)
+            marks = [m for m in getattr(fn, "pytestmark", []) if m.name == "parametrize"]
+            if len(marks) > 1:
+                raise SystemExit(f"{module.__name__}.{test_name}: more than one parametrize mark")
+            names = [n.strip() for n in marks[0].args[0].split(",")] if marks else []
+            if set(params) - set(names):
+                continue          # takes a fixture (tmp_path, monkeypatch, a store): a native Swift test covers it
+            sets = [v if len(names) > 1 else (v,) for v in marks[0].args[1]] if marks else [()]
+            for i, values in enumerate(sets):
+                current[0] = f"{module.__name__.rsplit('.', 1)[-1]}.{test_name}" + (f"[{i}]" if marks else "")
+                fn(**dict(zip(names, values)))
+                ran += 1
+        return ran
+
+    patches = [(tc, "read_clever", read_clever), (tc, "read_upload", read_upload), (roster, "read_upload", read_upload),
+               (tm, "guess", guess), (tm, "preview", preview), (tm, "read_mapped", read_mapped)]
+    saved = [(obj, attr, getattr(obj, attr)) for obj, attr, _ in patches]
+    try:
+        for obj, attr, value in patches:
+            setattr(obj, attr, value)
+        ColumnMap.problem = problem
+        ColumnMap.from_json = classmethod(from_json)
+        ran = run_tests(tc) + run_tests(tm)
+        # The web tests' map step, read as its routes read it: the sheet guessed, previewed and read with the form's map.
+        current[0] = "test_roster_web map step"
+        form_map = routes._map_from(tw.MAP_FORM)
+        guess(roster.header_of("schedule.csv", tw.SHEET))
+        preview("schedule.csv", tw.SHEET, form_map, routes.PREVIEW_ROWS)
+        preview("schedule.csv", tw.SHEET, routes._map_from({**tw.MAP_FORM, "col_email": ""}), routes.PREVIEW_ROWS)
+        read_mapped("schedule.csv", tw.SHEET, form_map)
+        problem(routes._map_from({**tw.MAP_FORM, "col_email": ""}), roster.header_of("schedule.csv", tw.SHEET))
+        # test_staff_csv_is_named_but_never_unpacked takes monkeypatch: its upload, and the other files Clever names.
+        staff = b"Staff_id,Staff_email,Password\r\nX1,x@example.com,StaffPw-secret\r\n"
+        current[0] = "staff.csv in Clever's ZIP"
+        read_upload([("clever.zip", tc._zip({**tc._fixture(), "staff.csv": staff}))])
+        current[0] = "administrators.csv in Clever's ZIP, in Finder's folder"
+        read_upload([("clever.zip", tc._zip({f"Export/{n}": b for n, b in {**tc._fixture(), "administrators.csv": b"\xff"}.items()}))])
+        current[0] = "Clever's files with OneRoster's manifest"
+        try:
+            read_upload([*tc._fixture().items(), ("manifest.csv", b"propertyName,value\r\n")])
+        except roster.PackageError:
+            pass
+        current[0] = "Clever's files without enrollments.csv"
+        try:
+            read_upload([(n, b) for n, b in tc._fixture().items() if n != "enrollments.csv"])
+        except roster.PackageError:
+            pass
+    finally:
+        for obj, attr, value in saved:
+            setattr(obj, attr, value)
+        ColumnMap.problem = real_problem
+        ColumnMap.from_json = classmethod(real_from_json)
+    if ran < 40 or len(out["read_clever"]) < 15 or len(out["read_mapped"]) < 10:
+        raise SystemExit(f"only {ran} tests recorded from test_roster_clever.py and test_roster_mapped.py")
+
+    # header_of: the web tests' sheets, and every refusal it makes.
+    long = "x" * (roster.HEADER_CELL_CAP + 1)
+    for name, body in (("the web test's sheet", tw.SHEET), ("a sheet without its header row", b"BIO-1,Biology,ann@example.com,teacher\r\n"),
+                       ("not UTF-8", b"\xff\xfe not utf-8"), ("empty", b""), ("a blank first line", b"\r\na,b\r\n"),
+                       ("only commas", b",,,\r\n"), ("a column name too long", f"a,{long}\r\n".encode()),
+                       ("a column name at the cap", f"a,{long[1:]}\r\n".encode()),
+                       ("a bare @ in a column name", b"a,b@c\r\n"), ("a Kelvin sign address", "a,\u212aim@x.edu\r\n".encode()),
+                       ("too many columns", ",".join(f"c{i}" for i in range(roster.COLUMNS_CAP + 1)).encode() + b"\r\n"),
+                       ("a NUL", b"a,\x00b\r\n"), ("an open quote", b'a,"b\r\n'), ("text after a quote", b'a,"b"c\r\n'),
+                       ("spaces stripped", b" a , b \t\r\n"), ("a byte-order mark", b"\xef\xbb\xbfa,b\r\n"),
+                       ("invisible characters kept", "a\u200b,b\u202e\r\n".encode()), ("a quoted newline", b'"a\nb",c\r\n')):
+        entry = {"name": name, "file": "dir/sheet.csv", "body": b64(body)}
+        try:
+            entry["expect"] = {"header": roster.header_of("sheet.csv", body)}
+        except roster.PackageError as exc:
+            entry["expect"] = {"error": str(exc)}
+        out["header_of"].append(entry)
+    # The form's role words, as `_map_from` reads them.
+    for typed in ("teacher", "student, pupil", " Teacher , STAFF,,teacher ", "", " , ", ",".join(f"w{i}" for i in range(30)),
+                  "a" * 450, "\u00e9,e\u0301", "Ka,\u212aa"):
+        words = routes._map_from({"teacher_words": typed}).teacher_words
+        out["typed_words"].append({"typed": typed, "expect": list(words)})
+    # A saved map's name.
+    for name in ("", "   ", "x" * 60, "x" * 61, "tab\there", "zero\u200bwidth", "Aeries", "District schedule", "a\u00a0b",
+                 "line\u2028sep", "private\ue000use", " lead", "trail ", "caf\u00e9", "emoji \U0001F600", "bidi\u202eorder"):
+        out["name_problem"].append({"name": name, "expect": roster_maps._name_problem(name)})
+    clever = gamgui / "tests" / "fixtures" / "roster" / "clever"
+    out["clever"] = {p.name: p.read_bytes() for p in sorted(clever.iterdir())}
+    return out
 
 
 def roster_plan_fixture(gamgui: Path) -> dict:
@@ -2890,6 +3085,12 @@ def main() -> int:
     roster_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_fixture(gamgui)
     emit("roster.json", json.dumps(roster_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"roster.json: {len(roster_doc['cases'])} packages")
+    # Clever's reader and the column map (C5.2, C5.3): every call GamGUI's tests make, recorded; Clever's shared files.
+    mapped_doc = roster_mapped_fixture(gamgui)
+    clever_files = mapped_doc.pop("clever")
+    emit("roster_mapped.json", json.dumps({"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}}
+                                          | mapped_doc, indent=1, ensure_ascii=True) + "\n")
+    print("roster_mapped.json: " + ", ".join(f"{len(v)} {k}" for k, v in mapped_doc.items() if k != "source"))
     # The change list (C3) and its hand-over (C4): GamGUI's plan over every call its tests make, and the hand-over's bytes.
     plan_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_plan_fixture(gamgui)
     emit("roster_plan.json", json.dumps(plan_doc, indent=1, ensure_ascii=True) + "\n")
@@ -2908,6 +3109,16 @@ def main() -> int:
         old.unlink()
     for name, body in handover_files.items():
         (OUT / "handover" / name).write_bytes(body)
+    # Clever's shared fixture, byte for byte: the folder holds exactly GamGUI's files, read back and compared.
+    clever_out = OUT / "roster" / "clever"
+    clever_out.mkdir(parents=True, exist_ok=True)
+    for old in clever_out.iterdir():
+        old.unlink()
+    for name, body in clever_files.items():
+        (clever_out / name).write_bytes(body)
+    if {p.name: p.read_bytes() for p in clever_out.iterdir()} != clever_files:
+        raise SystemExit("Tests/Fixtures/roster/clever/ doesn't hold GamGUI's tests/fixtures/roster/clever/ byte for byte")
+    print(f"roster/clever/: {len(clever_files)} files, GamGUI's own byte for byte")
     print(f"CSV: {len(CSV_WRITTEN)} writes, byte for byte as the build's CPython {oracle.version} writes them")
     return 0
 

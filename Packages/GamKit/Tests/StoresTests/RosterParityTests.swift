@@ -6,8 +6,9 @@ import TestSupport
 
 /// The roster reader reads every package as GamGUI's `read_upload` reads it (invariant 11): the same refusal in the same
 /// words, or the same snapshot and issues, over `Tests/Fixtures/roster.json` (`scripts/gen_fixtures.py`: every package
-/// GamGUI's tests build, and the ZIP and CSV shapes behind them). Clever is recognised and said to come next; a case the
-/// generator marks `swift` is a listed deviation the Swift reader refuses (docs/domains/classroom.md).
+/// GamGUI's tests build, and the ZIP and CSV shapes behind them), and over every upload GamGUI's Clever and column-map tests
+/// read (`roster_mapped.json`'s `uploads`). A case the generator marks `swift` is a listed deviation the Swift reader
+/// refuses (docs/domains/classroom.md).
 @Suite("Roster reader parity")
 struct RosterParityTests {
     struct Case {
@@ -22,11 +23,13 @@ struct RosterParityTests {
     /// JSONSerialization drops a string's leading U+FEFF, and NSString's equality ignores one, so a reader that wrongly
     /// stripped it would pass.
     nonisolated(unsafe) static let cases: [Case] = {
-        let url = Fixtures.directory.appending(path: "roster.json")
-        guard let data = try? Data(contentsOf: url), let root = JSONValue.parse(String(decoding: data, as: UTF8.self)),
-              let cases = root["cases"]?.array
-        else { return [] }
-        return cases.map { item in
+        func load(_ file: String, _ key: String) -> [JSONValue] {
+            guard let data = try? Data(contentsOf: Fixtures.directory.appending(path: file)),
+                  let root = JSONValue.parse(String(decoding: data, as: UTF8.self))
+            else { return [] }
+            return root[key]?.array ?? []
+        }
+        return (load("roster.json", "cases") + load("roster_mapped.json", "uploads")).map { item in
             let uploads = (item["uploads"]?.array ?? []).map {
                 Roster.Upload(name: $0.array?[0].string ?? "",
                               bytes: Array(Data(base64Encoded: $0.array?[1].string ?? "") ?? Data()))
@@ -56,7 +59,8 @@ struct RosterParityTests {
     }()
 
     @Test func theFixtureIsThere() {
-        #expect(Self.cases.count >= 140)
+        #expect(Self.cases.count >= 165)
+        #expect(Set(Self.cases.map(\.name)).count == Self.cases.count)
     }
 
     /// The comparison itself keeps a leading U+FEFF, and tells "é" from "e" + U+0301.
@@ -78,14 +82,10 @@ struct RosterParityTests {
             guard case .package(let words) = result.refusal else { Issue.record("\(name): \(result) vs \(error)"); return }
             #expect(JSONValue.string(words) == .string(error), "\(name): \(words) vs \(error)")
         } else if let map = item.expect["needs_map"]?.string {
-            guard case .needsMap(let named) = result.refusal else { Issue.record("\(name): \(result) vs \(map)"); return }
+            guard case .needsMap(let named, _) = result.refusal else { Issue.record("\(name): \(result) vs \(map)"); return }
             #expect(JSONValue.string(named) == .string(map), "\(name)")
         } else {
             let expected = try #require(item.expect["snapshot"]?.object)
-            if expected["source"]?.string?.hasPrefix("Clever") == true {
-                #expect(result.refusal == .notYet(.clever), "\(name): Clever is the next slice")
-                return
-            }
             guard case .success(let snapshot) = result else {
                 Issue.record("\(name): refused, \(result.refusal?.message ?? "")")
                 return

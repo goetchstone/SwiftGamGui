@@ -196,6 +196,14 @@ public struct RosterSnapshot: Sendable, Equatable, Codable {
         }
 
         mutating func enroll(_ enrollment: Enrollment) { snapshot.enrollments.append(enrollment) }
+
+        /// Each person whose ID is in `ids` and isn't a teacher becomes one, in their place (the mapped reader: someone who
+        /// teaches one class and studies in another counts as a teacher; each enrolment keeps its own role).
+        mutating func makeTeachers(_ ids: Set<ExactKey>) {
+            for (index, person) in snapshot.people.enumerated() where person.role != "teacher" && ids.contains(ExactKey(person.id)) {
+                snapshot.people[index] = Person(id: person.id, role: "teacher", email: person.id, given: "", family: "")
+            }
+        }
     }
 
     /// Each kind's cause and fix, in the SIS team's words (GamGUI's `ISSUE_WORDS`).

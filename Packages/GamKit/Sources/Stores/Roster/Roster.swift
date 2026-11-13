@@ -5,9 +5,9 @@ import GamEngine
 ///
 /// The snapshot is one model every reader fills (schools, terms, courses, classes, people, enrolments), so nothing after
 /// it knows which SIS or format it came from. `read` takes an upload (one ZIP, or loose CSV files), tells which export it
-/// is by its file names, and reads OneRoster 1.1 and 1.2 CSV. Clever's CSV and a spreadsheet mapped by its columns are
-/// recognised and said to come next (`Refusal.notYet`, `.needsMap`): their readers are the next slice, and plug in where
-/// those are thrown.
+/// is by its file names, and reads OneRoster 1.1 and 1.2 CSV; Clever's CSV is `RosterClever` (C5.2), and one picked
+/// spreadsheet of any other shape is `Refusal.needsMap`, read with the operator's column map by `RosterMapped` (C5.3).
+/// Every reader fills the same snapshot through the same bounded row reader (`rows`).
 ///
 /// An upload is hostile until read (SECURITY.md): nothing is extracted and no name inside it is ever a path; every size
 /// is counted, never trusted; text is strict UTF-8; a package-level mistake refuses the whole package with its fix, in
@@ -90,22 +90,14 @@ public enum Roster {
     public enum Refusal: Error, Equatable, Sendable {
         /// GamGUI's `PackageError`: what's wrong and how to fix it, in its words.
         case package(String)
-        /// One CSV that isn't a known export: a spreadsheet the operator maps by its columns (GamGUI's `NeedsMap`).
-        case needsMap(name: String)
-        /// An export this app recognises and reads in its next version.
-        case notYet(Format)
-
-        public enum Format: String, Sendable { case clever }
+        /// One CSV that isn't a known export: a spreadsheet the operator maps by its columns (GamGUI's `NeedsMap`). Holds
+        /// the file as picked (its base name and bytes); nothing about it has been trusted yet.
+        case needsMap(name: String, bytes: [UInt8])
 
         public var message: String {
             switch self {
             case .package(let words): words
-            case .needsMap(let name):
-                "“\(String(name.unicodeScalars.prefix(80)))” is one spreadsheet, which GAM GUI reads with a map of its columns "
-                    + "in its next version. For now, export OneRoster 1.1 or 1.2 CSV: its ZIP, or every CSV file in it."
-            case .notYet(.clever):
-                "That's Clever's export, which GAM GUI reads in its next version. For now, export OneRoster 1.1 or 1.2 CSV: its "
-                    + "ZIP, or every CSV file in it."
+            case .needsMap: "This spreadsheet needs a column map."
             }
         }
     }
@@ -147,11 +139,20 @@ public enum Roster {
             let names = uploads.map { base($0.name) }.filter { !ignored($0) }
             if names.count == 1, PythonText.lower(names[0]).utf8.reversed().starts(with: "vsc.".utf8) {
                 // One CSV is never a whole OneRoster or Clever export, whatever it's named: a spreadsheet to map.
-                throw Refusal.needsMap(name: names[0])
+                let body = uploads.first { base($0.name).utf8.elementsEqual(names[0].utf8) }?.bytes ?? []
+                throw Refusal.needsMap(name: names[0], bytes: body)
             }
             kind = try detect(names)
         }
-        if kind == "clever" { throw Refusal.notYet(.clever) }
+        if kind == "clever" {
+            var files: [String: [UInt8]]
+            if let archive {
+                files = try filesFromZip(archive, layout: RosterClever.layout, caps: caps)
+            } else {
+                files = try filesFromCSVs(uploads, layout: RosterClever.layout, caps: caps)
+            }
+            return try RosterClever.read(&files, caps: caps)
+        }
         if kind.isEmpty {
             throw PackageError("This isn't an export GamGUI knows. Choose a OneRoster (1.1 or 1.2) or Clever export: its ZIP, "
                                + "or every CSV file in it. Any other SIS: export one spreadsheet (a CSV) with a row per person "
@@ -550,6 +551,8 @@ public struct RosterCaps: Sendable, Equatable {
     public var field = 64 * 1024
     /// Rows kept per kind of issue (the Issues CSV); the count is always whole.
     public var issueSample = 1000
+    /// A column name a column map can hold, in characters (`header_of`).
+    public var headerCell = 200
 
     public static let standard = RosterCaps()
 

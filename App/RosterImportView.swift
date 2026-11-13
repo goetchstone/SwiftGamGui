@@ -12,6 +12,12 @@ import UniformTypeIdentifiers
 /// operator picked, read off the main actor and kept per domain (`RosterStore`), its metadata and issues (never the
 /// people), and Purge. Every change here is to this Mac only, and each is audited as a local event: `roster_import`
 /// (what was read and how much, never a row) and `roster_purge`. No GAM runs here at all.
+///
+/// One picked spreadsheet that isn't a known export (C5.3) isn't read at once: it's held in memory (`held`, GamGUI's
+/// `roster_pending`: its name, bytes and header, with the domain and tenant generation it was picked on; never on disk)
+/// while the operator maps its columns, then read like any export (`readHeld`). A new pick (read or refused), Purge, a
+/// read, Cancel or a tenant switch drops it; one held for another domain is never read, and a read is kept under the
+/// domain it was picked on, or not at all.
 @MainActor @Observable
 final class RosterKeeper {
     let store: RosterStore
@@ -33,16 +39,43 @@ final class RosterKeeper {
     private(set) var isReading = false
     private(set) var isPurging = false
 
+    /// A spreadsheet waiting for its column map: in memory only, for the domain and tenant generation it was picked on.
+    struct HeldSheet: Identifiable {
+        let id = UUID()
+        let domain: String
+        let generation: Int
+        let name: String
+        let bytes: [UInt8]
+        let header: [String]
+    }
+
+    /// The spreadsheet waiting for its map, if any, and the map being filled in for it (made once per sheet, here rather
+    /// than in the view, whose initializer SwiftUI may call many times).
+    private(set) var held: HeldSheet? {
+        didSet { if held?.id != oldValue?.id { mapStep = held.map { RosterMapStep(sheet: $0, maps: maps) } } }
+    }
+    private(set) var mapStep: RosterMapStep?
+    /// The saved column maps (`roster-maps.json`, beside the offboarding templates).
+    let maps: RosterMaps
+    private(set) var isReadingHeld = false
+
+    /// The held spreadsheet, when it was picked on the domain and tenant generation shown.
+    var heldHere: HeldSheet? {
+        guard let held, held.domain == domain, held.generation == generation else { return nil }
+        return held
+    }
+
     static let moved = "GAM GUI switched to another domain while the file was read, so nothing was kept. Pick it again on its domain."
 
     /// Compare with Classroom (C3) and the hand-over (C4): its change list is of the roster kept now, so a new one or a
     /// purge drops it.
     let compare: RosterCompare
 
-    init(store: RosterStore, auditURL: URL, setup: SetupModel, compare: RosterCompare) {
+    init(store: RosterStore, auditURL: URL, setup: SetupModel, compare: RosterCompare, maps: RosterMaps) {
         self.store = store
         self.auditURL = auditURL
         self.compare = compare
+        self.maps = maps
         // A switch made anywhere (Setup, a reconnect) drops the last domain's roster and its students' issue rows at
         // once, not when Plan an Import next appears: nothing of one domain is held, or drawn, under another.
         setup.onTenantChange { [weak self] in self?.forget() }
@@ -51,6 +84,7 @@ final class RosterKeeper {
     private func forget() {
         (domain, generation) = (nil, nil)
         (meta, issues, kinds, storeProblem, refusal, notice, justRead) = (nil, nil, [], nil, nil, nil, false)
+        held = nil
     }
 
     /// Show `domain`'s kept roster. A new tenant generation drops what was held for the last one, refusals and notices
@@ -62,6 +96,10 @@ final class RosterKeeper {
         }
         guard let domain else { return }
         await reload(domain)
+        #if DEBUG
+        // Kept, not spent: a tenant generation Setup's demo checks bump after the first look drops what was held.
+        if let demo = demoPick, domain == "example.com", held == nil, !isReading { await read(demo) }
+        #endif
     }
 
     private func reload(_ domain: String) async {
@@ -89,11 +127,11 @@ final class RosterKeeper {
     /// Read what was picked and keep it, replacing the last, for the domain it was picked on. A refusal is said under the
     /// picker and nothing is kept.
     func read(_ urls: [URL]) async {
-        guard let domain, let generation, !isReading else { return }
+        guard let domain, let generation, !isReading, !isReadingHeld else { return }
         isReading = true
         (refusal, notice, justRead) = (nil, nil, false)
+        held = nil              // a new pick, read or refused, replaces a spreadsheet waiting for its map
         defer { isReading = false }
-        let store = self.store, auditURL = self.auditURL
         // Off the main actor: a district's export is many megabytes. Each picked file's access ends once it's read.
         let outcome = await Task.detached { () -> Result<(RosterSnapshot, String, String), Roster.Refusal> in
             let scoped = urls.filter { $0.startAccessingSecurityScopedResource() }
@@ -119,35 +157,116 @@ final class RosterKeeper {
             return
         }
         switch outcome {
+        case .failure(.needsMap(let name, let bytes)):
+            await hold(name: name, bytes: bytes, domain: domain, generation: generation)
         case .failure(let refused):
             refusal = refused.message
             announce(refused.message)
         case .success(let (snapshot, label, digest)):
-            let kept = await Task.detached { () -> Result<String?, RosterStore.Failure> in
-                do {
-                    let meta = try store.save(snapshot, domain: domain, label: label, sha256: digest)
-                    return .success(Self.audit(auditURL, "roster_import", domain: domain, extra: Self.importExtra(meta, snapshot)))
-                } catch let failure as RosterStore.Failure {
-                    return .failure(failure)
-                } catch {
-                    return .failure(.unknown)
-                }
-            }.value
-            guard domain == self.domain, generation == self.generation else {
-                refusal = Self.moved
-                return
-            }
-            switch kept {
-            case .failure(let failure):
-                refusal = failure.message
-            case .success(let auditProblem):
-                compare.drop()
-                notice = auditProblem
-                justRead = true
-                await reload(domain)
-                announce("Read \(label): \(snapshot.counts.classes) classes, \(snapshot.counts.teachers + snapshot.counts.students) people.")
-            }
+            await keep(snapshot, label: label, digest: digest, domain: domain, generation: generation)
         }
+    }
+
+    /// Keep a read snapshot (replacing the last) and audit it (what, how many; never the rows), only on the domain and
+    /// generation it was picked on: a tenant switch during the read discards it, never keeps one district's roster under
+    /// another's name.
+    private func keep(_ snapshot: RosterSnapshot, label: String, digest: String, domain: String, generation: Int,
+                      extra: JSONObject = [:]) async {
+        let store = self.store, auditURL = self.auditURL
+        let kept = await Task.detached { () -> Result<String?, RosterStore.Failure> in
+            do {
+                let meta = try store.save(snapshot, domain: domain, label: label, sha256: digest)
+                return .success(Self.audit(auditURL, "roster_import", domain: domain,
+                                           extra: Self.importExtra(meta, snapshot).merging(extra)))
+            } catch let failure as RosterStore.Failure {
+                return .failure(failure)
+            } catch {
+                return .failure(.unknown)
+            }
+        }.value
+        guard domain == self.domain, generation == self.generation else {
+            refusal = Self.moved
+            return
+        }
+        switch kept {
+        case .failure(let failure):
+            refusal = failure.message
+        case .success(let auditProblem):
+            compare.drop()
+            (refusal, notice) = (nil, auditProblem)
+            justRead = true
+            await reload(domain)
+            announce("Read \(label): \(snapshot.counts.classes) classes, \(snapshot.counts.teachers + snapshot.counts.students) people.")
+        }
+    }
+
+    // MARK: a spreadsheet mapped by its columns (C5.3)
+
+    /// Hold one picked spreadsheet for its map, once its header reads (GamGUI's `header_of`: a first line holding an
+    /// address, or a column name too long to be one, is refused here, before any map).
+    private func hold(name: String, bytes: [UInt8], domain: String, generation: Int) async {
+        let header = await Task.detached { () -> Result<[String], Roster.Refusal> in
+            Result { () throws(Roster.Refusal) in try RosterMapped.header(name: name, bytes: bytes) }
+        }.value
+        guard domain == self.domain, generation == self.generation else {
+            refusal = Self.moved
+            return
+        }
+        switch header {
+        case .failure(let refused):
+            refusal = refused.message
+            announce(refused.message)
+        case .success(let header):
+            held = HeldSheet(domain: domain, generation: generation, name: name, bytes: bytes, header: header)
+            announce("Map the columns of \(name).")
+        }
+    }
+
+    /// Read the held spreadsheet with `map` and keep it like any export, audited with which fields were mapped (never the
+    /// column names: they're the sheet's text). Saves the map first when it's named. A sentence when it wasn't read; the
+    /// spreadsheet stays held then.
+    func readHeld(with map: RosterColumnMap, saveAs: String) async -> String? {
+        guard !isReadingHeld else { return nil }
+        guard let held = heldHere else { return "Pick the spreadsheet again." }
+        let problem = map.problem(held.header)
+        if !problem.isEmpty { return problem }
+        if !saveAs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, case .failure(let refused) = maps.save(saveAs, map) {
+            return refused.message
+        }
+        isReadingHeld = true
+        defer { isReadingHeld = false }
+        // Off the main actor, the hash too: the sheet may be up to the upload cap.
+        let read = await Task.detached { () -> Result<(RosterSnapshot, String), Roster.Refusal> in
+            Result { () throws(Roster.Refusal) in
+                (try RosterMapped.read(name: held.name, bytes: held.bytes, map: map),
+                 RosterImport.digest([Roster.Upload(name: held.name, bytes: held.bytes)]))
+            }
+        }.value
+        guard held.domain == domain, held.generation == generation else {
+            // Switched away from while it was read: keep nothing, and say so.
+            refusal = Self.moved
+            return nil
+        }
+        // Dropped by Purge or replaced while it was read (Cancel and a new pick wait for the read): keep nothing; what
+        // dropped it says its own words.
+        guard self.held?.id == held.id else { return nil }
+        switch read {
+        case .failure(let refused):
+            return refused.message
+        case .success(let (snapshot, digest)):
+            self.held = nil
+            (refusal, notice, justRead) = (nil, nil, false)
+            await keep(snapshot, label: held.name, digest: digest, domain: held.domain, generation: held.generation,
+                       extra: ["mapped_fields": .array(map.mappedFields.map(JSONValue.string))])
+            return nil
+        }
+    }
+
+    /// Drop the held spreadsheet without reading it.
+    func cancelHeld() {
+        guard !isReadingHeld else { return }     // the read under way decides; its button is disabled meanwhile
+        held = nil
+        announce("The spreadsheet wasn't read.")
     }
 
     /// Delete the kept roster now. Audited.
@@ -155,6 +274,7 @@ final class RosterKeeper {
         guard let domain, !isPurging else { return }
         isPurging = true
         (refusal, notice, justRead) = (nil, nil, false)
+        held = nil
         defer { isPurging = false }
         let store = self.store, auditURL = self.auditURL
         let gone = await Task.detached { () -> Result<(Bool, String?), RosterStore.Failure> in
@@ -216,11 +336,15 @@ final class RosterKeeper {
     }
 
     #if DEBUG
+    /// The snapshots' map step: picked files read through `read` whenever example.com shows with nothing held (a
+    /// spreadsheet is held, never kept).
+    var demoPick: [URL]?
+
     /// The snapshots' kept roster: the demo package (`Tests/Fixtures/demo/roster`, beside the mock) read and kept for
     /// example.com in the demo's own temporary store. Nothing is audited.
-    nonisolated static func seedForDemo(_ store: RosterStore, from folder: URL) {
+    nonisolated static func seedForDemo(_ store: RosterStore, from folder: URL, label: String) {
         guard let picked = try? RosterImport.readPicked([folder]), let snapshot = try? Roster.read(picked) else { return }
-        _ = try? store.save(snapshot, domain: "example.com", label: "District export.zip", sha256: RosterImport.digest(picked))
+        _ = try? store.save(snapshot, domain: "example.com", label: label, sha256: RosterImport.digest(picked))
     }
     #endif
 }
@@ -275,10 +399,10 @@ struct RosterImportView: View {
     private var picker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Your SIS's roster export").font(.headline).accessibilityAddTraits(.isHeader)
-            Text("Its ZIP, or every CSV file in its folder.").foregroundStyle(.secondary)
+            Text("Its ZIP, every CSV file in its folder, or one spreadsheet.").foregroundStyle(.secondary)
             HStack {
                 Button("Choose the Export…") { choosing = true }
-                    .disabled(setup.active == nil || roster.isReading)
+                    .disabled(setup.active == nil || roster.isReading || roster.isReadingHeld)
                     .accessibilityHint("Picks a ZIP, a folder or CSV files, and reads them on this Mac")
                 if roster.isReading { ProgressView().controlSize(.small).accessibilityLabel("Reading the export") }
             }
@@ -298,7 +422,8 @@ struct RosterImportView: View {
             // One literal each: a literal is a LocalizedStringKey, whose Markdown (the bold) SwiftUI reads.
             bullet(Text("**OneRoster 1.1 or 1.2**, as **CSV**, a **full (bulk)** export: not an API, not changes only. SIS products usually keep it under their data-sharing, rostering or OneRoster export settings."))
             bullet(Text("Each teacher and student needs their Google Workspace address in the export's email column."))
-            bullet(Text("Clever's CSV files, and one spreadsheet mapped by its columns, are read in GAM GUI's next version."))
+            bullet(Text("**Clever**: its CSV files (schools, students, teachers, sections and enrollments), or their ZIP. The passwords and contacts beside them are never read."))
+            bullet(Text("**Any other SIS**: one spreadsheet (a CSV) with a row per person in a class. You map its columns next; nothing is kept until it's read."))
         }
     }
 
@@ -319,6 +444,8 @@ struct RosterImportView: View {
             }
             if setup.active == nil {
                 Text("Connect a domain on Setup to plan an import.").foregroundStyle(.secondary)
+            } else if let held = roster.heldHere, let step = roster.mapStep, step.sheet.id == held.id {
+                RosterMapView(roster: roster, step: step).id(held.id)
             } else if let problem = roster.storeProblem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
             } else if let meta = roster.meta {

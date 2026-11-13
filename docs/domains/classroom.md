@@ -12,7 +12,9 @@ list, and hands the changes over as files someone runs with GAM outside the app 
 `ClassroomTests` (builders, the mock, the reader), `ClassroomReadsTests` (the screen's reads, a person's classes, who can
 create classes, the classes someone owns), `OffboardChangesTests` (the leaver's classes), `GamErrorTests` and
 `GuidedSetupTests` (`only_unknown_owners` and `classroom_readable`, held to `gam_errors.json` and `setup.json`),
-`RosterParityTests` (the roster reader, held to `roster.json`), `RosterStoreTests` (the kept roster, the picker, the
+`RosterParityTests` (the roster reader, held to `roster.json` and `roster_mapped.json`'s uploads),
+`RosterMappedParityTests` (Clever's reader and the column map, held to `roster_mapped.json` and the shared
+`Tests/Fixtures/roster/clever/`), `RosterMapStoreTests` (the saved maps), `RosterStoreTests` (the kept roster, the picker, the
 issues), `ClassroomStateTests` (the compare's read, held to `roster_plan.json`'s `managed_from`), `RosterPlanTests` (the
 change list, held to `roster_plan.json`), `RosterHandoverTests` (the hand-over, byte for byte with `Tests/Fixtures/handover/`
 and the grammar) and `RosterCompareTests` (the compare and the hand-over end to end through the mock).
@@ -37,7 +39,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - `Stores/Roster/`: `Roster.swift` (`Roster.read`, the upload's flow, OneRoster 1.1 and 1.2, `RosterCaps`),
   `RosterZip.swift` (the ZIP reader, `CRC32`), `RosterCSV.swift` (`RosterLines`, `RosterCSV`, `Roster.rows`, `clean`),
   `RosterSnapshot.swift` (the model, `issueWords`), `RosterStore.swift` (the kept roster), `RosterImport.swift` (the
-  picker's reads, the issues grouped, the Issues CSV's rows). `App/RosterImportView.swift` (`RosterKeeper`, the screen).
+  picker's reads, the issues grouped, the Issues CSV's rows), `RosterClever.swift` (Clever's CSV, C5.2),
+  `RosterMapped.swift` (`RosterColumnMap`, `RosterMapped`: one spreadsheet read by its column map, C5.3),
+  `RosterMapStore.swift` (the saved maps). `App/RosterImportView.swift` (`RosterKeeper`, the held spreadsheet, the
+  screen), `App/RosterMapView.swift` (`RosterMaps`, `RosterMapStep`, the map step).
 - `GamEngine/ClassroomState.swift` (`Classroom.Managed`, `Classroom.state`, `aliases`: GamGUI's `managed_from`),
   `Directory/UserAccess.swift` (`classroomState`, `directoryAddresses`), `Stores/Roster/RosterPlan.swift` (the planner, the
   list's pages), `Stores/Roster/RosterHandover.swift` (the files and the ZIP), `Directory/RosterCompare.swift` (the compare
@@ -45,8 +50,11 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - `Tests/Fixtures/roster_plan.json` (GamGUI's `plan` over every call its planner tests make and its web test's compare,
   with `roster_handover`'s files for each), `Tests/Fixtures/roster_handover.json` and `Tests/Fixtures/handover/` (GamGUI's
   own hand-over fixture, byte for byte), all from `scripts/gen_fixtures.py`.
-- `Tests/Fixtures/roster.json` (GamGUI's `read_upload` over 142 packages, from `scripts/gen_fixtures.py`),
-  `Tests/Fixtures/demo/roster/` (the snapshots' OneRoster export: made-up people, a problem of each common kind).
+- `Tests/Fixtures/roster.json` (GamGUI's `read_upload` over 158 packages, from `scripts/gen_fixtures.py`),
+  `Tests/Fixtures/roster_mapped.json` (every call GamGUI's Clever and column-map tests make, recorded as they run, with
+  the map step's readers), `Tests/Fixtures/roster/clever/` (GamGUI's Clever fixture, copied byte for byte by the
+  generator, which checks it), `Tests/Fixtures/demo/roster/` (the snapshots' OneRoster export: made-up people, a problem
+  of each common kind), `Tests/Fixtures/demo/schedule.csv` (the map step's spreadsheet).
 - `Tests/Fixtures/mock_gam.sh` (`print courses`, `print course-participants`), `mock_gam/courses.json`,
   `mock_gam/course_participants.tsv`, `mock_gam/course_aliases.tsv`: GamGUI's handlers and data at 07c505d.
 
@@ -110,10 +118,9 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   GamGUI's `tests/test_roster.py` builds (the adversarial run's cases among them) and the ZIP and CSV shapes behind them,
   runs GamGUI's reader at the pin, and the Swift reader must give the same words or the same snapshot. A cap a case
   lowers is recorded and passed as `RosterCaps`, as GamGUI's tests monkeypatch it.
-- **Clever and one spreadsheet are recognised, not read yet** (the next slice): Clever's names give
-  `Refusal.notYet(.clever)`, one CSV gives `Refusal.needsMap`, each said as "comes in the next version". `Layout`,
-  `filesFromZip(layout:)`, `filesFromCSVs(layout:)` and `rows(foldCase:raw:)` are there for those readers to plug into,
-  and `roster.json` already records GamGUI's Clever snapshots.
+- **Clever is read; one picked CSV is a spreadsheet to map** (C5.2, C5.3, below): Clever's names read through
+  `filesFromZip`/`filesFromCSVs` with `RosterClever.layout`, and one CSV, whatever its name, is `Refusal.needsMap(name:,
+  bytes:)` (GamGUI's `NeedsMap`), the screen's map step.
 - **The ZIP reader (`RosterZip`) never extracts.** Foundation has none, and a shelled `ditto`/`unzip` writes files. It is
   `zipfile` 3.14 as GamGUI drives it, read to the end of each function: the end record (`_EndRecData`, the ZIP64 locator
   and record checked as `_EndRecData64` checks them), the directory's size and entry count capped **before** it is walked,
@@ -140,6 +147,46 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   A row is built from the used columns alone; an address is checked as given, then lowercased (U+212A); every other cell
   drops controls and Cf characters in Python's Unicode version. IDs are compared by their exact characters (`ExactKey`):
   a Swift `String` would take é and e + ◌́ as one ID.
+
+## More than one SIS (C5.1 to C5.3, from GamGUI 07c505d)
+- **Every reader goes through the same bounds.** `Roster.Layout` names an export's files and the ones never unpacked;
+  every row is read by `Roster.rowValues` (`rows` is its keyed form), which builds a row from the `used` columns alone
+  and stops when told (`preview` stops after three rows; nothing past them is read). That is what keeps passwords out:
+  **Clever's `Username`, `Password`, `Contact_*` and its demographic columns, OneRoster 1.2's `userProfiles.csv` and any
+  `password` column are never read into anything**; Clever's `staff.csv` and `administrators.csv` are named, never
+  unpacked. The values come back in `used`'s order, so two column names Swift's `String` takes as one (é and e + ◌́) stay
+  two, as Python keeps them.
+- **Detection by name** is C5.1's (`detect`); **one picked CSV is always a spreadsheet to map, whatever its name** (a SIS
+  report called `students.csv` is not a Clever export missing four files).
+- **Clever** (`RosterClever`, SFTP CSV spec v2.2.0): headers matched ignoring case only (`foldCase`). People are
+  `student:<id>` and `teacher:<id>` (separate ID spaces). A repeated ID keeps its first row; a repeat with a different
+  address is a `conflict`. A section's `Teacher_id` is its primary teacher, `Teacher_2_id`..`Teacher_10_id` co-teachers
+  (a repeat dropped); `enrollments.csv` is students only. Courses (`course:<Course_number>`) and terms
+  (`term:<name>|<start>|<end>`, MM/DD/YYYY to ISO only when exactly that and a real date) are built from section columns.
+  Title: `Name`, else `Course_name - Period <Period>`, else `Course_name`. Each file is taken out of the dictionary as
+  it's read. The shared fixture is GamGUI's `tests/fixtures/roster/clever/`, copied by the generator and read by
+  `theSharedCleverFixtureReadsAsGamGUIsTestReadsIt`.
+- **A spreadsheet of any other shape** (`RosterMapped`, one flat file, a row per person in a class). `RosterColumnMap`
+  maps six fields (class ID, class name, email and role needed; section and primary teacher optional) and the role words;
+  `guess(header)` fills what the header's names suggest, each column for one field at most; `preview` reads three rows;
+  `read` reads the rest (person ID = address; a class's name or section that differs on a later row is a `conflict`, the
+  first kept; a role word in neither list is `unknown_role`; a primary flag counts for a teacher only, in GamGUI's truthy
+  words; someone who teaches one class and studies in another counts as a teacher).
+- **What GamGUI's adversarial run of C5 found, and the rule each keeps here:** an address is checked as given, then
+  lowercased, in every reader (U+212A KELVIN SIGN lowercases to an ASCII `k`); the mapped reader cleans every field but
+  the address by field, since one column may be mapped as the address and a class; `headerOf` (GamGUI's `header_of`)
+  refuses a first line holding an address (a sheet without its header would save a student's address as a column name)
+  and a column name past `RosterCaps.headerCell` (200).
+- **Saved maps** (`RosterMapStore`): `roster-maps.json` beside the offboarding templates, GamGUI's format
+  (`{"version": 1, "maps": {name: map}}`), column names and role words only. Read by descriptor and written atomically
+  `0600` in a `0700` folder through `SignatureStore.load`/`writeFile`; a file it can't read is moved aside and said on the
+  map step, never saved over. Names are GamGUI's rules: stripped, at most 60 characters, printable (Python's
+  `isprintable`), at most 50 maps; a name kept already in another case is replaced; listed ignoring case.
+- **Parity:** `roster_mapped.json` is recorded by running GamGUI's own `tests/test_roster_clever.py` and
+  `test_roster_mapped.py` (each synchronous test without a fixture, once per parameter set) with `read_clever`,
+  `read_upload`, `guess`, `preview`, `read_mapped`, `ColumnMap.problem` and `from_json` wrapped, plus the web tests' map
+  step, `header_of`'s refusals, the form's role words and the name rules. The store tests GamGUI runs with `tmp_path` are
+  ported as native tests.
 
 ## The kept roster (C2.5)
 - **`RosterStore`**: one file per domain in `<Application Support>/SwiftGamGui/roster/`, named by a hash of the domain,
@@ -171,8 +218,21 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   `members` files, or more than `upload` bytes by `fstat`, is refused before any byte is read; each file is then read at
   most one byte past what's left. Security-scoped access ends once the files are read. Reading, saving and the audit run
   off the main actor (`RosterKeeper`).
-- **Beside the picker, what to export** (GamGUI's words, with Clever and the spreadsheet said to come next). A refusal is
-  said under the picker; the last good roster stays.
+- **Beside the picker, what to export**: OneRoster, Clever, or one spreadsheet mapped by its columns. A refusal is said
+  under the picker; the last good roster stays.
+- **The map step** (C5.3, `RosterMapView`): one picked spreadsheet isn't read on pick. Its header is read (`headerOf`; a
+  refusal is said under the picker) and it is **held in memory only** (`RosterKeeper.held`: name, bytes, header, the
+  domain and tenant generation it was picked on; never on disk), and the kept roster's pane shows its columns: a picker per
+  field (labelled, "needed" or "optional"), the role words (comma-separated), and **three rows read with the map**,
+  again on every change, off the main actor, a field per line and a row per column so it fits the smallest window; a row
+  whose role word is in neither list says "Neither: check the role words" with a warning symbol, never colour alone. On
+  first sight the map is a saved one that fits the header, else a guess. **Use a saved map** loads one (only when that
+  picker changes); **Delete “name”…** asks first and leaves the spreadsheet; **Save Map As** keeps the map under a name;
+  **Read with This Map** (disabled while the map has a problem) saves it too when a name is typed, reads the whole
+  sheet, and keeps it like an export, audited `roster_import` with `mapped_fields` (which fields were mapped, never the
+  column names: they are the sheet's text); **Cancel** (Escape) drops it. A new pick (read or refused), Purge, a read,
+  Cancel or a tenant switch drops what's held; one held for another domain or generation is never read, and a read that
+  ends after the held sheet changed keeps nothing.
 - **What's kept**: "Read:" or "Kept:" and the label (the file's name, or "N CSV files"), the format, when it was read and
   when it's deleted, the seven counts, the people in other roles, then **Problems to fix in your SIS**: each kind most
   frequent first, its whole count and cause, opening to its fix and its first `issuesShown` (20) rows; **Issues CSV…**
@@ -182,7 +242,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   bytes' SHA-256, the counts, each kind of issue's count; never a row) and `roster_purge` (`deleted`). No GAM runs on
   this screen. A tenant switch made anywhere drops what's held at once (`SetupModel.onTenantChange`), not when the screen
   next appears; a read that ends on another domain keeps nothing and says so.
-- **Snapshots**: `classroom-import` (`SWIFTGAMGUI_TAB=import`) with the demo package kept in a temporary store.
+- **Snapshots**: `classroom-import` (`SWIFTGAMGUI_TAB=import`) with the demo package kept in a temporary store;
+  `classroom-clever` (`clever`) with Clever's shared fixture kept; `classroom-map` and `narrow-classroom-map` (`map`)
+  with `demo/schedule.csv` held for its map, opening on the demo's saved map. CI renders them (a hook blocks launching
+  the app here).
 
 ## Compare with Classroom (C3, from GamGUI 07c505d)
 - **`RosterPlan.plan(snapshot, classroom:, directory:, unread:)`** is GamGUI's `roster_plan.plan`, pure: a `ChangeList`
@@ -279,7 +342,19 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   NUL in a member's name (`zipfile` cuts the name at it; here it isn't a plain file name), BZIP2 and LZMA members (only
   stored and deflate; GamGUI's "couldn't be unpacked" words), and two entries sharing one local header (`zipfile` only
   warns).
-- **Clever and one spreadsheet are said to come next**, where GamGUI reads them (this slice's scope).
+- **The map step** (C5.3): **Save Map As** saves without reading (GamGUI saves only with Read, which also saves here);
+  the role words stay as typed while the map takes the words read from them (GamGUI redraws them joined); a column
+  named twice in the header is offered once; a held spreadsheet is tied to the tenant generation as well as the domain.
+  Its preview checks an address as the read does before lowercasing it, and marks a row the read leaves out by its
+  address (GamGUI lowercases first, so a Kelvin sign U+212A shows as an ASCII k and "Teacher" for a row `read_mapped`
+  refuses as `bad_email`; `RosterMapStepTests`). Role words, saved map names and columns are compared and picked by
+  exact text (Swift's `String ==` takes NFC and NFD spellings as one). Cancel has no Escape shortcut, and Cancel and a
+  new pick wait while the map's read runs.
+- **The saved maps file**, as this app's other stores: an unreadable one is moved aside to
+  `roster-maps.json.unreadable-<UTC time>` (GamGUI: `-<epoch seconds>`), and one the system can't read (an I/O error,
+  not its content) isn't moved: the store doesn't open and saving says why (GamGUI moves it aside). It is written by the
+  app's JSON writer (GamGUI: `indent=2`); the keys and values are GamGUI's, and a version that isn't the integer 1 is
+  refused.
 - **The csv field limit is fixed at the module's default.** GamGUI never sets it, and another read in its process may
   raise it, so past 131,072 characters GamGUI says either the csv module's error or the field cap; here, always the
   module's (as the fixture records it).
@@ -313,6 +388,7 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   `$GAM_MOCK_STATE/noclassroom` is a token without the scopes, `classroom_silent` GAM answering nothing.
 
 ## Testing / live-verification status
-Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The roster's, the
+Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The map step is not
+seen here (the app isn't launched in these sessions); CI's `classroom-map` shots are its first look. The roster's, the
 change list's and the hand-over's parity fixtures are regenerated with the others (`scripts/gen_fixtures.py` against a pinned GamGUI clone); never hand-edit it. **Never run live, and can't be here:** the
 operator has no Education domain (plan E1).

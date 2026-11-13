@@ -375,8 +375,10 @@ struct RosterStoreTests {
         #expect(Set(snapshot.issueCounts.map(\.code)) == ["skipped", "no_email", "bad_email", "unknown_person", "unknown_class"])
     }
 
-    @Test func cleverAndASpreadsheetAreSaidToComeNext() {
-        #expect(Roster.Refusal.notYet(.clever).message.contains("next version"))
-        #expect(Roster.Refusal.needsMap(name: "schedule.csv").message.hasPrefix("“schedule.csv” is one spreadsheet"))
+    /// One picked CSV is held for its map with the bytes as picked (GamGUI's `NeedsMap`), named by its base name.
+    @Test func oneSpreadsheetIsHeldForItsMapWithItsBytes() {
+        let body = Array("Class,Email,Role\r\nC1,t@x.edu,teacher\r\n".utf8)
+        let result = Result { () throws(Roster.Refusal) in try Roster.read([.init(name: "folder/My Export.csv", bytes: body)]) }
+        #expect(result.refusal == .needsMap(name: "My Export.csv", bytes: body))
     }
 }

@@ -345,6 +345,22 @@ extension Roster {
     static func rows(_ name: String, _ body: [UInt8], required: [String], used: [String], layout: String,
                      raw: Set<String> = ["email"], foldCase: Bool = false, caps: RosterCaps,
                      _ each: (Int, [String: String]) throws -> Void) throws {
+        let rawKeys = Set(raw.map(ExactKey.init))
+        try rowValues(name, body, required: required, used: used, layout: layout, raw: { rawKeys.contains(ExactKey($0)) },
+                      foldCase: foldCase, caps: caps) { line, values in
+            var cells: [String: String] = [:]
+            for (key, value) in zip(used, values) where value != nil { cells[key] = value }
+            try each(line, cells)
+            return true
+        }
+    }
+
+    /// `_rows` as values in `used`'s order (nil for a column the header doesn't have), so two column names Swift's `String`
+    /// takes as one (canonically equivalent spellings, which Python keeps apart) stay two; `each` returns false to stop,
+    /// as a generator left unread stops (`preview`): nothing past that row is read.
+    static func rowValues(_ name: String, _ body: [UInt8], required: [String], used: [String], layout: String,
+                          raw: (String) -> Bool, foldCase: Bool = false, caps: RosterCaps,
+                          _ each: (Int, [String?]) throws -> Bool) throws {
         var reader = RosterCSV(RosterLines(name: name, bytes: body, caps: caps))
         do {
             guard let first = try reader.next() else { throw PackageError("\(name) is empty. Export the roster again.") }
@@ -367,7 +383,7 @@ extension Roster {
                 throw PackageError("\(name) is missing the column\(missing.count > 1 ? "s" : "") \(missing.joined(separator: ", ")). "
                                    + layout)
             }
-            let wanted = used.compactMap { column in exact.firstIndex(of: find(column)).map { (column, $0) } }
+            let wanted = used.map { column in (index: exact.firstIndex(of: find(column)), raw: raw(column)) }
             let width = header.count + 1
             var count = 0
             while true {
@@ -387,20 +403,46 @@ extension Roster {
                                        + "normal export.")
                 }
                 if row.allSatisfy(\.isBlank) { continue }
-                var cells: [String: String] = [:]
-                for (key, index) in wanted {
-                    guard index < row.count else {
-                        cells[key] = ""
-                        continue
-                    }
+                let values: [String?] = wanted.map { column in
+                    guard let index = column.index else { return nil }
+                    guard index < row.count else { return "" }
                     let text = row[index].text
-                    cells[key] = raw.contains(key) ? strip(text) : clean(text)
+                    return column.raw ? strip(text) : clean(text)
                 }
-                try each(start, cells)
+                if try !each(start, values) { return }
             }
         } catch let error as CSVError {
             throw PackageError("\(name) isn't readable CSV (\(error.message)). Export the roster again.")
         }
+    }
+
+    /// GamGUI's `header_of`: a CSV's header row, stripped, read through the same bounds as its rows (a column map's
+    /// choices). A first line holding an address is a row, not a header (a sheet exported without its header would save a
+    /// student's address as a column name), and a column name past `caps.headerCell` isn't one either.
+    static func headerOf(_ name: String, _ body: [UInt8], caps: RosterCaps) throws -> [String] {
+        var reader = RosterCSV(RosterLines(name: name, bytes: body, caps: caps))
+        let first: [CSVField]?
+        do {
+            first = try reader.next()
+        } catch let error as CSVError {
+            throw PackageError("\(name) isn't readable CSV (\(error.message)).")
+        }
+        guard let first, first.contains(where: { !$0.isBlank }) else {
+            throw PackageError("\(name) is empty, or its first line isn't a header.")
+        }
+        if first.count > caps.columns {
+            throw PackageError("\(name) has \(grouped(first.count)) columns, more than any roster file has.")
+        }
+        let header = first.map { PythonText.strip($0.text) }
+        if header.contains(where: { $0.unicodeScalars.count > caps.headerCell }) {
+            throw PackageError("\(name) has a column name longer than \(caps.headerCell) characters, so its first line isn't a "
+                               + "header. Export it with a header row.")
+        }
+        if header.contains(where: { isOneAddress(PythonText.lower($0)) || $0.unicodeScalars.contains("@") }) {
+            throw PackageError("The first line of \(name) holds an email address, so it's a row, not a header. Export the "
+                               + "spreadsheet with its header row (class ID, class name, email, role…).")
+        }
+        return header
     }
 
     /// GamGUI's `_clean`: a field as kept, with control characters (NUL among them) and invisible format characters
