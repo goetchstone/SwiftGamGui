@@ -38,8 +38,8 @@ status=0
 # (tab `orgUnit`, the unit as the person), Classic rendered for the first of them; `orgUnit+confirm` its confirm sheet
 # (held, never run) and `orgUnit+result` a made-up finished run with two failures and Retry (no gam). On Team Calendar's
 # page the tab shows a change's state: `share-group` the confirm sheet of sharing it with the mock's twelve-member
-# allhands@ (the count typed), `group-result` a made-up partial group share, `delete` the calendar delete's confirm
-# (DELETE typed), `events` the event search's results, `event-delete` an event delete's confirm; each held, never run. Onboard opens on the demo role
+# allhands@ (nothing typed yet, so Share is off), `group-result` a made-up partial group share, `delete` the calendar delete's confirm
+# (nothing typed yet, so Delete is off), `events` the event search's results, `event-delete` an event delete's confirm; each held, never run. Onboard opens on the demo role
 # Salesperson with Create and the welcome email ticked, onboard-result on a made-up finished run (no gam
 # runs), onboard-roles on the role editor and onboard-welcome on its Default welcome email (a sheet; its
 # picture is the sheet). The narrow-*
