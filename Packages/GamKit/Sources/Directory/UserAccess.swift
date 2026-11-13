@@ -346,6 +346,17 @@ public final class UserAccess {
         return await classroom(read, in: pinned, about: whose.isEmpty ? "" : "“\(whose)”").map(Classroom.courses)
     }
 
+    /// The classes `email` owns, in every state: what deleting the account would lose (a declined or suspended class too).
+    /// Classroom answering that it doesn't know them as a teacher (GAM's not-found, exit 56) means they own none; any other
+    /// failure is said, never taken as none (GamGUI's `courses_owned_by`, C1.5).
+    public func coursesOwned(by email: String, in pinned: Domain? = nil) async -> Result<[Classroom.Course], Problem> {
+        guard let read = try? GamCommands.printCourses(teacher: email) else {
+            return .failure(Problem(summary: "“\(email)” isn't one email address."))
+        }
+        return await classroom(read, in: pinned, about: "“\(email)”", notFoundIsNone: true)
+            .map { Classroom.owned(Classroom.courses($0), by: email) }
+    }
+
     /// One class by its ID. A class GAM answered without a record for is a read that fell short, never "no such class".
     public func course(_ courseID: String, in pinned: Domain? = nil) async -> Result<Classroom.Course, Problem> {
         guard let read = try? GamCommands.printCourses(courseIDs: [courseID]) else {
@@ -369,13 +380,16 @@ public final class UserAccess {
 
     /// A Classroom read, its failure in words: a missing scope points at Setup, not-found names what Classroom doesn't know
     /// (`about`: a teacher's address in quotes, or "class <id>"; empty for the index). Only fixed sentences and GAM's own
-    /// scrubbed message reach the screen, never a Swift error's text.
-    private func classroom(_ read: GamRead, in pinned: Domain?, about: String) async -> Result<[GamOutput.Record], Problem> {
+    /// scrubbed message reach the screen, never a Swift error's text (GamGUI's rule: a refusal is fixed words).
+    /// `notFoundIsNone` reads GAM's not-found as no records (the classes someone owns).
+    private func classroom(_ read: GamRead, in pinned: Domain?, about: String,
+                           notFoundIsNone: Bool = false) async -> Result<[GamOutput.Record], Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
         do {
             return .success(try Classroom.records(try await runner.run(read, as: domain, extraEnvironment: environment), argv: read.argv))
         } catch let error as GamError {
             if Classroom.needsScope(error) { return .failure(Problem(summary: Classroom.scopeNote)) }
+            if error.kind == .notFound, notFoundIsNone { return .success([]) }
             if error.kind == .notFound, !about.isEmpty { return .failure(Problem(summary: "Classroom doesn't know \(about).")) }
             return .failure(Problem(summary: error.message))
         } catch let incomplete as MessageCopies.Incomplete {
@@ -385,7 +399,7 @@ public final class UserAccess {
         } catch is CancellationError {
             return .failure(Problem(summary: "The read was stopped before it finished."))
         } catch {
-            return .failure(Problem(summary: SetupModel.message(for: error)))
+            return .failure(Problem(summary: Classroom.notRun))
         }
     }
 

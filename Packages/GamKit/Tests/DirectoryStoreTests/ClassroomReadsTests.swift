@@ -1,3 +1,4 @@
+import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
@@ -38,12 +39,17 @@ final class ClassroomReadsTests {
         try? FileManager.default.removeItem(at: scratch)
     }
 
-    private func connect() async throws {
+    /// Every Classroom scope GAM names: a token that reads Classroom.
+    static let classroomScopes = Classroom.scopes.map(\.scope)
+    /// A token that records its scopes, none of them Classroom's: a domain that doesn't use Classroom.
+    static let noClassroom = ["https://www.googleapis.com/auth/admin.directory.user"]
+
+    private func connect(scopes: [String]? = nil) async throws {
         let folder = scratch.appending(path: "config-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Fixtures.oauth2(admin: "admin@example.com").write(to: folder.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: "admin@example.com", scopes: scopes).write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: "example.com")
         await setup.checkAccess(Domain("example.com")!)
     }
@@ -177,5 +183,96 @@ final class ClassroomReadsTests {
         let small = ClassroomReads(setup: setup, access: access, keep: 2)
         for id in ["500000000001", "500000000002", "500000000003"] { await small.readCard(id) }
         #expect(small.card("500000000001") == nil && small.card("500000000003") != nil)
+    }
+
+    // MARK: beside the people screens (C1.4–C1.6; GamGUI's tests/test_classroom_people.py at 07c505d)
+
+    @Test func whetherTheTokenReadsClassroomIsFalseOnlyWhenKnownToLackIt() async throws {
+        try await connect(scopes: Self.noClassroom)
+        #expect(setup.classroomReadable == false)
+        try await connect()
+        #expect(setup.classroomReadable == nil, "no scopes recorded: unknown, so the read is tried")
+        try await connect(scopes: Self.classroomScopes.map { $0 + ".readonly" })
+        #expect(setup.classroomReadable == true)
+        await setup.remove(Domain("example.com")!)
+        #expect(setup.classroomReadable == nil)
+    }
+
+    @Test func aTeachersClassesSayWhichTheyOwn() async throws {
+        try await connect()
+        #expect(reads.person("alice@example.com") == nil, "nothing is read until asked")
+        await reads.readPerson("alice@example.com")
+        let alice = try #require(reads.person("Alice@Example.com")?.value)
+        let teaches = try alice.teaches.get(), attends = try alice.attends.get()
+        #expect(teaches.count == 3 && attends.isEmpty)
+        #expect(teaches.filter(alice.owns).count == 3)
+        #expect(try courseReads().allSatisfy { $0.contains("active,provisioned,archived") })
+    }
+
+    @Test func aStudentsClassesIncludeLastYears() async throws {
+        try await connect()
+        await reads.readPerson("carol@example.com")
+        let carol = try #require(reads.person("carol@example.com")?.value)
+        let attends = try carol.attends.get()
+        #expect(attends.map(\.name) == ["Biology", "Chemistry, \"Honors\"", "World History 2025"])
+        #expect(attends.last?.stateWords == "Archived")
+        #expect(try carol.teaches.get().isEmpty && !attends.contains(where: carol.owns))
+    }
+
+    @Test func oneCauseIsSaidOnce() async throws {
+        try await connect()
+        FileManager.default.createFile(atPath: state.appending(path: "noclassroom").path, contents: Data())
+        await reads.readPerson("alice@example.com")
+        #expect(reads.person("alice@example.com")?.value?.oneCause?.summary == Classroom.scopeNote)
+    }
+
+    @Test func aTokenKnownToLackClassroomReadsNothing() async throws {
+        try await connect(scopes: Self.noClassroom)
+        await reads.readPerson("alice@example.com")
+        #expect(reads.person("alice@example.com")?.value?.oneCause?.summary == Classroom.scopeNote)
+        #expect(try courseReads().isEmpty)
+    }
+
+    /// GamGUI's `courses_owned_by`: every state, Classroom not knowing them as a teacher (exit 56) is none, anything else is
+    /// said; and a deleted owner never reads as the leaver owning nothing (#113).
+    @Test func theClassesSomeoneOwnsAreReadInEveryState() async throws {
+        try await connect()
+        #expect(try await access.coursesOwned(by: "nobody@example.com").get().isEmpty)
+        #expect(try courseReads().contains(["print", "courses", "teacher", "nobody@example.com", "owneremail", "fields",
+                                            "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+                                            "formatjson"]))
+        #expect(try await access.coursesOwned(by: "admin@example.com").get().map(\.name) == ["World History 2025"])
+        try FileManager.default.createDirectory(at: state.appending(path: "ownergone"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "ownergone/100000000000000000009").path, contents: Data())
+        #expect(Set(try await access.coursesOwned(by: "alice@example.com").get().map(\.name))
+                == ["Algebra", "Biology", "Chemistry, \"Honors\""])
+        FileManager.default.createFile(atPath: state.appending(path: "noclassroom").path, contents: Data())
+        guard case .failure(let problem) = await access.coursesOwned(by: "alice@example.com") else {
+            Issue.record("a missing scope read as none"); return
+        }
+        #expect(problem.summary == Classroom.scopeNote)
+    }
+
+    /// The list handed over at offboarding: GamGUI's columns, each cell formula-safe as written.
+    @Test func theOwnedListIsAFormulaSafeCSV() async throws {
+        try await connect()
+        let owned = try await access.coursesOwned(by: "alice@example.com").get()
+        let text = AuditExport.csv(Classroom.ownedRows(owned + [Classroom.Course(id: "9", name: "=1+1", state: "ACTIVE")]))
+        let lines = text.components(separatedBy: "\r\n")
+        #expect(lines.first == "courseId,name,section,state,owner,link")
+        #expect(lines.contains { $0.hasPrefix("500000000002,\"Chemistry, \"\"Honors\"\"\"") })
+        #expect(lines.contains("9,'=1+1,,Active,,"))
+    }
+
+    @Test func theTeachersGroupIsFoundByNameOrAddress() {
+        func group(_ email: String, _ name: String, _ count: Int? = nil) -> GamGroup {
+            var record: GamOutput.Record = ["email": .string(email), "name": .string(name)]
+            if let count { record["directMembersCount"] = .string(String(count)) }
+            return GamGroup(record: record)
+        }
+        #expect(ClassroomReads.teachersGroup(in: [group("sales@example.com", "Sales")]) == nil)
+        #expect(ClassroomReads.teachersGroup(in: [group("t@example.com", "  classroom TEACHERS ")])?.email == "t@example.com")
+        #expect(ClassroomReads.teachersGroup(in: [group("Classroom_Teachers@example.com", "Staff who teach")])?.email
+                == "Classroom_Teachers@example.com")
     }
 }

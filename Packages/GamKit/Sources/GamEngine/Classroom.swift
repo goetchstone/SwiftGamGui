@@ -1,6 +1,6 @@
 import Foundation
 
-/// Google Classroom, read only: classes and who is in them (plan 2026-11-11, C1; GamGUI's `core/classroom.py` at 3c8d909).
+/// Google Classroom, read only: classes and who is in them (plan 2026-11-11, C1; GamGUI's `core/classroom.py` at 07c505d).
 /// The app never writes to Classroom: the operator has no Workspace for Education domain to prove a write on, and this repo
 /// relies on no write that hasn't run live. These reads have only run against the mock; their shapes were read from the
 /// vendored GAM build (doPrintCourses, doPrintCourseParticipants), not captured from a tenant.
@@ -26,8 +26,41 @@ public enum Classroom {
     public static let scopeNote = "This domain's GAM authorization needs the Classroom scopes (“Classroom API - Courses”, “- Rosters” "
         + "and “- Profile Emails”; read-only is enough): authorize again from Setup's fresh setup with them ticked."
 
+    /// A Classroom read GAM couldn't be run for (its credentials or its private folder), in fixed words: never an error's
+    /// own text.
+    public static let notRun = "Couldn't read Classroom: GAM couldn't be run for this domain. Check access on Setup, then try again."
+
     public static func needsScope(_ error: GamError) -> Bool {
         error.exitCode == 15 || error.kind == .scopeMissing
+    }
+
+    /// The states a person's classes are read in: last year's archived ones too (a deleted owner loses those as well), never
+    /// declined or suspended ones (GamGUI's `PERSON_STATES`).
+    public static let personStates: [GamCommands.CourseState] = [.active, .provisioned, .archived]
+
+    /// The classes `email` owns, from a read with `owneremail` (a class can have several teachers, one owner): GamGUI's
+    /// `owned_by`, `email.strip().lower()` against the owner's address.
+    public static func owned(_ courses: [Course], by email: String) -> [Course] {
+        let who = PythonText.lower(PythonText.strip(email))
+        return courses.filter { $0.ownerEmail.unicodeScalars.elementsEqual(who.unicodeScalars) }
+    }
+
+    /// The owned-classes list offboarding hands over (GamGUI's `/classroom/owned.csv`): its header, then a row per class.
+    /// Each cell is made formula-safe where it's written (`AuditExport.csv`, GamGUI's `csv_safe`).
+    public static func ownedRows(_ courses: [Course]) -> [[String]] {
+        [["courseId", "name", "section", "state", "owner", "link"]]
+            + courses.map { [$0.id, $0.name, $0.section, $0.stateWords, $0.ownerEmail, $0.link] }
+    }
+
+    /// The list's file name: `classes-owned-by-<local part>.csv`, keeping only ASCII letters, digits and `._-` of the
+    /// address's local part (it may hold `\`, `;` or `/`), "person" when nothing is left. GamGUI's filename rule.
+    public static func ownedFileName(_ email: String) -> String {
+        let localPart = PythonText.strip(email).split(separator: "@", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
+        let kept = String(String.UnicodeScalarView(localPart.unicodeScalars.filter { scalar in
+            scalar.isASCII && (("a"..."z").contains(scalar) || ("A"..."Z").contains(scalar) || ("0"..."9").contains(scalar)
+                               || "._-".unicodeScalars.contains(scalar))
+        }))
+        return "classes-owned-by-\(kept.isEmpty ? "person" : kept).csv"
     }
 
     /// The Classroom API's course states, as people say them.
@@ -134,7 +167,13 @@ public enum Classroom {
     /// student Classroom doesn't know), and `Incomplete` when GAM answered nothing at all (it prints its CSV header even when
     /// nothing matches, so silence is never "no classes") or its output passed the runner's cap.
     public static func records(_ result: GamResult, argv: [String]) throws -> [GamOutput.Record] {
-        guard result.exitCode == 0 || ownersUnknownOnly(result) else {
+        // A class whose owner GAM can't look up (a deleted account) is a warning and exit 56 after every class was printed:
+        // read as an error, one deleted owner hid every class, and offboarding said the leaver owned none (GamGUI failure
+        // log 2026-11-11, #113). Accepted only when every line GAM reported is that warning (`onlyUnknownOwners`). With no
+        // table it is `Incomplete` below, never GAM's not-found: GamGUI raises the 56 there, which its offboarding read
+        // would take as "owns none" (a listed deviation; GAM prints its header whenever it prints the table).
+        let ownersUnknown = result.exitCode == 56 && GamError.onlyUnknownOwners(result.stderr)
+        guard result.exitCode == 0 || ownersUnknown else {
             throw GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv, stdout: result.stdout)
         }
         guard !result.stdoutTruncated else {
@@ -161,23 +200,6 @@ public enum Classroom {
     }
 
     // MARK: reading
-
-    /// GAM couldn't look up a class's owner (`owneremail`; doPrintCourses → _convertCourseUserIdToEmailName, 7.51.00): an owner
-    /// deleted or out of reach. It still prints the whole table, that owner's address as "Unknown user", but writes
-    /// `Course: <id>, Owner ID: <id>, Does not exist (i/n)` (entityDoesNotHaveItemWarning) and exits 56. Every class is there,
-    /// so the table is read, never "Classroom doesn't know" the teacher or the class. Only when each of GAM's lines is such a
-    /// warning: any other line keeps the failure. A deviation from GamGUI at 3c8d909, which fails the read (review 2026-11-11).
-    static func ownersUnknownOnly(_ result: GamResult) -> Bool {
-        guard result.exitCode == 56, !result.stdoutTruncated else { return false }
-        let lines = PythonText.lines(result.stderr).map { PythonText.strip($0) }
-            .filter { !$0.isEmpty && !GamError.isProgress($0) && !GamError.isFraming($0) }
-        return !lines.isEmpty && lines.allSatisfy { line in
-            let text = EntityCount.removed(from: line)
-            guard text.hasPrefix("Course: "), text.hasSuffix(", Does not exist"), let owner = text.range(of: ", Owner ID: ") else { return false }
-            let course = text[text.index(text.startIndex, offsetBy: 8)..<owner.lowerBound]
-            return GamCommands.isCourseID(String(course))
-        }
-    }
 
     /// Python's `value.strip()` of a string, empty for anything else (`_text`).
     static func text(_ value: JSONValue?) -> String {

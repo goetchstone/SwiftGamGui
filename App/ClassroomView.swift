@@ -11,6 +11,12 @@ struct ClassroomView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let reads: ClassroomReads
+    /// The group list as cached, for who can create classes (C1.6).
+    let groups: GroupStore
+    /// A class another screen asked to open (a person's classes on Users), cleared once its card is open.
+    @Binding var requested: String?
+    /// Opens Groups on a group's page (by address), or on its list (empty).
+    let openGroup: (String) -> Void
     @State private var query = ""
     /// The teacher whose classes were asked for (Return), as typed.
     @State private var teacher = ""
@@ -39,11 +45,21 @@ struct ClassroomView: View {
             controls
             Divider()
             list(courses, owners: owners)
+            if setup.active != nil, setup.classroomReadable != false {
+                Divider()
+                CreatorsPanel(setup: setup, groups: groups, openGroup: openGroup)
+            }
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         // The index loads after the screen shows: a cold index is a domain-wide read.
         .task(id: setup.generation) { await reads.loadIndex() }
         .onChange(of: setup.generation) { selection = nil; teacher = "" }
+        // A class asked for from a person's page opens its card, whether or not the list holds it (an archived class).
+        .onChange(of: requested, initial: true) {
+            guard let id = requested else { return }
+            requested = nil
+            if GamCommands.isCourseID(id) { selection = id }
+        }
         .onChange(of: reads.indexState?.isReading) { was, now in
             guard was == true, now == false else { return }
             if let problem = reads.indexState?.problem {
@@ -178,6 +194,57 @@ struct ClassroomView: View {
         let all = reads.indexState?.value?.count ?? shown
         let read = reads.indexReadAt.map { ", read \($0.formatted(date: .omitted, time: .shortened))" } ?? ""
         return searched.isEmpty ? "\(all) open \(noun(all))\(read)" : "\(shown) of \(all) open \(noun(all)) match\(read)"
+    }
+}
+
+/// Who can create classes (plan 2026-11-11 C1.6; GamGUI's `_classroom_creators.html`), read only: the group named "Classroom
+/// Teachers" or at `classroom_teachers@`, from the group list as cached (read once if none is), with its member count and a
+/// way to it on Groups, where adding a staff group is the existing, proven write. GAM GUI reconciles nothing. Left off where
+/// the admin token is known not to read Classroom.
+private struct CreatorsPanel: View {
+    let setup: SetupModel
+    let groups: GroupStore
+    let openGroup: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Who can create classes").font(.headline).accessibilityAddTraits(.isHeader)
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .task(id: setup.generation) {
+            guard setup.active != nil, groups.groups == nil, groups.problem == nil, !groups.isLoading else { return }
+            await groups.load()
+        }
+    }
+
+    /// The cached list wins over a later failed refresh (GroupStore keeps both; GamGUI's `/classroom/creators` reads
+    /// with `stale_ok`): the problem shows only when there is no list, with a way to try again from here.
+    @ViewBuilder private var content: some View {
+        if let all = groups.groups {
+            if let group = ClassroomReads.teachersGroup(in: all) {
+                let name = group.name.isEmpty ? group.email : group.name
+                let count = group.membersCount.map { " (\($0) direct member\($0 == 1 ? "" : "s"))" } ?? ""
+                Text("Members of \(name)\(count). To let a department create classes, add its staff group there.")
+                    .font(.callout)
+                Button("Open \(name) on Groups") { openGroup(group.email) }
+                    .accessibilityHint("Opens the group's page on Groups")
+            } else {
+                Text("No “\(ClassroomReads.teachersGroupName)” group found. Classroom's settings in the Admin console say which "
+                     + "group may create classes; open it on Groups to add staff.")
+                    .font(.callout)
+                Button("Open Groups") { openGroup("") }
+            }
+        } else if let problem = groups.problem, !groups.isLoading {
+            Label("Couldn't list groups. \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.multicolor).font(.callout)
+            Button("Try Again") { Task { await groups.load() } }
+                .disabled(setup.active == nil)
+                .accessibilityLabel("Try listing the groups again")
+        } else {
+            ProgressView("Reading the groups…").controlSize(.small)
+        }
     }
 }
 

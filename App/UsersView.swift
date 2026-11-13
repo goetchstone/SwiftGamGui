@@ -21,6 +21,8 @@ struct UsersView: View {
     let drafts: SiriDrafts
     /// Who can see a person's primary calendar (the Calendar tab).
     let calendarReads: CalendarReads
+    /// A person's Classroom classes, read from their page when asked (the Profile tab).
+    let classroom: ClassroomReads
     /// A person another screen asked to open (Reports' Show in Users), cleared once their page is open.
     @Binding var requested: String?
     /// Opens Signatures for a person (the Mail tab's "Change Signature…").
@@ -30,6 +32,8 @@ struct UsersView: View {
     /// Opens Incident for a person and checks it (Actions → "Secure Account…"): only the address goes;
     /// everything that changes the account is that screen's.
     let openCompromised: (String) -> Void
+    /// Opens a class's card on Classroom (a person's classes).
+    let openClass: (String) -> Void
     @State private var filter = UserFilter()
     /// What became of Siri's last request, when it couldn't be drafted.
     @State private var siriNotice: String?
@@ -207,7 +211,7 @@ struct UsersView: View {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
                                chromeProfiles: chromeProfiles, personDevices: personDevices, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
-                               openCompromised: openCompromised)
+                               openCompromised: openCompromised, setup: setup, classroom: classroom, openClass: openClass)
                 }
             }
         } else {
@@ -405,6 +409,9 @@ private struct UserDetail: View {
     let calendarReads: CalendarReads
     let openCalendars: (String) -> Void
     let openCompromised: (String) -> Void
+    let setup: SetupModel
+    let classroom: ClassroomReads
+    let openClass: (String) -> Void
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var editingPhone = false
@@ -414,6 +421,8 @@ private struct UserDetail: View {
     /// The person whose lists this page last had: if they go (another window read eight more people), the
     /// page reads them again rather than sit at "Not read."
     @State private var readFor: GamUser.ID?
+    /// Debug snapshots: the Profile section to scroll to (`classes`: the Classroom section, last on the tab).
+    @State private var snapshotAnchor: String?
 
     private var sectionPicker: some View {
         Picker("Section", selection: $tab) {
@@ -436,8 +445,14 @@ private struct UserDetail: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
-            Form { tabContent }
-                .formStyle(.grouped)
+            ScrollViewReader { scroller in
+                Form { tabContent }
+                    .formStyle(.grouped)
+                    .onChange(of: snapshotAnchor) { _, anchor in
+                        guard let anchor else { return }
+                        scroller.scrollTo(anchor, anchor: .top)
+                    }
+            }
         }
         // Long values wrap or clip rather than widen the inspector past its bounds (ColumnWidths).
         .frame(minWidth: 0, maxWidth: .infinity)
@@ -475,7 +490,7 @@ private struct UserDetail: View {
         #if DEBUG
         // Snapshots: `SWIFTGAMGUI_TAB=secure` takes "Secure Account…" once, as the operator would; `search` opens the Mail
         // tab and searches the mailbox for what it sent lately; `password` previews Set Temporary Password from Security;
-        // `chrome` opens the Security tab and reads their Chrome profiles.
+        // `chrome` opens the Security tab and reads their Chrome profiles; `classes` reads their Classroom classes (Profile).
         .task(id: user.id) {
             let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
             if tab == "secure" { openCompromised(user.primaryEmail) }
@@ -490,6 +505,11 @@ private struct UserDetail: View {
             if tab == "chrome" {
                 self.tab = .security
                 await chromeProfiles.read(user.primaryEmail)
+            }
+            if tab == "classes" {
+                self.tab = .profile
+                await classroom.readPerson(user.primaryEmail)
+                snapshotAnchor = PersonClassesSection.anchor
             }
         }
         #endif
@@ -601,6 +621,11 @@ private struct UserDetail: View {
                 Section("Aliases") {
                     ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
                 }
+            }
+            // School domains: left off when the admin token is known not to read Classroom (GamGUI's `classroom_readable`).
+            if setup.classroomReadable != false {
+                PersonClassesSection(user: user, reads: classroom, openClass: openClass)
+                    .id(PersonClassesSection.anchor)
             }
         case .groups:
             AccessList(kind: .groups, user: user, directory: directory, changes: changes, access: access,
@@ -1149,6 +1174,95 @@ private struct ChromeProfilesSection: View {
         case .read(.success(let profiles))?:
             "\(profiles.count) Chrome profile\(profiles.count == 1 ? "" : "s") signed in with this account, the most recently used first."
         }
+    }
+}
+
+/// A person's Classroom classes (plan 2026-11-11 C1.4; GamGUI's `_classroom_person.html`), read live only when asked: what
+/// they teach, the ones they own marked, and what they're in, archived ones too. Each opens its class card on Classroom.
+/// One cause for both reads is said once. Read only.
+private struct PersonClassesSection: View {
+    let user: GamUser
+    let reads: ClassroomReads
+    let openClass: (String) -> Void
+    /// Classes listed per side, with a count past it (GamGUI shows 50).
+    static let shown = 50
+    /// The section's scroll anchor (the snapshots' `classes` tab scrolls to it: it is last on Profile).
+    static let anchor = "person.classes"
+
+    private var state: ClassroomReads.State<ClassroomReads.PersonClasses>? { reads.person(user.primaryEmail) }
+    private var isReading: Bool { state?.isReading == true }
+
+    var body: some View {
+        Section {
+            HStack {
+                Text(summary).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                if isReading { ProgressView().controlSize(.small) }
+                Button(state == nil ? "Show Their Classes" : "Read Again") {
+                    let reads = reads, email = user.primaryEmail
+                    Task { await reads.readPerson(email) }
+                }
+                .disabled(isReading)
+                .accessibilityLabel(state == nil ? "Show \(user.fullName)'s classes" : "Read \(user.fullName)'s classes again")
+            }
+            .accessibilityElement(children: .contain)
+            if let classes = state?.value {
+                if let cause = classes.oneCause {
+                    couldNotRead(cause.summary)
+                } else {
+                    side("Teaches", classes.teaches, classes: classes)
+                    side("In", classes.attends, classes: classes)
+                }
+            }
+        } header: {
+            Text("Classroom")
+        } footer: {
+            Text("School domains only. Read live from Classroom, only when you ask. GAM GUI never changes Classroom.")
+        }
+    }
+
+    private var summary: String {
+        switch state {
+        case nil: "Not read."
+        case .reading?: "Reading their classes…"
+        case .read?: "Active, not yet accepted and archived classes."
+        }
+    }
+
+    @ViewBuilder
+    private func side(_ title: String, _ read: Result<[Classroom.Course], UserAccess.Problem>,
+                      classes: ClassroomReads.PersonClasses) -> some View {
+        switch read {
+        case .failure(let problem):
+            couldNotRead("\(title): \(problem.summary)")
+        case .success(let courses):
+            Text("\(title) (\(courses.count))").font(.headline).accessibilityAddTraits(.isHeader)
+            if courses.isEmpty {
+                Text("None.").foregroundStyle(.secondary)
+            }
+            ForEach(courses.prefix(Self.shown)) { course in
+                let owned = title == "Teaches" && classes.owns(course)
+                let details = [course.section, course.stateWords, owned ? "Owner" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+                Button { openClass(course.id) } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(course.name.isEmpty ? "Class \(course.id)" : course.name).lineLimit(1).truncationMode(.tail)
+                        Text(details).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel([course.name.isEmpty ? "Class \(course.id)" : course.name, details].joined(separator: ", "))
+                .accessibilityHint("Opens the class on Classroom")
+            }
+            if courses.count > Self.shown {
+                Text("Showing \(Self.shown) of \(courses.count).").font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func couldNotRead(_ text: String) -> some View {
+        Label("Couldn't read: \(text)", systemImage: "exclamationmark.triangle.fill")
+            .symbolRenderingMode(.multicolor).textSelection(.enabled)
     }
 }
 

@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "3c8d909",
+  "gamgui_commit": "07c505d",
   "gam_version": "7.52.01",
   "generator": "scripts/gen_fixtures.py"
  },

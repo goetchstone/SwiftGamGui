@@ -133,6 +133,10 @@ struct ContentView: View {
     @State private var signaturesPerson: String?
     /// The person Calendars opens on when Users sends it one.
     @State private var calendarsPerson: String?
+    /// The class Classroom opens on when Users sends it one (a person's classes).
+    @State private var classroomCourse: String?
+    /// The group Groups opens on when Classroom sends it one (who can create classes); empty for the list.
+    @State private var groupsGroup: String?
     /// The person Users opens on when another screen sends it one (Reports' Show in Users).
     @State private var usersPerson: String?
     /// Home's All Failures in Audit: Audit opens narrowed to failures, and takes it.
@@ -179,6 +183,7 @@ struct ContentView: View {
             case .users:
                 UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
                           access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                          classroom: services.classroom,
                           requested: $usersPerson,
                           openSignatures: { email in
                               signaturesPerson = email
@@ -189,18 +194,25 @@ struct ContentView: View {
                           }, openCompromised: { email in
                               compromisedPerson = email
                               screen = .compromised
+                          }, openClass: { id in
+                              classroomCourse = id
+                              screen = .classroom
                           })
                 .navigationTitle("Users")
             case .groups:
                 GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
-                           members: services.groupMembers, changes: services.groupChanges)
+                           members: services.groupMembers, changes: services.groupChanges, requested: $groupsGroup)
                     .navigationTitle("Groups")
             case .calendars:
                 CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
                               changes: services.calendarChanges, requested: $calendarsPerson)
                     .navigationTitle("Calendars")
             case .classroom:
-                ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom)
+                ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom,
+                              groups: services.groups, requested: $classroomCourse) { address in
+                    groupsGroup = address
+                    screen = .groups
+                }
                     .navigationTitle("Classroom")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,

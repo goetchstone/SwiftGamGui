@@ -69,6 +69,12 @@ public final class SetupModel {
     /// confirm: then ChangeCore makes no change that could cut an account off, since it can't tell whether it's this one.
     public var connectedAdminID: String? { active == nil ? nil : activeAdminID }
     private var activeAdminID: String?
+    /// Whether the connected domain's admin token holds the Classroom scopes GAM reads Classroom with (GamGUI's
+    /// `classroom_readable`, C1.4): false on a token known to lack them (a domain that doesn't use Classroom), nil when its
+    /// scopes can't be read. Only false skips a read: a person's page leaves its Classroom section off, offboarding reads
+    /// no classes. Taken from the token read at Check access, so no Keychain read (no Touch ID) per page.
+    public var classroomReadable: Bool? { active == nil ? nil : activeClassroomReadable }
+    private var activeClassroomReadable: Bool?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.
@@ -271,7 +277,8 @@ public final class SetupModel {
             if result.isAuthorized {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
                                                                 of: admin, in: domain, runner: runner)
-                activate(domain, admin: admin, accountID: account.id)
+                activate(domain, admin: admin, accountID: account.id,
+                         classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) })
                 activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
                     " Which account that is isn't confirmed (\($0)), so a change that could sign it out isn't made here."
                 } ?? ""))
@@ -361,11 +368,12 @@ public final class SetupModel {
         return (id, nil)
     }
 
-    private func activate(_ domain: Domain, admin: String, accountID: String?) {
+    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         activeAdmin = admin
         activeAdminID = accountID
+        activeClassroomReadable = classroomReadable
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -394,6 +402,7 @@ public final class SetupModel {
             active = nil
             activeAdmin = nil
             activeAdminID = nil
+            activeClassroomReadable = nil
             generation += 1
             tenantChanged()
         }
@@ -422,6 +431,14 @@ public final class SetupModel {
         case .failed(let line):
             return "GAM failed: \(line)"
         }
+    }
+
+    /// GamGUI's `classroom_readable` over `oauth2.txt`'s bytes: the top-level `scopes` list against `Classroom.scopes` (a
+    /// scope or its `.readonly` form), nil when the token isn't a JSON object with a `scopes` list. Held to `setup.json`.
+    nonisolated public static func classroomReadable(inOAuth2 data: Data) -> Bool? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let granted = object["scopes"] as? [Any] else { return nil }
+        return Classroom.scopesMissing(granted: granted.compactMap { $0 as? String })?.isEmpty
     }
 
     nonisolated public static func message(for error: any Error) -> String {

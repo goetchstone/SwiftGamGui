@@ -168,16 +168,69 @@ struct ClassroomTests {
         await #expect(throws: GamError.self) { try await records(mixed, state: state) }
     }
 
-    @Test func onlyOwnerWarningsAreLetThrough() {
-        func result(_ stderr: String, _ code: Int32 = 56) -> GamResult {
-            GamResult(exitCode: code, stdout: "id,JSON\n", stderr: stderr, stdoutTruncated: false, stderrTruncated: false)
+    /// GamGUI's `test_only_an_unknown_owner_warning_lets_the_table_stand` (#113), and what `records` adds: exit 56 only, and
+    /// a table that came back.
+    @Test func onlyOwnerWarningsAreLetThrough() throws {
+        let warn = "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist"
+        #expect(GamError.onlyUnknownOwners(warn))
+        #expect(GamError.onlyUnknownOwners("Getting all Courses that match query ()\n\(warn) (1/2)\n"))
+        #expect(!GamError.onlyUnknownOwners(""))
+        #expect(!GamError.onlyUnknownOwners("\(warn)\nTeacher: nobody@example.com, Does not exist"))
+        #expect(!GamError.onlyUnknownOwners("Course: 999, Does not exist"))
+        #expect(!GamError.onlyUnknownOwners("\(warn) (1/2) extra"))
+        func result(_ stderr: String, _ code: Int32 = 56, stdout: String = "id,JSON\n") -> GamResult {
+            GamResult(exitCode: code, stdout: stdout, stderr: stderr, stdoutTruncated: false, stderrTruncated: false)
         }
-        #expect(Classroom.ownersUnknownOnly(result("  Course: 1, Owner ID: 9, Does not exist (1/2)\nGetting all Courses\n")))
-        #expect(!Classroom.ownersUnknownOnly(result("Course: 1, Does not exist\n")))
-        #expect(!Classroom.ownersUnknownOnly(result("Course: 1, Owner ID: 9, Does not exist\nTeacher: x, Does not exist\n")))
-        #expect(!Classroom.ownersUnknownOnly(result("Course: x1, Owner ID: 9, Does not exist\n")))
-        #expect(!Classroom.ownersUnknownOnly(result("Course: 1, Owner ID: 9, Does not exist\n", 50)))
-        #expect(!Classroom.ownersUnknownOnly(result("")), "a 56 that says nothing isn't read")
+        #expect((try? Classroom.records(result(warn), argv: [])) != nil)
+        #expect(throws: GamError.self) { try Classroom.records(result(warn, 50), argv: []) }
+        // No table: a shortfall, never GAM's not-found, which offboarding would read as "owns none" (GamGUI raises the 56).
+        #expect(throws: MessageCopies.Incomplete.self) { try Classroom.records(result(warn, stdout: " \n"), argv: []) }
+    }
+
+    // MARK: the domain-wide reads GamGUI's roster compare makes (#112): their shapes, as GAM prints them
+
+    @Test func aliasesComeAsGamPrintsThemObjectsNotStrings() async throws {
+        let read = try GamCommands.printCourses(states: Classroom.personStates, ownerEmail: false, aliases: true)
+        #expect(read.argv == ["print", "courses", "states", "active,provisioned,archived", "aliases", "fields",
+                              GamCommands.courseFields, "formatjson"])
+        let raw = try await run(read)
+        #expect(raw.exitCode == 0 && raw.stdout.hasPrefix("id,JSON,JSON-aliases\n"))
+        let rows = try Classroom.records(raw, argv: read.argv)
+        #expect(rows.count == 4)
+        let chemistry = try #require(rows.first { Classroom.text($0["id"]) == Self.chemistry })
+        guard case .string(let cell)? = chemistry["JSON-aliases"], let items = JSONValue.parse(cell)?.array else {
+            Issue.record("JSON-aliases isn't a list"); return
+        }
+        #expect(items.compactMap { $0.object?["alias"] } == [.string("d:gg-C2"), .string("d:chem-honors")], "objects, as the API gives")
+    }
+
+    @Test func everyClassesPeopleIsOneRowAClassInThoseStates() async throws {
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.printAllCourseParticipants(states: []) }
+        let read = try GamCommands.printAllCourseParticipants(states: [.active, .active, .provisioned])
+        #expect(read.argv == ["print", "course-participants", "states", "active,provisioned", "show", "all", "formatjson"])
+        let rows = try await records(read)
+        #expect(rows.map { Classroom.text($0["courseId"]) } == ["500000000001", "500000000002", "500000000003"], "not the archived one")
+        let all = try await records(try GamCommands.printAllCourseParticipants(states: Classroom.personStates))
+        #expect(all.count == 4 && all.allSatisfy { $0["JSON-teachers"] != nil && $0["JSON-students"] != nil })
+    }
+
+    // MARK: the classes someone owns (C1.5)
+
+    @Test func theClassesSomeoneOwnsAreByTheirAddressCaseAside() async throws {
+        let courses = Classroom.courses(try await records(try GamCommands.printCourses(teacher: "alice@example.com")))
+        #expect(Set(Classroom.owned(courses, by: "  ALICE@example.com ").map(\.name)) == ["Algebra", "Biology", "Chemistry, \"Honors\""])
+        #expect(Classroom.owned(courses, by: "carol@example.com").isEmpty)
+    }
+
+    @Test func theOwnedListIsGamGUIsColumnsFormulaSafeWhereWritten() {
+        let course = Classroom.Course(id: "1", name: "=HYPERLINK(\"x\")", section: "-2", state: "ARCHIVED",
+                                      ownerEmail: "a@example.com", link: "https://classroom.google.com/c/1")
+        let rows = Classroom.ownedRows([course])
+        #expect(rows == [["courseId", "name", "section", "state", "owner", "link"],
+                         ["1", "=HYPERLINK(\"x\")", "-2", "Archived", "a@example.com", "https://classroom.google.com/c/1"]])
+        #expect(Classroom.ownedFileName("o'neil.a-b_c@example.com") == "classes-owned-by-oneil.a-b_c.csv")
+        #expect(Classroom.ownedFileName("alice@example.com") == "classes-owned-by-alice.csv")
+        #expect(Classroom.ownedFileName("é/;\\@example.com") == "classes-owned-by-person.csv")
     }
 
     // MARK: the reader's shortfalls
