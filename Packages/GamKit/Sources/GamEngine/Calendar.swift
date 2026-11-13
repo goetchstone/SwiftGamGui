@@ -190,7 +190,7 @@ public enum CalendarSharing {
     }
 
     /// The role as Google stores it, lowercased as `CalendarACL.role` holds it (`CALENDAR_ACL_ROLES_MAP`).
-    static func storedRole(_ role: GamCommands.CalendarRole) -> String {
+    public static func storedRole(_ role: GamCommands.CalendarRole) -> String {
         switch role {
         case .editor: "writer"
         case .freeBusy: "freebusyreader"
@@ -230,5 +230,162 @@ public enum CalendarSharing {
     public static func shareTargetProblem(_ target: String) -> String? {
         guard !Address.looksLikeEmail(target) || target.unicodeScalars.contains(":") else { return nil }
         return "“\(target)” isn't one address: enter a person's full address, like name@example.com."
+    }
+
+    /// The group a Calendars-screen target names with GAM's explicit `group:` prefix (`<CalendarACLScope>
+    /// group:<EmailAddress>`), as GamGUI's `_subscribers_for` reads it: the prefix in any case, the rest stripped. Nil
+    /// for a target without the prefix.
+    public static func explicitGroup(_ target: String) -> String? {
+        guard PythonText.lower(target).unicodeScalars.starts(with: "group:".unicodeScalars) else { return nil }
+        return PythonText.strip(String(String.UnicodeScalarView(target.unicodeScalars.dropFirst(6))))
+    }
+
+    /// Why a Calendars-screen target (a person, a group, or `group:` and one group's address) isn't one address, or nil.
+    /// The same check as `shareTargetProblem`, in words that say a group can be shared too.
+    public static func calendarTargetProblem(_ target: String) -> String? {
+        let address = explicitGroup(target) ?? target
+        guard shareTargetProblem(address) != nil else { return nil }
+        return "“\(target)” isn't one address: enter one person's or group's full address, like name@example.com."
+    }
+}
+
+/// One event, as GamGUI's `CalendarEvent.from_json` reads it (`models.py`): for the Calendars screen's event search and
+/// its delete preview. `start` and `end` are an object's `dateTime`, else its `date`, else GAM's flattened keys; a
+/// person is an object's `email`, else the flattened `.email` key. Held to `gam_models.json`'s `calendar_events`.
+public struct CalendarEvent: Sendable, Identifiable, CustomReflectable {
+    public let eventID: String
+    /// "(no title)" for an event without one, as GamGUI shows it.
+    public let summary: String
+    public let start: String
+    public let end: String
+    public let organizer: String
+    public let creator: String
+    public let status: String
+    public let recurrence: [String]
+    public let recurringEventID: String
+    public let record: GamOutput.Record
+    public var id: String { eventID }
+
+    public var customMirror: Mirror {
+        Mirror(self, children: ["eventID": eventID, "start": start, "status": status])
+    }
+
+    public init(record: GamOutput.Record) {
+        self.record = record
+        eventID = Fields.text(Fields.first(record, "id", "eventId"))
+        summary = Fields.truthy(Fields.first(record, "summary", "Summary")).map(Fields.text) ?? "(no title)"
+        start = Self.when(record, "start")
+        end = Self.when(record, "end")
+        organizer = Self.person(record, "organizer")
+        creator = Self.person(record, "creator")
+        status = Fields.text(Fields.first(record, "status"))
+        let rule = record["recurrence"]
+        if let rules = rule?.array {
+            recurrence = rules.map { Fields.text($0) }
+        } else {
+            recurrence = Fields.truthy(rule).map { [Fields.text($0)] } ?? []
+        }
+        recurringEventID = Fields.text(Fields.first(record, "recurringEventId", "recurringeventid"))
+    }
+
+    /// `_when`: an object's `dateTime or date`, else `start.dateTime or start.date or start`, each by truthiness.
+    static func when(_ record: GamOutput.Record, _ prefix: String) -> String {
+        if let object = record[prefix]?.object {
+            return (Fields.truthy(object["dateTime"]) ?? Fields.truthy(object["date"])).map(Fields.text) ?? ""
+        }
+        return (Fields.truthy(record[prefix + ".dateTime"]) ?? Fields.truthy(record[prefix + ".date"])
+            ?? Fields.truthy(record[prefix])).map(Fields.text) ?? ""
+    }
+
+    /// `_person`: an object's `email`, else `organizer.email or organizer`, by truthiness.
+    static func person(_ record: GamOutput.Record, _ prefix: String) -> String {
+        if let object = record[prefix]?.object { return Fields.truthy(object["email"]).map(Fields.text) ?? "" }
+        return (Fields.truthy(record[prefix + ".email"]) ?? Fields.truthy(record[prefix])).map(Fields.text) ?? ""
+    }
+
+    /// A series (it has rules) or one of its occurrences: deleting a series' event deletes every occurrence.
+    public var isRecurring: Bool { !recurrence.isEmpty || !recurringEventID.isEmpty }
+
+    /// GamGUI's `when`: the start as Google gave it, or a dash.
+    public var when: String { start.isEmpty ? "\u{2014}" : start }
+
+    /// What a row says under the title (`_event_results.html`): when, then the organizer.
+    public var details: String { organizer.isEmpty ? when : "\(when) \u{B7} \(organizer)" }
+}
+
+/// What the Calendars screen checks before a calendar is deleted (GamGUI's `calendars.py`): only a secondary calendar,
+/// and only acting as one of its owners who still has an active account.
+public enum CalendarDeletion {
+    /// GamGUI's `SECONDARY_SUFFIX`: a primary calendar's ID is the person's address, a holiday or system one ends
+    /// `@group.v.calendar.google.com` or holds `#`, a room's ends `@resource.calendar.google.com`.
+    public static let secondarySuffix = "@group.calendar.google.com"
+
+    /// GamGUI's `_is_secondary`: stripped and lowercased, no `#`, ending in the suffix.
+    public static func isSecondary(_ calendarID: String) -> Bool {
+        let id = PythonText.lower(PythonText.strip(calendarID))
+        return !id.isEmpty && !id.unicodeScalars.contains("#") && id.unicodeScalars.reversed().starts(with: secondarySuffix.unicodeScalars.reversed())
+    }
+
+    /// GamGUI's `_owner_candidates`: each owner rule scoped to a person's address, in GAM's order, once each, never
+    /// the calendar's own ID (a secondary calendar lists itself as an owner, F2).
+    public static func ownerCandidates(_ rules: [CalendarACL], calendarID: String) -> [String] {
+        let calendar = PythonText.lower(PythonText.strip(calendarID))
+        var found: [String] = [], seen: Set<String> = []
+        for rule in rules where rule.role == "owner" && rule.scopeType == "user" {
+            let who = PythonText.strip(rule.scopeValue), key = PythonText.lower(who)
+            guard who.unicodeScalars.contains("@"), key != calendar, seen.insert(key).inserted else { continue }
+            found.append(who)
+        }
+        return found
+    }
+
+    /// GamGUI's `_pick_owner`: the first candidate whose account is active (`active` lowercased addresses).
+    public static func pickOwner(_ candidates: [String], active: Set<String>) -> String? {
+        candidates.first { active.contains(PythonText.lower($0)) }
+    }
+
+    /// Who the delete acts as, or why it can't be deleted here, in GamGUI's words (`_resolve_delete_owner`).
+    public enum Owner: Equatable, Sendable {
+        case owner(String)
+        case refused(String)
+    }
+
+    public static let notSecondary = "Only secondary calendars can be deleted here. Primary, holiday and room calendars "
+        + "can't be removed this way."
+
+    public static func owner(of calendarID: String, rules: [CalendarACL], active: Set<String>) -> Owner {
+        guard isSecondary(calendarID) else { return .refused(notSecondary) }
+        let candidates = ownerCandidates(rules, calendarID: calendarID)
+        guard !candidates.isEmpty else {
+            return .refused("Couldn't find an owner account to act as \u{2014} the calendar's owner may have been deleted. "
+                + "Transfer ownership to an active user first.")
+        }
+        guard let owner = pickOwner(candidates, active: active) else {
+            return .refused("Owner(s) \(candidates.joined(separator: ", ")) are suspended or no longer exist \u{2014} reassign "
+                + "ownership to an active user, then delete.")
+        }
+        return .owner(owner)
+    }
+
+    /// What the page says in place of the delete button (GamGUI's `delete_note`), or nil when it can be deleted or
+    /// isn't a secondary calendar (which says nothing).
+    public static func note(for calendarID: String, rules: [CalendarACL], active: Set<String>) -> String? {
+        guard isSecondary(calendarID) else { return nil }
+        let candidates = ownerCandidates(rules, calendarID: calendarID)
+        if candidates.isEmpty {
+            return "This calendar can't be deleted here: no owner account was found to act as (its original owner may "
+                + "have been deleted)."
+        }
+        guard pickOwner(candidates, active: active) == nil else { return nil }
+        return "This calendar can't be deleted here: owner(s) \(candidates.joined(separator: ", ")) are suspended or no "
+            + "longer exist. Reassign ownership to an active user first."
+    }
+
+    /// GamGUI's exact-case gate: the word typed, stripped, must be `DELETE`.
+    public static let typedWord = "DELETE"
+    public static let typedRefusal = "Type DELETE (in capitals) to confirm."
+
+    public static func typedMatches(_ typed: String) -> Bool {
+        PythonText.strip(typed).utf8.elementsEqual(typedWord.utf8)
     }
 }

@@ -4,8 +4,9 @@
 share it with one person or take their access away; and on a person's page, who can see their primary
 calendar. Built in slices from the calendars plan (2026-10-12): C1a, the parity core and the strict
 mock's reads; C1b, the store, the Calendars screen and the person page's Calendar tab; C2a, sharing with
-one person and taking access away, through ChangeCore. Next: the operator's live checks (C1c, C2b). Deferred until asked: find by name (C3a, the domain-wide index), delete a
-secondary calendar (C3b, a ChangeCore addition), share with a group (C4, a background job), events.
+one person and taking access away, through ChangeCore; then (2026-11-13) sharing with a group, deleting a secondary
+calendar, and finding and deleting an event (C3b, C4 and events, below). Next: the operator's live checks (C1c, C2b, and
+those below). Deferred until asked: find by name (C3a, the domain-wide index).
 GamGUI's `web/routes/calendars.py` and `users.py:560-604` are the reference.
 
 **Owns invariants:** #1 and #11 (every read and write is a GamGUI builder already held to `argv.json`;
@@ -24,14 +25,16 @@ writes end to end), `WriteRouteTests` (the one confirm screen).
   (GamGUI's models), `ResourceCalendar.search` (GamGUI's room filter), `CalendarSharing` (who GAM acts
   as, the share target check, the picker's four roles).
 - `Packages/GamKit/Sources/Directory/CalendarReads.swift`: the four reads (C1b).
-- `Packages/GamKit/Sources/Directory/CalendarChanges.swift`: the screen's share and removal (C2a);
+- `Packages/GamKit/Sources/Directory/CalendarChanges.swift`: the screen's share and removal (C2a), a group's share, a
+  calendar's and an event's delete; `CalendarEvents.swift`, the event search; `GamEngine/Calendar.swift`'s `CalendarEvent`
+  and `CalendarDeletion` (GamGUI's model and delete rules);
   `UserChanges.previewShareCalendar` and `previewUnshareCalendar`, the person page's; `CalendarPreviewSheet`
   in `App/ChangePreviewSheet.swift`.
 - `App/CalendarsView.swift`: the screen, its calendar page, and the person page's `PersonCalendarSection`;
   `App/UsersView.swift` (the Calendar tab), `App/GamGUIApp.swift` (the sidebar's Calendars),
   `App/AppServices.swift`, `App/Spikes.swift` (the demo fill), `scripts/screenshots.sh`.
-- `Tests/Fixtures/mock_gam.sh`'s calendar section, and its data: `mock_gam/user_calendars/<person>.json`,
-  `mock_gam/calendar_acls/<calendar>.json`, `mock_gam/resources.json`.
+- `Tests/Fixtures/mock_gam.sh`'s calendar and event sections, and their data: `mock_gam/user_calendars/<person>.json`,
+  `mock_gam/calendar_acls/<calendar>.json`, `mock_gam/calendar_events/<calendar>.json`, `mock_gam/resources.json`.
 - `scripts/gen_fixtures.py`: `GAM_PRINTED` (each read's header and key columns, so the generator checks
   the mock's bytes), and `models_fixture`'s calendar sections.
 
@@ -139,15 +142,128 @@ confirm; the sheet asks for the click.
     the tenant's groups (if the list is loaded) is a group; otherwise `print group-members group <t>
     formatjson`: an answer, even an empty group, is a group; "Does not exist" a person (an outside address
     too, whose subscribe may then fail); any other failure is a problem. GamGUI guessed "person" there and
-    took an empty group for a person. A group is refused until background jobs (D8, C4): "…is a group:
-    sharing with a group adds it for each member, one change each. That comes with background jobs; use
-    GamGUI's Calendars for now.";
+    took an empty group for a person. A group is shared with its members (C4, below);
   - warnings on the sheet: a target who already has a rule ("already has access (X): sharing changes it to
     Y", and "This takes away their ownership." from an owner), and an owner grant ("Owners can change
     sharing and delete the calendar.").
 - **The confirm runs what the preview held,** once, only while it's the one the sheet shows (GamGUI
   failure-log 2026-09-23): an edited target or role, a replay, a bare confirm of a removal, or a switch of
   tenant runs nothing.
+
+## Sharing with a group, deleting a calendar, events (2026-11-13, from GamGUI 3c8d909's `calendars.py`)
+Ported from GamGUI's `/share` (its group half), `/share/group`, `_grant_and_subscribe`, `_run_subscribe`, `_subscribers_for`,
+`/delete/preview`, `/delete`, `_resolve_delete_owner`, `/events`, `/event/preview` and `/event/delete`, with their
+templates' words. No builder is new (each is GamGUI's, held to `argv.json`); nothing is new in ChangeCore.
+
+### What GAM 7.51.00 does (read from its source; the calendar and event code is unchanged at 7.52.01)
+- **F9, events.** `calendars <c> print events [query <q>] [after <day>] [before <day>] | eventid <id>` (getCalendarEventEntity,
+  :42159-42214; _printShowCalendarEvents, :43257-43302): "Getting Events for <c>" on stderr, then `calendarId,id,JSON`, keys
+  sorted (cleanJSON). `after`/`before` are Google's `timeMin`/`timeMax`, a `yyyy-mm-dd` day accepted (getTimeOrDeltaFromNow,
+  :2091-2116). None found is the titles alone and exit 60 (NO_ENTITIES_FOUND_RC). `eventid` is `events.get`: one Google
+  lacks is "Calendar: <c>, Event: <id>, Print Failed: Not Found" (or 410's "Resource has been deleted"), exit 50. Without a
+  query, days or an ID GAM lists every event: the app never asks (GamGUI's rule), and the mock refuses it.
+- **F10, an event's delete.** `calendars <c> delete events eventid <id> doit sendupdates none` (:42936-43016). Without `doit`
+  GAM only says what it would delete (exit 51). With it: "Calendar: <c>, Delete 1 Event", then one level in "…, Event: <id>,
+  Deleted", or "Delete Failed: <why>", exit 50. `sendupdates none` is GAM's default too; GamGUI sends it anyway.
+- **F11, a calendar's delete.** `user <owner> remove calendars <c>` is `calendars.delete` as that owner (removeCalendars,
+  _modifyRemoveCalendars, :55658-55685); `delete calendars` would only take it off their list. "User: <u>, Remove 1
+  Calendar", then "  User: <u>, Calendar: <c>, Removed", or "Remove Failed: <why>", exit 50.
+- **F12, a bare group address is a person's rule.** `normalizeRuleId` (:40654-40664) makes `x@` into `user:x@`; only
+  `group:x@` is a group's rule.
+
+### Sharing with a group (C4)
+- The target is a group when D6 says so; its members are then read (`print group-members`, a known group's too) and held in
+  the preview: the confirm runs exactly those. Steps: the rule (`calendars <c> add calendaracls <role> group:<g>`), then a
+  subscribe per member, each needing the rule. The job tray names it as GamGUI did ("Calendar to g's N members"), with Stop.
+- **Who gets a step:** members of type `USER` whose status is `ACTIVE`, once each, in GAM's order. GamGUI took every member
+  with an address: a group inside it or a suspended account would only fail. The sheet counts the ones left out and says
+  they have access through the group. GAM doesn't expand a group inside it without `recursive` (no builder asks).
+- **The confirm:** always the sheet's click (`confirmStep`); GamGUI's count and its first ten members, "… and N more"; at
+  the guard's bulk threshold (ten members, so eleven changes) the number of changes typed (`typedCountAbove:
+  Guard.bulkThreshold`). GamGUI asked only a click there; the typed count is this app's group rule (Groups, Signatures).
+- **The run:** the sheet closes; the page's banner counts each member as it ends ("Adding to calendars… 3 of 12 · 3
+  added"), with Stop (the member in flight finishes). Then GamGUI's words: "It now appears in A of T members' Google
+  Calendars.", "Couldn't add it for F — they can add it manually." with the first ten in a bounded scroll box (two hundred
+  kept, invariant 9). A member whose subscribe never began is not attempted, never a failure (GamGUI's `stop_requested`,
+  `stop_reason`): "Stopped by you — K not attempted." or "Stopped: <remediation> The remaining K were not attempted."
+  (an account-wide failure, a tenant switch, a cancel), then "Added to A of T members' calendars before stopping." The live
+  count never counts them as failed. An empty group: "Shared with g, but that group has no members to add it for."
+- **`group:<address>`** (GAM's `<CalendarACLScope>`, GamGUI's `_subscribers_for`) is a group, never looked up as a person;
+  a bare address is resolved. The jobs tray names the run "Share <calendar> with <group> and add it to N members' calendars".
+- **A preview outdated while it reads** (a group's members): the page's calendar, the target or the role changed, or a newer
+  preview began. Its held preview is discarded and nothing is shown (`CalendarChanges.edited`, a preview serial).
+- One person still shares with the rule and the subscribe, as before (GamGUI's single-person auto-subscribe).
+
+### Deleting a calendar (C3b)
+- The page's last section, only on a secondary calendar (`CalendarDeletion.isSecondary`, GamGUI's `_is_secondary`): GamGUI's
+  danger-zone words and Delete This Calendar…, or why it can't be (no owner but itself; owners suspended or gone), or "Load
+  the directory…" before the directory is in hand (GamGUI read it on demand).
+- **The preview** reads the access again now and picks the first owner who is an active account (`_owner_candidates`,
+  `_pick_owner`): never from the screen. The step is destructive (`removeCalendar`'s floor). The sheet: GamGUI's
+  "Permanently delete this calendar?", the access rule count, "Runs as owner X.", a field for DELETE.
+- **The confirm:** DELETE, stripped, exact case, and the click. The word is held with the preview (`typedExactWord`) and the
+  executor refuses a run without it ("Type DELETE (exactly) to run this."), as it does an offboarding's typed address;
+  `CalendarChanges.confirm` says a mistyped word on the sheet first, so the preview isn't spent. The run reads the access
+  again first (a precondition): an owner gone since is refused, and so is one suspended or deleted since (`info user`, read
+  now: GamGUI's `_active_emails` at the delete), "preview the delete again". After: "Calendar deleted: “name”.", the calendar dropped from every person's list read and its access read
+  (`CalendarReads.forget`, GamGUI's `idx.remove`), its page closed, the result above the list.
+
+### Events
+- **Find an event** (the page's next section): a title, and optional days (each its own switch: GamGUI's date fields could
+  be left empty). Nothing to search by: "Enter a title to search for, or a date range." and no `gam`. The first 200 kept
+  (`EVENT_CAP`), "Showing the first N matches — narrow your search to see the rest." Exit 60 is "No matching events."
+  (GamGUI's runner raised on it, so its own "No matching events." never showed live). Each row: the title, "(recurring)" in
+  words, when and the organizer; Delete… named for the event.
+- **Delete:** the event read again (`get_event`); gone (Not Found, 410, or `cancelled`) is GamGUI's "That event no longer
+  exists."; else a destructive confirm with GamGUI's words and its warning for a series ("deleting removes the entire
+  series"); an instance (Google's `recurringEventId` set) says it deletes only that occurrence. Delete Event is never the
+  default button. The run reads the event again first. After: "Event deleted.", and it
+  leaves the results.
+
+### Deliberate differences from GamGUI (each tested)
+- A resolved group's rule is `group:<address>` (F12); GamGUI sent the address as typed.
+- Only active people in a group get a subscribe step; the rest are counted on the sheet.
+- The group confirm asks the number typed at ten members.
+- Exit 60 from an event search is none, not a failure; an event read that fails "Not Found" is "no longer exists", not
+  GamGUI's error partial.
+- The delete's owner check is repeated just before the run (GamGUI repeated it at the POST, the same moment for a web form);
+  an owner no longer active is refused there, where GamGUI would act as another active owner (previewing again picks one).
+- A `group:` target GAM says is no group is refused ("x isn't a group here."); GamGUI shared it and subscribed nobody.
+- An event instance (`recurringEventId` set: Google's Events reference, "the id of the recurring event to which this
+  instance belongs") warns that only that occurrence goes: deleting an instance's own ID cancels that one occurrence.
+  GamGUI's `_event_delete.html` warned of the whole series for it too (`is_recurring` counts an instance). GamGUI is wrong
+  here as well.
+
+### The mock (Tests/Fixtures/mock_gam.sh)
+- New data: `mock_gam/calendar_events/<calendar>.json`, Team Calendar's four events (a weekly series, an all-day event, one
+  whose title has a quote, a comma, a backslash and an accent, one with no title), ids in Google's base32hex (a-v, 0-9),
+  times with the calendar's zone as Google returns them.
+- `print events` (F9) answers only the app's fields and selectors; `delete events` (F10) needs `doit` and keeps state
+  (`$GAM_MOCK_STATE/events_deleted/<c>`); `remove calendars` (F11) acts as the owner, refuses a non-owner ("Forbidden") and
+  a primary, and keeps state (`calendars_removed/<c>`: the calendar is then unknown to every read and leaves each list).
+- `user <u> add calendars <c>` (subscribe) needs access, as Google's calendarList.insert does (404 Not Found otherwise):
+  a rule naming them, a group they are in (nested groups and the CUSTOMER row count, `in_group`), their domain, or
+  `default`; a `none` rule gives none. It once answered "Added" for any existing calendar, so a group shared under the
+  wrong scope (a bare address is a person's rule, F12) still passed a fan-out test. GamGUI's mock has the same hole.
+- **Approximate:** Google's `q` searches more than the title (here: a substring of the summary); `after`/`before` compare
+  days, not instants; the 410 and 403 wordings and "Delete not Performed". The old handlers lied: `remove calendars`
+  removed anything but a `*missing*` name, and `delete events` deleted any event, kept nothing, and used GAM's wrong words.
+- `scripts/gen_fixtures.py` now runs the event reads (`GAM_PRINTED`, `GAM_SELECTED`) and builds `gam_models.json`'s
+  `calendar_events` from GamGUI's `CalendarEvent`; GamGUI's test reads its own event id (`evt-allhands`), so the generator
+  reads this data's All Hands id instead.
+
+### Tests
+`CalendarChangesTests` (a group's active members, the typed count, an empty group, Stop, an account-wide failure, the
+failure sample's cap, `group:`, a preview outdated while reading; a delete as the active owner after
+DELETE, the executor refusing it without the word, only a secondary calendar, no active owner, the owner checked again and
+still active; an event search's filter and results, an event read then deleted, one deleted since refused, a series' and an
+instance's warnings), `MockCalendarsTests` (F9-F11 against the mock), `CalendarTests` (the
+event model held to `gam_models.json`, the delete rules, the event argv), `MockCSVTests` (every event is refused).
+
+### Live checks still to do (the operator; a yes in chat for each write)
+On scratch calendars and a small test group the operator owns: share a calendar with the group and check it appears in
+each member's Google Calendar; delete a scratch secondary calendar; find and delete a scratch event, and one occurrence of
+a scratch series' search result. Compare each GAM line with F9-F11 and fix the mock first where they differ.
 
 ## Gotchas / mock-lies traps
 - **The mock lied about every calendar read** (found planning C1): it refused all four (and before that

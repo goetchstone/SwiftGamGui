@@ -1331,6 +1331,25 @@ final class ExecutorTests {
         #expect(preview.typedAddress == leaver)
         #expect(await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedAddresses: [" Carol@Example.com\n"])).succeeded)
     }
+
+    /// A word to type exactly (a calendar delete's DELETE, GamGUI's exact-case gate) is the executor's to check, never only
+    /// a screen's: missing, another case or another word runs nothing; stripped, it runs. It can't be empty, nor share the
+    /// field with the guard's own `confirm`.
+    @Test func aWordToTypeIsCheckedByTheExecutor() async throws {
+        let executor = executor()
+        await #expect(throws: Executor.PreviewRefusal.typedWordUnusable) { try await executor.preview([suspend()], typedExactWord: " ").get() }
+        let many = (1...Guard.bulkThreshold).map { suspend("u\($0)@example.com") }
+        await #expect(throws: Executor.PreviewRefusal.typedWordUnusable) { try await executor.preview(many, typedExactWord: "DELETE").get() }
+        for typed in ["", "delete", "Delete", "confirm"] {
+            let preview = try await executor.preview([suspend()], typedExactWord: "DELETE").get()
+            let outcome = await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedWord: typed))
+            #expect(outcome.refusal == "Type DELETE (exactly) to run this.", "\(typed)")
+        }
+        #expect(ran().isEmpty)
+        let preview = try await executor.preview([suspend()], typedExactWord: "DELETE").get()
+        #expect(preview.typedExactWord == "DELETE")
+        #expect(await executor.run(preview, confirmation: OperatorConfirmation(confirmed: true, typedWord: " DELETE\n")).succeeded)
+    }
     // MARK: Off2's review (2026-10-13)
 
     /// A Stop asked while the run is still checking (here, in its precondition) means none of its steps run: it was

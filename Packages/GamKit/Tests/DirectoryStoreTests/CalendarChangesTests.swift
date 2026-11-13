@@ -57,9 +57,9 @@ final class CalendarChangesTests {
     }
 
     /// The executor and the screen's changes, on `lookups` for the group check (the mock by default).
-    private func changes(lookups: AuthenticatedRunner? = nil) -> CalendarChanges {
+    private func changes(lookups: AuthenticatedRunner? = nil, writer: AuthenticatedRunner? = nil) -> CalendarChanges {
         let setup = setup
-        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
+        let executor = Executor(runner: writer ?? runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_FIXTURES": Fixtures.mockGamData.path, "GAM_MOCK_STATE": state.path])
         let changes = CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups, reads: reads,
@@ -95,7 +95,25 @@ final class CalendarChangesTests {
     private func writes() -> [[String]] {
         calls().filter { argv in
             (argv.contains("calendaracls") && !argv.contains("print")) || (argv.count > 3 && argv[2] == "add" && argv[3] == "calendars")
+                || (argv.count > 3 && argv[2] == "remove" && argv[3] == "calendars") || (argv.count > 3 && argv[2] == "delete" && argv[3] == "events")
         }
+    }
+
+    /// The event reads the mock ran.
+    private func eventReads() -> [[String]] { calls().filter { $0.count > 3 && $0[2] == "print" && $0[3] == "events" } }
+
+    /// Accounts the mock's directory doesn't hold that it can act as (`known_user`: an account `create user` made).
+    private func makeUsers(_ addresses: [String]) throws {
+        let folder = state.appending(path: "created")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for address in addresses { try Data().write(to: folder.appending(path: address)) }
+    }
+
+    /// The mock's rules for `calendar` replaced (as a write would leave them), one record per line as GAM prints them.
+    private func setRules(_ calendar: String, _ records: [String]) throws {
+        let folder = state.appending(path: "acls")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data((records.joined(separator: "\n") + "\n").utf8).write(to: folder.appending(path: calendar))
     }
 
     private func lookups() -> [[String]] { calls().filter { $0.starts(with: ["print", "group-members"]) } }
@@ -205,10 +223,13 @@ final class CalendarChangesTests {
     @Test func aCommaListOrKeywordNeverReachesGam() async throws {
         try await connect()
         let changes = changes()
-        for target in ["dana@example.com,erin@example.com", "file", "domain", "default", "group:sales@example.com", "dana"] {
+        for target in ["dana@example.com,erin@example.com", "file", "domain", "default", "dana", "user:dana@example.com",
+                       "group:", "group:sales@example.com,it@example.com", "group:group:sales@example.com", "group:sales"] {
             await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: target, role: "reader")
-            #expect(try problem(changes).summary == CalendarSharing.shareTargetProblem(target), "\(target)")
+            #expect(try problem(changes).summary == CalendarSharing.calendarTargetProblem(target), "\(target)")
         }
+        #expect(CalendarSharing.calendarTargetProblem("dana") == "\u{201C}dana\u{201D} isn't one address: enter one person's or group's full "
+            + "address, like name@example.com.")
         #expect(writes().isEmpty && lookups().isEmpty)
     }
 
@@ -225,22 +246,204 @@ final class CalendarChangesTests {
         #expect(bytes(lookups()) == bytes([GamCommands.printGroupMembers(group: "guest@example.net").argv]))
     }
 
-    /// D8: sharing with a group fans out to its members, one change each: that waits for background jobs (C4).
-    @Test func aGroupIsRefusedUntilJobs() async throws {
+    /// `test_calendars_share_group_fans_out_to_members` and `…_bare_group_address_also_fans_out` (`:1070-1095`): a group
+    /// is resolved first, then shared, then the calendar is added to each member's list. Its members are read now and held;
+    /// only active people get a step (a group inside it, a suspended account and the customer row are counted, not run),
+    /// and the rule's scope is `group:` (GAM reads a bare address as a person's rule, `normalizeRuleId`).
+    @Test func sharingWithAGroupAddsItForEachActiveMember() async throws {
         try await connect()
         let changes = changes()
-        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "sales@example.com", role: "reader")
-        let refusal = "“sales@example.com” is a group: sharing with a group adds it for each member, one change each. "
-            + "That comes with background jobs; use GamGUI's Calendars for now."
-        #expect(try problem(changes).summary == refusal)
-        #expect(lookups().count == 1, "looked up, as GamGUI does")
-        // Known from the group list, it isn't looked up again; an empty group is a group too.
+        let ops = "c_ops@group.calendar.google.com"
+        await changes.previewShare(calendarID: ops, name: "Operations", target: "staff@example.com", role: "reader")
+        let pending = try pending(changes)
+        #expect(pending.kind == .shareGroup && pending.title == "Share Operations with staff@example.com")
+        #expect(bytes(pending.preview.steps.map(\.shownArgv)) == bytes([
+            GamCommands.addCalendarACL(calendarID: ops, scope: "group:staff@example.com").argv,
+            GamCommands.subscribeCalendar(email: "alice@example.com", calendarID: ops).argv]))
+        #expect(pending.preview.steps[1].requires == [0]
+            && pending.preview.title == "Share Operations with staff@example.com and add it to 1 member's calendar")
+        guard case .group(let members, let leftOut) = pending.detail else { throw NotPreviewing(state: "\(pending.detail)") }
+        #expect(members == ["alice@example.com"] && leftOut == 2)
+        #expect(bytes(lookups()) == bytes([GamCommands.printGroupMembers(group: "staff@example.com").argv]))
+        #expect(pending.preview.needsConfirmClick, "a group share is always confirmed from its step")
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(writes().isEmpty, "a bare confirm")
+        await changes.previewShare(calendarID: ops, name: "Operations", target: "staff@example.com", role: "reader")
+        await changes.confirm(try self.pending(changes), confirmed)
+        #expect(try done(changes) == CalendarChanges.Done(
+            message: "Shared with staff@example.com. It now appears in 1 of 1 member's Google Calendars.", partial: false))
+        #expect(bytes(writes()) == bytes([["calendars", ops, "add", "calendaracls", "reader", "group:staff@example.com"],
+                                          ["user", "alice@example.com", "add", "calendars", ops, "selected", "true"]]))
+        #expect(reads.access(.access(calendar: ops))?.contains { $0.scopeToken == "group:staff@example.com" } == true)
+        // Known from the group list it is still read, for its members; a member who already has it is GamGUI's failure.
         await groups.load()
-        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "STAFF@example.com", role: "reader")
-        #expect(try problem(changes).summary.hasPrefix("“STAFF@example.com” is a group"))
-        #expect(lookups().count == 1)
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "SALES@example.com", role: "reader")
+        #expect(lookups().count == 3, "staff twice, then sales")
+        await changes.confirm(try self.pending(changes), confirmed)
+        let partial = try done(changes)
+        #expect(partial.partial && partial.failedCount == 1 && partial.failures.count == 1)
+        #expect(partial.message == "Shared with SALES@example.com. It now appears in 0 of 1 member's Google Calendars. "
+            + "Couldn't add it for 1 — they can add it manually.")
+        #expect(partial.failures[0].hasPrefix("alice@example.com — "))
+    }
+
+    /// `test_calendars_share_to_a_large_group_asks_first_with_the_member_count` (`:1097-1118`): at the guard's bulk
+    /// threshold the confirm names the count with a sample, and the count must be typed; the confirm runs exactly the
+    /// members the preview resolved, in GAM's order.
+    @Test func aLargeGroupNeedsItsCountTyped() async throws {
+        try await connect()
+        let allhands = (1...12).map { String(format: "member%02d@example.com", $0) }
+        try makeUsers(allhands)
+        let changes = changes()
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
+        let pending = try pending(changes)
+        #expect(pending.members == allhands && pending.preview.steps.count == 13)
+        #expect(pending.preview.decision.requiresTypedCount && pending.preview.decision.requiresConfirmation)
+        #expect(writes().isEmpty)
+        await changes.confirm(pending, confirmed)
+        #expect(try problem(changes).summary == "This changes 13 accounts: preview again, and type 13 to confirm.")
+        #expect(writes().isEmpty)
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
+        await changes.confirm(try self.pending(changes), OperatorConfirmation(confirmed: true, typedCount: "13"))
+        #expect(try done(changes).message == "Shared with allhands@example.com. It now appears in 12 of 12 members' Google Calendars.")
+        let ran = writes()
+        #expect(bytes([ran[0]]) == bytes([["calendars", Self.team, "add", "calendaracls", "reader", "group:allhands@example.com"]]))
+        #expect(ran.dropFirst().map { $0[1] } == allhands)
+        #expect(changes.progress == nil)
+    }
+
+    /// `test_calendars_share_empty_group_says_so` (`:1135-1140`): the group is shared; there is no one to add it for.
+    @Test func anEmptyGroupIsSharedWithTheGroupOnly() async throws {
+        try await connect()
+        let changes = changes()
         await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "empty-group@example.com", role: "reader")
-        #expect(try problem(changes).summary.hasPrefix("“empty-group@example.com” is a group"))
+        let pending = try pending(changes)
+        #expect(pending.preview.steps.count == 1 && pending.members.isEmpty)
+        await changes.confirm(pending, confirmed)
+        #expect(try done(changes).message == "Shared with empty-group@example.com, but that group has no members to add it for.")
+        #expect(writes().count == 1)
+    }
+
+    /// `test_stop_ends_the_calendar_fan_out` (`test_jobs_tray.py:83-90`): Stop ends the fan-out after the subscribe in
+    /// flight; the rest never run, and the result says how far it got.
+    @Test func stopEndsAGroupShareAfterTheSubscribeInFlight() async throws {
+        try await connect()
+        let allhands = (1...12).map { String(format: "member%02d@example.com", $0) }
+        try makeUsers(allhands)
+        let slow = try Self.logging(Fixtures.mockGam, to: argvLog, in: scratch, prefix: "[ \"$3 $4\" = \"add calendars\" ] && sleep 0.3\n")
+        let changes = changes(writer: AuthenticatedRunner(runner: GamRunner(binary: slow), vault: vault, runtimeDirectory: base))
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
+        let pending = try pending(changes)
+        let run = Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: "13")) }
+        while (changes.progress?.done ?? 0) < 1 { try await Task.sleep(for: .milliseconds(20)) }
+        await changes.stop()
+        await run.value
+        let stopped = try done(changes)
+        let subscribes = writes().count - 1
+        #expect(subscribes >= 1 && subscribes < 12, "\(subscribes) ran")
+        #expect(stopped.partial && stopped.message == "Stopped by you \u{2014} \(12 - subscribes) not attempted. Added to \(subscribes) of 12 "
+            + "members' calendars before stopping.")
+        #expect(stopped.failedCount == 0 && stopped.failures.isEmpty, "a member never tried isn't a failure")
+    }
+
+    /// GamGUI's `stop_reason` in `_run_subscribe`: a failure every later member would share (a scope not granted, the
+    /// sign-in expired) stops the fan-out there; the rest aren't attempted, and aren't told to add it by hand. The live
+    /// count never counts them as failed.
+    @Test func anAccountWideFailureStopsAGroupShare() async throws {
+        try await connect()
+        let allhands = (1...12).map { String(format: "member%02d@example.com", $0) }
+        try makeUsers(allhands)
+        let failing = try Self.logging(Fixtures.mockGam, to: argvLog, in: scratch, prefix: """
+            if [ "$3 $4" = "add calendars" ] && [ "$2" = member03@example.com ]; then echo 'ERROR: 403: Request had insufficient authentication scopes' >&2; exit 50; fi
+
+            """)
+        let changes = changes(writer: AuthenticatedRunner(runner: GamRunner(binary: failing), vault: vault, runtimeDirectory: base))
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
+        let pending = try pending(changes)
+        var seen: [CalendarChanges.Progress] = []
+        let run = Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: "13")) }
+        while true {
+            if let progress = changes.progress { seen.append(progress) }
+            if case .done = changes.state { break }
+            if case .problem = changes.state { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        await run.value
+        let stopped = try done(changes)
+        #expect(stopped.message == "Stopped: \(GamError.Kind.scopeMissing.remediation) The remaining 9 were not attempted. "
+            + "Added to 2 of 12 members' calendars before stopping.")
+        #expect(stopped.partial && stopped.failedCount == 1 && stopped.failures == ["member03@example.com \u{2014} "
+            + GamError.Kind.scopeMissing.remediation])
+        #expect(writes().count == 3, "the rule, then two subscribes (the refused one is answered before the mock logs it)")
+        #expect(seen.allSatisfy { $0.failed <= 1 }, "\(seen)")
+    }
+
+    /// `test_run_subscribe_caps_its_failed_sample` (`test_users_web.py:1216-1232`): every failure is counted, only the first
+    /// `failuresKept` are kept to name (invariant 9).
+    @Test func aGroupSharesFailuresAreCapped() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "staff@example.com", role: "reader")
+        let held = try pending(changes)
+        let count = CalendarChanges.failuresKept + 7
+        let members = (0..<count).map { "u\($0)@example.com" }
+        let pending = CalendarChanges.Pending(preview: held.preview, kind: .shareGroup, title: held.title, confirmLabel: "Share",
+                                              calendarID: Self.team, calendarName: "Team Calendar", who: "staff@example.com",
+                                              warnings: [], detail: .group(members: members, leftOut: 0))
+        let steps: [RunOutcome.Step] = [.succeeded(output: "")]
+            + Array(repeating: .failed(message: "Add Failed: Not Found", kind: .notFound), count: count)
+        let done = CalendarChanges.groupDone(pending, steps, note: "")
+        #expect(done.failedCount == count && done.failures.count == CalendarChanges.failuresKept)
+        #expect(done.failures.first == "u0@example.com \u{2014} \(GamError.Kind.notFound.remediation)")
+        #expect(done.message == "Shared with staff@example.com. It now appears in 0 of \(count) members' Google Calendars. "
+            + "Couldn't add it for \(count) \u{2014} they can add it manually.")
+    }
+
+    /// `test_calendars_share_group_fans_out_to_members` and `test_calendars_share_empty_group_says_so` (`:1070-1082`,
+    /// `:1135-1140`): `group:` and one address, GAM's `<CalendarACLScope>`, is a group, never looked up as a person; its
+    /// members are read and each gets a step. One GAM says isn't a group is refused (GamGUI shared it, subscribing nobody).
+    @Test func anExplicitGroupPrefixSharesWithTheGroup() async throws {
+        try await connect()
+        let changes = changes()
+        let ops = "c_ops@group.calendar.google.com"
+        await changes.previewShare(calendarID: ops, name: "Operations", target: " Group:staff@example.com ", role: "reader")
+        let pending = try pending(changes)
+        #expect(pending.kind == .shareGroup && pending.who == "staff@example.com" && pending.members == ["alice@example.com"])
+        #expect(bytes(pending.preview.steps.map(\.shownArgv)) == bytes([
+            GamCommands.addCalendarACL(calendarID: ops, scope: "group:staff@example.com").argv,
+            GamCommands.subscribeCalendar(email: "alice@example.com", calendarID: ops).argv]))
+        #expect(bytes(lookups()) == bytes([GamCommands.printGroupMembers(group: "staff@example.com").argv]))
+        await changes.confirm(pending, confirmed)
+        #expect(try done(changes).message == "Shared with staff@example.com. It now appears in 1 of 1 member's Google Calendars.")
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "group:empty-group@example.com", role: "reader")
+        #expect(try self.pending(changes).members.isEmpty)
+        changes.dismiss()
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "group:dana@example.com", role: "reader")
+        #expect(try problem(changes).summary == "dana@example.com isn't a group here.")
+        #expect(writes().count == 2)
+    }
+
+    /// A preview whose group read ends after the form changed (or a newer preview began) holds nothing the sheet shows:
+    /// the confirm can't open on a target the form no longer names.
+    @Test func aPreviewOutdatedWhileReadingIsDropped() async throws {
+        try await connect()
+        let reading = scratch.appending(path: "reading")
+        let slow = try Self.logging(Fixtures.mockGam, to: argvLog, in: scratch,
+                                    prefix: "[ \"$1 $2\" = \"print group-members\" ] && : > '\(reading.path)' && sleep 0.3\n")
+        let changes = changes(lookups: AuthenticatedRunner(runner: GamRunner(binary: slow), vault: vault, runtimeDirectory: base))
+        let group = Task { await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "staff@example.com", role: "reader") }
+        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        changes.edited()
+        await group.value
+        guard case .idle = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
+        // A newer preview: the slower, older one never replaces it.
+        try FileManager.default.removeItem(at: reading)
+        let older = Task { await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "staff@example.com", role: "reader") }
+        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "dana@example.com", role: "reader")
+        let newer = try pending(changes)
+        await older.value
+        #expect(try pending(changes).id == newer.id && newer.who == "dana@example.com")
         #expect(writes().isEmpty)
     }
 
@@ -396,5 +599,195 @@ final class CalendarChangesTests {
         await changes.confirm(try pending(changes), confirmed)
         #expect(reads.access(.access(calendar: Self.team))?.contains { $0.scopeToken == "bob@example.com" } == false)
         #expect(changes.concerns(Self.team) && !changes.concerns("alice@example.com"))
+    }
+
+    // MARK: deleting a calendar
+
+    /// `test_calendars_delete_preview_shows_owner_and_confirm`, `…_requires_exact_case_confirm` and
+    /// `…_applies_with_confirm` (`:1005-1024`): acting as the owner the app resolved, after DELETE typed in capitals;
+    /// then gone from the person's list the screen read, and its access read dropped.
+    @Test func aCalendarIsDeletedActingAsItsActiveOwnerAfterDeleteIsTyped() async throws {
+        try await connect()
+        await reads.load(.calendars(of: "bob@example.com"))
+        let changes = changes()
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let pending = try pending(changes)
+        #expect(pending.kind == .deleteCalendar && pending.isDestructive && pending.confirmLabel == "Delete Calendar")
+        #expect(bytes(pending.preview.steps.map(\.shownArgv)) == bytes([["user", "alice@example.com", "remove", "calendars", Self.team]]))
+        guard case .deleteCalendar(let owner, let rules) = pending.detail else { throw NotPreviewing(state: "\(pending.detail)") }
+        #expect(owner == "alice@example.com" && rules == 6)
+        #expect(pending.preview.typedExactWord == "DELETE", "the executor holds the word, not only this screen")
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedWord: "delete"))
+        #expect(changes.typedProblem == "Type DELETE (in capitals) to confirm." && writes().isEmpty)
+        #expect(try self.pending(changes).id == pending.id, "the sheet stays")
+        await changes.confirm(pending, OperatorConfirmation(typedWord: "DELETE"))
+        #expect(try problem(changes).summary == "This change needs confirmation — preview it, then confirm.")
+        #expect(writes().isEmpty)
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        await changes.confirm(try self.pending(changes), OperatorConfirmation(confirmed: true, typedWord: " DELETE "))
+        #expect(try done(changes) == CalendarChanges.Done(message: "Calendar deleted: “Team Calendar”.", partial: false,
+                                                          deletedCalendar: Self.team))
+        #expect(bytes(writes()) == bytes([["user", "alice@example.com", "remove", "calendars", Self.team]]))
+        #expect(reads.access(.access(calendar: Self.team)) == nil)
+        #expect(reads.calendars(of: "bob@example.com")?.map(\.calendarID) == ["bob@example.com"])
+        let audit = AuditLog.records(at: auditURL)
+        #expect(audit.contains { $0["extra"]?.object?["owner"]?.string == "alice@example.com" })
+    }
+
+    /// `test_calendars_delete_refuses_primary` and `…_resource_and_holiday` (`:1026-1037`): only a secondary calendar,
+    /// refused before any gam.
+    @Test func onlyASecondaryCalendarCanBeDeleted() async throws {
+        try await connect()
+        let changes = changes()
+        for calendar in ["alice@example.com", "aspen@resource.calendar.google.com", "en.usa#holiday@group.v.calendar.google.com"] {
+            await changes.previewDeleteCalendar(calendarID: calendar, name: calendar)
+            #expect(try problem(changes).summary == CalendarDeletion.notSecondary, "\(calendar)")
+        }
+        #expect(calls().allSatisfy { !$0.contains("calendaracls") && !$0.contains("remove") })
+    }
+
+    /// `test_calendars_delete_refuses_when_owner_suspended` (`:1039-1043`) and a calendar whose only owner is itself.
+    @Test func aCalendarWithoutAnActiveOwnerIsRefused() async throws {
+        try await connect()
+        let orphan = "c_orphan@group.calendar.google.com"
+        try setRules(orphan, [
+            #"{"id": "user:c_orphan@group.calendar.google.com", "role": "owner", "scope": {"type": "user", "value": "c_orphan@group.calendar.google.com"}}"#,
+            #"{"id": "user:bob@example.com", "role": "owner", "scope": {"type": "user", "value": "bob@example.com"}}"#])
+        let changes = changes()
+        await changes.previewDeleteCalendar(calendarID: orphan, name: "Orphan")
+        #expect(try problem(changes).summary == "Owner(s) bob@example.com are suspended or no longer exist — reassign ownership to an "
+            + "active user, then delete.")
+        await changes.previewDeleteCalendar(calendarID: "c_allhands@group.calendar.google.com", name: "All Hands")
+        #expect(try problem(changes).summary.hasPrefix("Couldn't find an owner account to act as"))
+        #expect(writes().isEmpty)
+    }
+
+    /// GamGUI's delete resolves the owner again (`_resolve_delete_owner` in `/delete`): an owner gone since the preview
+    /// is refused, and nothing is deleted.
+    @Test func theRunChecksTheOwnerAgain() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let held = try pending(changes)
+        try setRules(Self.team, [#"{"id": "user:alice@example.com", "role": "reader", "scope": {"type": "user", "value": "alice@example.com"}}"#])
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedWord: "DELETE"))
+        #expect(try problem(changes).summary == "alice@example.com is no longer an owner of this calendar — preview the delete again.")
+        #expect(writes().isEmpty)
+    }
+
+    /// GamGUI's `_resolve_delete_owner` at the delete also wants the owner active (`_active_emails`): one suspended since
+    /// the preview is read now (`info user`) and refused, never impersonated.
+    @Test func theRunChecksTheOwnerIsStillActive() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let held = try pending(changes)
+        let folder = state.appending(path: "suspended")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data().write(to: folder.appending(path: "alice@example.com"))
+        await changes.confirm(held, OperatorConfirmation(confirmed: true, typedWord: "DELETE"))
+        #expect(try problem(changes).summary == "alice@example.com is suspended or no longer exists — preview the delete again.")
+        #expect(writes().isEmpty)
+        #expect(calls().contains { $0.starts(with: ["info", "user", "alice@example.com"]) })
+    }
+
+    /// The word is the executor's to check: a run of the held preview with only a Confirm click deletes nothing.
+    @Test func theExecutorRefusesACalendarDeleteWithoutTheWord() async throws {
+        try await connect()
+        let setup = setup
+        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
+            setup.active.map { ($0, setup.generation) }
+        }, extraEnvironment: ["GAM_MOCK_FIXTURES": Fixtures.mockGamData.path, "GAM_MOCK_STATE": state.path])
+        let changes = CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups, reads: reads, runner: runner)
+        changes.environment = ["GAM_MOCK_STATE": state.path]
+        await changes.previewDeleteCalendar(calendarID: Self.team, name: "Team Calendar")
+        let held = try pending(changes)
+        let outcome = await executor.run(held.preview, confirmation: confirmed)
+        #expect(outcome.refusal == "Type DELETE (exactly) to run this.")
+        #expect(writes().isEmpty)
+    }
+
+    // MARK: events
+
+    /// `test_calendars_event_search_requires_filter` and `…_flags_recurring` (`:949-958`): never an unbounded scan; a
+    /// title, or days, finds the events; none is "No matching events.", not a failure (GAM's exit 60).
+    @Test func anEventSearchNeedsATitleOrDays() async throws {
+        try await connect()
+        let changes = changes()
+        let search = changes.events
+        await search.search(calendarID: Self.team, .init(text: "  ", after: "", before: ""))
+        guard case .needsFilter = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(eventReads().isEmpty)
+        await search.search(calendarID: Self.team, .init(text: "stand"))
+        guard case .found(_, let found, let capped) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(found.map(\.summary) == ["Weekly Standup"] && found[0].isRecurring && !capped)
+        #expect(bytes(eventReads()) == bytes([GamCommands.printEvents(calendarID: Self.team, query: "stand").argv]))
+        await search.search(calendarID: Self.team, .init(text: "", after: "2026-07-01", before: "2026-07-20"))
+        guard case .found(_, let days, _) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(days.map(\.eventID) == ["0a1b2c3d4e5f6g7h8i9j", "q3planning0v1u2t3s4r"])
+        await search.search(calendarID: Self.team, .init(text: "no such meeting"))
+        guard case .found(_, let none, _) = search.state(for: Self.team) else { throw NotPreviewing(state: "\(search.state)") }
+        #expect(none.isEmpty)
+        guard case .idle = search.state(for: "c_ops@group.calendar.google.com") else { throw NotPreviewing(state: "another calendar") }
+    }
+
+    /// `test_calendars_event_delete_preview_warns_on_recurring` and `…_delete_applies` (`:960-978`): the event read again
+    /// now, a destructive confirm, then GamGUI's delete with `doit` and no updates sent; it leaves the results.
+    @Test func anEventIsReadAgainThenDeletedFromItsConfirm() async throws {
+        try await connect()
+        let changes = changes()
+        let standup = "4j3k2m1n0p9q8r7s6t5u"
+        await changes.events.search(calendarID: Self.team, .init(text: "stand"))
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: standup)
+        let pending = try pending(changes)
+        #expect(bytes(eventReads().suffix(1)) == bytes([GamCommands.getEvent(calendarID: Self.team, eventID: standup).argv]))
+        #expect(pending.kind == .deleteEvent && pending.isDestructive && pending.preview.needsConfirmClick)
+        #expect(pending.warnings == ["Recurring event — deleting removes the entire series (all occurrences)."])
+        #expect(bytes(pending.preview.steps.map(\.shownArgv)) == bytes([
+            ["calendars", Self.team, "delete", "events", "eventid", standup, "doit", "sendupdates", "none"]]))
+        await changes.confirm(pending, OperatorConfirmation())
+        #expect(writes().isEmpty, "a bare confirm")
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: standup)
+        await changes.confirm(try self.pending(changes), confirmed)
+        #expect(try done(changes).message == "Event deleted.")
+        #expect(writes().count == 1)
+        guard case .found(_, let left, _) = changes.events.state(for: Self.team) else { throw NotPreviewing(state: "search") }
+        #expect(left.isEmpty)
+        // Gone now: Google's 410 for it, said in GamGUI's words; and an ID it never had.
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: standup)
+        #expect(try problem(changes).summary == "That event no longer exists.")
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: "0000000000")
+        #expect(try problem(changes).summary == "That event no longer exists.")
+        #expect(writes().count == 1)
+    }
+
+    /// A series loses every occurrence (GamGUI's warning); an instance (Google's `recurringEventId` set) is deleted by its
+    /// own ID, which cancels that occurrence only: a listed difference from GamGUI, which warned of the series for both.
+    @Test func onlyASeriesWarnsThatEveryOccurrenceGoes() {
+        func event(_ fields: JSONObject) -> CalendarEvent {
+            CalendarEvent(record: (["id": .string("e1"), "summary": .string("Weekly Standup")] as JSONObject).merging(fields))
+        }
+        let series = event(["recurrence": .array([.string("RRULE:FREQ=WEEKLY;BYDAY=MO")])])
+        let instance = event(["recurringEventId": .string("4j3k2m1n0p9q8r7s6t5u")])
+        #expect(CalendarChanges.deleteWarnings(series) == ["Recurring event \u{2014} deleting removes the entire series (all occurrences)."])
+        #expect(CalendarChanges.deleteWarnings(instance)
+            == ["One occurrence of a recurring event \u{2014} deleting removes only this occurrence; the rest of the series stays."])
+        #expect(CalendarChanges.deleteWarnings(event([:])).isEmpty)
+    }
+
+    /// The run reads the event again first: one deleted after the preview is refused, not deleted twice.
+    @Test func anEventDeletedSinceThePreviewIsRefused() async throws {
+        try await connect()
+        let changes = changes()
+        let allHands = "0a1b2c3d4e5f6g7h8i9j"
+        await changes.previewDeleteEvent(calendarID: Self.team, name: "Team Calendar", eventID: allHands)
+        let held = try pending(changes)
+        #expect(held.warnings.isEmpty)
+        let folder = state.appending(path: "events_deleted")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("\(allHands)\n".utf8).write(to: folder.appending(path: Self.team))
+        await changes.confirm(held, confirmed)
+        #expect(try problem(changes).summary == "That event no longer exists.")
+        #expect(writes().isEmpty)
     }
 }

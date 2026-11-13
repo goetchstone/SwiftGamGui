@@ -1,10 +1,12 @@
 # Signatures
 
 **One line:** saved HTML signature templates with `{variables}` and `[[optional]]` blocks, rendered for
-one person and set as their Gmail signature through ChangeCore. Built: the parity core (S1a: the render,
-the reader of `show signature`, GAM's stored form, the strict mock), the template store (S1b), and the
-screen and the write (S1c, 2026-10-10), following the plan for signatures (design doc D1–D5). Next is
-the live check (S1d); a scope as a background job (S2) waits until the operator asks. GamGUI's runbook
+one person, a group's members, everyone in an org unit or the whole company, and set as each one's Gmail
+signature through ChangeCore. Built: the parity core (S1a: the render, the reader of `show signature`,
+GAM's stored form, the strict mock), the template store (S1b), the screen and the write for one person
+(S1c, 2026-10-10, live 10-29), and a scope as a job with Stop and a retry of what failed (S2, 2026-11-13,
+asked for by the operator: "signature across a group or whole ou"), following the plan for signatures
+(design doc D1–D5). The scope's live check is next. GamGUI's runbook
 of the same name is the history this inherits: its render rules, its 2026-09-23 apply incidents and its
 mock traps all carry over.
 
@@ -22,12 +24,12 @@ messages; the store's own rules below (no template is ever lost to a failed save
   `smartQuoteWarning`, `parseShown`, `stored`, `readAsKeyword`, and the preview's `previewDocument`
   (the CSP shell) and `contentRules` (the WKContentRuleList).
 - `Packages/GamKit/Sources/Stores/SignatureStore.swift`: the store.
-- `Packages/GamKit/Sources/Directory/SignatureChanges.swift`: the write; `UserAccess.swift` reads the
-  current signature.
+- `Packages/GamKit/Sources/Directory/SignatureChanges.swift`: the write, for one person and for a scope;
+  `SignatureScope.swift` whom a scope matches; `UserAccess.swift` reads the current signature.
 - `App/SignaturesView.swift` (the screen), `App/SignatureWebView.swift` (the Rendered view and the
   Rendered | HTML pane), `App/SignatureEditor.swift`, `App/SignatureTemplates.swift` (the store for the
-  screen), `SignaturePreviewSheet` in `App/ChangePreviewSheet.swift`, and the Mail tab's "Gmail
-  signature" card in `App/UsersView.swift`.
+  screen), `SignaturePreviewSheet` and `SignatureScopePreviewSheet` in `App/ChangePreviewSheet.swift`, and
+  the Mail tab's "Gmail signature" card in `App/UsersView.swift`.
 - `Packages/GamKit/Sources/GamEngine/JSONValue.swift`: `JSONValue.parse` and `dumps`, Python's
   `json.loads` and `json.dumps`, which the store reads and writes with (shared with the audit log).
 
@@ -78,6 +80,54 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
   on its own (Gmail off fails only it), parsed by `Signature.parseShown`; tenant-stamped and bounded
   like the rest.
 
+## Many people (S2): `Directory/SignatureScope.swift`, `SignatureChanges.previewScope`
+Ports GamGUI's `routes/signatures.py` (`preview`, `retry`, `apply`, `_matched`, `_run_apply`) and
+`match_scope` at 487be35. One preview of N writes, one per person, through the executor; nothing new in
+ChangeCore.
+- **Who (`SignatureScope`):** one person (the S1c flow, unchanged, with Put Back), a group's members, an
+  org unit, the whole company. Active accounts only. Only `company` means everyone: a scope with no value
+  matches nobody. An org unit is its path or any path under it (Python's `rstrip("/") + "/"`; `/` is
+  everyone); a person matches in any case; the org units offered are every user's unit, suspended ones'
+  too (`scope_options`). A group's members are read live with `print group-members group <g> formatjson`
+  (`printGroupMembers`) when the preview is made; its active users are in scope, in the directory's
+  order (a group inside it, the customer, a suspended account are not). The screen opens on one person.
+  GamGUI's department and location scopes aren't built (not asked for).
+- **Preview:** each person's render held as `user <email> signature <render> html`, confirm step always,
+  the count typed above 25 (`typedCountAbove`, `Guard.countConfirmAbove`). The sheet shows "Applies to N
+  users · previewing as <first>", the first one's render exactly as held (`Pending.body`), ten addresses
+  and "and N more" with the full list behind a disclosure, the warnings (GamGUI's curly quote; "renders
+  empty for N of them"; GAM's stored form of the first), the guard's own warnings (over 200), and the
+  commands masked. The job is titled as GamGUI's ("Signature for <who> — N users", "Signature retry — N
+  users").
+- **The run** is the executor's: each write audited (begin and end), in the jobs tray as it starts, the
+  screen's banner counting set and failed with who is being set, and Stop (asked first) after the write
+  in flight. A failure every later write would share (an expired sign-in, a missing scope) stops the
+  rest, as GamGUI's `stop_reason`. The sheet closes once confirmed (as Calendars' group share). Its confirm is
+  not the default button: Return alone never overwrites many signatures Gmail keeps no copy of. The sheet's
+  title names the scope ("Set the signature for N people in /Staff").
+- **A preview outdated while it reads** (a group's members): the scope, person or template changed, or a
+  newer preview began. Its held preview is discarded and nothing is shown (a preview serial, `edited()`).
+- **The result** in GamGUI's words: "Applied to X of N users.", or "Stopped by you — K not attempted." /
+  "Stopped: <remediation> The remaining K were not attempted." then "Applied to X of N before stopping.";
+  each failure as "<address> — <remediation>" (the first 200, then "and N more"), in a bounded box that
+  scrolls, so the template stays in reach in the smallest window.
+- **Retry the N That Failed** (`previewRetry`): a new preview, never a write, of the failed addresses
+  still active (lowercased, once each), with the run's template, bound to the run's tenant; "N of those
+  that failed is no longer an active user and is left out". Its confirm is the same sheet. Not attempted
+  isn't failed: a stopped run's rest isn't in the retry, as in GamGUI.
+- **Exactly what was previewed:** the confirm runs the held people and template; any edit of who it's
+  for, the person or the template drops the preview (`edited()`), and a later preview replaces it; a
+  replay, a bare confirm or another count runs nothing (GamGUI's single-use token and form key).
+- **Deviations from GamGUI, each tested:**
+  - a group whose members can't be read says so (GAM's words, "isn't a group here" for Does not exist);
+    GamGUI's `_matched` took any failure for an empty group ("No active users match");
+  - a person whose render GAM would read as a file keyword (F2) is left out and named on the sheet, never
+    sent; GamGUI would have sent it;
+  - a retry covers every failure, not only GamGUI's kept sample of 200: the run's outcome has every step,
+    so nothing is a sample of a larger set (GamGUI refused a retry past its cap);
+  - group membership compares addresses in any case (GamGUI exactly; Google prints both lowercased);
+  - an empty scope is a problem banner, not a preview with no Apply.
+
 ## The screen (S1c): Signatures, and the Users Mail tab's card
 - **Signatures** (sidebar, SF Symbol `signature`): Person (a menu of active people; type to jump),
   Preview (Current and New, 260 pt tall, side by side while each has 380 pt and one above the other in a
@@ -116,9 +166,14 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
   notice names the file kept aside and where; "Copy Templates from GamGUI" shows only when GamGUI's file
   exists and never in demo mode, and reports copied, kept and left out.
 - **Demo mode** keeps its templates in a fresh temporary folder each launch, never the operator's.
+- **Who** (S2): "Set it for" (One person, A group's members, Everyone in an org unit, The whole company),
+  then the person, a group from the tenant's groups, or an org unit; each kind says suspended accounts are
+  left out. For a unit or the company, New is the render for the first of them ("Each person gets their
+  own") and the button says "Review for N People…"; for a group, "Review…" (its members are read then).
 - **Screenshots** (`scripts/screenshots.sh`): `signatures` (nobody: the demo admin isn't in the
-  directory), `signatures-alice` (Classic loaded; Current is `Best,<br>Alice`), `person-mail` (the card)
-  and `narrow-signatures` (the smallest window). `cacheDisplay` draws a web view blank (WebKit draws in
+  directory), `signatures-alice` (Classic loaded; Current is `Best,<br>Alice`), `person-mail` (the card),
+  `narrow-signatures` (the smallest window), and `signatures-staff` and `narrow-signatures-staff` (everyone
+  in /Staff, Classic loaded). `cacheDisplay` draws a web view blank (WebKit draws in
   another process), so the debug snapshot draws each from its own `takeSnapshot` over its place.
 
 ## The mock (`Tests/Fixtures/mock_gam.sh`)
@@ -176,6 +231,11 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
   when GamGUI's file exists, and never in demo mode (S1c).
 
 ## Testing
+- `SignatureScopeTests` (S2, 19 cases: with the failure sample's cap and a preview outdated while reading): GamGUI's `test_signatures.py` scopes, `test_users_web.py`'s
+  signature apply cases, `test_retry_failures.py`, `test_jobs_tray.py`'s Stop and
+  `test_write_routes_guarded.py`'s edited scope, against the strict mock (its `nogmail/` refusal for a
+  failure; a wrapper for a slow write and a missing scope). The mock needed nothing new: the set, its
+  failures and `print group-members` were already GAM's.
 - `signatures.json` holds GamGUI's render (1,920 renders over the mock's directory and crafted people,
   including values that hold `{variables}` and `[[`), its curly-quote warning (1,530 templates), its
   reader (25 texts), its seeds, its store's messages and order, and GAM's own stored form and keyword

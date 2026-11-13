@@ -1692,8 +1692,11 @@ calendar_key() {  # <calendar id>: as the files name it (Google compares ids cas
   case "$1" in *,*|*/*|"") not_modelled "a calendar id like $1" ;; esac
   lower "$1"
 }
+# A calendar `remove calendars` deleted while the mock keeps state: gone for every read and write after.
+calendar_removed() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/calendars_removed/$1" ]; }
 acl_file() {  # <calendar key>: the file holding its rules, or nothing when there is no such calendar
-  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/acls/$1" ]; then printf '%s' "$GAM_MOCK_STATE/acls/$1"
+  if calendar_removed "$1"; then return 0
+  elif [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/acls/$1" ]; then printf '%s' "$GAM_MOCK_STATE/acls/$1"
   elif [ -f "$GAM_MOCK_FIXTURES/calendar_acls/$1.json" ]; then printf '%s' "$GAM_MOCK_FIXTURES/calendar_acls/$1.json"; fi
 }
 # A secondary calendar's owner: the user whose `user_owned_calendars` file lists it, or whoever it was handed to
@@ -1780,7 +1783,9 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "calendars" ]
   echo "primaryEmail,calendarId,JSON"
   if [ -f "$GAM_MOCK_FIXTURES/user_calendars/$user.json" ]; then
     while IFS= read -r record; do
-      gam_row "$user" "$(json_text id "$record")" "$record"
+      id=$(json_text id "$record")
+      calendar_removed "$(lower "$id")" && continue   # deleted since (`remove calendars`)
+      gam_row "$user" "$id" "$record"
     done < "$GAM_MOCK_FIXTURES/user_calendars/$user.json"
   else   # an account `create user` made: its primary calendar only
     gam_row "$user" "$user" "{\"accessRole\": \"owner\", \"id\": \"$user\", \"primary\": true, \"summary\": \"$user\"}"
@@ -1962,6 +1967,109 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "filelist" ] 
   exit 0
 fi
 
+# ---- Events (docs/domains/calendars.md, "Events"; read from GAM 7.51.00's source, checked unchanged at 7.52.01) ----
+# Each calendar's events: mock_gam/calendar_events/<calendar>.json, one record per line as GAM prints it in the JSON cell
+# (cleanJSON, keys sorted). Ids are Google's base32hex (a-v, 0-9). With GAM_MOCK_STATE, an event deleted is listed in
+# $GAM_MOCK_STATE/events_deleted/<calendar>, and a calendar removed in $GAM_MOCK_STATE/calendars_removed/<calendar>.
+EVENT_FIELDS="anyonecanaddself|attachments|attendees|attendeesomitted|colorid|conferencedata|created|creator|description|end|endtime|endtimeunspecified|eventtype|extendedproperties|focustimeproperties|gadget|guestscaninviteothers|guestscanmodify|guestscanseeotherguests|hangoutlink|htmllink|icaluid|id|location|locked|organiser|organizer|originalstart|originalstarttime|outofofficeproperties|privatecopy|recurrence|recurringeventid|reminders|sequence|source|start|starttime|status|summary|transparency|updated|visibility|workinglocationproperties"
+event_deleted() {  # <calendar key> <event id>
+  [ -n "${GAM_MOCK_STATE:-}" ] && grep -qxF -- "$2" "$GAM_MOCK_STATE/events_deleted/$1" 2>/dev/null
+}
+events_file() {  # <calendar key>: its events, or /dev/null for a calendar the mock holds none for
+  if [ -f "$GAM_MOCK_FIXTURES/calendar_events/$1.json" ]; then printf '%s' "$GAM_MOCK_FIXTURES/calendar_events/$1.json"
+  else printf '/dev/null'; fi
+}
+event_has() {  # <calendar key> <event id>: an event the calendar holds, deleted or not
+  grep -qF "\"id\": \"$2\"" "$(events_file "$1")"
+}
+event_day() {  # <json line> <start|end>: the first ten characters of its date or dateTime (yyyy-mm-dd)
+  printf '%s' "$1" | sed -n "s/.*\"$2\": {\"date[A-Za-z]*\": \"\([0-9-]\{10\}\).*/\1/p"
+}
+need_time() {  # <Time> as getTimeOrDeltaFromNow reads it (:2091-2116): only yyyy-mm-dd is modelled
+  case "${1:-}" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    "") missing_arg "yyyy-mm-ddThh:mm:ss[.fff](Z|(+|-(hh:mm)))" ;;
+    *) not_modelled "an event time like $1" ;;
+  esac
+}
+
+# `<calendars> <cal> print events [query <S>] [after <Time>] [before <Time>] [eventid <id>] fields <EventFieldNameList>
+# formatjson` (doCalendarsPrintShowEvents, :43585; getCalendarEventEntity, :42159-42214; _printShowCalendarEvents,
+# :43257-43302; _validateCalendarGetEvents, :42620-42694) -> calendarId,id,JSON. GAM writes "Getting Events for <cal>"
+# first (printGettingEntityItemForWhom, :2731), acts as the admin for an id ending .calendar.google.com (validateCalendar,
+# :41652-41669), and a calendar it can't get is "Calendar: <cal>, Print Failed: Not Found", exit 50. Each field must be in
+# EVENT_FIELDS_CHOICE_MAP (:43310-43356; else an invalid choice, exit 2); GAM fetches only those, `id` first. `eventid`
+# gets that one event (events.get): one it can't get is "Calendar: <cal>, Event: <id>, Print Failed: <why>", exit 50 (a
+# deleted one "Resource has been deleted", Google's 410; wording approximate). Otherwise events.list with `q`
+# (`query`), `timeMin` (`after`) and `timeMax` (`before`); none found is the titles alone and NO_ENTITIES_FOUND_RC (60).
+# Approximate: Google's `q` searches more than the title (description, location, attendees), and its time bounds
+# compare instants; here `query` is a case-insensitive substring of the summary, `after` keeps an event ending after
+# that day and `before` one starting before it. The CSV is written at the end, so its titles come after any warning.
+if [ "${1:-}" = "calendars" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "events" ]; then
+  cal="$2"; key=$(calendar_key "$2"); shift 4; fj=""; only=""; query=""; after=""; before=""; fields=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      id|eventid) need_value $# "EventID"; only=$2; shift 2 ;;
+      q|query|eventquery) need_value $# "Query"; [ -z "$query" ] || not_modelled "print events with two queries"; query=$2; shift 2 ;;
+      after|starttime|timemin) need_value $# "Time"; need_time "$2"; after=$2; shift 2 ;;
+      before|endtime|timemax) need_value $# "Time"; need_time "$2"; before=$2; shift 2 ;;
+      fields)
+        need_value $# "EventFieldNameList"
+        [ -n "$2" ] || empty_arg "EventFieldNameList"
+        set -f
+        for field in $(printf '%s' "$2" | tr ',' ' '); do
+          field=$(lower "$field")
+          case "|$EVENT_FIELDS|" in *"|$field|"*) ;; *) invalid_choice "$field" "$EVENT_FIELDS" ;; esac
+        done
+        set +f
+        fields=$(lower "$2"); shift 2 ;;
+      formatjson) fj=1; shift ;;
+      event|events|matchfield|maxinstances|includedeleted|includehidden|singleevents|showdeletedevents|orderby|timezone|\
+      countsonly|showdayofweek|eventrowfilter|attendeeslist|addcsvdata|quotechar|todrive|updated|updatedmin|eventtype|eventtypes|\
+      privateextendedproperty|sharedextendedproperty|showhiddeninvitations|alwaysincludeemail|icaluid|maxattendees)
+        not_modelled "print events with $1" ;;
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  [ -n "$fj" ] || not_modelled "print events without formatjson"
+  [ "$fields" = "id,summary,start,end,recurrence,recurringeventid,organizer,creator,status" ] \
+    || not_modelled "print events with fields ${fields:-(none)}: the data holds the app's"
+  [ -z "$only" ] || [ -z "$query$after$before" ] || not_modelled "print events with an event id and a filter"
+  # GamGUI's rule (`/calendars/events`): never every event. GAM would list them all; the app never asks, so it's refused.
+  [ -n "$only$query$after$before" ] || not_modelled "print events with no query, days or event id (every event)"
+  getting Events "$cal"
+  if [ -z "$(acl_file "$key")" ] || calendar_removed "$key"; then
+    printf 'Calendar: %s, Print Failed: Not Found\n' "$cal" 1>&2; echo "calendarId,id,JSON"; exit 50
+  fi
+  file=$(events_file "$key")
+  if [ -n "$only" ]; then
+    if event_has "$key" "$only" && event_deleted "$key" "$only"; then
+      printf 'Calendar: %s, Event: %s, Print Failed: Resource has been deleted\n' "$cal" "$only" 1>&2
+      echo "calendarId,id,JSON"; exit 50
+    elif ! event_has "$key" "$only"; then
+      printf 'Calendar: %s, Event: %s, Print Failed: Not Found\n' "$cal" "$only" 1>&2
+      echo "calendarId,id,JSON"; exit 50
+    fi
+  fi
+  needle=$(lower "$query")
+  rows=$(while IFS= read -r record; do
+    id=$(json_text id "$record")
+    event_deleted "$key" "$id" && continue
+    if [ -n "$only" ]; then [ "$id" = "$only" ] || continue; fi
+    if [ -n "$needle" ]; then
+      summary=$(printf '%s' "$record" | sed -n 's/.*"summary": "\(.*\)"}$/\1/p')
+      case "$(lower "$summary")" in (*"$needle"*) ;; (*) continue ;; esac
+    fi
+    if [ -n "$after" ]; then [ "$(event_day "$record" end)" \> "$after" ] || continue; fi
+    if [ -n "$before" ]; then [ "$(event_day "$record" start)" \< "$before" ] || continue; fi
+    gam_row "$cal" "$id" "$record"
+  done < "$file")
+  echo "calendarId,id,JSON"
+  [ -n "$rows" ] || exit 60
+  printf '%s\n' "$rows"
+  exit 0
+fi
+
 # Reads whose GAM shape this mock doesn't model, refused rather than answered in a guessed one: they printed
 # NDJSON, which GAM never prints for them. No app screen reads them yet. Their CSV, read at 7.48.22, for
 # whoever models one (in GAM's dialect, gam_row; the data from git history):
@@ -1969,10 +2077,9 @@ fi
 #   (showmimetype gscript) is modelled above.
 # - `all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own calendars
 #   (printShowCalendars, :55691, :55800-55818); a person with Calendar off exits 73 (the C3 index).
-# - `calendars <cal> print events … formatjson`: calendarId,id,JSON, only the events the query or event ID
-#   selects (:43147-43165, :43440-43441).
+# (`calendars <cal> print events … formatjson` is modelled above, for the Calendars screen's event search.)
 case "${1:-} ${2:-} ${3:-} ${4:-}" in
-  "user "*" print filelist"|"all users print calendars"|"calendars "*" print events") not_modelled "gam $*" ;;
+  "user "*" print filelist"|"all users print calendars") not_modelled "gam $*" ;;
 esac
 
 # `gam <UserTypeEntity> show backupcodes|verificationcodes` (no options) -> text; a Builder sensitive
@@ -3144,14 +3251,55 @@ if [ "${1:-}" = "all" ] && [ "${2:-}" = "users" ] && [ "${3:-}" = "delete" ] && 
   exit 0
 fi
 
-# `gam user <owner> remove calendars <UserCalendarEntity>` -> PERMANENTLY delete a secondary calendar.
+# `<user> <owner> remove calendars <UserCalendarEntity>` -> PERMANENTLY delete a secondary calendar, acting as the owner
+# (removeCalendars, _modifyRemoveCalendars, :55658-55685 at 7.51.00; GAM's footgun: `delete calendars` only unsubscribes).
+# _validateUserGetCalendarIds (:55396-55451) acts as the owner: one who isn't a user fails at the token, Calendar off exits
+# 73; then "User: <u>, Remove 1 Calendar" (entityPerformActionNumItems), and one level in, "  User: <u>, Calendar: <c>,
+# Removed", or "…, Remove Failed: <why>", exit 50: a calendar Google can't find ("Not Found"), one the person doesn't own
+# (Google's 403, "Forbidden"; wording approximate), and their own primary ("Cannot delete primary calendar."; approximate).
+# With GAM_MOCK_STATE the calendar is then gone: its rules, events and list entries read as an unknown calendar.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "remove" ] && [ "${4:-}" = "calendars" ]; then
   [ -n "${5:-}" ] || missing_arg "UserCalendarEntity"
   [ $# -eq 5 ] || invalid_arg "$6"
-  check_exists "Calendar" "$5"
-  echo "User: $2, Calendar: $5, Removed"
+  user=$(lower "$2"); cal="$5"; key=$(calendar_key "$5")
+  known_user "$user" || not_a_user "$user" Remove
+  if calendar_off "$user"; then calendar_service_off "$user"; fi
+  echo "User: $user, Remove 1 Calendar"
+  file=$(acl_file "$key")
+  if [ "$key" = "$user" ]; then
+    printf '  User: %s, Calendar: %s, Remove Failed: Cannot delete primary calendar.\n' "$user" "$cal" 1>&2; exit 50
+  elif [ -z "$file" ] || calendar_removed "$key"; then
+    printf '  User: %s, Calendar: %s, Remove Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
+  elif ! grep -qF "{\"id\": \"user:$user\", \"role\": \"owner\"" "$file"; then
+    printf '  User: %s, Calendar: %s, Remove Failed: Forbidden\n' "$user" "$cal" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/calendars_removed"; : > "$GAM_MOCK_STATE/calendars_removed/$key"
+  fi
+  printf '  User: %s, Calendar: %s, Removed\n' "$user" "$cal"
   exit 0
 fi
+
+# Whether <user> is in <group> as Google counts it for access: listed, in a group listed in it (to a bounded depth), or
+# a known account where the CUSTOMER row (everyone in the organization) is a member. A subshell: it recurses.
+in_group() (  # <group, lowercased> <user, lowercased> [depth]
+  [ "${3:-0}" -lt 5 ] || exit 1
+  rows=$(members_of "$1")
+  printf '%s\n' "$rows" | grep -qF "\"email\": \"$2\", " && exit 0
+  printf '%s\n' "$rows" | grep -qF '"type": "CUSTOMER"' && known_user "$2" && exit 0
+  for nested in $(printf '%s\n' "$rows" | grep -F '"type": "GROUP"' | sed -n 's/^{"email": "\([^"]*\)", .*/\1/p'); do
+    in_group "$(lower "$nested")" "$2" $((${3:-0} + 1)) && exit 0
+  done
+  exit 1
+)
+can_see_calendar() {  # <user, lowercased> <rules file>: whether a rule gives them any access (see below)
+  granted=$(grep -vF '"role": "none"' "$2" || true)
+  printf '%s\n' "$granted" | grep -qF -e '{"id": "default", ' -e "{\"id\": \"user:$1\", " -e "{\"id\": \"domain:${1#*@}\", " && return 0
+  for group in $(printf '%s\n' "$granted" | sed -n 's/^{"id": "group:\([^"]*\)", .*/\1/p'); do
+    in_group "$(lower "$group")" "$1" && return 0
+  done
+  return 1
+}
 
 # `gam user <email> add calendars <id> [selected <B>] …` (addCalendars, _processCalendarList, :55465-55499): put
 # the calendar in the person's list, GAM acting as them. One who isn't a user fails as any per-user call does;
@@ -3159,7 +3307,11 @@ fi
 # a level, so unindented. Each calendar's line is printed one level in (Ind.Increment, two spaces per level,
 # gamlib/glindent.py): `  User: <u>, Calendar: <c>, Added` on success; a calendar GAM can't get, or one already
 # in their list (Google's `duplicate`, plan Q7), `  User: <u>, Calendar: <c>, Add Failed: <why>`, exit 50
-# (Google's words approximate). With GAM_MOCK_STATE the calendars added are kept in
+# (Google's words approximate). A calendar the person has no access to is one Google can't find for them:
+# calendarList.insert answers 404 Not Found (developers.google.com/workspace/calendar/api/v3/reference/calendarList/insert:
+# the calendar must be one the user can see), so it fails as a missing one does. Access is a rule naming them (`user:`),
+# a group they are in (`group:`, as a write left it; see in_group), their domain (`domain:`), or `default`; a rule whose
+# role is `none` gives none. With GAM_MOCK_STATE the calendars added are kept in
 # $GAM_MOCK_STATE/subscribed/<user> (`print calendars` doesn't list them yet).
 # SUBFAIL: GamGUI's trigger for a subscribe GAM refuses (the partial-share path).
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; then
@@ -3177,7 +3329,8 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "add" ] && [ "${4:-}" = "calendars" ]; 
   done
   known_user "$user" || not_a_user "$user" Add
   if still_provisioning "$user" || calendar_off "$user"; then calendar_service_off "$user"; fi
-  if [ -z "$(acl_file "$key")" ]; then
+  rules=$(acl_file "$key")
+  if [ -z "$rules" ] || ! can_see_calendar "$user" "$rules"; then
     printf '  User: %s, Calendar: %s, Add Failed: Not Found\n' "$user" "$cal" 1>&2; exit 50
   fi
   listed=""
@@ -3224,34 +3377,56 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "add" ] || [ "${3:-}" = "create" ]; }
   exit 0
 fi
 
-# `gam calendars <id> delete events [<EventEntity>] [doit] [<EventNotificationAttribute>]`. Without `doit`
-# GAM only reports what it would delete and does NOT delete — an app that forgot `doit` would show
-# "Event deleted." for an event that still exists — so a doit-less delete fails here.
+# `<calendars> <id> delete events [<EventEntity>] [doit] [<EventNotificationAttribute>]` (doCalendarsDeleteEvents,
+# :43012-43016; getCalendarEventEntity, :42159-42214; _getCalendarDeleteEventOptions, :42936-42950; _deleteCalendarEvents,
+# :42952-43010; _validateCalendarGetEventIDs, :42544-42618). Without `doit` GAM only reports what it would delete and does
+# NOT delete (ACTION_NOT_PERFORMED_RC, 51; Msg.USE_DOIT_ARGUMENT_TO_PERFORM_ACTION) -- an app that forgot `doit` would show
+# "Event deleted." for an event that still exists. With it: a calendar GAM can't get is "Calendar: <c>, Delete Failed: Not
+# Found", exit 50 (validateCalendar); then "Calendar: <c>, Delete 1 Event" and, one level in, "  Calendar: <c>, Event: <e>,
+# Deleted", or "…, Delete Failed: Not Found" for an event Google doesn't have, "…: Resource has been deleted" for one
+# already deleted (Google's 410), exit 50 (wording approximate). Only `eventid <id>`, the form the app sends, is modelled:
+# a query would select every matching event. With GAM_MOCK_STATE the event is gone from then on.
 if { [ "${1:-}" = "calendars" ] || [ "${1:-}" = "calendar" ]; } && [ "${3:-}" = "delete" ] && [ "${4:-}" = "events" ]; then
   [ -n "${2:-}" ] || missing_arg "CalendarEntity"
-  cal="$2"; shift 4
+  cal="$2"; key=$(calendar_key "$2"); shift 4
   eid=""; doit=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      id|eventid|event|events) need_value $# "EventId"; eid="$2"; shift 2 ;;
+      id|eventid) need_value $# "EventID"; [ -z "$eid" ] || not_modelled "delete events with two event ids"; eid="$2"; shift 2 ;;
       doit) doit=1; shift ;;
       notifyattendees) shift ;;
       sendnotifications) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
       sendupdates)
         case "${2:-}" in all|externalonly|none) ;; *) invalid_choice "${2:-}" "all|externalonly|none" ;; esac
         shift 2 ;;
+      batchsize) need_value $# "Integer"; shift 2 ;;
+      event|events|q|query|eventquery|matchfield|maxinstances|after|before|starttime|endtime|timemin|timemax|includedeleted|\
+      includehidden|singleevents|showdeletedevents|updated|updatedmin|eventtype|eventtypes|privateextendedproperty|\
+      sharedextendedproperty|showhiddeninvitations)
+        not_modelled "delete events with $1 (it selects events by search; the app names one event)" ;;
       *) invalid_arg "$1" ;;
     esac
   done
   if [ -z "$eid" ]; then
     echo "ERROR: mock: delete events with no event id would select every event - never emitted" 1>&2; exit 2
   fi
+  if [ -z "$(acl_file "$key")" ]; then
+    printf 'Calendar: %s, Delete Failed: Not Found\n' "$cal" 1>&2; exit 50
+  fi
   if [ -z "$doit" ]; then
-    printf 'Calendar: %s, Event: %s, Delete not performed: Use doit argument to perform action\n' "$cal" "$eid" 1>&2
+    printf 'Calendar: %s, Event: 1, Delete not Performed: Use the "doit" argument to perform action\n' "$cal" 1>&2
     exit 51
   fi
-  check_exists "Event" "$eid"
-  echo "Calendar: $cal, Event: $eid, Deleted"
+  echo "Calendar: $cal, Delete 1 Event"
+  if ! event_has "$key" "$eid"; then
+    printf '  Calendar: %s, Event: %s, Delete Failed: Not Found\n' "$cal" "$eid" 1>&2; exit 50
+  elif event_deleted "$key" "$eid"; then
+    printf '  Calendar: %s, Event: %s, Delete Failed: Resource has been deleted\n' "$cal" "$eid" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    mkdir -p "$GAM_MOCK_STATE/events_deleted"; printf '%s\n' "$eid" >> "$GAM_MOCK_STATE/events_deleted/$key"
+  fi
+  printf '  Calendar: %s, Event: %s, Deleted\n' "$cal" "$eid"
   exit 0
 fi
 

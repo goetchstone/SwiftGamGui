@@ -27,7 +27,12 @@ status=0
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
 # open. Classroom lists the open classes, then Chemistry's card (its ID in the calendar field), then alice's classes. Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
-# tall enough to show the current and new signatures side by side. Onboard opens on the demo role
+# tall enough to show the current and new signatures side by side; signatures-staff is everyone in /Staff
+# (tab `orgUnit`, the unit as the person), Classic rendered for the first of them; `orgUnit+confirm` its confirm sheet
+# (held, never run) and `orgUnit+result` a made-up finished run with two failures and Retry (no gam). On Team Calendar's
+# page the tab shows a change's state: `share-group` the confirm sheet of sharing it with the mock's twelve-member
+# allhands@ (the count typed), `group-result` a made-up partial group share, `delete` the calendar delete's confirm
+# (DELETE typed), `events` the event search's results, `event-delete` an event delete's confirm; each held, never run. Onboard opens on the demo role
 # Salesperson with Create and the welcome email ticked, onboard-result on a made-up finished run (no gam
 # runs), onboard-roles on the role editor and onboard-welcome on its Default welcome email (a sheet; its
 # picture is the sheet). The narrow-*
@@ -94,9 +99,24 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-mail:users:alice@example.com:mail:smallest narrow-security:users:alice@example.com:security:smallest \
             narrow-group-sales:groups:sales@example.com::smallest narrow-group-sales-add:groups:sales@example.com:add:smallest \
             narrow-signatures:signatures:alice@example.com::smallest:Classic \
+            signatures-staff:signatures:/Staff:orgUnit::Classic narrow-signatures-staff:signatures:/Staff:orgUnit:smallest:Classic \
+            signatures-staff-confirm:signatures:/Staff:orgUnit+confirm::Classic \
+            narrow-signatures-staff-confirm:signatures:/Staff:orgUnit+confirm:smallest:Classic \
+            signatures-staff-result:signatures:/Staff:orgUnit+result::Classic \
+            narrow-signatures-staff-result:signatures:/Staff:orgUnit+result:smallest:Classic \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
+            calendars-share-group:calendars:alice@example.com:share-group:::c_team@group.calendar.google.com \
+            narrow-calendars-share-group:calendars:alice@example.com:share-group:smallest::c_team@group.calendar.google.com \
+            calendars-group-result:calendars:alice@example.com:group-result:::c_team@group.calendar.google.com \
+            narrow-calendars-group-result:calendars:alice@example.com:group-result:smallest::c_team@group.calendar.google.com \
+            calendars-delete:calendars:alice@example.com:delete:::c_team@group.calendar.google.com \
+            narrow-calendars-delete:calendars:alice@example.com:delete:smallest::c_team@group.calendar.google.com \
+            calendars-events:calendars:alice@example.com:events:::c_team@group.calendar.google.com \
+            narrow-calendars-events:calendars:alice@example.com:events:smallest::c_team@group.calendar.google.com \
+            calendars-event-delete:calendars:alice@example.com:event-delete:::c_team@group.calendar.google.com \
+            narrow-calendars-event-delete:calendars:alice@example.com:event-delete:smallest::c_team@group.calendar.google.com \
             classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
             narrow-classroom-class:classroom:::smallest::500000000002 \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \

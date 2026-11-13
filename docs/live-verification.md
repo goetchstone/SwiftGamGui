@@ -25,9 +25,15 @@ Dates are 2026, and the last time the command ran from any screen.
 ### Calendars
 - **Not run:** anything from this screen: share a calendar with a person, put it in their list, remove someone's access.
   Sharing a person's own calendar ran from Users.
+- **Not run:** share a calendar with a group and add it to each member's list, with Stop (new 2026-11-13; GamGUI's never ran
+  either). The rule's scope is `group:<address>`.
+- **Not run:** delete a secondary calendar, acting as its owner, after DELETE typed (new 2026-11-13; GamGUI's ran).
+- **Not run:** delete one event, with `doit` and no updates sent (new 2026-11-13; GamGUI's never ran).
 
 ### Signatures
 - **Ran:** set a signature (10-29).
+- **Not run:** set it for a group's members, an org unit or the whole company, as a job with Stop, and retry the ones that
+  failed (new 2026-11-13; GamGUI's bulk apply never ran live either). Try it first on a small org unit.
 
 ### Onboard
 - **Not run:** anything in this app: create an account, the task checklist, subscribe to a calendar, the wait for a new
@@ -85,6 +91,9 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 - The jobs tray, listing a run from the click (fixed after the operator's 10-30 run didn't show).
 
 ### Not run
+- Signatures (new 2026-11-13): a group's members read before a signature preview.
+- Calendars (new 2026-11-13): find an event by title or days; one event read again before its delete; a group's members
+  read before a share.
 - Classroom (new 2026-11-11): the class index, a teacher's classes and a class's card. Can't run here: no Education domain.
 - A person's phones and computers on their Security tab (new 2026-11-07; Incident's check runs the same two reads).
 - ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the
