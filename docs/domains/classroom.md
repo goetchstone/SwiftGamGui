@@ -1,15 +1,18 @@
 # Domain: Google Classroom (read only)
 
-**One line:** Reads Google Classroom for school domains (classes, who teaches and who is in each). Per the two-app
+**One line:** Reads Google Classroom for school domains (classes, who teaches and who is in each), and reads a student
+information system's roster export on this Mac (Plan an Import). Per the two-app
 [Classroom plan](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md) it will
-also plan roster changes from a student information system, handed over as files. **The app never writes to Classroom.**
+also compare that roster with Classroom and hand the changes over as files. **The app never writes to Classroom.**
 
 **Owns invariant(s):** none of its own. It leans on #1 (course IDs and addresses validated, one argv element each), #9
 (the index, teachers and cards kept bounded) and #11 (both builders held to GamGUI's argv), and on #2 by having no write.
 **Enforcement home:** `GoldenArgvTests` (`print_courses`, `print_course_participants`, `print_all_course_participants`),
 `ClassroomTests` (builders, the mock, the reader), `ClassroomReadsTests` (the screen's reads, a person's classes, who can
 create classes, the classes someone owns), `OffboardChangesTests` (the leaver's classes), `GamErrorTests` and
-`GuidedSetupTests` (`only_unknown_owners` and `classroom_readable`, held to `gam_errors.json` and `setup.json`).
+`GuidedSetupTests` (`only_unknown_owners` and `classroom_readable`, held to `gam_errors.json` and `setup.json`),
+`RosterParityTests` (the roster reader, held to `roster.json`) and `RosterStoreTests` (the kept roster, the picker, the
+issues).
 
 GamGUI's runbook of the same name (`docs/domains/classroom.md` in its repo) is the reference: this app ports each piece from
 GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamGUI's repo.
@@ -28,6 +31,12 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - `Directory/OffboardChanges.swift`: `OwnedClasses`, the plan's Classroom warning.
 - `App/ClassroomView.swift` (the screen, who can create classes), `App/UsersView.swift` (`PersonClassesSection`),
   `App/OffboardView.swift` (`OwnedClassesNote`).
+- `Stores/Roster/`: `Roster.swift` (`Roster.read`, the upload's flow, OneRoster 1.1 and 1.2, `RosterCaps`),
+  `RosterZip.swift` (the ZIP reader, `CRC32`), `RosterCSV.swift` (`RosterLines`, `RosterCSV`, `Roster.rows`, `clean`),
+  `RosterSnapshot.swift` (the model, `issueWords`), `RosterStore.swift` (the kept roster), `RosterImport.swift` (the
+  picker's reads, the issues grouped, the Issues CSV's rows). `App/RosterImportView.swift` (`RosterKeeper`, the screen).
+- `Tests/Fixtures/roster.json` (GamGUI's `read_upload` over 142 packages, from `scripts/gen_fixtures.py`),
+  `Tests/Fixtures/demo/roster/` (the snapshots' OneRoster export: made-up people, a problem of each common kind).
 - `Tests/Fixtures/mock_gam.sh` (`print courses`, `print course-participants`), `mock_gam/courses.json`,
   `mock_gam/course_participants.tsv`, `mock_gam/course_aliases.tsv`: GamGUI's handlers and data at 07c505d.
 
@@ -83,7 +92,102 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - **Refusals are fixed words** (GamGUI's rule, CodeQL `py/stack-trace-exposure` there): every Classroom path says a fixed
   sentence or GAM's own scrubbed message, never a Swift error's text (`Classroom.notRun`, the CSV save's "Couldn't save").
 
+## The roster upload (C2.1, C2.3, C5.1, from GamGUI 07c505d)
+- **`Roster.read(uploads)`** is GamGUI's `read_upload`: one ZIP or loose CSV files, the export told by its file names
+  alone (`detect`; nothing unpacked), OneRoster 1.1 or 1.2 read into one `RosterSnapshot` (schools, terms, courses,
+  classes, people, enrolments, in the export's order). Every refusal is GamGUI's `PackageError` in its words, "GamGUI"
+  included (as the offboarding port keeps it), and **`roster.json` holds every one**: the generator builds each package
+  GamGUI's `tests/test_roster.py` builds (the adversarial run's cases among them) and the ZIP and CSV shapes behind them,
+  runs GamGUI's reader at the pin, and the Swift reader must give the same words or the same snapshot. A cap a case
+  lowers is recorded and passed as `RosterCaps`, as GamGUI's tests monkeypatch it.
+- **Clever and one spreadsheet are recognised, not read yet** (the next slice): Clever's names give
+  `Refusal.notYet(.clever)`, one CSV gives `Refusal.needsMap`, each said as "comes in the next version". `Layout`,
+  `filesFromZip(layout:)`, `filesFromCSVs(layout:)` and `rows(foldCase:raw:)` are there for those readers to plug into,
+  and `roster.json` already records GamGUI's Clever snapshots.
+- **The ZIP reader (`RosterZip`) never extracts.** Foundation has none, and a shelled `ditto`/`unzip` writes files. It is
+  `zipfile` 3.14 as GamGUI drives it, read to the end of each function: the end record (`_EndRecData`, the ZIP64 locator
+  and record checked as `_EndRecData64` checks them), the directory's size and entry count capped **before** it is walked,
+  the walk by size (cp437 or strict UTF-8 names, the Unicode Path field 0x7075 honoured when its CRC matches, a version
+  past 6.3 or a malformed extra field refusing), `_end_offset` against overlapping members, the local header's signature
+  and name. A member is inflated by zlib's own raw `inflate` (windowBits -15, `import zlib`), the decoder Python's
+  `zlib.decompressobj(-15)` wraps, streamed from the member's bytes: a stream `zlib` calls bad is "couldn't be unpacked",
+  and one whose input runs out first ends there as `zipfile`'s does, the CRC deciding. (Not the Compression framework:
+  its `COMPRESSION_ZLIB` consumes a corrupt stream whole and reports it as an error, a quiet nothing or a short end,
+  which can't be told from a truncated stream, and a few streams `zlib` refuses it reads to their end; `roster.json`
+  holds the shapes.) It is cut at the directory's size as `ZipExtFile` cuts it, read in the 1 MiB reads GamGUI's `_bounded` makes
+  with the cap checked after each, and its CRC-32 checked when its end is reached. A file no reader uses is named and
+  never inflated (`roster.json` has one whose CRC is wrong).
+- **The CSV reader (`RosterLines`, `RosterCSV`) works on bytes, counting characters as Python does.** Lines end at "
+",
+  "
+" or "
+"; decoding is checked in `TextIOWrapper`'s 8192-byte chunks when a line first needs one, so the refusal
+  that comes first is GamGUI's (a missing column before a bad byte two chunks on). As CPython's does, the check holds a
+  chunk's cut-off last character, and a surrogate's first two bytes (ED A0..BF) at a chunk's end, for the next chunk
+  to refuse (unicodeobject.c, "Truncated surrogate code"). The parser is CPython 3.14's
+  `_csv.c` reader in strict mode, state for state, with the module's default field limit (131,072 characters). The repo's
+  `CSVReader` (GamEngine) isn't reused: it reads GAM's output, lenient and whole, where this must be strict and streamed.
+  A row is built from the used columns alone; an address is checked as given, then lowercased (U+212A); every other cell
+  drops controls and Cf characters in Python's Unicode version. IDs are compared by their exact characters (`ExactKey`):
+  a Swift `String` would take é and e + ◌́ as one ID.
+
+## The kept roster (C2.5)
+- **`RosterStore`**: one file per domain in `<Application Support>/SwiftGamGui/roster/`, named by a hash of the domain,
+  `0600` in a `0700` folder refused if it's a link or someone else's; the folder opened once, every file reached from it
+  (`openat`, `O_NOFOLLOW`). Written under `.saving-<pid>-<name>` and renamed in; **every `.saving-*` copy of that domain's
+  file is swept** by the next save and by Purge (a folder by that name is left). A copy a quit or crash left before its
+  rename has no snapshot to Purge, so **every look and the app's launch sweep each abandoned copy of any domain**
+  (`sweepAbandoned`), whatever pid its name records. One save, read, purge or sweep at a time **across every running
+  copy of the app**: the in-process lock plus `flock(LOCK_EX)` on the folder's descriptor, so while the store is held no
+  save is in progress anywhere and every `.saving-*` file is abandoned. (An in-process lock alone let a second copy's
+  save or Purge delete the first's temporary file mid-save; a pid/mtime guess kept a crash leftover whose pid was reused
+  or whose mtime was ahead of the clock. GamGUI's `roster_store.py` has the same in-process-only `RLock`.) The folder
+  opened is checked by descriptor against the one checked by path, and again after the lock is taken: a folder moved
+  or swapped meanwhile is refused, never written into. The listing's descriptor is close-on-exec, since it shares the
+  locked description and a child that kept it would hold the store.
+- **The format is this app's own** (GamGUI keeps SQLite; nothing else reads this): `SGGROST1`, the head's length, the head
+  as JSON (metadata, issue counts, the issues kept), then the body (schools … enrolments). **The screen reads the head
+  alone** (`meta`, `issues`), never the people; `load` reads the whole, for the compare to come.
+- **Kept `keepDays` (14), and expiry fails closed**: an unreadable date, an import dated more than a day ahead, or a
+  stored expiry past `imported + keepDays` deletes it on the next look. A head whose content can't be read deletes the
+  file and says so; a read the disk failed (an I/O error, not the content) only says so, and never deletes a good
+  roster. Reads and writes retry an interrupted call. No data-protection class is set on the file: FileVault protects it at rest, as SECURITY.md says.
+
+## Plan an Import (C2.2, C2.4)
+- **Classroom has two parts**, a segmented control above the screen (GamGUI's two tabs are links): Classes and Plan an
+  Import. A class asked for from another screen opens Classes.
+- **One `fileImporter`** takes a ZIP, a folder or CSV files (several at once). `RosterImport.readPicked` reads each by
+  descriptor, never through a link (a link is refused); a picked folder gives its own files, its folders left. More than
+  `members` files, or more than `upload` bytes by `fstat`, is refused before any byte is read; each file is then read at
+  most one byte past what's left. Security-scoped access ends once the files are read. Reading, saving and the audit run
+  off the main actor (`RosterKeeper`).
+- **Beside the picker, what to export** (GamGUI's words, with Clever and the spreadsheet said to come next). A refusal is
+  said under the picker; the last good roster stays.
+- **What's kept**: "Read:" or "Kept:" and the label (the file's name, or "N CSV files"), the format, when it was read and
+  when it's deleted, the seven counts, the people in other roles, then **Problems to fix in your SIS**: each kind most
+  frequent first, its whole count and cause, opening to its fix and its first `issuesShown` (20) rows; **Issues CSV…**
+  saves every row kept (GamGUI's columns `kind,cause,fix,file,line,ID,detail,kind_total`) through `AuditExport`
+  (formula-safe, `0600`, whole or not at all). **Purge It Now…** asks first.
+- **Audited as local events** in the app's own log (`connector: local`): `roster_import` (source, label, the picked
+  bytes' SHA-256, the counts, each kind of issue's count; never a row) and `roster_purge` (`deleted`). No GAM runs on
+  this screen. A tenant switch made anywhere drops what's held at once (`SetupModel.onTenantChange`), not when the screen
+  next appears; a read that ends on another domain keeps nothing and says so.
+- **Snapshots**: `classroom-import` (`SWIFTGAMGUI_TAB=import`) with the demo package kept in a temporary store.
+
 ## Deviations from GamGUI (each tested)
+- **The roster reader refuses what `zipfile` would read, where a roster export never needs it** (`roster.json` marks each
+  `swift: refused`, or the Swift tests hold it): ZIP64 (said in its own sentence; a full 32-bit size or offset counts), a
+  NUL in a member's name (`zipfile` cuts the name at it; here it isn't a plain file name), BZIP2 and LZMA members (only
+  stored and deflate; GamGUI's "couldn't be unpacked" words), and two entries sharing one local header (`zipfile` only
+  warns).
+- **Clever and one spreadsheet are said to come next**, where GamGUI reads them (this slice's scope).
+- **The csv field limit is fixed at the module's default.** GamGUI never sets it, and another read in its process may
+  raise it, so past 131,072 characters GamGUI says either the csv module's error or the field cap; here, always the
+  module's (as the fixture records it).
+- **The picker:** more files than `members` says so in its own sentence (GamGUI's form parser says "The upload couldn't
+  be read"); the bytes are bounded by `fstat` before reading (GamGUI's server spools the upload first); a link is refused.
+- **The kept roster's file** is this app's framed JSON, not SQLite; a head that can't be read is said in fixed words,
+  without the error's own text.
 - **An unknown-owner 56 with no table is a shortfall.** GamGUI raises the 56 (not-found), which its offboarding read would
   take as "owns none"; here it's `Incomplete`, said, never none. GAM prints its header whenever it prints the table.
 - **The owned list is the one in hand.** GamGUI's CSV route reads the classes again; here the list the plan shows is saved,
@@ -110,5 +214,6 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   `$GAM_MOCK_STATE/noclassroom` is a token without the scopes, `classroom_silent` GAM answering nothing.
 
 ## Testing / live-verification status
-Offline only: `swift test --package-path Packages/GamKit --filter Classroom`. **Never run live, and can't be here:** the
+Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The roster's parity
+fixture is regenerated with the others (`scripts/gen_fixtures.py` against a pinned GamGUI clone); never hand-edit it. **Never run live, and can't be here:** the
 operator has no Education domain (plan E1).

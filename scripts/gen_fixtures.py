@@ -36,6 +36,9 @@ GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned
   Tests/Fixtures/onboarding.json  GamGUI's onboarding core: the temporary password's alphabet, split_name,
                                   the calls provision_hire makes for a hire (title, order, gates), the
                                   new-account wait's words and test, and its role file's load and migration.
+  Tests/Fixtures/roster.json      GamGUI's roster reader (read_upload) over the packages its tests build and more:
+                                  every refusal in its words, or the snapshot and its issues. The inputs are kept as
+                                  base64, with any cap a case lowers; a case marked `swift` is a listed deviation.
   Tests/Fixtures/exit_codes.json  the vendored GAM build's *_RC exit-code table, read from the binary,
                                   plus GamGUI's own constants that branch on it.
 
@@ -2043,6 +2046,418 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
     return out
 
 
+
+def roster_fixture(gamgui: Path) -> dict:
+    """GamGUI's `read_upload` (core/roster.py) over packages built here: every case tests/test_roster.py and the reader's
+    parts of tests/test_roster_web.py make, and the ZIP and CSV shapes behind them (stored, a comment, prepended data, cp437
+    and UTF-8 names, a bad CRC, a chunk boundary inside a character, Python's strict csv errors). Each case keeps its input
+    bytes and the caps it lowers, and the error's words, the column map's name, or the snapshot with its issues.
+
+    A case marked `swift` is a deviation docs/domains/classroom.md lists: GamGUI reads it, and the Swift reader refuses it
+    (`refused`, in its own words)."""
+    import base64
+    import bz2  # noqa: F401  (zipfile's BZIP2 needs it)
+    import io
+    import stat
+    import struct
+    import zipfile
+
+    from gamgui.core import roster
+    from tests import test_roster as t
+
+    caps_names = {"UPLOAD_CAP": "upload", "MEMBER_CAP": "member", "TOTAL_CAP": "total", "RATIO_CAP": "ratio",
+                  "MEMBERS_CAP": "members", "CENTRAL_DIRECTORY_CAP": "centralDirectory", "MANIFEST_CAP": "manifest",
+                  "COLUMNS_CAP": "columns", "LINE_CAP": "line", "ROWS_CAP": "rows", "FIELD_CAP": "field",
+                  "ISSUE_SAMPLE": "issueSample"}
+    cases: list = []
+
+    def snapshot(snap) -> dict:
+        return {"source": snap.source,
+                "schools": [[s.id, s.name] for s in snap.schools.values()],
+                "terms": [[x.id, x.title, x.kind, x.start, x.end] for x in snap.terms.values()],
+                "courses": [[c.id, c.title, c.code, c.school_id] for c in snap.courses.values()],
+                "classes": [[c.id, c.title, c.course_id, c.school_id, list(c.term_ids), c.code, c.location]
+                            for c in snap.classes.values()],
+                "people": [[p.id, p.role, p.email, p.given, p.family] for p in snap.people.values()],
+                "enrollments": [[e.class_id, e.person_id, e.role, e.primary] for e in snap.enrollments],
+                "issue_counts": [[k, v] for k, v in snap.issue_counts.items()],
+                "issue_sample": [[i.code, i.file, i.row, i.source_id, i.detail] for i in snap.issue_sample],
+                "others": snap.others, "counts": snap.counts}
+
+    def case(name: str, uploads, caps=None, swift: str = "") -> None:
+        caps = caps or {}
+        saved = {k: getattr(roster, k) for k in caps}
+        try:
+            for k, v in caps.items():
+                setattr(roster, k, v)
+            try:
+                expect = {"snapshot": snapshot(roster.read_upload(uploads))}
+            except roster.PackageError as exc:
+                expect = {"error": str(exc)}
+            except roster.NeedsMap as needs:
+                expect = {"needs_map": needs.name}
+        finally:
+            for k, v in saved.items():
+                setattr(roster, k, v)
+        entry = {"name": name, "uploads": [[n, base64.b64encode(b).decode()] for n, b in uploads],
+                 "caps": {caps_names[k]: v for k, v in caps.items()}, "expect": expect}
+        if swift:
+            entry["swift"] = swift
+        cases.append(entry)
+
+    files, zipped, csv_, with_ = t._files, t._zip, t._csv, t._with
+    USERS, ENROLLMENTS, CLASSES, ORGS, MANIFEST = t.USERS, t.ENROLLMENTS, t.CLASSES, t.ORGS, t.MANIFEST
+
+    def listed(**override) -> list:
+        return list(files(**override).items())
+
+    def patched(data: bytes, find: bytes, replace: bytes) -> bytes:
+        assert data.count(find) >= 1, find
+        return data.replace(find, replace)
+
+    # --- a good package, and the shapes it comes in (test_roster.py) -------------------------------------------------
+    case("a OneRoster ZIP reads into one snapshot", [("export.zip", zipped(files()))])
+    case("Finder's one enclosing folder and its litter are fine",
+         [("Export.zip", zipped(files(), prefix="Export/", extra=[("__MACOSX/Export/._users.csv", b"x"),
+                                                                    ("Export/.DS_Store", b"x")]))])
+    case("a folder's CSV files read like its ZIP", listed())
+    case("a byte-order mark is dropped", listed(**{"users.csv": b"\xef\xbb\xbf" + csv_(USERS)}))
+
+    # --- the wrong kind of file ----------------------------------------------------------------------------------------
+    for name, uploads in (("nothing picked", []), ("not a ZIP at all", [("roster.zip", b"not a zip at all")]),
+                          ("a ZIP and a CSV", [("a.zip", zipped(files())), ("users.csv", b"x")]),
+                          ("a text file", [("notes.txt", b"x")]), ("two unknown CSVs", [("a.csv", b"x"), ("b.csv", b"y")]),
+                          ("OneRoster mixed with Clever", [("users.csv", b"x"), ("sections.csv", b"y")])):
+        case(name, uploads)
+
+    # --- OneRoster 1.2 ---------------------------------------------------------------------------------------------------
+    for version in ("1.2", "1.2.1"):
+        manifest = [r if r[0] != "oneroster.version" else ("oneroster.version", version) for r in t.MANIFEST_12]
+        enrol = ENROLLMENTS + [("E3", "", "C1", "S1", "U4", "teacher", "false")]
+        case(f"OneRoster {version} reads each role from roles.csv",
+             [("export.zip", zipped(t._files_12(**{"manifest.csv": manifest, "enrollments.csv": enrol})))])
+    case("OneRoster 1.2 needs roles.csv", list(t._files_12(**{"roles.csv": None}).items()))
+    case("OneRoster 1.2 holds an enrolment to its roles",
+         list(t._files_12(**{"enrollments.csv": ENROLLMENTS + [("E3", "", "C1", "S1", "U2", "teacher", "false")]}).items()))
+    case("OneRoster 1.2's userProfiles.csv is named, never unpacked",
+         [("export.zip", zipped(t._files_12(**{"userProfiles.csv": b"sourcedId,password\r\nP1,hunter2\r\n"})))])
+    profiles = zipped(t._files_12(**{"userProfiles.csv": b"sourcedId,password\r\nP1,hunter2\r\n"}))
+    central = [i for i in range(len(profiles)) if profiles.startswith(b"PK\x01\x02", i)]
+    for i in central:
+        if profiles[i + 46:i + 46 + 16] == b"userProfiles.csv":
+            profiles = profiles[:i + 16] + b"\x00\x00\x00\x00" + profiles[i + 20:]      # its CRC: wrong if it were read
+    case("an unused file is never unpacked, so its broken CRC never matters", [("export.zip", profiles)])
+    case("a 1.1 users.csv in a 1.2 package is read by name", [("export.zip", zipped(t._files_12(**{"users.csv": USERS})))])
+    case("a 1.2 manifest that says roles.csv is absent",
+         list(t._files_12(**{"manifest.csv": [r if r[0] != "file.roles" else ("file.roles", "absent")
+                                               for r in t.MANIFEST_12]}).items()))
+
+    # --- the package-level refusals --------------------------------------------------------------------------------------
+    case("a delta export", listed(**{"manifest.csv": [r if r[0] != "file.users" else ("file.users", "delta")
+                                                       for r in MANIFEST]}))
+    for missing in ("manifest.csv", "users.csv", "enrollments.csv"):
+        case(f"no {missing}", listed(**{missing: None}))
+    case("wrong columns", listed(**{"users.csv": [("id", "mail"), ("U1", "a@b.com")]}))
+    case("one column missing", listed(**{"users.csv": [tuple(c for c in USERS[0] if c != "email")] + [r[:6] for r in USERS[1:]]}))
+    case("text that isn't UTF-8", listed(**{"orgs.csv": "sourcedId,status,name,type\nS1,,Zürich,school\n".encode("latin-1")}))
+    case("another OneRoster version", listed(**{"manifest.csv": [r if r[0] != "oneroster.version" else ("oneroster.version", "2.0")
+                                                                  for r in MANIFEST]}))
+    case("no version", listed(**{"manifest.csv": [r for r in MANIFEST if r[0] != "oneroster.version"]}))
+    case("a manifest that isn't one", listed(**{"manifest.csv": [("name", "value"), ("oneroster.version", "1.1")]}))
+    case("a manifest with a byte-order mark, quotes and spaces",
+         listed(**{"manifest.csv": b"\xef\xbb\xbf propertyName , value \r\n" + csv_(MANIFEST[1:]).replace(b'"1.1"', b'" 1.1 "')}))
+    case("an empty file", listed(**{"orgs.csv": b""}))
+    case("a blank first line", listed(**{"orgs.csv": b"\r\n" + csv_(ORGS)}))
+
+    # --- what the ZIP may hold -------------------------------------------------------------------------------------------
+    for name in ("../users.csv", "/users.csv", "a\\users.csv", "a/b/users.csv", "./users.csv", "C:/users.csv",
+                 "users.csv\x00.txt", "a/", "a/b/", "../", "x/./y.csv"):
+        case(f"a member named {name!r}", [("x.zip", with_(name))])
+    info = zipfile.ZipInfo("Export/users.csv")
+    info.create_system = 3
+    info.external_attr = (stat.S_IFLNK | 0o777) << 16
+    case("a symlink member", [("x.zip", zipped({k: v for k, v in files().items() if k != "users.csv"},
+                                                extra=[(info, b"/etc/passwd")]))])
+    fifo = zipfile.ZipInfo("users.csv")
+    fifo.create_system = 3
+    fifo.external_attr = (stat.S_IFIFO | 0o644) << 16
+    case("a FIFO member", [("x.zip", zipped({k: v for k, v in files().items() if k != "users.csv"}, extra=[(fifo, csv_(USERS))]))])
+    windows = zipfile.ZipInfo("users.csv")
+    windows.create_system = 0
+    windows.external_attr = 0o120777 << 16
+    case("link bits from a system that isn't Unix are ignored",
+         [("x.zip", zipped({k: v for k, v in files().items() if k != "users.csv"}, extra=[(windows, csv_(USERS))]))])
+    data = bytearray(zipped(files()))
+    data[6] |= 1
+    data[data.find(b"PK\x01\x02") + 8] |= 1
+    case("an encrypted member", [("x.zip", bytes(data))])
+    case("two members with one name in any case", [("x.zip", with_("USERS.csv", csv_(USERS)))])
+    case("an unknown member", [("x.zip", with_("payload.sh", b"#!/bin/sh"))])
+    case("two folders", [("x.zip", zipped(files(), prefix="A/", extra=[("B/resources.csv", b"x")]))])
+    case("a root file beside one folder", [("x.zip", zipped({k: v for k, v in files().items() if k != "users.csv"},
+                                                             prefix="A/", extra=[("users.csv", csv_(USERS))]))])
+    case("folder entries for the one folder", [("x.zip", zipped(files(), prefix="Export/", extra=[("Export/", b"")]))])
+    case("too many entries", [("x.zip", zipped(files()))], {"MEMBERS_CAP": 5})
+    understated = bytearray(zipped(files()))
+    end = understated.rfind(b"PK\x05\x06")
+    understated[end + 8:end + 12] = struct.pack("<HH", 1, 1)
+    case("more entries than the end record says", [("x.zip", bytes(understated))], {"MEMBERS_CAP": 5})
+    case("a decompression bomb by its ratio", [("x.zip", zipped(files(**{"users.csv": csv_(USERS) + b"0" * (8 * 1024 * 1024)})))])
+    case("an optional file is named but never unpacked", [("x.zip", zipped(files(**{"demographics.csv": b"x" * (1024 * 1024)})))],
+         {"MEMBER_CAP": 64 * 1024})
+    case("two of one optional file", [("x.zip", zipped(files(**{"demographics.csv": b"x"}), extra=[("Demographics.csv", b"y")]))])
+
+    # --- ZIP shapes ---------------------------------------------------------------------------------------------------------
+    stored = io.BytesIO()
+    with zipfile.ZipFile(stored, "w", zipfile.ZIP_STORED) as z:
+        for name, body in files().items():
+            z.writestr(name, body)
+    case("stored, not deflated", [("export.zip", stored.getvalue())])
+    commented = io.BytesIO()
+    with zipfile.ZipFile(commented, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, body in files().items():
+            z.writestr(name, body)
+        z.comment = b"exported by a SIS"
+    case("an archive comment", [("export.zip", commented.getvalue())])
+    planted = io.BytesIO()
+    with zipfile.ZipFile(planted, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, body in files().items():
+            z.writestr(name, body)
+        z.comment = b"exported by a SIS PK\x05\x06 with a signature in its comment"
+    case("an end-record signature planted in the comment", [("export.zip", planted.getvalue())])
+    case("data before the ZIP (a self-extractor's stub)", [("export.zip", b"MZ" + b"\x00" * 1000 + zipped(files()))])
+    case("an empty ZIP", [("empty.zip", zipped({}))])
+    case("a ZIP named .txt is still read by its bytes", [("export.txt", zipped(files()))])
+    case("a .ZIP that isn't one", [("export.ZIP", b"PK but not really")])
+    bad = bytearray(zipped(files(**{"users.csv": csv_(USERS)})))
+    for i in [i for i in range(len(bad)) if bad.startswith(b"PK\x01\x02", i)]:
+        if bad[i + 46:i + 46 + 9] == b"users.csv":
+            bad[i + 16] ^= 0xFF
+    case("a bad CRC", [("x.zip", bytes(bad))])
+
+    def deflated_by_hand(target: str, raw: bytes, crc: int, size: int) -> bytes:
+        """The package's ZIP, written by hand so `target`'s deflated bytes, CRC and size are exactly these."""
+        import zlib
+        body, directory = bytearray(), bytearray()
+        for name, data in files().items():
+            if name == target:
+                packed, check, length = raw, crc, size
+            else:
+                squeeze = zlib.compressobj(9, zlib.DEFLATED, -15)
+                packed, check, length = squeeze.compress(data) + squeeze.flush(), zlib.crc32(data), len(data)
+            encoded = name.encode()
+            fields = struct.pack("<HHHHHIIIHH", 20, 0, 8, 0, 0x21, check, len(packed), length, len(encoded), 0)
+            directory += b"PK\x01\x02" + struct.pack("<H", 20) + fields + struct.pack("<HHHII", 0, 0, 0, 0, len(body)) + encoded
+            body += b"PK\x03\x04" + fields + encoded + packed
+        count = len(files())
+        return bytes(body + directory + b"PK\x05\x06" + struct.pack("<HHHHIIH", 0, 0, count, count, len(directory), len(body), 0))
+
+    def inflated(raw: bytes) -> bytes:
+        import zlib
+        loose = zlib.decompressobj(-15)
+        return loose.decompress(raw) + loose.flush()
+
+    def deflate_case(name: str, raw: bytes, out: bytes | None = None) -> None:
+        import zlib
+        out = inflated(raw) if out is None else out
+        case(name, [("x.zip", deflated_by_hand("users.csv", raw, zlib.crc32(out), len(out)))])
+
+    import zlib
+    users = csv_(USERS)
+    sync = zlib.compressobj(9, zlib.DEFLATED, -15)
+    unended = sync.compress(users) + sync.flush(zlib.Z_SYNC_FLUSH)
+    # zlib.error in GamGUI: invalid block type, invalid stored block lengths, a good start then garbage, a distance back
+    # past the start (a stream made against a dictionary the reader doesn't have). The CRC of what came out matches.
+    deflate_case("a deflated member of an invalid block type", b"\xff" * 5000, b"")
+    deflate_case("a deflated member whose stored block's lengths disagree", b"\x00" * 5000, b"")
+    deflate_case("a deflated member that starts well and turns to garbage", unended + b"\xff" * 50, users)
+    against = zlib.compressobj(9, zlib.DEFLATED, -15, zdict=users)
+    deflate_case("a deflated member reaching back past its start", against.compress(users) + against.flush(), users)
+    # No zlib.error: the input runs out before the stream's end, and zipfile ends there; the CRC decides.
+    deflate_case("a deflated member whose stream never ends", unended)
+    # Bytes after the stream's end: zipfile stops at Z_STREAM_END and never reads them.
+    tidy = zlib.compressobj(9, zlib.DEFLATED, -15)
+    deflate_case("a deflated member with bytes after its stream's end", tidy.compress(users) + tidy.flush() + b"\xff" * 50,
+                 users)
+    # Garbage just past a header size on a 256 KiB boundary inside a 1 MiB read: ZipExtFile's read(1 MiB) lets zlib write
+    # up to the rest of the read (decompress(data, n)), so it inflates past the size into the garbage and raises
+    # zlib.error. A reader that inflated 256 KiB at a time would stop at the size and accept it. Random hex keeps the
+    # ratio under RATIO_CAP.
+    import random
+    noise = random.Random(0)
+    for size in (262144, 524288):
+        body = users + b"".join(f"x{noise.getrandbits(128):032x},a,b\r\n".encode() for _ in range(size // 30 + 400))
+        assert len(body) > size + 5000
+        cut = zlib.compressobj(9, zlib.DEFLATED, -15)
+        deflate_case(f"a deflated member turning to garbage just past its {size >> 10} KiB size",
+                     cut.compress(body) + cut.flush(zlib.Z_SYNC_FLUSH) + b"\xff" * 50, body[:size])
+    renamed = bytearray(zipped(files()))
+    local = renamed.find(b"PK\x03\x04" )
+    while local >= 0:
+        if renamed[local + 30:local + 30 + 9] == b"users.csv":
+            renamed[local + 30] = ord("U")
+        local = renamed.find(b"PK\x03\x04", local + 4)
+    case("a local header naming another file", [("x.zip", bytes(renamed))])
+    wrong_offset = bytearray(zipped(files()))
+    end = wrong_offset.rfind(b"PK\x05\x06")
+    wrong_offset[end + 16:end + 20] = struct.pack("<I", 7)
+    case("an end record pointing at the wrong place", [("x.zip", bytes(wrong_offset))])
+    data = bytearray(zipped(files()))
+    central = data.find(b"PK\x01\x02")
+    data[central + 6:central + 8] = (64).to_bytes(2, "little")
+    case("an unknown ZIP version", [("x.zip", bytes(data))])
+    method = bytearray(zipped(files()))
+    for i in [i for i in range(len(method)) if method.startswith(b"PK\x01\x02", i)]:
+        if method[i + 46:i + 46 + 9] == b"users.csv":
+            method[i + 10:i + 12] = (99).to_bytes(2, "little")
+    case("a compression method zipfile doesn't know", [("x.zip", bytes(method))])
+    truncated = zipped(files())
+    case("a ZIP cut short", [("x.zip", truncated[: len(truncated) // 2])])
+    high = bytes(range(0x80, 0x100))
+    for half in (high[:64], high[64:]):
+        cases_zip = zipped(files(), extra=[(zipfile.ZipInfo("placeholder" + "_" * 53), b"x")])
+        cases_zip = patched(cases_zip, b"placeholder" + b"_" * 53, half)
+        case(f"a cp437 name {half[:2].hex()}…", [("x.zip", cases_zip)])
+    case("a UTF-8 name", [("x.zip", with_("Schüler.csv"))])
+    nul = zipped({k: v for k, v in files().items() if k != "users.csv"}, extra=[(zipfile.ZipInfo("users.csv\x01../x"), csv_(USERS))])
+    case("a NUL in a member's name", [("x.zip", patched(nul, b"users.csv\x01../x", b"users.csv\x00../x"))], swift="refused")
+    shared = io.BytesIO()
+    with zipfile.ZipFile(shared, "w", zipfile.ZIP_BZIP2) as z:
+        for name, body in files().items():
+            z.writestr(name, body)
+    case("BZIP2 members", [("export.zip", shared.getvalue())], swift="refused")
+
+    # --- found by GamGUI's adversarial run (2026-11-11) ---------------------------------------------------------------------
+    case("a huge central directory", [("x.zip", zipped(files()))], {"CENTRAL_DIRECTORY_CAP": 200})
+    case("a ZIP64 directory whose 32-bit size lies", [("r.zip", t._directory_only(2000, "zip64"))])
+    case("an end-record signature planted in its size field", [("r.zip", t._directory_only(2000, "fieldsig"))])
+    spread = b'U9,,student,"' + b"x" * 900 + (b"\n" + b"x" * 900) * 10 + b'",A,B\n'
+    case("a field spanning many lines", listed(**{"users.csv": csv_(USERS) + spread}), {"LINE_CAP": 4000})
+    case("a wide header", listed(**{"users.csv": [USERS[0] + tuple(f"x{i}" for i in range(300))] + list(USERS[1:])}))
+    case("a header of a hundred more columns", listed(**{"users.csv": [USERS[0] + tuple(f"x{i}" for i in range(100))] + list(USERS[1:])}))
+    case("a column named twice", listed(**{"users.csv": [USERS[0] + ("email",),
+                                                         ("U1", "", "teacher", "ann", "Ann", "Lee", "ann@example.com", "evil@x.com")]}))
+    case("two columns named twice", listed(**{"users.csv": [("status",) + USERS[0] + ("email",)] + [("",) + r + ("",) for r in USERS[1:]]}))
+    case("a manifest past its cap", listed(**{"manifest.csv": csv_(MANIFEST) + b"\n" * (128 * 1024)}))
+    case("a line of thousands of fields", listed(**{"users.csv": csv_(USERS) + b"U9" + b"," * 5000 + b"\n"}), {"LINE_CAP": 1000})
+    case("a row wider than its header", listed(**{"users.csv": csv_(USERS) + b"U9,,student,x,A,B,c@example.com,1,2,3\n"}))
+    case("a row one wider than its header", listed(**{"users.csv": csv_(USERS) + b"U9,,student,x,A,B,c@example.com,\n"}))
+    for email in ("b\x1b[31m@example.com", "a\u200b@example.com", "a\x07@example.com", "é@example.com",
+                  "a b@example.com", "a@b", "@example.com", "a@@example.com", "a@example.com,b@example.com",
+                  "  Padded@Example.COM  ", "<a@example.com>", "\ufeffa@example.com"):
+        case(f"the address {email!r}", listed(**{"users.csv": USERS[:3] + [("U9", "", "student", "", "X", "Y", email)]}))
+    case("a source ID and a name starting with U+FEFF",
+         listed(**{"users.csv": USERS[:3] + [("\ufeffU9", "", "student", "", "\ufeffX", "Y", "not an address")]}))
+    case("control characters are dropped from names",
+         listed(**{"users.csv": USERS[:3] + [("U9", "", "student", "", "Al\x07ex\u200b\x7f", "Ki\x1bm\x1f\u2028", "u9@example.com"),
+                                             ("U10", "", "student", "", "\u00a0Zo\u00eb\u2060", "\ufeffOh\u00ad", "u10@example.com")]}))
+    for where, row in (("email", ("U9", "", "student", "", "X", "Y", "a\x00@example.com")),
+                       ("name", ("U9", "", "student", "", "Al\x00ex", "Y", "u9@example.com"))):
+        case(f"a NUL in an {where}", listed(**{"users.csv": USERS[:3] + [row]}))
+    case("an issue names the line its record starts on",
+         listed(**{"users.csv": USERS[:3] + [("U9", "", "student", "", "Multi\nLine\nName", "Y", ""),
+                                             ("U8", "", "student", "", "A", "B", "")]}))
+    case("a member capped by what it unpacks to", [("x.zip", zipped(files(**{"users.csv": csv_(USERS) + b"x" * 4096})))],
+         {"MEMBER_CAP": 1024, "RATIO_CAP": 10 ** 9})
+    case("the roster's total capped", [("x.zip", zipped(files()))], {"TOTAL_CAP": 600})
+    case("loose files' total capped", listed(), {"TOTAL_CAP": 600})
+    case("a loose file past the member cap", listed(), {"MEMBER_CAP": 100})
+    case("a field past its cap", listed(**{"orgs.csv": [ORGS[0], ("S1", "", "", "x" * 200, "school")]}), {"FIELD_CAP": 100})
+    case("rows past the cap", listed(), {"ROWS_CAP": 1})
+    case("the upload cap, before anything is read", [("x.zip", zipped(files()))], {"UPLOAD_CAP": 10})
+    seed, letters = 7, []
+    for _ in range(140_000):
+        seed = (seed * 1103515245 + 12345) % 2 ** 31
+        letters.append("abcdefghijklmnopqrstuvwxyz"[seed % 26])
+    noise = "".join(letters)
+    case("a field past the csv module's own limit", listed(**{"orgs.csv": [ORGS[0], ("S1", "", "", noise, "school")]}))
+    case("a field past FIELD_CAP within the csv module's limit",
+         listed(**{"orgs.csv": [ORGS[0], ("S1", "", "", noise[:70_000], "school")]}))
+
+    # --- the csv module's strict reading ---------------------------------------------------------------------------------
+    case("quotes, commas, doubled quotes and line endings",
+         listed(**{"orgs.csv": b'sourcedId,status,name,type\r\nS1,,"North, ""High""",school\nS2,,"Two\r\nLines",school\r'
+                               b'S3,,Plain "quote,school\n'}))
+    case("text after a closing quote", listed(**{"orgs.csv": b'sourcedId,status,name,type\r\nS1,,"North"x,school\r\n'}))
+    case("a quote left open at the end", listed(**{"orgs.csv": b'sourcedId,status,name,type\r\nS1,,"North,school\r\n'}))
+    case("no line ending at the end", listed(**{"orgs.csv": b"sourcedId,status,name,type\r\nS1,,North,school"}))
+    case("blank and whitespace rows are skipped",
+         listed(**{"orgs.csv": b"sourcedId,status,name,type\r\n\r\n , ,\xc2\xa0,\r\nS1,,North,school\r\n"}))
+    case("a row narrower than its header", listed(**{"orgs.csv": b"sourcedId,status,name,type\r\nS1,,North\r\n"}))
+    case("header cells are stripped", listed(**{"orgs.csv": b" sourcedId , status ,\tname, type \r\nS1,,North,school\r\n"}))
+    head = csv_(ORGS[:1]) + b"S1,,"
+    rows = head + b"a" * (8191 - len(head)) + b"\xc3\xb6,school\r\n" + b"S2,,Two,school\r\n"
+    assert rows[8191:8193] == b"\xc3\xb6"
+    case("a character across the decoder's chunk boundary", listed(**{"orgs.csv": rows}))
+    late = csv_([("id", "name")]) + b"x" * 9000 + b"\xff\r\n"
+    case("a bad byte past the first chunk, after a missing column", listed(**{"orgs.csv": late}))
+    early_nul = csv_(ORGS) + b"S2,,No\x00rth,school\r\n" + b"x" * 9000 + b"\xff\r\n"
+    case("a NUL before a bad byte in a later chunk", listed(**{"orgs.csv": early_nul}))
+    case("a bad byte in the first chunk, after a NUL", listed(**{"orgs.csv": csv_(ORGS) + b"S2,,No\x00rth,school\r\n\xff"}))
+    # CPython holds a surrogate's first two bytes at a chunk's end (unicodeobject.c), so a refusal earlier in that chunk
+    # comes first.
+    wide = csv_(ORGS[:1]) + b"S1,,North,school,a,b,c\r\n"
+    narrow = csv_([("id", "name")]) + b"S1,North\r\n"
+    for why, start in (("a wide row", wide), ("a missing column", narrow)):
+        surrogate = start + b"x" * (8190 - len(start)) + b"\xed\xa0\x80\r\n"
+        assert surrogate[8190:8192] == b"\xed\xa0"
+        case(f"a surrogate's first two bytes ending the first chunk, after {why}", listed(**{"orgs.csv": surrogate}))
+        case(f"a surrogate's first two bytes ending the file, after {why}", listed(**{"orgs.csv": start + b"S2,\xed\xbf"}))
+    unheld = narrow + b"x" * (8190 - len(narrow)) + b"\xed\x9f"
+    case("a character's first two bytes ending the first chunk, after a missing column", listed(**{"orgs.csv": unheld + b"\xbf\r\n"}))
+    case("an E0 sequence no byte can finish, ending the first chunk", listed(**{"orgs.csv": narrow + b"x" * (8190 - len(narrow)) + b"\xe0\x80\r\n"}))
+    case("a character cut off by the end of the file",listed(**{"orgs.csv": csv_(ORGS) + b"S2,,North,schoo\xc3"}))
+
+    # --- row-level issues ----------------------------------------------------------------------------------------------------
+    users = USERS + [("U4", "", "student", "", "No", "Mail", ""), ("U5", "", "student", "", "Bad", "Mail", "a b@x.com"),
+                     ("U6", "", "student", "", "Dup", "Mail", "BO@example.com"), ("U7", "tobedeleted", "student", "", "", "", "z@x.com")]
+    enrolls = ENROLLMENTS + [("E3", "", "C9", "S1", "U2", "student", ""), ("E4", "", "C1", "S1", "U9", "student", ""),
+                             ("E5", "", "C1", "S1", "U2", "teacher", "")]
+    classes = CLASSES + [("C2", "", "", "CO9", "", "S9", "T9", "")]
+    case("row problems counted by kind", listed(**{"users.csv": users, "enrollments.csv": enrolls, "classes.csv": classes}))
+    case("the sample capped, the count whole",
+         listed(**{"users.csv": [USERS[0]] + [(f"U{i}", "", "student", "", "", "", "") for i in range(10)],
+                   "enrollments.csv": [ENROLLMENTS[0]]}), {"ISSUE_SAMPLE": 2})
+    case("duplicates, no IDs and statuses",
+         listed(**{"orgs.csv": ORGS + [("S1", "", "", "Again", "school"), ("", "", "", "Nameless", "school"),
+                                       ("S2", "TOBEDELETED", "", "Gone", "school")],
+                   "academicSessions.csv": t.TERMS + [("T1", "", "Again", "term", "", ""), ("T2", "active", "Spring", "SEMESTER", "a", "b")],
+                   "courses.csv": t.COURSES + [("CO1", "", "Again", "", "S1"), ("CO2", "", "", "", "S1")],
+                   "classes.csv": CLASSES + [("C1", "", "Again", "CO1", "", "S1", "T1", ""),
+                                             ("C3", "", "Three", "CO2", "", "S1", " T1 , T2 ,,T9", "")],
+                   "users.csv": USERS + [("U1", "", "teacher", "", "Ann", "Again", "other@example.com"),
+                                         ("U8", "", "TEACHER", "", "Eve", "Up", "EVE@Example.com")],
+                   "enrollments.csv": ENROLLMENTS + [("E9", "", "C3", "S1", "U8", "Teacher", "TRUE"),
+                                                     ("E9", "", "C3", "S1", "U3", "student", ""),
+                                                     ("E10", "", "C3", "S1", "U2", "aide", ""),
+                                                     ("", "", "C3", "S1", "U2", "student", "")]}))
+    case("a long detail is cut at 200 characters",
+         listed(**{"enrollments.csv": ENROLLMENTS + [("E9", "", "C" * 300, "S1", "U2", "student", "")]}))
+
+    # --- found by GamGUI's adversarial run of C5 (2026-11-12), and the web tests' readers ------------------------------------
+    for name in ("students.csv", "users.csv", "sections.csv", "schedule.csv"):
+        case(f"one CSV named {name} is a spreadsheet to map", [(name, b"a,b\r\n1,2\r\n")])
+    case("one CSV beside Mac litter is still one spreadsheet", [("Folder/._x.csv", b"x"), ("schedule.CSV", b"a,b\r\n")])
+    case("a Kelvin sign address", listed(**{"users.csv": USERS[:1] + [("U1", "", "teacher", "ann", "Ann", "Lee", "\u212aim@example.com")] + USERS[2:]}))
+    case("a 1.2 enrolment of someone without a roster role", list(t._files_12(**{"roles.csv": [r for r in t.ROLES_12 if r[3] != "U2"]}).items()))
+    case("the issues the import screen groups",
+         listed(**{"users.csv": USERS + [("U4", "", "student", "", "No", "Mail", ""), ("U5", "", "student", "", "Also", "None", "")],
+                   "enrollments.csv": ENROLLMENTS + [("E9", "", "C9", "S1", "U2", "student", "")]}))
+    case("more files than a ZIP may hold", [(f"x{i}.csv", b"x") for i in range(roster.MEMBERS_CAP + 5)])
+    case("a picked file is matched by its base name", [(f"C:\\Export\\{n}", b) for n, b in files().items()])
+    case("a file picked twice", listed() + [("Users.csv", csv_(USERS))])
+    case("an optional file picked loose is skipped", listed(**{"demographics.csv": b"\xff not even text"}))
+    case("an unknown file picked loose", listed() + [("notes.txt", b"x")])
+    case("Mac litter picked loose is ignored", listed() + [(".DS_Store", b"\x00\x01"), ("._users.csv", b"\x00")])
+
+    # --- Clever is read by the next slice: detected here, its snapshot recorded for then ---------------------------------
+    clever = gamgui / "tests" / "fixtures" / "roster" / "clever"
+    clever_files = [(p.name, p.read_bytes()) for p in sorted(clever.iterdir()) if p.suffix == ".csv"]
+    case("Clever's CSV files", clever_files)
+    case("Clever's ZIP", [("clever.zip", zipped(dict(clever_files)))])
+    return {"cases": cases}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gamgui", default=str(ROOT.parent / "gamgui"), help="path to the GamGUI checkout")
@@ -2294,6 +2709,11 @@ def main() -> int:
         | onboarding_fixture(errors_doc["cases"])
     emit("onboarding.json", json.dumps(onboarding_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"onboarding.json: {len(onboarding_doc['provision'])} hires, {len(onboarding_doc['load'])} role files")
+    # The roster reader: GamGUI's read_upload over every package its tests build, and more. ASCII-escaped: the inputs
+    # hold control and invisible characters on purpose.
+    roster_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_fixture(gamgui)
+    emit("roster.json", json.dumps(roster_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"roster.json: {len(roster_doc['cases'])} packages")
     csv_as_the_build_writes(oracle)
     for name, text in pending:
         (OUT / name).write_text(text)

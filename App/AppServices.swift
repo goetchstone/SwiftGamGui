@@ -63,6 +63,8 @@ struct AppServices {
     let connectedApps: ConnectedAppsRead
     /// Google Classroom's classes and rosters, read only (the Classroom screen).
     let classroom: ClassroomReads
+    /// The SIS roster kept on this Mac for Classroom's Plan an Import (never sent anywhere).
+    let roster: RosterKeeper
     /// Sign-ins marked as the person's own on Incident's log reader ("That was them").
     let knownSignIns: KnownSignIns
     /// The emails Phishing's Find showed nobody here has, which Incident's log reader shows done.
@@ -86,6 +88,9 @@ struct AppServices {
         let gam = GamBinary.locate().flatMap { binary in
             (try? RuntimeDirectory.prepare()).map { (runner: GamRunner(binary: binary), runtimeDirectory: $0) }
         }
+        // A roster save a quit or crash cut off holds student data and has no snapshot to Purge: swept at launch.
+        let roster = RosterStore()
+        Task.detached(priority: .utility) { roster.sweepAbandoned() }
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
                         setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
                         templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile),
@@ -96,13 +101,15 @@ struct AppServices {
                                                    gamGUIFile: URL.applicationSupportDirectory.appending(path: "GamGUI/onboarding.json")),
                         knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot),
                         nobodyHas: NobodyHasChecks(root: SignatureStore.defaultRoot),
-                        incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")))
+                        incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")),
+                        roster: roster)
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
-                                 nobodyHas: NobodyHasChecks, incidents: Incidents, lastDomain: LastDomain = .userDefaults,
+                                 nobodyHas: NobodyHasChecks, incidents: Incidents, roster: RosterStore,
+                                 lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -154,6 +161,7 @@ struct AppServices {
                            personDevices: PersonDeviceReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            classroom: ClassroomReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           roster: RosterKeeper(store: roster, auditURL: auditURL, setup: setup),
                            knownSignIns: knownSignIns,
                            nobodyHas: nobodyHas,
                            incidents: incidents,
@@ -208,7 +216,19 @@ struct AppServices {
                         incidents: Incidents(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-incidents-\(UUID().uuidString)"),
                             defaults: nil),
+                        roster: demoRoster(beside: mock),
                         lastDomain: .memory())
+    }
+
+    /// The demo's kept roster: a store in a fresh temporary folder each launch, never the operator's. For Plan an Import's
+    /// snapshots (`SWIFTGAMGUI_TAB=import`), `Tests/Fixtures/demo/roster`'s OneRoster export read into it for example.com.
+    private static func demoRoster(beside mock: URL?) -> RosterStore {
+        let store = RosterStore(root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-roster-\(UUID().uuidString)"))
+        if Screen.initial == .classroom, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "import",
+           let folder = mock?.deletingLastPathComponent().appending(path: "demo/roster") {
+            RosterKeeper.seedForDemo(store, from: folder)
+        }
+        return store
     }
 
     /// The demo's roles: a role store in a fresh temporary folder each launch, never the operator's, holding

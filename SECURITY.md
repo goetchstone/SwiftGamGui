@@ -62,6 +62,19 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
 - **A model or Siri only drafts a preview**, except the operator's optional, off-by-default "Just do
   it" list of simple single-target actions, which never includes deletes, offboarding, passwords,
   sign-outs, delegation, forwarding, transfers, sharing or bulk changes.
+- **A student roster upload is read as hostile, and kept briefly.** On a school domain the operator can pick a SIS's
+  OneRoster export (a ZIP, a folder or its CSV files) on Classroom's Plan an Import. `Stores/Roster/` reads it in
+  memory and never extracts it: its own ZIP reader (`RosterZip`) checks the archive's end record and refuses a central
+  directory past its cap before walking it, inflates with zlib (as Python's `zlib`, refusing a corrupt stream) while counting every byte, never
+  trusting a header's size, and checks each CRC; a member is matched by its base name against OneRoster's own, and a
+  link, an encrypted member, `..`, an absolute name, a backslash, a NUL, nested folders, ZIP64 or an unknown file refuse
+  the package. Picked files are read by descriptor, never through a link, bounded in number and bytes before any is
+  read. Only the columns a roster needs are read from a row, and the files no reader uses are never unpacked. What it
+  read (names and addresses of teachers and students, and who is in which class) is kept by `RosterStore` as one file
+  per domain, `0600` in a `0700` folder under Application Support (refused if it's a link), for 14 days, and deleted on
+  **Purge**; a half-written copy is swept, and one a quit or crash left is swept at the next launch. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it
+  at rest. GAM GUI never sends it anywhere and never writes to Classroom; the import and the purge are audited as local
+  events, never with a row.
 - **The vendored `gam` is checksum-pinned and fails closed.** `scripts/bump_gam.py` writes a pin only
   after GitHub's build attestation shows GAM-team's release workflow built it.
 - **Every GitHub Action is pinned by commit SHA**, and the fuzzing container by digest.

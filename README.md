@@ -32,8 +32,8 @@ containment, eradication, recovery, lessons learned).
 - **People**: browse the directory; change a title, department, groups, mail delegates, auto-reply or signature;
   suspend, sign out, or set a temporary password.
 - **Groups and calendars**: a group's members and roles; rooms, a person's calendars and who can see them.
-- **Classroom**, read only: find a class by name or teacher and see who teaches it and who is in it. Not yet checked on a
-  real school domain.
+- **Classroom**, read only: find a class by name or teacher and see who teaches it and who is in it, and read a SIS's
+  OneRoster export for what it holds and what to fix. Not yet checked on a real school domain.
 - **Onboard and offboard**: a new hire from a role (account, signature, groups, calendars, checklist, welcome email);
   a leaver from a saved routine, every step's command shown before it runs.
 - **Phishing**: find every copy of an email by its Message-ID, see who it went to, and trash them all from one preview.

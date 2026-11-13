@@ -32,6 +32,8 @@ status=0
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
 # open. Classroom lists the open classes (and who can create classes under them), then Chemistry's card (its ID in the
 # calendar field), then alice's classes; person-classes is alice's page with her classes read (tab `classes`, on Profile, scrolled to them).
+# classroom-import is Classroom's Plan an Import (tab `import`) with the demo's OneRoster export
+# (Tests/Fixtures/demo/roster) kept for example.com in a temporary store: its counts and its problems for the SIS team.
 # Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side. Onboard opens on the demo role
@@ -107,6 +109,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
             classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
             narrow-classroom-class:classroom:::smallest::500000000002 \
+            classroom-import:classroom::import narrow-classroom-import:classroom::import:smallest \
             person-classes:users:alice@example.com:classes:1100x940 narrow-person-classes:users:alice@example.com:classes:smallest \
             offboard-classes:offboard:alice@example.com:plan \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
