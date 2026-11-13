@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "3c8d909",
+  "gamgui_commit": "07c505d",
   "generator": "scripts/gen_fixtures.py"
  },
  "looks_like_email": [
@@ -371,6 +371,72 @@
   {
    "oauth2": "",
    "user_security": null
+  }
+ ],
+ "classroom_readable": [
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/admin.directory.user.security\", \"https://mail.google.com/\"]}",
+   "readable": false
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://mail.google.com/\"]}",
+   "readable": false
+  },
+  {
+   "oauth2": "{\"scopes\": []}",
+   "readable": false
+  },
+  {
+   "oauth2": "{\"scopes\": \"https://www.googleapis.com/auth/admin.directory.user.security\"}",
+   "readable": null
+  },
+  {
+   "oauth2": "{}",
+   "readable": null
+  },
+  {
+   "oauth2": "not json",
+   "readable": null
+  },
+  {
+   "oauth2": "",
+   "readable": null
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses\", \"https://www.googleapis.com/auth/classroom.rosters\", \"https://www.googleapis.com/auth/classroom.profile.emails\"]}",
+   "readable": true
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses.readonly\", \"https://www.googleapis.com/auth/classroom.rosters.readonly\", \"https://www.googleapis.com/auth/classroom.profile.emails.readonly\"]}",
+   "readable": true
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses\", \"https://www.googleapis.com/auth/classroom.rosters\"]}",
+   "readable": false
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses\", \"https://www.googleapis.com/auth/classroom.rosters.readonly\", \"https://www.googleapis.com/auth/classroom.profile.emails\", 7, null]}",
+   "readable": true
+  },
+  {
+   "oauth2": "{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses.READONLY\", \"https://www.googleapis.com/auth/classroom.rosters\", \"https://www.googleapis.com/auth/classroom.profile.emails\"]}",
+   "readable": false
+  },
+  {
+   "oauth2": "{\"scopes\": {\"a\": [\"https://www.googleapis.com/auth/classroom.courses\", \"https://www.googleapis.com/auth/classroom.rosters\", \"https://www.googleapis.com/auth/classroom.profile.emails\"]}}",
+   "readable": null
+  },
+  {
+   "oauth2": "{\"scopes\": null}",
+   "readable": null
+  },
+  {
+   "oauth2": "[]",
+   "readable": null
+  },
+  {
+   "oauth2": "[{\"scopes\": [\"https://www.googleapis.com/auth/classroom.courses\", \"https://www.googleapis.com/auth/classroom.rosters\", \"https://www.googleapis.com/auth/classroom.profile.emails\"]}]",
+   "readable": null
   }
  ],
  "setup_commands": [

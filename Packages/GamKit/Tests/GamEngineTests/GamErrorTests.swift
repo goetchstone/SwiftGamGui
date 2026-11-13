@@ -37,9 +37,12 @@ struct GamErrorTests {
         let ACCOUNT_WIDE: [String]
     }
 
+    struct Owners: Decodable { let stderr: String; let only_unknown_owners: Bool }
+
     struct Document: Decodable {
         let constants: Constants
         let cases: [Case]
+        let only_unknown_owners: [Owners]
     }
 
     let document = try! JSONDecoder().decode(Document.self, from: Data(contentsOf: Fixtures.gamErrorsJSON))
@@ -60,6 +63,15 @@ struct GamErrorTests {
                     "remediation: \(label)")
         }
         #expect(document.cases.count > 1500)
+    }
+
+    /// GamGUI's `only_unknown_owners` (#113): whether a `print courses … owneremail` exit 56 is only owners GAM couldn't
+    /// look up, so the table stands.
+    @Test func anUnknownOwnerIsReadAsGamGUIReadsIt() {
+        for item in document.only_unknown_owners {
+            #expect(GamError.onlyUnknownOwners(item.stderr) == item.only_unknown_owners, "\(item.stderr.debugDescription)")
+        }
+        #expect(document.only_unknown_owners.count > 20 && document.only_unknown_owners.contains(where: \.only_unknown_owners))
     }
 
     /// GAM's framing of a refused command, in its own words (GAM 7.51.00's glclargs and gamlib.glmsgs): skipped, so a

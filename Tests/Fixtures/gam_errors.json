@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "3c8d909",
+  "gamgui_commit": "07c505d",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -37352,6 +37352,104 @@
    "scrubbed_stdout": "(H6\u000bhttps://www.googleapis.com/auth/Getting all G~",
    "redacted_argv": null,
    "remediation_suffix": ""
+  }
+ ],
+ "only_unknown_owners": [
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Getting all Courses that match query ()\nCourse: 500000000004, Owner ID: 100000000000000000009, Does not exist (1/2)\n",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "   \n",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist\nTeacher: nobody@example.com, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 999, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist (1/2) extra",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "  Course: 500000000004, Owner ID: 100000000000000000009, Does not exist (3/40)  ",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist (1/)",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist (/2)",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist(1/2)",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist (\u0661/\u0662)",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Course: x1, Owner ID: 9, Does not exist",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Course: 1,2, Owner ID: 9, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: , Owner ID: 9, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 1, Owner ID: , Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "course: 1, Owner ID: 9, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 1, Owner ID: 9, does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist\r\nCourse: 500000000004, Owner ID: 100000000000000000009, Does not exist (2/2)",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Command: gam print courses\nCourse: 500000000004, Owner ID: 100000000000000000009, Does not exist",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "ERROR: x\nCourse: 500000000004, Owner ID: 100000000000000000009, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: 500000000004, Owner ID: 100000000000000000009, Does not exist\nPlease run",
+   "only_unknown_owners": true
+  },
+  {
+   "stderr": "Course: 1, Owner ID: 9, Owner ID: 8, Does not exist",
+   "only_unknown_owners": false
+  },
+  {
+   "stderr": "Course: \u00e9t\u00e9, Owner ID: 9\u200b, Does not exist",
+   "only_unknown_owners": true
   }
  ]
 }

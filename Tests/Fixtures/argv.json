@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "3c8d909",
+  "gamgui_commit": "07c505d",
   "gam_version": "7.52.01",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -41,6 +41,7 @@
   "pop_off",
   "print_admins",
   "print_all_calendars",
+  "print_all_course_participants",
   "print_calendar_acls",
   "print_calendar_acls_cal",
   "print_chrome_profiles",
@@ -421,6 +422,11 @@
    }
   ],
   "print_all_calendars": [],
+  "print_all_course_participants": [
+   {
+    "name": "states"
+   }
+  ],
   "print_calendar_acls": [
    {
     "name": "email"
@@ -465,6 +471,10 @@
    {
     "name": "owner_email",
     "default": true
+   },
+   {
+    "name": "aliases",
+    "default": false
    }
   ],
   "print_cros": [
@@ -12834,6 +12844,42 @@
    ]
   },
   {
+   "builder": "print_all_course_participants",
+   "kwargs": {
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ]
+   },
+   "argv": [
+    "print",
+    "course-participants",
+    "states",
+    "active,provisioned,archived",
+    "show",
+    "all",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_all_course_participants",
+   "kwargs": {
+    "states": [
+     "active"
+    ]
+   },
+   "argv": [
+    "print",
+    "course-participants",
+    "states",
+    "active",
+    "show",
+    "all",
+    "formatjson"
+   ]
+  },
+  {
    "builder": "print_calendar_acls",
    "kwargs": {
     "email": "  padded  ",
@@ -13286,7 +13332,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13304,7 +13351,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13322,7 +13370,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13340,7 +13389,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13357,7 +13407,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13374,7 +13425,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13391,7 +13443,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13408,7 +13461,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13424,7 +13478,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13440,7 +13495,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13456,7 +13512,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13472,7 +13529,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13486,7 +13544,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -13510,7 +13569,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13524,7 +13584,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13538,7 +13599,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13556,7 +13618,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13574,7 +13637,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13592,7 +13656,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13610,7 +13675,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13627,7 +13693,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13644,7 +13711,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13661,7 +13729,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13678,7 +13747,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13694,7 +13764,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13710,7 +13781,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13726,7 +13798,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13742,7 +13815,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13756,7 +13830,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -13781,7 +13856,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13795,7 +13871,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13809,7 +13886,8 @@
      "500000000002",
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13826,7 +13904,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13843,7 +13922,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13860,7 +13940,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13877,7 +13958,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13893,7 +13975,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13909,7 +13992,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13925,7 +14009,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13941,7 +14026,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13956,7 +14042,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13971,7 +14058,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -13986,7 +14074,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14001,7 +14090,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14014,7 +14104,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14035,7 +14126,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14048,7 +14140,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14061,7 +14154,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14078,7 +14172,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14095,7 +14190,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14112,7 +14208,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14129,7 +14226,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14145,7 +14243,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14161,7 +14260,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14177,7 +14277,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14193,7 +14294,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14208,7 +14310,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14223,7 +14326,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14238,7 +14342,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14253,7 +14358,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14266,7 +14372,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14288,7 +14395,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14301,7 +14409,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14314,7 +14423,8 @@
     "course_ids": [
      "500000000002"
     ],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "error": "ValueError: Classes by ID take no teacher, student or state filter"
   },
@@ -14329,7 +14439,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14352,7 +14463,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14377,7 +14489,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14402,7 +14515,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14428,7 +14542,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14450,7 +14565,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14474,7 +14590,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14498,7 +14615,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14523,7 +14641,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14544,7 +14663,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14567,7 +14687,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14590,7 +14711,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14613,7 +14735,8 @@
     "student": "",
     "states": [],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14630,7 +14753,8 @@
     "student": "",
     "states": [],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14649,7 +14773,8 @@
     "student": "person@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14668,7 +14793,8 @@
     "student": "person@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": false
+    "owner_email": false,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14693,7 +14819,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14717,7 +14844,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14743,7 +14871,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14769,7 +14898,8 @@
      "archived"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14796,7 +14926,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14819,7 +14950,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14844,7 +14976,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14869,7 +15002,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14894,7 +15028,8 @@
      "provisioned"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14920,7 +15055,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14942,7 +15078,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14966,7 +15103,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -14990,7 +15128,8 @@
      "active"
     ],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15014,7 +15153,8 @@
     "student": "",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15032,7 +15172,8 @@
     "student": "",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15052,7 +15193,8 @@
     "student": "",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15072,7 +15214,8 @@
     "student": "carol@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15092,7 +15235,8 @@
     "student": "carol@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15114,7 +15258,8 @@
     "student": "person@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15134,7 +15279,8 @@
     "student": "person@example.com",
     "states": [],
     "course_ids": [],
-    "owner_email": true
+    "owner_email": true,
+    "aliases": false
    },
    "argv": [
     "print",
@@ -15144,6 +15290,1928 @@
     "student",
     "person@example.com",
     "owneremail",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "course",
+    "500000000002",
+    "course",
+    "500000000002",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "course",
+    "500000000002",
+    "course",
+    "500000000002",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002",
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "course",
+    "500000000002",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": false,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "course",
+    "500000000002",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [
+     "500000000002"
+    ],
+    "owner_email": true,
+    "aliases": true
+   },
+   "error": "ValueError: Classes by ID take no teacher, student or state filter"
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active,provisioned,archived",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active,provisioned",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [],
+    "owner_email": false,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active,provisioned,archived",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned",
+     "archived"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned,archived",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active,provisioned",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active",
+     "provisioned"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active,provisioned",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "states",
+    "active",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "states",
+    "active",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "states",
+    "active",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [
+     "active"
+    ],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "states",
+    "active",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "",
+    "states": [],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "",
+    "states": [],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "student",
+    "person@example.com",
+    "owneremail",
+    "aliases",
+    "fields",
+    "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_courses",
+   "kwargs": {
+    "teacher": "person@example.com",
+    "student": "person@example.com",
+    "states": [],
+    "course_ids": [],
+    "owner_email": true,
+    "aliases": true
+   },
+   "argv": [
+    "print",
+    "courses",
+    "teacher",
+    "person@example.com",
+    "student",
+    "person@example.com",
+    "owneremail",
+    "aliases",
     "fields",
     "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
     "formatjson"

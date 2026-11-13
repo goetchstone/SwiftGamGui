@@ -83,6 +83,40 @@ public final class OffboardChanges {
         public var id: Offboarding.Step { key }
     }
 
+    /// The Classroom classes the leaver owns (plan 2026-11-11 C1.5): lost with the account, and GAM GUI changes nothing in
+    /// Classroom, so the preview names them and hands over a list. A warning, never a step: there is no Classroom write.
+    public struct OwnedClasses: Sendable, Equatable {
+        public let leaver: String
+        /// Every state: a declined or suspended class is lost too.
+        public let owned: [Classroom.Course]
+        /// Why they couldn't be read: said, never taken as none.
+        public let problem: String?
+        /// The classes named on the preview; the rest are counted (`more`).
+        public static let shown = 10
+
+        /// Nothing to say: a read that found none.
+        public var isEmpty: Bool { owned.isEmpty && problem == nil }
+
+        /// GamGUI's words, with this app's name.
+        public var summary: String {
+            if let problem {
+                return "Couldn't read the Classroom classes \(leaver) owns (\(problem)). Check Classroom before the account is "
+                    + "deleted: classes it owns are lost with it."
+            }
+            return "\(leaver) owns \(owned.count) Classroom class\(owned.count == 1 ? "" : "es"). GAM GUI doesn't change Classroom: "
+                + "give each a new owner there before the account is deleted, or the class is lost with it."
+        }
+
+        /// The classes past `shown`, as "… and 3 more.", or nil.
+        public var more: String? { owned.count > Self.shown ? "… and \(owned.count - Self.shown) more." : nil }
+
+        /// One class as the preview lists it: its name (or ID), section, and state in words.
+        public static func line(_ course: Classroom.Course) -> String {
+            (course.name.isEmpty ? course.id : course.name) + (course.section.isEmpty ? "" : " · \(course.section)")
+                + " (\(course.stateWords))"
+        }
+    }
+
     /// GamGUI's `_offboard_preview.html`, as values.
     public struct Plan: Sendable, Identifiable {
         public let id = UUID()
@@ -100,6 +134,9 @@ public final class OffboardChanges {
         /// Nil when the auto-reply is left out.
         public let autoreply: Autoreply?
         public let notes: [String]
+        /// The Classroom classes the leaver owns; nil when the admin token is known not to read Classroom (nothing read,
+        /// nothing said).
+        public let classes: OwnedClasses?
         /// The writes that run, in order, each needing the earlier ones `requires` names.
         public let steps: [WriteStep]
         /// The held preview a confirm runs, exactly `steps`; nil when this build has no GAM (the plan is then
@@ -112,7 +149,7 @@ public final class OffboardChanges {
         /// The same plan without its preview: shown, never run.
         var shownOnly: Plan {
             Plan(form: form, leaver: leaver, manager: manager, header: header, warnings: warnings, rows: rows,
-                 whatStopsWhat: whatStopsWhat, autoreply: autoreply, notes: notes, steps: steps, preview: nil)
+                 whatStopsWhat: whatStopsWhat, autoreply: autoreply, notes: notes, classes: classes, steps: steps, preview: nil)
         }
     }
 
@@ -344,6 +381,9 @@ public final class OffboardChanges {
         // Read only when the step would run: it's the step's list, not a warning.
         let readsFilters = form.added.contains(.forwardingFilters) && !form.done.contains(.forwardingFilters)
         async let filterRead = readsFilters ? access.mailFilters(of: user) : nil
+        // Classroom (C1.5): the classes the leaver owns, whatever the steps. Skipped only on an admin token known not to read
+        // Classroom (a domain that doesn't use it); any other failed read is said, never taken as "none".
+        async let classRead = setup.classroomReadable == false ? nil : access.coursesOwned(by: user)
         if let delegates = await delegateRead?.mapError({ Offboarding.Unread($0.summary) }),
            let warning = Offboarding.delegateWarning(user: user, manager: boss, delegates: delegates) {
             warnings.append(warning)
@@ -372,6 +412,11 @@ public final class OffboardChanges {
             warnings.append(warning)
         }
         // Said with the warnings: a failed read can be what left nothing to run (review 2026-10-14).
+        let classes: OwnedClasses? = switch await classRead {
+        case .success(let owned)?: OwnedClasses(leaver: user, owned: owned, problem: nil)
+        case .failure(let problem)?: OwnedClasses(leaver: user, owned: [], problem: problem.summary)
+        case nil: nil
+        }
         if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: adding) {
             return refuse(([problem] + warnings).joined(separator: " "))
         }
@@ -451,7 +496,8 @@ public final class OffboardChanges {
             warnings: warnings, rows: rows,
             whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable, adding: adding),
             autoreply: form.notApplicable.contains(.vacation) ? nil : Autoreply(subject: block.subject, message: block.message),
-            notes: Offboarding.notes(days: days, notApplicable: form.notApplicable), steps: steps, preview: preview)))
+            notes: Offboarding.notes(days: days, notApplicable: form.notApplicable), classes: classes, steps: steps,
+            preview: preview)))
         // A plan that arrived after a newer one, or on another tenant, is dropped with its preview.
         if case .planned(let shownPlan)? = shown?.state, shownPlan.preview?.id == preview?.id { return }
         if let id = preview?.id { await executor?.discard(id) }

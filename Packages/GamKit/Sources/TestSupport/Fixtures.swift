@@ -47,9 +47,11 @@ public enum Fixtures {
 
     /// An `oauth2.txt` that signs in as `admin`, as GAM writes one: the claims beside the token, with the account ID (`sub`)
     /// the mock's directory has for that admin, so Setup's Check access confirms it. A placeholder, never a real token.
-    public static func oauth2(admin: String) -> Data {
+    /// `scopes`, when given, is recorded as GAM records the admin token's (`oauth2.txt`'s top-level `scopes`).
+    public static func oauth2(admin: String, scopes: [String]? = nil) -> Data {
         let sub = mockAccountID(admin).map { #", "sub": "\#($0)""# } ?? ""
-        return Data(#"{"decoded_id_token": {"email": "\#(admin)"\#(sub)}, "refresh_token": "placeholder"}"#.utf8)
+        let granted = scopes.map { #", "scopes": [\#($0.map { "\"\($0)\"" }.joined(separator: ", "))]"# } ?? ""
+        return Data(#"{"decoded_id_token": {"email": "\#(admin)"\#(sub)}, "refresh_token": "placeholder"\#(granted)}"#.utf8)
     }
 
     /// A fresh temp dir holding placeholder credential files. The mock only checks that they exist and

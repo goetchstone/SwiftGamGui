@@ -9,7 +9,9 @@ and then here, from fixtures regenerated at its merge:
 [finish the roadmap](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-07-finish-the-roadmap.md) and
 [Classroom reads and SIS roster planning](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md).
 This plan's slices map onto the first: 1 → 3.1, 2 → 3.2, 3 → 2.9 and 4.5, 4 → 2.1 to 2.3 and 3.5, 5 → 2.4 and 2.5, R → 5.5. Its 0.2,
-the fixtures refreshed from GamGUI, is done (GamGUI `487be35`; failure log 2026-11-11). The rest of this file is the record.
+the fixtures refreshed from GamGUI, is done (GamGUI `487be35`; failure log 2026-11-11). Classroom C1.1 to C1.6 are ported
+(C1.4 to C1.6, a person's classes, the classes a leaver owns and who can create classes, from GamGUI `07c505d`, 2026-11-13;
+[classroom.md](../domains/classroom.md)); C2 onward (the roster import and compare) isn't. The rest of this file is the record.
 
 The app stays free and is built for the operator's own use, so this isn't a race. A slice earns its place by being used
 or by preventing a loss; the rest is under "Not planned unless asked". What has run is in

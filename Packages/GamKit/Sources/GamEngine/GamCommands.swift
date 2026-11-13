@@ -583,9 +583,11 @@ public enum GamCommands {
 
     /// Classes, read only (3328 `print courses`): by ID, or every class a teacher or a student is in, or every class, in the
     /// given states. CSV `id,JSON`. `ownerEmail` has GAM look up each distinct owner's address, one Directory read per owner:
-    /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`.
+    /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`. `aliases` adds a
+    /// `JSON-aliases` column after `JSON` (one Classroom call per class, in GAM's run), each item an object as the API gives
+    /// it, `{"alias": "d:…"}`.
     public static func printCourses(teacher: String = "", student: String = "", states: [CourseState] = [],
-                                    courseIDs: [String] = [], ownerEmail: Bool = true) throws -> GamRead {
+                                    courseIDs: [String] = [], ownerEmail: Bool = true, aliases: Bool = false) throws -> GamRead {
         var argv = ["print", "courses"]
         if !courseIDs.isEmpty {
             guard teacher.isEmpty, student.isEmpty, states.isEmpty else {
@@ -604,7 +606,17 @@ public enum GamCommands {
             var seen: Set<CourseState> = []
             argv += ["states", states.filter { seen.insert($0).inserted }.map(\.rawValue).joined(separator: ",")]
         }
-        return GamRead(argv + (ownerEmail ? ["owneremail"] : []) + ["fields", courseFields, "formatjson"])
+        return GamRead(argv + (ownerEmail ? ["owneremail"] : []) + (aliases ? ["aliases"] : [])
+                       + ["fields", courseFields, "formatjson"])
+    }
+
+    /// Every class's teachers and students in the given states, one GAM run (3339 `print course-participants states`): the
+    /// same rows as one class's (`courseId,courseName,JSON-teachers,JSON-students`), one per class. A states list is needed.
+    public static func printAllCourseParticipants(states: [CourseState]) throws -> GamRead {
+        guard !states.isEmpty else { throw Invalid.argument("A states list is needed: every class's people, in some states") }
+        var seen: Set<CourseState> = []
+        return GamRead(["print", "course-participants", "states",
+                        states.filter { seen.insert($0).inserted }.map(\.rawValue).joined(separator: ","), "show", "all", "formatjson"])
     }
 
     /// One class's teachers and students (3339 `print course-participants`). CSV
