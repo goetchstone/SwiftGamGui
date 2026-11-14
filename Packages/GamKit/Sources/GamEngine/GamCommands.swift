@@ -109,7 +109,7 @@ public enum GamCommands {
         }
     }
 
-    /// GAM's phone types (5886-5888 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
+    /// GAM's phone types (5890-5892 `phone [type assistant|…|work_pager|(custom <String>)]`). A type outside them GAM
     /// keeps as a custom type of that name (getKeywordAttribute), so a phone goes back only with one of these, `custom`
     /// with its name, or no type.
     public static let phoneTypes: Set<String> = [
@@ -117,7 +117,7 @@ public enum GamCommands {
         "other", "other_fax", "pager", "radio", "telex", "tty_tdd", "work", "work_fax", "work_mobile", "work_pager",
     ]
 
-    /// The person's phones, every one of them (5886-5890 `phone [type …] [value <String>] notprimary|primary`, 5911
+    /// The person's phones, every one of them (5890-5894 `phone [type …] [value <String>] notprimary|primary`, 5915
     /// `phone clear`). GAM sends the phones it's given as the list Google keeps in place of the old one, and drops one
     /// with no value (getUserAttributes, updateUsers' users.update, gam/__init__.py:47476-47489 at 7.48.30), so a phone
     /// left out is deleted: the others go as they are, and none left is `phone clear`. Each number one line, at most one
@@ -152,14 +152,14 @@ public enum GamCommands {
     }
 
     /// Both recovery fields emptied, so "Forgot password?" can't reach the leaver's own phone or address
-    /// (grammar 5854-5855 under `update user`, 5954; GAM sends an empty value as a cleared field). The command
+    /// (grammar 5858-5859 under `update user`, 5958; GAM sends an empty value as a cleared field). The command
     /// line shown and audited masks both (`ArgvRedaction`), so the step's words say what it does.
     public static func clearRecovery(email: String) -> GamWrite {
         GamWrite(["update", "user", email, "recoveryemail", "", "recoveryphone", ""], action: .clearRecovery)
     }
 
-    /// A password the operator hands over, which Google makes the person change at their next sign-in (grammar 5954
-    /// `update user <UserItem> <UserAttribute>*`; 5850-5853 `password <Password>`, 5837 `changepassword <Boolean>`).
+    /// A password the operator hands over, which Google makes the person change at their next sign-in (grammar 5958
+    /// `update user <UserItem> <UserAttribute>*`; 5854-5857 `password <Password>`, 5841 `changepassword <Boolean>`).
     /// GamGUI's reset is `random` with `changepassword off`, which nobody sees, so this one is native. `password` is
     /// one element and never one of GAM's words there (`random`, `uniquerandom`, `blocklogin`, `prompt`,
     /// `uniqueprompt`): `TemporaryPassword`'s are three dashed groups,
@@ -168,19 +168,19 @@ public enum GamCommands {
         GamWrite(["update", "user", email, "password", password, "changepassword", "on"], action: .setPassword)
     }
 
-    /// Out of the Global Address List and autocomplete (grammar 5843). Always the explicit `off`: GAM reads a
+    /// Out of the Global Address List and autocomplete (grammar 5847). Always the explicit `off`: GAM reads a
     /// bare `gal` as on.
     public static func hideFromDirectory(email: String) -> GamWrite {
         GamWrite(["update", "user", email, "gal", "off"], action: .hideFromDirectory)
     }
 
-    /// IMAP off (grammar 8399 `<UserTypeEntity> imap|imap4 <Boolean>`). GAM sends its defaults with it (`_imapDefaults`:
+    /// IMAP off (grammar 8403 `<UserTypeEntity> imap|imap4 <Boolean>`). GAM sends its defaults with it (`_imapDefaults`:
     /// auto-expunge, archive, no folder limit), which matter only while IMAP is on.
     public static func imapOff(email: String) -> GamWrite {
         GamWrite(["user", email, "imap", "off"], action: .imapOff)
     }
 
-    /// POP off (8405 `<UserTypeEntity> pop|pop3 <Boolean>`). GAM sends `leaveInInbox` with it (`_popDefaults`), so no
+    /// POP off (8409 `<UserTypeEntity> pop|pop3 <Boolean>`). GAM sends `leaveInInbox` with it (`_popDefaults`), so no
     /// mail is moved or deleted.
     public static func popOff(email: String) -> GamWrite {
         GamWrite(["user", email, "pop", "off"], action: .popOff)
@@ -188,7 +188,7 @@ public enum GamCommands {
 
     /// Each calendar's owner made `newOwner`, in one command: GAM goes through the list and reports each, a failure
     /// leaving the rest done (doCalendarsTransferOwnership). `transfer ownership`, not the grammar's bare `transfer`
-    /// (1685 lacks the word; GAM's source and GamUpdate 7.46.04 need it). The list is one <CalendarEntity> element
+    /// (1694 lacks the word; GAM's source and GamUpdate 7.46.04 need it). The list is one <CalendarEntity> element
     /// GAM splits on commas and Python's whitespace, by code point, so each ID is checked by scalar: ASCII letters,
     /// digits and `._-+`, one `@`, ending `.calendar.google.com` (GAM gets any other ID as a user's calendar).
     public static func transferCalendarOwnership(calendarIDs: [String], to newOwner: String) throws -> GamWrite {
@@ -202,13 +202,13 @@ public enum GamCommands {
                         action: .transferCalendarOwnership)
     }
 
-    /// The person's Gmail filters, each one's JSON with its `action.forward` (grammar 7986-7987; printShowFilters).
+    /// The person's Gmail filters, each one's JSON with its `action.forward` (grammar 7990-7991; printShowFilters).
     /// `labelidsonly` skips the label-name lookup this has no use for.
     public static func printFilters(email: String) -> GamRead {
         GamRead(["user", email, "print", "filters", "labelidsonly", "formatjson"])
     }
 
-    /// The filters deleted in one command: GAM goes through the list, a failure leaving the rest done (grammar 7982;
+    /// The filters deleted in one command: GAM goes through the list, a failure leaving the rest done (grammar 7986;
     /// deleteFilters). The list is one <FilterIDEntity> element split on commas: each ID is ASCII letters, digits, `-_`,
     /// and the element mustn't be a list selector GAM reads a file from instead (getChoice, ignoring case, `_` and `-`).
     public static func deleteFilters(email: String, filterIDs: [String]) throws -> GamWrite {
@@ -228,16 +228,16 @@ public enum GamCommands {
         return list
     }
 
-    /// A short listing of the messages a Gmail search finds: the newest `max` (8260 `max_to_print`), each with only its
-    /// Subject (8262 `headers <SMTPHeaderList>`; GAM names the column by SMTP_HEADERS_MAP), its labels and Gmail's own time
-    /// (8263-8264). Only the subject: a phishing draft's Bcc list can run to hundreds of addresses, and thousands of those
+    /// A short listing of the messages a Gmail search finds: the newest `max` (8264 `max_to_print`), each with only its
+    /// Subject (8266 `headers <SMTPHeaderList>`; GAM names the column by SMTP_HEADERS_MAP), its labels and Gmail's own time
+    /// (8267-8268). Only the subject: a phishing draft's Bcc list can run to hundreds of addresses, and thousands of those
     /// would pass the runner's cap (review 2026-10-19). Spam and Trash aren't searched.
     public static func listMessages(email: String, query: String, max: Int) -> GamRead {
         GamRead(["user", email, "print", "messages", "query", query, "max_to_print", String(max), "headers", "subject",
                  "showlabels", "showdate"])
     }
 
-    /// The messages `ids` deleted for good (8195-8199 `delete messages … (ids <MessageIDEntity>)`; _processMessagesThreads:
+    /// The messages `ids` deleted for good (8199-8203 `delete messages … (ids <MessageIDEntity>)`; _processMessagesThreads:
     /// with ids no `doit` is needed and no count is checked): Gmail's batchDelete, `message_batch_size` (50) at a time, as
     /// Gmail's own Discard deletes a draft. A batch holding an ID Gmail refuses fails whole ("Invalid message id(s)"), the
     /// other batches done. Not Trash: a trashed draft may still be a draft, and sendable (review 2026-10-19). The list is
@@ -248,13 +248,13 @@ public enum GamCommands {
     }
 
     /// The secondary calendars `email` owns (`dataOwner`), hidden ones included: GAM filters the person's own
-    /// calendar list, which leaves hidden entries out unless asked (grammar 6299-6300; printShowCalendars).
+    /// calendar list, which leaves hidden entries out unless asked (grammar 6303-6304; printShowCalendars).
     /// Rows `primaryEmail,calendarId,JSON`, the JSON with `id`, `summary` and `dataOwner`.
     public static func printOwnedSecondaryCalendars(email: String) -> GamRead {
         GamRead(["user", email, "print", "calendars", "ownedsecondary", "showhidden", "fields", "id,summary", "formatjson"])
     }
 
-    /// The open Vault matters' holds that cover `email`, directly or through an org unit above them (grammar 5716;
+    /// The open Vault matters' holds that cover `email`, directly or through an org unit above them (grammar 5720;
     /// printShowUserVaultHolds). CSV only: `User,matterId,matterName,holdId,name,orgUnitId,orgUnitPath`.
     public static func printVaultHolds(email: String) -> GamRead {
         GamRead(["user", email, "print", "vaultholds"])
@@ -264,7 +264,7 @@ public enum GamCommands {
     /// `isSuspended=False isGuest=False`). Without `doit`, `_processMessagesThreads` (7.48.30) lists each user's matches
     /// (Gmail's `messages.list`, Spam and Trash left out) and prints a count per user, every line on stderr, and
     /// returns before any trash call; it never exits 0 across a domain, since each user sets the code (60 for no
-    /// copy, 51 for a count) and the last one stands. Grammar 8197-8190. `notquick`, so a count is every match: with
+    /// copy, 51 for a count) and the last one stands. Grammar 8215-8219. `notquick`, so a count is every match: with
     /// GAM's default `quick` it asks Gmail for at most `max_to_trash` and no count could exceed it. Reviewed in
     /// `CommandKindTests`: `trash` is a destructive verb, and only the absent `doit` makes this a read.
     public static func findMessageCopies(_ message: MessageID) -> GamRead {
@@ -281,7 +281,7 @@ public enum GamCommands {
                         action: .trashMessage)
     }
 
-    /// Who has a copy of the email in Spam, each by Gmail's ID: `print messages` over every active user (8257-8266
+    /// Who has a copy of the email in Spam, each by Gmail's ID: `print messages` over every active user (8261-8270
     /// `… query <QueryGmail> … [includespamtrash] … [headers <SMTPHeaderList>] … [showlabels]`), which lists Spam and Trash
     /// as the dry run above never does (printShowMessagesThreads, 7.48.30). Only the Message-ID header (GAM's default set
     /// has To, hundreds of addresses a mailbox for a mass phish) and the labels: `SpamCopies` checks each copy is this
@@ -291,7 +291,7 @@ public enum GamCommands {
                  "showlabels"])
     }
 
-    /// One mailbox's copies in Spam moved to its Trash, by the IDs `findSpamCopies` read (8211-8215 `trash messages …
+    /// One mailbox's copies in Spam moved to its Trash, by the IDs `findSpamCopies` read (8215-8219 `trash messages …
     /// (ids <MessageIDEntity>)`; _processMessagesThreads: with ids nothing is listed, so Spam is no bar, no `doit` is needed
     /// and no count is checked; Gmail's `messages.trash` runs on each ID). Exactly those copies, so never more than the
     /// preview showed; one gone since is GAM's "Does not exist" for that ID (exit 50), the rest trashed. The list is one
@@ -301,20 +301,20 @@ public enum GamCommands {
         return GamWrite(["user", email, "trash", "messages", "ids", list], action: .trashMessage)
     }
 
-    /// Auto-forwarding as Gmail has it now (8028; printShowForward): CSV `User,forwardEnabled,forwardTo,disposition`, the
+    /// Auto-forwarding as Gmail has it now (8032; printShowForward): CSV `User,forwardEnabled,forwardTo,disposition`, the
     /// address and what happens to the kept copy only while it's on.
     public static func printForward(email: String) -> GamRead {
         GamRead(["user", email, "print", "forward"])
     }
 
-    /// The person's send-as addresses, the primary among them (8324; printShowSendAs), CSV. `verifyonly` makes each
+    /// The person's send-as addresses, the primary among them (8328; printShowSendAs), CSV. `verifyonly` makes each
     /// signature a yes or no rather than its HTML.
     public static func printSendAs(email: String) -> GamRead {
         GamRead(["user", email, "print", "sendas", "verifyonly"])
     }
 
     /// One account's sign-in on a computer, blocked in Google's endpoint management: the computer can't reach the account's
-    /// data, and stays listed as blocked (approving it undoes it). 4388; _performCIDeviceUserAction. `name` is the device
+    /// data, and stays listed as blocked (approving it undoes it). 4392; _performCIDeviceUserAction. `name` is the device
     /// user's own (`isDeviceUserName`), by which GAM acts without `doit`.
     public static func blockDeviceUser(name: String) throws -> GamWrite {
         guard isDeviceUserName(name) else { throw Invalid.argument("a computer's sign-in is devices/<id>/deviceUsers/<id>") }
@@ -322,7 +322,7 @@ public enum GamCommands {
     }
 
     /// One account's sign-in on a computer, deleted: the account is taken off it and its access to the account's data
-    /// revoked (4385; the same). It shows again only if someone signs in on it again.
+    /// revoked (4389; the same). It shows again only if someone signs in on it again.
     public static func deleteDeviceUser(name: String) throws -> GamWrite {
         guard isDeviceUserName(name) else { throw Invalid.argument("a computer's sign-in is devices/<id>/deviceUsers/<id>") }
         return GamWrite(["delete", "deviceuser", name], action: .deleteDeviceUser)
@@ -338,7 +338,7 @@ public enum GamCommands {
         return parts.count == 4 && parts[0] == "devices" && parts[2] == "deviceUsers" && id(parts[1]) && id(parts[3])
     }
 
-    /// One send-as address taken off the person's "Send mail as" list (8320; deleteInfoSendAs). The address is one
+    /// One send-as address taken off the person's "Send mail as" list (8324; deleteInfoSendAs). The address is one
     /// <EmailAddressEntity> element GAM splits on commas and Python's whitespace, or reads a file from when it's a list
     /// selector, so it must be one plain address (`isOneAddress`).
     public static func deleteSendAs(email: String, address: String) throws -> GamWrite {
@@ -405,7 +405,7 @@ public enum GamCommands {
         case actor, affected
     }
 
-    /// An activity report's application (4700-4739), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
+    /// An activity report's application (4704-4743), as GAM's REPORT_CHOICE_MAP keys spell it. The Admin console's
     /// "Access" log (cookie validation, access-token requests) is `access_evaluation`.
     public enum ActivityApplication: String, CaseIterable, Sendable {
         case login, token, saml, gmail
@@ -432,7 +432,7 @@ public enum GamCommands {
         case assignments, graduation
     }
 
-    /// Activity events, newest first (4740-4754; doReport's activity form): `users` one address each (`user` for one,
+    /// Activity events, newest first (4744-4758; doReport's activity form): `users` one address each (`user` for one,
     /// `select users` for several, `user all` for none); `start -<hours>h end now` (getDeltaTime: now less that many
     /// hours; the end named so Gmail's 30-day rule doesn't move it), or `start` and `end` both given as times (`isReportTime`,
     /// UTC to the second, which GAM passes on as they are: a window fixed once, read further back page by page); `ip` keeps
@@ -481,7 +481,7 @@ public enum GamCommands {
             + (events.isEmpty ? [] : ["events", events.joined(separator: ",")]) + ["maxactivities", String(maxActivities)])
     }
 
-    /// The Chrome profiles signed in with `user`'s account that Google knows of (2306-2345; doPrintShowChromeProfiles):
+    /// The Chrome profiles signed in with `user`'s account that Google knows of (2310-2349; doPrintShowChromeProfiles):
     /// `print chromeprofiles filter user_email="<user>"`, the Chrome Management API's own field name, the address quoted
     /// so its `@` and dots are one value, and lowercased as Google keeps it (GAM passes a filter as given). CSV
     /// `name,profileId,JSON`. Needs GAM's "Chrome Management API - Profiles" scope (exit 15 with no Chrome Management scope
@@ -492,7 +492,7 @@ public enum GamCommands {
         return GamRead(["print", "chromeprofiles", "filter", "user_email=\"\(account)\"", "fields", chromeProfileFields, "formatjson"])
     }
 
-    /// The phones and tablets that sync `user`'s account (4565-4572; doPrintMobileDevices): `print mobile query
+    /// The phones and tablets that sync `user`'s account (4569-4576; doPrintMobileDevices): `print mobile query
     /// email:<user> fields … formatjson`, the Directory API's mobile search by owner, the address lowercased and only
     /// Google's address characters (`filterAddress`, so the query is one `field:value`). `listlimit 0`: GAM cuts every list in
     /// the JSON to one by default (doPrintMobileDevices: `listLimit = 1`, `cleanJSON`), so a shared device listed only its first
@@ -507,7 +507,7 @@ public enum GamCommands {
     static let mobileFields = "resourceid,email,model,os,type,status,firstsync,lastsync,devicecompromisedstatus"
 
     /// Every device signed in with `user`'s account that Google's endpoint management knows, computers among them, which
-    /// `printMobileDevices` never lists (4369-4377; doPrintCIDevices): `print devices query email:<user> fields …
+    /// `printMobileDevices` never lists (4373-4381; doPrintCIDevices): `print devices query email:<user> fields …
     /// userfields … formatjson`, the Cloud Identity Devices API's search by user (`email:`, Google's mobile device search
     /// field, matching a prefix), the address as `filterAddress` gives it (so the query is one `field:value`, as
     /// _validateDeviceQuery requires). Every view (GAM's default `all`), each device with its users. CSV `name,JSON`. The
@@ -519,15 +519,15 @@ public enum GamCommands {
                         "formatjson"])
     }
 
-    /// What an endpoint says (4294-4327): what it is, who made it and what it's called, whose company it is, its state, and
+    /// What an endpoint says (4298-4331): what it is, who made it and what it's called, whose company it is, its state, and
     /// when it was imported and last synced.
     static let deviceFields = "devicetype,model,manufacturer,osversion,hostname,serialnumber,ownertype,managementstate,"
         + "compromisedstate,createtime,lastsynctime"
 
-    /// What each of its users says (4329-4339): who, when they first signed in to it and last synced it, and their state on it.
+    /// What each of its users says (4333-4343): who, when they first signed in to it and last synced it, and their state on it.
     static let deviceUserFields = "name,useremail,createtime,firstsynctime,lastsynctime,managementstate"
 
-    /// The Apps Script projects `user` owns (7818-7845 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] …
+    /// The Apps Script projects `user` owns (7822-7849 `<UserTypeEntity> print filelist … [showmimetype <MimeTypeList>] …
     /// (fields <DriveFieldNameList>) … [formatjson]`; printFileList): Drive files of type `gscript`
     /// (application/vnd.google-apps.script), which GAM puts in Drive's own query beside its default `'me' in owners`, so
     /// only the person's own projects in their My Drive are listed, a binned one too (`trashed` says so). A project bound
@@ -539,7 +539,7 @@ public enum GamCommands {
         return GamRead(["user", user, "print", "filelist", "showmimetype", "gscript", "fields", scriptFields, "formatjson"])
     }
 
-    /// What a project says (7616-7710 <DriveFieldName>): its name, when it was made and last changed and by whom, and
+    /// What a project says (7620-7714 <DriveFieldName>): its name, when it was made and last changed and by whom, and
     /// whether it's in the bin.
     static let scriptFields = "id,name,createdtime,modifiedtime,trashed,lastmodifyinguser"
 
@@ -547,7 +547,7 @@ public enum GamCommands {
     static let chromeProfileFields = "displayname,useremail,lastactivitytime,firstenrollmenttime,osplatformtype,osversion,"
         + "browserversion,browserchannel,deviceinfo,affiliationstate"
 
-    /// The apps people have given access to their account (9115-9124; _printShowTokens): every account but the suspended
+    /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
     public static func printTokens(user: String? = nil) throws -> GamRead {
@@ -555,7 +555,7 @@ public enum GamCommands {
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])
     }
 
-    /// The admin role assignments `user` holds directly (1584-1587; doPrintShowAdmins), CSV with `role` and `scopeType`.
+    /// The admin role assignments `user` holds directly (1588-1591; doPrintShowAdmins), CSV with `role` and `scopeType`.
     /// Without `recursive`, a role held through a group isn't listed.
     public static func printAdmins(user: String) -> GamRead {
         GamRead(["print", "admins", "user", user])
@@ -572,7 +572,7 @@ public enum GamCommands {
         case active, archived, provisioned, declined, suspended
     }
 
-    /// A class's fields (3328 <CourseFieldName>), never `enrollmentcode`, which lets anyone who has it join the class.
+    /// A class's fields (3332 <CourseFieldName>), never `enrollmentcode`, which lets anyone who has it join the class.
     static let courseFields = "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink"
 
     /// A Classroom course ID as Google gives it: ASCII digits, at most 30. GAM reads a comma as a list and `d:` as an alias, so
@@ -581,7 +581,7 @@ public enum GamCommands {
         !value.isEmpty && value.unicodeScalars.count <= 30 && value.unicodeScalars.allSatisfy { ("0"..."9").contains($0) }
     }
 
-    /// Classes, read only (3328 `print courses`): by ID, or every class a teacher or a student is in, or every class, in the
+    /// Classes, read only (3332 `print courses`): by ID, or every class a teacher or a student is in, or every class, in the
     /// given states. CSV `id,JSON`. `ownerEmail` has GAM look up each distinct owner's address, one Directory read per owner:
     /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`. `aliases` adds a
     /// `JSON-aliases` column after `JSON` (one Classroom call per class, in GAM's run), each item an object as the API gives
@@ -610,7 +610,7 @@ public enum GamCommands {
                        + ["fields", courseFields, "formatjson"])
     }
 
-    /// Every class's teachers and students in the given states, one GAM run (3339 `print course-participants states`): the
+    /// Every class's teachers and students in the given states, one GAM run (3343 `print course-participants states`): the
     /// same rows as one class's (`courseId,courseName,JSON-teachers,JSON-students`), one per class. A states list is needed.
     public static func printAllCourseParticipants(states: [CourseState]) throws -> GamRead {
         guard !states.isEmpty else { throw Invalid.argument("A states list is needed: every class's people, in some states") }
@@ -619,7 +619,7 @@ public enum GamCommands {
                         states.filter { seen.insert($0).inserted }.map(\.rawValue).joined(separator: ","), "show", "all", "formatjson"])
     }
 
-    /// One class's teachers and students (3339 `print course-participants`). CSV
+    /// One class's teachers and students (3343 `print course-participants`). CSV
     /// `courseId,courseName,JSON-teachers,JSON-students`: one row per class, each `JSON-` cell a list of people.
     public static func printCourseParticipants(courseID: String) throws -> GamRead {
         guard isCourseID(courseID) else { throw Invalid.argument("Not a Classroom course ID: “\(courseID)”") }
@@ -663,7 +663,7 @@ public enum GamCommands {
 
     /// One calendar's data owner (Google's Calendars resource `dataOwner`, set only for a secondary calendar), read as the
     /// admin as the ACL read is: `calendars.get` with the fields asked (doCalendarsPrintShowSettings). `dataowner` is in GAM's
-    /// CALENDAR_SETTINGS_FIELDS_CHOICE_MAP though the grammar's <CalendarSettingsField> (2006-2013) leaves it out; `id` comes
+    /// CALENDAR_SETTINGS_FIELDS_CHOICE_MAP though the grammar's <CalendarSettingsField> (2010-2017) leaves it out; `id` comes
     /// first anyway (`initialField`). Rows `calendarId,JSON`. Not GamGUI's: the calendar delete acts as this owner.
     public static func printCalendarSettings(calendarID: String) -> GamRead {
         GamRead(["calendars", calendarID, "print", "settings", "fields", "id,dataowner", "formatjson"])
@@ -718,7 +718,7 @@ public enum GamCommands {
         GamWrite(["user", email, "signout"], action: .signOutUser)
     }
 
-    /// `deprovision|deprov [popimap] [signout] [turnoff2sv]` (GamCommands.txt 7926): deletes app
+    /// `deprovision|deprov [popimap] [signout] [turnoff2sv]` (GamCommands.txt 7930): deletes app
     /// passwords, backup codes and OAuth tokens, then with `signout` ends every session. Not
     /// `turnoff2sv` (it weakens a locked account nobody needs to sign in to); not `popimap` (POP and
     /// IMAP need a credential, and all are revoked here).
@@ -744,7 +744,7 @@ public enum GamCommands {
     }
 
     /// GAM's `add event` defaults `sendupdates` to none, so an attendee would get no invitation;
-    /// `[<EventNotificationAttribute>]` follows the attributes (GamCommands.txt 6482).
+    /// `[<EventNotificationAttribute>]` follows the attributes (GamCommands.txt 6486).
     public static func addCalendarEvent(calendar: String, summary: String, start: String, end: String, description: String = "", attendee: String = "") -> GamWrite {
         GamWrite(["user", calendar, "add", "event", "primary", "summary", summary, "start", "allday", start, "end", "allday", end]
             + optional("description", description)
@@ -800,7 +800,7 @@ public enum GamCommands {
 
     /// GAM's `vacation` doesn't replace the settings: it overwrites only the fields named and writes the
     /// rest back. So every setting is named (each flag explicitly, a missing date as `Started` or
-    /// `NotSpecified`, GamCommands.txt 8344), or a leftover "domain only" or past end date survives.
+    /// `NotSpecified`, GamCommands.txt 8348), or a leftover "domain only" or past end date survives.
     public static func setVacation(
         email: String, subject: String, message: String, html: Bool = true,
         start: String = "", end: String = "", contactsOnly: Bool = false, domainOnly: Bool = false

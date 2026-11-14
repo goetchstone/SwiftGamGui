@@ -106,6 +106,20 @@ an allowlisted environment, a timeout, and capped output capture.
   only reports. The grammar changed only on that line (1394), so no citation moved. The reviewed dry run holds: the
   compare's last hunk, `doVersion`, is ~65,000 lines before the Gmail functions.
 
+- **Bump to 7.52.03 (2026-11-14):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `07c505d`
+  (`catalog_reads.json` was the one fixture still naming `487be35`; its 515 reads are the same apart from line ids). GAM's
+  notes: 7.52.02 adds `gam version update path <Path>` and `gam version install <Path> [quiet]`, which, like `update`,
+  would replace the pinned GAM inside the app. The grammar now spreads `gam version` over five lines (1394-1398), and the
+  catalog (first line only, as GamGUI's) reads it as bare `gam version`, so `theRunnableGamVersionCanNeverSelfUpdate`
+  now holds that no catalog line offers update or install and that every slot value still builds `["version"]`; GamGUI's
+  twin test will need the same change at its bump. Every line after 1394 moved by 4: 91 citations were renumbered by the
+  text each names (seven were already stale and now name their text), checked by a second pass. 7.52.03 fixes a Drive
+  upload in `show messages ... uploadattachments`. Not in the notes: report reads (`doReportUsageParameters`,
+  `doReport`'s usage and activity paths) now take Google's `PERMISSION_DENIED` to `accessErrorExit`, as `FORBIDDEN`
+  already went, and an activity read's auth error now prints Google's message; the mock's `report users` refusal is
+  that path already, and its activity reports model no refusal. The reviewed dry run holds: the only Gmail hunk renames
+  exceptions in `_showSaveAttachments`.
+
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
   2026-09-23. Here both the parent and `extra` are filtered.

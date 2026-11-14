@@ -38,18 +38,22 @@ struct CommandCatalogTests {
     }
 
     /// GAM 7.52.00 added `version [... (update [quiet])]`, which downloads the latest release and installs it over the
-    /// running binary: an unpinned, unattested GAM (invariant 7). `version` is a read verb, so the line is promoted; it stays
-    /// safe only because the read builder drops optional groups. Held to exactly `["version"]`, whatever a slot is given
-    /// (GamGUI's `test_runnable_gam_version_can_never_self_update`).
+    /// running binary: an unpinned, unattested GAM (invariant 7); 7.52.02 added `update path <Path>` and `install <Path>`.
+    /// `version` is a read verb, so the line is promoted; it stays safe only because the read builder drops optional
+    /// groups. Since 7.52.02 those options sit on the grammar's continuation lines, which the catalog (first line only, as
+    /// GamGUI's) doesn't carry, so the line itself reads bare `gam version`. Held to exactly `["version"]`, whatever a slot
+    /// is given (GamGUI's `test_runnable_gam_version_can_never_self_update`).
     @Test func theRunnableGamVersionCanNeverSelfUpdate() throws {
         let lines = Self.catalog.commands.filter { $0.verb == "version" }
-        #expect(lines.contains { $0.syntax.split(separator: " ").contains("update") || $0.syntax.contains("(update") })
+        #expect(!lines.contains { $0.syntax.contains("update") || $0.syntax.contains("install") },
+                "a line that offers update or install: check the read builder still drops it")
         let runnable = lines.filter(\.runnable)
         #expect(!runnable.isEmpty, "else this guards nothing; revisit if it goes browse-only")
         for command in runnable {
             #expect(command.slots.isEmpty, "\(command.syntax)")
             #expect(try GamCommands.catalogRead(command, values: [:]).argv == ["version"])
             #expect(try GamCommands.catalogRead(command, values: ["a0": "update", "a1": "update", "a2": "quiet"]).argv == ["version"])
+            #expect(try GamCommands.catalogRead(command, values: ["a0": "install", "a1": "/tmp/gam", "a2": "path"]).argv == ["version"])
         }
     }
 

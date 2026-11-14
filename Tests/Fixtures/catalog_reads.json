@@ -1,7 +1,7 @@
 {
  "source": {
-  "gamgui_commit": "487be35",
-  "gam_version": "7.52.01",
+  "gamgui_commit": "07c505d",
+  "gam_version": "7.52.03",
   "generator": "scripts/gen_catalog_reads.py"
  },
  "reads": [
@@ -28,7 +28,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1436",
+   "id": "raw.1440",
    "slots": [
     {
      "key": "a0",
@@ -49,7 +49,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1437",
+   "id": "raw.1441",
    "slots": [
     {
      "key": "a0",
@@ -72,7 +72,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1441",
+   "id": "raw.1445",
    "slots": [],
    "argv": [
     "print",
@@ -85,7 +85,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1446",
+   "id": "raw.1450",
    "slots": [],
    "argv": [
     "info",
@@ -98,7 +98,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1471",
+   "id": "raw.1475",
    "slots": [
     {
      "key": "a0",
@@ -120,7 +120,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1473",
+   "id": "raw.1477",
    "slots": [
     {
      "key": "a0",
@@ -142,7 +142,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1476",
+   "id": "raw.1480",
    "slots": [],
    "argv": [
     "info",
@@ -155,7 +155,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1488",
+   "id": "raw.1492",
    "slots": [
     {
      "key": "a0",
@@ -177,7 +177,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1490",
+   "id": "raw.1494",
    "slots": [
     {
      "key": "a0",
@@ -199,7 +199,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1528",
+   "id": "raw.1532",
    "slots": [],
    "argv": [
     "show",
@@ -212,7 +212,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1543",
+   "id": "raw.1547",
    "slots": [],
    "argv": [
     "oauth",
@@ -225,7 +225,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1550",
+   "id": "raw.1554",
    "slots": [],
    "argv": [
     "print",
@@ -238,7 +238,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1551",
+   "id": "raw.1555",
    "slots": [],
    "argv": [
     "show",
@@ -251,7 +251,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1565",
+   "id": "raw.1569",
    "slots": [
     {
      "key": "a0",
@@ -274,41 +274,28 @@
    "sensitive": false
   },
   {
-   "id": "raw.1567",
-   "slots": [],
-   "argv": [
-    "print",
-    "adminroles"
-   ],
-   "argvRequired": [
-    "print",
-    "adminroles"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.1571",
    "slots": [],
    "argv": [
-    "show",
+    "print",
     "adminroles"
    ],
    "argvRequired": [
-    "show",
+    "print",
     "adminroles"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.1583",
+   "id": "raw.1575",
    "slots": [],
    "argv": [
-    "print",
-    "admins"
+    "show",
+    "adminroles"
    ],
    "argvRequired": [
-    "print",
-    "admins"
+    "show",
+    "adminroles"
    ],
    "sensitive": false
   },
@@ -316,6 +303,19 @@
    "id": "raw.1587",
    "slots": [],
    "argv": [
+    "print",
+    "admins"
+   ],
+   "argvRequired": [
+    "print",
+    "admins"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1591",
+   "slots": [],
+   "argv": [
     "show",
     "admins"
    ],
@@ -326,7 +326,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1594",
+   "id": "raw.1598",
    "slots": [],
    "argv": [
     "show",
@@ -339,7 +339,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1600",
+   "id": "raw.1604",
    "slots": [
     {
      "key": "a0",
@@ -362,7 +362,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1601",
+   "id": "raw.1605",
    "slots": [],
    "argv": [
     "show",
@@ -370,19 +370,6 @@
    ],
    "argvRequired": [
     "show",
-    "alerts"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.1603",
-   "slots": [],
-   "argv": [
-    "print",
-    "alerts"
-   ],
-   "argvRequired": [
-    "print",
     "alerts"
    ],
    "sensitive": false
@@ -391,6 +378,19 @@
    "id": "raw.1607",
    "slots": [],
    "argv": [
+    "print",
+    "alerts"
+   ],
+   "argvRequired": [
+    "print",
+    "alerts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1611",
+   "slots": [],
+   "argv": [
     "show",
     "alertfeedback"
    ],
@@ -401,7 +401,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1609",
+   "id": "raw.1613",
    "slots": [],
    "argv": [
     "print",
@@ -414,7 +414,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1622",
+   "id": "raw.1626",
    "slots": [
     {
      "key": "a0",
@@ -437,7 +437,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1624",
+   "id": "raw.1628",
    "slots": [],
    "argv": [
     "print",
@@ -450,7 +450,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1636",
+   "id": "raw.1640",
    "slots": [
     {
      "key": "a0",
@@ -471,7 +471,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1640",
+   "id": "raw.1644",
    "slots": [
     {
      "key": "a0",
@@ -491,31 +491,6 @@
     "user",
     "<a0>",
     "print",
-    "analyticaccounts"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.1643",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "analyticaccounts"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
     "analyticaccounts"
    ],
    "sensitive": false
@@ -534,19 +509,19 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
-    "analyticaccountsummaries"
+    "show",
+    "analyticaccounts"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
-    "analyticaccountsummaries"
+    "show",
+    "analyticaccounts"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.1650",
+   "id": "raw.1651",
    "slots": [
     {
      "key": "a0",
@@ -559,13 +534,13 @@
    "argv": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "analyticaccountsummaries"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "analyticaccountsummaries"
    ],
    "sensitive": false
@@ -584,14 +559,14 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
-    "analyticproperties"
+    "show",
+    "analyticaccountsummaries"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
-    "analyticproperties"
+    "show",
+    "analyticaccountsummaries"
    ],
    "sensitive": false
   },
@@ -609,19 +584,19 @@
    "argv": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "analyticproperties"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "analyticproperties"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.1663",
+   "id": "raw.1662",
    "slots": [
     {
      "key": "a0",
@@ -634,14 +609,14 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
-    "analyticdatastreams"
+    "show",
+    "analyticproperties"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
-    "analyticdatastreams"
+    "show",
+    "analyticproperties"
    ],
    "sensitive": false
   },
@@ -659,6 +634,31 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "analyticdatastreams"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "analyticdatastreams"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.1671",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "analyticdatastreams"
    ],
@@ -671,7 +671,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1694",
+   "id": "raw.1698",
    "slots": [
     {
      "key": "a0",
@@ -705,7 +705,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1697",
+   "id": "raw.1701",
    "slots": [
     {
      "key": "a0",
@@ -730,7 +730,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1700",
+   "id": "raw.1704",
    "slots": [
     {
      "key": "a0",
@@ -755,7 +755,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1979",
+   "id": "raw.1983",
    "slots": [
     {
      "key": "a0",
@@ -788,7 +788,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1982",
+   "id": "raw.1986",
    "slots": [
     {
      "key": "a0",
@@ -830,7 +830,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.1985",
+   "id": "raw.1989",
    "slots": [
     {
      "key": "a0",
@@ -872,7 +872,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2022",
+   "id": "raw.2026",
    "slots": [
     {
      "key": "a0",
@@ -897,7 +897,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2025",
+   "id": "raw.2029",
    "slots": [
     {
      "key": "a0",
@@ -922,7 +922,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2064",
+   "id": "raw.2068",
    "slots": [
     {
      "key": "a0",
@@ -945,7 +945,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2067",
+   "id": "raw.2071",
    "slots": [],
    "argv": [
     "show",
@@ -958,7 +958,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2070",
+   "id": "raw.2074",
    "slots": [],
    "argv": [
     "print",
@@ -971,7 +971,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2084",
+   "id": "raw.2088",
    "slots": [
     {
      "key": "a0",
@@ -996,29 +996,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.2087",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "Chat Space",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<ChatSpace>"
-    }
-   ],
-   "argv": [
-    "show",
-    "chatmembers",
-    "<a0>"
-   ],
-   "argvRequired": [
-    "show",
-    "chatmembers",
-    "<a0>"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.2091",
    "slots": [
     {
@@ -1030,6 +1007,29 @@
     }
    ],
    "argv": [
+    "show",
+    "chatmembers",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "chatmembers",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2095",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Chat Space",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ChatSpace>"
+    }
+   ],
+   "argv": [
     "print",
     "chatmembers",
     "<a0>"
@@ -1042,7 +1042,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2135",
+   "id": "raw.2139",
    "slots": [
     {
      "key": "a0",
@@ -1067,7 +1067,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2139",
+   "id": "raw.2143",
    "slots": [
     {
      "key": "a0",
@@ -1092,7 +1092,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2220",
+   "id": "raw.2224",
    "slots": [
     {
      "key": "a0",
@@ -1115,7 +1115,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2225",
+   "id": "raw.2229",
    "slots": [],
    "argv": [
     "show",
@@ -1128,7 +1128,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2233",
+   "id": "raw.2237",
    "slots": [],
    "argv": [
     "print",
@@ -1141,7 +1141,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2265",
+   "id": "raw.2269",
    "slots": [
     {
      "key": "a0",
@@ -1164,7 +1164,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2268",
+   "id": "raw.2272",
    "slots": [],
    "argv": [
     "show",
@@ -1177,7 +1177,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.2274",
+   "id": "raw.2278",
    "slots": [],
    "argv": [
     "print",
@@ -1190,7 +1190,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.2283",
+   "id": "raw.2287",
    "slots": [],
    "argv": [
     "print",
@@ -1203,7 +1203,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2288",
+   "id": "raw.2292",
    "slots": [],
    "argv": [
     "show",
@@ -1212,19 +1212,6 @@
    "argvRequired": [
     "show",
     "chromeaues"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.2296",
-   "slots": [],
-   "argv": [
-    "print",
-    "chromeneedsattn"
-   ],
-   "argvRequired": [
-    "print",
-    "chromeneedsattn"
    ],
    "sensitive": false
   },
@@ -1232,6 +1219,19 @@
    "id": "raw.2300",
    "slots": [],
    "argv": [
+    "print",
+    "chromeneedsattn"
+   ],
+   "argvRequired": [
+    "print",
+    "chromeneedsattn"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2304",
+   "slots": [],
+   "argv": [
     "show",
     "chromeneedsattn"
    ],
@@ -1242,7 +1242,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2365",
+   "id": "raw.2369",
    "slots": [
     {
      "key": "a0",
@@ -1265,7 +1265,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2367",
+   "id": "raw.2371",
    "slots": [],
    "argv": [
     "show",
@@ -1278,7 +1278,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2372",
+   "id": "raw.2376",
    "slots": [],
    "argv": [
     "print",
@@ -1291,7 +1291,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2382",
+   "id": "raw.2386",
    "slots": [
     {
      "key": "a0",
@@ -1314,7 +1314,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2385",
+   "id": "raw.2389",
    "slots": [
     {
      "key": "a0",
@@ -1337,7 +1337,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2387",
+   "id": "raw.2391",
    "slots": [
     {
      "key": "a0",
@@ -1360,7 +1360,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2392",
+   "id": "raw.2396",
    "slots": [],
    "argv": [
     "show",
@@ -1373,7 +1373,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2395",
+   "id": "raw.2399",
    "slots": [],
    "argv": [
     "print",
@@ -1386,7 +1386,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2401",
+   "id": "raw.2405",
    "slots": [],
    "argv": [
     "show",
@@ -1399,7 +1399,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2406",
+   "id": "raw.2410",
    "slots": [],
    "argv": [
     "print",
@@ -1412,7 +1412,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2446",
+   "id": "raw.2450",
    "slots": [],
    "argv": [
     "show",
@@ -1427,7 +1427,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2448",
+   "id": "raw.2452",
    "slots": [],
    "argv": [
     "print",
@@ -1442,7 +1442,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2451",
+   "id": "raw.2455",
    "slots": [],
    "argv": [
     "show",
@@ -1451,21 +1451,6 @@
    ],
    "argvRequired": [
     "show",
-    "chromehistory",
-    "channels"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.2454",
-   "slots": [],
-   "argv": [
-    "print",
-    "chromehistory",
-    "channels"
-   ],
-   "argvRequired": [
-    "print",
     "chromehistory",
     "channels"
    ],
@@ -1475,6 +1460,21 @@
    "id": "raw.2458",
    "slots": [],
    "argv": [
+    "print",
+    "chromehistory",
+    "channels"
+   ],
+   "argvRequired": [
+    "print",
+    "chromehistory",
+    "channels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2462",
+   "slots": [],
+   "argv": [
     "show",
     "chromehistory",
     "versions"
@@ -1487,7 +1487,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2463",
+   "id": "raw.2467",
    "slots": [],
    "argv": [
     "print",
@@ -1502,7 +1502,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2468",
+   "id": "raw.2472",
    "slots": [],
    "argv": [
     "show",
@@ -1517,7 +1517,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2473",
+   "id": "raw.2477",
    "slots": [],
    "argv": [
     "print",
@@ -1532,7 +1532,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2597",
+   "id": "raw.2601",
    "slots": [
     {
      "key": "a0",
@@ -1555,7 +1555,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2606",
+   "id": "raw.2610",
    "slots": [
     {
      "key": "a0",
@@ -1578,7 +1578,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2621",
+   "id": "raw.2625",
    "slots": [],
    "argv": [
     "print",
@@ -1591,7 +1591,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2638",
+   "id": "raw.2642",
    "slots": [
     {
      "key": "a0",
@@ -1618,7 +1618,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2650",
+   "id": "raw.2654",
    "slots": [
     {
      "key": "a0",
@@ -1643,7 +1643,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2676",
+   "id": "raw.2680",
    "slots": [
     {
      "key": "a0",
@@ -1662,31 +1662,6 @@
     "cros",
     "<a0>",
     "print"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.2677",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "Device",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<CrOSDeviceID>"
-    }
-   ],
-   "argv": [
-    "cros",
-    "<a0>",
-    "print",
-    "cros"
-   ],
-   "argvRequired": [
-    "cros",
-    "<a0>",
-    "print",
-    "cros"
    ],
    "sensitive": false
   },
@@ -1704,6 +1679,31 @@
    "argv": [
     "cros",
     "<a0>",
+    "print",
+    "cros"
+   ],
+   "argvRequired": [
+    "cros",
+    "<a0>",
+    "print",
+    "cros"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2685",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Device",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<CrOSDeviceID>"
+    }
+   ],
+   "argv": [
+    "cros",
+    "<a0>",
     "show",
     "count"
    ],
@@ -1716,7 +1716,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2689",
+   "id": "raw.2693",
    "slots": [],
    "argv": [
     "print",
@@ -1729,7 +1729,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2708",
+   "id": "raw.2712",
    "slots": [
     {
      "key": "a0",
@@ -1756,7 +1756,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2717",
+   "id": "raw.2721",
    "slots": [
     {
      "key": "a0",
@@ -1781,7 +1781,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2746",
+   "id": "raw.2750",
    "slots": [
     {
      "key": "a0",
@@ -1804,7 +1804,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.2747",
+   "id": "raw.2751",
    "slots": [
     {
      "key": "a0",
@@ -1829,7 +1829,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.2801",
+   "id": "raw.2805",
    "slots": [
     {
      "key": "a0",
@@ -1852,7 +1852,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2806",
+   "id": "raw.2810",
    "slots": [],
    "argv": [
     "show",
@@ -1865,7 +1865,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2812",
+   "id": "raw.2816",
    "slots": [],
    "argv": [
     "print",
@@ -1878,7 +1878,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2838",
+   "id": "raw.2842",
    "slots": [],
    "argv": [
     "show",
@@ -1891,7 +1891,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2844",
+   "id": "raw.2848",
    "slots": [],
    "argv": [
     "print",
@@ -1904,7 +1904,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2866",
+   "id": "raw.2870",
    "slots": [
     {
      "key": "a0",
@@ -1923,19 +1923,6 @@
     "info",
     "chromeschema",
     "<a0>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.2869",
-   "slots": [],
-   "argv": [
-    "show",
-    "chromeschemas"
-   ],
-   "argvRequired": [
-    "show",
-    "chromeschemas"
    ],
    "sensitive": false
   },
@@ -1943,6 +1930,19 @@
    "id": "raw.2873",
    "slots": [],
    "argv": [
+    "show",
+    "chromeschemas"
+   ],
+   "argvRequired": [
+    "show",
+    "chromeschemas"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2877",
+   "slots": [],
+   "argv": [
     "print",
     "chromschemas"
    ],
@@ -1953,7 +1953,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2878",
+   "id": "raw.2882",
    "slots": [
     {
      "key": "a0",
@@ -1978,7 +1978,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2879",
+   "id": "raw.2883",
    "slots": [],
    "argv": [
     "show",
@@ -1993,7 +1993,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2889",
+   "id": "raw.2893",
    "slots": [
     {
      "key": "a0",
@@ -2018,7 +2018,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2892",
+   "id": "raw.2896",
    "slots": [],
    "argv": [
     "show",
@@ -2031,7 +2031,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2898",
+   "id": "raw.2902",
    "slots": [],
    "argv": [
     "print",
@@ -2044,7 +2044,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2905",
+   "id": "raw.2909",
    "slots": [],
    "argv": [
     "show",
@@ -2057,7 +2057,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2912",
+   "id": "raw.2916",
    "slots": [],
    "argv": [
     "print",
@@ -2070,7 +2070,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2920",
+   "id": "raw.2924",
    "slots": [],
    "argv": [
     "show",
@@ -2083,7 +2083,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2925",
+   "id": "raw.2929",
    "slots": [],
    "argv": [
     "print",
@@ -2096,7 +2096,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2931",
+   "id": "raw.2935",
    "slots": [],
    "argv": [
     "print",
@@ -2109,7 +2109,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2937",
+   "id": "raw.2941",
    "slots": [
     {
      "key": "a0",
@@ -2137,29 +2137,6 @@
     "info",
     "classificationlabels",
     "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.2940",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": false,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "classificationlabels"
-   ],
-   "argvRequired": [
-    "print",
-    "classificationlabels"
    ],
    "sensitive": false
   },
@@ -2177,6 +2154,29 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "classificationlabels"
+   ],
+   "argvRequired": [
+    "print",
+    "classificationlabels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.2948",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": false,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "classificationlabels"
    ],
@@ -2187,7 +2187,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2959",
+   "id": "raw.2963",
    "slots": [
     {
      "key": "a0",
@@ -2219,7 +2219,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.2961",
+   "id": "raw.2965",
    "slots": [
     {
      "key": "a0",
@@ -2251,7 +2251,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3033",
+   "id": "raw.3037",
    "slots": [],
    "argv": [
     "info",
@@ -2264,7 +2264,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3038",
+   "id": "raw.3042",
    "slots": [],
    "argv": [
     "show",
@@ -2277,7 +2277,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3040",
+   "id": "raw.3044",
    "slots": [],
    "argv": [
     "print",
@@ -2290,7 +2290,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3060",
+   "id": "raw.3064",
    "slots": [],
    "argv": [
     "print",
@@ -2303,7 +2303,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3065",
+   "id": "raw.3069",
    "slots": [],
    "argv": [
     "show",
@@ -2316,7 +2316,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3086",
+   "id": "raw.3090",
    "slots": [],
    "argv": [
     "print",
@@ -2329,7 +2329,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3092",
+   "id": "raw.3096",
    "slots": [],
    "argv": [
     "show",
@@ -2342,7 +2342,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3111",
+   "id": "raw.3115",
    "slots": [],
    "argv": [
     "print",
@@ -2355,7 +2355,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3116",
+   "id": "raw.3120",
    "slots": [],
    "argv": [
     "show",
@@ -2368,7 +2368,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3127",
+   "id": "raw.3131",
    "slots": [],
    "argv": [
     "print",
@@ -2381,7 +2381,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3132",
+   "id": "raw.3136",
    "slots": [],
    "argv": [
     "show",
@@ -2394,7 +2394,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3144",
+   "id": "raw.3148",
    "slots": [],
    "argv": [
     "print",
@@ -2407,7 +2407,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3149",
+   "id": "raw.3153",
    "slots": [],
    "argv": [
     "show",
@@ -2420,7 +2420,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3159",
+   "id": "raw.3163",
    "slots": [
     {
      "key": "a0",
@@ -2445,7 +2445,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3160",
+   "id": "raw.3164",
    "slots": [
     {
      "key": "a0",
@@ -2470,7 +2470,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3319",
+   "id": "raw.3323",
    "slots": [
     {
      "key": "a0",
@@ -2493,7 +2493,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3323",
+   "id": "raw.3327",
    "slots": [
     {
      "key": "a0",
@@ -2516,7 +2516,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3327",
+   "id": "raw.3331",
    "slots": [],
    "argv": [
     "print",
@@ -2529,7 +2529,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3338",
+   "id": "raw.3342",
    "slots": [],
    "argv": [
     "print",
@@ -2542,7 +2542,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3344",
+   "id": "raw.3348",
    "slots": [],
    "argv": [
     "print",
@@ -2557,7 +2557,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3439",
+   "id": "raw.3443",
    "slots": [],
    "argv": [
     "print",
@@ -2570,7 +2570,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3447",
+   "id": "raw.3451",
    "slots": [],
    "argv": [
     "print",
@@ -2583,7 +2583,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3456",
+   "id": "raw.3460",
    "slots": [],
    "argv": [
     "print",
@@ -2596,7 +2596,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3464",
+   "id": "raw.3468",
    "slots": [],
    "argv": [
     "print",
@@ -2609,7 +2609,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3469",
+   "id": "raw.3473",
    "slots": [],
    "argv": [
     "print",
@@ -2622,7 +2622,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3490",
+   "id": "raw.3494",
    "slots": [],
    "argv": [
     "print",
@@ -2635,7 +2635,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3498",
+   "id": "raw.3502",
    "slots": [],
    "argv": [
     "print",
@@ -2648,7 +2648,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3509",
+   "id": "raw.3513",
    "slots": [
     {
      "key": "a0",
@@ -2668,37 +2668,37 @@
     "user",
     "<a0>",
     "show",
-    "classroominvitations"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.3511",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "classroominvitations"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
     "classroominvitations"
    ],
    "sensitive": false
   },
   {
    "id": "raw.3515",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "classroominvitations"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "classroominvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3519",
    "slots": [],
    "argv": [
     "show",
@@ -2711,7 +2711,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3518",
+   "id": "raw.3522",
    "slots": [],
    "argv": [
     "print",
@@ -2724,7 +2724,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3536",
+   "id": "raw.3540",
    "slots": [
     {
      "key": "a0",
@@ -2749,7 +2749,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3539",
+   "id": "raw.3543",
    "slots": [
     {
      "key": "a0",
@@ -2769,19 +2769,6 @@
     "user",
     "<a0>",
     "print",
-    "guardian"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.3548",
-   "slots": [],
-   "argv": [
-    "show",
-    "guardian"
-   ],
-   "argvRequired": [
-    "show",
     "guardian"
    ],
    "sensitive": false
@@ -2790,17 +2777,17 @@
    "id": "raw.3552",
    "slots": [],
    "argv": [
-    "print",
+    "show",
     "guardian"
    ],
    "argvRequired": [
-    "print",
+    "show",
     "guardian"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.3558",
+   "id": "raw.3556",
    "slots": [],
    "argv": [
     "print",
@@ -2813,7 +2800,20 @@
    "sensitive": false
   },
   {
-   "id": "raw.3564",
+   "id": "raw.3562",
+   "slots": [],
+   "argv": [
+    "print",
+    "guardian"
+   ],
+   "argvRequired": [
+    "print",
+    "guardian"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3568",
    "slots": [
     {
      "key": "a0",
@@ -2838,7 +2838,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3565",
+   "id": "raw.3569",
    "slots": [
     {
      "key": "a0",
@@ -2859,32 +2859,6 @@
     "<a0>",
     "show",
     "classroomprofile"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.3586",
-   "slots": [],
-   "argv": [
-    "info",
-    "customer"
-   ],
-   "argvRequired": [
-    "info",
-    "customer"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.3588",
-   "slots": [],
-   "argv": [
-    "info",
-    "instance"
-   ],
-   "argvRequired": [
-    "info",
-    "instance"
    ],
    "sensitive": false
   },
@@ -2893,11 +2867,11 @@
    "slots": [],
    "argv": [
     "info",
-    "customerid"
+    "customer"
    ],
    "argvRequired": [
     "info",
-    "customerid"
+    "customer"
    ],
    "sensitive": false
   },
@@ -2906,6 +2880,32 @@
    "slots": [],
    "argv": [
     "info",
+    "instance"
+   ],
+   "argvRequired": [
+    "info",
+    "instance"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3594",
+   "slots": [],
+   "argv": [
+    "info",
+    "customerid"
+   ],
+   "argvRequired": [
+    "info",
+    "customerid"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3596",
+   "slots": [],
+   "argv": [
+    "info",
     "gcporgid"
    ],
    "argvRequired": [
@@ -2915,7 +2915,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3596",
+   "id": "raw.3600",
    "slots": [],
    "argv": [
     "print",
@@ -2928,7 +2928,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3611",
+   "id": "raw.3615",
    "slots": [
     {
      "key": "a0",
@@ -2951,22 +2951,22 @@
    "sensitive": false
   },
   {
-   "id": "raw.3612",
-   "slots": [],
-   "argv": [
-    "print",
-    "datatransfers"
-   ],
-   "argvRequired": [
-    "print",
-    "datatransfers"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.3616",
    "slots": [],
    "argv": [
+    "print",
+    "datatransfers"
+   ],
+   "argvRequired": [
+    "print",
+    "datatransfers"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3620",
+   "slots": [],
+   "argv": [
     "show",
     "datatransfers"
    ],
@@ -2977,7 +2977,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3628",
+   "id": "raw.3632",
    "slots": [
     {
      "key": "a0",
@@ -2999,7 +2999,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3630",
+   "id": "raw.3634",
    "slots": [],
    "argv": [
     "print",
@@ -3012,7 +3012,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3633",
+   "id": "raw.3637",
    "slots": [],
    "argv": [
     "show",
@@ -3025,7 +3025,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3640",
+   "id": "raw.3644",
    "slots": [
     {
      "key": "a0",
@@ -3048,7 +3048,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3642",
+   "id": "raw.3646",
    "slots": [],
    "argv": [
     "print",
@@ -3061,7 +3061,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3645",
+   "id": "raw.3649",
    "slots": [],
    "argv": [
     "show",
@@ -3074,7 +3074,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3712",
+   "id": "raw.3716",
    "slots": [
     {
      "key": "a0",
@@ -3097,7 +3097,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.3758",
+   "id": "raw.3762",
    "slots": [
     {
      "key": "a0",
@@ -3120,29 +3120,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.3762",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "Contact Selection",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<ContactSelection>"
-    }
-   ],
-   "argv": [
-    "show",
-    "contacts",
-    "<a0>"
-   ],
-   "argvRequired": [
-    "show",
-    "contacts",
-    "<a0>"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.3766",
    "slots": [
     {
@@ -3154,6 +3131,29 @@
     }
    ],
    "argv": [
+    "show",
+    "contacts",
+    "<a0>"
+   ],
+   "argvRequired": [
+    "show",
+    "contacts",
+    "<a0>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.3770",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "Contact Selection",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<ContactSelection>"
+    }
+   ],
+   "argv": [
     "print",
     "contacts",
     "<a0>"
@@ -3166,7 +3166,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3813",
+   "id": "raw.3817",
    "slots": [
     {
      "key": "a0",
@@ -3189,7 +3189,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3816",
+   "id": "raw.3820",
    "slots": [],
    "argv": [
     "print",
@@ -3202,7 +3202,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3822",
+   "id": "raw.3826",
    "slots": [],
    "argv": [
     "show",
@@ -3215,7 +3215,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3829",
+   "id": "raw.3833",
    "slots": [
     {
      "key": "a0",
@@ -3238,7 +3238,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3832",
+   "id": "raw.3836",
    "slots": [],
    "argv": [
     "print",
@@ -3251,7 +3251,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3837",
+   "id": "raw.3841",
    "slots": [],
    "argv": [
     "show",
@@ -3264,7 +3264,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.3848",
+   "id": "raw.3852",
    "slots": [
     {
      "key": "a0",
@@ -3289,7 +3289,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4052",
+   "id": "raw.4056",
    "slots": [
     {
      "key": "a0",
@@ -3312,7 +3312,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4062",
+   "id": "raw.4066",
    "slots": [],
    "argv": [
     "print",
@@ -3325,7 +3325,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4085",
+   "id": "raw.4089",
    "slots": [
     {
      "key": "a0",
@@ -3348,7 +3348,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4088",
+   "id": "raw.4092",
    "slots": [
     {
      "key": "a0",
@@ -3371,7 +3371,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4102",
+   "id": "raw.4106",
    "slots": [
     {
      "key": "a0",
@@ -3405,7 +3405,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4103",
+   "id": "raw.4107",
    "slots": [
     {
      "key": "a0",
@@ -3439,7 +3439,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4104",
+   "id": "raw.4108",
    "slots": [],
    "argv": [
     "print",
@@ -3452,7 +3452,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4126",
+   "id": "raw.4130",
    "slots": [],
    "argv": [
     "show",
@@ -3465,7 +3465,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4200",
+   "id": "raw.4204",
    "slots": [
     {
      "key": "a0",
@@ -3488,7 +3488,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4209",
+   "id": "raw.4213",
    "slots": [],
    "argv": [
     "print",
@@ -3501,7 +3501,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4237",
+   "id": "raw.4241",
    "slots": [
     {
      "key": "a0",
@@ -3535,7 +3535,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4238",
+   "id": "raw.4242",
    "slots": [
     {
      "key": "a0",
@@ -3569,7 +3569,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4239",
+   "id": "raw.4243",
    "slots": [],
    "argv": [
     "print",
@@ -3582,7 +3582,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4254",
+   "id": "raw.4258",
    "slots": [],
    "argv": [
     "show",
@@ -3595,7 +3595,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4275",
+   "id": "raw.4279",
    "slots": [
     {
      "key": "a0",
@@ -3618,7 +3618,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4277",
+   "id": "raw.4281",
    "slots": [],
    "argv": [
     "print",
@@ -3631,7 +3631,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4280",
+   "id": "raw.4284",
    "slots": [],
    "argv": [
     "show",
@@ -3644,7 +3644,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4364",
+   "id": "raw.4368",
    "slots": [
     {
      "key": "a0",
@@ -3667,7 +3667,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4368",
+   "id": "raw.4372",
    "slots": [],
    "argv": [
     "print",
@@ -3680,7 +3680,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4391",
+   "id": "raw.4395",
    "slots": [
     {
      "key": "a0",
@@ -3703,7 +3703,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4394",
+   "id": "raw.4398",
    "slots": [],
    "argv": [
     "print",
@@ -3716,7 +3716,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4402",
+   "id": "raw.4406",
    "slots": [
     {
      "key": "a0",
@@ -3739,7 +3739,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4411",
+   "id": "raw.4415",
    "slots": [
     {
      "key": "a0",
@@ -3762,22 +3762,22 @@
    "sensitive": false
   },
   {
-   "id": "raw.4414",
-   "slots": [],
-   "argv": [
-    "print",
-    "policies"
-   ],
-   "argvRequired": [
-    "print",
-    "policies"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.4418",
    "slots": [],
    "argv": [
+    "print",
+    "policies"
+   ],
+   "argvRequired": [
+    "print",
+    "policies"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4422",
+   "slots": [],
+   "argv": [
     "show",
     "policies"
    ],
@@ -3788,7 +3788,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4446",
+   "id": "raw.4450",
    "slots": [
     {
      "key": "a0",
@@ -3811,7 +3811,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4448",
+   "id": "raw.4452",
    "slots": [],
    "argv": [
     "show",
@@ -3824,7 +3824,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4450",
+   "id": "raw.4454",
    "slots": [],
    "argv": [
     "print",
@@ -3837,7 +3837,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4459",
+   "id": "raw.4463",
    "slots": [
     {
      "key": "a0",
@@ -3860,7 +3860,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4461",
+   "id": "raw.4465",
    "slots": [],
    "argv": [
     "show",
@@ -3873,7 +3873,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4463",
+   "id": "raw.4467",
    "slots": [],
    "argv": [
     "print",
@@ -3886,7 +3886,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4484",
+   "id": "raw.4488",
    "slots": [
     {
      "key": "a0",
@@ -3909,7 +3909,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4486",
+   "id": "raw.4490",
    "slots": [],
    "argv": [
     "show",
@@ -3922,7 +3922,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4488",
+   "id": "raw.4492",
    "slots": [],
    "argv": [
     "print",
@@ -3935,7 +3935,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4493",
+   "id": "raw.4497",
    "slots": [],
    "argv": [
     "print",
@@ -3948,7 +3948,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4496",
+   "id": "raw.4500",
    "slots": [],
    "argv": [
     "show",
@@ -3961,7 +3961,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4499",
+   "id": "raw.4503",
    "slots": [],
    "argv": [
     "show",
@@ -3974,7 +3974,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4561",
+   "id": "raw.4565",
    "slots": [
     {
      "key": "a0",
@@ -3997,7 +3997,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4564",
+   "id": "raw.4568",
    "slots": [],
    "argv": [
     "print",
@@ -4010,7 +4010,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4598",
+   "id": "raw.4602",
    "slots": [
     {
      "key": "a0",
@@ -4033,7 +4033,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4600",
+   "id": "raw.4604",
    "slots": [
     {
      "key": "a0",
@@ -4056,7 +4056,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4608",
+   "id": "raw.4612",
    "slots": [],
    "argv": [
     "print",
@@ -4069,7 +4069,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4615",
+   "id": "raw.4619",
    "slots": [],
    "argv": [
     "show",
@@ -4082,7 +4082,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4660",
+   "id": "raw.4664",
    "slots": [
     {
      "key": "a0",
@@ -4105,7 +4105,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4663",
+   "id": "raw.4667",
    "slots": [],
    "argv": [
     "show",
@@ -4118,7 +4118,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4669",
+   "id": "raw.4673",
    "slots": [],
    "argv": [
     "print",
@@ -4131,7 +4131,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4675",
+   "id": "raw.4679",
    "slots": [],
    "argv": [
     "show",
@@ -4144,7 +4144,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4678",
+   "id": "raw.4682",
    "slots": [],
    "argv": [
     "print",
@@ -4157,7 +4157,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4684",
+   "id": "raw.4688",
    "slots": [],
    "argv": [
     "report",
@@ -4172,7 +4172,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4685",
+   "id": "raw.4689",
    "slots": [],
    "argv": [
     "report",
@@ -4187,7 +4187,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4692",
+   "id": "raw.4696",
    "slots": [],
    "argv": [
     "report",
@@ -4202,7 +4202,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4739",
+   "id": "raw.4743",
    "slots": [
     {
      "key": "a0",
@@ -4223,7 +4223,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4772",
+   "id": "raw.4776",
    "slots": [],
    "argv": [
     "report",
@@ -4236,7 +4236,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4790",
+   "id": "raw.4794",
    "slots": [],
    "argv": [
     "report",
@@ -4249,7 +4249,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4820",
+   "id": "raw.4824",
    "slots": [
     {
      "key": "a0",
@@ -4272,7 +4272,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4831",
+   "id": "raw.4835",
    "slots": [
     {
      "key": "a0",
@@ -4304,22 +4304,22 @@
    "sensitive": false
   },
   {
-   "id": "raw.4833",
-   "slots": [],
-   "argv": [
-    "show",
-    "resoldsubscriptions"
-   ],
-   "argvRequired": [
-    "show",
-    "resoldsubscriptions"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.4837",
    "slots": [],
    "argv": [
+    "show",
+    "resoldsubscriptions"
+   ],
+   "argvRequired": [
+    "show",
+    "resoldsubscriptions"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4841",
+   "slots": [],
+   "argv": [
     "print",
     "resoldsubscriptions"
    ],
@@ -4330,7 +4330,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4915",
+   "id": "raw.4919",
    "slots": [
     {
      "key": "a0",
@@ -4353,7 +4353,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4917",
+   "id": "raw.4921",
    "slots": [],
    "argv": [
     "show",
@@ -4366,7 +4366,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4920",
+   "id": "raw.4924",
    "slots": [],
    "argv": [
     "print",
@@ -4379,7 +4379,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4927",
+   "id": "raw.4931",
    "slots": [],
    "argv": [
     "show",
@@ -4392,7 +4392,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4928",
+   "id": "raw.4932",
    "slots": [],
    "argv": [
     "print",
@@ -4405,7 +4405,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4933",
+   "id": "raw.4937",
    "slots": [
     {
      "key": "a0",
@@ -4428,7 +4428,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4939",
+   "id": "raw.4943",
    "slots": [
     {
      "key": "a0",
@@ -4447,19 +4447,6 @@
     "info",
     "resources",
     "<a0>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.4943",
-   "slots": [],
-   "argv": [
-    "show",
-    "resources"
-   ],
-   "argvRequired": [
-    "show",
-    "resources"
    ],
    "sensitive": false
   },
@@ -4467,6 +4454,19 @@
    "id": "raw.4947",
    "slots": [],
    "argv": [
+    "show",
+    "resources"
+   ],
+   "argvRequired": [
+    "show",
+    "resources"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.4951",
+   "slots": [],
+   "argv": [
     "print",
     "resources"
    ],
@@ -4477,7 +4477,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4966",
+   "id": "raw.4970",
    "slots": [
     {
      "key": "a0",
@@ -4511,7 +4511,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4968",
+   "id": "raw.4972",
    "slots": [
     {
      "key": "a0",
@@ -4536,7 +4536,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4971",
+   "id": "raw.4975",
    "slots": [
     {
      "key": "a0",
@@ -4561,7 +4561,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4978",
+   "id": "raw.4982",
    "slots": [
     {
      "key": "a0",
@@ -4595,7 +4595,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4980",
+   "id": "raw.4984",
    "slots": [
     {
      "key": "a0",
@@ -4620,7 +4620,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4983",
+   "id": "raw.4987",
    "slots": [
     {
      "key": "a0",
@@ -4645,7 +4645,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.4999",
+   "id": "raw.5003",
    "slots": [
     {
      "key": "a0",
@@ -4668,7 +4668,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5004",
+   "id": "raw.5008",
    "slots": [
     {
      "key": "a0",
@@ -4691,7 +4691,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5005",
+   "id": "raw.5009",
    "slots": [],
    "argv": [
     "show",
@@ -4704,7 +4704,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5006",
+   "id": "raw.5010",
    "slots": [],
    "argv": [
     "print",
@@ -4717,7 +4717,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5091",
+   "id": "raw.5095",
    "slots": [],
    "argv": [
     "show",
@@ -4730,7 +4730,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5107",
+   "id": "raw.5111",
    "slots": [
     {
      "key": "a0",
@@ -4753,7 +4753,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5110",
+   "id": "raw.5114",
    "slots": [
     {
      "key": "a0",
@@ -4776,7 +4776,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5113",
+   "id": "raw.5117",
    "slots": [],
    "argv": [
     "print",
@@ -4789,7 +4789,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5119",
+   "id": "raw.5123",
    "slots": [],
    "argv": [
     "show",
@@ -4802,7 +4802,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5126",
+   "id": "raw.5130",
    "slots": [],
    "argv": [
     "print",
@@ -4815,7 +4815,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5138",
+   "id": "raw.5142",
    "slots": [],
    "argv": [
     "print",
@@ -4828,7 +4828,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5141",
+   "id": "raw.5145",
    "slots": [],
    "argv": [
     "show",
@@ -4841,7 +4841,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5160",
+   "id": "raw.5164",
    "slots": [
     {
      "key": "a0",
@@ -4875,7 +4875,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5163",
+   "id": "raw.5167",
    "slots": [
     {
      "key": "a0",
@@ -4909,7 +4909,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5166",
+   "id": "raw.5170",
    "slots": [
     {
      "key": "a0",
@@ -4934,7 +4934,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5172",
+   "id": "raw.5176",
    "slots": [
     {
      "key": "a0",
@@ -4959,7 +4959,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5194",
+   "id": "raw.5198",
    "slots": [
     {
      "key": "a0",
@@ -4993,7 +4993,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5197",
+   "id": "raw.5201",
    "slots": [
     {
      "key": "a0",
@@ -5027,7 +5027,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5200",
+   "id": "raw.5204",
    "slots": [
     {
      "key": "a0",
@@ -5052,7 +5052,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5207",
+   "id": "raw.5211",
    "slots": [
     {
      "key": "a0",
@@ -5077,7 +5077,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5268",
+   "id": "raw.5272",
    "slots": [
     {
      "key": "a0",
@@ -5109,7 +5109,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5271",
+   "id": "raw.5275",
    "slots": [
     {
      "key": "a0",
@@ -5132,7 +5132,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5279",
+   "id": "raw.5283",
    "slots": [
     {
      "key": "a0",
@@ -5155,7 +5155,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5310",
+   "id": "raw.5314",
    "slots": [
     {
      "key": "a0",
@@ -5200,7 +5200,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5313",
+   "id": "raw.5317",
    "slots": [
     {
      "key": "a0",
@@ -5236,7 +5236,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5321",
+   "id": "raw.5325",
    "slots": [
     {
      "key": "a0",
@@ -5272,7 +5272,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5351",
+   "id": "raw.5355",
    "slots": [],
    "argv": [
     "print",
@@ -5285,7 +5285,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5359",
+   "id": "raw.5363",
    "slots": [],
    "argv": [
     "show",
@@ -5298,7 +5298,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5382",
+   "id": "raw.5386",
    "slots": [
     {
      "key": "a0",
@@ -5323,7 +5323,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5391",
+   "id": "raw.5395",
    "slots": [
     {
      "key": "a0",
@@ -5348,7 +5348,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5554",
+   "id": "raw.5558",
    "slots": [
     {
      "key": "a0",
@@ -5371,7 +5371,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5557",
+   "id": "raw.5561",
    "slots": [],
    "argv": [
     "print",
@@ -5379,19 +5379,6 @@
    ],
    "argvRequired": [
     "print",
-    "vaultmatters"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.5560",
-   "slots": [],
-   "argv": [
-    "show",
-    "vaultmatters"
-   ],
-   "argvRequired": [
-    "show",
     "vaultmatters"
    ],
    "sensitive": false
@@ -5400,17 +5387,17 @@
    "id": "raw.5564",
    "slots": [],
    "argv": [
-    "print",
-    "vaultcounts"
+    "show",
+    "vaultmatters"
    ],
    "argvRequired": [
-    "print",
-    "vaultcounts"
+    "show",
+    "vaultmatters"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.5567",
+   "id": "raw.5568",
    "slots": [],
    "argv": [
     "print",
@@ -5423,7 +5410,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5577",
+   "id": "raw.5571",
    "slots": [],
    "argv": [
     "print",
@@ -5436,7 +5423,20 @@
    "sensitive": false
   },
   {
-   "id": "raw.5647",
+   "id": "raw.5581",
+   "slots": [],
+   "argv": [
+    "print",
+    "vaultcounts"
+   ],
+   "argvRequired": [
+    "print",
+    "vaultcounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5651",
    "slots": [
     {
      "key": "a0",
@@ -5470,7 +5470,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5650",
+   "id": "raw.5654",
    "slots": [
     {
      "key": "a0",
@@ -5502,7 +5502,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5653",
+   "id": "raw.5657",
    "slots": [],
    "argv": [
     "print",
@@ -5515,7 +5515,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5658",
+   "id": "raw.5662",
    "slots": [],
    "argv": [
     "show",
@@ -5528,7 +5528,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5701",
+   "id": "raw.5705",
    "slots": [
     {
      "key": "a0",
@@ -5562,7 +5562,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5704",
+   "id": "raw.5708",
    "slots": [
     {
      "key": "a0",
@@ -5590,19 +5590,6 @@
     "vaulthold",
     "<a0>",
     "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.5707",
-   "slots": [],
-   "argv": [
-    "print",
-    "vaultholds"
-   ],
-   "argvRequired": [
-    "print",
-    "vaultholds"
    ],
    "sensitive": false
   },
@@ -5610,17 +5597,30 @@
    "id": "raw.5711",
    "slots": [],
    "argv": [
-    "show",
+    "print",
     "vaultholds"
    ],
    "argvRequired": [
-    "show",
+    "print",
     "vaultholds"
    ],
    "sensitive": false
   },
   {
    "id": "raw.5715",
+   "slots": [],
+   "argv": [
+    "show",
+    "vaultholds"
+   ],
+   "argvRequired": [
+    "show",
+    "vaultholds"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.5719",
    "slots": [
     {
      "key": "a0",
@@ -5645,7 +5645,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5716",
+   "id": "raw.5720",
    "slots": [
     {
      "key": "a0",
@@ -5670,7 +5670,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5754",
+   "id": "raw.5758",
    "slots": [
     {
      "key": "a0",
@@ -5704,7 +5704,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5757",
+   "id": "raw.5761",
    "slots": [
     {
      "key": "a0",
@@ -5736,7 +5736,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5760",
+   "id": "raw.5764",
    "slots": [],
    "argv": [
     "print",
@@ -5749,7 +5749,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5763",
+   "id": "raw.5767",
    "slots": [],
    "argv": [
     "show",
@@ -5762,7 +5762,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.5980",
+   "id": "raw.5984",
    "slots": [
     {
      "key": "a0",
@@ -5784,7 +5784,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6018",
+   "id": "raw.6022",
    "slots": [
     {
      "key": "a0",
@@ -5809,7 +5809,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6056",
+   "id": "raw.6060",
    "slots": [
     {
      "key": "a0",
@@ -5834,7 +5834,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6074",
+   "id": "raw.6078",
    "slots": [],
    "argv": [
     "print",
@@ -5847,7 +5847,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6097",
+   "id": "raw.6101",
    "slots": [
     {
      "key": "a0",
@@ -5874,7 +5874,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6116",
+   "id": "raw.6120",
    "slots": [
     {
      "key": "a0",
@@ -5899,7 +5899,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6140",
+   "id": "raw.6144",
    "slots": [
     {
      "key": "a0",
@@ -5922,7 +5922,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6141",
+   "id": "raw.6145",
    "slots": [
     {
      "key": "a0",
@@ -5947,7 +5947,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6148",
+   "id": "raw.6152",
    "slots": [],
    "argv": [
     "print",
@@ -5960,7 +5960,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6156",
+   "id": "raw.6160",
    "slots": [
     {
      "key": "a0",
@@ -5987,7 +5987,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6159",
+   "id": "raw.6163",
    "slots": [
     {
      "key": "a0",
@@ -6012,7 +6012,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6165",
+   "id": "raw.6169",
    "slots": [],
    "argv": [
     "print",
@@ -6025,7 +6025,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6170",
+   "id": "raw.6174",
    "slots": [
     {
      "key": "a0",
@@ -6050,7 +6050,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6176",
+   "id": "raw.6180",
    "slots": [
     {
      "key": "a0",
@@ -6075,7 +6075,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6181",
+   "id": "raw.6185",
    "slots": [
     {
      "key": "a0",
@@ -6100,7 +6100,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6182",
+   "id": "raw.6186",
    "slots": [
     {
      "key": "a0",
@@ -6125,7 +6125,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6187",
+   "id": "raw.6191",
    "slots": [
     {
      "key": "a0",
@@ -6150,7 +6150,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.6188",
+   "id": "raw.6192",
    "slots": [
     {
      "key": "a0",
@@ -6175,7 +6175,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.6193",
+   "id": "raw.6197",
    "slots": [
     {
      "key": "a0",
@@ -6200,7 +6200,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6195",
+   "id": "raw.6199",
    "slots": [
     {
      "key": "a0",
@@ -6225,7 +6225,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6291",
+   "id": "raw.6295",
    "slots": [
     {
      "key": "a0",
@@ -6259,31 +6259,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.6294",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "calendars"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "calendars"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.6298",
    "slots": [
     {
@@ -6297,6 +6272,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "calendars"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "calendars"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6302",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "calendars"
    ],
@@ -6309,7 +6309,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6322",
+   "id": "raw.6326",
    "slots": [
     {
      "key": "a0",
@@ -6334,7 +6334,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6325",
+   "id": "raw.6329",
    "slots": [
     {
      "key": "a0",
@@ -6359,7 +6359,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6341",
+   "id": "raw.6345",
    "slots": [
     {
      "key": "a0",
@@ -6402,7 +6402,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6343",
+   "id": "raw.6347",
    "slots": [
     {
      "key": "a0",
@@ -6436,7 +6436,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6346",
+   "id": "raw.6350",
    "slots": [
     {
      "key": "a0",
@@ -6470,7 +6470,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6506",
+   "id": "raw.6510",
    "slots": [
     {
      "key": "a0",
@@ -6512,7 +6512,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6509",
+   "id": "raw.6513",
    "slots": [
     {
      "key": "a0",
@@ -6563,7 +6563,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6512",
+   "id": "raw.6516",
    "slots": [
     {
      "key": "a0",
@@ -6614,7 +6614,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6578",
+   "id": "raw.6582",
    "slots": [
     {
      "key": "a0",
@@ -6639,7 +6639,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6586",
+   "id": "raw.6590",
    "slots": [
     {
      "key": "a0",
@@ -6664,7 +6664,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6624",
+   "id": "raw.6628",
    "slots": [
     {
      "key": "a0",
@@ -6689,7 +6689,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6627",
+   "id": "raw.6631",
    "slots": [
     {
      "key": "a0",
@@ -6714,7 +6714,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6684",
+   "id": "raw.6688",
    "slots": [
     {
      "key": "a0",
@@ -6748,7 +6748,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6687",
+   "id": "raw.6691",
    "slots": [
     {
      "key": "a0",
@@ -6782,31 +6782,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.6690",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "chatspaces"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "chatspaces"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.6694",
    "slots": [
     {
@@ -6820,6 +6795,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "chatspaces"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatspaces"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6698",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "chatspaces"
    ],
@@ -6832,7 +6832,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6699",
+   "id": "raw.6703",
    "slots": [
     {
      "key": "a0",
@@ -6868,7 +6868,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6702",
+   "id": "raw.6706",
    "slots": [
     {
      "key": "a0",
@@ -6895,7 +6895,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6707",
+   "id": "raw.6711",
    "slots": [
     {
      "key": "a0",
@@ -6922,7 +6922,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6721",
+   "id": "raw.6725",
    "slots": [
     {
      "key": "a0",
@@ -6947,7 +6947,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6723",
+   "id": "raw.6727",
    "slots": [
     {
      "key": "a0",
@@ -6972,7 +6972,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6726",
+   "id": "raw.6730",
    "slots": [
     {
      "key": "a0",
@@ -7006,7 +7006,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6729",
+   "id": "raw.6733",
    "slots": [
     {
      "key": "a0",
@@ -7036,31 +7036,6 @@
     "print",
     "chatsectionitems",
     "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.6785",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "info",
-    "chatmember"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "info",
-    "chatmember"
    ],
    "sensitive": false
   },
@@ -7078,6 +7053,31 @@
    "argv": [
     "user",
     "<a0>",
+    "info",
+    "chatmember"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6793",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "chatmembers"
    ],
@@ -7090,7 +7090,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6794",
+   "id": "raw.6798",
    "slots": [
     {
      "key": "a0",
@@ -7111,33 +7111,6 @@
     "<a0>",
     "print",
     "chatmembers"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.6801",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "info",
-    "chatmember",
-    "asadmin"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "info",
-    "chatmember",
-    "asadmin"
    ],
    "sensitive": false
   },
@@ -7155,6 +7128,33 @@
    "argv": [
     "user",
     "<a0>",
+    "info",
+    "chatmember",
+    "asadmin"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "chatmember",
+    "asadmin"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6809",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "chatmembers",
     "asadmin"
@@ -7169,7 +7169,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6811",
+   "id": "raw.6815",
    "slots": [
     {
      "key": "a0",
@@ -7196,7 +7196,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6857",
+   "id": "raw.6861",
    "slots": [
     {
      "key": "a0",
@@ -7232,7 +7232,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6860",
+   "id": "raw.6864",
    "slots": [
     {
      "key": "a0",
@@ -7257,7 +7257,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6867",
+   "id": "raw.6871",
    "slots": [
     {
      "key": "a0",
@@ -7282,7 +7282,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6876",
+   "id": "raw.6880",
    "slots": [
     {
      "key": "a0",
@@ -7307,7 +7307,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6887",
+   "id": "raw.6891",
    "slots": [
     {
      "key": "a0",
@@ -7332,7 +7332,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6899",
+   "id": "raw.6903",
    "slots": [
     {
      "key": "a0",
@@ -7368,31 +7368,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.6901",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "chatevents"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "chatevents"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.6905",
    "slots": [
     {
@@ -7406,6 +7381,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "chatevents"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "chatevents"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.6909",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "chatevents"
    ],
@@ -7418,7 +7418,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6917",
+   "id": "raw.6921",
    "slots": [
     {
      "key": "a0",
@@ -7452,7 +7452,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6919",
+   "id": "raw.6923",
    "slots": [
     {
      "key": "a0",
@@ -7477,7 +7477,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6922",
+   "id": "raw.6926",
    "slots": [
     {
      "key": "a0",
@@ -7502,7 +7502,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6944",
+   "id": "raw.6948",
    "slots": [
     {
      "key": "a0",
@@ -7527,7 +7527,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6973",
+   "id": "raw.6977",
    "slots": [
     {
      "key": "a0",
@@ -7552,7 +7552,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.6980",
+   "id": "raw.6984",
    "slots": [
     {
      "key": "a0",
@@ -7577,7 +7577,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7207",
+   "id": "raw.7211",
    "slots": [
     {
      "key": "a0",
@@ -7611,7 +7611,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.7218",
+   "id": "raw.7222",
    "slots": [
     {
      "key": "a0",
@@ -7645,7 +7645,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.7229",
+   "id": "raw.7233",
    "slots": [
     {
      "key": "a0",
@@ -7679,7 +7679,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7318",
+   "id": "raw.7322",
    "slots": [
     {
      "key": "a0",
@@ -7722,7 +7722,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7321",
+   "id": "raw.7325",
    "slots": [
     {
      "key": "a0",
@@ -7756,7 +7756,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7327",
+   "id": "raw.7331",
    "slots": [
     {
      "key": "a0",
@@ -7790,7 +7790,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7350",
+   "id": "raw.7354",
    "slots": [
     {
      "key": "a0",
@@ -7813,7 +7813,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7352",
+   "id": "raw.7356",
    "slots": [
     {
      "key": "a0",
@@ -7836,7 +7836,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7390",
+   "id": "raw.7394",
    "slots": [
     {
      "key": "a0",
@@ -7870,7 +7870,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7395",
+   "id": "raw.7399",
    "slots": [
     {
      "key": "a0",
@@ -7904,7 +7904,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7426",
+   "id": "raw.7430",
    "slots": [
     {
      "key": "a0",
@@ -7938,7 +7938,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7432",
+   "id": "raw.7436",
    "slots": [
     {
      "key": "a0",
@@ -7972,7 +7972,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7712",
+   "id": "raw.7716",
    "slots": [
     {
      "key": "a0",
@@ -8006,7 +8006,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7724",
+   "id": "raw.7728",
    "slots": [
     {
      "key": "a0",
@@ -8040,7 +8040,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7730",
+   "id": "raw.7734",
    "slots": [
     {
      "key": "a0",
@@ -8074,7 +8074,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7736",
+   "id": "raw.7740",
    "slots": [
     {
      "key": "a0",
@@ -8099,7 +8099,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7752",
+   "id": "raw.7756",
    "slots": [
     {
      "key": "a0",
@@ -8120,31 +8120,6 @@
     "<a0>",
     "show",
     "filecounts"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.7768",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "filesharecounts"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "filesharecounts"
    ],
    "sensitive": false
   },
@@ -8162,6 +8137,31 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "filesharecounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "filesharecounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7776",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "filesharecounts"
    ],
@@ -8174,7 +8174,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7789",
+   "id": "raw.7793",
    "slots": [
     {
      "key": "a0",
@@ -8199,7 +8199,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7801",
+   "id": "raw.7805",
    "slots": [
     {
      "key": "a0",
@@ -8224,7 +8224,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7814",
+   "id": "raw.7818",
    "slots": [
     {
      "key": "a0",
@@ -8258,7 +8258,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7817",
+   "id": "raw.7821",
    "slots": [
     {
      "key": "a0",
@@ -8283,7 +8283,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7846",
+   "id": "raw.7850",
    "slots": [
     {
      "key": "a0",
@@ -8317,7 +8317,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7869",
+   "id": "raw.7873",
    "slots": [
     {
      "key": "a0",
@@ -8338,31 +8338,6 @@
     "<a0>",
     "print",
     "driveactivity"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.7897",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "drivelastmodification"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "drivelastmodification"
    ],
    "sensitive": false
   },
@@ -8380,13 +8355,13 @@
    "argv": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "drivelastmodification"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "drivelastmodification"
    ],
    "sensitive": false
@@ -8405,19 +8380,19 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
-    "drivesettings"
+    "show",
+    "drivelastmodification"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
-    "drivesettings"
+    "show",
+    "drivelastmodification"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.7908",
+   "id": "raw.7909",
    "slots": [
     {
      "key": "a0",
@@ -8430,13 +8405,13 @@
    "argv": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "drivesettings"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "show",
+    "print",
     "drivesettings"
    ],
    "sensitive": false
@@ -8455,6 +8430,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "drivesettings"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "drivesettings"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.7916",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "emptydrivefolders"
    ],
@@ -8467,7 +8467,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7945",
+   "id": "raw.7949",
    "slots": [
     {
      "key": "a0",
@@ -8492,7 +8492,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7946",
+   "id": "raw.7950",
    "slots": [
     {
      "key": "a0",
@@ -8517,7 +8517,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7983",
+   "id": "raw.7987",
    "slots": [
     {
      "key": "a0",
@@ -8551,7 +8551,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7984",
+   "id": "raw.7988",
    "slots": [
     {
      "key": "a0",
@@ -8576,7 +8576,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7985",
+   "id": "raw.7989",
    "slots": [
     {
      "key": "a0",
@@ -8601,7 +8601,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.7999",
+   "id": "raw.8003",
    "slots": [
     {
      "key": "a0",
@@ -8635,7 +8635,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8002",
+   "id": "raw.8006",
    "slots": [
     {
      "key": "a0",
@@ -8664,40 +8664,6 @@
     "<a0>",
     "show",
     "forms",
-    "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8005",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    },
-    {
-     "key": "a1",
-     "label": "Drive File",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<DriveFileEntity>"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "formresponses",
-    "<a1>"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "formresponses",
     "<a1>"
    ],
    "sensitive": false
@@ -8723,6 +8689,40 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "formresponses",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "formresponses",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8013",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "formresponses",
     "<a1>"
@@ -8737,7 +8737,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8018",
+   "id": "raw.8022",
    "slots": [
     {
      "key": "a0",
@@ -8771,7 +8771,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8019",
+   "id": "raw.8023",
    "slots": [
     {
      "key": "a0",
@@ -8796,7 +8796,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8021",
+   "id": "raw.8025",
    "slots": [
     {
      "key": "a0",
@@ -8821,7 +8821,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8026",
+   "id": "raw.8030",
    "slots": [
     {
      "key": "a0",
@@ -8846,7 +8846,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8027",
+   "id": "raw.8031",
    "slots": [
     {
      "key": "a0",
@@ -8867,31 +8867,6 @@
     "<a0>",
     "print",
     "forward"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8055",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "labels"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "labels"
    ],
    "sensitive": false
   },
@@ -8909,6 +8884,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "labels"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "labels"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8063",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "labels"
    ],
@@ -8921,7 +8921,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8243",
+   "id": "raw.8247",
    "slots": [
     {
      "key": "a0",
@@ -8946,7 +8946,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8256",
+   "id": "raw.8260",
    "slots": [
     {
      "key": "a0",
@@ -8971,7 +8971,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8270",
+   "id": "raw.8274",
    "slots": [
     {
      "key": "a0",
@@ -8996,7 +8996,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8284",
+   "id": "raw.8288",
    "slots": [
     {
      "key": "a0",
@@ -9021,7 +9021,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8301",
+   "id": "raw.8305",
    "slots": [
     {
      "key": "a0",
@@ -9046,7 +9046,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8302",
+   "id": "raw.8306",
    "slots": [
     {
      "key": "a0",
@@ -9071,7 +9071,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8320",
+   "id": "raw.8324",
    "slots": [
     {
      "key": "a0",
@@ -9105,7 +9105,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8321",
+   "id": "raw.8325",
    "slots": [
     {
      "key": "a0",
@@ -9130,7 +9130,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8323",
+   "id": "raw.8327",
    "slots": [
     {
      "key": "a0",
@@ -9155,7 +9155,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8333",
+   "id": "raw.8337",
    "slots": [
     {
      "key": "a0",
@@ -9180,7 +9180,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8335",
+   "id": "raw.8339",
    "slots": [
     {
      "key": "a0",
@@ -9205,7 +9205,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8344",
+   "id": "raw.8348",
    "slots": [
     {
      "key": "a0",
@@ -9230,7 +9230,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8345",
+   "id": "raw.8349",
    "slots": [
     {
      "key": "a0",
@@ -9255,7 +9255,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8355",
+   "id": "raw.8359",
    "slots": [
     {
      "key": "a0",
@@ -9280,7 +9280,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8357",
+   "id": "raw.8361",
    "slots": [
     {
      "key": "a0",
@@ -9301,56 +9301,6 @@
     "<a0>",
     "print",
     "smimes"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8372",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "info",
-    "cseidentity"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "info",
-    "cseidentity"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8374",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "cseidentities"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "cseidentities"
    ],
    "sensitive": false
   },
@@ -9368,6 +9318,56 @@
    "argv": [
     "user",
     "<a0>",
+    "info",
+    "cseidentity"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "cseidentity"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8378",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "cseidentities"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "cseidentities"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8380",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "cseidentities"
    ],
@@ -9380,7 +9380,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8389",
+   "id": "raw.8393",
    "slots": [
     {
      "key": "a0",
@@ -9414,7 +9414,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8391",
+   "id": "raw.8395",
    "slots": [
     {
      "key": "a0",
@@ -9439,7 +9439,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8393",
+   "id": "raw.8397",
    "slots": [
     {
      "key": "a0",
@@ -9464,7 +9464,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8401",
+   "id": "raw.8405",
    "slots": [
     {
      "key": "a0",
@@ -9489,7 +9489,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8402",
+   "id": "raw.8406",
    "slots": [
     {
      "key": "a0",
@@ -9510,56 +9510,6 @@
     "<a0>",
     "print",
     "imap"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8407",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "pop"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "pop"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8408",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "pop"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "pop"
    ],
    "sensitive": false
   },
@@ -9578,13 +9528,13 @@
     "user",
     "<a0>",
     "show",
-    "language"
+    "pop"
    ],
    "argvRequired": [
     "user",
     "<a0>",
     "show",
-    "language"
+    "pop"
    ],
    "sensitive": false
   },
@@ -9603,6 +9553,56 @@
     "user",
     "<a0>",
     "print",
+    "pop"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "pop"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8415",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "language"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "language"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8416",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
     "language"
    ],
    "argvRequired": [
@@ -9614,7 +9614,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8429",
+   "id": "raw.8433",
    "slots": [
     {
      "key": "a0",
@@ -9639,7 +9639,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8432",
+   "id": "raw.8436",
    "slots": [
     {
      "key": "a0",
@@ -9664,7 +9664,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8435",
+   "id": "raw.8439",
    "slots": [
     {
      "key": "a0",
@@ -9684,31 +9684,6 @@
     "user",
     "<a0>",
     "print",
-    "grouptree"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8440",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "grouptree"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
     "grouptree"
    ],
    "sensitive": false
@@ -9727,6 +9702,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "grouptree"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "grouptree"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8448",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "groupslist"
    ],
@@ -9739,7 +9739,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8452",
+   "id": "raw.8456",
    "slots": [
     {
      "key": "a0",
@@ -9762,22 +9762,22 @@
    "sensitive": false
   },
   {
-   "id": "raw.8453",
-   "slots": [],
-   "argv": [
-    "show",
-    "userinvitations"
-   ],
-   "argvRequired": [
-    "show",
-    "userinvitations"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.8457",
    "slots": [],
    "argv": [
+    "show",
+    "userinvitations"
+   ],
+   "argvRequired": [
+    "show",
+    "userinvitations"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8461",
+   "slots": [],
+   "argv": [
     "print",
     "userinvitations"
    ],
@@ -9788,7 +9788,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8493",
+   "id": "raw.8497",
    "slots": [
     {
      "key": "a0",
@@ -9822,7 +9822,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8497",
+   "id": "raw.8501",
    "slots": [
     {
      "key": "a0",
@@ -9847,7 +9847,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8502",
+   "id": "raw.8506",
    "slots": [
     {
      "key": "a0",
@@ -9872,7 +9872,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8508",
+   "id": "raw.8512",
    "slots": [
     {
      "key": "a0",
@@ -9906,7 +9906,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.8552",
+   "id": "raw.8556",
    "slots": [
     {
      "key": "a0",
@@ -9940,31 +9940,6 @@
    "sensitive": false
   },
   {
-   "id": "raw.8557",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "meetconferences"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "meetconferences"
-   ],
-   "sensitive": false
-  },
-  {
    "id": "raw.8561",
    "slots": [
     {
@@ -9978,13 +9953,13 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
+    "show",
     "meetconferences"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
+    "show",
     "meetconferences"
    ],
    "sensitive": false
@@ -9998,33 +9973,24 @@
      "kind": "target_user",
      "required": true,
      "placeholder": "user@domain"
-    },
-    {
-     "key": "a1",
-     "label": "Meet Conference Name",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<MeetConferenceName>"
     }
    ],
    "argv": [
     "user",
     "<a0>",
-    "show",
-    "meetparticipants",
-    "<a1>"
+    "print",
+    "meetconferences"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "show",
-    "meetparticipants",
-    "<a1>"
+    "print",
+    "meetconferences"
    ],
    "sensitive": false
   },
   {
-   "id": "raw.8568",
+   "id": "raw.8569",
    "slots": [
     {
      "key": "a0",
@@ -10044,14 +10010,14 @@
    "argv": [
     "user",
     "<a0>",
-    "print",
+    "show",
     "meetparticipants",
     "<a1>"
    ],
    "argvRequired": [
     "user",
     "<a0>",
-    "print",
+    "show",
     "meetparticipants",
     "<a1>"
    ],
@@ -10078,6 +10044,40 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "meetparticipants",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8576",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Meet Conference Name",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<MeetConferenceName>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "meetrecordings",
     "<a1>"
@@ -10092,7 +10092,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8574",
+   "id": "raw.8578",
    "slots": [
     {
      "key": "a0",
@@ -10126,7 +10126,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8577",
+   "id": "raw.8581",
    "slots": [
     {
      "key": "a0",
@@ -10160,7 +10160,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8579",
+   "id": "raw.8583",
    "slots": [
     {
      "key": "a0",
@@ -10194,7 +10194,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8665",
+   "id": "raw.8669",
    "slots": [
     {
      "key": "a0",
@@ -10219,7 +10219,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.8671",
+   "id": "raw.8675",
    "slots": [
     {
      "key": "a0",
@@ -10244,7 +10244,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8681",
+   "id": "raw.8685",
    "slots": [
     {
      "key": "a0",
@@ -10269,7 +10269,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8686",
+   "id": "raw.8690",
    "slots": [
     {
      "key": "a0",
@@ -10290,31 +10290,6 @@
     "<a0>",
     "print",
     "contacts"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8715",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "othercontacts"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "othercontacts"
    ],
    "sensitive": false
   },
@@ -10332,6 +10307,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "othercontacts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "othercontacts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8723",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "othercontacts"
    ],
@@ -10344,7 +10344,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8742",
+   "id": "raw.8746",
    "slots": [
     {
      "key": "a0",
@@ -10378,7 +10378,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8745",
+   "id": "raw.8749",
    "slots": [
     {
      "key": "a0",
@@ -10403,7 +10403,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8748",
+   "id": "raw.8752",
    "slots": [
     {
      "key": "a0",
@@ -10424,31 +10424,6 @@
     "<a0>",
     "print",
     "contactgroups"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8791",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "peopleprofile"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "peopleprofile"
    ],
    "sensitive": false
   },
@@ -10466,6 +10441,31 @@
    "argv": [
     "user",
     "<a0>",
+    "show",
+    "peopleprofile"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "peopleprofile"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8799",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "print",
     "peopleprofile"
    ],
@@ -10478,7 +10478,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8807",
+   "id": "raw.8811",
    "slots": [
     {
      "key": "a0",
@@ -10503,7 +10503,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.8809",
+   "id": "raw.8813",
    "slots": [
     {
      "key": "a0",
@@ -10528,7 +10528,7 @@
    "sensitive": true
   },
   {
-   "id": "raw.8816",
+   "id": "raw.8820",
    "slots": [
     {
      "key": "a0",
@@ -10553,7 +10553,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8844",
+   "id": "raw.8848",
    "slots": [
     {
      "key": "a0",
@@ -10574,31 +10574,6 @@
     "<a0>",
     "show",
     "tagmanageraccounts"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8847",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "tagmanagerccounts"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "tagmanagerccounts"
    ],
    "sensitive": false
   },
@@ -10611,6 +10586,31 @@
      "kind": "target_user",
      "required": true,
      "placeholder": "user@domain"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerccounts"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "tagmanagerccounts"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8855",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
     },
     {
      "key": "a1",
@@ -10637,7 +10637,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8853",
+   "id": "raw.8857",
    "slots": [
     {
      "key": "a0",
@@ -10671,7 +10671,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8856",
+   "id": "raw.8860",
    "slots": [
     {
      "key": "a0",
@@ -10705,7 +10705,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8858",
+   "id": "raw.8862",
    "slots": [
     {
      "key": "a0",
@@ -10739,7 +10739,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8861",
+   "id": "raw.8865",
    "slots": [
     {
      "key": "a0",
@@ -10773,7 +10773,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8863",
+   "id": "raw.8867",
    "slots": [
     {
      "key": "a0",
@@ -10807,7 +10807,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8866",
+   "id": "raw.8870",
    "slots": [
     {
      "key": "a0",
@@ -10841,7 +10841,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8868",
+   "id": "raw.8872",
    "slots": [
     {
      "key": "a0",
@@ -10875,7 +10875,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8890",
+   "id": "raw.8894",
    "slots": [
     {
      "key": "a0",
@@ -10909,7 +10909,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8892",
+   "id": "raw.8896",
    "slots": [
     {
      "key": "a0",
@@ -10934,7 +10934,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8899",
+   "id": "raw.8903",
    "slots": [
     {
      "key": "a0",
@@ -10959,7 +10959,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8919",
+   "id": "raw.8923",
    "slots": [
     {
      "key": "a0",
@@ -10993,7 +10993,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8921",
+   "id": "raw.8925",
    "slots": [
     {
      "key": "a0",
@@ -11018,7 +11018,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8923",
+   "id": "raw.8927",
    "slots": [
     {
      "key": "a0",
@@ -11043,7 +11043,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8946",
+   "id": "raw.8950",
    "slots": [
     {
      "key": "a0",
@@ -11064,74 +11064,6 @@
     "<a0>",
     "show",
     "shareddrivethemes"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8961",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    },
-    {
-     "key": "a1",
-     "label": "Shared Drive",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<SharedDriveEntity>"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "info",
-    "shareddrive",
-    "<a1>"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "info",
-    "shareddrive",
-    "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.8963",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    },
-    {
-     "key": "a1",
-     "label": "Shared Drive",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<SharedDriveEntity>"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "show",
-    "shareddriveinfo",
-    "<a1>"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "show",
-    "shareddriveinfo",
-    "<a1>"
    ],
    "sensitive": false
   },
@@ -11144,6 +11076,74 @@
      "kind": "target_user",
      "required": true,
      "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "info",
+    "shareddrive",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8967",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Shared Drive",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<SharedDriveEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "show",
+    "shareddriveinfo",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.8969",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
     }
    ],
    "argv": [
@@ -11161,7 +11161,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8971",
+   "id": "raw.8975",
    "slots": [
     {
      "key": "a0",
@@ -11186,7 +11186,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.8978",
+   "id": "raw.8982",
    "slots": [
     {
      "key": "a0",
@@ -11211,7 +11211,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9060",
+   "id": "raw.9064",
    "slots": [
     {
      "key": "a0",
@@ -11245,7 +11245,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9068",
+   "id": "raw.9072",
    "slots": [
     {
      "key": "a0",
@@ -11274,40 +11274,6 @@
     "<a0>",
     "print",
     "sheet",
-    "<a1>"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.9099",
-   "slots": [
-    {
-     "key": "a0",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "placeholder": "user@domain"
-    },
-    {
-     "key": "a1",
-     "label": "Drive File",
-     "kind": "text",
-     "required": true,
-     "placeholder": "<DriveFileEntity>"
-    }
-   ],
-   "argv": [
-    "user",
-    "<a0>",
-    "print",
-    "sheetrange",
-    "<a1>"
-   ],
-   "argvRequired": [
-    "user",
-    "<a0>",
-    "print",
-    "sheetrange",
     "<a1>"
    ],
    "sensitive": false
@@ -11333,6 +11299,40 @@
    "argv": [
     "user",
     "<a0>",
+    "print",
+    "sheetrange",
+    "<a1>"
+   ],
+   "argvRequired": [
+    "user",
+    "<a0>",
+    "print",
+    "sheetrange",
+    "<a1>"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9107",
+   "slots": [
+    {
+     "key": "a0",
+     "label": "User",
+     "kind": "target_user",
+     "required": true,
+     "placeholder": "user@domain"
+    },
+    {
+     "key": "a1",
+     "label": "Drive File",
+     "kind": "text",
+     "required": true,
+     "placeholder": "<DriveFileEntity>"
+    }
+   ],
+   "argv": [
+    "user",
+    "<a0>",
     "show",
     "sheetrange",
     "<a1>"
@@ -11347,7 +11347,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9112",
+   "id": "raw.9116",
    "slots": [],
    "argv": [
     "info",
@@ -11360,7 +11360,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9114",
+   "id": "raw.9118",
    "slots": [
     {
      "key": "a0",
@@ -11385,7 +11385,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9117",
+   "id": "raw.9121",
    "slots": [
     {
      "key": "a0",
@@ -11405,19 +11405,6 @@
     "user",
     "<a0>",
     "show",
-    "tokens"
-   ],
-   "sensitive": false
-  },
-  {
-   "id": "raw.9120",
-   "slots": [],
-   "argv": [
-    "print",
-    "tokens"
-   ],
-   "argvRequired": [
-    "print",
     "tokens"
    ],
    "sensitive": false
@@ -11426,6 +11413,19 @@
    "id": "raw.9124",
    "slots": [],
    "argv": [
+    "print",
+    "tokens"
+   ],
+   "argvRequired": [
+    "print",
+    "tokens"
+   ],
+   "sensitive": false
+  },
+  {
+   "id": "raw.9128",
+   "slots": [],
+   "argv": [
     "show",
     "tokens"
    ],
@@ -11436,7 +11436,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9146",
+   "id": "raw.9150",
    "slots": [
     {
      "key": "a0",
@@ -11461,7 +11461,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9154",
+   "id": "raw.9158",
    "slots": [
     {
      "key": "a0",
@@ -11486,7 +11486,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9167",
+   "id": "raw.9171",
    "slots": [],
    "argv": [
     "info",
@@ -11499,7 +11499,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9171",
+   "id": "raw.9175",
    "slots": [
     {
      "key": "a0",
@@ -11524,7 +11524,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9172",
+   "id": "raw.9176",
    "slots": [
     {
      "key": "a0",
@@ -11549,7 +11549,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9173",
+   "id": "raw.9177",
    "slots": [
     {
      "key": "a0",
@@ -11574,7 +11574,7 @@
    "sensitive": false
   },
   {
-   "id": "raw.9174",
+   "id": "raw.9178",
    "slots": [
     {
      "key": "a0",
