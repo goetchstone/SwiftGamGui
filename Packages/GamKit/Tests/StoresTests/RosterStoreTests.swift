@@ -202,7 +202,7 @@ struct RosterStoreTests {
     /// folder locked (`flock`), so this one's save, purge and sweep wait for it and never delete its temporary file: an
     /// in-process lock alone let them, and its rename then failed (or a purge reported success with a snapshot landing).
     @Test(arguments: ["save", "purge", "sweep"])
-    func anotherAppsSaveInProgressIsWaitedFor(_ action: String) async throws {
+    func anotherAppsSaveInProgressIsWaitedFor(_ action: String) throws {
         let folder = Folder(), store = RosterStore(root: folder.store)
         let snapshot = try Self.snapshot()
         try store.save(snapshot, domain: "example.com", label: "x", sha256: "")
@@ -214,20 +214,32 @@ struct RosterStoreTests {
         #expect(flock(other, LOCK_EX) == 0)
         // A whole roster, as another copy writes one: the launch's sweep reads what lands, and deletes junk.
         try Data(contentsOf: folder.store.appending(path: name)).write(to: folder.store.appending(path: temporary))
-        let task = Task.detached {
-            switch action {
-            case "save": try store.save(snapshot, domain: "example.com", label: "y", sha256: "")
-            case "purge": try store.purge(domain: "example.com")
-            default: store.sweepAbandoned()
-            }
+        // The other app finishes on a thread of its own (GCD's, not the test pool's), as another process would: the
+        // store's call blocks its thread while it waits for the lock, so a release that needed the pool never came on a
+        // runner with few cores (CI, 2026-11-14: a 45-minute hang; `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` reproduces it).
+        let other_ = other, store_ = folder.store
+        let seen = Seen(), finished = DispatchGroup()
+        finished.enter()
+        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(300)) {
+            seen.temporaryLeft = FileManager.default.fileExists(atPath: store_.appending(path: temporary).path)
+            seen.renamed = renameat(other_, temporary, other_, name) == 0     // its file renamed into place
+            seen.unlocked = flock(other_, LOCK_UN) == 0                        // and the folder unlocked
+            finished.leave()
         }
-        try await Task.sleep(for: .milliseconds(300))
-        #expect(folder.names().contains(temporary), "its file is left while it saves")
-        // It finishes: its file renamed into place, and the folder unlocked.
-        #expect(renameat(other, temporary, other, name) == 0)
-        #expect(flock(other, LOCK_UN) == 0)
-        try await task.value
+        switch action {
+        case "save": try store.save(snapshot, domain: "example.com", label: "y", sha256: "")
+        case "purge": try store.purge(domain: "example.com")
+        default: store.sweepAbandoned()
+        }
+        finished.wait()
+        #expect(seen.temporaryLeft, "its file is left while it saves")
+        #expect(seen.renamed && seen.unlocked)
         #expect(folder.names() == (action == "purge" ? [] : [name]))
+    }
+
+    /// What the other app saw, written on its thread and read after it's done (`finished.wait()` orders the two).
+    final class Seen: @unchecked Sendable {
+        var temporaryLeft = false, renamed = false, unlocked = false
     }
 
     /// The head rewritten with one of its metadata changed, as damage or another app would leave it.

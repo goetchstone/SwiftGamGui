@@ -50,16 +50,19 @@ jobs:
           persist-credentials: false
       - name: Toolchain
         run: sw_vers && xcodebuild -version && swift --version
-      - name: Package tests (strict mock gam, GamGUI parity fixtures, snapshot spike)
-        run: |
-          mkdir -p "$RUNNER_TEMP/attachments"
-          swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments"
       - name: Vendor the pinned GAM (fails closed on a checksum mismatch)
         run: |
           ./scripts/fetch_gam.sh
           git diff --exit-code -- Vendor/gam7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Vendored first: the hand-over's test reads GAM's own grammar (Vendor/gam7/GamCommands.txt), as a local run does.
+      # Its own limit (about 6 minutes on main): a hung test fails here, by name, not as the job's (2026-11-14).
+      - name: Package tests (strict mock gam, GamGUI parity fixtures, snapshot spike)
+        timeout-minutes: 20
+        run: |
+          mkdir -p "$RUNNER_TEMP/attachments"
+          swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments"
       - name: Build the app (Release; embeds and signs GAM)
         run: xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI -configuration Release -derivedDataPath "$RUNNER_TEMP/dd" build
       - name: Hardened runtime, entitlement allowlist, embedded GAM signed and runnable at the pinned version
