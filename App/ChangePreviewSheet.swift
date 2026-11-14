@@ -353,6 +353,10 @@ struct GroupPreviewSheet: View {
                     TextField("Type \(count) to confirm", text: $typedCount)
                         .accessibilityLabel("Type the number of people, \(count), to confirm")
                         .disabled(running)
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if let problem = changes.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
                 }
             }
             if running {
@@ -369,10 +373,16 @@ struct GroupPreviewSheet: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button(pending.isAdding ? "Back" : "Cancel") { changes.dismiss() }.disabled(running)
             }
+            // The default button, so Return runs it: off until the count typed is the guard's (GamGUI's `data-unlocks`),
+            // and the model refuses a mismatch too.
             ToolbarItem(placement: .confirmationAction) {
                 Button(pending.confirmLabel) { confirm() }
-                    .disabled(running || (needsCount && typedCount.trimmingCharacters(in: .whitespaces).isEmpty))
+                    .disabled(running || !pending.preview.decision.typedCountMatches(typedCount))
             }
+        }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
         }
     }
 }
@@ -885,7 +895,8 @@ struct PhishingConfirmSheet: View {
 
     /// The steps, the number typed: one a mailbox, and one more for a mailbox with copies in Spam as well.
     private var count: Int { pending.trashes.count }
-    private var countMatches: Bool { typedCount.trimmingCharacters(in: .whitespacesAndNewlines) == pending.typedCount }
+    /// The guard's own check, so the button and the executor can't disagree on what was typed.
+    private var countMatches: Bool { pending.preview.decision.typedCountMatches(typedCount) }
     private var wordMatches: Bool {
         !pending.needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord
     }
