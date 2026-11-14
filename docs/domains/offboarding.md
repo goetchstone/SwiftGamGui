@@ -64,10 +64,10 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
 5. **Not read by GamGUI:** groups, calendars, forwarding state, Drive ownership. Forwarding is always turned off.
 6. **Native reads, each a warning whatever the steps** (run at once with the delegates read):
    - the secondary calendars the leaver owns, hidden ones too: `user L print calendars ownedsecondary showhidden
-     fields id,summary formatjson` (6299-6300; `showhidden` because GAM filters the person's own list, which
+     fields id,summary formatjson` (6303-6304; `showhidden` because GAM filters the person's own list, which
      leaves hidden entries out). Google deletes them with the account (Workspace accounts, from 2026-10-05) and
      the transfer doesn't move them, so the warning names them;
-   - the Vault holds that cover the leaver: `user L print vaultholds` (5716, CSV only; holds on an org unit above
+   - the Vault holds that cover the leaver: `user L print vaultholds` (5720, CSV only; holds on an org unit above
      them count). Google doesn't transfer held data, and a held account can't be deleted;
    - a refused read (Calendar off, no Vault access) is said in GAM's words, never taken as "none".
 7. **The Classroom classes the leaver owns** (Classroom C1.5, GamGUI 07c505d; `OffboardChanges.OwnedClasses`, read with the
@@ -105,24 +105,24 @@ the transfer work (GamGUI `core/lifecycle.py:312-316`, `:253-258`).
   calendars** after the transfer, `calendars <ids> transfer ownership M` (`transferCalendarOwnership`, destructive),
   one command over the calendars the preview read: GAM hands over each in turn and a failure leaves the rest done;
   with none owned, or a failed read, it isn't planned and the warning stays; planned, it replaces the warning. The
-  grammar's line 1685 lacks `ownership`; GAM's source (and GamUpdate 7.46.04) requires it. GAM first gets each
+  grammar's line 1694 lacks `ownership`; GAM's source (and GamUpdate 7.46.04) requires it. GAM first gets each
   calendar with the admin's own access, so one the admin can't see fails "Not Found" before any transfer: that one
   is handed over in the Admin console; **Remove filters that forward** after forwarding off, `user L delete filters
-  <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7986) shows
+  <ids>` (`deleteFilters`, destructive) over the filters `user L print filters labelidsonly formatjson` (7990) shows
   forwarding (`action.forward`), read only when the step is added: `forward off` doesn't stop them. The whole filter
   goes, with its other actions (a label, archive); the preview names where each forwarded. The run reads them again
   with the two accounts, on the plan's domain, and refuses ("preview again") when they differ from those held: the
   leaver is signed in until the sign-out and could make another. The ID list is one element, so the builder refuses
   any ID but ASCII letters, digits, `-` and `_`, and a lone GAM list selector (`file`, `csv`…), which GAM would read a
   file from. **Turn off IMAP** and
-  **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8399, 8405),
+  **Turn off POP** after the filters, `user L imap off` and `user L pop off` (`imapOff`, `popOff`, low; 8403, 8409),
   two steps with no read. GAM sends its defaults with each (`_imapDefaults`; `_popDefaults`' `leaveInInbox`, so no
   mail is moved or deleted), and each sets that setting's other values back to Gmail's defaults. Belt and braces (the
   operator's ask): the reset and the sign-out already cut off the mail apps the leaver had, these stop only IMAP and
   POP (not the Gmail app), and anyone who can still sign in can turn them back on. An added step that works
   over a list isn't planned when it's ticked as done, finds nothing, or its read fails (said). Each argv was checked
-  against the grammar (5843, 5854-5855, 5954, 8399, 8405) and GAM's source (the calendar handover against the source, not
-  1685); GamGUI has had each step since its back-port, so `GoldenArgvTests` holds each to GamGUI's builder, and its
+  against the grammar (5847, 5858-5859, 5958, 8403, 8409) and GAM's source (the calendar handover against the source, not
+  1694); GamGUI has had each step since its back-port, so `GoldenArgvTests` holds each to GamGUI's builder, and its
   name, needs and left-out cost to GamGUI's routine (`OffboardingTests`, 2026-11-11). With nothing added, every routine is GamGUI's (`everyRoutineIsGamGUIs` unchanged); the first step's
   audit names what was added (`added`) beside what was left out.
 - **Leaving a step out** (only the five optional ones): it never counts as succeeded, so
@@ -145,20 +145,20 @@ Ten or more steps with a destructive one is GamGUI's "destructive bulk change": 
 do. The confirm sheet asks for the word beside the leaver's address whenever the held preview's decision says
 so, and the executor checks it whatever the sheet sends (`addedStepsRunAndALongRoutineNeedsConfirmTyped`).
 
-## Grammar check (`Vendor/gam7/GamCommands.txt`, lines as at GAM 7.52.01)
+## Grammar check (`Vendor/gam7/GamCommands.txt`, lines as at GAM 7.52.03)
 Re-read 2026-10-13 at 7.48.22; GamGUI's runbook cites 7.48.11's line numbers. No mismatch.
 
 | Step | Grammar line |
 |---|---|
-| Reset password | 5954 `update user <UserItem> [ignorenullpassword] <UserAttribute>*`; 5850 `(password (random …`; 5837 `changepassword` |
-| Revoke | 7926 `<UserTypeEntity> deprovision\|deprov [popimap] [signout] [turnoff2sv]` |
-| Forwarding | 8025 `<UserTypeEntity> forward <FalseValues>` |
-| Delegate | 7937 `<UserTypeEntity> create\|add delegate\|delegates [convertalias] <UserEntity>` |
-| Auto-reply | 8339 `<UserTypeEntity> vacation [<Boolean>] [subject <String>] …` |
-| Transfer | 3608 `create\|add datatransfer\|transfer <OldOwnerID> <DataTransferServiceList> <NewOwnerID>`; 3603 the list is one comma-joined element |
-| Sweep | 6340 `<UserTypeEntity> delete calendaracls <UserCalendarEntity> <CalendarACLRole>] <CalendarACLScopeEntity>` (the lost `[`: the role is optional) |
-| Reminder | 6482 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
-| Delegates read | 7947 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
+| Reset password | 5958 `update user <UserItem> [ignorenullpassword] <UserAttribute>*`; 5854 `(password (random …`; 5841 `changepassword` |
+| Revoke | 7930 `<UserTypeEntity> deprovision\|deprov [popimap] [signout] [turnoff2sv]` |
+| Forwarding | 8029 `<UserTypeEntity> forward <FalseValues>` |
+| Delegate | 7941 `<UserTypeEntity> create\|add delegate\|delegates [convertalias] <UserEntity>` |
+| Auto-reply | 8343 `<UserTypeEntity> vacation [<Boolean>] [subject <String>] …` |
+| Transfer | 3612 `create\|add datatransfer\|transfer <OldOwnerID> <DataTransferServiceList> <NewOwnerID>`; 3607 the list is one comma-joined element |
+| Sweep | 6344 `<UserTypeEntity> delete calendaracls <UserCalendarEntity> <CalendarACLRole>] <CalendarACLScopeEntity>` (the lost `[`: the role is optional) |
+| Reminder | 6486 `<UserTypeEntity> create\|add event <UserCalendarEntity> [id <String>] <EventAttribute>+ [<EventNotificationAttribute>]` |
+| Delegates read | 7951 `<UserTypeEntity> print delegates\|delegate [todrive …] [shownames]` |
 
 ## Off1, the plan
 - **A plan belongs to its form and its tenant:** the screen shows it only while the form is the one it

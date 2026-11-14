@@ -44,7 +44,7 @@ final class BuilderReadTests {
     }
 
     private func command(_ prefix: String) throws -> CommandCatalog.Command {
-        try #require(catalog.commands.first { $0.runnable && $0.syntax.hasPrefix(prefix + " ") })
+        try #require(catalog.commands.first { $0.runnable && ($0.syntax == prefix || $0.syntax.hasPrefix(prefix + " ")) })
     }
 
     @Test func aReadRunsAndItsOutputIsShown() async throws {
