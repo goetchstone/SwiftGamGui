@@ -201,7 +201,7 @@ struct RosterStoreTests {
     /// Another running copy of the app (another build, or `open -n`) shares the folder. Its save in progress holds the
     /// folder locked (`flock`), so this one's save, purge and sweep wait for it and never delete its temporary file: an
     /// in-process lock alone let them, and its rename then failed (or a purge reported success with a snapshot landing).
-    @Test(arguments: ["save", "purge", "sweep"])
+    @Test(.serialized, arguments: ["save", "purge", "sweep"])
     func anotherAppsSaveInProgressIsWaitedFor(_ action: String) throws {
         let folder = Folder(), store = RosterStore(root: folder.store)
         let snapshot = try Self.snapshot()
@@ -214,18 +214,19 @@ struct RosterStoreTests {
         #expect(flock(other, LOCK_EX) == 0)
         // A whole roster, as another copy writes one: the launch's sweep reads what lands, and deletes junk.
         try Data(contentsOf: folder.store.appending(path: name)).write(to: folder.store.appending(path: temporary))
-        // The other app finishes on a thread of its own (GCD's, not the test pool's), as another process would: the
-        // store's call blocks its thread while it waits for the lock, so a release that needed the pool never came on a
-        // runner with few cores (CI, 2026-11-14: a 45-minute hang; `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1` reproduces it).
+        // The other app finishes on a thread of its own, as another process would: a plain `Thread`, in no pool (neither
+        // Swift's cooperative one nor GCD's), since the store's call blocks its thread while it waits for the lock. A
+        // release that needed the test pool never came on a runner with few cores (failure log 2026-11-14). The cases run
+        // one at a time (`.serialized`): each holds a lock the store's process-wide lock queues behind.
         let other_ = other, store_ = folder.store
-        let seen = Seen(), finished = DispatchGroup()
-        finished.enter()
-        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(300)) {
+        let seen = Seen(), finished = DispatchSemaphore(value: 0)
+        Thread {
+            Thread.sleep(forTimeInterval: 0.3)
             seen.temporaryLeft = FileManager.default.fileExists(atPath: store_.appending(path: temporary).path)
             seen.renamed = renameat(other_, temporary, other_, name) == 0     // its file renamed into place
             seen.unlocked = flock(other_, LOCK_UN) == 0                        // and the folder unlocked
-            finished.leave()
-        }
+            finished.signal()
+        }.start()
         switch action {
         case "save": try store.save(snapshot, domain: "example.com", label: "y", sha256: "")
         case "purge": try store.purge(domain: "example.com")

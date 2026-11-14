@@ -192,8 +192,14 @@ struct RosterHandoverTests {
 
     // MARK: the grammar (GamGUI's test_each_command_is_one_the_grammar_has)
 
-    static let grammar = (try? String(contentsOf: Fixtures.repoRoot.appending(path: "Vendor/gam7/GamCommands.txt"), encoding: .utf8))
-        ?? (try? String(contentsOf: Fixtures.repoRoot.appending(path: "Vendor/gam7/GamCommands.txt"), encoding: .isoLatin1))
+    /// The grammar at the pin, as much as this test reads: `scripts/gen_fixtures.py` writes its `gam` lines for the steps'
+    /// commands, the definitions they name and which of the steps' words it has (Vendor/gam7 isn't in the repo, and CI runs
+    /// the package tests before it fetches GAM; failure log 2026-11-14).
+    static var grammar: (lines: [Substring], words: Set<String>)? {
+        guard let extract = fixture?["grammar"], let lines = extract["lines"]?.array, let words = extract["words"]?.array
+        else { return nil }
+        return (lines.compactMap(\.string).map { Substring($0) }, Set(words.compactMap(\.string)))
+    }
 
     static func words(_ text: Substring) -> [String] {
         text.matches(of: /[\w-]+/).map { String($0.output) }
@@ -231,9 +237,7 @@ struct RosterHandoverTests {
     }
 
     @Test func eachCommandIsOneTheGrammarHas() throws {
-        let grammar = try #require(Self.grammar, "the GAM grammar is vendored")
-        let lines = grammar.split(separator: "\n", omittingEmptySubsequences: false).map { $0.hasSuffix("\r") ? $0.dropLast() : $0 }
-        let known = Set(Self.words(Substring(grammar)))
+        let (lines, known) = try #require(Self.grammar, "the grammar's extract is in roster_handover.json")
         let heads = lines.filter { $0.hasPrefix("gam ") }.map { $0.split(whereSeparator: \.isWhitespace).dropFirst().map(String.init) }
         let defs = Self.definitions(lines)
         #expect(heads.contains { Array($0.prefix(2)) == ["csv", "<CSVLoopContent>"] })

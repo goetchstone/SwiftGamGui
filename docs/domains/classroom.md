@@ -404,6 +404,8 @@ here alone:
 
 ## Testing / live-verification status
 Offline only: `swift test --package-path Packages/GamKit --filter Classroom` and `--filter Roster`. The map step is not
-seen here (the app isn't launched in these sessions); CI's `classroom-map` shots are its first look. The roster's, the
+seen here (the app isn't launched in these sessions); CI's `classroom-map` shots are its first look. The hand-over's
+grammar check reads the grammar's lines for its commands from `roster_handover.json` (`grammar`), never `Vendor/gam7`,
+which CI fetches only after the package tests (failure log 2026-11-14). The roster's, the
 change list's and the hand-over's parity fixtures are regenerated with the others (`scripts/gen_fixtures.py` against a pinned GamGUI clone); never hand-edit it. **Never run live, and can't be here:** the
 operator has no Education domain (plan E1).

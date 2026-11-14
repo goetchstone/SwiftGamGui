@@ -2857,7 +2857,34 @@ def change_row(c) -> list:
     return [c.kind, c.alias, c.title, c.person, c.before, c.after, c.course_id, c.swap, c.late, c.name, c.section]
 
 
-def handover_fixture(gamgui: Path) -> dict:
+def grammar_for_handover(grammar: str, steps) -> dict:
+    """What the hand-over's grammar test reads (GamGUI's test_each_command_is_one_the_grammar_has), from the vendored
+    grammar at the pin: Vendor/gam7 isn't in the repo, and CI runs the package tests before it fetches GAM. The `gam`
+    lines whose command word one of the steps uses (and `gam csv`), each `<Nonterminal>` they name with its definition and
+    continuation lines, and which of the steps' words appear anywhere in the grammar."""
+    lines = [line[:-1] if line.endswith("\r") else line for line in grammar.split("\n")]
+    firsts = {step.gam[0] for step in steps} | {"csv"}
+    heads = [line for line in lines if line.startswith("gam ") and len(line.split()) > 1    # `create|add` is either
+             and firsts & set(line.split()[1].strip("[]()").split("|"))]
+    blocks, current = {}, None
+    for line in lines:
+        found = re.match(r"(<[\w-]+>) ::=", line)
+        if found:
+            current = found.group(1)
+            blocks[current] = [line]
+        elif current and line[:1] in (" ", "\t"):
+            blocks[current].append(line)
+        else:
+            current = None
+    named = sorted(set(re.findall(r"<[\w-]+>", "\n".join(heads))) & set(blocks))
+    known = set(re.findall(r"[\w-]+", grammar))
+    words = sorted({word for step in steps for word in step.gam if not word.startswith("~")} & known)
+    if not any(line.split()[1:3] == ["csv", "<CSVLoopContent>"] for line in heads):
+        raise SystemExit("the grammar's `gam csv <CSVLoopContent>` line wasn't found")
+    return {"lines": heads + [line for name in named for line in blocks[name]], "words": words}
+
+
+def handover_fixture(gamgui: Path, grammar: str) -> dict:
     """GamGUI's hand-over (core/roster_handover.py) over the list its byte test uses (tests/test_roster_handover.py's
     `_plan`, every kind with a district's awkward values), dated as that test dates it. The files go to
     Tests/Fixtures/handover/ only when they equal GamGUI's own tests/fixtures/handover/ byte for byte. Also each step's
@@ -2883,6 +2910,7 @@ def handover_fixture(gamgui: Path) -> dict:
     odd_files = handover.build(odd_list, "exämple.com", "2026-11-11 18:00 UTC")
     return {"files": files,
             "lines": {s.file: handover.gam_line(s) for s in handover.STEPS},
+            "grammar": grammar_for_handover(grammar, handover.STEPS),
             "odd": {"changes": [change_row(c) for c in changes],
                     "files": {name: body.decode("utf-8") for name, body in sorted(odd_files.items())}}}
 
@@ -3153,7 +3181,7 @@ def main() -> int:
     plan_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | roster_plan_fixture(gamgui)
     emit("roster_plan.json", json.dumps(plan_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"roster_plan.json: {len(plan_doc['cases'])} change lists")
-    handover_doc = handover_fixture(gamgui)
+    handover_doc = handover_fixture(gamgui, grammar)
     handover_files = handover_doc.pop("files")
     emit("roster_handover.json", json.dumps({"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}}
                                             | handover_doc, indent=1, ensure_ascii=True) + "\n")
