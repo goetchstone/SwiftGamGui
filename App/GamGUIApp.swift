@@ -216,7 +216,7 @@ struct ContentView: View {
                     .navigationTitle("Classroom")
             case .signatures:
                 SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
-                               access: services.userAccess, templates: services.signatureTemplates,
+                               access: services.userAccess, templates: services.signatureTemplates, groups: services.groups,
                                roles: services.onboardRoles, requested: $signaturesPerson)
                     .navigationTitle("Signatures")
             case .onboard:

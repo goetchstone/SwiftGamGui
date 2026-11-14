@@ -49,8 +49,9 @@ Stop: GamGUI's jobs tray (plan U5). Plan §12 phase 3's Jobs, slice 1.
   it and SwiftUI, and only `AppServices` sets `stopRun`.
 
 ## Not built yet
-- The bulk runs GamGUI has (onboarding from a CSV, a department for many, a signature for a scope): each will run through the
-  executor and so appear here, with its own retry of what failed. Build each only when the operator asks.
+- The bulk runs GamGUI has (onboarding from a CSV, a department for many): each will run through the executor and so appear
+  here, with its own retry of what failed. Build each only when the operator asks. A signature for a scope (2026-11-13) and a
+  calendar shared with a group are built so: one run of many steps, Stop here and on their screen, the retry on Signatures.
 - A job's page of its own: the tray's row opens to its steps; the screen that ran it has the whole panel.
 
 ## Testing

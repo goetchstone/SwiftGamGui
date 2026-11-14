@@ -79,7 +79,9 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
   split on line breaks, commas and semicolons (never spaces: "Carol Clark" stays one entry and is refused
   in GamGUI's words), stripped, and repeats dropped; they are one preview with a step each. The guard
   then applies as to any change set: 10 or more need the click (always asked anyway), more than
-  `Guard.countConfirmAbove` (25) need their count typed, over 200 warn.
+  `Guard.countConfirmAbove` (25) need their count typed, over 200 warn. A wrong count is refused by
+  `GroupChanges.confirm` with the guard's own `typedCountMatches` before the executor, so the preview isn't
+  spent (failure-log 2026-11-13).
 - **Confirm:** every group write is `confirmStep: true` (GamGUI's add has no confirm step because its
   form post is the confirmation; here the sheet is). `confirm` runs only while its preview is the one the
   sheet shows, so an edited list, another group or a replay writes nothing; the executor spends the

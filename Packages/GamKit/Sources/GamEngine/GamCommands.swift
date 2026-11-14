@@ -661,6 +661,14 @@ public enum GamCommands {
         GamRead(["calendars", calendarID, "print", "calendaracls", "formatjson"])
     }
 
+    /// One calendar's data owner (Google's Calendars resource `dataOwner`, set only for a secondary calendar), read as the
+    /// admin as the ACL read is: `calendars.get` with the fields asked (doCalendarsPrintShowSettings). `dataowner` is in GAM's
+    /// CALENDAR_SETTINGS_FIELDS_CHOICE_MAP though the grammar's <CalendarSettingsField> (2006-2013) leaves it out; `id` comes
+    /// first anyway (`initialField`). Rows `calendarId,JSON`. Not GamGUI's: the calendar delete acts as this owner.
+    public static func printCalendarSettings(calendarID: String) -> GamRead {
+        GamRead(["calendars", calendarID, "print", "settings", "fields", "id,dataowner", "formatjson"])
+    }
+
     /// The admin form, as `printCalendarACLs(calendarID:)`. Notifications are off by default: the
     /// subscribe makes the calendar appear, which is the point, since people miss the sharing email.
     public static func addCalendarACL(calendarID: String, scope: String, role: CalendarRole = .reader, sendNotifications: Bool = false) -> GamWrite {

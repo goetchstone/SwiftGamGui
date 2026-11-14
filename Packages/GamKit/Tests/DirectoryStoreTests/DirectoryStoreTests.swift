@@ -118,14 +118,18 @@ struct DirectoryStoreTests {
         #expect(store.problem == nil)
     }
 
-    /// The mock, slowed: a load lasts long enough to switch tenants or ask again in the middle of it.
+    /// The mock, slowed: a load lasts long enough to switch tenants or ask again in the middle of it: the first
+    /// `print users` takes `first` seconds (a test that times a stop uses one far past its bound, failure log
+    /// 2026-11-13), each later one two, so the loads a test waits out still end.
     /// Like real GAM (one process), it ends on SIGTERM at once: the delay runs in the background with
     /// its output detached, and the trap exits.
-    private func slowRunner(log: URL? = nil) throws -> AuthenticatedRunner {
+    private func slowRunner(log: URL? = nil, first: Int = 2) throws -> AuthenticatedRunner {
         let script = FileManager.default.temporaryDirectory.appending(path: "slow-mock-\(UUID().uuidString).sh")
+        let marker = script.path + ".first"
         let logLine = log.map { "printf '%s\\n' \"$*\" >> '\($0.path)'\n" } ?? ""
-        try Data(("#!/bin/sh\ntrap 'exit 143' TERM\n\(logLine)"
-                  + "case \"$1 $2\" in \"print users\") sleep 2 >/dev/null 2>&1 & wait $! ;; esac\n"
+        try Data(("#!/bin/sh\ntrap 'kill $! 2>/dev/null; exit 143' TERM\n\(logLine)"
+                  + "case \"$1 $2\" in \"print users\") if [ -e '\(marker)' ]; then s=2; else : > '\(marker)'; s=\(first); fi\n"
+                  + "  sleep $s >/dev/null 2>&1 & wait $! ;; esac\n"
                   + "exec '\(Fixtures.mockGam.path)' \"$@\"\n").utf8)
             .write(to: script)
         chmod(script.path, 0o755)
@@ -133,7 +137,7 @@ struct DirectoryStoreTests {
     }
 
     @Test func aTenantChangeStopsTheOldLoadAndLetsTheNextOneLoad() async throws {
-        let slow = try slowRunner()
+        let slow = try slowRunner(first: 600)
         let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let store = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
@@ -143,7 +147,8 @@ struct DirectoryStoreTests {
         try await connect("example.org", admin: "admin@example.org", in: setup)
         #expect(store.isLoading, "connecting example.org starts its own load (example.com's was stopped)")
         await old.value
-        #expect(clock.now - started < .seconds(1.5), "the old load's gam was stopped, not waited for")
+        // Far from a stop on a busy runner and from the 600 s a gam left running takes (failure log 2026-11-13).
+        #expect(clock.now - started < .seconds(60), "the old load's gam was stopped, not waited for")
         await store.load()
         #expect(store.users?.isEmpty == false, "example.org loads")
     }
@@ -151,7 +156,7 @@ struct DirectoryStoreTests {
     /// Every store on one Setup is told of a switch, not only the one made last: Setup once had a single
     /// observer slot, and a second store took it from the first.
     @Test func everyStoreOnOneSetupStopsItsOldLoad() async throws {
-        let slow = try slowRunner()
+        let slow = try slowRunner(first: 600)
         let setup = SetupModel(vault: vault, runner: slow, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         let first = DirectoryStore(setup: setup, runner: slow)
         let second = DirectoryStore(setup: setup, runner: slow)
@@ -162,7 +167,8 @@ struct DirectoryStoreTests {
         try await connect("example.org", admin: "admin@example.org", in: setup)
         #expect(first.isLoading && second.isLoading, "each store loads example.org")
         await old.value
-        #expect(clock.now - started < .seconds(1.5), "the first store's old load was stopped, not waited for")
+        // Far from a stop on a busy runner and from the 600 s a gam left running takes (failure log 2026-11-13).
+        #expect(clock.now - started < .seconds(60), "the first store's old load was stopped, not waited for")
         await first.load()
         #expect(first.users?.isEmpty == false)
     }

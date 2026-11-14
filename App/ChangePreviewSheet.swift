@@ -100,10 +100,13 @@ struct ChangePreviewSheet: View {
 }
 
 extension SignatureChanges {
-    /// The preview the sheet shows: held, or running (the sheet stays, its buttons off, until it ends).
+    /// The preview the sheet shows: held, or running (the sheet stays, its buttons off, until it ends). A scope's run
+    /// closes its sheet once confirmed: it can run for minutes, so its progress and Stop are on the screen and in the jobs
+    /// tray instead.
     var sheetPending: Pending? {
         switch state {
-        case .previewing(let pending), .running(let pending): pending
+        case .previewing(let pending): pending
+        case .running(let pending): pending.isScoped ? nil : pending
         case .idle, .done, .problem: nil
         }
     }
@@ -187,6 +190,108 @@ struct SignaturePreviewSheet: View {
     }
 }
 
+/// A scope's confirm step (GamGUI's `_sig_preview.html`): how many people, the first one's signature exactly as held (a
+/// sample: each person's is their own render), what to know first, who is left out, the people, the count typed above the
+/// guard's threshold, and that nothing keeps the old signatures. Confirming runs exactly these people and this template,
+/// once.
+struct SignatureScopePreviewSheet: View {
+    let pending: SignatureChanges.Pending
+    let changes: SignatureChanges
+    @State private var typedCount = ""
+
+    private var count: Int { pending.people.count }
+    private var needsCount: Bool { pending.preview.decision.requiresTypedCount }
+    /// The people named before the full list (GamGUI's confirm sample).
+    private static let named = 10
+
+    private func confirm() {
+        let confirmation = OperatorConfirmation(confirmed: true, typedCount: needsCount ? typedCount : "")
+        Task { await changes.confirm(pending, confirmation) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Applies to \(count) user\(count == 1 ? "" : "s") \u{B7} previewing as \(pending.person.fullName)")
+                let addresses = pending.people.map(\.primaryEmail)
+                let more = count - min(count, Self.named)
+                Text(addresses.prefix(Self.named).joined(separator: ", ") + (more > 0 ? " \u{2026} and \(more) more" : ""))
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                if more > 0 {
+                    DisclosureGroup("Show all \(count)") {
+                        Text(addresses.joined(separator: "\n"))
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } header: {
+                Text(pending.title).accessibilityAddTraits(.isHeader)
+            }
+            Section("New, for \(pending.person.fullName)") {
+                SignaturePane(html: pending.body, rendered: Signature.stored(pending.body),
+                              label: "New signature for \(pending.person.fullName), the first of \(count)",
+                              empty: "Empty: confirming clears their signature.")
+            }
+            let warnings = pending.warnings + pending.preview.decision.warnings
+            if !warnings.isEmpty || !pending.notes.isEmpty {
+                Section {
+                    ForEach(warnings, id: \.self) { warning in
+                        Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    }
+                    ForEach(pending.notes, id: \.self) { note in Label(note, systemImage: "info.circle") }
+                }
+            }
+            if needsCount {
+                Section("This overwrites the Gmail signature of \(count) people") {
+                    TextField("Type \(count) to confirm", text: $typedCount)
+                        .accessibilityLabel("Type the number of people, \(count), to confirm")
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if let problem = changes.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
+                }
+            }
+            Section {
+                Label("Replaces each one's current Gmail signature. Gmail keeps no copy, and there's no Put Back for many people.",
+                      systemImage: "info.circle")
+                Text(pending.isRetry ? "Confirming writes exactly this: the template that run used, to the people it failed for."
+                     : "Confirming writes exactly this. Change who it's for or the template and you'll need to review again.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Text("It runs in the jobs tray, one change per person, with Stop.")
+                    .font(.callout).foregroundStyle(.secondary)
+                // The exact commands are there for an admin who wants them, each signature masked as the audit keeps it.
+                DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                    Text(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 640, idealWidth: 760, minHeight: 600, idealHeight: 780)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { changes.dismiss() }
+            }
+            // Gmail keeps no copy and there is no Put Back for many people: Return alone never runs it (not the default
+            // button), as the calendar sheet's deletes.
+            ToolbarItem(placement: .primaryAction) {
+                // Off until the count typed is the guard's (GamGUI's `data-unlocks`); the model refuses a mismatch too.
+                Button(pending.confirmLabel) { confirm() }
+                    .disabled(changes.isBusy || !pending.preview.decision.typedCountMatches(typedCount))
+                    .accessibilityLabel("Replace the Gmail signatures of \(count) \(count == 1 ? "person" : "people")")
+            }
+        }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+}
+
 extension GroupChanges {
     /// The preview `group`'s page shows in its sheet: held, or running (the sheet stays, its buttons off,
     /// until it ends). Another group's page never shows it.
@@ -248,6 +353,10 @@ struct GroupPreviewSheet: View {
                     TextField("Type \(count) to confirm", text: $typedCount)
                         .accessibilityLabel("Type the number of people, \(count), to confirm")
                         .disabled(running)
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if let problem = changes.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
                 }
             }
             if running {
@@ -264,19 +373,28 @@ struct GroupPreviewSheet: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button(pending.isAdding ? "Back" : "Cancel") { changes.dismiss() }.disabled(running)
             }
+            // The default button, so Return runs it: off until the count typed is the guard's (GamGUI's `data-unlocks`),
+            // and the model refuses a mismatch too.
             ToolbarItem(placement: .confirmationAction) {
                 Button(pending.confirmLabel) { confirm() }
-                    .disabled(running || (needsCount && typedCount.trimmingCharacters(in: .whitespaces).isEmpty))
+                    .disabled(running || !pending.preview.decision.typedCountMatches(typedCount))
             }
+        }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
         }
     }
 }
 
 extension CalendarChanges {
-    /// The preview the sheet shows: held, or running (the sheet stays, its buttons off, until it ends).
+    /// The preview the sheet shows: held, or running (the sheet stays, its buttons off, until it ends). A group share
+    /// closes its sheet once confirmed: it can run for minutes, so its progress and Stop are on the page and in the
+    /// jobs tray instead.
     var sheetPending: Pending? {
         switch state {
-        case .previewing(let pending), .running(let pending): pending
+        case .previewing(let pending): pending
+        case .running(let pending): pending.kind == .shareGroup ? nil : pending
         case .idle, .done, .problem: nil
         }
     }
@@ -292,59 +410,176 @@ extension CalendarChanges {
     }
 }
 
-/// A calendar change's confirm step (calendars plan D4): each step in words with its command, what to know
-/// first, and how it's undone; then Cancel, or Share or Remove, both off while it runs. Confirming runs exactly
-/// this preview, once.
+/// A calendar change's confirm step (calendars plan D4, GamGUI's confirm partials): each step in words with its
+/// command, what to know first, and how it's undone; for a group, how many members and who, with the count typed at
+/// the guard's threshold; for a delete, what is lost, and for a calendar DELETE typed. Then Cancel, or the action, off
+/// while it runs; a destructive one is never the default button. Confirming runs exactly this preview, once.
 struct CalendarPreviewSheet: View {
     let pending: CalendarChanges.Pending
     let changes: CalendarChanges
+    @State private var typedCount = ""
+    @State private var typedWord = ""
 
     private var running: Bool { changes.isBusy }
+    private var count: Int { pending.preview.steps.count }
+    private var needsCount: Bool { pending.preview.decision.requiresTypedCount }
 
     private func confirm() {
-        Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true)) }
+        let confirmation = OperatorConfirmation(confirmed: true, typedWord: pending.kind == .deleteCalendar ? typedWord : "",
+                                                typedCount: needsCount ? typedCount : "")
+        Task { await changes.confirm(pending, confirmation) }
     }
 
     var body: some View {
         Form {
-            Section(pending.title) {
-                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
-                    Text(step.summary)
-                    DisclosureGroup("Show command") {
-                        Text(step.shownArgv.joined(separator: " "))
-                            .font(.caption.monospaced())
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+            switch pending.detail {
+            case .group(let members, let leftOut): groupSections(members: members, leftOut: leftOut)
+            case .deleteCalendar(let owner, let rules): deleteCalendarSection(owner: owner, rules: rules)
+            case .deleteEvent(let event): deleteEventSection(event)
+            case .none: stepsSection
             }
-            if !pending.warnings.isEmpty {
+            if !pending.warnings.isEmpty || !pending.preview.decision.warnings.isEmpty {
                 Section {
-                    ForEach(pending.warnings, id: \.self) { warning in
+                    ForEach(pending.warnings + pending.preview.decision.warnings, id: \.self) { warning in
                         Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
                     }
                 }
             }
+            if needsCount {
+                Section("This makes \(count) changes") {
+                    TextField("Type \(count) to confirm", text: $typedCount)
+                        .accessibilityLabel("Type the number of changes, \(count), to confirm")
+                        .disabled(running)
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if pending.kind != .deleteCalendar, let problem = changes.typedProblem { problemLabel(problem) }
+                }
+            }
+            if pending.kind == .deleteCalendar {
+                Section("Type DELETE to confirm") {
+                    TextField("DELETE", text: $typedWord, prompt: Text(verbatim: CalendarDeletion.typedWord))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type DELETE, in capitals, to delete \(pending.calendarName)")
+                        .disabled(running)
+                        .onChange(of: typedWord) { changes.typingChanged() }
+                    if let problem = changes.typedProblem { problemLabel(problem) }
+                }
+            }
             Section {
-                Label(pending.undo, systemImage: "arrow.uturn.backward.circle")
+                Label(pending.undo, systemImage: pending.isDestructive ? "exclamationmark.octagon.fill" : "arrow.uturn.backward.circle")
+                    .foregroundStyle(pending.isDestructive ? .red : .primary)
             }
             if running {
                 Section {
-                    HStack { ProgressView().controlSize(.small); Text(pending.kind == .share ? "Sharing…" : "Removing…") }
+                    HStack { ProgressView().controlSize(.small); Text(runningText) }
                         .accessibilityElement(children: .combine)
                 }
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 460)
+        .frame(minWidth: 460, minHeight: 320)
         .interactiveDismissDisabled(running)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { changes.dismiss() }.disabled(running)
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button(pending.confirmLabel) { confirm() }.disabled(running)
+            // A destructive change isn't confirmed by Return alone: it isn't the default button.
+            if pending.isDestructive {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(pending.confirmLabel, role: .destructive) { confirm() }
+                        .disabled(running || (pending.kind == .deleteCalendar && typedWord.trimmingCharacters(in: .whitespaces).isEmpty))
+                        .accessibilityLabel(pending.kind == .deleteCalendar ? "Delete \(pending.calendarName) for everyone"
+                                            : "Delete this event from \(pending.calendarName)")
+                }
+            } else {
+                // The default button, so Return runs it: off until the count typed is the guard's (GamGUI's `data-unlocks`),
+                // and the model refuses a mismatch too.
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(pending.confirmLabel) { confirm() }
+                        .disabled(running || !pending.preview.decision.typedCountMatches(typedCount))
+                }
             }
+        }
+        // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+
+    private func problemLabel(_ problem: String) -> some View {
+        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+    }
+
+    private var runningText: String {
+        switch pending.kind {
+        case .share, .shareGroup: "Sharing…"
+        case .unshare: "Removing…"
+        case .deleteCalendar, .deleteEvent: "Deleting…"
+        }
+    }
+
+    /// Each step in words, with its command behind a disclosure.
+    private var stepsSection: some View {
+        Section(pending.title) {
+            ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
+                Text(step.summary)
+                DisclosureGroup("Show command") { command(step.shownArgv.joined(separator: " ")) }
+            }
+        }
+    }
+
+    private func command(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.monospaced())
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// GamGUI's group confirm (`_calendar_detail.html`): the count, a sample, and "and N more".
+    @ViewBuilder private func groupSections(members: [String], leftOut: Int) -> some View {
+        Section(pending.title) {
+            if let first = pending.preview.steps.first { Text(first.summary) }
+            if members.isEmpty {
+                Text("\(pending.who) has no members whose calendar list it can be added to: only the group's access is added.")
+            } else {
+                Text("Then it's added to \(members.count) member\(members.count == 1 ? "'s" : "s'") calendars \u{2014} one change per "
+                    + "member, in the jobs tray, with Stop.")
+                let sample = members.prefix(CalendarChanges.confirmSample).joined(separator: ", ")
+                let more = members.count - min(members.count, CalendarChanges.confirmSample)
+                Text(more > 0 ? "\(sample) \u{2026} and \(more) more" : sample)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            if leftOut > 0 {
+                Text("\(leftOut) member\(leftOut == 1 ? " isn't a person" : "s aren't people") with an active account (a group inside it, a "
+                    + "suspended account): they have access through the group, but it isn't added to their list.")
+                    .foregroundStyle(.secondary)
+            }
+            DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                command(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n"))
+            }
+        }
+    }
+
+    /// GamGUI's `_calendar_delete.html`.
+    @ViewBuilder private func deleteCalendarSection(owner: String, rules: Int) -> some View {
+        Section("Permanently delete this calendar?") {
+            Text(pending.calendarName).font(.headline)
+            Text(pending.calendarID).foregroundStyle(.secondary).textSelection(.enabled)
+            Text("Deletes the calendar and all of its events for everyone it's shared with"
+                + (rules > 0 ? " (\(rules) access rule\(rules == 1 ? "" : "s"))" : "") + ". This cannot be undone. Runs as owner \(owner).")
+                .foregroundStyle(.red)
+            DisclosureGroup("Show command") { command(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n")) }
+        }
+    }
+
+    /// GamGUI's `_event_delete.html`.
+    @ViewBuilder private func deleteEventSection(_ event: CalendarEvent) -> some View {
+        Section("Delete this event?") {
+            Text(event.summary).font(.headline)
+            Text(event.organizer.isEmpty ? event.when : "\(event.when) \u{B7} organizer \(event.organizer)")
+                .foregroundStyle(.secondary)
+            Text("From \(pending.calendarName). No updates are sent to its guests.")
+            DisclosureGroup("Show command") { command(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n")) }
         }
     }
 }
@@ -660,7 +895,8 @@ struct PhishingConfirmSheet: View {
 
     /// The steps, the number typed: one a mailbox, and one more for a mailbox with copies in Spam as well.
     private var count: Int { pending.trashes.count }
-    private var countMatches: Bool { typedCount.trimmingCharacters(in: .whitespacesAndNewlines) == pending.typedCount }
+    /// The guard's own check, so the button and the executor can't disagree on what was typed.
+    private var countMatches: Bool { pending.preview.decision.typedCountMatches(typedCount) }
     private var wordMatches: Bool {
         !pending.needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord
     }

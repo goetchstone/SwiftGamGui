@@ -138,7 +138,7 @@ struct AppServices {
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor, jobs: jobs,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
-                           signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory),
+                           signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner),
                            signatureTemplates: templates,
                            groups: groups,
                            groupMembers: groupMembers,

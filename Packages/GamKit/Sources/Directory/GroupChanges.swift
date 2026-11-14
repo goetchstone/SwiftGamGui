@@ -63,6 +63,11 @@ public final class GroupChanges {
     public private(set) var state: State = .idle
     /// The group the current state is about (as `Guard` compares addresses), so its page alone shows it.
     public private(set) var subject: String?
+    /// The count typed on the sheet didn't match: said there, the sheet stays and its preview isn't spent (the executor
+    /// spends a preview it refuses). Cleared once the typing changes (`typingChanged`) or the preview goes.
+    public private(set) var typedProblem: String?
+    /// Counts each typed refusal, so the sheet says it again on a repeated wrong attempt, not only the first.
+    public private(set) var typedRefusals = 0
     private let executor: Executor?
     private let setup: SetupModel
     private let members: GroupMembers
@@ -141,6 +146,7 @@ public final class GroupChanges {
 
     private func hold(_ steps: [WriteStep], group: String, title: String, confirmLabel: String, notes: [String],
                       adding: GamCommands.GroupRole?, expecting: (domain: Domain, generation: Int)?) async {
+        typedProblem = nil
         guard let executor else {
             state = .problem(Problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh."))
             return
@@ -158,10 +164,18 @@ public final class GroupChanges {
 
     /// Runs `pending` once, exactly as held, while it's the preview the sheet shows: an older one (the list
     /// edited or the group changed since) never runs, though the executor still holds it. `confirmation` is
-    /// what the operator gave; the executor decides whether it's enough. Then the group is read again, on
-    /// the tenant the write ran on only.
+    /// what the operator gave; the executor decides whether it's enough. A count typed that isn't the guard's is said
+    /// here first (`typedProblem`), so nothing runs and the preview isn't spent. Then the group is read again, on the
+    /// tenant the write ran on only.
     public func confirm(_ pending: Pending, _ confirmation: OperatorConfirmation) async {
         guard !isBusy, let executor, case .previewing(let shown) = state, shown.id == pending.id else { return }
+        let decision = pending.preview.decision
+        if !decision.typedCountMatches(confirmation.typedCount) {
+            typedProblem = Self.typedCountRefusal(decision.affectedCount)
+            typedRefusals += 1
+            return
+        }
+        typedProblem = nil
         state = .running(pending)
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
         if let refusal = outcome.refusal {
@@ -182,7 +196,18 @@ public final class GroupChanges {
     /// Back to the page; a held preview simply expires unused.
     public func dismiss() {
         guard !isBusy else { return }
+        typedProblem = nil
         state = .idle
+    }
+
+    /// The count the sheet wants typed, in words.
+    public nonisolated static func typedCountRefusal(_ count: Int) -> String {
+        "Type \(count), the number of people, to confirm."
+    }
+
+    /// The typed count changed: an earlier mismatch no longer stands.
+    public func typingChanged() {
+        typedProblem = nil
     }
 
     // MARK: words

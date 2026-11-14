@@ -24,6 +24,7 @@ final class GroupChangesTests {
     let members: GroupMembers
     let access: UserAccess
     let changes: GroupChanges
+    let executor: Executor
     let argvLog: URL
     let auditURL: URL
     let state: URL
@@ -44,7 +45,7 @@ final class GroupChangesTests {
         access = UserAccess(setup: setup, runner: runner)
         access.environment = ["GAM_MOCK_STATE": state.path]
         let setup = setup
-        let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
+        executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
                               "GAM_MOCK_STATE": state.path])
@@ -247,6 +248,9 @@ final class GroupChangesTests {
     }
 
     /// Above 25 people the count is typed, as the guard asks (`Guard.countConfirmAbove`); 25 needs only the click.
+    /// The click alone, or another count, runs nothing: it is said on the sheet, which stays with its preview unspent (the
+    /// executor spends one it refuses), each wrong try counted so it is said again; typing clears it; the right count then
+    /// runs that same preview.
     @Test func moreThan25PeopleNeedTheirCountTyped() async throws {
         try await connect()
         let sales = try group("sales@example.com")
@@ -256,15 +260,29 @@ final class GroupChangesTests {
         await changes.previewAdd(guests.joined(separator: "\n"), to: sales, role: .member)
         let many = try pending()
         #expect(many.preview.decision.requiresTypedCount)
-        await changes.confirm(many, confirmed)
-        #expect(try problem().summary == "This changes 26 accounts: preview again, and type 26 to confirm.")
-        await changes.previewAdd(guests.joined(separator: "\n"), to: sales, role: .member)
-        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true, typedCount: "25"))
+        for typed in ["", "25", "all", "026"] {
+            await changes.confirm(many, OperatorConfirmation(confirmed: true, typedCount: typed))
+            #expect(changes.typedProblem == "Type 26, the number of people, to confirm.", "\(typed)")
+            #expect(try pending().id == many.id, "the sheet stays")
+        }
+        #expect(changes.typedRefusals == 4)
         #expect(writes().isEmpty)
-        await changes.previewAdd(guests.joined(separator: "\n"), to: sales, role: .member)
-        await changes.confirm(try pending(), OperatorConfirmation(confirmed: true, typedCount: " 26 "))
+        changes.typingChanged()
+        #expect(changes.typedProblem == nil)
+        await changes.confirm(many, OperatorConfirmation(confirmed: true, typedCount: " 26 "))
         #expect(try done() == "Added 26 people to sales@example.com as member.")
         #expect(writes().count == 26)
+    }
+
+    /// The executor still refuses another count itself (the sheet's check is not the only one).
+    @Test func theExecutorRefusesAnotherCount() async throws {
+        try await connect()
+        let sales = try group("sales@example.com")
+        let guests = (1...26).map { String(format: "guest%02d@outside.example.org", $0) }
+        await changes.previewAdd(guests.joined(separator: "\n"), to: sales, role: .member)
+        let outcome = await executor.run(try pending().preview, confirmation: OperatorConfirmation(confirmed: true, typedCount: "25"))
+        #expect(outcome.refusal == "This changes 26 accounts: preview again, and type 26 to confirm.")
+        #expect(writes().isEmpty)
     }
 
     // MARK: the tenant

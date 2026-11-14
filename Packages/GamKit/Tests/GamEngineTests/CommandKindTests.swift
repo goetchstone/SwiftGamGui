@@ -46,6 +46,13 @@ struct CommandKindTests {
     /// Arguments drawn from a closed set: they keep the fixture's valid value.
     static let closedArguments: Set = ["role", "privacy", "action", "detail", "application", "chrome", "admin", "states"]
 
+    /// Reads this app builds that GamGUI has no builder for (so `argv.json` holds no case): each held to the read-only rule
+    /// here, its argv in `NativeArgvTests`, its mock in the domain's mock tests, and listed as a deviation in its runbook.
+    static let appOnlyReads: [String: GamRead] = [
+        // docs/domains/calendars.md: the calendar delete acts as the data owner this reads (GamGUI's first owner rule).
+        "print_calendar_settings": GamCommands.printCalendarSettings(calendarID: "<calendar_id>"),
+    ]
+
     /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
     static let sharedBuilders: [String: String] = [
         "search_scheduled": "searchMessages, as search_messages, for in:scheduled",
@@ -101,6 +108,11 @@ struct CommandKindTests {
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
         #expect(reads == 42 + Self.sharedBuilders.count, "both shared builders are reads")
+        for (name, read) in Self.appOnlyReads {
+            let verb = Self.verb(read.argv)
+            #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
+            #expect(!read.argv.contains(where: Self.isDoit), "\(name) carries doit")
+        }
     }
 
     /// A read that carried `doit` would run a dry run's change for any caller, with no preview and no audit.
@@ -171,12 +183,12 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 43 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests")
+        #expect(reads == 44 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
         #expect(source.contains("public static func catalogRead(_ command: CommandCatalog.Command"))
-        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count)
+        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count - Self.appOnlyReads.count)
         #expect(Set(Self.sharedBuilders.keys).isSubset(of: GoldenArgvTests.implemented.keys))
     }
 }

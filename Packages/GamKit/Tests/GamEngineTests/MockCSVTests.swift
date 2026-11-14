@@ -73,8 +73,8 @@ struct MockCSVTests {
         GamCommands.printCros().argv.filter { $0 != "formatjson" },
         GamCommands.printFileList(email: "alice@example.com").argv,
         GamCommands.printAllCalendars().argv,
+        // Every event: GamGUI never asks for it (a search needs a title or days), so the mock refuses it.
         GamCommands.printEvents(calendarID: "c_team@group.calendar.google.com").argv,
-        GamCommands.getEvent(calendarID: "c_team@group.calendar.google.com", eventID: "evt-1").argv,
         ["print", "groups", "fields", "email,name", "formatjson"],
     ])
     func aReadWhoseShapeIsNotModelledIsRefused(argv: [String]) async throws {
