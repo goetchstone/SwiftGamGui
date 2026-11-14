@@ -1,0 +1,42 @@
+name: I tried it on a real domain
+description: "Tell us whether something worked: a change, a screen, or the Classroom import. Two minutes."
+title: "Tried: "
+labels: ["live-verification"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. A report, worked or not, is how a line in
+        [live verification](https://github.com/goetchstone/SwiftGamGui/blob/main/docs/live-verification.md) moves.
+        **Never paste a real roster, export, address, domain or credential.** Column names and counts are plenty.
+  - type: input
+    id: what
+    attributes:
+      label: What you tried
+      placeholder: "Suspend a user · Offboarding · Classroom: read a Clever export"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Did it work?
+      options:
+        - "Yes"
+        - Partly
+        - "No"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything worth knowing
+      description: >-
+        Optional. What differed, the words GAM GUI showed, your macOS and GAM GUI versions, or for a roster import: your
+        SIS and its export format, and the header row (column names only).
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Nothing private
+      options:
+        - label: There are no real names, addresses, domains, student data or credentials in this report.
+          required: true

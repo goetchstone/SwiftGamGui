@@ -309,11 +309,25 @@ public enum AuditExport {
         try writePrivately(to: destination) { try $0(text) }
     }
 
+    /// Writes `bytes` (a file that isn't text: the roster hand-over's ZIP) the same way: 0600, whole or not at all.
+    public static func writePrivately(bytes: [UInt8], to destination: URL) throws {
+        try writePrivately(to: destination, bytes: { try $0(bytes) })
+    }
+
     /// The one private writer (the audit export, `IncidentLogs`, the Phishing lists): `body`'s text, appended in 64 KiB
     /// writes to a hidden file beside `destination` (0600, created exclusively and never through a link: these list
     /// people), synced and renamed over it once whole. A failure leaves no partial file. Streamed, so a log of a
     /// million records is never held whole.
     static func writePrivately(to destination: URL, _ body: (_ emit: (String) throws -> Void) throws -> Void) throws {
+        try withoutActuallyEscaping(body) { body in
+            try writePrivately(to: destination, bytes: { emit in
+                try withoutActuallyEscaping(emit) { emit in try body { try emit(Array($0.utf8)) } }
+            })
+        }
+    }
+
+    /// The writer itself, over bytes.
+    static func writePrivately(to destination: URL, bytes body: (_ emit: ([UInt8]) throws -> Void) throws -> Void) throws {
         let partial = destination.deletingLastPathComponent()
             .appending(path: ".\(destination.lastPathComponent).\(UUID().uuidString).partial")
         let fd = open(partial.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
@@ -333,8 +347,8 @@ public enum AuditExport {
             }
             pending.removeAll(keepingCapacity: true)
         }
-        try body { text in
-            pending += text.utf8
+        try body { bytes in
+            pending += bytes
             if pending.count >= 64 * 1_024 { try flush() }
         }
         try flush()

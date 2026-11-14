@@ -3,11 +3,27 @@ import GamEngine
 import Setup
 import SwiftUI
 
-/// Classroom (plan 2026-11-11 C1.3; GamGUI's Classroom screen at 3c8d909), read only: one search field takes a class's name,
-/// section or room, which searches the index of open classes read once per domain, or a teacher's address, which reads that
-/// teacher's classes, archived ones too, when Return is pressed and never as it's typed. A class opens as a card with who
-/// teaches it and who is in it. Nothing here changes Classroom.
+/// Classroom (plan 2026-11-11 C1.3; GamGUI's Classroom screen at 3c8d909), read only, in two parts as GamGUI's two tabs:
+/// Classes and Plan an Import (`RosterImportView`, C2). Classes: one search field takes a class's name, section or room,
+/// which searches the index of open classes read once per domain, or a teacher's address, which reads that teacher's
+/// classes, archived ones too, when Return is pressed and never as it's typed. A class opens as a card with who teaches it
+/// and who is in it. Nothing here changes Classroom.
 struct ClassroomView: View {
+    enum Part: String, CaseIterable, Identifiable {
+        case classes = "Classes"
+        case plan = "Plan an Import"
+
+        var id: Self { self }
+
+        /// The part a launch opens on: Classes, or in debug builds Plan an Import with `SWIFTGAMGUI_TAB=import` (snapshots).
+        static var initial: Part {
+            #if DEBUG
+            if ["import", "compare", "clever", "map"].contains(ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]) { return .plan }
+            #endif
+            return .classes
+        }
+    }
+
     let setup: SetupModel
     let directory: DirectoryStore
     let reads: ClassroomReads
@@ -15,8 +31,11 @@ struct ClassroomView: View {
     let groups: GroupStore
     /// A class another screen asked to open (a person's classes on Users), cleared once its card is open.
     @Binding var requested: String?
+    /// The kept roster, for Plan an Import.
+    let roster: RosterKeeper
     /// Opens Groups on a group's page (by address), or on its list (empty).
     let openGroup: (String) -> Void
+    @State private var part = Part.initial
     @State private var query = ""
     /// The teacher whose classes were asked for (Return), as typed.
     @State private var teacher = ""
@@ -39,6 +58,31 @@ struct ClassroomView: View {
     private var owners: [String: String] { ClassroomReads.owners(directory.users ?? []) }
 
     var body: some View {
+        VStack(spacing: 0) {
+            Picker("Part of Classroom", selection: $part) {
+                ForEach(Part.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 300)
+            .padding([.horizontal, .top])
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            switch part {
+            case .classes: classes
+            case .plan:
+                Divider()
+                RosterImportView(setup: setup, roster: roster)
+            }
+        }
+        .frame(minWidth: 0, maxWidth: .infinity)
+        // A class asked for from another screen opens on Classes (whose list then opens its card).
+        .onChange(of: requested, initial: true) {
+            if requested != nil { part = .classes }
+        }
+    }
+
+    @ViewBuilder private var classes: some View {
         // Worked out once per redraw: the index can hold thousands of classes and the directory thousands of people.
         let courses = self.courses, owners = self.owners
         VStack(spacing: 0) {

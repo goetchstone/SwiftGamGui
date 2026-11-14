@@ -1,0 +1,9 @@
+sourcedId,status,role,username,givenName,familyName,email
+U1,,teacher,alice,Alice,Anders,alice@example.com
+U2,,teacher,bob,Bob,Brown,bob@example.com
+U3,,student,carol,Carol,Clark,carol@example.com
+U4,,student,dana,Dana,Diaz,dana@example.com
+U5,,student,erin,Erin,Evans,
+U6,,student,frank,Frank,Ford,frank at example.com
+U7,,student,gwen,Gwen,Green,
+U8,,aide,hank,Hank,Hill,hank@example.com

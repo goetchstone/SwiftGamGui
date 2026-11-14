@@ -209,7 +209,7 @@ struct ContentView: View {
                     .navigationTitle("Calendars")
             case .classroom:
                 ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom,
-                              groups: services.groups, requested: $classroomCourse) { address in
+                              groups: services.groups, requested: $classroomCourse, roster: services.roster) { address in
                     groupsGroup = address
                     screen = .groups
                 }

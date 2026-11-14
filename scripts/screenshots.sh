@@ -32,6 +32,14 @@ status=0
 # picture is then the sheet). Calendars lists the rooms, then alice's calendars with Team Calendar's page
 # open. Classroom lists the open classes (and who can create classes under them), then Chemistry's card (its ID in the
 # calendar field), then alice's classes; person-classes is alice's page with her classes read (tab `classes`, on Profile, scrolled to them).
+# classroom-import is Classroom's Plan an Import (tab `import`) with the demo's OneRoster export
+# (Tests/Fixtures/demo/roster) kept for example.com in a temporary store: its counts and its problems for the SIS team.
+# classroom-compare is the same roster compared with the mock's Classroom (tab `compare`, read before the picture): the change
+# list, its kinds, and the hand-over's statement and button (C3, C4); nothing is handed over or run.
+# classroom-clever is Plan an Import with Clever's export kept (Tests/Fixtures/roster/clever, GamGUI's own test files: C5.2).
+# classroom-map is its map step (tab `map`, C5.3): Tests/Fixtures/demo/schedule.csv picked and held for its map (never
+# kept), opening on the demo's saved map "District schedule", with its first three rows read (the third a role word
+# neither list has).
 # Signatures opens on nobody (the demo admin
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side; signatures-staff is everyone in /Staff
@@ -127,6 +135,9 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-calendars-event-delete:calendars:alice@example.com:event-delete:smallest::c_team@group.calendar.google.com \
             classroom:classroom classroom-class:classroom:::::500000000002 classroom-teacher:classroom:alice@example.com \
             narrow-classroom-class:classroom:::smallest::500000000002 \
+            classroom-import:classroom::import narrow-classroom-import:classroom::import:smallest \
+            classroom-compare:classroom::compare:1100x1100 narrow-classroom-compare:classroom::compare:smallest \
+            classroom-clever:classroom::clever classroom-map:classroom::map:1100x1100 narrow-classroom-map:classroom::map:smallest \
             person-classes:users:alice@example.com:classes:1100x940 narrow-person-classes:users:alice@example.com:classes:smallest \
             offboard-classes:offboard:alice@example.com:plan \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \

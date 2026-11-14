@@ -1,0 +1,5 @@
+sourcedId,status,title,courseSourcedId,classCode,schoolSourcedId,termSourcedIds,location
+C1,,Biology P2,CO1,BIO-2,S1,T1,B12
+C2,,Chemistry P3,CO2,CHEM-3,S1,T1,L4
+C3,,Physics P5,CO3,PHYS-5,S1,T1,L7
+C4,tobedeleted,Old Study Hall,CO1,SH-1,S1,T1,Gym
