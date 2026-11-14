@@ -229,12 +229,31 @@ final class RosterCompareTests {
         #expect(!String(describing: record).contains("bob@example.com"), "never a row")
     }
 
+    /// The save panel can stay open across a purge, a new upload or a switch: a change list no longer held is never
+    /// written (review 2026-11-14).
+    @Test func aChangeListNoLongerHeldIsNeverHandedOver() async throws {
+        try await connect()
+        let meta = try keep(try Self.webCase().snapshot)
+        await compare.compare()
+        let held = try #require(compare.held(for: meta.sha256))
+        compare.drop()
+        let destination = scratch.appending(path: "stale.zip")
+        #expect(await compare.handOver(held, including: [], to: destination) == RosterCompare.handOverStale)
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+        await compare.compare()
+        let next = try #require(compare.held(for: meta.sha256))
+        #expect(await compare.handOver(held, including: [], to: destination) == RosterCompare.handOverStale,
+                "an earlier compare of the same roster isn't the one held")
+        #expect(await compare.handOver(next, including: [], to: destination).hasPrefix("Saved the hand-over"))
+    }
+
     @Test func aFlaggedKindNeedsItsTickAndAnUnflaggedTickChangesNothing() async throws {
         let (snapshot, _) = try Self.webCase()
         try await connect()
         let state = try Classroom.State(classes: Self.webClassroom(), unread: [])
         let plan = RosterPlan.plan(snapshot, classroom: state.classes, limits: [(.removeStudent, .init(count: 0, share: 0))])
         let held = RosterCompare.Held(domain: "example.com", generation: setup.generation, sha256: "a1", when: "2026-11-11 18:00 UTC", plan: plan)
+        compare.held = held           // a list made here, held as a compare would hold it
         func names(_ flagged: [RosterPlan.Kind]) async throws -> [String] {
             let destination = scratch.appending(path: "\(UUID().uuidString).zip")
             _ = await compare.handOver(held, including: flagged, to: destination)
@@ -252,6 +271,7 @@ final class RosterCompareTests {
         var plan = RosterPlan.ChangeList(changes: [.init(.archive, "d:gg-OLD", "Old")])
         plan.incomplete = true
         let held = RosterCompare.Held(domain: "example.com", generation: setup.generation, sha256: "a1", when: "2026-11-11 18:00 UTC", plan: plan)
+        compare.held = held           // a list made here, held as a compare would hold it
         let destination = scratch.appending(path: "x.zip")
         #expect(await compare.handOver(held, including: [], to: destination) == RosterHandover.Refusal.incomplete.message)
         #expect(!FileManager.default.fileExists(atPath: destination.path))

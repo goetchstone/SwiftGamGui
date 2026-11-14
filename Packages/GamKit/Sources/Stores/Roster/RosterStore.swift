@@ -13,8 +13,9 @@ import Synchronization
 ///   half-written snapshot never replaces a whole one, and every half-written copy of that domain's file is swept by the
 ///   next save and by Purge. A copy a quit or crash left before its rename has no snapshot to Purge, so every look, and
 ///   the app's launch, also sweeps every half-written copy of any domain (`sweepAbandoned`).
-/// - **For `keepDays` days.** Past them, the next look deletes it, and expiry fails closed: dates it can't read, an import
-///   dated in the future, or a stored expiry past `imported + keepDays` all delete it. **Purge** deletes it at once.
+/// - **For `keepDays` days.** Past them, the next look or the app's launch deletes it, and expiry fails closed: dates
+///   it can't read, an import dated in the future, or a stored expiry past `imported + keepDays` all delete it.
+///   **Purge** deletes it at once.
 /// - **The screen reads its metadata and issues alone, never the people.** The file is a head, then the body:
 ///   `SGGROST1`, the head's length (8 bytes, little-endian), the head as JSON (the metadata, the issue counts and the
 ///   issues kept), then the body as JSON (schools, terms, courses, classes, people, enrolments). `meta` and `issues`
@@ -162,12 +163,21 @@ public struct RosterStore: Sendable {
     public func purge(domain: String) throws(Failure) -> Bool {
         try held(make: false) { folder throws(Failure) in
             guard let folder else { return false }
-            return try purgeLocked(folder, domain)
+            return try purgeLocked(folder, Self.fileName(domain))
         }
     }
 
-    private func purgeLocked(_ folder: Int32, _ domain: String) throws(Failure) -> Bool {
-        let name = Self.fileName(domain)
+    /// Whether the domain has a kept roster, read or not: what's at its name, never followed. A roster that can't be read
+    /// just now still shows Purge (GamGUI's `present`, gamgui#121).
+    public func present(domain: String) -> Bool {
+        (try? held(make: false) { folder throws(Failure) -> Bool in
+            guard let folder else { return false }
+            var info = stat()
+            return fstatat(folder, Self.fileName(domain), &info, AT_SYMLINK_NOFOLLOW) == 0
+        }) ?? false
+    }
+
+    private func purgeLocked(_ folder: Int32, _ name: String) throws(Failure) -> Bool {
         var found = true
         if unlinkat(folder, name, 0) != 0 {               // the snapshot first: nothing found after it may keep it
             guard errno == ENOENT else { throw Failure("Couldn't delete the kept roster (\(String(cString: strerror(errno)))).") }
@@ -179,12 +189,26 @@ public struct RosterStore: Sendable {
         return found
     }
 
-    /// Delete every half-written save, of any domain. Run at launch, and by every look. Every save, in any running copy
-    /// of the app, holds the store (`held`), so none is in progress while this holds it: whatever process a name records
-    /// and however recent the file, it was abandoned.
+    /// Delete every half-written save, of any domain, and every kept roster whose file is past its days (or dated more
+    /// than a day ahead), of any domain: so the date the screen promised holds for a domain nobody opens again (review
+    /// 2026-11-14). By the file's own age, the one date that needs no read: the app never rewrites a roster in place, so
+    /// its mtime is the save, and the stored expiry is `keepDays` after it. One in its days is left for its own look, which
+    /// says what it found (a damaged one deleted silently here would read as "none kept"). Run at launch; every look
+    /// sweeps too. Every save, in any running copy of the app, holds the store (`held`), so none is in progress while
+    /// this holds it: whatever process a name records and however recent the file, it was abandoned.
     public func sweepAbandoned() {
         try? held(make: false) { folder throws(Failure) in
-            if let folder { _ = sweep(folder, matching: { _ in true }) }
+            guard let folder else { return }
+            _ = sweep(folder, matching: { _ in true })
+            let at = now()
+            for name in listing(folder, where: { !$0.hasPrefix(".") && $0.hasSuffix(".roster") }) ?? [] {
+                var info = stat()
+                guard fstatat(folder, name, &info, AT_SYMLINK_NOFOLLOW) == 0, info.st_mode & S_IFMT == S_IFREG else { continue }
+                let saved = Date(timeIntervalSince1970: Double(info.st_mtimespec.tv_sec))
+                if at >= saved.addingTimeInterval(Double(Self.keepDays) * 86_400) || saved > at.addingTimeInterval(86_400) {
+                    _ = try? purgeLocked(folder, name)
+                }
+            }
         }
     }
 
@@ -318,7 +342,11 @@ public struct RosterStore: Sendable {
     private func headLocked(_ folder: Int32?, _ domain: String) throws(Failure) -> Head? {
         guard let folder else { return nil }
         _ = sweep(folder, matching: { _ in true })
-        let name = Self.fileName(domain)
+        return try headLocked(folder, name: Self.fileName(domain))
+    }
+
+    /// `headLocked` for the file `name`, the store already swept.
+    private func headLocked(_ folder: Int32, name: String) throws(Failure) -> Head? {
         var info = stat()
         guard fstatat(folder, name, &info, AT_SYMLINK_NOFOLLOW) == 0 else { return nil }
         guard info.st_mode & S_IFMT == S_IFREG else { throw Failure("The kept roster isn't a plain file, so it isn't read.") }
@@ -331,7 +359,7 @@ public struct RosterStore: Sendable {
             } catch {
                 let saved = Date(timeIntervalSince1970: Double(info.st_mtimespec.tv_sec)), at = now()
                 if at >= saved.addingTimeInterval(Double(Self.keepDays) * 86_400) || saved > at.addingTimeInterval(86_400) {
-                    _ = try purgeLocked(folder, domain)
+                    _ = try purgeLocked(folder, name)
                     throw Failure("The kept roster couldn't be read and was past its \(Self.keepDays) days, so it was deleted. "
                                   + "Upload the export again.")
                 }
@@ -339,18 +367,18 @@ public struct RosterStore: Sendable {
             }
         }
         guard let frame = try readOrAge(from: 0, cap: 16), frame.count == 16, Array(frame.prefix(8)) == Self.magic else {
-            _ = try purgeLocked(folder, domain)
+            _ = try purgeLocked(folder, name)
             throw unreadable
         }
         let length = Int(frame.u64(8) & 0x7FFF_FFFF_FFFF_FFFF)
         guard length <= Self.headCap, let bytes = try readOrAge(from: 16, cap: length), bytes.count == length,
               let decoded = decodeHead(bytes, length: length)
         else {
-            _ = try purgeLocked(folder, domain)
+            _ = try purgeLocked(folder, name)
             throw unreadable
         }
         guard let head = decoded else {
-            _ = try purgeLocked(folder, domain)          // past its days, or dates it can't trust
+            _ = try purgeLocked(folder, name)          // past its days, or dates it can't trust
             return nil
         }
         return head

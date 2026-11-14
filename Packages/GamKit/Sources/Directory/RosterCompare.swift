@@ -60,7 +60,8 @@ public final class RosterCompare {
         let id = UUID()
     }
 
-    private var held: Held?
+    /// The change list held. Set only by a compare that finishes current (internal for tests that hold a list they made).
+    var held: Held?
     private var running: Run?
     private var failure: (tenant: Tenant, message: String)?
     private let setup: SetupModel
@@ -71,6 +72,8 @@ public final class RosterCompare {
 
     /// A compare that found no roster kept.
     public static let noRoster = "No roster is kept to compare. Read the export again."
+    /// A hand-over asked for a change list no longer held: nothing was saved.
+    public static let handOverStale = "The change list changed while the save panel was open, so nothing was saved. Download it again."
 
     public init(setup: SetupModel, access: UserAccess, store: RosterStore, auditURL: URL,
                 now: @escaping @MainActor () -> Date = Date.init) {
@@ -176,6 +179,9 @@ public final class RosterCompare {
     /// Saves the hand-over of `held` as a ZIP at `destination` (0600, whole or not at all), with the flagged kinds the
     /// operator ticked (any other is ignored). A sentence for the screen: what was saved, or why not, in fixed words.
     public func handOver(_ held: Held, including flagged: [RosterPlan.Kind], to destination: URL) async -> String {
+        // The save panel may have stayed open across a switch, a new upload, a purge or a new compare: write only the
+        // change list still held for this tenant and roster (review 2026-11-14).
+        guard self.held(for: held.sha256)?.id == held.id else { return Self.handOverStale }
         let chosen = RosterPlan.Kind.allCases.filter { flagged.contains($0) && held.plan.flag($0) != nil }
         let name = destination.lastPathComponent, plan = held.plan, domain = held.domain, when = held.when
         let auditURL = self.auditURL

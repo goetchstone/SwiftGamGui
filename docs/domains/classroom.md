@@ -5,6 +5,9 @@ information system's roster export on this Mac (Plan an Import), compares that r
 list, and hands the changes over as files someone runs with GAM outside the app (the two-app
 [Classroom plan](https://github.com/goetchstone/gamgui/blob/main/docs/plans/2026-11-11-classroom-and-rostering.md), C1–C4).
 **The app never writes to Classroom.**
+**Parity:** the fixtures come from GamGUI `8f9e766` (2026-11-14), past the five Classroom fixes this port found
+(gamgui#119 to #123: unknown owners with no table, the roster store's sweep, lock and read failures, the compare's
+domain and roster, the map preview's left-out rows); each section's "from GamGUI 07c505d" is where it was ported from.
 
 **Owns invariant(s):** none of its own. It leans on #1 (course IDs and addresses validated, one argv element each), #9
 (the index, teachers and cards kept bounded) and #11 (both builders held to GamGUI's argv), and on #2 by having no write.
@@ -206,9 +209,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   as JSON (metadata, issue counts, the issues kept), then the body (schools … enrolments). **The screen reads the head
   alone** (`meta`, `issues`), never the people; `load` reads the whole, for the compare to come.
 - **Kept `keepDays` (14), and expiry fails closed**: an unreadable date, an import dated more than a day ahead, or a
-  stored expiry past `imported + keepDays` deletes it on the next look. A head whose content can't be read deletes the
+  stored expiry past `imported + keepDays` deletes it on the next look, and **the app's launch deletes any domain's whose file
+  is past its days** (`sweepAbandoned`, by the file's age; a damaged one in its days is left for its own look to say), so the date the screen promises holds for a domain nobody opens again. A head whose content can't be read deletes the
   file and says so; a read the disk failed (an I/O error, not the content) only says so, and never deletes a good
-  roster. Reads and writes retry an interrupted call. No data-protection class is set on the file: FileVault protects it at rest, as SECURITY.md says.
+  roster: the screen says so and **still shows Purge** (`present`, GamGUI's own). Reads and writes retry an interrupted call. No data-protection class is set on the file: FileVault protects it at rest, as SECURITY.md says.
 
 ## Plan an Import (C2.2, C2.4)
 - **Classroom has two parts**, a segmented control above the screen (GamGUI's two tabs are links): Classes and Plan an
@@ -345,10 +349,7 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
 - **The map step** (C5.3): **Save Map As** saves without reading (GamGUI saves only with Read, which also saves here);
   the role words stay as typed while the map takes the words read from them (GamGUI redraws them joined); a column
   named twice in the header is offered once; a held spreadsheet is tied to the tenant generation as well as the domain.
-  Its preview checks an address as the read does before lowercasing it, and says why the read would leave a row out (no
-  class ID, no address, not one address, in the read's order, each once its field is mapped). GamGUI at 07c505d
-  lowercased first, so a Kelvin sign U+212A showed as an ASCII k and "Teacher" for a row `read_mapped` refuses; it
-  matched this in gamgui#123 (found by this port): drop this sentence when the fixtures move past it. Role words, saved map names and columns are compared and picked by
+  Role words, saved map names and columns are compared and picked by
   exact text (Swift's `String ==` takes NFC and NFD spellings as one). Cancel has no Escape shortcut, and Cancel and a
   new pick wait while the map's read runs.
 - **The saved maps file**, as this app's other stores: an unreadable one is moved aside to
@@ -363,14 +364,26 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   be read"); the bytes are bounded by `fstat` before reading (GamGUI's server spools the upload first); a link is refused.
 - **The kept roster's file** is this app's framed JSON, not SQLite; a head that can't be read is said in fixed words,
   without the error's own text.
-- **An unknown-owner 56 with no table is a shortfall.** GamGUI at 07c505d raised the 56 (not-found), which its offboarding
-  read took as "owns none"; here it's `Incomplete`, said, never none. GamGUI matched it in gamgui#119 (found by this port):
-  drop this line when the fixtures move past that commit.
 - **The owned list is the one in hand.** GamGUI's CSV route reads the classes again; here the list the plan shows is saved,
   so the file is exactly what was shown.
+- **The launch ages every kept roster** (GamGUI ages one only when its domain is looked at, so a domain nobody opens keeps
+  its roster past the date shown). A hand-over is written only from the change list still held: one the save panel
+  outlived (a purge, a new upload, a switch, a newer compare) saves nothing and says so.
 - **A stopped read is never kept.** Leaving the screen mid-read cancels it; the store keeps nothing, so the next look reads
   again, and a cancellation is said in fixed words, never Swift's own text.
 - **A person with no address is said** ("Someone (no address shown)", "no address shown" under a name), never a blank row.
+
+## Open, shared with GamGUI (review 2026-11-14; fix in GamGUI first, then regenerate)
+The planner is held to `roster_plan.json`, so these are fixed in GamGUI and come here with the fixtures, never patched
+here alone:
+- **A SIS address that's an alias of an account plans that account's removal.** The directory read keeps primary
+  addresses only, so `jdoe@` (now an alias of `jane.smith@`) is "not an account": it's left out of the teachers, another
+  SIS teacher becomes owner (07), and `jane.smith@` is removed (08) from the class she owned; a student the same (10).
+  The note says such people "aren't added (nor removed)". Fix: read aliases and map each SIS address to its primary, or
+  hold the class's removals and owner change while any of its SIS addresses isn't an account.
+- **The risk check's bases are too wide.** Teacher removals are measured against teachers plus students (`enrolled`), so
+  dropping every co-teacher of 400 classes (~4%) isn't held back; archived managed classes, which can't be archived or
+  removed from, count in `managed` and `enrolled` too, so each year dilutes both shares.
 
 ## Gotchas / mock-lies traps
 - **A failed side of a roster can read as empty, and nothing here can tell.** GAM's `_getCourseAliasesMembers` swallows

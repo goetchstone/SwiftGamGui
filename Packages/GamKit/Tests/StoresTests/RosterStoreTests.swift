@@ -90,6 +90,53 @@ struct RosterStoreTests {
         #expect(folder.names().isEmpty, "past its days by its own file's age, it's deleted")
     }
 
+    /// The date the screen promises holds for a domain nobody opens again: the launch's sweep ages every kept roster as
+    /// its own look would (review 2026-11-14), and leaves one in its days.
+    @Test func theLaunchSweepDeletesARosterPastItsDaysForAnyDomain() throws {
+        let folder = Folder(), clock = Clock()
+        let store = RosterStore(root: folder.store, now: { clock.now })
+        // The sweep ages by the file's own time, so each file's is the clock's at its save.
+        func save(_ domain: String) throws {
+            try store.save(Self.snapshot(), domain: domain, label: "x", sha256: "")
+            try FileManager.default.setAttributes([.modificationDate: clock.now],
+                                                  ofItemAtPath: folder.store.appending(path: RosterStore.fileName(domain)).path)
+        }
+        try save("example.com")
+        clock.now += Double(RosterStore.keepDays) * 86_400 - 1
+        try save("other.example.org")
+        store.sweepAbandoned()
+        #expect(folder.names() == [RosterStore.fileName("example.com"), RosterStore.fileName("other.example.org")].sorted())
+        clock.now += 1
+        store.sweepAbandoned()
+        #expect(folder.names() == [RosterStore.fileName("other.example.org")], "only the one past its days")
+    }
+
+    /// A damaged roster in its days is left for its own look, which deletes it and says so: the launch never turns it
+    /// silently into "none kept".
+    @Test func theLaunchSweepLeavesADamagedRosterInItsDaysToItsLook() throws {
+        let folder = Folder(), store = RosterStore(root: folder.store)
+        try store.save(Self.snapshot(), domain: "example.com", label: "x", sha256: "")
+        try Data("not a roster".utf8).write(to: folder.store.appending(path: RosterStore.fileName("example.com")))
+        store.sweepAbandoned()
+        #expect(folder.names() == [RosterStore.fileName("example.com")])
+        #expect(throws: RosterStore.Failure.self) { try store.meta(domain: "example.com") }
+        #expect(folder.names().isEmpty)
+    }
+
+    /// A kept roster that can't be read just now is still there for Purge (GamGUI's `present`, gamgui#121).
+    @Test func aRosterThatCantBeReadIsStillPresentForPurge() throws {
+        let folder = Folder(), store = RosterStore(root: folder.store)
+        #expect(!store.present(domain: "example.com"))
+        try store.save(Self.snapshot(), domain: "example.com", label: "x", sha256: "")
+        let file = folder.store.appending(path: RosterStore.fileName("example.com"))
+        chmod(file.path, 0)
+        defer { chmod(file.path, 0o600) }
+        #expect(throws: RosterStore.Failure.self) { try store.meta(domain: "example.com") }
+        #expect(store.present(domain: "example.com") && !store.present(domain: "other.example.org"))
+        #expect(try store.purge(domain: "example.com"))
+        #expect(!store.present(domain: "example.com") && folder.names().isEmpty)
+    }
+
     @Test func purgeDeletesItAtOnce() throws {
         let folder = Folder(), store = RosterStore(root: folder.store)
         try store.save(Self.snapshot(), domain: "example.com", label: "x", sha256: "")
@@ -165,7 +212,8 @@ struct RosterStoreTests {
         #expect(other >= 0)
         defer { close(other) }
         #expect(flock(other, LOCK_EX) == 0)
-        try Data("ann.lee@example.com".utf8).write(to: folder.store.appending(path: temporary))
+        // A whole roster, as another copy writes one: the launch's sweep reads what lands, and deletes junk.
+        try Data(contentsOf: folder.store.appending(path: name)).write(to: folder.store.appending(path: temporary))
         let task = Task.detached {
             switch action {
             case "save": try store.save(snapshot, domain: "example.com", label: "y", sha256: "")

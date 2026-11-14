@@ -30,6 +30,8 @@ final class RosterKeeper {
     private(set) var kinds: [RosterImport.Kind] = []
     /// The kept roster couldn't be read.
     private(set) var storeProblem: String?
+    /// A roster is kept for this domain though it couldn't be read: Purge still shows (GamGUI's `present`).
+    private(set) var keptUnread = false
     /// Why the last pick wasn't kept, under the picker; the last good roster stays.
     private(set) var refusal: String?
     /// What the last action did: purged, or kept without its audit record.
@@ -66,6 +68,10 @@ final class RosterKeeper {
     }
 
     static let moved = "GAM GUI switched to another domain while the file was read, so nothing was kept. Pick it again on its domain."
+    /// A save that finished after the switch: kept, and audited, for the domain it was picked on.
+    static func keptElsewhere(_ domain: String) -> String {
+        "GAM GUI switched to another domain while the file was saved. It was kept for \(domain); it shows there."
+    }
 
     /// Compare with Classroom (C3) and the hand-over (C4): its change list is of the roster kept now, so a new one or a
     /// purge drops it.
@@ -114,13 +120,15 @@ final class RosterKeeper {
                 return .failure(RosterStore.Failure.unknown)
             }
         }.value
+        // Asked only after a failure: a roster that failed to read may still be there, and Purge must reach it.
+        let stillThere = if case .failure = found { await Task.detached { store.present(domain: domain) }.value } else { false }
         guard domain == self.domain else { return }
         switch found {
         case .success(let kept):
-            (meta, issues, storeProblem) = (kept?.0, kept?.1, nil)
+            (meta, issues, storeProblem, keptUnread) = (kept?.0, kept?.1, nil, false)
             kinds = RosterImport.kinds(kept?.1)
         case .failure(let failure):
-            (meta, issues, kinds, storeProblem) = (nil, nil, [], failure.message)
+            (meta, issues, kinds, storeProblem, keptUnread) = (nil, nil, [], failure.message, stillThere)
         }
     }
 
@@ -154,6 +162,7 @@ final class RosterKeeper {
         }.value
         guard domain == self.domain, generation == self.generation else {
             refusal = Self.moved
+            announce(Self.moved)
             return
         }
         switch outcome {
@@ -185,12 +194,14 @@ final class RosterKeeper {
             }
         }.value
         guard domain == self.domain, generation == self.generation else {
-            refusal = Self.moved
+            if case .success = kept { refusal = Self.keptElsewhere(domain) } else { refusal = Self.moved }
+            announce(refusal ?? "")
             return
         }
         switch kept {
         case .failure(let failure):
             refusal = failure.message
+            announce(failure.message)
         case .success(let auditProblem):
             compare.drop()
             (refusal, notice) = (nil, auditProblem)
@@ -210,6 +221,7 @@ final class RosterKeeper {
         }.value
         guard domain == self.domain, generation == self.generation else {
             refusal = Self.moved
+            announce(Self.moved)
             return
         }
         switch header {
@@ -245,6 +257,7 @@ final class RosterKeeper {
         guard held.domain == domain, held.generation == generation else {
             // Switched away from while it was read: keep nothing, and say so.
             refusal = Self.moved
+            announce(Self.moved)
             return nil
         }
         // Dropped by Purge or replaced while it was read (Cancel and a new pick wait for the read): keep nothing; what
@@ -275,6 +288,7 @@ final class RosterKeeper {
         isPurging = true
         (refusal, notice, justRead) = (nil, nil, false)
         held = nil
+        compare.drop()          // before the purge, as GamGUI: a failed purge leaves no change list of a roster asked gone
         defer { isPurging = false }
         let store = self.store, auditURL = self.auditURL
         let gone = await Task.detached { () -> Result<(Bool, String?), RosterStore.Failure> in
@@ -291,8 +305,8 @@ final class RosterKeeper {
         switch gone {
         case .failure(let failure):
             refusal = failure.message
+            announce(failure.message)
         case .success(let (deleted, auditProblem)):
-            compare.drop()
             notice = (deleted ? "The kept roster was deleted from this Mac." : "There was no roster kept to delete.")
                 + (auditProblem.map { " \($0)" } ?? "")
             announce(notice ?? "")
@@ -448,6 +462,10 @@ struct RosterImportView: View {
                 RosterMapView(roster: roster, step: step).id(held.id)
             } else if let problem = roster.storeProblem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                if roster.keptUnread {
+                    Divider()
+                    purge
+                }
             } else if let meta = roster.meta {
                 summary(meta)
                 problems
@@ -459,6 +477,8 @@ struct RosterImportView: View {
                 Text("No roster is kept on this Mac. Choose your SIS's export to read it.").foregroundStyle(.secondary)
             }
         }
+        // "Saved N rows" belongs to the roster it was saved from: a switch, a new upload or a purge clears it.
+        .onChange(of: "\(roster.domain ?? "")|\(roster.meta?.importedAt ?? "")") { saved = nil }
     }
 
     private func summary(_ meta: RosterStore.Meta) -> some View {
