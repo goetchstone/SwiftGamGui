@@ -143,6 +143,7 @@ struct RosterMappedParityTests {
         for (row, want) in zip(rows, expected) {
             var got = JSONObject()
             for field in RosterColumnMap.Field.allCases { got[field.rawValue] = .string(row[field]) }
+            got["left"] = .string(row.leftOut.map { "Left out: \($0)" } ?? "")    // the screen's words, as GamGUI's row
             got["as"] = .string(row.readAs)
             #expect(JSONValue.object(got) == want, "\(name): \(got) vs \(want)")
         }

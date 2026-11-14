@@ -12,7 +12,8 @@ This plan's slices map onto the first: 1 → 3.1, 2 → 3.2, 3 → 2.9 and 4.5, 
 the fixtures refreshed from GamGUI, is done (GamGUI `487be35`; failure log 2026-11-11). Classroom C1.1 to C1.6 are ported
 (C1.4 to C1.6, a person's classes, the classes a leaver owns and who can create classes, from GamGUI `07c505d`, 2026-11-13;
 [classroom.md](../domains/classroom.md)), and so are C2 to C5.3 from the same commit (2026-11-13): the roster import
-(OneRoster 1.1/1.2, Clever, a mapped spreadsheet), the compare and the hand-over files. C5.4 (pulling from a SIS's API)
+(OneRoster 1.1/1.2, Clever, a mapped spreadsheet), the compare and the hand-over files. The fixtures since come from GamGUI `8f9e766`, past
+the Classroom fixes this port found (gamgui#119 to #123), and the Swift side matches each. C5.4 (pulling from a SIS's API)
 stays later in both apps. The rest of this file is the record.
 
 The app stays free and is built for the operator's own use, so this isn't a race. A slice earns its place by being used

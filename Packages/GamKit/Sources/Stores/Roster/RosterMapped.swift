@@ -230,7 +230,8 @@ public enum RosterMapped {
     public static let previewRows = 3
 
     /// One row as the map reads it, for the map step: each field's text and what the role word means ("teacher",
-    /// "student" or ""). `isAddress` is false when the address isn't one plain address (or is empty). `leftOut` is why
+    /// "student" or "", always "" for a row left out). `isAddress` is false when the address isn't one plain address (or
+    /// is empty). `leftOut` is why
     /// the read would leave the row out, by the read's own checks in its order ("no class ID", "no address", "not one
     /// address"), each only once its field is mapped: a half-filled map doesn't flag every row (GamGUI #123,
     /// `_left_out`). The step says it whatever the role reads as.
@@ -259,18 +260,19 @@ public enum RosterMapped {
             try Roster.rowValues(Roster.base(name), bytes, required: [], used: columns, layout: layout,
                                  raw: { $0.utf8.elementsEqual(map.email.utf8) }, caps: caps) { _, values in
                 var fields = mapped(map, columns, values)
-                // Checked as the read checks it, then lowercased: lowercasing first would show a Kelvin sign (U+212A) as
-                // an ASCII k, a valid address the read refuses (GamGUI lowercases first; a listed deviation).
+                // Checked as the read checks it, as given: lowercasing first would show a Kelvin sign (U+212A) as an
+                // ASCII k, a valid address the read refuses. Lowercased, and its role read, only for a row the read keeps
+                // (GamGUI's `_left_out`, gamgui#123).
                 let given = PythonText.strip(fields[.email] ?? "")
                 let isAddress = Roster.isOneAddress(given)
-                fields[.email] = isAddress ? given.lowercased() : given
                 let leftOut: String? = if !map.classID.isEmpty, (fields[.classID] ?? "").isEmpty { "no class ID" }
                     else if map.email.isEmpty { nil }
                     else if given.isEmpty { "no address" }
                     else if !isAddress { "not one address" }
                     else { nil }
-                out.append(PreviewRow(fields: fields, readAs: map.role(of: fields[.role] ?? ""), isAddress: isAddress,
-                                      leftOut: leftOut))
+                fields[.email] = leftOut == nil ? given.lowercased() : given
+                out.append(PreviewRow(fields: fields, readAs: leftOut == nil ? map.role(of: fields[.role] ?? "") : "",
+                                      isAddress: isAddress, leftOut: leftOut))
                 return out.count < count
             }
             return out

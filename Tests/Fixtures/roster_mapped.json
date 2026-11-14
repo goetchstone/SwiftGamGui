@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "07c505d",
+  "gamgui_commit": "8f9e766",
   "generator": "scripts/gen_fixtures.py"
  },
  "read_clever": [
@@ -3140,7 +3140,7 @@
    "uploads": [
     [
      "clever.zip",
-     "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"
+     "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"
     ]
    ],
    "caps": {},
@@ -3688,7 +3688,7 @@
    "uploads": [
     [
      "clever.zip",
-     "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"
+     "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"
     ]
    ],
    "caps": {},
@@ -3939,7 +3939,7 @@
    "uploads": [
     [
      "clever.zip",
-     "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"
+     "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"
     ]
    ],
    "caps": {},
@@ -4992,6 +4992,114 @@
    "expect": ""
   },
   {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[0] #1",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "header": [
+    "Section ID",
+    "Course Title",
+    "Term",
+    "Email Address",
+    "User Type",
+    "Lead"
+   ],
+   "expect": ""
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[0] #2",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "header": [
+    "Section ID",
+    "Course Title",
+    "Term",
+    "Email Address",
+    "User Type",
+    "Lead"
+   ],
+   "expect": ""
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[1] #1",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "header": [
+    "Section ID",
+    "Course Title",
+    "Term",
+    "Email Address",
+    "User Type",
+    "Lead"
+   ],
+   "expect": ""
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[1] #2",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "header": [
+    "Section ID",
+    "Course Title",
+    "Term",
+    "Email Address",
+    "User Type",
+    "Lead"
+   ],
+   "expect": ""
+  },
+  {
    "name": "test_roster_web map step #1",
    "map": {
     "class_id": "Section ID",
@@ -5449,6 +5557,7 @@
       "email": "t@x.edu",
       "role": "teacher",
       "primary": "",
+      "left": "",
       "as": "teacher"
      }
     ]
@@ -5483,6 +5592,7 @@
       "email": "t@x.edu",
       "role": "Staff",
       "primary": "yes",
+      "left": "",
       "as": "teacher"
      },
      {
@@ -5492,6 +5602,7 @@
       "email": "s@x.edu",
       "role": "student",
       "primary": "",
+      "left": "",
       "as": "student"
      },
      {
@@ -5501,6 +5612,7 @@
       "email": "a@x.edu",
       "role": "aide",
       "primary": "",
+      "left": "",
       "as": ""
      }
     ]
@@ -5558,7 +5670,133 @@
       "email": "t@x.edu",
       "role": "",
       "primary": "",
+      "left": "",
       "as": ""
+     }
+    ]
+   }
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_a_row_with_no_class_id_once_that_column_is_mapped #1",
+   "file": "s.csv",
+   "body": "U2VjdGlvbiBJRCxDb3Vyc2UgVGl0bGUsVGVybSxFbWFpbCBBZGRyZXNzLFVzZXIgVHlwZSxMZWFkCixNYXRoLEZhbGwsdEB4LmVkdSx0ZWFjaGVyLAo=",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "n": 3,
+   "expect": {
+    "rows": [
+     {
+      "class_id": "",
+      "class_name": "Math",
+      "section": "Fall",
+      "email": "t@x.edu",
+      "role": "teacher",
+      "primary": "",
+      "left": "Left out: no class ID",
+      "as": ""
+     }
+    ]
+   }
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[0] #1",
+   "file": "s.csv",
+   "body": "U2VjdGlvbiBJRCxDb3Vyc2UgVGl0bGUsVGVybSxFbWFpbCBBZGRyZXNzLFVzZXIgVHlwZSxMZWFkCkMxLE1hdGgsRmFsbCzihKppbUBleGFtcGxlLmNvbSx0ZWFjaGVyLApDMSxNYXRoLEZhbGwsb2tAeC5lZHUsdGVhY2hlciwK",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "n": 3,
+   "expect": {
+    "rows": [
+     {
+      "class_id": "C1",
+      "class_name": "Math",
+      "section": "Fall",
+      "email": "\u212aim@example.com",
+      "role": "teacher",
+      "primary": "",
+      "left": "Left out: not one address",
+      "as": ""
+     },
+     {
+      "class_id": "C1",
+      "class_name": "Math",
+      "section": "Fall",
+      "email": "ok@x.edu",
+      "role": "teacher",
+      "primary": "",
+      "left": "",
+      "as": "teacher"
+     }
+    ]
+   }
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[1] #1",
+   "file": "s.csv",
+   "body": "U2VjdGlvbiBJRCxDb3Vyc2UgVGl0bGUsVGVybSxFbWFpbCBBZGRyZXNzLFVzZXIgVHlwZSxMZWFkCkMxLE1hdGgsRmFsbCwsdGVhY2hlciwKQzEsTWF0aCxGYWxsLG9rQHguZWR1LHRlYWNoZXIsCg==",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "n": 3,
+   "expect": {
+    "rows": [
+     {
+      "class_id": "C1",
+      "class_name": "Math",
+      "section": "Fall",
+      "email": "",
+      "role": "teacher",
+      "primary": "",
+      "left": "Left out: no address",
+      "as": ""
+     },
+     {
+      "class_id": "C1",
+      "class_name": "Math",
+      "section": "Fall",
+      "email": "ok@x.edu",
+      "role": "teacher",
+      "primary": "",
+      "left": "",
+      "as": "teacher"
      }
     ]
    }
@@ -5592,6 +5830,7 @@
       "email": "ann@example.com",
       "role": "Teacher",
       "primary": "yes",
+      "left": "",
       "as": "teacher"
      },
      {
@@ -5601,6 +5840,7 @@
       "email": "bo@example.com",
       "role": "Student",
       "primary": "",
+      "left": "",
       "as": "student"
      },
      {
@@ -5610,6 +5850,7 @@
       "email": "cy@example.com",
       "role": "Student",
       "primary": "",
+      "left": "",
       "as": "student"
      }
     ]
@@ -5644,6 +5885,7 @@
       "email": "",
       "role": "Teacher",
       "primary": "yes",
+      "left": "",
       "as": "teacher"
      },
      {
@@ -5653,6 +5895,7 @@
       "email": "",
       "role": "Student",
       "primary": "",
+      "left": "",
       "as": "student"
      },
      {
@@ -5662,6 +5905,7 @@
       "email": "",
       "role": "Student",
       "primary": "",
+      "left": "",
       "as": "student"
      }
     ]
@@ -6536,6 +6780,188 @@
    },
    "expect": {
     "error": "s.csv has a field longer than 64 KB on line 2. That isn't a normal export."
+   }
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[0] #1",
+   "file": "s.csv",
+   "body": "U2VjdGlvbiBJRCxDb3Vyc2UgVGl0bGUsVGVybSxFbWFpbCBBZGRyZXNzLFVzZXIgVHlwZSxMZWFkCkMxLE1hdGgsRmFsbCzihKppbUBleGFtcGxlLmNvbSx0ZWFjaGVyLApDMSxNYXRoLEZhbGwsb2tAeC5lZHUsdGVhY2hlciwK",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "expect": {
+    "snapshot": {
+     "source": "Spreadsheet (column map)",
+     "schools": [],
+     "terms": [
+      [
+       "section:Fall",
+       "Fall",
+       "",
+       "",
+       ""
+      ]
+     ],
+     "courses": [],
+     "classes": [
+      [
+       "C1",
+       "Math",
+       "",
+       "",
+       [
+        "section:Fall"
+       ],
+       "",
+       ""
+      ]
+     ],
+     "people": [
+      [
+       "ok@x.edu",
+       "teacher",
+       "ok@x.edu",
+       "",
+       ""
+      ]
+     ],
+     "enrollments": [
+      [
+       "C1",
+       "ok@x.edu",
+       "teacher",
+       false
+      ]
+     ],
+     "issue_counts": [
+      [
+       "bad_email",
+       1
+      ]
+     ],
+     "issue_sample": [
+      [
+       "bad_email",
+       "s.csv",
+       2,
+       "C1",
+       "\u212aim@example.com"
+      ]
+     ],
+     "others": 0,
+     "counts": {
+      "schools": 0,
+      "terms": 1,
+      "courses": 0,
+      "classes": 1,
+      "teachers": 1,
+      "students": 0,
+      "enrollments": 1
+     }
+    }
+   }
+  },
+  {
+   "name": "test_roster_mapped.test_the_preview_leaves_out_what_the_read_refuses[1] #1",
+   "file": "s.csv",
+   "body": "U2VjdGlvbiBJRCxDb3Vyc2UgVGl0bGUsVGVybSxFbWFpbCBBZGRyZXNzLFVzZXIgVHlwZSxMZWFkCkMxLE1hdGgsRmFsbCwsdGVhY2hlciwKQzEsTWF0aCxGYWxsLG9rQHguZWR1LHRlYWNoZXIsCg==",
+   "map": {
+    "class_id": "Section ID",
+    "class_name": "Course Title",
+    "section": "Term",
+    "email": "Email Address",
+    "role": "User Type",
+    "primary": "Lead",
+    "teacher_words": [
+     "teacher",
+     "staff"
+    ],
+    "student_words": [
+     "student"
+    ]
+   },
+   "expect": {
+    "snapshot": {
+     "source": "Spreadsheet (column map)",
+     "schools": [],
+     "terms": [
+      [
+       "section:Fall",
+       "Fall",
+       "",
+       "",
+       ""
+      ]
+     ],
+     "courses": [],
+     "classes": [
+      [
+       "C1",
+       "Math",
+       "",
+       "",
+       [
+        "section:Fall"
+       ],
+       "",
+       ""
+      ]
+     ],
+     "people": [
+      [
+       "ok@x.edu",
+       "teacher",
+       "ok@x.edu",
+       "",
+       ""
+      ]
+     ],
+     "enrollments": [
+      [
+       "C1",
+       "ok@x.edu",
+       "teacher",
+       false
+      ]
+     ],
+     "issue_counts": [
+      [
+       "no_email",
+       1
+      ]
+     ],
+     "issue_sample": [
+      [
+       "no_email",
+       "s.csv",
+       2,
+       "C1",
+       ""
+      ]
+     ],
+     "others": 0,
+     "counts": {
+      "schools": 0,
+      "terms": 1,
+      "courses": 0,
+      "classes": 1,
+      "teachers": 1,
+      "students": 0,
+      "enrollments": 1
+     }
+    }
    }
   },
   {
