@@ -14,7 +14,7 @@ import GamEngine
 ///   command says `noescapechar true`: GAM reads its CSVs with a backslash escape by default, which would misread a name
 ///   holding one.
 /// - **Every value is a whole argument.** `gam csv` replaces an argument that is exactly `~field` with that field (grammar
-///   1430), so a value reaches GAM as one argument and is never split. No `~~field~~` inside a larger argument.
+///   1434), so a value reaches GAM as one argument and is never split. No `~~field~~` inside a larger argument.
 /// - **A class is named by its alias** (`<CourseID> ::= <Number>|d:<CourseAlias>`), so a class created in step 3 is found
 ///   by later steps without its numeric ID.
 /// - **The README's lines are shell-quoted** (`shlex.join`): an unquoted `~field` is a home-folder lookup in zsh.

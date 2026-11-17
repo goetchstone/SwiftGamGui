@@ -61,9 +61,9 @@ native design retires one. Four questions remain open (§14).
 
 Today GamGUI writes the service-account private key (`oauth2service.json`, which can impersonate
 anyone) to a temp `GAMCFGDIR` for every call (invariant 4). The vendored GAM grammar has
-`gam create [gcpserviceaccount|signjwtserviceaccount]` (`GamCommands.txt` line 1534). With signJwt,
+`gam create [gcpserviceaccount|signjwtserviceaccount]` (`GamCommands.txt` line 1538). With signJwt,
 the service account's tokens are signed by Google's IAM API, so **that private key never exists on
-the Mac**. GAM also supports keys held on a YubiKey (`gam rotate sakey yubikey …`, line 1531).
+the Mac**. GAM also supports keys held on a YubiKey (`gam rotate sakey yubikey …`, line 1536).
 
 - **Do:**
   1. Read GAM's docs for the signJwt flow: the APIs to enable, the role granting Token Creator on the
@@ -262,7 +262,7 @@ only point at a held preview, so nothing runs a form.
 - `print shareddrives` is runnable.
 - The auto-promoted `print filelist` runs with only its User slot. The read builder drops optional
   groups, so it can't add `select shareddrive <SharedDriveName>` (`GamCommands.txt` lines 1195–1196,
-  1256), and it would list that user's whole Drive instead.
+  1261), and it would list that user's whole Drive instead.
 
 The native Builder adds a curated "**List a shared drive's files**" read: a member or admin, plus a
 shared drive picked from `print shareddrives`. The exact argv is checked against the grammar and run
