@@ -52,11 +52,12 @@ with the two that failed and Retry.
 | ![Signatures set for everyone in an org unit: Who, /Staff and the units inside it, suspended accounts left out, the new signature as the first of them gets it, and Review for 14 People…](screenshots/signatures-staff.png) | ![The confirm for setting the signature for 14 people in /Staff: the first ten named and Show all 14, the new signature as one of them would get it, the warning that Gmail keeps no copy, and Replace 14 Signatures](screenshots/signatures-staff-confirm.png) | ![Signatures after a run for /Staff: applied to 12 of 14 users, Failed (2), and Retry the 2 That Failed…](screenshots/signatures-staff-result.png) |
 
 Classroom, read only: the open classes, found by name, section, room or a teacher's address, and a class's card
-with its teachers and students.
+with its teachers and students. Plan an Import reads a SIS's OneRoster export on this Mac and shows what it holds and
+what the SIS team should fix.
 
-| Classroom | A class |
-|---|---|
-| ![Classroom: the open classes, each with its section, room, owner and state](screenshots/classroom.png) | ![A class's card: its section, room, state, owner and class ID, a link to it in Classroom, and its teachers and students](screenshots/classroom-class.png) |
+| Classroom | A class | Plan an Import |
+|---|---|---|
+| ![Classroom: the open classes, each with its section, room, owner and state](screenshots/classroom.png) | ![A class's card: its section, room, state, owner and class ID, a link to it in Classroom, and its teachers and students](screenshots/classroom-class.png) | ![Plan an Import: the export picked and what to export, beside the kept roster's counts and its problems by kind](screenshots/classroom-import.png) |
 
 | A person's classes | At offboarding |
 |---|---|

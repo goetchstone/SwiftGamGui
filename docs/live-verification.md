@@ -100,7 +100,10 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 - Calendars (new 2026-11-13): find an event by title or days (each day as an instant with its offset); one event read again
   before its delete (a deleted one read back `cancelled`); a group's members read before a share; a calendar's data owner
   (`calendars <c> print settings fields id,dataowner formatjson`) before its delete.
-- Classroom (new 2026-11-11): the class index, a teacher's classes and a class's card. Can't run here: no Education domain.
+- Classroom (new 2026-11-11 to 11-13): the class index, a teacher's classes and a class's card; a person's classes, the
+  owned classes at offboarding, who can create classes; Plan an Import (OneRoster 1.1/1.2, Clever, a mapped spreadsheet),
+  Compare with Classroom and the hand-over files. Can't run here: no Education domain. A tester's report comes in on the
+  "I tried it on a real domain" issue form.
 - A person's phones and computers on their Security tab (new 2026-11-07; Incident's check runs the same two reads).
 - ChangeCore: **C2**, the refusal of a change that would cut off the connected admin (Suspend on its own page; the
   Builder's suspend of an alias of it). Nothing is written either way.
