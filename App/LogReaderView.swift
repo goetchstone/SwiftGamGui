@@ -494,7 +494,7 @@ struct LogReaderView: View {
                 }
             }
             if reading.toDo.isEmpty {
-                Text(reading.statuses.isEmpty ? "Nothing to do that these logs show: no account the attacker touched."
+                Text(reading.statuses.isEmpty ? "Nothing to do that these logs show: no account was touched from a suspect address."
                      : "Nothing left that these logs can show.").foregroundStyle(.secondary)
             }
             ForEach(reading.toDo) { task in
@@ -558,7 +558,10 @@ struct LogReaderView: View {
     @ViewBuilder private func report(_ reading: LogReading.Reading, key: String) -> some View {
         if let incident {
             // The summary's draft: the model told this report's numbers and the reading's facts, never the logs' text.
-            let report = report(of: reading, key: key, incident), unavailable = LogExplainer.unavailable
+            // Logs that show no attacker leave the model nothing to draft from: it isn't offered, and the sheet says why.
+            let report = report(of: reading, key: key, incident)
+            let unavailable = LogExplainer.untold(reading).map { $0 + " The on-device model has no story to draft from." }
+                ?? LogExplainer.unavailable
             let numbers = report.counts.map { (label: $0.label, number: $0.number) }
             IncidentReportView(report: report, inputs: incident, draft: unavailable != nil ? nil : {
                 try await LogExplainer.summary(reading, numbers: numbers, when: { $0.formatted(date: .abbreviated, time: .shortened) })
@@ -636,9 +639,13 @@ struct LogReaderView: View {
 
     @ViewBuilder private func explanation(_ reading: LogReading.Reading) -> some View {
         let current = memory.explained.flatMap { $0.reading == reading ? $0.state : nil }
-        if let unavailable = LogExplainer.unavailable {
+        // Only logs with an account the attacker touched have a story for the model to tell: given none, it made one up
+        // (2026-11-17). Code says what they show instead.
+        if let untold = LogExplainer.untold(reading) {
+            Label(untold, systemImage: "sparkles").foregroundStyle(.secondary)
+        } else if let unavailable = LogExplainer.unavailable {
             Label(unavailable, systemImage: "sparkles").foregroundStyle(.secondary)
-        } else if !reading.statuses.isEmpty || !reading.findings.isEmpty {
+        } else {
             HStack {
                 Text("Have the on-device model sum this up in plain words: what happened, what's done, what's most urgent. Nothing "
                      + "leaves this Mac.")

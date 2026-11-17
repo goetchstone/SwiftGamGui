@@ -46,7 +46,8 @@ struct IncidentReportView: View {
     let report: IncidentReport
     let inputs: ReportInputs
     /// The on-device model's draft of the summary from this report's facts, and how many of its sentences were dropped for a
-    /// number the facts don't hold; nil when the model can't answer now (`modelUnavailable` says why).
+    /// number the facts don't hold; nil when the model can't answer now, or the logs show no attacker to tell of
+    /// (`modelUnavailable` says why).
     let draft: (() async throws -> (text: String, dropped: Int))?
     let modelUnavailable: String?
     @State private var shown: IncidentReport.Count?

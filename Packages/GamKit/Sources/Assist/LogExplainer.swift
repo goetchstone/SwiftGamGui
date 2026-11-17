@@ -261,8 +261,23 @@ public enum LogExplainer {
         return (found + (rest.isEmpty ? [] : [rest])).filter { !$0.isEmpty }
     }
 
-    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`.
+    /// Code's own words for logs with no account the attacker touched, or nil when there is one (a status: signed in to, tried,
+    /// changed, or its password typed on a phishing site), which is the story the model tells. Told of "a security incident"
+    /// with nothing in it, the model made one up, with an attacker, dates and a lock (2026-11-17). A suspect address with no
+    /// account touched (a pull by it that read only Gmail, say) is said as that, never as no attacker.
+    public static func untold(_ reading: LogReading.Reading) -> String? {
+        guard reading.statuses.isEmpty else { return nil }
+        return reading.findings.contains { $0.kind == .suspectAddress } ? suspectOnly : noAttacker
+    }
+
+    static let noAttacker = "These logs show no sign of an attacker: no account was signed in to, tried or changed from a suspect address."
+    static let suspectOnly = "These logs show a suspect address, but no account signed in to, tried or changed from it: what they show of it "
+        + "is in the findings and the to-do list."
+
+    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`. Logs
+    /// with no account the attacker touched aren't given to it: the answer is code's `untold` sentence alone.
     static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
+        if let untold = untold(reading) { return Explanation(overview: untold, done: "", left: []) }
         let answer = try await model.answer(instructions: instructions, prompt: facts)
         let known = Set(reading.toDo.map(\.id))
         func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
