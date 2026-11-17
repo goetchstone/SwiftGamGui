@@ -42,17 +42,44 @@ struct AuthenticatedRunnerTests {
         #expect(try store.read(.oauth2Service, for: example) == Data("{\"placeholder\": \"oauth2service\"}".utf8))
     }
 
+    /// A gam that says it has started, then refreshes its token only once the test lets it: a handshake, not a sleep, so a
+    /// busy runner can't put the test's change before the call (failure log 2026-11-14, as 2026-11-13's stop timing).
+    final class HeldGam {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "held-gam-\(UUID().uuidString)")
+        var script: URL { folder.appending(path: "gam") }
+        var started: URL { folder.appending(path: "started") }
+        var go: URL { folder.appending(path: "go") }
+
+        init() throws {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            // Bounded: it refreshes after 30 s even without the word, so a broken test fails rather than hangs.
+            let body = "#!/bin/sh\n: > '\(started.path)'\ni=0\nwhile [ ! -e '\(go.path)' ] && [ $i -lt 600 ]; do sleep 0.05; "
+                + "i=$((i+1)); done\nprintf 'refreshed\\n' > \"$GAMCFGDIR/oauth2.txt\"\n"
+            try Data(body.utf8).write(to: script)
+            chmod(script.path, 0o755)
+        }
+        deinit { try? FileManager.default.removeItem(at: folder) }
+
+        /// Returns once gam is running, its credentials loaded.
+        func waitUntilStarted() async throws {
+            for _ in 0..<600 where !FileManager.default.fileExists(atPath: started.path) {
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            #expect(FileManager.default.fileExists(atPath: started.path), "gam started")
+        }
+
+        func letItFinish() throws { try Data().write(to: go) }
+    }
+
     @Test func aDomainRemovedMidCallStaysRemoved() async throws {
         // A gam that refreshes its token only after the operator has removed the domain.
-        let script = FileManager.default.temporaryDirectory.appending(path: "slow-gam-\(UUID().uuidString)")
-        try Data("#!/bin/sh\nsleep 0.6\nprintf 'refreshed\\n' > \"$GAMCFGDIR/oauth2.txt\"\n".utf8).write(to: script)
-        chmod(script.path, 0o755)
-        defer { try? FileManager.default.removeItem(at: script) }
+        let gam = try HeldGam()
         let vault = Vault(store: store)
-        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
+        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: gam.script), vault: vault, runtimeDirectory: base)
         async let call = authenticated.run(GamRead(["info"]), as: example)
-        try await Task.sleep(for: .milliseconds(250))
+        try await gam.waitUntilStarted()
         try await vault.remove(example)
+        try gam.letItFinish()
         _ = try await call
         #expect(try await vault.domains().isEmpty)
         #expect(try store.read(.oauth2, for: example) == nil)
@@ -60,15 +87,13 @@ struct AuthenticatedRunnerTests {
 
     @Test func aDomainReImportedMidCallKeepsItsNewToken() async throws {
         // PR #8's review: a load's write-back replaced a re-imported token with the old admin's.
-        let script = FileManager.default.temporaryDirectory.appending(path: "slow-gam-\(UUID().uuidString)")
-        try Data("#!/bin/sh\nsleep 0.6\nprintf 'refreshed\\n' > \"$GAMCFGDIR/oauth2.txt\"\n".utf8).write(to: script)
-        chmod(script.path, 0o755)
-        defer { try? FileManager.default.removeItem(at: script) }
+        let gam = try HeldGam()
         let vault = Vault(store: store)
-        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
+        let authenticated = AuthenticatedRunner(runner: GamRunner(binary: gam.script), vault: vault, runtimeDirectory: base)
         async let call = authenticated.run(GamRead(["info"]), as: example)
-        try await Task.sleep(for: .milliseconds(250))
+        try await gam.waitUntilStarted()
         try store.write(Data("new-admin-token".utf8), as: .oauth2, for: example)
+        try gam.letItFinish()
         _ = try await call
         #expect(try store.read(.oauth2, for: example) == Data("new-admin-token".utf8))
     }
