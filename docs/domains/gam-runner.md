@@ -20,7 +20,8 @@ an allowlisted environment, a timeout, and capped output capture.
   - `children` tracks every live `gam` for `stopAll()` at quit.
 - `GamEnvironment.swift` — `allowlist` (GamGUI's `ENV_ALLOWLIST`, exact names) and `mockOnly` (debug
   builds only); `GAMCFGDIR` and `GAM_NO_UPDATE_CHECK=1` are set by the runner, never inherited.
-- `GamBinary.swift` — the bundled `gam7/gam`; `SWIFTGAMGUI_GAM_BINARY` honoured in debug builds only.
+- `GamBinary.swift` — the bundled `gam7/gam`, whatever the environment says. `SWIFTGAMGUI_GAM_BINARY` reaches only
+  the debug demo and spikes, through `AppServices.mockGam`, which holds it to the mock script (failure-log 2026-11-18).
 - `GamVersion.swift` — the pin, rewritten by `scripts/bump_gam.py`.
 - `scripts/gam_oracle.py` — what the vendored build itself does, asked by `gen_fixtures.py`: its exit-code
   table, its CSV settings and writer, and its signature functions. GAM is frozen with its own Python, and its
@@ -123,7 +124,8 @@ an allowlisted environment, a timeout, and capped output capture.
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
   2026-09-23. Here both the parent and `extra` are filtered.
-- A binary override honoured by the shipped app would hand the credentials to any binary — same entry.
+- A binary override honoured by the shipped app would hand the credentials to any binary — same entry. Here the
+  debug build honoured it on the real-Keychain path until 2026-11-18; `WriteRouteTests` now allows one reader.
 - 120 s killed a domain-wide sweep: callers pass `domainWideTimeout` (1 h) for `all users` calls.
 
 ## Builders
