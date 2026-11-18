@@ -50,10 +50,24 @@ jobs:
           persist-credentials: false
       - name: Toolchain
         run: sw_vers && xcodebuild -version && swift --version
+      # Before GAM is vendored, on purpose: a test needing the grammar reads what gen_fixtures.py wrote of it. A hung test
+      # (about 6 minutes on main) is sampled at 15, so the log names the frame, and fails here by name (2026-11-14).
       - name: Package tests (strict mock gam, GamGUI parity fixtures, snapshot spike)
+        timeout-minutes: 20
         run: |
           mkdir -p "$RUNNER_TEMP/attachments"
-          swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments"
+          swift test --package-path Packages/GamKit --attachments-path "$RUNNER_TEMP/attachments" &
+          tests=$!
+          ( sleep 900
+            for pid in $(pgrep -f 'xctest|swiftpm-testing-helper|PackageTests'); do
+              echo "::group::stacks of $pid (the tests ran past 15 minutes)"; sample "$pid" 3 2>&1 | head -400; echo "::endgroup::"
+            done ) &
+          watchdog=$!
+          status=0
+          wait "$tests" || status=$?
+          pkill -P "$watchdog" 2>/dev/null || true
+          kill "$watchdog" 2>/dev/null || true
+          exit "$status"
       - name: Vendor the pinned GAM (fails closed on a checksum mismatch)
         run: |
           ./scripts/fetch_gam.sh

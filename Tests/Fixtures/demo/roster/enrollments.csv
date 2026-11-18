@@ -1,0 +1,10 @@
+sourcedId,status,classSourcedId,schoolSourcedId,userSourcedId,role,primary
+E1,,C1,S1,U1,teacher,true
+E2,,C1,S1,U3,student,false
+E3,,C1,S1,U4,student,false
+E4,,C2,S1,U2,teacher,true
+E5,,C2,S1,U3,student,false
+E6,,C3,S1,U1,teacher,true
+E7,,C3,S1,U4,student,false
+E8,,C3,S1,U5,student,false
+E9,,C9,S1,U3,student,false

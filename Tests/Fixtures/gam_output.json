@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "07c505d",
+  "gamgui_commit": "8f9e766",
   "generator": "scripts/gen_fixtures.py"
  },
  "dialect": {
@@ -16,7 +16,7 @@
  },
  "cases": [
   {
-   "stdout": "GAM 7.52.01 - mock\n",
+   "stdout": "GAM 7.52.03 - mock\n",
    "records": "[]"
   },
   {

@@ -378,15 +378,47 @@ public final class UserAccess {
         return await classroom(read, in: pinned, about: "class \(courseID)").map { Classroom.roster($0, courseID: courseID) }
     }
 
+    /// Every class in Classroom with its aliases and its people, for the roster compare (plan 2026-11-11 C3; GamGUI's
+    /// `classroom_state`): two domain-wide GAM runs, one after the other, active, not-yet-accepted and archived classes alike
+    /// (an archived class GamGUI made still carries its alias), paired by course ID (`Classroom.state`). Read only.
+    public func classroomState(in pinned: Domain? = nil) async -> Result<Classroom.State, Problem> {
+        guard let courses = try? GamCommands.printCourses(states: Classroom.compareStates, aliases: true),
+              let participants = try? GamCommands.printAllCourseParticipants(states: Classroom.compareStates) else {
+            return .failure(Problem(summary: Classroom.notRun))
+        }
+        let classes: [GamOutput.Record]
+        switch await classroom(courses, in: pinned, about: "", timeout: GamRunner.domainWideTimeout) {
+        case .success(let records): classes = records
+        case .failure(let problem): return .failure(problem)
+        }
+        switch await classroom(participants, in: pinned, about: "", timeout: GamRunner.domainWideTimeout) {
+        case .success(let people):
+            // Pairing a district's classes and rosters is real work: not on the main actor.
+            return .success(await Task.detached { Classroom.state(courses: classes, participants: people) }.value)
+        case .failure(let problem):
+            return .failure(problem)
+        }
+    }
+
+    /// Every account's primary address, lowercased, read fresh (`print users`, as the directory reads it): what the roster
+    /// compare may add. Nil when it couldn't be read; the compare then says addresses weren't checked (GamGUI's).
+    public func directoryAddresses(in pinned: Domain? = nil) async -> [String]? {
+        let read = GamCommands.printUsers(fields: GamCommands.cacheFields)
+        let found = await readNow(read, in: pinned, timeout: GamRunner.domainWideTimeout) { $0 }
+        guard case .success(let stdout) = found else { return nil }
+        return await Task.detached { GamOutput.records(stdout).map { PythonText.lower(GamUser(record: $0).primaryEmail) } }.value
+    }
+
     /// A Classroom read, its failure in words: a missing scope points at Setup, not-found names what Classroom doesn't know
     /// (`about`: a teacher's address in quotes, or "class <id>"; empty for the index). Only fixed sentences and GAM's own
     /// scrubbed message reach the screen, never a Swift error's text (GamGUI's rule: a refusal is fixed words).
     /// `notFoundIsNone` reads GAM's not-found as no records (the classes someone owns).
-    private func classroom(_ read: GamRead, in pinned: Domain?, about: String,
-                           notFoundIsNone: Bool = false) async -> Result<[GamOutput.Record], Problem> {
+    private func classroom(_ read: GamRead, in pinned: Domain?, about: String, notFoundIsNone: Bool = false,
+                           timeout: Duration = GamRunner.defaultTimeout) async -> Result<[GamOutput.Record], Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
         do {
-            return .success(try Classroom.records(try await runner.run(read, as: domain, extraEnvironment: environment), argv: read.argv))
+            return .success(try Classroom.records(try await runner.run(read, as: domain, timeout: timeout, extraEnvironment: environment),
+                                                  argv: read.argv))
         } catch let error as GamError {
             if Classroom.needsScope(error) { return .failure(Problem(summary: Classroom.scopeNote)) }
             if error.kind == .notFound, notFoundIsNone { return .success([]) }

@@ -8,7 +8,7 @@ import Testing
 struct NativeArgvTests {
     static let phish = try! GamCommands.MessageID(validating: "<CAPh1sh+Notice=0001@mail.example.com>")
 
-    /// A temporary password is never one of GAM's words in `password`'s place (5850-5853), so GAM always sets it as
+    /// A temporary password is never one of GAM's words in `password`'s place (5854-5857), so GAM always sets it as
     /// given; and the command shown and audited masks it.
     @Test func aTemporaryPasswordIsNeverGAMsKeywordAndIsMasked() {
         let words: Set<String> = ["random", "uniquerandom", "blocklogin", "prompt", "uniqueprompt"]

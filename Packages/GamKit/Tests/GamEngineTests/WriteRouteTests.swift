@@ -194,6 +194,60 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["@testable"]).isEmpty)
     }
 
+    /// The binary override reaches only the strict mock (failure-log 2026-11-18): `GamBinary` names it, and in the app only
+    /// `AppServices.mockGam`, a debug-only check that it is the mock script, reads it. Its binary runs only in the demo
+    /// (an in-memory Vault) and the spike (a throwaway Keychain service), and the real path, `make`, builds its runner from
+    /// `GamBinary.locate()` alone. A second reader, or a `make` that fell back to the mock, could hand the real Keychain's
+    /// credentials to a program the environment chose.
+    @Test func onlyTheMockCheckReadsTheBinaryOverride() throws {
+        let needles = ["overrideVariable", "\"SWIFTGAMGUI_GAM_BINARY\""]
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: needles)
+                == ["Packages/GamKit/Sources/GamEngine/GamBinary.swift"])
+        #expect(try Self.files(in: "App", matching: needles) == ["App/AppServices.swift"])
+        let binary = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources").first { $0.path.hasSuffix("GamEngine/GamBinary.swift") })
+        #expect(binary.lines.filter { $0.contains("overrideVariable") }.count == 1, "GamBinary declares the name and reads nothing")
+
+        let app = try Self.swiftFiles(in: "App")
+        /// Each line of the app that holds one of `needles`, as (file, the line, the function it sits in, the compiler directive
+        /// governing it: the nearest `#if`, `#else`, `#elseif` or `#endif` above it, trimmed).
+        func sites(_ needles: [String]) -> [(path: String, line: String, function: String, directive: String)] {
+            app.flatMap { file in
+                file.lines.indices.filter { i in needles.contains { file.lines[i].contains($0) } }.map { i in
+                    let above = file.lines[..<i]
+                    let function = above.last { $0.contains("func ") } ?? ""
+                    let directive = above.map { $0.trimmingCharacters(in: .whitespaces) }
+                        .last { line in ["#if", "#else", "#elseif", "#endif"].contains { line.hasPrefix($0) } } ?? ""
+                    return (file.path, file.lines[i], function, directive)
+                }
+            }
+        }
+        let reads = sites(needles)
+        #expect(reads.count == 1)
+        for read in reads {
+            #expect(read.function.contains("static func mockGam("))
+            #expect(read.directive == "#if DEBUG", "mockGam is debug-only")
+        }
+        // Who runs the mock: the demo and the spike, both debug-only; never `make`.
+        let mockUses = sites(["mockGam("]).filter { !$0.line.contains("func mockGam(") }
+        #expect(Set(mockUses.map { "\($0.path) \($0.function.trimmingCharacters(in: .whitespaces))" }) == [
+            "App/AppServices.swift private static func demo() -> AppServices {",
+            "App/Spikes.swift static func vault() async {",
+        ])
+        // Who builds a runner: `make` (from `locate()`), the demo and the spike (from `mockGam()`).
+        let runners = sites(["GamRunner("])
+        #expect(Set(runners.map { "\($0.path) \($0.function.trimmingCharacters(in: .whitespaces))" }) == [
+            "App/AppServices.swift static func make() -> AppServices {",
+            "App/AppServices.swift private static func demo() -> AppServices {",
+            "App/Spikes.swift static func vault() async {",
+        ])
+        let services = try #require(app.first { $0.path == "App/AppServices.swift" })
+        let make = try #require(services.lines.firstIndex { $0.contains("static func make() -> AppServices {") })
+        let makeEnd = try #require(services.lines[make...].firstIndex { $0 == "    }" })
+        let makeBody = services.lines[make...makeEnd]
+        #expect(makeBody.contains { $0.contains("GamBinary.locate()") })
+        #expect(!makeBody.contains { $0.contains("mockGam") }, "the real path never falls back to the mock")
+    }
+
     /// The scan must see the code it guards, or every check above passes vacuously.
     @Test func theScanSeesTheRunnerAndTheApp() throws {
         let sources = try Self.swiftFiles(in: "Packages/GamKit/Sources")
