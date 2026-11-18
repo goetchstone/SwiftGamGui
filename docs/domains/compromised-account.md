@@ -538,7 +538,10 @@ account read as one on a later day. Code decides what's done and what's left; th
   on what's most urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task. Tried on the real
   export (2026-10-22): the first prompt's answer listed one account's steps and repeated the to-do list; the time-ordered
   story gave a readable account, and a vague "undo what was left" task let it claim a passkey that wasn't there, so the
-  leftover task is three kinds.
+  leftover task is three kinds. **It is asked only when an account was touched from a suspect address** (a status).
+  Told of "a security incident" with empty sections, it made one up, with an attacker, dates and a lock (failure-log
+  2026-11-17). Otherwise code says `LogExplainer.untold` where Explain was and on the report's Draft: no sign of an attacker,
+  or a suspect address with no account touched (a pull by it that read only Gmail). Held by `LogReadingTests.logsShowingNoAttackerAreNeverToldAsAnIncident`.
 - **What may never count as done** (security review 2026-10-22): a lock from before the account's attack (an account
   phished through Chrome only is attacked from when Chrome saw its password, and with no attack time nothing is a lock); a
   suspension later undone; an admin step done through an account the attacker held at the time (statuses are read twice to

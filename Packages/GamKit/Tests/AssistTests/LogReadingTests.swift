@@ -1121,6 +1121,40 @@ struct LogReadingTests {
         #expect(explanation.left == [LogExplainer.Explanation.Point(text: "Secure carol first.", cites: ["T1"])])
     }
 
+    /// Logs that show no attacker are said so by code, and the model isn't asked to tell their story. Asked anyway, the
+    /// on-device model made one up: for three office sign-ins and one Chrome breach warning it wrote "The attacker accessed the
+    /// system on 2023-10-05 by exploiting a vulnerability in Chrome", and a lock the next day (2026-11-17). The stub answers as
+    /// it did; none of it may reach the screen or the report's draft.
+    @Test func logsShowingNoAttackerAreNeverToldAsAnIncident() async throws {
+        let signIns = (1...3).map { Self.event("login", "user\($0)@example.com", "login_success", ip: Self.office, at: $0) }
+        let breach = Self.event("chrome", "user2@example.com", "PASSWORD_BREACH", flagged: true, at: 9, ["URL": "https://shop.example.net"])
+        let made = Stub(answer: LogExplainer.Answer(
+            overview: "The attacker accessed the system on 2023-10-05 by exploiting a vulnerability in Chrome, targeting user2@example.com.",
+            done: "We have isolated the affected account.",
+            left: [LogExplainer.AnswerPoint(text: "Further review of access logs is required to confirm no additional compromised accounts.",
+                                            cites: ["T1"])]))
+        let quiet = "These logs show no sign of an attacker: no account was signed in to, tried or changed from a suspect address."
+        let warned = LogReading.read(signIns + [breach])
+        #expect(warned.statuses.isEmpty && warned.findings.map(\.kind) == [.breachedPassword], "a finding, so Explain was offered")
+        #expect(LogExplainer.untold(warned) == quiet && LogExplainer.untold(LogReading.read(Self.incident)) == nil)
+        let explanation = try await LogExplainer.explain(warned, using: made)
+        #expect(explanation == LogExplainer.Explanation(overview: quiet, done: "", left: []))
+        let summary = try await LogExplainer.summary(LogReading.read(signIns), numbers: [("Accounts secured", 0)], using: made)
+        #expect(summary.text == quiet && summary.dropped == 0)
+        // A pull by the attacker's address that read only Gmail: a suspect address and its email, no account touched. Said
+        // as that, never as no attacker, and still not told by the model.
+        let mailOnly = LogReading.read([Self.event("gmail", "carol@example.com", "delivery", ip: Self.attacker, at: 30,
+                                                   ["event_info.mail_event_type": "1", "message_info.rfc2822_message_id": "<phish-1@mail.example.com>"])],
+                                       context: LogReading.Context(pulledBy: Self.attacker))
+        #expect(mailOnly.statuses.isEmpty && mailOnly.findings.contains { $0.kind == .suspectAddress } && !mailOnly.toDo.isEmpty)
+        let suspect = try await LogExplainer.explain(mailOnly, using: made)
+        #expect(suspect.overview == "These logs show a suspect address, but no account signed in to, tried or changed from it: what they "
+                + "show of it is in the findings and the to-do list." && suspect.done.isEmpty && suspect.left.isEmpty)
+        // An account touched from a suspect address is the app's own fact of an attacker: then the model words it.
+        let incident = try await LogExplainer.explain(LogReading.read(Self.incident), using: made)
+        #expect(incident.overview.hasPrefix("The attacker accessed"))
+    }
+
     /// The model never sees the text the logs carry (a subject, a URL), which an attacker writes.
     @Test func thePromptHoldsNoTextTheAttackerWrote() {
         let prompt = LogExplainer.prompt(LogReading.read(Self.incident + [
