@@ -1,24 +1,15 @@
-import Assist
 import Directory
 import GamEngine
 import SwiftUI
 
 /// Reports' connected apps and agents, a check of the whole tenant: every account's app grants (suspended accounts aside),
 /// read with GAM when asked (`ConnectedAppsRead`), counted by code (`ConnectedApps.Summary`) and listed AI assistants and
-/// agents first, then the broadest access, then the most people, each with who granted it. On request the on-device model
-/// words the counts (`AppsExplainer`), never given an app's name. It reads only and reaches no change: its own file, apart
-/// from anything that can run gam (invariant 10, `WriteRouteTests`).
+/// agents first, then the broadest access, then the most people, each with who granted it. It reads only and reaches no
+/// change.
 struct ConnectedAppsPanel: View {
     let reads: ConnectedAppsRead
     /// A domain is connected: without one there is nothing to read.
     let connected: Bool
-    @State private var explained: (facts: AppsExplainer.Facts, state: Explaining)?
-
-    enum Explaining {
-        case asking
-        case done(String)
-        case failed(String)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -66,7 +57,6 @@ struct ConnectedAppsPanel: View {
         return Form {
             Section {
                 ForEach(Array(summary.sentences.enumerated()), id: \.offset) { _, sentence in Text(sentence) }
-                explanation(summary)
             } header: {
                 Text("Summary").accessibilityAddTraits(.isHeader)
             } footer: {
@@ -94,59 +84,6 @@ struct ConnectedAppsPanel: View {
                 Text("\(title) (\(apps.count))").accessibilityAddTraits(.isHeader)
             }
         }
-    }
-
-    @ViewBuilder private func explanation(_ summary: ConnectedApps.Summary) -> some View {
-        let facts = Self.facts(summary)
-        let current = explained.flatMap { $0.facts == facts ? $0.state : nil }
-        if let unavailable = AppsExplainer.unavailable {
-            Label(unavailable, systemImage: "sparkles").foregroundStyle(.secondary)
-        } else if summary.apps > 0 {
-            HStack {
-                Text("Have the on-device model explain these counts in plain words. It's given the counts only, never an app's name. "
-                     + "Nothing leaves this Mac.")
-                    .foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                if case .asking? = current { ProgressView().controlSize(.small) }
-                Button("Explain") { explain(facts) }
-                    .disabled({ if case .asking? = current { return true } else { return false } }())
-                    .accessibilityLabel("Explain the summary with the on-device model")
-            }
-        }
-        switch current {
-        case .done(let overview)?:
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Written by the on-device model from the counts above: check it against them.", systemImage: "sparkles")
-                    .font(.callout).foregroundStyle(.secondary)
-                Text(overview.isEmpty ? "The model's sentences didn't match the counts, so none is shown." : overview)
-            }
-            .accessibilityElement(children: .combine)
-        case .failed(let why)?:
-            Label("The model couldn't explain the summary: \(why)", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
-        case .asking?, nil:
-            EmptyView()
-        }
-    }
-
-    private func explain(_ facts: AppsExplainer.Facts) {
-        explained = (facts, .asking)
-        Task {
-            do {
-                let overview = try await AppsExplainer.explain(facts)
-                if explained?.facts == facts { explained = (facts, .done(overview)) }
-            } catch {
-                if explained?.facts == facts { explained = (facts, .failed(OnDeviceModel.failure(error))) }
-            }
-        }
-    }
-
-    /// The summary as the model may see it: its counts, the kinds of access by their raw values.
-    static func facts(_ summary: ConnectedApps.Summary) -> AppsExplainer.Facts {
-        AppsExplainer.Facts(apps: summary.apps, people: summary.people, ai: summary.ai, aiPeople: summary.aiPeople,
-                            broad: summary.broad, aiBroad: summary.aiBroad, onePerson: summary.onePerson,
-                            onePersonAI: summary.onePersonAI, onePersonBroad: summary.onePersonBroad,
-                            areas: Dictionary(uniqueKeysWithValues: summary.areas.compactMap { kind, count in
-                                AppsExplainer.Area(rawValue: kind.rawValue).map { ($0, count) }
-                            }))
     }
 }
 
