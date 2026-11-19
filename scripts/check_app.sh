@@ -8,11 +8,17 @@
 # - the embedded gam: exactly upstream GAM's three entitlements (listed here and in
 #   Signing/gam.entitlements, so a change to either fails), and it runs as the pinned version.
 # It checks how the app is assembled and signed, not where gam came from: provenance is
-# scripts/fetch_gam.sh's pin and scripts/embed_gam.sh's checks. It checks the ad-hoc build CI makes; a
-# team build also carries the entitlements Config/GamGUI-Team.entitlements claims.
-# Usage: scripts/check_app.sh path/to/GamGUI.app
+# scripts/fetch_gam.sh's pin and scripts/embed_gam.sh's checks. Without --team it checks the ad-hoc
+# build CI makes (no entitlements at all); with --team, a team-signed daily build (the GamGUI Daily
+# scheme), whose entitlements must be exactly TEAM_ENTITLEMENTS. In both, get-task-allow fails by name.
+# Usage: scripts/check_app.sh path/to/GamGUI.app [--team]
 set -euo pipefail
-APP="${1:?usage: check_app.sh path/to/GamGUI.app}"
+APP="${1:?usage: check_app.sh path/to/GamGUI.app [--team]}"
+MODE="${2:-}"
+case "$MODE" in "" | --team) ;; *) echo "check_app: unknown option $MODE" >&2; exit 2 ;; esac
+# What a team-signed Release build carries: the access group Config/GamGUI-Team.entitlements claims, plus
+# the application and team identifiers the provisioning adds (read off a GamGUI Daily build, 2026-11-19).
+TEAM_ENTITLEMENTS="com.apple.application-identifier com.apple.developer.team-identifier keychain-access-groups"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLIST="$APP/Contents/Info.plist"
 GAM="$APP/Contents/Resources/gam7/gam"
@@ -31,7 +37,14 @@ keys() {
 codesign --verify --deep --strict "$APP" || fail "the app or its nested code doesn't verify"
 runtime "$APP" || fail "the app: hardened runtime is off"
 got="$(keys "$APP")" || fail "the app's entitlements can't be read"
-[ -z "$got" ] || fail "the app carries entitlements [$got]; it should carry none"
+case " $got " in *" com.apple.security.get-task-allow "*)
+  fail "the app is debuggable (get-task-allow): another process could read its credentials. Build the GamGUI Daily scheme" ;;
+esac
+if [ "$MODE" = --team ]; then
+  [ "$got" = "$TEAM_ENTITLEMENTS" ] || fail "the app carries entitlements [$got]; a team build should carry [$TEAM_ENTITLEMENTS]"
+else
+  [ -z "$got" ] || fail "the app carries entitlements [$got]; it should carry none"
+fi
 
 # Every Mach-O, wherever it is: Resources are sealed as data, so an unsigned library there would verify
 # with the app and then fail to load (or load, under disable-library-validation, unsigned).
@@ -95,4 +108,5 @@ STRINGS="$APP/Contents/Resources/en.lproj/InfoPlist.strings"
 [ "$(plutil -extract CFBundleDisplayName raw -o - "$STRINGS")" = "GAM GUI" ] || fail "localized display name"
 [ "$(plutil -extract CFBundleSpokenName raw -o - "$PLIST")" = "Gam Gooey" ] || fail "spoken name"
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$PLIST")" = "27.0" ] || fail "minimum macOS"
-echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); no app entitlements; $count signed Mach-O files; $version)"
+ents="no app entitlements"; [ "$MODE" = --team ] && ents="team entitlements only, not debuggable"
+echo "check_app: ok ($(plutil -extract CFBundleIdentifier raw -o - "$PLIST"); $ents; $count signed Mach-O files; $version)"

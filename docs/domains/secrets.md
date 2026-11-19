@@ -59,6 +59,13 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
 - `AuthenticatedRunner.swift`: Vault, then `EphemeralConfig`, then `GamRunner`, then write back a
   refreshed `oauth2.txt`, then wipe — on every path, including failure, timeout and cancellation.
 
+## Which build holds credentials (2026-11-19, plan 2026-11-18 S4)
+The daily app is the **GamGUI Daily** scheme: Release, team-signed, no `get-task-allow`, so no same-user process can
+attach and read credentials from its memory. `scripts/check_app.sh <app> --team` checks a team build's entitlements are
+exactly `TEAM_ENTITLEMENTS` and fails `get-task-allow` by name. A Debug build (the **GamGUI** scheme) carries
+`get-task-allow`; Home says so whenever the real services run in one (`BuildSafety`, `BuildExposure.warns`), and blocks
+nothing. Debug switches (demo, snapshot, spikes) exist only in Debug builds.
+
 ## Gotchas
 - **A locked Mac refuses every Keychain write and read** of these `WhenUnlocked` items with
   `errSecInteractionNotAllowed` (-25308). Even an item with no access control can't be added. Seen

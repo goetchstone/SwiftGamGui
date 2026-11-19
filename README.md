@@ -101,6 +101,8 @@ You need macOS 27 and Xcode 27.
    Without this file the app still builds, but it can't save credentials to the Keychain.
 4. Open `SwiftGamGui.xcodeproj` and build the **GamGUI** scheme once (⌘B), so Xcode sets up signing. After that,
    `xcodebuild -project SwiftGamGui.xcodeproj -scheme GamGUI build` works too.
+5. For daily use, pick the **GamGUI Daily** scheme and Run: a Release build nothing can attach to.
+   `scripts/check_app.sh <the built app> --team` checks it. The **GamGUI** scheme (Debug) is for breakpoints.
 
 A free Personal Team's signing expires after 7 days, so rebuild at least once a week; your stored credentials survive
 it. There are no downloadable builds yet: macOS blocks a downloaded app unless it's signed with a paid Developer ID and
