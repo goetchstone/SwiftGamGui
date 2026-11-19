@@ -58,7 +58,7 @@ let only `requires` stop a step; it may not tolerate failures).
    not the connected admin, or nothing runs. Stop between steps. Then the account is **checked again**, and ticks on
    what's gone are dropped. Preview the Rest ticks the lock steps that succeeded as done.
 
-## Grammar (GAM 7.52.03) and source (GAM 7.48.30)
+## Grammar (GAM 7.52.04) and source (GAM 7.48.30)
 | Command | Grammar | Source |
 |---|---|---|
 | `user P print forward` | 8032 | printShowForward: `User,forwardEnabled,forwardTo,disposition` |
