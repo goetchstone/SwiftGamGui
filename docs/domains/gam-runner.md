@@ -120,6 +120,16 @@ an allowlisted environment, a timeout, and capped output capture.
   already went, and an activity read's auth error now prints Google's message; the mock's `report users` refusal is
   that path already, and its activity reports model no refusal. The reviewed dry run holds: the only Gmail hunk renames
   exceptions in `_showSaveAttachments`.
+- **Bump to 7.52.04 (2026-11-19):** attested and pinned by `bump_gam.py`, fixtures from the GamGUI clone at `8f9e766`.
+  The grammar is byte for byte 7.52.03's, so no citation moved. GAM's notes: `create drivefileacl` handles a 409
+  Conflict. The source also catches Conflict in the other sharing writes (copy and move permissions, `todrive`
+  shares), drops `teamDrivePermissionDetails` from `print`/`show drivefileacls` CSV rows, passes `adminaccess` to the
+  file-name lookup, and fixes `info drivefileacl`'s count. Nothing here builds a sharing command or reads that column;
+  the Builder's browse catalog shows those reads as GAM prints them. The reviewed dry run holds: the last hunk is
+  `infoDriveFileACLs`, ~6,100 lines before the Gmail functions. **The roster fixtures churn on every generation:**
+  GamGUI's roster code stamps each zip with the day it was written, so `roster.json` and `roster_mapped.json` change
+  with each run; this bump's zips differ from 8f9e766's first generation only in their date fields (checked by
+  blanking them).
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log
