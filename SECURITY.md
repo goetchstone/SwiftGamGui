@@ -56,9 +56,9 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   coverage-guided fuzzing of the builders, the output parsers and the error masking).
 - **The environment can't steer `gam`.** It gets an allowlisted set of variables only, and the app and
   the bundled `gam` are signed with the hardened runtime.
-- **Only read-only commands become runnable automatically**; every write is curated, and every write
-  will run through one guarded, audited path with a preview it can't diverge from. (No write is
-  wired yet: the app reads only.)
+- **Only read-only commands become runnable automatically**; every write is curated, and runs through
+  one guarded, audited path: a preview it can't diverge from, a confirmation (a typed word for a
+  destructive one) and an audit record.
 - **A model or Siri only drafts a preview**, except the operator's optional, off-by-default "Just do
   it" list of simple single-target actions, which never includes deletes, offboarding, passwords,
   sign-outs, delegation, forwarding, transfers, sharing or bulk changes.

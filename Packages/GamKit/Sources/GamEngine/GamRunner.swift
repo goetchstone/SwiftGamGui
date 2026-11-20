@@ -202,7 +202,8 @@ public struct GamRunner: Sendable {
             }
             kill(pid, SIGTERM)
             group.addTask {
-                try? await Task.sleep(for: terminationGrace)
+                // Cancelled means the child exited within the grace: its pid may already be reaped and reused, so no SIGKILL.
+                do { try await Task.sleep(for: terminationGrace) } catch { return .killed }
                 kill(pid, SIGKILL)
                 return .killed
             }
