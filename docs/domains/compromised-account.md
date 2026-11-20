@@ -544,7 +544,9 @@ account read as one on a later day. Code decides what's done and what's left; th
   "name@", is dropped, and the screen says how many. Greedy and capped at 700 tokens. A suspect address must have an
   address's shape (`LogReading.isAddress`) before it reaches a moment's words. Held by
   `LogReadingTests.theModelsSentencesStandOnlyOnTheFacts`, `whatsDoneIsCodesOwn` and `aSuspectAddressHasAnAddressesShape`
-  (plan 2026-11-18, A3). Tried on the real
+  (plan 2026-11-18, A3). Its failures are said in words, never its raw answer and never "Try again" where that can't
+  help (`OnDeviceModel.failure`, A4). Size, measured: a 40-account day is 3,183 of 8,192 tokens, 3,883 with the answer's
+  cap; the prompt's caps bound it (A4). Tried on the real
   export (2026-10-22): the first prompt's answer listed one account's steps and repeated the to-do list; the time-ordered
   story gave a readable account, and a vague "undo what was left" task let it claim a passkey that wasn't there, so the
   leftover task is three kinds. **It is asked only when an account was touched from a suspect address** (a status).

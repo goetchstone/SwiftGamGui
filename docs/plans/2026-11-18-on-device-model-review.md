@@ -1,6 +1,7 @@
 # Plan: the on-device model and security, reviewed (and what to do next)
 
-**Status (2026-11-20): S1 (#169), S4 (#173), R1 (#174), A1 (#175), A2 (#176) done; A3 in review. Next: A4.** Asked for: check the repo, its security, its usefulness and its use of
+**Status (2026-11-20): S1 (#169), S4 (#173), R1 (#174), A1 (#175), A2 (#176), A3 (#179) done; A4, S3 (#177) and S2
+(#178) in review. Next: the operator's by-hand S2 and S4 checks.** Asked for: check the repo, its security, its usefulness and its use of
 Apple's on-device model; say where the model is used wrongly and where else it could be used; write it so a smaller model
 can carry out each task. Read against the macOS 27 SDK on this Mac (Xcode 27.2, `FoundationModels.swiftinterface`), not
 from memory. Nothing here was run against the real model: where a finding is read from code and not reproduced, it says so.
@@ -234,6 +235,10 @@ only steps 3 and 4 and write that down.
 
 **Done when:** suite green; by hand, `wave` answers instead of throwing, or A2 showed it never threw and steps 1 and 2
 were skipped on purpose.
+
+**As built (2026-11-20):** steps 3 and 4 only. Measured, a 40-account day with 151 to-do items is 3,183 tokens with the
+instructions and schema, so steps 1 and 2 were skipped; the by-hand suite keeps that shape (`big`). Its answer mixed up
+which accounts were locked: failure log 2026-11-17, its A4 section.
 
 ### R1 — Retire the connected-apps explainer · *small* · branch `chore/retire-apps-explainer`
 

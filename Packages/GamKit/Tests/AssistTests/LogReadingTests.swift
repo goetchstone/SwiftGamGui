@@ -68,8 +68,22 @@ struct LogReadingTests {
     }
 
     /// Each shape by name, for the real model's suite.
+    /// A heavy day, to measure the prompt against the model's context (plan 2026-11-18, A4): 40 accounts, each signed in to
+    /// from its own address Google called suspicious and each sending an email from it; a quarter locked, a quarter half
+    /// locked (the password reset only), the rest not yet.
+    static let big: [LogReading.Event] = (1...40).flatMap { n -> [LogReading.Event] in
+        let account = "user\(n)@example.com", ip = "198.51.100.\(n)"
+        var events = [event("login", account, "suspicious_login", ip: ip, flagged: true, at: 2 * n),
+                      event("login", account, "login_success", ip: ip, flagged: true, at: 2 * n + 1),
+                      event("gmail", account, "delivery", ip: ip, at: 2 * n + 1,
+                            ["event_info.mail_event_type": "1", "message_info.rfc2822_message_id": "<phish-\(n)@mail.example.com>"])]
+        if n % 4 == 1 { events += [done("CHANGE_PASSWORD", to: account, at: 100 + n), done("RESET_SIGNIN_COOKIES", to: account, at: 101 + n)] }
+        if n % 4 == 2 { events.append(done("CHANGE_PASSWORD", to: account, at: 100 + n)) }
+        return events
+    }
+
     static let shapes: [String: [LogReading.Event]] = ["incident": incident, "triedOnly": triedOnly, "notLocked": notLocked,
-                                                       "halfLocked": halfLocked, "wave": wave]
+                                                       "halfLocked": halfLocked, "wave": wave, "big": big]
 
     /// Tried only: each account a status the attacker never got into, none locked, and still told by the model.
     @Test func triedOnlyIsTriedOnly() {
@@ -1416,14 +1430,17 @@ struct LogReadingTests {
 /// holds only what holds today: an answer, except for the wave, whose failure is printed, and no cite the model made up.
 @Suite("On-device model", .enabled(if: ProcessInfo.processInfo.environment["SWIFTGAMGUI_MODEL"] == "1" && LogExplainer.unavailable == nil))
 struct OnDeviceModelTests {
-    @Test(arguments: ["incident", "triedOnly", "notLocked", "halfLocked", "wave"])
+    @Test(arguments: ["incident", "triedOnly", "notLocked", "halfLocked", "wave", "big"])
     func theModelWordsEachShape(_ name: String) async throws {
         let reading = LogReading.read(try #require(LogReadingTests.shapes[name]))
         // Dates as the Log Reader writes them, so the check meets what the screen sends.
         let when: @Sendable (Date) -> String = { $0.formatted(date: .abbreviated, time: .shortened) }
         let prompt = LogExplainer.prompt(reading, when: when), model = SystemLanguageModel.default
         let tokens = try await model.tokenCount(for: prompt)
-        print("== \(name): \(tokens) prompt tokens; context \(model.contextSize); \(model.variant.displayName)")
+        let whole = try await tokens + model.tokenCount(for: Instructions(LogExplainer.instructions))
+            + model.tokenCount(for: LogExplainer.Answer.generationSchema)
+        print("== \(name): \(tokens) prompt tokens, \(whole) with the instructions and the answer's schema; context \(model.contextSize); "
+              + "\(model.variant.displayName); \(reading.statuses.count) accounts, \(reading.toDo.count) to-do, \(reading.done.count) done")
         print(prompt)
         // The model's own answer, before `explain` drops what cites no to-do item, then what the screen would show.
         let raw: LogExplainer.Answer
@@ -1433,7 +1450,7 @@ struct OnDeviceModelTests {
             // What the model wrote before it failed: fixture data only, printed for a person to read (never on a screen).
             let raw = (error as? GeneratedContent.ParsingError)?.rawContent ?? ""
             print("\(name) threw \(type(of: error)): \(error)" + (raw.isEmpty ? "" : "\nits raw answer (\(raw.count) characters): \(raw)"))
-            #expect(name == "wave", "only the wave may throw")
+            #expect(["wave", "big"].contains(name), "only the large readings may throw")
             return
         }
         print("overview:", raw.overview)
