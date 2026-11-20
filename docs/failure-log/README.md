@@ -19,5 +19,3 @@ test caught late, a live tenant break, a regression) gets an entry via the `post
 This repo inherits GamGUI's defining failure class, **"the mock passed, the live tenant broke"**, and
 its history: GamGUI's `docs/failure-log/` (90 entries by 2026-10-08) is where most invariants here came
 from. A fix whose only proof is a greener mock is not proven; say so in the Prevention field.
-
-<!-- No entries yet. -->
