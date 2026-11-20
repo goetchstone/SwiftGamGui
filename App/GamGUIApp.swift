@@ -21,6 +21,8 @@ struct GamGUIApp: App {
         AppDelegate.interruptible = {
             offboarding.interruptible ?? compromised.interruptible ?? onboarding.interruptible ?? phishing.interruptible
         }
+        // The Vault's session ends with the screen's.
+        AppDelegate.lockVault = services.lockVault
     }
 
     var body: some Scene {

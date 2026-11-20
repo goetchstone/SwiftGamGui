@@ -79,6 +79,9 @@ struct AppServices {
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
     let siriDrafts = SiriDrafts()
+    /// Ends the Vault's session, so the next read asks for Touch ID again: all the app's lifetime needs of the Vault
+    /// (`AppDelegate`, when the screen locks).
+    let lockVault: @Sendable () async -> Void
 
     static func make() -> AppServices {
         #if DEBUG
@@ -172,7 +175,7 @@ struct AppServices {
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
-                           auditURL: auditURL)
+                           auditURL: auditURL, lockVault: { await vault.lock() })
     }
 
     #if DEBUG

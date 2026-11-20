@@ -208,6 +208,17 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["shownOnTheSheet"]) == ["App/OnboardCredentialSheet.swift"])
     }
 
+    /// The Vault's session ends with the screen's (plan 2026-11-18, S2): the app delegate watches the display's sleep, a
+    /// switch of user and the screen lock, and the app hands it the Vault's lock alone.
+    @Test func theVaultLocksWithTheScreen() throws {
+        let delegate = try #require(try Self.swiftFiles(in: "App").first { $0.path == "App/AppDelegate.swift" }).lines.joined(separator: "\n")
+        for name in ["NSWorkspace.screensDidSleepNotification", "NSWorkspace.sessionDidResignActiveNotification", "\"com.apple.screenIsLocked\""] {
+            #expect(delegate.contains(name), "\(name)")
+        }
+        #expect(delegate.contains("lockTheVaultWithTheScreen()\n"), "called at launch")
+        #expect(try Self.files(in: "App", matching: ["AppDelegate.lockVault = services.lockVault"]) == ["App/GamGUIApp.swift"])
+    }
+
     /// The app reaches GamKit only through its public API: `@testable` would reopen every route.
     @Test func theAppNeverImportsGamKitTestably() throws {
         #expect(try Self.files(in: "App", matching: ["@testable"]).isEmpty)

@@ -2,7 +2,8 @@ import AppKit
 import GamEngine
 
 /// The backstops that belong to the app's lifetime (invariant 4): a sweep at launch for anything a
-/// crash or force-quit left behind; at quit, every running `gam` stopped, then every live folder wiped.
+/// crash or force-quit left behind; the Vault's session ended when the screen locks; at quit, every running `gam`
+/// stopped, then every live folder wiped.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -10,7 +11,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             EphemeralConfig.sweepStale(in: base)
         }
         SignInCopy.clearLeftover()   // a sign-in card copied before a crash or a force-quit
+        lockTheVaultWithTheScreen()
     }
+
+    /// Ends the Vault's session; set by the app at launch.
+    static var lockVault: (@Sendable () async -> Void)?
+
+    /// The Vault's session ends when the screen locks, the display sleeps or another user's session takes the screen, not
+    /// only after its 10 minutes: a Mac walked away from isn't left with the admin's credentials a click away (plan
+    /// 2026-11-18, S2). A `gam` call under way keeps what it holds; the next read asks for Touch ID again.
+    private func lockTheVaultWithTheScreen() {
+        let lock: @Sendable (Notification) -> Void = { _ in Task { @MainActor in await AppDelegate.lockVault?() } }
+        let workspace = NSWorkspace.shared.notificationCenter
+        _ = workspace.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main, using: lock)
+        _ = workspace.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main, using: lock)
+        _ = DistributedNotificationCenter.default().addObserver(forName: Self.screenLocked, object: nil, queue: .main, using: lock)
+    }
+
+    /// What macOS posts, distributed, when the screen locks.
+    static let screenLocked = Notification.Name("com.apple.screenIsLocked")
 
     /// What quitting now would cut short (an offboarding, onboarding or phishing trash run, onboarding's wait for
     /// Google, or a sign-in card still showing), and what that costs, asked at quit.

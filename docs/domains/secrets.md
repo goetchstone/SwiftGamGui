@@ -35,7 +35,9 @@ user presence, and are materialized into a `0700`/`0600` dir for one `gam` call 
   - `replace` updates only; it never creates an item.
 - `Vault.swift`: an actor over a store. **No in-memory copy of any secret**, unlike GamGUI's 300 s
   cache: the store's authentication session gives one prompt per burst. The session **ends after 10
-  minutes**, measured on `ContinuousClock`, which counts sleep. Store calls run on a GCD thread,
+  minutes**, measured on `ContinuousClock`, which counts sleep, **and when the screen locks, the display sleeps or
+  another user's session takes the screen** (`AppDelegate`, plan 2026-11-18 S2): a `gam` call under way keeps what it
+  read, and a sequence's next step asks for Touch ID again (a locked Mac refuses that read outright). Store calls run on a GCD thread,
   because a Touch ID prompt blocks. `remove` stops at the first refusal. `refresh` (for GAM's rewritten
   `oauth2.txt`) never re-creates a removed credential.
 - `Packages/GamKit/Sources/GamEngine/EphemeralConfig.swift`: the per-call `GAMCFGDIR`. Port of
