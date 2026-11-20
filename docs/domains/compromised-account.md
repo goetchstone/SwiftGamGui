@@ -534,8 +534,12 @@ account read as one on a later day. Code decides what's done and what's left; th
   finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
-  to-do item's fixed meaning by kind. It answers up to three sentences on what happened and at most three on what's most
-  urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task. **Its guide presupposes nothing**: it
+  to-do item's fixed meaning by kind with its accounts and, for a sweep, its address (`LogExplainer.about`: twelve sweeps
+  naming none were twelve lines alike, told as "the first batch" or as done). **The story holds no lock**, only the tries
+  after one: what's done is code's, and at 40 accounts the story retold which was locked and which half locked wrongly
+  (failure log 2026-11-17, its 2026-11-20 sections). It answers up to three sentences on what happened and at most three on what's most
+  urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task, and so is one citing only items an
+  earlier point cited (given one kind of task it pads to three points, and the padding invents). **Its guide presupposes nothing**: it
   asks what the lines under "What happened" say, never "when each was locked". **What's done is code's sentences**
   (`LogExplainer.done`: each account's lock as the logs show it, then the steps this app's records hold), never the model's:
   asked, it called accounts secured when nothing was, and "We have secured carol@example.com." passes any check (failure
@@ -545,8 +549,8 @@ account read as one on a later day. Code decides what's done and what's left; th
   address's shape (`LogReading.isAddress`) before it reaches a moment's words. Held by
   `LogReadingTests.theModelsSentencesStandOnlyOnTheFacts`, `whatsDoneIsCodesOwn` and `aSuspectAddressHasAnAddressesShape`
   (plan 2026-11-18, A3). Its failures are said in words, never its raw answer and never "Try again" where that can't
-  help (`OnDeviceModel.failure`, A4). Size, measured: a 40-account day is 3,183 of 8,192 tokens, 3,883 with the answer's
-  cap; the prompt's caps bound it (A4). Tried on the real
+  help (`OnDeviceModel.failure`, A4). Size, measured: a 40-account day is 2,783 of 8,192 tokens, 3,483 with the answer's
+  cap (3,183 before the locks left the story); the prompt's caps bound it (A4). Tried on the real
   export (2026-10-22): the first prompt's answer listed one account's steps and repeated the to-do list; the time-ordered
   story gave a readable account, and a vague "undo what was left" task let it claim a passkey that wasn't there, so the
   leftover task is three kinds. **It is asked only when an account was touched from a suspect address** (a status).

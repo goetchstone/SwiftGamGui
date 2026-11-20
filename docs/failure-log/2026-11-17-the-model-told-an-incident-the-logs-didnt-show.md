@@ -132,3 +132,45 @@ user9@example.com were locked, with user10@example.com, user13@example.com, … 
 sign-outs" (user6@ had a reset only; user13@ was locked). ✗ A point "…password resets or sign-outs but not both,
 including … user39@example.com" (not locked at all). Each names real accounts and real times, so the check keeps them.
 What's done, code's, was right. Open: with what's done now code's, the story need not retell the locks.
+
+## 2026-11-20, after: each sweep names its address, and the story holds no lock
+
+The same run by hand, on the same fixtures and model, one greedy run per version. Two changes asked for, one found:
+
+- **Each sweep line names its address** (`LogExplainer.about`: ` Address: 198.51.100.3.`, as `Accounts:` is given). The
+  address is `task.sweeps`, which `LogReading.isAddress` already holds to an address's shape. It is also already in the
+  moments' own words, so the number check gains no new facts. This departs from A3's "Don't" ("no new field"), which held
+  for A3: twelve lines word for word alike are a fault in code's facts, which no wording can fix.
+- **The story holds no lock**, only the tries after one. What's done is code's sentences, so the story need not retell it.
+  Each account's state ("locked", "partly locked: …") stays under "Where each account stands".
+- **A point citing only items an earlier point cited is dropped** (found here). Given one kind of task, the model writes
+  three points on the same group. The later two are padding, and the padding is where it invents: all three `wave` runs on
+  record did it.
+
+**The answers** (prompt: `wave` 1,503 tokens, was 1,803; `big` 2,367, 2,783 with instructions and schema, was 3,183):
+- `wave`, overview, holds: "On Oct 19, 2026, the attacker signed in from 198.51.100.1 through 198.51.100.12, one by one,
+  from 4:56 AM to 5:18 AM. Each sign-in was followed by a forced sign-out and a password reset for the respective account.
+  All accounts were later locked after the sign-ins." No batches. Its three points each cite T1 to T12. The first is shown:
+  "The logs from the attacker's addresses 198.51.100.1 through 198.51.100.12 show who else was reached by each sign-in."
+  It holds loosely: it doesn't say the reads are still to do. The other two are dropped as repeats: ✗ "Each of these log
+  sets reveals the full chain of sign-ins…", ✗ "The full sequence of sign-ins … is now visible across all listed addresses."
+- `big`, overview: no lock mixed up; it names no account. Its last clause is still false: "On Oct 19, 2026, a series of
+  sign-ins occurred starting at 4:56 AM from multiple IP addresses, continuing through 5:34 AM ✗ with no account being
+  signed in to or locked until later." Its three points hold: T1–T4 and T5–T10 not locked, T21–T30 "only reset or sign-out".
+- `triedOnly`, `notLocked`, `halfLocked`, `incident`: hold.
+
+**Wording tried and taken back.** Each version moved a false sentence to another shape rather than removing it:
+- Without the instruction "If the facts don't say an account was signed in to, or locked, don't say it was." (which
+  `big`'s clause seems to echo): `big` held, but `halfLocked` said ✗ "The attacker's address was used to reach other
+  accounts." and `wave` ✗ "one per second".
+- Without "Where each account stands" too (it exists for the model's old `done`): the model lost who did what. `incident`
+  ✗ "erin@example.com attempted to sign in…" (the attacker did), `notLocked` ✗ "no other sign-ins or locks for … any other
+  account", `big` named addresses its story doesn't hold, and `wave` threw a `ParsingError`. The account lines anchor it.
+- The instruction as "Say that something happened, or didn't, only where the facts say so.": `triedOnly` ✗ "Logs from
+  198.51.100.23 show the attacker reached other accounts.", `notLocked` ✗ "…carol@example.com and others.", and `big` listed
+  a 21st sign-in its story doesn't hold.
+
+**Open:** `big`'s last clause. It names no account and no number the facts lack, so no check catches it. It is the same
+padding as the points': the model summarizes 20 alike lines in one sentence and fills the rest. One greedy run per
+version can't tell a better wording from a lucky one. Judge any next wording over several sampled runs, or let code group
+alike story lines, as it now drops repeated points.

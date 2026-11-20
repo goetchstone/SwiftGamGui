@@ -4,13 +4,13 @@ import FoundationModels
 /// The on-device model's rundown of a reading (docs/plans/2026-10-19-on-device-log-reader.md, R2; the incidents plan): what
 /// happened, in order, and what's left, each of those sentences citing the to-do items code worked out; what has been done
 /// is code's own sentences. Code decides what's done and what's left (`LogReading.Status`, `LogReading.Task`); the model only words it. It is
-/// given each account's state and the kinds of step in its timeline, counted, and each to-do item's kind and accounts:
+/// given each account's state and the kinds of step in its timeline, counted, and each to-do item's kind, accounts and address:
 /// never the text the logs carry (a subject, a URL, an app's name), which an attacker writes, and never a fix to make
 /// up. A sentence about what's left citing no item it was given is dropped, and any sentence holding a number or an account
 /// the facts don't is dropped and counted. On-device only (`SystemLanguageModel`): nothing leaves the Mac.
 public enum LogExplainer {
     /// What the model wrote, and what's done in code's words: the model's sentences about what's left kept only where they
-    /// cite to-do items that exist, every one of its sentences kept only where its numbers and accounts are the facts'
+    /// cite to-do items that exist and an earlier one didn't, every one of its sentences kept only where its numbers and accounts are the facts'
     /// (`dropped` counts the rest).
     public struct Explanation: Sendable, Equatable {
         public struct Point: Sendable, Equatable {
@@ -113,7 +113,7 @@ public enum LogExplainer {
         }
     }
 
-    /// What happened at an account's lock time, as its state says it: a whole lock, half of one, a suspension.
+    /// An account's lock, as its state says it: a whole lock, half of one, a suspension. Code's words on what's done (`done`).
     static func lock(_ status: LogReading.Status) -> String {
         switch status.state {
         case .partlyLocked: status.reset != nil ? "password reset, but no sign-out seen" : "signed out, but the password not reset"
@@ -163,8 +163,8 @@ public enum LogExplainer {
     }
 
     /// The moments that tell the story, from every account's timeline: the attacker's sign-ins and changes, the computers
-    /// that joined, contacts printed, Google's own actions, and each account's lock and the tries after it. The admin's
-    /// many single steps are counted under what's been done instead.
+    /// that joined, contacts printed, Google's own actions, and the attacker's tries after a lock. The locks and the admin's
+    /// many single steps are under what's been done instead.
     static let storyKinds: Set<LogReading.Moment.Kind> = [.attackerSignedIn, .attackerChanged, .deviceJoined, .contactsPrinted, .googleDisabled,
                                                           .googleSignedOut]
     /// The steps counted under what's been done: an admin's and the person's own.
@@ -173,11 +173,13 @@ public enum LogExplainer {
                                                          .ownPasskey, .ownRecovery]
 
     /// The prompt: what happened in time order (each moment's plain words, with its time said by `when`), each account's
-    /// state and the steps taken counted by kind, then each to-do item's ID, meaning and accounts. Never a word the logs
-    /// carry as text: a moment's plain words leave out names an attacker can set.
+    /// state and the steps taken counted by kind, then each to-do item's ID, meaning, accounts and address. Never a word the
+    /// logs carry as text: a moment's plain words leave out names an attacker can set.
     static func prompt(_ reading: LogReading.Reading, when: @Sendable (Date) -> String = { $0.formatted(.iso8601) }) -> String {
-        // Each moment of the story, and whether it always stays: the locks, the tries after them and Google's own actions do;
-        // the attacker's moves are capped, the earliest 30 kept.
+        // Each moment of the story, and whether it always stays: the tries after a lock and Google's own actions do; the
+        // attacker's moves are capped, the earliest 30 kept. The locks aren't in it: what's done is code's sentences
+        // (`done`), and at 40 accounts the story retold them wrong, which account was locked and which half locked, naming
+        // real accounts at real times, so no check caught it (failure log 2026-11-17, its 2026-11-20 sections).
         var story: [(at: Date, line: String, stays: Bool)] = []
         for status in reading.statuses.prefix(20) {
             let failed = status.timeline.filter { $0.kind == .attackerFailed }
@@ -186,7 +188,6 @@ public enum LogExplainer {
             }
             story += status.timeline.filter { storyKinds.contains($0.kind) }
                 .map { ($0.at, "\(status.account): \($0.plain)", [.googleDisabled, .googleSignedOut].contains($0.kind)) }
-            if let locked = status.lockedAt { story.append((locked, "\(status.account): \(lock(status))", true)) }
             if let tried = status.triedAt { story.append((tried, "\(status.account): the attacker tried again after the lock and failed", true)) }
         }
         let moves = Set(story.enumerated().filter { !$0.element.stays }.sorted { $0.element.at < $1.element.at }.prefix(30).map(\.offset))
@@ -201,17 +202,24 @@ public enum LogExplainer {
             lines.append("\(status.account): \(stands(status))" + (steps.isEmpty ? "." : ". Done: " + steps.joined(separator: "; ") + "."))
         }
         lines.append(reading.toDo.isEmpty ? "Nothing is left to do." : "Left to do:")
-        for task in reading.toDo.prefix(30) {
-            lines.append("\(task.id): \(meaning(task.kind))." + (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + "."))
-        }
+        for task in reading.toDo.prefix(30) { lines.append("\(task.id): \(meaning(task.kind))." + about(task)) }
         // What this app's records show done: an email pulled, a warning sent, a step marked done by hand (never how it was
         // done, which is typed).
         if !reading.done.isEmpty { lines.append("Already done, as this app's records show:") }
         for task in reading.done.prefix(30) {
             let hand = if case .byHand? = task.done?.how { " (marked done by hand)" } else { "" }
-            lines.append("- Done: \(meaning(task.kind))\(hand)." + (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + "."))
+            lines.append("- Done: \(meaning(task.kind))\(hand)." + about(task))
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// What a to-do item is about, after its meaning: its accounts, and the address a sweep reads from (`sweeps`, which
+    /// `LogReading.isAddress` holds to an address's shape). Twelve sweeps that named no address were twelve lines word for
+    /// word alike, and the model told them as one review in batches, or as done (failure log 2026-11-17, its 2026-11-20
+    /// sections).
+    static func about(_ task: LogReading.Task) -> String {
+        (task.accounts.isEmpty ? "" : " Accounts: " + task.accounts.prefix(10).joined(separator: ", ") + ".")
+            + (task.sweeps.map { " Address: \($0)." } ?? "")
     }
 
     /// The model's rundown of `reading`, each sentence about what's left kept only if it cites to-do items that exist
@@ -320,9 +328,9 @@ public enum LogExplainer {
         return sentences.joined(separator: " ")
     }
 
-    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`, and
-    /// every sentence only if each run of digits in it is among the facts' and each account it names is in them; the
-    /// sentences dropped for those are counted. What's done is code's (`done`). Logs with no account the attacker touched
+    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`, at least
+    /// one that no earlier kept sentence cited, and every sentence only if each run of digits in it is among the facts' and
+    /// each account it names is in them; the sentences dropped for those are counted. What's done is code's (`done`). Logs with no account the attacker touched
     /// aren't given to it: the answer is code's `untold` sentence alone.
     static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
         if let untold = untold(reading) { return Explanation(overview: untold, done: "", left: [], dropped: 0) }
@@ -336,11 +344,16 @@ public enum LogExplainer {
                 return stands
             }.joined(separator: " ")
         }
+        // A point citing only items an earlier one did is dropped: given one kind of task, the model wrote three points on the
+        // same twelve sweeps, and the later two told them as done (failure log 2026-11-17, its 2026-11-20 sections).
+        var cited: Set<String> = []
         let left = answer.left.compactMap { point -> Explanation.Point? in
             let cites = point.cites.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter(known.contains)
-            guard !cites.isEmpty else { return nil }
+            guard !cites.isEmpty, !cites.allSatisfy(cited.contains) else { return nil }
             let text = checked(point.text)
-            return text.isEmpty ? nil : Explanation.Point(text: text, cites: cites)
+            guard !text.isEmpty else { return nil }
+            cited.formUnion(cites)
+            return Explanation.Point(text: text, cites: cites)
         }
         return Explanation(overview: checked(answer.overview), done: done(reading), left: left, dropped: dropped)
     }
