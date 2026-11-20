@@ -62,7 +62,7 @@ public enum LogExplainer {
         public init() {}
 
         public func answer(instructions: String, prompt: String) async throws -> Answer {
-            let session = LanguageModelSession(model: .default, instructions: instructions)
+            let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
             return try await session.respond(to: prompt, generating: Answer.self, options: GenerationOptions(temperature: 0.2)).content
         }
     }

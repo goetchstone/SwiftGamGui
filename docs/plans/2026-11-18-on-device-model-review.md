@@ -1,6 +1,6 @@
 # Plan: the on-device model and security, reviewed (and what to do next)
 
-**Status (2026-11-19): S1 done (#169); S4 in review (#173); R1 done (this PR). Next: A1.** Asked for: check the repo, its security, its usefulness and its use of
+**Status (2026-11-20): S1 (#169), S4 (#173), R1 (#174) done; A1 in review. Next: A2.** Asked for: check the repo, its security, its usefulness and its use of
 Apple's on-device model; say where the model is used wrongly and where else it could be used; write it so a smaller model
 can carry out each task. Read against the macOS 27 SDK on this Mac (Xcode 27.2, `FoundationModels.swiftinterface`), not
 from memory. Nothing here was run against the real model: where a finding is read from code and not reproduced, it says so.

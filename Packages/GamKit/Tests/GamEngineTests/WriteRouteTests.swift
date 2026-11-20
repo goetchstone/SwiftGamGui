@@ -160,6 +160,25 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "App", matching: ["AppsExplainer"]).isEmpty)
     }
 
+    /// The model is the one on this Mac (plan 2026-11-18, A1). macOS 27's `LanguageModelSession(model: some LanguageModel, …)`
+    /// takes `PrivateCloudComputeLanguageModel` as well, so one changed word would send tenant accounts and addresses off the
+    /// Mac with every other test green. Every line naming a session makes it from `SystemLanguageModel.default` (a session
+    /// split across lines, or made with `.init`, fails too), only in `Assist`, which reaches no network itself.
+    @Test func theModelIsOnThisMacOnly() throws {
+        let code = try Self.swiftFiles(in: "App") + Self.swiftFiles(in: "Packages/GamKit/Sources")
+        let offMac = code.filter { $0.lines.contains { $0.contains("PrivateCloudCompute") } }.map(\.path)
+        #expect(offMac.isEmpty, "\(offMac)")
+        let sessions = code.flatMap { file in file.lines.filter { $0.contains("LanguageModelSession") }.map { (file.path, $0) } }
+        #expect(!sessions.isEmpty, "the scan must see the log explainer's session")
+        for (path, line) in sessions {
+            #expect(path.hasPrefix("Packages/GamKit/Sources/Assist/"), "\(path): \(line)")
+            #expect(line.contains("LanguageModelSession(model: SystemLanguageModel.default"), "\(path): \(line)")
+        }
+        // Foundation reaches the network without an import the check above sees: a session, a request, or reading a URL.
+        #expect(try Self.files(in: "Packages/GamKit/Sources/Assist", matching: ["URLSession", "URLRequest", "NSURLConnection", "contentsOf:"])
+            .isEmpty)
+    }
+
     /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
     /// "Secure Account…" hands over an address, never a preview.
     @Test func onlyItsScreenReachesTheCompromisedModel() throws {

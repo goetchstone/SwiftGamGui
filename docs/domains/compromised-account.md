@@ -542,6 +542,8 @@ account read as one on a later day. Code decides what's done and what's left; th
   Told of "a security incident" with empty sections, it made one up, with an attacker, dates and a lock (failure-log
   2026-11-17). Otherwise code says `LogExplainer.untold` where Explain was and on the report's Draft: no sign of an attacker,
   or a suspect address with no account touched (a pull by it that read only Gmail). Held by `LogReadingTests.logsShowingNoAttackerAreNeverToldAsAnIncident`.
+  **It is the model on this Mac, never Private Cloud Compute**: its session is made from `SystemLanguageModel.default`, held
+  by `WriteRouteTests.theModelIsOnThisMacOnly` (plan 2026-11-18, A1).
 - **What may never count as done** (security review 2026-10-22): a lock from before the account's attack (an account
   phished through Chrome only is attacked from when Chrome saw its password, and with no attack time nothing is a lock); a
   suspension later undone; an admin step done through an account the attacker held at the time (statuses are read twice to
