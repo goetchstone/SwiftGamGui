@@ -115,6 +115,9 @@ before anyone else is pointed at it.
 
 ## Not planned unless asked
 
+Asked on 2026-11-19 (operator): Sheet export, scheduled runs and a plain-language finder, now planned in
+[2026-11-19-audits-sheets-finder-tenants-schedules.md](2026-11-19-audits-sheets-finder-tenants-schedules.md).
+
 - Sheet export: dropped by decision (design doc §1), and `todrive` is a write.
 - Scheduled runs and other languages: nothing in the operator's use needs them. Classroom moved out of this list (operator,
   2026-11-11): reads and roster planning only, no Classroom writes, offline until there's an Education domain to check it on

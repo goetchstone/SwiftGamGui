@@ -52,7 +52,7 @@ native design retires one. Four questions remain open (§14).
 | Distribution | People build it from source in Xcode for now | Developer ID signing and notarization come in phase 6 |
 | GamGUI | **Frozen except GAM updates** | Phase 0 may change credentials and configuration, never GamGUI's code (§2). No fixes to GamGUI, so the native app is where improvements go |
 | Credentials | Not shared between apps (abapit's are Apple's and Mosyle's and were never shared; GamGUI's are Google's) | The native app keeps its own Keychain items, filled once at setup (§7) |
-| Sheet export (`todrive`) | Dropped; CSV is enough | The native Builder exports CSV only |
+| Sheet export (`todrive`) | Dropped; CSV is enough. **Reversed 2026-11-19** (operator): a ChangeCore write, plan 2026-11-19 F4 | The native Builder exports CSV only until F4 |
 | Test license | None free | The first native offboarding and delete run on the next real leaver (§9) |
 | Siri | Four requests: create an onboarding template, add an email template, set up a signature template, find a Builder command (e.g. list a shared drive's files). **Everything previews in the app by default**, plus an optional **"Just do it"** switch for simple actions | One intent each, delivered with its screen; "Just do it" rules in §8 |
 | ABM / Mosyle | Later | Not in this plan |
