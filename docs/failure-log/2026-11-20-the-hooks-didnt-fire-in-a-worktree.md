@@ -11,8 +11,9 @@
   worktree's.
 - **Why not caught:** nothing checked that a hook fires, only that it exists; a missing hook fails open and says
   nothing. The cross-project lesson ("a relative hook path exits 127 after a `cd`") was written about another repo.
-- **Fix:** each hook command is rooted at `"$CLAUDE_PROJECT_DIR"`; the checklist reads the changed files from the
-  session's own checkout. Both are local files (`.claude/` wiring stays out of the repo, FRAMEWORK.md §2). Probed again
+- **Fix:** each hook command is rooted at `"$CLAUDE_PROJECT_DIR"`; the checklist reads the changed files, and the `fix:`
+  rule its failure-log entry, from the session's own checkout (the first fix left the entry read from the main
+  checkout, so a worktree's `fix:` commit was blocked though it added one; found the same day, proved both ways). Both are local files (`.claude/` wiring stays out of the repo, FRAMEWORK.md §2). Probed again
   from the worktree: blocked.
 - **Prevention:** the session-start digest says every session whether any hook command is relative (a "HOOKS:" line),
   proved by running it once against the old wiring. The standard's rule 0 (STANDARD.md): a rule counts only once its
