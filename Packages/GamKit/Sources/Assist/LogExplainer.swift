@@ -10,7 +10,7 @@ import FoundationModels
 /// the facts don't is dropped and counted. On-device only (`SystemLanguageModel`): nothing leaves the Mac.
 public enum LogExplainer {
     /// What the model wrote, and what's done in code's words: the model's sentences about what's left kept only where they
-    /// cite to-do items that exist, every one of its sentences kept only where its numbers and accounts are the facts'
+    /// cite to-do items that exist and an earlier one didn't, every one of its sentences kept only where its numbers and accounts are the facts'
     /// (`dropped` counts the rest).
     public struct Explanation: Sendable, Equatable {
         public struct Point: Sendable, Equatable {
@@ -328,9 +328,9 @@ public enum LogExplainer {
         return sentences.joined(separator: " ")
     }
 
-    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`, one an
-    /// earlier kept sentence didn't among them, and every sentence only if each run of digits in it is among the facts' and each account it names is in them; the
-    /// sentences dropped for those are counted. What's done is code's (`done`). Logs with no account the attacker touched
+    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`, at least
+    /// one that no earlier kept sentence cited, and every sentence only if each run of digits in it is among the facts' and
+    /// each account it names is in them; the sentences dropped for those are counted. What's done is code's (`done`). Logs with no account the attacker touched
     /// aren't given to it: the answer is code's `untold` sentence alone.
     static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
         if let untold = untold(reading) { return Explanation(overview: untold, done: "", left: [], dropped: 0) }
