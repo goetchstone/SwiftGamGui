@@ -16,6 +16,13 @@ public enum OnDeviceModel {
         }
     }
 
+    /// The screens' words for the sentences a check left out (`LogExplainer.Explanation.dropped`), said against what the
+    /// model was given ("the logs", "the report").
+    public static func leftOut(_ count: Int, notIn facts: String) -> String {
+        count == 1 ? "One of its sentences named a number or an account not in \(facts), so it was left out."
+            : "\(count) of its sentences named a number or an account not in \(facts), so they were left out."
+    }
+
     /// Why an answer failed, in words (macOS 27's `LanguageModelError`); the error's own description for anything else.
     public static func failure(_ error: any Error) -> String {
         guard let error = error as? LanguageModelError else { return error.localizedDescription }

@@ -643,7 +643,7 @@ private struct SummarySheet: View {
                 review.summary = drafted.text
                 review.summaryDrafted = !drafted.text.isEmpty
                 said = "The on-device model's draft, from this report's numbers and steps: check it against the report before you save it."
-                    + (drafted.dropped == 0 ? "" : " \(drafted.dropped) of its sentences held a number the report doesn't, so were left out.")
+                    + (drafted.dropped == 0 ? "" : " " + OnDeviceModel.leftOut(drafted.dropped, notIn: "the report"))
             } catch {
                 said = "The model couldn't draft it: \(OnDeviceModel.failure(error))"
             }

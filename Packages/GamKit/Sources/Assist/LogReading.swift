@@ -651,7 +651,8 @@ public enum LogReading {
     static let sentTypes: Set = [1, 35]
 
     /// The findings in `events`. Suspect addresses are those of a sign-in Google called suspicious (`marksAttacker`), and
-    /// the one the operator pulled by; never an address only because many accounts used it, which an office's does.
+    /// the one the operator pulled by; never an address only because many accounts used it, which an office's does, and never
+    /// a value without an address's shape (`isAddress`).
     public static func read(_ events: [Event], context: Context = Context()) -> Reading {
         var found: [Pending] = []
         // Each account's addresses it signed in from without Google's mark: a re-sign-in from one is the person's.
@@ -664,14 +665,14 @@ public enum LogReading {
             passkeysAdded[event.who.lowercased()] = min(at, passkeysAdded[event.who.lowercased()] ?? at)
         }
         var suspects: [String] = [], markedBy: [String: [String]] = [:]
-        for event in events where !event.ip.isEmpty {
+        for event in events where isAddress(event.ip) {
             let marks = marksAttacker(event, ordinary: ordinary, theirs: context.theirs, passkeysAdded: passkeysAdded)
             guard marks || event.ip == context.pulledBy else { continue }
             if !suspects.contains(event.ip) { suspects.append(event.ip) }
             // Only an account's own sign-in Google marked can be the person's: never its warning that it blocked one.
             if marks, isMarked(event), isAccount(event.who) { markedBy[event.ip, default: []].append(event.who) }
         }
-        if !context.pulledBy.isEmpty, !suspects.contains(context.pulledBy) { suspects.append(context.pulledBy) }
+        if isAddress(context.pulledBy), !suspects.contains(context.pulledBy) { suspects.append(context.pulledBy) }
 
         // Each suspect address and the accounts it touched; one many accounts signed in from (not the operator's) is set
         // aside as likely shared: securing everyone behind an office's address would lock the office out.
@@ -2083,6 +2084,13 @@ public enum LogReading {
         case "accessevaluation": "Access evaluation"
         default: log
         }
+    }
+
+    /// An IP address's shape: hex digits, dots and colons only, at most 45 characters (an IPv6 address written out with an
+    /// IPv4 tail). Held where suspect addresses are found, so a value without it is never one, and so never reaches a
+    /// moment's words or the model, as `isAccount` holds an account (plan 2026-11-18, A3).
+    static func isAddress(_ value: String) -> Bool {
+        !value.isEmpty && value.count <= 45 && value.unicodeScalars.allSatisfy { $0.properties.isASCIIHexDigit || $0 == "." || $0 == ":" }
     }
 
     /// An account's address: a Chrome event's computer login name ("carol") is not one, and drafts nothing.

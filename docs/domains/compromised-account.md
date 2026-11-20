@@ -534,8 +534,17 @@ account read as one on a later day. Code decides what's done and what's left; th
   finding about a locked account drafts no lock again.
 - **The model** (`LogExplainer`): its prompt is what happened in time order (each moment's `plain` words, which leave out
   an app's or a device's name and a blocked address), each account's state and the steps done counted by kind, and each
-  to-do item's fixed meaning by kind. It answers three sentences on what happened, two on what's done, and at most three
-  on what's most urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task. Tried on the real
+  to-do item's fixed meaning by kind. It answers up to three sentences on what happened and at most three on what's most
+  urgent, each citing to-do IDs; one citing none is dropped, so it can't add a task. **Its guide presupposes nothing**: it
+  asks what the lines under "What happened" say, never "when each was locked". **What's done is code's sentences**
+  (`LogExplainer.done`: each account's lock as the logs show it, then the steps this app's records hold), never the model's:
+  asked, it called accounts secured when nothing was, and "We have secured carol@example.com." passes any check (failure
+  log 2026-11-17, its 2026-11-20 sections). **Every sentence it writes is checked** on Explain and on the report's Draft
+  alike: one holding a run of digits the facts don't (leading zeros aside), or an account the facts don't hold whole or as
+  "name@", is dropped, and the screen says how many. Greedy and capped at 700 tokens. A suspect address must have an
+  address's shape (`LogReading.isAddress`) before it reaches a moment's words. Held by
+  `LogReadingTests.theModelsSentencesStandOnlyOnTheFacts`, `whatsDoneIsCodesOwn` and `aSuspectAddressHasAnAddressesShape`
+  (plan 2026-11-18, A3). Tried on the real
   export (2026-10-22): the first prompt's answer listed one account's steps and repeated the to-do list; the time-ordered
   story gave a readable account, and a vague "undo what was left" task let it claim a passkey that wasn't there, so the
   leftover task is three kinds. **It is asked only when an account was touched from a suspect address** (a status).

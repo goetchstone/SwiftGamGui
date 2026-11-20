@@ -2,14 +2,16 @@ import Foundation
 import FoundationModels
 
 /// The on-device model's rundown of a reading (docs/plans/2026-10-19-on-device-log-reader.md, R2; the incidents plan): what
-/// happened, in order, what has been done, and what's left, each of those sentences citing the to-do items code worked
-/// out. Code decides what's done and what's left (`LogReading.Status`, `LogReading.Task`); the model only words it. It is
+/// happened, in order, and what's left, each of those sentences citing the to-do items code worked out; what has been done
+/// is code's own sentences. Code decides what's done and what's left (`LogReading.Status`, `LogReading.Task`); the model only words it. It is
 /// given each account's state and the kinds of step in its timeline, counted, and each to-do item's kind and accounts:
 /// never the text the logs carry (a subject, a URL, an app's name), which an attacker writes, and never a fix to make
-/// up. A sentence about what's left citing no item it was given is dropped. On-device only (`SystemLanguageModel`):
-/// nothing leaves the Mac.
+/// up. A sentence about what's left citing no item it was given is dropped, and any sentence holding a number or an account
+/// the facts don't is dropped and counted. On-device only (`SystemLanguageModel`): nothing leaves the Mac.
 public enum LogExplainer {
-    /// What the model wrote: its sentences about what's left kept only where they cite to-do items that exist.
+    /// What the model wrote, and what's done in code's words: the model's sentences about what's left kept only where they
+    /// cite to-do items that exist, every one of its sentences kept only where its numbers and accounts are the facts'
+    /// (`dropped` counts the rest).
     public struct Explanation: Sendable, Equatable {
         public struct Point: Sendable, Equatable {
             public let text: String
@@ -18,33 +20,35 @@ public enum LogExplainer {
         public let overview: String
         public let done: String
         public let left: [Point]
+        public let dropped: Int
     }
 
-    /// The answer's shape, which guided generation holds the model to.
+    /// The answer's shape, which guided generation holds the model to. Its guide presupposes nothing the facts may not hold:
+    /// asked "when each was locked", and what was done and "whether the locks are holding", it said accounts were secured
+    /// when nothing was done (failure log 2026-11-17, 2026-11-20 section). What's done isn't asked: code says it (`done`).
     @Generable
     public struct Answer: Sendable, Equatable {
-        @Guide(description: "Three plain sentences telling what happened in time order: when and how the attacker got in, to which "
-               + "accounts, and when each was locked. Use the dates given.")
+        @Guide(description: "Up to three plain sentences telling what the lines under 'What happened' say, in time order. Say only what "
+               + "those lines say. Use the dates given.")
         public var overview: String
-        @Guide(description: "Two plain sentences: what has been done to secure the accounts, and whether the locks are holding.")
-        public var done: String
         @Guide(description: "The most urgent things left, at most three sentences, each grouping tasks of the same kind and citing their IDs.",
                .maximumCount(3))
         public var left: [AnswerPoint]
 
-        public init(overview: String, done: String, left: [AnswerPoint]) {
+        public init(overview: String, left: [AnswerPoint]) {
             self.overview = overview
-            self.done = done
             self.left = left
         }
     }
 
+    /// The IDs come first: the model writes fields in their order, and with the sentence first it once wrote "Citations: T2."
+    /// into it and closed the point without its IDs, an answer that can't be read (2026-11-20, A3's by-hand run).
     @Generable
     public struct AnswerPoint: Sendable, Equatable {
-        @Guide(description: "One sentence about the tasks cited.")
-        public var text: String
         @Guide(description: "The IDs of the tasks this sentence is about, such as T1.")
         public var cites: [String]
+        @Guide(description: "One sentence about the tasks cited.")
+        public var text: String
 
         public init(text: String, cites: [String]) {
             self.text = text
@@ -57,13 +61,14 @@ public enum LogExplainer {
         func answer(instructions: String, prompt: String) async throws -> Answer
     }
 
-    /// The system's on-device model.
+    /// The system's on-device model, greedy (the same answer for the same facts) and capped: with neither, the apps explainer
+    /// once wrote until its context was full.
     public struct OnDevice: Asking {
         public init() {}
 
         public func answer(instructions: String, prompt: String) async throws -> Answer {
             let session = LanguageModelSession(model: SystemLanguageModel.default, instructions: instructions)
-            return try await session.respond(to: prompt, generating: Answer.self, options: GenerationOptions(temperature: 0.2)).content
+            return try await session.respond(to: prompt, generating: Answer.self, options: GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 700)).content
         }
     }
 
@@ -72,11 +77,12 @@ public enum LogExplainer {
 
     /// The model's standing instructions.
     static let instructions = """
-        You write a short rundown of a security incident for an IT administrator, in plain English, as a colleague briefing \
-        them. Every fact was found by code from the logs: use only those facts, and never invent an account, an address, an \
-        event, a step or a task. Tell what happened as a story in time order, then what has been done, then the most urgent \
-        things left, grouping alike tasks and citing their IDs. Don't repeat the task list word for word, never write a \
-        command, and never add a task that isn't listed.
+        You write a short rundown of what security logs show for an IT administrator, in plain English, as a colleague \
+        briefing them. Every fact was found by code from the logs: use only those facts, and never invent an account, an \
+        address, an event, a step or a task. Tell what happened as a story in time order, then the most urgent things left, \
+        grouping alike tasks and citing their IDs. If the facts don't say an account was signed in \
+        to, or locked, don't say it was. Don't repeat the task list word for word, never write a command, and never add a \
+        task that isn't listed.
         """
 
     /// What each kind of to-do item means, for the model.
@@ -209,7 +215,7 @@ public enum LogExplainer {
     }
 
     /// The model's rundown of `reading`, each sentence about what's left kept only if it cites to-do items that exist
-    /// (citing unknown ones dropped from it), and every text trimmed.
+    /// (citing unknown ones dropped from it), every sentence checked against the prompt's facts, and every text trimmed.
     public static func explain(_ reading: LogReading.Reading, when: @Sendable (Date) -> String = { $0.formatted(.iso8601) },
                                using model: some Asking = OnDevice()) async throws -> Explanation {
         try await explain(reading, facts: prompt(reading, when: when), using: model)
@@ -218,32 +224,43 @@ public enum LogExplainer {
     /// The report's summary, drafted (the incidents plan: "the model drafts the report's summary from the findings, shown as
     /// the model's and edited by the operator"; asked 2026-10-28: "can we get the model to help generate the report"): the
     /// rundown, told the report's numbers too, as plain paragraphs without the to-do IDs (the report numbers its own list).
-    /// A sentence holding a number written nowhere in the facts is dropped, as a point citing no to-do item is, and counted for
-    /// the screen to say. Coarse (review 2026-10-28): the facts hold times and addresses too, so a small wrong count can still
-    /// pass; the operator checks the draft against the report before it's kept.
+    /// Checked as the rundown is (`explain`), against these facts, the report's numbers among them, with the count of
+    /// sentences dropped for the screen to say. Coarse (review 2026-10-28): the facts hold times and addresses too, so a small
+    /// wrong count can still pass; the operator checks the draft against the report before it's kept.
     public static func summary(_ reading: LogReading.Reading, numbers: [(label: String, number: Int)],
                                when: @Sendable (Date) -> String = { $0.formatted(.iso8601) },
                                using model: some Asking = OnDevice()) async throws -> (text: String, dropped: Int) {
         let facts = prompt(reading, when: when)
             + (numbers.isEmpty ? "" : "\nThe report's numbers:\n" + numbers.map { "- \($0.label): \($0.number)" }.joined(separator: "\n"))
         let explanation = try await explain(reading, facts: facts, using: model)
-        let known = Set(digits(in: facts))
-        var dropped = 0
-        func checked(_ text: String) -> String {
-            sentences(text).filter { sentence in
-                let stands = digits(in: sentence).allSatisfy(known.contains)
-                if !stands { dropped += 1 }
-                return stands
-            }.joined(separator: " ")
-        }
-        let parts = [checked(explanation.overview), checked(explanation.done), explanation.left.map { checked($0.text) }.filter { !$0.isEmpty }.joined(separator: " ")]
-        return (parts.filter { !$0.isEmpty }.joined(separator: "\n\n"), dropped)
+        let parts = [explanation.overview, explanation.done, explanation.left.map(\.text).joined(separator: " ")]
+        return (parts.filter { !$0.isEmpty }.joined(separator: "\n\n"), explanation.dropped)
     }
 
-    /// Each run of digits in `text`, in any script ("٥" too, review 2026-10-28): what a number written in a sentence must be
-    /// among the facts' (a count, a date, a time).
+    /// Each account `text` names, lowercased: a run of the characters an account can hold (`LogReading.isAccount`) that
+    /// holds an `@`, its sentence's stop and a possessive trimmed. "carol@example.com—the first" names carol@example.com.
+    static func accounts(in text: String) -> [String] {
+        text.lowercased().split { !($0.isASCII && ($0.isLetter || $0.isNumber || "._%+-'@".contains($0))) }.filter { $0.contains("@") }.map { run in
+            var account = Substring(run)
+            if account.hasSuffix("'s") { account = account.dropLast(2) }
+            return String(account.trimmingCharacters(in: CharacterSet(charactersIn: ".'-")))
+        }
+    }
+
+    /// Whether `account`, as a sentence names it, is one the facts hold: whole, or as its name and `@` ("carol@"), or as its
+    /// domain ("@example.com"). Never part of a name: "ann@example.com" isn't joann@example.com.
+    static func holds(_ facts: Set<String>, _ account: String) -> Bool {
+        facts.contains(account) || account.hasSuffix("@") && facts.contains { $0.hasPrefix(account) }
+            || account.hasPrefix("@") && account.count > 1 && facts.contains { $0.hasSuffix(account) }
+    }
+
+    /// Each run of digits in `text`, in any script ("٥" too, review 2026-10-28), without leading zeros ("09:04" is "9:04"):
+    /// what a number written in a sentence must be among the facts' (a count, a date, a time).
     static func digits(in text: String) -> [Substring] {
-        text.split(whereSeparator: { !$0.isNumber })
+        text.split(whereSeparator: { !$0.isNumber }).map { run in
+            let trimmed = run.drop { $0 == "0" }
+            return trimmed.isEmpty ? run.suffix(1) : trimmed
+        }
     }
 
     /// `text`'s sentences, each with its stop, trimmed: split after a `.`, `!` or `?` that a space or the end follows.
@@ -274,18 +291,57 @@ public enum LogExplainer {
     static let suspectOnly = "These logs show a suspect address, but no account signed in to, tried or changed from it: what they show of it "
         + "is in the findings and the to-do list."
 
-    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`. Logs
-    /// with no account the attacker touched aren't given to it: the answer is code's `untold` sentence alone.
-    static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
-        if let untold = untold(reading) { return Explanation(overview: untold, done: "", left: []) }
-        let answer = try await model.answer(instructions: instructions, prompt: facts)
-        let known = Set(reading.toDo.map(\.id))
-        func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
-        let left = answer.left.compactMap { point -> Explanation.Point? in
-            let cites = point.cites.map(trimmed).filter(known.contains)
-            guard !cites.isEmpty, !trimmed(point.text).isEmpty else { return nil }
-            return Explanation.Point(text: trimmed(point.text), cites: cites)
+    /// What's done, in code's words: each account's lock as these logs show it, alike ones together, then how many steps
+    /// this app's records show done. Never the model's: asked what was done, it said accounts were secured when nothing was,
+    /// and a sentence like that names only real accounts and no number, so no check catches it (failure log 2026-11-17,
+    /// 2026-11-20 sections; review of A3).
+    static func done(_ reading: LogReading.Reading) -> String {
+        var groups: [(words: String, accounts: [String])] = []
+        for status in reading.statuses {
+            let words = switch status.state {
+            case .notLocked where status.unseen != nil: "No lock these logs can show"
+            case .notLocked where status.earlierLockAt != nil: "No lock since the attack (these logs show one before it)"
+            case .notLocked: "Not locked yet"
+            case .partlyLocked, .locked: lock(status).prefix(1).uppercased() + lock(status).dropFirst()
+            case .stillIn: lock(status).prefix(1).uppercased() + lock(status).dropFirst() + ", then the attacker signed in again"
+            }
+            if let index = groups.firstIndex(where: { $0.words == words }) { groups[index].accounts.append(status.account) }
+            else { groups.append((words, [status.account])) }
         }
-        return Explanation(overview: trimmed(answer.overview), done: trimmed(answer.done), left: left)
+        var sentences = groups.map { group in
+            let shown = group.accounts.prefix(10), more = group.accounts.count - shown.count
+            return "\(group.words): " + LogReading.list(Array(shown) + (more > 0 ? ["\(more) more"] : [])) + "."
+        }
+        if !reading.done.isEmpty {
+            let ids = reading.done.map(\.id).joined(separator: ", ")
+            sentences.append(reading.done.count == 1 ? "This app's records show one more step done (\(ids))."
+                             : "This app's records show \(reading.done.count) more steps done (\(ids)).")
+        }
+        return sentences.joined(separator: " ")
+    }
+
+    /// The model's answer to `facts`, each sentence about what's left kept only if it cites to-do items of `reading`, and
+    /// every sentence only if each run of digits in it is among the facts' and each account it names is in them; the
+    /// sentences dropped for those are counted. What's done is code's (`done`). Logs with no account the attacker touched
+    /// aren't given to it: the answer is code's `untold` sentence alone.
+    static func explain(_ reading: LogReading.Reading, facts: String, using model: some Asking) async throws -> Explanation {
+        if let untold = untold(reading) { return Explanation(overview: untold, done: "", left: [], dropped: 0) }
+        let answer = try await model.answer(instructions: instructions, prompt: facts)
+        let known = Set(reading.toDo.map(\.id)), numbers = Set(digits(in: facts)), named = Set(accounts(in: facts))
+        var dropped = 0
+        func checked(_ text: String) -> String {
+            sentences(text).filter { sentence in
+                let stands = digits(in: sentence).allSatisfy(numbers.contains) && accounts(in: sentence).allSatisfy { holds(named, $0) }
+                if !stands { dropped += 1 }
+                return stands
+            }.joined(separator: " ")
+        }
+        let left = answer.left.compactMap { point -> Explanation.Point? in
+            let cites = point.cites.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter(known.contains)
+            guard !cites.isEmpty else { return nil }
+            let text = checked(point.text)
+            return text.isEmpty ? nil : Explanation.Point(text: text, cites: cites)
+        }
+        return Explanation(overview: checked(answer.overview), done: done(reading), left: left, dropped: dropped)
     }
 }

@@ -128,10 +128,11 @@ struct StillToDoTests {
     @Test func theSummaryDraftHoldsOnlyNumbersTheFactsDo() async throws {
         let reading = LogReading.read(Log.incident)
         let stub = Log.Stub(answer: LogExplainer.Answer(
-            overview: "The attacker got into 2 accounts. They sent 40 emails. Carol was first. ٤٠ more.", done: " Nothing is done yet. ",
+            overview: "The attacker got into 2 accounts. They sent 40 emails. Carol was first. ٤٠ more.",
             left: [LogExplainer.AnswerPoint(text: "Secure carol first.", cites: ["T1"]), LogExplainer.AnswerPoint(text: "Invented.", cites: ["T99"])]))
         let draft = try await LogExplainer.summary(reading, numbers: [("Accounts the attacker touched", 2)], when: { _ in "then" }, using: stub)
-        #expect(draft.text == "The attacker got into 2 accounts. Carol was first.\n\nNothing is done yet.\n\nSecure carol first.")
+        #expect(draft.text == "The attacker got into 2 accounts. Carol was first.\n\nNot locked yet: carol@example.com, dana@example.com "
+                + "and erin@example.com.\n\nSecure carol first.")
         #expect(draft.dropped == 2, "40, and 40 in Arabic-Indic digits, aren't among the facts")
         #expect(LogExplainer.sentences("One. Two 2.5 three! Four") == ["One.", "Two 2.5 three!", "Four"])
     }
@@ -142,7 +143,10 @@ struct StillToDoTests {
             Log.event("login", "carol@example.com", "blocked_sender", ip: Log.attacker, at: 29, ["affected_email_address": "bounce@example.net"]),
         ])
         let unblock = try #require(reading.toDo.first { $0.kind == .unblockSender })
-        let prompt = LogExplainer.prompt(reading.ticking([Self.tick(unblock, how: "Secret detail.")]))
+        let ticked = reading.ticking([Self.tick(unblock, how: "Secret detail.")])
+        let prompt = LogExplainer.prompt(ticked)
+        #expect(LogExplainer.done(ticked) == "Not locked yet: carol@example.com, dana@example.com and erin@example.com. This app's records "
+                + "show one more step done (D1).", "code's words for what's done, the app's own steps counted")
         #expect(prompt.contains("Already done, as this app's records show:\n- Done: have the person unblock the sender the attacker blocked in "
                                 + "Gmail (marked done by hand). Accounts: carol@example.com."))
         #expect(!prompt.contains("Secret detail") && !prompt.contains("bounce@example.net"))
