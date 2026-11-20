@@ -32,7 +32,11 @@ printed to stderr at exit 0 for weeks and nobody saw a line.
 
 **Local vs shared.** `.claude/*` is gitignored except `skills/` and `agents/`: the knowledge is
 committed; the enforcement wiring (`.claude/hooks/`, `.claude/settings.json`, `.claude/private-terms`)
-stays local to the operator.
+stays local to the operator. A worktree has none of it, so every hook command is rooted at
+`"$CLAUDE_PROJECT_DIR"`; run by a relative path, they silently didn't fire there (failure log 2026-11-20).
+
+**The standard.** [STANDARD.md](STANDARD.md) is the one page meant for every repo of the operator's (v0, this repo
+only for now): five ways of working and the coding rules earned in more than one repo, each with where it's enforced.
 
 **Review skills are a probe, not a home.** `/code-review`, `/security-review` and the
 `gam-command-reviewer` agent find breaks; a real finding goes in RULE-FEEDBACK, and the rule it implies
