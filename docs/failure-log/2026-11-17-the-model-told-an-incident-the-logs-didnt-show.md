@@ -116,3 +116,19 @@ for the IDs first, every shape answered. A failed answer's raw text is now print
   the same (a sweep naming no address); A3 adds no field to the prompt (the plan's "Don't"), so that stays open.
 - Not run on the model: a reading with this app's own steps done (`reading.done`); `StillToDoTests.thePromptSaysWhatsDone`
   holds code's words for it.
+
+## 2026-11-20, A4: a long reading's size, measured
+
+By hand, as above, with the instructions and the answer's schema counted too (`tokenCount`). A heavy day, `big`: 40
+accounts each signed in to from its own flagged address and each sending an email, a quarter locked, a quarter half
+locked; 151 to-do items. Its prompt is **2,767 tokens, 3,183 with instructions and schema**; with the 700-token answer
+cap, 3,883 of 8,192. The prompt's caps (20 accounts, 30 story moves, 30 to-do and 30 done items, 10 accounts each)
+keep it there: the plan's steps 1 and 2 (a fits check and a short prompt) were skipped on that measurement. A reading
+past the caps in every list at once (30 items of 10 accounts in both lists) is estimated, not measured, near the
+context; it would fail with the words "there is more here than the model can read at once", which are now true.
+
+**What it said, at that size: the overview mixed up the locks.** ✗ "at 6:39 AM, user5@example.com, user6@example.com, and
+user9@example.com were locked, with user10@example.com, user13@example.com, … receiving password resets without
+sign-outs" (user6@ had a reset only; user13@ was locked). ✗ A point "…password resets or sign-outs but not both,
+including … user39@example.com" (not locked at all). Each names real accounts and real times, so the check keeps them.
+What's done, code's, was right. Open: with what's done now code's, the story need not retell the locks.
