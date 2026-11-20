@@ -4,6 +4,7 @@ import GamEngine
 import Jobs
 import Setup
 import SwiftUI
+import Vault
 
 /// Home: the connection, the bundled GAM, the directory's counts, the newest runs and the last few failed changes. It makes no
 /// Google call of its own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's Home, plan U4).
@@ -26,6 +27,14 @@ struct HomeView: View {
 
     var body: some View {
         Form {
+            // Says so and blocks nothing: in an incident, a debug build that works beats a daily build that doesn't.
+            if BuildExposure.warns(debuggable: BuildSafety.debuggable, demo: BuildSafety.demo) {
+                Section {
+                    Label("This is a debug build: another app on this Mac could read its credentials. For daily use, run the GamGUI Daily scheme.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .accessibilityLabel("Warning. This is a debug build: another app on this Mac could read its credentials. For daily use, run the GamGUI Daily scheme.")
+                }
+            }
             if !unfinished.isEmpty {
                 Section("Outcome unknown — check") {
                     Text("GamGUI stopped while \(unfinished.count == 1 ? "this change was" : "these changes were") running. Check each in Google before running it again.")

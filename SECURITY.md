@@ -96,7 +96,9 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
 
 - **During a `gam` call, the credentials are readable by your other processes.** The `0700` directory
   keeps other users out, not other processes running as you. The wipe keeps that window short; it
-  doesn't close it. The boundary against same-user code is the Keychain item's access control.
+  doesn't close it. The boundary against same-user code is the Keychain item's access control. The
+  daily build (the **GamGUI Daily** scheme, Release) carries no `get-task-allow`, so no other process
+  can attach to it; a Debug build can, and its Home says so.
 - **There are no released builds.** Build it yourself; a build is signed for your own Mac (a Personal
   Team), not notarized.
 
