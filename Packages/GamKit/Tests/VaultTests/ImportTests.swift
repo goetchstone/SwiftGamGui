@@ -161,6 +161,11 @@ struct ImportTests {
 
     @Test func scopesAndClientIDAreRead() {
         #expect(CredentialFacts.grantedScopes(inOAuth2: Data(#"{"scopes": ["s1", "s2"]}"#.utf8)) == ["s1", "s2"])
+        // GamGUI's `admin_token_scopes` hands Python the list as it is, and `in` never matches anything but a string in it.
+        #expect(CredentialFacts.grantedScopes(inOAuth2: Data(#"{"scopes": ["s1", 2, null, ["s2"]]}"#.utf8)) == ["s1"])
+        #expect(CredentialFacts.grantedScopes(inOAuth2: Data(#"{"scopes": "s1"}"#.utf8)) == nil, "not a list: unknown")
+        #expect(CredentialFacts.grantedScopes(inOAuth2: Data(#"{"token": "x"}"#.utf8)) == nil)
+        #expect(CredentialFacts.grantedScopes(inOAuth2: Data("garbage".utf8)) == nil)
         #expect(CredentialFacts.clientID(inServiceAccount: Data(#"{"client_id": "123"}"#.utf8)) == "123")
         #expect(CredentialFacts.clientID(inServiceAccount: Data("garbage".utf8)) == "")
     }

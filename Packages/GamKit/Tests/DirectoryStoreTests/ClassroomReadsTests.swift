@@ -198,6 +198,18 @@ final class ClassroomReadsTests {
         #expect(setup.classroomReadable == nil)
     }
 
+    /// Reports' named reports say whether the admin token holds each read's scope: the token's list as Check access read it,
+    /// nil when it records none, and gone with the domain.
+    @Test func theTokensScopesAreKeptFromCheckAccess() async throws {
+        try await connect(scopes: Self.noClassroom)
+        #expect(setup.connectedAdminScopes == Self.noClassroom)
+        try await connect()
+        #expect(setup.connectedAdminScopes == nil, "no scopes recorded: unknown")
+        try await connect(scopes: Self.noClassroom)
+        await setup.remove(Domain("example.com")!)
+        #expect(setup.connectedAdminScopes == nil)
+    }
+
     @Test func aTeachersClassesSayWhichTheyOwn() async throws {
         try await connect()
         #expect(reads.person("alice@example.com") == nil, "nothing is read until asked")
