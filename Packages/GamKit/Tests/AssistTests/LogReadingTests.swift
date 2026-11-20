@@ -1143,7 +1143,21 @@ struct LogReadingTests {
         #expect(prompt.contains("carol@example.com: locked, and the attacker tried again afterwards and failed. Done: one forced sign-out "
                                 + "by an admin; one password reset by an admin."))
         #expect(prompt.contains("dana@example.com: not locked since the attack."))
-        #expect(prompt.contains("- minute 61: carol@example.com: locked (signed out and the password reset)."))
+        // The story tells the try after the lock, never the lock: what's done is code's sentences, and at 40 accounts the
+        // model retold the locks wrong (failure log 2026-11-17, its 2026-11-20 sections).
+        #expect(prompt.contains("- minute 70: carol@example.com: the attacker tried again after the lock and failed."))
+        #expect(!prompt.contains("minute 61") && !prompt.contains("locked (signed out"))
+    }
+
+    /// Each sweep names the address it reads from, as an item names its accounts: twelve that didn't were twelve lines word
+    /// for word alike, and the model told them as batches of one review, or as done (failure log 2026-11-17, 2026-11-20).
+    @Test func eachSweepNamesItsAddress() {
+        let reading = LogReading.read(Self.wave), prompt = LogExplainer.prompt(reading)
+        let sweeps = reading.toDo.filter { $0.kind == .sweep }
+        #expect(Set(sweeps.compactMap(\.sweeps)) == Set((1...12).map { "198.51.100.\($0)" }))
+        for task in sweeps {
+            #expect(prompt.contains("\n\(task.id): \(LogExplainer.meaning(.sweep)). Address: \(task.sweeps ?? "")."), "\(task.id)")
+        }
     }
 
     /// No lock seen says why when the pull couldn't show one: pulled by the attacker's address (the lock is done from the
@@ -1202,6 +1216,22 @@ struct LogReadingTests {
         #expect(explanation.overview == "carol@ was taken over.")
         #expect(explanation.left == [LogExplainer.Explanation.Point(text: "Secure carol first.", cites: ["T1"])])
         #expect(explanation.dropped == 0, "a point citing no to-do item isn't counted: it's dropped as adding a task")
+    }
+
+    /// A point citing only items an earlier kept point cited is dropped, uncounted: given the wave's twelve sweeps, the model
+    /// wrote three points on all twelve, and the later two told them as done (failure log 2026-11-17, 2026-11-20). A point
+    /// the check dropped cites nothing kept, so the next on its items stands.
+    @Test func aPointRepeatingAnEarlierOnesTasksIsDropped() async throws {
+        let all = (1...12).map { "T\($0)" }
+        let stub = Stub(answer: LogExplainer.Answer(overview: "", left: [
+            LogExplainer.AnswerPoint(text: "Read user99@example.com's logs.", cites: ["T1"]),
+            LogExplainer.AnswerPoint(text: "Read every account's logs from each address.", cites: all),
+            LogExplainer.AnswerPoint(text: "The full chain of sign-ins is now visible.", cites: all),
+            LogExplainer.AnswerPoint(text: "Finish the review.", cites: ["T3"]),
+        ]))
+        let explanation = try await LogExplainer.explain(LogReading.read(Self.wave), using: stub)
+        #expect(explanation.left == [LogExplainer.Explanation.Point(text: "Read every account's logs from each address.", cites: all)])
+        #expect(explanation.dropped == 1, "only user99@, which the facts don't hold")
     }
 
     /// Every sentence the model writes stands only on the facts: a number in it must be among theirs (leading zeros aside),
