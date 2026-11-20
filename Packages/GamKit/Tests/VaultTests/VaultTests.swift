@@ -104,6 +104,19 @@ struct VaultTests {
         #expect(store.sessionsEnded == 1)
     }
 
+    /// A lock mid-run (the screen locked, plan 2026-11-18 S2) ends only the session: the call that already read its
+    /// credentials keeps them, and the next read works in a new session, which the Keychain asks Touch ID for again.
+    @Test func aLockMidRunEndsOnlyTheSession() async throws {
+        let store = MemoryStore()
+        try filled(store)
+        let vault = Vault(store: store)
+        let held = try await vault.credentials(for: example)
+        await vault.lock()
+        #expect(held[.oauth2] == Secret(Data("placeholder-oauth2".utf8)) && store.sessionsEnded == 1)
+        #expect(try await vault.credentials(for: example) == held)
+        #expect(store.sessionsEnded == 1, "the new session isn't ended again by its own first read")
+    }
+
     @Test func storingReplacesTheValue() async throws {
         let store = MemoryStore()
         try filled(store)
