@@ -1,4 +1,5 @@
 import Foundation
+import FoundationModels
 import TestSupport
 import Testing
 @testable import Assist
@@ -34,6 +35,72 @@ struct LogReadingTests {
         event("chrome", "dana@example.com", "UNSAFE_SITE_VISIT", flagged: true, at: 9,
               ["EVENT_RESULT": "BYPASSED", "URL": "https://login-check.example.net/view"]),
     ]
+
+    // The shapes the real model must word without telling an attack it wasn't given (plan 2026-11-18, A2), from `incident`'s
+    // own events and `done`'s admin steps, nothing new. Each one's test below proves it is that shape.
+
+    /// erin@'s and frank@'s passwords tried from the attacker's address, Google blocking erin@'s sign-in: nobody got in,
+    /// nothing locked.
+    static let triedOnly: [LogReading.Event] = [
+        event("login", "erin@example.com", "suspicious_login", ip: attacker, flagged: true, at: 10),
+        event("login", "erin@example.com", "login_failure", ip: attacker, at: 11),
+        event("login", "frank@example.com", "login_failure", ip: attacker, at: 12),
+        event("login", "alice@example.com", "login_success", ip: office, at: 5),
+    ]
+
+    /// carol@ signed in to from the attacker's address; no sign-out, no reset.
+    static let notLocked: [LogReading.Event] = [
+        event("login", "carol@example.com", "suspicious_login", ip: attacker, flagged: true, at: 10),
+        event("login", "carol@example.com", "login_success", ip: attacker, flagged: true, at: 11),
+        event("login", "alice@example.com", "login_success", ip: office, at: 5),
+    ]
+
+    /// `notLocked`, then carol@'s password reset by an admin and no sign-out.
+    static let halfLocked = notLocked + [done("CHANGE_PASSWORD", at: 60)]
+
+    /// Twelve accounts signed in to by the attacker, each locked: A4's size. Each from its own suspect address: one that more
+    /// than `LogReading.shared` accounts signed in from is read as an office's or a VPN's, with no account's status.
+    static let wave: [LogReading.Event] = (1...12).flatMap { n -> [LogReading.Event] in
+        let account = "user\(n)@example.com", ip = "198.51.100.\(n)"
+        return [event("login", account, "suspicious_login", ip: ip, flagged: true, at: 2 * n),
+                event("login", account, "login_success", ip: ip, flagged: true, at: 2 * n + 1),
+                done("CHANGE_PASSWORD", to: account, at: 60 + 2 * n), done("RESET_SIGNIN_COOKIES", to: account, at: 61 + 2 * n)]
+    }
+
+    /// Each shape by name, for the real model's suite.
+    static let shapes: [String: [LogReading.Event]] = ["incident": incident, "triedOnly": triedOnly, "notLocked": notLocked,
+                                                       "halfLocked": halfLocked, "wave": wave]
+
+    /// Tried only: each account a status the attacker never got into, none locked, and still told by the model.
+    @Test func triedOnlyIsTriedOnly() {
+        let reading = LogReading.read(Self.triedOnly)
+        #expect(reading.statuses.map(\.account) == ["erin@example.com", "frank@example.com"])
+        #expect(reading.statuses.allSatisfy { !$0.attackerGotIn && $0.state == .notLocked && $0.lockedAt == nil })
+        #expect(LogExplainer.untold(reading) == nil, "the model is asked")
+    }
+
+    /// Not locked: the attacker got in, and nothing locked the account.
+    @Test func notLockedIsNotLocked() {
+        let reading = LogReading.read(Self.notLocked)
+        #expect(reading.statuses.map(\.account) == ["carol@example.com"])
+        let carol = reading.statuses[0]
+        #expect(carol.attackerGotIn && carol.state == .notLocked && carol.lockedAt == nil && carol.reset == nil && carol.signOut == nil)
+    }
+
+    /// Half locked: the attacker got in, the password was reset, and no sign-out came.
+    @Test func halfLockedIsHalfLocked() {
+        let reading = LogReading.read(Self.halfLocked)
+        #expect(reading.statuses.map(\.account) == ["carol@example.com"])
+        let carol = reading.statuses[0]
+        #expect(carol.attackerGotIn && carol.state == .partlyLocked && carol.reset != nil && carol.signOut == nil)
+    }
+
+    /// The wave: twelve accounts the attacker got into, each locked, none set aside as shared.
+    @Test func theWaveIsTwelveLocked() {
+        let reading = LogReading.read(Self.wave)
+        #expect(reading.statuses.count == 12 && !reading.findings.contains { $0.kind == .sharedAddress })
+        #expect(reading.statuses.allSatisfy { $0.attackerGotIn && $0.state == .locked && $0.lockedAt != nil })
+    }
 
     @Test func anIncidentReadsAsItsFindingsMostSeriousFirst() {
         let reading = LogReading.read(Self.incident)
@@ -1292,16 +1359,35 @@ struct LogReadingTests {
 }
 
 /// The real on-device model, by hand on a Mac that has it (`SWIFTGAMGUI_MODEL=1 swift test --filter OnDeviceModel`): CI has
-/// none, and a model's answer isn't a fixed output to hold a test to. It checks the answer's shape and its citations.
+/// none, and a model's answer isn't a fixed output to hold a test to. Each shape's prompt, its size against the model's
+/// context, and the model's own answer are printed, for a person to read sentence by sentence (plan 2026-11-18, A2); it
+/// holds only what holds today: an answer, except for the wave, whose failure is printed, and no cite the model made up.
 @Suite("On-device model", .enabled(if: ProcessInfo.processInfo.environment["SWIFTGAMGUI_MODEL"] == "1" && LogExplainer.unavailable == nil))
 struct OnDeviceModelTests {
-    @Test func theModelExplainsTheIncidentCitingItsFindings() async throws {
-        let reading = LogReading.read(LogReadingTests.incident)
-        let explanation = try await LogExplainer.explain(reading)
-        print("overview:", explanation.overview)
-        print("done:", explanation.done)
-        for point in explanation.left { print("left:", point.text, point.cites) }
-        #expect(!explanation.overview.isEmpty && !explanation.left.isEmpty)
-        #expect(explanation.left.allSatisfy { !$0.cites.isEmpty })
+    @Test(arguments: ["incident", "triedOnly", "notLocked", "halfLocked", "wave"])
+    func theModelWordsEachShape(_ name: String) async throws {
+        let reading = LogReading.read(try #require(LogReadingTests.shapes[name]))
+        let prompt = LogExplainer.prompt(reading), model = SystemLanguageModel.default
+        let tokens = try await model.tokenCount(for: prompt)
+        print("== \(name): \(tokens) prompt tokens; context \(model.contextSize); \(model.variant.displayName)")
+        print(prompt)
+        // The model's own answer, before `explain` drops what cites no to-do item, then what the screen would show.
+        let raw: LogExplainer.Answer
+        do {
+            raw = try await LogExplainer.OnDevice().answer(instructions: LogExplainer.instructions, prompt: prompt)
+        } catch {
+            print("\(name) threw: \(error)")
+            #expect(name == "wave", "only the wave may throw")
+            return
+        }
+        print("overview:", raw.overview)
+        print("done:", raw.done)
+        for point in raw.left { print("left:", point.text, point.cites) }
+        let known = Set(reading.toDo.map(\.id))
+        let madeUp = raw.left.flatMap(\.cites).filter { !known.contains($0.trimmingCharacters(in: .whitespaces)) }
+        #expect(madeUp.isEmpty, "cites no to-do item: \(madeUp)")
+        let shown = try await LogExplainer.explain(reading, using: LogReadingTests.Stub(answer: raw))
+        print("shown: \(shown.left.count) of \(raw.left.count) points kept")
+        #expect(!shown.overview.isEmpty)
     }
 }
