@@ -174,7 +174,9 @@ struct WriteRouteTests {
             #expect(path.hasPrefix("Packages/GamKit/Sources/Assist/"), "\(path): \(line)")
             #expect(line.contains("LanguageModelSession(model: SystemLanguageModel.default"), "\(path): \(line)")
         }
-        #expect(try Self.files(in: "Packages/GamKit/Sources/Assist", matching: ["URLSession"]).isEmpty)
+        // Foundation reaches the network without an import the check above sees: a session, a request, or reading a URL.
+        #expect(try Self.files(in: "Packages/GamKit/Sources/Assist", matching: ["URLSession", "URLRequest", "NSURLConnection", "contentsOf:"])
+            .isEmpty)
     }
 
     /// The compromised-account model is reached from its own screen, its confirm sheet and the wiring only: Users'
