@@ -54,7 +54,7 @@ curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 \
 
 # Parse the release JSON from the file (no stdin, so a heredoc script is safe here). Print one
 # line: "<tag> <asset-name> <download-url>". Prefer the highest macosNN build if several match.
-PICK="$(python3 - "$TMP/release.json" "$ARCH" <<'PY'
+PICK="$(python3 -I - "$TMP/release.json" "$ARCH" <<'PY'
 import json, re, sys
 data = json.load(open(sys.argv[1]))
 arch = sys.argv[2]
@@ -138,4 +138,7 @@ printf '%s\n' "$VERSION" > "$DEST/VERSION"
 printf '%s  %s\n' "$SHA" "$ASSET_NAME" > "$DEST/SHA256"
 
 echo "==> Done. Vendored GAM $VERSION."
-"$DEST/gam" version 2>/dev/null | head -2 || echo "(could not run gam version yet — may need Gatekeeper approval)"
+# Asked in an empty config folder, as check_app.sh does: never the home one, which holds the operator's credentials.
+cfg="$(mktemp -d)"
+GAMCFGDIR="$cfg" GAM_NO_UPDATE_CHECK=1 "$DEST/gam" version 2>/dev/null | head -2 || echo "(could not run gam version yet — may need Gatekeeper approval)"
+rm -rf "$cfg"
