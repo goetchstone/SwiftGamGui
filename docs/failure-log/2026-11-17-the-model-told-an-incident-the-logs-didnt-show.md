@@ -38,7 +38,8 @@ hold; the rest hold.
 **Finding 2 reproduced, in `done`, not in `overview`.** Asked what was done when nothing was, the model says the accounts
 were secured: `notLocked` in 2 of 2 runs, `triedOnly` 1 of 2, `incident` 1 of 2; `halfLocked` never. Its guide is "what has
 been done to secure the accounts, and whether the locks are holding". The overview, asked "when each was locked", invented no
-lock in 10 answers. A3 keeps its steps 1 and 2.
+lock in 10 answers; once it said no other account was reached, which the facts leave to find out (`notLocked`, run 1). A3
+keeps its steps 1 and 2.
 
 **`triedOnly`** (erin@'s and frank@'s passwords tried, nobody got in, nothing done)
 - Run 1, overview: "On 2026-10-19 at 09:04:20Z, the attacker tried the password for erin@example.com and failed. At
@@ -55,8 +56,8 @@ lock in 10 answers. A3 keeps its steps 1 and 2.
 
 **`notLocked`** (carol@ signed in to by the attacker, nothing done)
 - Run 1, overview: "On 2026-10-19T09:04:20Z, the attacker signed in from 198.51.100.23 using carol@example.com. The attack
-  affected carol@example.com, which has not been locked since the incident." "No other accounts were directly reached by
-  the attacker at this time." (not in the facts, which list carol@ only; true of these logs)
+  affected carol@example.com, which has not been locked since the incident." ✗ "No other accounts were directly reached by
+  the attacker at this time." The facts list carol@ only, and T2 says whom else the address reached is still to find.
 - Run 1, done: ✗ "We have secured the account for carol@example.com, but the lock has not been applied since the attack."
   Nothing was done; the sentence contradicts itself.
 - Run 1, left: "The account for carol@example.com remains unsecured as no lock has been enforced since the attack." (T1) "We
@@ -77,10 +78,13 @@ lock in 10 answers. A3 keeps its steps 1 and 2.
 
 **Not asked for, recorded:**
 - `incident`, run 1, done: ✗ "The accounts for carol@example.com, dana@example.com, and erin@example.com have been secured
-  by ensuring no further access was granted, though the locks remain active." None was locked. Run 2's held.
-- `wave`: overview and done held in both runs; its points about what's left didn't. Run 1 said two of the open sweeps were
-  done: ✗ "…have had their logs reviewed…", ✗ "The full scope of access … has been analyzed across all accounts,
-  confirming widespread compromise". Run 2 made T1, T2 and T3 "the first batch", "the next set" and "the final phase" of one
+  by ensuring no further access was granted, though the locks remain active." None was locked. Run 2's held. Run 1's points
+  about what's left cite T4 to T8 only, leaving out the three locks (T1 to T3); run 2's say ✗ "Emails sent from
+  carol@example.com and other accounts must be collected" (T5 to T7 name carol@ alone).
+- `wave`: overview and done held in both runs; its points about what's left mostly didn't. Two of run 1's three points,
+  each citing T1 to T12, said the sweeps were done: ✗ "…have had their logs reviewed…", ✗ "The full scope of access … has
+  been analyzed across all accounts, confirming widespread compromise"; its third held. Run 2 made T1, T2 and T3 "the first batch", "the next set" and "the final phase" of one
   review, and left out T4 to T12. The cause is code's: twelve suspect addresses make twelve `sweep` items whose meanings are
   word for word the same and don't name the address, so the model can't tell them apart.
-- Size: the wave's 12 accounts used 1,803 of 8,192 tokens. A4 should size from this measure, not the plan's estimate.
+- Size: the wave's 12 accounts, with one-line sweeps naming no account, used 1,803 of 8,192 tokens. That is a middle case:
+  the plan's worst (20 accounts' moments, 30 + 30 items of up to 10 accounts each) is still unmeasured, for A4.

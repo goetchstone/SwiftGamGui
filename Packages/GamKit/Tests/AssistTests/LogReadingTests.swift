@@ -39,8 +39,8 @@ struct LogReadingTests {
     // The shapes the real model must word without telling an attack it wasn't given (plan 2026-11-18, A2), from `incident`'s
     // own events and `done`'s admin steps, nothing new. Each one's test below proves it is that shape.
 
-    /// erin@'s and frank@'s passwords tried from the attacker's address, Google blocking erin@'s sign-in: nobody got in,
-    /// nothing locked.
+    /// erin@'s and frank@'s passwords tried from the attacker's address, after a sign-in to erin@ Google called suspicious:
+    /// nobody got in, nothing locked.
     static let triedOnly: [LogReading.Event] = [
         event("login", "erin@example.com", "suspicious_login", ip: attacker, flagged: true, at: 10),
         event("login", "erin@example.com", "login_failure", ip: attacker, at: 11),
@@ -93,6 +93,7 @@ struct LogReadingTests {
         #expect(reading.statuses.map(\.account) == ["carol@example.com"])
         let carol = reading.statuses[0]
         #expect(carol.attackerGotIn && carol.state == .partlyLocked && carol.reset != nil && carol.signOut == nil)
+        #expect(carol.lockedAt != nil && carol.lockedAt == carol.reset?.at, "half a lock dates from its one step")
     }
 
     /// The wave: twelve accounts the attacker got into, each locked, none set aside as shared.
