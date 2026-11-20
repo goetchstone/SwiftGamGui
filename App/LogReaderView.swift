@@ -661,9 +661,14 @@ struct LogReaderView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Written by the on-device model from what's above: check it against the timelines and the list.", systemImage: "sparkles")
                     .font(.callout).foregroundStyle(.secondary)
-                if !explanation.overview.isEmpty { Text(explanation.overview) }
+                if explanation.overview.isEmpty {
+                    Text(explanation.dropped > 0 ? "The model's story of what happened didn't match the logs, so it isn't shown."
+                         : "The model wrote nothing about what happened.").foregroundStyle(.secondary)
+                } else {
+                    Text(explanation.overview)
+                }
                 if !explanation.done.isEmpty {
-                    Text("Done so far").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
+                    Text("Done so far, as the logs show it").fontWeight(.semibold).accessibilityAddTraits(.isHeader)
                     Text(explanation.done)
                 }
                 if !explanation.left.isEmpty {
@@ -671,6 +676,9 @@ struct LogReaderView: View {
                     ForEach(Array(explanation.left.enumerated()), id: \.offset) { _, point in
                         Text("• \(point.text) (\(point.cites.joined(separator: ", ")))")
                     }
+                }
+                if explanation.dropped > 0 {
+                    Text(OnDeviceModel.leftOut(explanation.dropped, notIn: "the logs")).font(.callout).foregroundStyle(.secondary)
                 }
             }
             .textSelection(.enabled)

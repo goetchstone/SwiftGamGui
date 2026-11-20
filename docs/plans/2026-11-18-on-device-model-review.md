@@ -1,6 +1,6 @@
 # Plan: the on-device model and security, reviewed (and what to do next)
 
-**Status (2026-11-20): S1 (#169), S4 (#173), R1 (#174) done; A1 in review. Next: A2.** Asked for: check the repo, its security, its usefulness and its use of
+**Status (2026-11-20): S1 (#169), S4 (#173), R1 (#174), A1 (#175), A2 (#176) done; A3 in review. Next: A4.** Asked for: check the repo, its security, its usefulness and its use of
 Apple's on-device model; say where the model is used wrongly and where else it could be used; write it so a smaller model
 can carry out each task. Read against the macOS 27 SDK on this Mac (Xcode 27.2, `FoundationModels.swiftinterface`), not
 from memory. Nothing here was run against the real model: where a finding is read from code and not reproduced, it says so.
@@ -202,6 +202,12 @@ new answers under A2's section as "after".
 don't; the runbook's model entry says the guides presuppose nothing and names the checks.
 **Don't:** give the model findings, subjects, app names or any new field. Don't loosen `untold`.
 
+**As built (2026-11-20):** step 2 went further on review: what's done is code's sentences always (`LogExplainer.done`), and
+the answer has no `done` field, because the model's "secured" sentences pass both checks wherever anything at all was done.
+The account check matches whole accounts or "name@", never a substring; digits compare without leading zeros. A point's
+`cites` come before its `text` (the other order made a `ParsingError`). The by-hand run uses the screen's dates. Failure
+log 2026-11-17, its "after A3" section.
+
 ### A4 — A long reading fits, and failures say the right thing · *medium* · branch `fix/model-long-reading`
 
 **Why:** findings 5 and 6. Start from A2's numbers: if `wave`'s token count plus 700 is well under `contextSize`, do
@@ -219,7 +225,8 @@ only steps 3 and 4 and write that down.
 3. `OnDeviceModel.failure`: `.contextSizeExceeded` → "there is more here than the model can read at once. The lists
    above are complete without it." (no "Try again"). Add, before the `LanguageModelError` guard:
    `SystemLanguageModel.Error` → "the on-device model is still being set up (downloading). Try again in a while.";
-   `GeneratedContent.ParsingError` → "the model's answer didn't come out whole. Try again." (never its `rawContent`);
+   `GeneratedContent.ParsingError` → "the model's answer didn't come out whole." (never its `rawContent`; no "Try again":
+   greedy since A3, the same facts fail the same way);
    `CancellationError` → "it was stopped."
 4. Tests: `OnDeviceModelWordsTests` (its own file since R1) gets a case per new line (each error has a public init in the SDK; if one doesn't,
    leave its test out and say so in the PR). A stub whose `fits` answers false gets the short prompt, proven by the

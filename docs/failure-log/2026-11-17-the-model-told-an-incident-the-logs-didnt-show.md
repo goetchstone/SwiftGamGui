@@ -88,3 +88,31 @@ keeps its steps 1 and 2.
   word for word the same and don't name the address, so the model can't tell them apart.
 - Size: the wave's 12 accounts, with one-line sweeps naming no account, used 1,803 of 8,192 tokens. That is a middle case:
   the plan's worst (20 accounts' moments, 30 + 30 items of up to 10 accounts each) is still unmeasured, for A4.
+
+## 2026-11-20, after A3: the same shapes, asked only what holds
+
+The same run by hand on the same fixtures and model, after A3, with dates as the Log Reader writes them ("Oct 19, 2026
+at 5:04 AM"). Greedy: two runs of one version answered word for word alike. Prompt sizes unchanged (142 to 1,779 tokens).
+
+**What's done is code's now, not the model's.** The plan's step 2 (code's sentence only when nothing was done) was
+tried first; its review found the model's own sentence still shown wherever one email was pulled or one account half
+locked, and "We have secured carol@example.com." passes both checks (a real account, no number). So `LogExplainer.done`
+writes it from each account's lock as the logs show it: `notLocked` "Not locked yet: carol@example.com.", `halfLocked`
+"Password reset, but no sign-out seen: carol@example.com.", `wave` "Locked (signed out and the password reset): …". Finding
+2 can't recur: the model isn't asked.
+
+**A point's IDs come first.** With the sentence first and no `done` field, `halfLocked` threw a `ParsingError` every time
+(greedy): the model wrote "…quick at any size. Citations: T2." into a point's text and closed it without `cites`. Asked
+for the IDs first, every shape answered. A failed answer's raw text is now printed by the by-hand test.
+
+**The final run: no false sentence in five shapes; the check dropped none.**
+- `triedOnly`: "…the attacker tried the password and failed for erin@example.com. At 5:05 AM, the attacker tried the password
+  and failed for frank@example.com." (the earlier "at the same time" is gone); one point per account, one for the sweep.
+- `notLocked`, `halfLocked`: hold; `halfLocked`'s T1 repeats the to-do's own "only the password reset or only the sign-out".
+- `incident`: the overview holds; its three points are T1 to T3, one per account; T4 to T8 (the sweep, the email) are left
+  out of "most urgent" (three at most).
+- `wave`: the overview holds (no "one per second"); two points say the sweeps are still to do; one ("The logs from the
+  attacker's address show repeated sign-ins and lock events…") names no task. Its twelve to-do lines are still word for word
+  the same (a sweep naming no address); A3 adds no field to the prompt (the plan's "Don't"), so that stays open.
+- Not run on the model: a reading with this app's own steps done (`reading.done`); `StillToDoTests.thePromptSaysWhatsDone`
+  holds code's words for it.
