@@ -173,6 +173,16 @@ public final class OnboardChanges {
     private var cardTimer: Task<Void, Never>?
     /// The tenant the run shown ran on: its Retry is offered, and held, only there (plan F6).
     private var runTenant: (domain: Domain, generation: Int)?
+    /// The wait for Google going now, as one run for its whole length: its ID and the run's preview (its rounds' tray jobs).
+    private var waiting: (id: UUID, preview: UUID)?
+
+    /// The wait for Google while it goes, as a switch to another domain would end it (plan F6's review): GamGUI's FinishJob,
+    /// "Finishing setup for <hire>", one job for the whole wait, where a round here is in the jobs tray only while it runs.
+    /// `preview` is the run's, which its rounds' tray jobs carry.
+    public var waitForGoogle: (id: UUID, title: String, preview: UUID)? {
+        guard let waiting, let finishing, finishing.isLive else { return nil }
+        return (waiting.id, "Finishing setup for \(finishing.email)", waiting.preview)
+    }
     /// Why the wait for Google stopped when a switch stopped it (plan F6), in GamGUI's words; nil for Stop.
     private var finishStoppedBy: String?
 
@@ -505,7 +515,7 @@ public final class OnboardChanges {
             Task { [directory] in await directory.load() }
         }
         if let retry = outcome.retry {
-            startFinishing(retry)
+            startFinishing(retry, preview: pending.preview.id)
         } else if !setup.isConnected(to: pending.preview) {
             // A switch during the run (plan F6's review): the executor parks nothing, so no wait begins on the new domain;
             // what waited for Google is said stopped, as a switch during the wait says it.
@@ -573,8 +583,9 @@ public final class OnboardChanges {
 
     // MARK: waiting for Google
 
-    private func startFinishing(_ handle: PendingRetry) {
+    private func startFinishing(_ handle: PendingRetry, preview: UUID) {
         guard let run else { return }
+        waiting = (UUID(), preview)
         let waiting = run.results.count { $0?.isWaiting == true }
         finishing = Finishing(email: run.plan.email, phase: .waiting, round: 0, rounds: waits.count, nextTryAt: nil, waiting: waiting)
         finishTask = Task { [weak self] in await self?.finish(handle) }

@@ -1,5 +1,6 @@
 @testable import ChangeCore
 import Foundation
+import Jobs
 @testable import Directory
 @testable import GamEngine
 import Setup
@@ -740,6 +741,34 @@ final class OnboardChangesTests {
         #expect(run.results[1]?.isWaiting == true, "the signature, begun before the switch, waited")
         #expect(Set(run.notDone.values.map(\.reason)) == ["Stopped: you switched to example.org."])
         #expect(changes.failedSteps.isEmpty)
+    }
+
+    /// Review of plan F6: between its rounds the wait for Google is no job in the tray, so a switch was never warned of and
+    /// silently gave up the new hire's remaining steps. It's named, as GamGUI's FinishJob is, once (a round in the tray isn't
+    /// named twice), and Switch Anyway goes ahead for it.
+    @Test func theWaitForGoogleIsWarnedOfBeforeASwitch() async throws {
+        try await connect()
+        try lag(100)
+        try await storeOther()
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic")
+        await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                              createAccount: true), role: role), confirmed)
+        let wait = try #require(changes.waitForGoogle)
+        let board = JobBoard()
+        board.handle(.started(job: UUID(), preview: wait.preview, title: "Onboarding jordan@example.com (waiting for Google, try 2)",
+                              total: 1))
+        board.handle(.started(job: UUID(), preview: UUID(), title: "Suspend user for dana@example.com", total: 1))
+        #expect(SwitchStops.running(jobs: board, onboarding: changes, users: nil).map(SetupModel.SwitchWarning.line) == [
+            "Suspend user for dana@example.com",
+            "Finishing setup for jordan@example.com — stopped part-way, it is left half done: the steps after it won't run"])
+        setup.runningRuns = { [changes] in SwitchStops.running(jobs: JobBoard(), onboarding: changes, users: nil) }
+        #expect(await setup.checkAccess(Domain("example.org")!) == .warned)
+        let warning = try #require(setup.switchWarning)
+        #expect(warning.runs.map(\.title) == ["Finishing setup for jordan@example.com"] && changes.finishing?.isLive == true)
+        #expect(await setup.checkAccess(Domain("example.org")!, agreedToStop: warning.runIDs) == .connected)
+        await changes.waitForFinishing()
+        #expect(changes.finishing?.phase == .stopped && changes.waitForGoogle == nil)
     }
 
     /// example.org's credentials, stored but not checked.

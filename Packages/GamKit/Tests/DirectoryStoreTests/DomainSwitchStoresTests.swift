@@ -1,5 +1,6 @@
 @testable import ChangeCore
 import Foundation
+import Jobs
 @testable import Directory
 @testable import GamEngine
 import Setup
@@ -110,6 +111,28 @@ final class DomainSwitchStoresTests {
         for held in [heldUser.preview, heldGroup.preview, heldBuilder.preview] {
             #expect(await executor.run(held, confirmation: confirmed).refusal == "That preview has expired or was already run — preview again.")
         }
+    }
+
+    /// Review of plan F6: a temporary password's details show on the old domain's person page, which a switch closes, so a
+    /// switch with nothing running hid a password already set before it was handed over. It's warned of first.
+    @Test func aTemporaryPasswordNotHandedOverIsWarnedOf() async throws {
+        try await store("example.com", admin: "admin@example.com")
+        try await store("example.org", admin: "admin@example.org")
+        #expect(await setup.checkAccess(Domain("example.com")!) == .connected)
+        let directory = DirectoryStore(setup: setup, runner: runner)
+        await directory.load()
+        let users = UserChanges(executor: executor, directory: directory)
+        setup.runningRuns = { [users] in SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: users) }
+        let carol = try #require(directory.users?.first { $0.primaryEmail == "carol@example.com" })
+        await users.previewTemporaryPassword(carol)
+        guard case .previewing(let pending) = users.state else { Issue.record("\(users.state)"); return }
+        await users.confirm(pending, confirmed)
+        #expect(users.signIn != nil)
+        #expect(await setup.checkAccess(Domain("example.org")!) == .warned)
+        #expect(setup.switchWarning?.runs.map(\.title)
+                == ["carol@example.com's temporary password, not handed over yet: switching closes it before Done"])
+        users.doneWithSignIn()
+        #expect(await setup.checkAccess(Domain("example.org")!) == .connected, "handed over: nothing to warn of")
     }
 
     /// A run a switch lands in: it stops before its next step in GamGUI's words, and its result, the old domain's, isn't shown
