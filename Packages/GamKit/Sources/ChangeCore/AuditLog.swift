@@ -122,15 +122,33 @@ public final class AuditLog: Sendable {
     /// Each record, newest-first, across every kept generation, skipping blank, malformed and overlong lines,
     /// until `body` returns false. Only the line being read is held, so a reader that keeps a page holds a page.
     /// Every generation is opened before any is read: a roll landing mid-read renames them all, and a reader
-    /// resolving paths lazily would read one twice and skip another.
-    public static func forEachRecord(at url: URL, _ body: (JSONObject) throws -> Bool) rethrows {
+    /// resolving paths lazily would read one twice and skip another. Each is opened as it's written, never through a link
+    /// (`O_NOFOLLOW`), and without waiting (`O_NONBLOCK`), and read only when that descriptor is a regular file: a link, a FIFO
+    /// or a folder in a generation's place is passed over, never followed or waited on, and named to `refused` with why (an
+    /// errno; `EFTYPE` for a file that isn't a regular one), so a reader that must not take it as empty can say so. A
+    /// generation that isn't there is no refusal.
+    public static func forEachRecord(at url: URL, refused: ((URL, Int32) -> Void)? = nil,
+                                     _ body: (JSONObject) throws -> Bool) rethrows {
         var handles: [Int32] = [], seen: Set<[UInt64]> = []
         defer { handles.forEach { close($0) } }
         for candidate in [url] + (1...retainedGenerations).map({ rolled(url, $0) }) {
-            let fd = open(candidate.path, O_RDONLY | O_CLOEXEC)
-            guard fd >= 0 else { continue }
+            let fd = open(candidate.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+            guard fd >= 0 else {
+                if errno != ENOENT { refused?(candidate, errno) }
+                continue
+            }
             var info = stat()
-            guard fstat(fd, &info) == 0, seen.insert([UInt64(info.st_dev), UInt64(info.st_ino)]).inserted else {
+            guard fstat(fd, &info) == 0 else {
+                refused?(candidate, errno)
+                close(fd)
+                continue
+            }
+            guard (info.st_mode & S_IFMT) == S_IFREG else {
+                refused?(candidate, (info.st_mode & S_IFMT) == S_IFDIR ? EISDIR : EFTYPE)
+                close(fd)
+                continue
+            }
+            guard seen.insert([UInt64(info.st_dev), UInt64(info.st_ino)]).inserted else {
                 close(fd)
                 continue
             }

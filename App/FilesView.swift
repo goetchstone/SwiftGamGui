@@ -225,8 +225,10 @@ private struct SheetRow: View {
     var body: some View {
         let made = sheet.outcome.made
         VStack(alignment: .leading, spacing: 3) {
-            Text(name ?? (sheet.command.isEmpty ? "A read" : sheet.command)) + Text(sheet.sensitive ? "  · Sensitive" : "")
-            Text([sheet.when.isEmpty ? "When unknown" : String(sheet.when.prefix(19)).replacingOccurrences(of: "T", with: " "),
+            Text(name ?? (sheet.command.isEmpty ? "A read" : sheet.command))
+            // In this Mac's time zone, named, as Audit shows the same record: the record's own text when it isn't a time.
+            Text([sheet.at.map { $0.formatted(.dateTime.year().month(.abbreviated).day().hour().minute().second()
+                                    .timeZone(.specificName(.short))) } ?? (sheet.when.isEmpty ? "When unknown" : sheet.when),
                   sheet.domain.isEmpty ? "Domain unknown" : sheet.domain,
                   sheet.owner.isEmpty || sheet.owner == "(admin Drive)" ? "the admin's Drive" : "\(sheet.owner)'s Drive"]
                 .joined(separator: " · "))
