@@ -216,18 +216,46 @@ struct WriteRouteTests {
         let app = try Self.swiftFiles(in: "App")
         let sheet = try #require(app.first { $0.path == "App/PlainEnglishFinder.swift" })
         #expect(sheet.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
-
         // The draft holds words only, and only the sheet makes one.
         let draft = sheet.lines.drop { !$0.contains("struct FinderDraft") }.prefix { $0 != "}" }
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("let ") || $0.hasPrefix("var ") }
         #expect(draft == ["let id = UUID()", "let command: String", "let values: [String: String]"], "\(draft)")
         #expect(try Self.files(in: "App", matching: ["FinderDraft("]) == ["App/PlainEnglishFinder.swift"])
-        // The Builder: every line naming a draft selects it, fills fields from it, or passes it on.
+        // The Builder: every line naming a draft selects it, fills fields from it, lets it go, or passes it on.
         let builder = try #require(app.first { $0.path == "App/BuilderView.swift" })
         let drafting = builder.lines.filter { $0.contains("drafted") || $0.contains("draft.") || $0.contains("draft in") }
         #expect(drafting.count >= 6, "the scan must see the Builder's draft lines: \(drafting)")
         let acting = ["run(", "preview(", "reading.", "changes.", "catalogRead", ".built(", "access."]
         #expect(drafting.filter { line in acting.contains { line.contains($0) } }.isEmpty, "\(drafting)")
+        // Cancel stops the model's work, and nothing it finds after opens (review 2026-11-21: the other command still opened).
+        let cancel = Self.blocks(in: sheet.lines, opening: ["Button(\"Cancel\""]).joined()
+        #expect(cancel.contains { $0.contains("work?.cancel()") })
+        #expect(sheet.lines.contains { $0.contains(".onDisappear { work?.cancel() }") })
+        let tasks = Self.blocks(in: sheet.lines, opening: ["work = Task {"])
+        #expect(tasks.count == 2, "finding and filling the other command each keep their task: \(tasks.count)")
+        for task in tasks {
+            let awaited = try #require(task.firstIndex { $0.contains("try await") })
+            let checked = task.indices.filter { $0 > awaited && task[$0].contains("guard !Task.isCancelled else { return }") }
+            let acts = task.indices.filter { $0 > awaited && (task[$0].contains("open(") || task[$0].contains("phase = .found")) }
+            #expect(!checked.isEmpty && !acts.isEmpty && acts.allSatisfy { $0 > checked[0] }, "\(task)")
+        }
+    }
+
+    /// Each block opened on a line whose code starts with one of `opening` (after spaces and a `private`), to where its braces
+    /// close.
+    static func blocks(in lines: [String], opening: [String]) -> [[String]] {
+        lines.indices.filter { index in
+            let code = lines[index].trimmingCharacters(in: .whitespaces)
+            return opening.contains { code.hasPrefix($0) || code.hasPrefix("private " + $0) }
+        }.map { first in
+            var depth = 0, block: [String] = []
+            for line in lines[first...] {
+                block.append(line)
+                depth += line.count { $0 == "{" } - line.count { $0 == "}" }
+                if depth <= 0, line.contains("{") || block.count > 1 { break }
+            }
+            return block
+        }
     }
 
     /// The connected apps' summary is code's own sentences: its model was retired (plan 2026-11-18, R1), and the panel

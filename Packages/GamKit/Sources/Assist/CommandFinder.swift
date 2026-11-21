@@ -310,10 +310,12 @@ public enum CommandFinder {
     static func sampled(_ request: String, _ label: String, among options: [Option], picks: [String], using model: some Asking) async throws -> Narrowed {
         var votes: [String] = []
         for sample in 1...2 {
+            try Task.checkCancellation()
             if let vote = try? await pick(request, from: options.map(\.label), step: .command, sample: sample, using: model), vote != label {
                 votes.append(vote)
             }
         }
+        try Task.checkCancellation()
         let other = votes.max { a, b in votes.count(of: a) < votes.count(of: b) }
         return Narrowed(picks: picks, chosen: options.first { $0.label == label },
                         alternative: other.flatMap { other in options.first { $0.label == other } })
@@ -362,6 +364,7 @@ public enum CommandFinder {
         ]), dependencies: [])
         let prompt = "Choices:\n" + labels.map { "- \($0)" }.joined(separator: "\n") + "\n\n" + holds.map { "\($0)\n\n" }.joined()
             + "Request: \u{201C}\(request)\u{201D}\n\n" + step.task
+        try Task.checkCancellation()
         let content = try await model.answer(instructions: pickInstructions, prompt: prompt, schema: schema, sample: sample)
         guard read(content), let picked = try? content.value(String.self, forProperty: "pick"), labels.contains(picked) else { return nil }
         return picked
@@ -394,6 +397,7 @@ public enum CommandFinder {
         if !widest.slots.isEmpty {
             let names = fieldNames(widest.slots)
             let schema = try fillSchema(widest.slots, names: names)
+            try Task.checkCancellation()
             let first = try await model.answer(instructions: fillInstructions, prompt: fillPrompt(request, option.label, widest.slots, names: names),
                                                schema: schema, sample: nil)
             var faults: [(slot: Slot, value: String, fault: String)] = []
@@ -409,9 +413,11 @@ public enum CommandFinder {
             }
             if !faults.isEmpty {
                 // One re-ask, naming each fault in the request's own words; then a slot still at fault is left empty.
+                try Task.checkCancellation()
                 let again = try? await model.answer(instructions: fillInstructions,
                                                     prompt: fillPrompt(request, option.label, widest.slots, names: names, faults: faults),
                                                     schema: schema, sample: nil)
+                try Task.checkCancellation()
                 for fault in faults {
                     let name = names[widest.slots.firstIndex(of: fault.slot)!]
                     switch again.map({ check(value($0, name), fault.slot, request: request, directory: directory) }) ?? .fault(fault.value, fault.fault) {

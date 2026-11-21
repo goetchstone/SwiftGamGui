@@ -126,6 +126,27 @@ struct CommandFinderTests {
         #expect(Self.check("Children's", .text, "show the Children's Books drive") == .value("Children's", note: nil))
     }
 
+    /// Stopped, the finder asks the model nothing more and finds nothing: the whole way, and filling another command alone
+    /// (review 2026-11-21: Cancel didn't stop the other command's fill, which still opened).
+    @Test func stoppedItAsksNothingMore() async throws {
+        let stopping = Scripted { prompt, _ in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return prompt.hasPrefix("Command: ") ? #"{"asks": "a signature", "user": "gina"}"# : Self.pick("See or list something")
+        }
+        let finding = Task { try await CommandFinder.find("show carol's signature", in: Self.menu, directory: Self.directory, using: stopping) }
+        await #expect(throws: CancellationError.self) { try await finding.value }
+        #expect(stopping.all.count == 1)
+        let option = try #require(Self.menu.options(in: "Users", subcategory: "Gmail - Send As/Signature/Vacation")
+            .first { $0.label == "Show a user's Gmail signature." })
+        let filling = Scripted { prompt, sample in
+            withUnsafeCurrentTask { $0?.cancel() }
+            return #"{"asks": "a signature", "user": "gina"}"#
+        }
+        let other = Task { try await CommandFinder.fill("show gina's signature", option, directory: Self.directory, using: filling) }
+        await #expect(throws: CancellationError.self) { try await other.value }
+        #expect(filling.all.count == 1, "no re-ask once stopped")
+    }
+
     /// What code can't settle is left empty for the operator, never asked of the model (the note names the directory's people,
     /// which the model never reads): two people a name fits, or a directory not read yet.
     @Test func whatCodeCantSettleIsLeftForTheOperator() {

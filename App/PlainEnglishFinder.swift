@@ -26,6 +26,8 @@ struct PlainEnglishSheet: View {
     @Environment(\.appearsActive) private var appearsActive
     @State private var sentence = ""
     @State private var phase = Phase.idle
+    /// The model's work in progress: Cancel, or the sheet closing, stops it, and nothing it finds after opens.
+    @State private var work: Task<Void, Never>?
 
     enum Phase {
         case idle, finding
@@ -72,7 +74,10 @@ struct PlainEnglishSheet: View {
                     Text("Finding a command…").foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel) {
+                    work?.cancel()
+                    dismiss()
+                }
                     .keyboardShortcut(.cancelAction)
                 Button("Find", action: find)
                     .keyboardShortcut(.defaultAction)
@@ -82,6 +87,7 @@ struct PlainEnglishSheet: View {
             .padding()
         }
         .frame(minWidth: 460, idealWidth: 520, minHeight: 320)
+        .onDisappear { work?.cancel() }
     }
 
     @ViewBuilder private var result: some View {
@@ -127,9 +133,10 @@ struct PlainEnglishSheet: View {
         guard !asked.isEmpty, !busy, CommandFinder.unavailable == nil else { return }
         phase = .finding
         let menu = CommandFinder.Menu(catalog), known = Self.known(directory, groups)
-        Task {
+        work = Task {
             do {
                 let finding = try await CommandFinder.find(asked, in: menu, directory: known, using: CommandFinder.OnDevice())
+                guard !Task.isCancelled else { return }
                 phase = .found(asked: asked, finding)
                 if appearsActive {
                     let said = finding.alternative != nil ? "Two commands might fit: pick one."
@@ -137,6 +144,7 @@ struct PlainEnglishSheet: View {
                     AccessibilityNotification.Announcement(said).post()
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 phase = .failed("No command was found: " + OnDeviceModel.failure(error))
                 if appearsActive { AccessibilityNotification.Announcement("No command was found.").post() }
             }
@@ -153,12 +161,14 @@ struct PlainEnglishSheet: View {
     private func openOther(_ option: CommandFinder.Option, asked: String) {
         phase = .finding
         let known = Self.known(directory, groups)
-        Task {
+        work = Task {
             do {
                 let filled = try await CommandFinder.fill(asked, option, directory: known, using: CommandFinder.OnDevice())
+                guard !Task.isCancelled else { return }
                 open(FinderDraft(command: filled.command, values: filled.values))
                 dismiss()
             } catch {
+                guard !Task.isCancelled else { return }
                 phase = .failed("Its fields weren't filled: " + OnDeviceModel.failure(error))
             }
         }
