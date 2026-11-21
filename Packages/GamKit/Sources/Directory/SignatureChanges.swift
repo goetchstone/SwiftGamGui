@@ -160,8 +160,10 @@ public final class SignatureChanges {
     private let runner: AuthenticatedRunner?
     /// The signatures runs kept (`SignatureBackupStore`), read for the list and a Put Back. The executor keeps into it.
     private let backups: SignatureBackupStore?
-    /// The kept runs, newest first, as last read (`loadKept`); nil until then.
+    /// The kept runs, newest first, as last read (`loadKept`); nil until then, or when they couldn't be read.
     public private(set) var kept: [SignatureBackupStore.Listed]?
+    /// Why the kept runs couldn't be read, in words: never shown as none kept.
+    public private(set) var keptProblem: String?
     public private(set) var isLoadingKept = false
 
     public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore, runner: AuthenticatedRunner? = nil,
@@ -362,7 +364,17 @@ public final class SignatureChanges {
     public func loadKept() async {
         guard let backups, !isLoadingKept else { return }
         isLoadingKept = true
-        kept = await Task.detached { backups.runs() }.value
+        let read = await Task.detached { () -> Result<[SignatureBackupStore.Listed], SignatureBackupStore.Problem> in
+            do throws(SignatureBackupStore.Problem) { return .success(try backups.runs()) } catch { return .failure(error) }
+        }.value
+        switch read {
+        case .success(let runs):
+            kept = runs
+            keptProblem = nil
+        case .failure(let problem):
+            kept = nil
+            keptProblem = "The kept signatures couldn't be read: \(problem.reason). Nothing here says none are kept."
+        }
         isLoadingKept = false
     }
 

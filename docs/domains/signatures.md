@@ -244,7 +244,8 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   that run: …". No Retry (nothing to re-render).
 - **The screen:** "Kept signatures", the Signatures form's last section: what's kept and for how many runs, then each run
   (its title, when, domain and how many) with Put Back… (off on another domain, said in words); an unreadable run is
-  listed by its id with why. Read when the screen opens, after each run, and with ⌘R (Read Again reads the person's
+  listed by its id with why, and a folder that can't be opened or listed says so ("The kept signatures couldn't be read:
+  …"), never "None kept yet." (`runs()` throws; only no folder at all is none). Read when the screen opens, after each run, and with ⌘R (Read Again reads the person's
   signature and the kept runs). `SignaturePutBackSheet`: who goes back (ten, then Show all), the first one's old signature,
   who is left out and why, the count typed above 25, what the run checks first, the commands masked; not the default
   button. Each result banner has Put Back… for the run it just made. Screenshots: `signatures-kept`, `signatures-putback`

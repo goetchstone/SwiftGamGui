@@ -278,7 +278,7 @@ final class SignatureScopeTests {
         #expect(done.message == "Applied to 3 of 3 users." && !done.partial && done.retry == nil)
         #expect(changes.finished == 1 && changes.progress == nil)
         // Each one's old signature kept first (GamGUI #163), in one run, which the result names for its Put Back.
-        let kept = try #require(backups.runs().first?.run)
+        let kept = try #require(try backups.runs().first?.run)
         #expect(done.keptRun == kept.id && kept.what == "Signature for /Staff \u{2014} 3 users")
         #expect(kept.entries.map(\.email) == ["admin@example.com", "alice@example.com", "dana@example.com"])
         #expect(kept.entries.map(\.previous) == ["", "Best,<br>Alice", ""])

@@ -97,7 +97,7 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         let dir = try privateFolder()
         var handedOver = false
         defer { if !handedOver { Darwin.close(dir) } }
-        let id = Self.newID(now(), after: listed(in: dir).first.flatMap(Self.milliseconds))
+        let id = Self.newID(now(), after: try listed(in: dir).first.flatMap(Self.milliseconds))
         let name = id + Self.suffix
         let fd = openat(dir, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw Problem("its file couldn't be made (\(String(cString: strerror(errno))))") }
@@ -128,7 +128,7 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
     /// counted nor removed. Each removed is removed holding its lock. A folder that can't be listed prunes nothing.
     fileprivate func prune(in dir: Int32, sparing: Set<String>) {
         var closed = 0
-        for old in listed(in: dir) {
+        for old in (try? listed(in: dir)) ?? [] {
             let fd = openat(dir, old + Self.suffix, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
             guard fd >= 0 else { continue }
             defer { Darwin.close(fd) }
@@ -158,14 +158,19 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
 
     // MARK: the kept runs
 
-    /// The kept runs, newest first, each read whole or listed by its id with why it can't be. Reads every file: call it off
-    /// the main actor.
-    public func runs() -> [Listed] {
+    /// The kept runs, newest first, each read whole or listed by its id with why it can't be. None when there's no folder
+    /// yet; a folder there that can't be opened or listed throws, never reads as none. Reads every file: call it off the
+    /// main actor.
+    public func runs() throws(Problem) -> [Listed] {
         let dir = open(folder.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-        guard dir >= 0 else { return [] }
+        guard dir >= 0 else {
+            let code = errno
+            if code == ENOENT { return [] }
+            throw Problem("their folder couldn't be opened (\(String(cString: strerror(code))))")
+        }
         defer { Darwin.close(dir) }
         var found: [Listed] = []
-        for id in listed(in: dir) {
+        for id in try listed(in: dir) {
             do throws(Problem) {
                 found.append(Listed(id: id, run: try read(id, in: dir), problem: nil))
             } catch {
@@ -183,7 +188,7 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         let dir = open(folder.path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard dir >= 0 else { throw Problem("it isn't a kept run") }
         defer { Darwin.close(dir) }
-        guard let listed = listed(in: dir).first(where: { $0.utf8.elementsEqual(id.utf8) }) else {
+        guard let listed = try listed(in: dir).first(where: { $0.utf8.elementsEqual(id.utf8) }) else {
             throw Problem("it isn't a kept run")
         }
         return try read(listed, in: dir)
@@ -195,12 +200,13 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
     }
 
     /// The ids of the regular files `<id>.jsonl` in the open folder, newest first. A link, a folder or anything else is
-    /// neither listed nor pruned.
-    private func listed(in dir: Int32) -> [String] {
+    /// neither listed nor pruned. Throws when the folder can't be listed.
+    private func listed(in dir: Int32) throws(Problem) -> [String] {
         let copy = dup(dir)
         guard copy >= 0, let stream = fdopendir(copy) else {
+            let code = errno
             if copy >= 0 { Darwin.close(copy) }
-            return []
+            throw Problem("their folder couldn't be listed (\(String(cString: strerror(code))))")
         }
         defer { closedir(stream) }
         rewinddir(stream)

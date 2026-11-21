@@ -740,7 +740,10 @@ private struct KeptSignaturesSection: View {
             Text("Before a signature is replaced, the one it replaces is read and kept on this Mac, for the last "
                  + "\(SignatureBackupStore.keptRuns) runs. Put Back sets a run's old signatures again, after you review them.")
                 .font(.callout).foregroundStyle(.secondary)
-            if let kept = changes.kept {
+            if let problem = changes.keptProblem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill")
+                    .textSelection(.enabled)
+            } else if let kept = changes.kept {
                 if kept.isEmpty {
                     Text("None kept yet.").foregroundStyle(.secondary)
                 }

@@ -261,7 +261,7 @@ final class SignatureChangesTests {
         let missing = try problem()
         #expect(missing.summary == "\(Executor.notRead) The requested user, group, or resource was not found.")
         #expect(!missing.summary.contains("GAM failed"))
-        #expect(writes().isEmpty && backups.runs().isEmpty)
+        #expect(try writes().isEmpty && backups.runs().isEmpty)
     }
 
     /// A set GAM refuses after the read: the headline says why in words, GAM's own error one click away. What was read is
@@ -274,7 +274,7 @@ final class SignatureChangesTests {
         let refused = try problem()
         #expect(refused.summary == "Couldn't set the signature. \(GamError.Kind.unknown.remediation)")
         #expect(refused.detail?.contains("Requested client not authorized") == true)
-        #expect(backups.runs().first?.run?.entries == [.init(email: "alice@example.com", previous: "Best,<br>Alice", set: "Alice Anders")])
+        #expect(try backups.runs().first?.run?.entries == [.init(email: "alice@example.com", previous: "Best,<br>Alice", set: "Alice Anders")])
     }
 
     /// Live, 2026-09-30: a signature set seconds after `create user` was refused "Requested client not
@@ -343,7 +343,7 @@ final class SignatureChangesTests {
         await access.load("alice@example.com")
         #expect(try access.lists(for: "alice@example.com")?.signature.get() == "Best,<br>Alice")
         // So a Put Back can be put back too.
-        let newest = try #require(backups.runs().first?.run)
+        let newest = try #require(try backups.runs().first?.run)
         #expect(newest.id == restored.keptRun && newest.what == "Put back of Set signature for alice@example.com")
         #expect(newest.entries == [.init(email: "alice@example.com", previous: "Alice Anders", set: "Best,<br>Alice")])
     }
@@ -426,6 +426,21 @@ final class SignatureChangesTests {
         #expect(writes() == [["user", "alice@example.com", "signature", "Old A", "html"]])
         #expect(try backups.load(oldest).entries.map(\.email) == ["alice@example.com", "carol@example.com"],
                 "carol's old signature, left out, is still there to put back by hand")
+    }
+
+    /// Review of Phase A: kept signatures that couldn't be read showed as "None kept yet". The list says why instead.
+    @Test func keptSignaturesThatCantBeReadAreSaid() async throws {
+        try await connect()
+        await changes.loadKept()
+        #expect(changes.kept?.isEmpty == true && changes.keptProblem == nil)
+        let folder = scratch.appending(path: "signature-backups")
+        try write(run: "0000000000001-00000001", entries: [("alice@example.com", "Old", "x")])
+        chmod(folder.path, 0)
+        defer { chmod(folder.path, 0o700) }
+        await changes.loadKept()
+        #expect(changes.kept == nil)
+        #expect(changes.keptProblem == "The kept signatures couldn't be read: their folder couldn't be opened (Permission denied). "
+                + "Nothing here says none are kept.")
     }
 
     /// Many people's Put Back asks for the count typed, as any run of many signatures (D5).

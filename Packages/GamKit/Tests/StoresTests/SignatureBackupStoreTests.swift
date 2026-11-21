@@ -53,7 +53,7 @@ struct SignatureBackupStoreTests {
         try run.keep(email: Self.carol, previous: "", setting: "<b>new</b>")
         #expect(run.keptCount == 2)
         run.close()
-        let listed = store.runs()
+        let listed = try store.runs()
         #expect(listed.count == 1 && listed[0].problem == nil)
         let loaded = try #require(listed[0].run)
         #expect(loaded.id == run.id && loaded.what == "Signature for sales@example.com \u{2014} 2 users" && loaded.domain == "example.com")
@@ -84,7 +84,7 @@ struct SignatureBackupStoreTests {
         clock.withLock { $0 = Date(timeIntervalSince1970: 500) }
         let second = try keptRun(store, "second", keeping: [Self.alice])
         let third = try keptRun(store, "third", keeping: [Self.alice])
-        #expect(store.runs().map(\.id) == [third, second, first])
+        #expect(try store.runs().map(\.id) == [third, second, first])
         #expect(first.hasPrefix("0000001000000-") && second.hasPrefix("0000001000001-") && third.hasPrefix("0000001000002-"))
         #expect(SignatureBackupStore.milliseconds("0000000000002-empty") == 2 && SignatureBackupStore.milliseconds("nope") == nil)
     }
@@ -95,7 +95,7 @@ struct SignatureBackupStoreTests {
         for index in 0..<(SignatureBackupStore.keptRuns + 2) {
             ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"]))
         }
-        #expect(store.runs().map(\.id) == Array(ids.sorted(by: >).prefix(SignatureBackupStore.keptRuns)))
+        #expect(try store.runs().map(\.id) == Array(ids.sorted(by: >).prefix(SignatureBackupStore.keptRuns)))
     }
 
     @Test func aRunThatCantBeReadWholeIsListedNeverDropped() throws {
@@ -105,7 +105,7 @@ struct SignatureBackupStoreTests {
         try handle.seekToEnd()
         try handle.write(contentsOf: Data("{not json\n".utf8))
         try handle.close()
-        let listed = store.runs()
+        let listed = try store.runs()
         #expect(listed.count == 1 && listed[0].id == id && listed[0].run == nil && listed[0].problem == "it isn't whole")
         #expect(throws: SignatureBackupStore.Problem("it isn't whole")) { try store.load(id) }
     }
@@ -137,10 +137,10 @@ struct SignatureBackupStoreTests {
         try putBack.keep(email: "p0@example.com", previous: "new", setting: "old")
         putBack.close()
         #expect(try store.load(oldest).entries.count == 1, "and after it ends")
-        #expect(store.runs().count == SignatureBackupStore.keptRuns + 1)
+        #expect(try store.runs().count == SignatureBackupStore.keptRuns + 1)
         // A later run that keeps someone makes room as usual: the newest five stay.
         let later = try keptRun(store, "later", keeping: [Self.alice])
-        #expect(store.runs().map(\.id) == Array(([later, putBack.id] + ids.reversed()).prefix(SignatureBackupStore.keptRuns)))
+        #expect(try store.runs().map(\.id) == Array(([later, putBack.id] + ids.reversed()).prefix(SignatureBackupStore.keptRuns)))
     }
 
     /// Review of Phase A: with five kept runs, an attempt that kept nobody (a sign-in expired, every read refused) still
@@ -150,9 +150,20 @@ struct SignatureBackupStoreTests {
         var ids: [String] = []
         for index in 0..<SignatureBackupStore.keptRuns { ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"])) }
         let attempt = try store.start(what: "an attempt", domain: example, restoring: [])
-        #expect(store.runs().count == SignatureBackupStore.keptRuns + 1, "nothing pruned as it starts")
+        #expect(try store.runs().count == SignatureBackupStore.keptRuns + 1, "nothing pruned as it starts")
         attempt.close()
-        #expect(store.runs().map(\.id) == ids.reversed())
+        #expect(try store.runs().map(\.id) == ids.reversed())
+    }
+
+    /// Review of Phase A: a folder there that couldn't be opened read as no kept runs, and the screen said none were kept.
+    /// It throws, in words; no folder yet is none.
+    @Test func aFolderThatCantBeReadIsNeverNone() throws {
+        let store = SignatureBackupStore(folder: folder)
+        #expect(try store.runs().isEmpty, "no folder yet")
+        try keptRun(store, "x", keeping: [Self.alice])
+        chmod(folder.path, 0)
+        defer { chmod(folder.path, 0o700) }
+        #expect(throws: SignatureBackupStore.Problem("their folder couldn't be opened (Permission denied)")) { try store.runs() }
     }
 
     /// Review of Phase A: a torn last line (power lost while a copy was being appended) made the whole run unreadable, though
@@ -208,7 +219,7 @@ struct SignatureBackupStoreTests {
         let store = SignatureBackupStore(folder: folder)
         let good = try keptRun(store, "sales", keeping: [Self.alice])
         for _ in 0...SignatureBackupStore.keptRuns { try keptRun(store, "an attempt that kept nobody") }
-        #expect(store.runs().map(\.id) == [good])
+        #expect(try store.runs().map(\.id) == [good])
         #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["\(good).jsonl"])
     }
 
@@ -228,7 +239,7 @@ struct SignatureBackupStoreTests {
         try FileManager.default.copyItem(at: file(id), to: elsewhere)
         let linked = "0000000000001-0000link"
         try FileManager.default.createSymbolicLink(at: file(linked), withDestinationURL: elsewhere)
-        #expect(store.runs().map(\.id) == [id])
+        #expect(try store.runs().map(\.id) == [id])
         #expect(throws: SignatureBackupStore.Problem("it isn't a kept run")) { try store.load(linked) }
         for _ in 0...SignatureBackupStore.keptRuns { try keptRun(store, "more", keeping: [Self.carol]) }
         #expect(FileManager.default.fileExists(atPath: elsewhere.path))
@@ -239,7 +250,9 @@ struct SignatureBackupStoreTests {
         try FileManager.default.createSymbolicLink(at: linkedFolder, withDestinationURL: target)
         let throughLink = SignatureBackupStore(folder: linkedFolder)
         #expect(throws: (any Error).self) { try throughLink.start(what: "x", domain: example, restoring: []) }
-        #expect(throughLink.runs().isEmpty)
+        #expect(throws: SignatureBackupStore.Problem("their folder couldn't be opened (Not a directory)")) {
+            try throughLink.runs()
+        }
         #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
     }
 
@@ -288,6 +301,6 @@ struct SignatureBackupStoreTests {
         #expect(mode(folder) == 0o700)
         run.close()
         #expect(throws: SignatureBackupStore.Problem("the run has ended")) { try run.keep(email: Self.carol, previous: "", setting: "x") }
-        #expect(store.runs().map(\.id) == [id])
+        #expect(try store.runs().map(\.id) == [id])
     }
 }
