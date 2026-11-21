@@ -98,6 +98,17 @@ public struct AccessCheck: Sendable, Equatable {
 
     public var isAuthorized: Bool { outcome == .authorized }
 
+    /// GamGUI's `_with_every_scope`: GAM's link names only the scopes it checked and overwrites the client's list
+    /// (`overwriteClientId=true`), so following it would take away the optional scopes Setup asks for (the devices, Google's
+    /// alerts). When the check failed with a link, Setup's own, with every offered scope, stands in for it; without a client
+    /// ID to make one, GAM's stays.
+    public func linkingEveryOfferedScope(clientID: String, domain: Domain) -> AccessCheck {
+        guard authorizationURL != nil, let full = DelegationScopes.authorizationURL(clientID: clientID, domain: domain) else {
+            return self
+        }
+        return AccessCheck(outcome: outcome, rows: rows, authorizationURL: full)
+    }
+
     public static func interpret(_ result: GamResult) -> AccessCheck {
         let rows = rows(in: result.stdout)
         guard result.exitCode == 0 || (GamExitCode.checkAnswers.contains(result.exitCode) && !rows.isEmpty) else {
