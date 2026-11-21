@@ -280,7 +280,7 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
     kept nobody still pushed out the oldest real run (review of this branch, 2026-11-21);
   - a run being written holds an exclusive `flock` on its file, and pruning skips any file it can't lock: no store, in
     this process or another copy of the app, removes an open run (GamGUI's guard is one process's set; a lock is tried
-    for up to 80 ms, since a closed run's can outlive its close for a moment, seen once in three full suite runs); each keep then
+    for up to 200 ms, since a closed run's can outlive its close for a moment, seen once in three full suite runs); each keep then
     checks its file is still linked (`fstat` `st_nlink`), so a copy is never "kept" into a removed file;
   - run ids only go forward: a new id's milliseconds are the clock's or one past the newest run's, whichever is later, so a
     clock set back never makes the newest run sort, and be pruned, as the oldest (GamGUI's are the clock's alone).

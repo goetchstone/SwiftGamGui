@@ -204,17 +204,16 @@ struct SignatureBackupStoreTests {
     }
 
     /// A closed run's lock can outlive its close for a moment (once in three full suite runs, with processes starting beside
-    /// it): pruning waits a little for a lock rather than read it as a run being written.
-    @Test func aLockHeldAMomentDoesntSpareAnOldRun() throws {
-        let store = SignatureBackupStore(folder: folder)
-        var ids: [String] = []
-        for index in 0..<SignatureBackupStore.keptRuns { ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"])) }
-        let holder = open(file(ids[0]).path, O_RDONLY | O_CLOEXEC)
-        #expect(holder >= 0 && flock(holder, LOCK_EX | LOCK_NB) == 0)
+    /// it): pruning waits a little for a lock (`lockedNow`) rather than read it as a run being written; one held throughout is
+    /// never taken. The window is widened here, so a busy suite's late timer can't decide it.
+    @Test func aLockHeldAMomentIsWaitedFor() throws {
+        let id = try keptRun(SignatureBackupStore(folder: folder), "x", keeping: [Self.alice])
+        let holder = open(file(id).path, O_RDONLY | O_CLOEXEC), pruner = open(file(id).path, O_RDONLY | O_CLOEXEC)
+        defer { close(pruner) }
+        #expect(holder >= 0 && pruner >= 0 && flock(holder, LOCK_EX | LOCK_NB) == 0)
+        #expect(!SignatureBackupStore.lockedNow(pruner, tries: 2), "held throughout: never taken")
         DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(40)) { close(holder) }
-        let newest = try keptRun(store, "newest", keeping: [Self.alice])
-        let listed = try store.runs().map(\.id)
-        #expect(listed == [newest] + ids.dropFirst().reversed())
+        #expect(SignatureBackupStore.lockedNow(pruner, tries: 250), "released a moment later: taken")
     }
 
     /// Review of Phase A: a keep into a file someone removed flushed into nothing and said it was kept. It throws, so the
