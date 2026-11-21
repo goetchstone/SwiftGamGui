@@ -75,6 +75,8 @@ struct AppServices {
     let usage: UsageStore
     /// The Builder's curated writes (GamGUI's), one at a time through the executor.
     let builderChanges: BuilderChanges
+    /// The Builder's reads, each recorded in the audit log the executor writes once it ends (plan F1): never a write path.
+    let readAudit: ReadAudit
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -121,8 +123,10 @@ struct AppServices {
         // The executor runs on the domain Setup connected, at its generation: a switch refuses old previews. Each run it
         // makes is reported to the jobs tray, whose Stop asks it to stop after the step in flight.
         let jobs = JobBoard()
+        // One log, two writers: the executor's changes and the Builder's reads (`ReadAudit`, which runs nothing).
+        let audit = AuditLog(url: auditURL)
         let executor = runner.map { runner in
-            Executor(runner: runner, audit: AuditLog(url: auditURL),
+            Executor(runner: runner, audit: audit,
                      currentActor: { @MainActor [weak setup] in setup?.connectedAdmin },
                      adminAccountID: { @MainActor [weak setup] in setup?.connectedAdminID }, tenant: { @MainActor [weak setup] in
                 setup?.active.map { ($0, setup!.generation) }
@@ -175,6 +179,7 @@ struct AppServices {
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
+                           readAudit: ReadAudit(log: audit),
                            auditURL: auditURL, lockVault: { await vault.lock() })
     }
 

@@ -3,10 +3,11 @@ import ChangeCore
 import Directory
 import Foundation
 import GamEngine
+import Vault
 
 /// Debug builds only: the Audit screen's demo log, for its screenshots. Written fresh in the temporary folder
 /// `AppServices.demo()` hands it, never anywhere else: example changes as this app records them (a begin, then
-/// an end), one that failed, one the app stopped in the middle of, and two older records GamGUI wrote
+/// an end), one that failed, one the app stopped in the middle of, Builder reads (plan F1), and two older records GamGUI wrote
 /// that name no domain. Two domains, example.com and example.org, and enough for two pages.
 enum DemoAudit {
     /// Empties the demo log, every generation, when it's in the temporary folder: false (and nothing touched) otherwise.
@@ -69,6 +70,11 @@ enum DemoAudit {
             _ = try? log.record(write.action.rawValue, target: target, argv: write.argv, exitCode: error == nil ? 0 : 50,
                             ok: error == nil, actor: "admin@example.com", extra: end, domain: domain, now: next())
         }
+        /// A Builder read as `ReadAudit` records it once it ends: never its output.
+        func read(_ command: String, _ target: String, _ argv: [String], on domain: String, _ outcome: ReadAudit.Outcome) {
+            guard let domain = Domain(domain) else { return }
+            _ = try? ReadAudit(log: log).record(command: command, target: target, argv: argv, domain: domain, outcome: outcome, now: next())
+        }
         // Written by GamGUI before records named their domain: Unknown.
         _ = try? log.record("add_group_member", target: "dana@example.com",
                         argv: ["update", "group", "staff@example.com", "add", "member", "dana@example.com"], exitCode: 0, ok: true,
@@ -89,11 +95,16 @@ enum DemoAudit {
                failing: "User: bob@example.com, Sign Out Failed: Not Authorized to access this resource/api", kind: "scope_missing")
         change(GamCommands.updateOrganization(email: "olivia@example.org", title: "Teacher", department: "Science"), "olivia@example.org",
                on: "example.org")
+        read("raw.4497", "(command)", ["print", "licenses"], on: "example.org", .read(rows: 42))
         change(GamCommands.setSignature(email: "alice@example.com", signature: "<p>Alice Anders</p>"), "alice@example.com")
         change(GamCommands.setSuspended(email: "dana@example.com", suspended: true), "dana@example.com", ends: false)
         change(GamCommands.addGroupMember(group: "sales@example.com", member: "bob@example.com"), "bob@example.com",
                about: ["group": "sales@example.com"], failing: "Member already exists.", kind: "duplicate")
         change(GamCommands.updateOrganization(email: "alice@example.com", title: "IT Director", department: "IT"), "alice@example.com")
+        read("raw.7950", "alice@example.com", ["user", "alice@example.com", "print", "delegates"], on: "example.com", .read(rows: 2))
+        read("raw.7950", "zoe@example.com", ["user", "zoe@example.com", "print", "delegates"], on: "example.com",
+             .failed("User: zoe@example.com, Does not exist"))
+        read("raw.6078", "(command)", ["print", "users"], on: "example.org", .read(rows: 318))
     }
 }
 #endif

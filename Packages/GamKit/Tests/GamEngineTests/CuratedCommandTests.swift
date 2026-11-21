@@ -124,7 +124,8 @@ struct CuratedCommandTests {
         #expect(throws: GamCommands.Invalid.self) { try Self.command("build.suspend_user").built(["email": "uid:1122"]) }
     }
 
-    /// A search shows no message bodies until a read can be audited: GamGUI's choice is listed, and refused in words.
+    /// A search shows no message bodies, as the other sensitive reads aren't run (the operator's choice): GamGUI's choice is
+    /// listed, and refused in words.
     @Test func aSearchShowsNoBodiesYet() throws {
         let search = try Self.command("build.search_messages")
         #expect(search.fields.first { $0.key == "detail" }?.choices.contains("Headers + body") == true)

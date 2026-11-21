@@ -10,13 +10,15 @@ import UniformTypeIdentifiers
 /// from here (GamGUI's generic read builder ported, `CommandCatalog`, invariant 3), and GamGUI's curated commands with typed fields
 /// (`CuratedCommand`). A read runs as shown; a curated write is previewed through ChangeCore (`BuilderChanges`), confirmed on its
 /// sheet and run once, exactly as held (invariant 2). The exact `gam` command is shown as it's typed. The result of a read is a
-/// table, filtered over every row and exported as a CSV, or GAM's words as it printed them.
+/// table, filtered over every row and exported as a CSV, or GAM's words as it printed them. Each read is recorded in the audit
+/// log once it ends (`readAudit`, plan F1): the command, whom it was about and its row count, never its output.
 struct BuilderView: View {
     let setup: SetupModel
     let access: UserAccess
     let directory: DirectoryStore
     let groups: GroupStore
     let changes: BuilderChanges
+    let readAudit: ReadAudit
     /// A catalog command another screen asked to open (Reports' named reports): selected once the catalog is read, with the
     /// search and area cleared so its row is listed, then let go.
     @Binding var requested: String?
@@ -82,10 +84,11 @@ struct BuilderView: View {
             Divider()
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
-                    CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes)
+                    CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
+                                  readAudit: readAudit)
                         .id(curated.id)
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
-                    CommandDetail(command: command, setup: setup, access: access).id(command.id)
+                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit).id(command.id)
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
                                            description: Text("Search GAM's commands on the left. One that only reads runs from here, "
@@ -197,14 +200,15 @@ final class ReadRun {
     var filter = ""
     var notice: (text: String, failed: Bool)?
 
-    /// Runs `read` on the domain connected now; a result that comes back after the domain changed is dropped.
-    func run(_ read: GamRead, access: UserAccess, setup: SetupModel, announce: Bool) {
+    /// Runs `read` on the domain connected now, recorded in `audit` as `command` about `target` once it ends; a result that comes
+    /// back after the domain changed is dropped (its record names the domain it ran on).
+    func run(_ read: GamRead, command: String, target: String, audit: ReadAudit, access: UserAccess, setup: SetupModel, announce: Bool) {
         guard !running, let domain = setup.active else { return }
         running = true
         problem = nil
         notice = nil
         Task {
-            let outcome = await access.catalogRead(read, in: domain)
+            let outcome = await access.catalogRead(read, command: command, target: target, in: domain, recordingTo: audit)
             running = false
             guard setup.active == domain else {
                 problem = "The domain changed while it ran: run it again."
@@ -278,6 +282,7 @@ private struct CommandDetail: View {
     let command: CommandCatalog.Command
     let setup: SetupModel
     let access: UserAccess
+    let readAudit: ReadAudit
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
@@ -285,8 +290,8 @@ private struct CommandDetail: View {
     /// Why a command doesn't run from here, short for the list and whole for its page.
     static func notRun(_ command: CommandCatalog.Command) -> (short: String, why: String) {
         if command.sensitive {
-            return ("Download or secret", "It saves a file or shows a secret (backup codes, enrollment tokens). GamGUI runs these with an "
-                    + "audit record, which this app doesn't keep for a read yet, so it isn't run from here.")
+            return ("Download or secret", "It saves a file or shows a secret (backup codes, enrollment tokens). GamGUI runs these and "
+                    + "records each run; here they're listed to browse only, by choice, so it isn't run from here.")
         }
         if command.uncertain {
             return ("Not run here", "What it does can't be told from GAM's grammar, so it isn't run from here.")
@@ -316,7 +321,8 @@ private struct CommandDetail: View {
                     }
                     .accessibilityElement(children: .combine)
                     if command.runnable {
-                        Label("Reads only: nothing changes. Optional parts of the grammar are left out.", systemImage: "eye")
+                        Label("Reads only: nothing changes. Audit records each run, never its output. Optional parts of the grammar are left out.",
+                              systemImage: "eye")
                             .foregroundStyle(.secondary)
                     } else {
                         Label(Self.notRun(command).why, systemImage: "hand.raised").foregroundStyle(.secondary)
@@ -370,7 +376,8 @@ private struct CommandDetail: View {
 
     private func run() {
         guard case .success(let read) = read else { return }
-        reading.run(read, access: access, setup: setup, announce: appearsActive)
+        reading.run(read, command: command.id, target: command.target(values), audit: readAudit, access: access, setup: setup,
+                    announce: appearsActive)
     }
 }
 
@@ -384,6 +391,7 @@ private struct CuratedDetail: View {
     let directory: DirectoryStore
     let groups: GroupStore
     let changes: BuilderChanges
+    let readAudit: ReadAudit
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
@@ -430,7 +438,8 @@ private struct CuratedDetail: View {
                     .accessibilityElement(children: .combine)
                     switch command.risk {
                     case .read:
-                        Label("Reads only: nothing changes.", systemImage: "eye").foregroundStyle(.secondary)
+                        Label("Reads only: nothing changes. Audit records each run, never its output.", systemImage: "eye")
+                            .foregroundStyle(.secondary)
                     case .change:
                         Label("Changes the domain: you see exactly what will run, and nothing runs until you confirm it.",
                               systemImage: "pencil.circle").foregroundStyle(.secondary)
@@ -517,7 +526,8 @@ private struct CuratedDetail: View {
 
     private func run() {
         guard case .success(.read(let read)) = built else { return }
-        reading.run(read, access: access, setup: setup, announce: appearsActive)
+        reading.run(read, command: command.id, target: command.target(values), audit: readAudit, access: access, setup: setup,
+                    announce: appearsActive)
     }
 
     private func preview() {

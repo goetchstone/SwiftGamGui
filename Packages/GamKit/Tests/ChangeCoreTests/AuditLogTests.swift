@@ -4,6 +4,7 @@ import Foundation
 import GamEngine
 import TestSupport
 import Testing
+import Vault
 
 /// GamGUI parity for the audit log (invariant 11): `Tests/Fixtures/audit.json` holds the exact line
 /// GamGUI's `AuditLog.record` wrote for each call, and what its reader found across generations. The
@@ -38,6 +39,44 @@ struct AuditLogTests {
         }
         var info = stat()
         #expect(lstat(log.url.path, &info) == 0 && info.st_mode & 0o777 == 0o600)
+    }
+
+    /// Plan F1: the record of a Builder read as GamGUI's `catalog_read` writes it over the same output (`reads`): the rows
+    /// counted only for a table (`CatalogResult.tableRows`, GamGUI's `table_records`), GAM's words when it failed, the domain
+    /// lowercased, never the output. A read cut off is said in this app's words: GamGUI's `INTERRUPTED` is its own. GamGUI's
+    /// `sequence` origin has no Builder sequence here to come from, and the origin it refuses can't be spelled here at all.
+    @Test func everyReadIsRecordedAsGamGUIRecordsIt() throws {
+        let audit = ReadAudit(log: AuditLog(url: folder.appending(path: "reads.jsonl")))
+        let reads = try #require(fixture["reads"]?.array)
+        #expect(reads.count > 15)
+        for item in reads {
+            let name = item["name"]!.string!, argv = item["argv"]!.array!.map { $0.string! }
+            guard let origin = ReadAudit.Origin(rawValue: item["origin"]!.string!) else {
+                #expect(["sequence", "elsewhere"].contains(item["origin"]!.string!), "\(name)")
+                continue
+            }
+            let outcome: ReadAudit.Outcome = if let output = item["output"]?.string {
+                .read(rows: CatalogResult(argv: argv, stdout: output).tableRows)
+            } else if let error = item["error"]?.string {
+                .failed(error)
+            } else {
+                .interrupted
+            }
+            var written = try audit.record(command: "raw.1440", target: item["target"]!.string!, argv: argv,
+                                           domain: try #require(Domain(item["domain"]!.string!)), origin: origin, outcome: outcome)
+            written["ts"] = nil
+            var expected = try #require(item["records"]?.array?.first?.object)
+            if outcome == .interrupted, var extra = expected["extra"]?.object {
+                #expect(extra["error"]?.string?.hasPrefix("interrupted") == true, "\(name)")
+                extra["error"] = .string(ReadAudit.interrupted)
+                expected["extra"] = .object(extra)
+            }
+            #expect(written == expected, "\(name)")
+        }
+        #expect(AuditLog.readActions == Set(fixture["constants"]!["READ_ACTIONS"]!.array!.compactMap(\.string)))
+        #expect(AuditLog.domainKey == fixture["constants"]!["DOMAIN_KEY"]!.string)
+        #expect(ReadAudit.Origin.allCases.map(\.rawValue) == ["builder"])
+        #expect(ReadAudit.action == "read")
     }
 
     @Test func theReaderFindsWhatGamGUIsFinds() throws {
