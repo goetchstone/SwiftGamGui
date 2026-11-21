@@ -1216,12 +1216,13 @@ def read_record_cases(folder: Path) -> list:
                       "records": records})
     return found
 def audit_runs_fixture() -> dict:
-    """Plan F3 (GamGUI #171): GamGUI's audit runs, recorded so the Swift port is held to them rather than to a reading of
-    them. Each run's steps (title, key column, the read record's command, the argv); the window choices and the rows a table
-    draws; which steps read nothing where something must be; why a finding is unknown; the inactive table and its flags over
-    a directory of edge cases at every window; the license tables over seats with and without the directory; findings_for
-    over every way a step can end; the suspend preview's targets (reports.inactive_to_suspend); and the read record
-    `audit_read` writes over chosen outputs, a failure, a cancel and the argv it refuses before GAM runs."""
+    """Plan F3 (GamGUI #171, #172): GamGUI's audit runs, recorded so the Swift port is held to them rather than to a reading
+    of them. Each run's steps (title, key column, the exits that are its answer and those that keep its rows, the read
+    record's command, the argv); the window choices and the rows a table draws; which steps read nothing where something must
+    be; why a finding is unknown; the inactive table and its flags over a directory of edge cases at every window; the license,
+    shared drive, Classroom and admin token tables over every way their steps can end; who holds an admin role; the suspend
+    preview's targets (reports.inactive_to_suspend); and the read record `audit_read` writes over chosen exits and outputs,
+    a failure, a cancel and the argv it refuses before GAM runs."""
     import asyncio
     import tempfile
     from datetime import datetime, timezone
@@ -1231,6 +1232,7 @@ def audit_runs_fixture() -> dict:
     from gamgui.core import reports as reports_mod
     from gamgui.core.connectors import gam_connector
     from gamgui.core.gam.models import GAMUser
+    from gamgui.core.gam.runner import RunResult
 
     now = datetime(2026, 11, 19, tzinfo=timezone.utc)
 
@@ -1279,11 +1281,11 @@ def audit_runs_fixture() -> dict:
             record.setdefault("id", str(100000000000000000100 + n))
     users = [GAMUser.from_json(r) for r in directory]
 
-    def read(step, state=runs.READ, why=""):
-        return runs.StepRead(step, state, why)
+    def read(step, state=runs.READ, why="", unread=()):
+        return runs.StepRead(step, state, why, unread=tuple(unread))
 
     def read_json(r) -> dict:
-        return {"step": r.step.key, "state": r.state, "why": r.why}
+        return {"step": r.step.key, "state": r.state, "why": r.why, "unread": list(r.unread)}
 
     states = [(runs.READ, ""), (runs.UNKNOWN, "Refused."), (runs.NOT_RUN, "The run was stopped before this step.")]
     windows = list(runs.INACTIVE_WINDOWS)
@@ -1339,18 +1341,156 @@ def audit_runs_fixture() -> dict:
                                 "findings": [finding(f) for f in runs.findings_for(runs.INACTIVE_USERS, reads, {}, now=now,
                                                                                     days=60)]})
 
+    # 2. Shared drive members: each drive's own permissions (users and groups only, Google's sharing guide), GAM's `domain`.
+    domains_records = [{"domainName": "example.com", "domainAliases": [{"domainAliasName": "alias.example.net",
+                                                                           "parentDomainName": "example.com"}]},
+                       {"domainName": " Example.NET "}, {"note": {"domainName": "nested.example"}},
+                       {"domainName": 7}, {"secondaryDomain.domainName": "Dotted.Example"}]
+    drive_users = [GAMUser.from_json(r) for r in [
+        user("active@example.com", id="1"), user("gone@example.com", suspended=True, id="2"), user("leaver@example.com", id="3"),
+        user("a@example.com", id="4"), user("Mixed@Example.com", id="5")]]
+    drive_directory = [u.raw for u in drive_users]
+
+    def perm(drive, name, **p):
+        return {"id": drive, "name": name, "permission": p}
+    org = dict(type="user", role="organizer")
+    acl_rows = [
+        perm("A", "Fine", emailAddress="active@example.com", domain="example.com", **org),
+        perm("A", "Fine", type="user", emailAddress="x@alias.example.net", domain="alias.example.net", role="writer"),
+        perm("A", "Fine", type="group", emailAddress="g@partner.org", domain="partner.org", role="reader"),
+        perm("B", "Suspended", emailAddress="gone@example.com", **org),
+        perm("C", "Leaving", emailAddress="leaver@example.com", **org),
+        perm("D", "deleted one", emailAddress="ghost@example.com", deleted=True, **org),
+        perm("E", "Nobody", type="user", emailAddress="v@vendor.io", role="contentManager"),
+        perm("F", "Group", type="group", emailAddress="team@example.com", role="organizer"),
+        {"id": "G", "name": "Empty"},
+        perm("H", "Mixed", emailAddress="MIXED@example.com", **org),
+        perm("I", "Two", emailAddress="gone@example.com", **org),
+        perm("I", "Two", emailAddress="active@example.com", **org),
+        perm("J", "Two gone", emailAddress="gone@example.com", **org),
+        perm("J", "Two gone", emailAddress="leaver@example.com", **org),
+        perm("K", "No address", type="user", role="organizer", displayName="Someone"),
+        perm("L", "Outside organizer", emailAddress="o@outside.example", domain="outside.example", **org),
+        perm("M", "Domain-less", type="user", emailAddress="noat", role="reader"),
+    ]
+    drive_list = [{"id": "A", "name": "Fine"}, {"id": "Z", "name": "Dropped"}, {"id": "G", "name": "Empty"},
+                  {"id": "Y", "name": "another dropped"}, {"id": "", "name": "No ID"}]
+    drive_steps = [runs.DRIVES, runs.DRIVE_ACLS, runs.DOMAINS, runs.DIRECTORY]
+    shared_drives = []
+    for states_case in ([states[0]] * 4, [states[0], states[0], states[1], states[0]], [states[0], states[0], states[0], states[2]],
+                        [states[1], states[0], states[0], states[0]], [states[0], states[1], states[0], states[0]]):
+        reads = [read(s, *st) for s, st in zip(drive_steps, states_case)]
+        tables = {"drives": drive_list, "drive_acls": acl_rows, "domains": domains_records, "directory": drive_users}
+        for step, st in zip(drive_steps, states_case):
+            if st[0] != runs.READ:
+                tables.pop(step.key)
+        for leaving in (frozenset(), frozenset({"leaver@example.com", " Active@Example.com "})):
+            shared_drives.append({"reads": [read_json(r) for r in reads], "leaving": sorted(leaving),
+                                  "tables": sorted(tables),
+                                  "findings": [finding(f) for f in runs.findings_for(runs.SHARED_DRIVES, reads, tables, now=now,
+                                                                                      leaving=leaving)]})
+    domains_found = runs.domains_from(domains_records)
+
+    # 4. Classroom: owners joined by `ownerId` to the directory's `id`; stale is ACTIVE or PROVISIONED, a year without change.
+    course_users = [GAMUser.from_json(r) for r in [user("t@example.com", id="1"), user("gone@example.com", suspended=True, id="2"),
+                                                   user("Z@example.com", id="3")]]
+    courses = [
+        {"id": "c1", "name": "Bio", "section": "1", "ownerId": "1", "courseState": "ACTIVE", "updateTime": "2026-10-01T00:00:00Z",
+         "teachers": 1, "students": 0},
+        {"id": "c2", "name": "Old", "ownerId": "2", "courseState": "ACTIVE", "updateTime": "2024-01-01T00:00:00Z"},
+        {"id": "c3", "name": "Kept", "ownerId": "9", "courseState": "ARCHIVED", "updateTime": "2020-01-01T00:00:00Z"},
+        {"id": "c4", "name": "Never", "ownerId": "1", "courseState": "PROVISIONED", "updateTime": "2025-01-01T00:00:00Z"},
+        {"id": "c5", "name": "bio", "section": "0", "ownerId": "3", "courseState": "DECLINED", "updateTime": "2019-01-01T00:00:00Z",
+         "teachers": "2", "students": "30"},
+        {"id": "c6", "name": "Edge", "ownerId": "2", "courseState": "ACTIVE", "updateTime": "2025-11-19T00:00:00Z"},
+        {"id": "c7", "name": "Just in", "ownerId": "", "courseState": "PROVISIONED", "updateTime": "2025-11-18T23:59:59Z"},
+        {"id": "c8", "name": "Garbled", "ownerId": "1", "courseState": "ACTIVE", "updateTime": "not a time"},
+        {"id": "c9", "name": "Never updated", "courseState": "SUSPENDED"},
+        {"id": "c10", "name": "Same day", "ownerId": "1", "courseState": "ACTIVE", "updateTime": "2024-01-01T00:00:00Z"},
+    ]
+    classroom = []
+    for states_case in ([states[0]] * 2, [states[0], states[1]], [states[0], states[2]], [states[1], states[0]]):
+        reads = [read(s, *st) for s, st in zip([runs.COURSES, runs.DIRECTORY], states_case)]
+        tables = {"courses": courses, "directory": course_users}
+        for step, st in zip([runs.COURSES, runs.DIRECTORY], states_case):
+            if st[0] != runs.READ:
+                tables.pop(step.key)
+        classroom.append({"reads": [read_json(r) for r in reads], "tables": sorted(tables),
+                          "findings": [finding(f) for f in runs.findings_for(runs.CLASSROOM, reads, tables, now=now)]})
+
+    # 5. Admin token review: who holds a role (a holder GAM couldn't name joined by `id`, else unknown), their apps flagged.
+    admin_users = [GAMUser.from_json(r) for r in [user("alice@example.com", id="1"), user("bob@example.com", suspended=True, id="2"),
+                                                  user("carol@example.com", id="3"), user("dana@example.com", id="4")]]
+    admin_rows = [
+        {"roleAssignmentId": "1", "role": "_SEED_ADMIN_ROLE", "assignedTo": "1", "assignedToUser": "Alice@Example.com",
+         "assignedToUnknown": "False"},
+        {"roleAssignmentId": "2", "role": "_HELP_DESK_ADMIN_ROLE", "assignedTo": "2", "assignedToUser": "bob@example.com",
+         "assignedToGroup": "it-admins@example.com", "assignedToUnknown": "False"},
+        {"roleAssignmentId": "3", "role": "_GROUPS_ADMIN_ROLE", "assignedTo": "104455",
+         "assignedToServiceAccount": "bot@p.iam.gserviceaccount.com", "assignedToUnknown": "False"},
+        {"roleAssignmentId": "4", "role": "_X", "assignedTo": "8", "assignedToGroup": "empty@example.com", "assignedToUnknown": "False"},
+        {"roleAssignmentId": "5", "role": "_USER_MANAGEMENT_ADMIN_ROLE", "assignedTo": "3", "assignedToUnknown": "True"},
+        {"roleAssignmentId": "6", "role": "_HELP_DESK_ADMIN_ROLE", "assignedTo": "77", "assignedToUnknown": "True",
+         "assignedToGroup": "it-admins@example.com"},
+        {"roleAssignmentId": "7", "role": "", "roleId": "9170009", "assignedTo": "1", "assignedToUser": "alice@example.com",
+         "assignedToUnknown": "False"},
+        {"roleAssignmentId": "8", "role": "_SEED_ADMIN_ROLE", "assignedTo": " 4 ", "assignedToUnknown": " TRUE "},
+        {"roleAssignmentId": "9", "role": "_SEED_ADMIN_ROLE", "assignedTo": "", "assignedToUnknown": "True"},
+        {"roleAssignmentId": "10", "role": "_SEED_ADMIN_ROLE", "assignedTo": "5", "assignedToUser": "not one", "assignedToUnknown": "False"},
+    ]
+    token_rows = [
+        {"user": "alice@example.com", "clientId": "1", "displayText": "Zoom",
+         "scopes": "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email"},
+        {"user": "bob@example.com", "clientId": "2", "displayText": "ChatGPT", "scopes": "https://mail.google.com/"},
+        {"user": "bob@example.com", "clientId": "3", "displayText": "Only Bob Has This", "scopes": "https://www.googleapis.com/auth/drive"},
+        {"user": "Carol@Example.com", "clientId": "4", "displayText": "Admin Helper",
+         "scopes": "https://www.googleapis.com/auth/admin.directory.user,https://www.googleapis.com/auth/drive.file"},
+        {"user": "alice@example.com", "clientId": "", "displayText": "No client"},
+        {"user": "alice@example.com", "clientId": "5", "displayText": "Inbox Agent", "scopes": ""},
+    ]
+    admin_steps = [runs.ADMINS, runs.DIRECTORY, runs.ADMIN_TOKENS]
+    admin_tokens = []
+    for states_case, unread in (([states[0]] * 3, ()), ([states[0], states[0], (runs.PARTIAL, "")], ("bob@example.com",)),
+                                ([states[0], states[0], states[1]], ()), ([states[0], states[1], states[0]], ()),
+                                ([states[1], states[0], states[1]], ()), ([states[0], states[0], states[2]], ())):
+        reads = [read(s, *st, unread=unread if s is runs.ADMIN_TOKENS else ()) for s, st in zip(admin_steps, states_case)]
+        tables = {"admins": admin_rows, "directory": admin_users, "admin_tokens": token_rows}
+        for step, st in zip(admin_steps, states_case):
+            if st[0] not in (runs.READ, runs.PARTIAL):
+                tables.pop(step.key)
+        admin_tokens.append({"reads": [read_json(r) for r in reads], "tables": sorted(tables),
+                             "findings": [finding(f) for f in runs.findings_for(runs.ADMIN_TOKEN_REVIEW, reads, tables, now=now)]})
+    holders = {"rows": admin_rows,
+               "holders": [runs.holder_of(r, admin_users) for r in admin_rows],
+               "holders_without_directory": [runs.holder_of(r, None) for r in admin_rows],
+               "addresses": runs.admin_addresses(admin_rows, admin_users),
+               "addresses_without_directory": runs.admin_addresses(admin_rows),
+               "unnamed": runs.unnamed_holders(admin_rows, admin_users),
+               "unnamed_without_directory": runs.unnamed_holders(admin_rows, None),
+               "token_argv": runs.step_argv(runs.ADMIN_TOKENS, {"admins": admin_rows, "directory": admin_users}),
+               "token_argv_without_admins": runs.step_argv(runs.ADMIN_TOKENS, {})}
+    complete = []
+    for reads_case, partial in (([runs.READ] * 3, False), ([runs.READ] * 3, True), ([runs.READ, runs.READ, runs.PARTIAL], False)):
+        reads = [read(s, st) for s, st in zip(admin_steps, reads_case)]
+        result = runs.RunResult(runs.ADMIN_TOKEN_REVIEW, reads,
+                                [runs.Finding("x", "x", "", (), partial=partial)], {}, 0.0)
+        complete.append({"states": reads_case, "partial": partial, "complete": result.complete})
+
     shown = ["", None, "Never", "never", " NEVER ", "1970-01-01T00:00:00Z", "2026-01-02T03:04:05Z", "2026-01-02",
              "2026", "  2026-01-02T03:04:05Z", "\u00e9t\u00e9 2026-01-02 x", "x"]
 
-    # The read record each step leaves: GamGUI's audit_read over a runner answering chosen outputs, failing or cancelled.
+    # The read record each step leaves: GamGUI's audit_read over a runner answering chosen exits and outputs, failing or
+    # cancelled.
     class Runner:
         def __init__(self, answer):
             self.answer, self.calls = answer, []
 
-        async def run_authenticated(self, domain, argv, **kw):
+        async def run_any_exit(self, domain, argv, **kw):
             self.calls.append(list(argv))
             if isinstance(self.answer, BaseException):
                 raise self.answer
+            if isinstance(self.answer, str):
+                return RunResult(stdout=self.answer, stderr="", returncode=0)
             return self.answer
 
     directory_argv = runs.step_argv(runs.DIRECTORY)
@@ -1382,34 +1522,74 @@ def audit_runs_fixture() -> dict:
         ("T_o_Drive", "x", licenses_argv + ["T_o_Drive"], "userId"),
         ("todrive inside", "x", ["print", "users", "todrive", "formatjson"], "primaryEmail"),
     ]
+    read_cases = [(*case, (0,), ()) for case in read_cases]
+    drives_argv, acls_argv = runs.step_argv(runs.DRIVES), runs.step_argv(runs.DRIVE_ACLS)
+    tokens_argv = ["print", "tokens", "users", "alice@example.com,bob@example.com"]
+    token_titles = "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n"
+    token_row = "alice@example.com,1.apps.googleusercontent.com,Zoom,False,False,1,https://www.googleapis.com/auth/calendar\n"
+    warning = (56, 73)
+    read_cases += [
+        ("a directory that stopped short", RunResult('primaryEmail,JSON\na@example.com,"{}"\n', "User: , Print Failed: x\n", 50),
+         directory_argv, "primaryEmail", (0,), ()),
+        ("no shared drive", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), ()),
+        ("drives refused", RunResult("User,id,name,JSON\n", "User: admin@example.com, Shared Drive: , Print Failed: no\n", 50),
+         drives_argv, "id", (0, 60), ()),
+        ("no seat is no none", RunResult("userId,productId\n", "", 60), licenses_argv, "userId", (0,), ()),
+        ("acls", RunResult('User,id,name,createdTime,JSON\nadmin@example.com,0A1,Team,2024-01-01T00:00:00Z,{}\n', "", 0),
+         acls_argv, "id", (0, 60), ()),
+        ("one account unread", RunResult(token_titles + token_row,
+                                         "Getting Access Tokens for alice@example.com (1/2)\n"
+                                         "User: bob@example.com, Does not exist (2/2)\n", 56), tokens_argv, "user", (0,), warning),
+        ("outside the domain", RunResult(token_titles + token_row,
+                                         "User: Pat@Partner.org, Service not applicable/Does not exist (2/2)\n"
+                                         "User: pat@partner.org, Service not applicable (2/2)\n", 73), tokens_argv, "user", (0,),
+         warning),
+        ("a warning naming nobody", RunResult(token_titles + token_row, "", 56), tokens_argv, "user", (0,), warning),
+        ("a warning naming no address", RunResult(token_titles, "User: bob, Does not exist\n", 56), tokens_argv, "user", (0,),
+         warning),
+        ("indented", RunResult(token_titles, "  User: bob@example.com, Does not exist (2/2)\nnot User: c@example.com, Does not exist\n",
+                               56), tokens_argv, "user", (0,), warning),
+        ("refused tokens", RunResult(token_titles, "ERROR: Not Authorized to access this resource/api\n", 12), tokens_argv, "user",
+         (0,), warning),
+        ("partial without its table", RunResult("", "User: bob@example.com, Does not exist (1/1)\n", 56), tokens_argv, "user",
+         (0,), warning),
+    ]
     reads_found = []
     scratch = tempfile.TemporaryDirectory()
     folder = Path(scratch.name)
-    for n, (name, answer, argv, key) in enumerate(read_cases):
+    for n, (name, answer, argv, key, ok_rcs, partial_rcs) in enumerate(read_cases):
         connector = object.__new__(gam_connector.GAMConnector)
         connector.runner, connector.domain = Runner(answer), " Example.COM "
         connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
         try:
-            got = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key))
-            raised, rows = None, len(got)
+            got, unread = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key, ok_rcs=ok_rcs,
+                                                           partial_rcs=partial_rcs))
+            raised, rows, unread = None, len(got), list(unread)
         except BaseException as exc:    # noqa: BLE001: the refusals, the failure and the cancel are the cases
-            raised, rows = type(exc).__name__, None
+            raised, rows, unread = type(exc).__name__, None, None
         records = [{k: v for k, v in r.items() if k != "ts"} for r in audit.iter_records(folder / f"{n}.jsonl")]
-        reads_found.append({"name": name, "output": None if isinstance(answer, BaseException) else answer,
+        ran = isinstance(answer, RunResult)
+        reads_found.append({"name": name, "output": answer if isinstance(answer, str) else (answer.stdout if ran else None),
+                            "stderr": answer.stderr if ran else "", "exit": answer.returncode if ran else (0 if isinstance(answer, str) else None),
                             "error": str(answer) if isinstance(answer, Exception) else None, "argv": argv,
-                            "key_column": key, "raised": raised, "rows": rows, "ran": connector.runner.calls,
+                            "key_column": key, "ok_rcs": list(ok_rcs), "partial_rcs": list(partial_rcs),
+                            "raised": raised, "rows": rows, "unread": unread, "ran": connector.runner.calls,
                             "records": records})
     scratch.cleanup()
 
     return {
         "now": now.isoformat(),
         "constants": {"ROWS_SHOWN": runs.ROWS_SHOWN, "INACTIVE_WINDOWS": windows, "INACTIVE_DAYS": reports_mod.INACTIVE_DAYS,
-                      "STATES": [runs.READ, runs.UNKNOWN, runs.NOT_RUN], "ORIGIN": gam_connector.READ_ORIGIN_AUDIT_RUN},
+                      "STATES": [runs.READ, runs.PARTIAL, runs.UNKNOWN, runs.NOT_RUN],
+                      "ORIGIN": gam_connector.READ_ORIGIN_AUDIT_RUN, "STALE_DAYS": runs.STALE_DAYS,
+                      "FLAGS": [runs.NEW, runs.ADMIN, runs.EXTERNAL, runs.AI_NAME, runs.BROAD, runs.SUSPENDED_ADMIN]},
         "runs": [{"key": r.key, "title": r.title, "what": r.what,
-                  "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "command": runs.step_command(r, s),
+                  "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "ok_rcs": list(s.ok_rcs),
+                             "partial_rcs": list(s.partial_rcs), "command": runs.step_command(r, s),
                              "argv": runs.step_argv(s)} for s in r.steps]} for r in runs.RUNS],
         "implausibly_empty": [{"step": s.key, "rows": n, "why": runs.implausibly_empty(s, n)}
-                              for s in (runs.DIRECTORY, runs.LICENSES) for n in (0, 1, 2)],
+                              for s in (runs.DIRECTORY, runs.LICENSES, runs.DRIVES, runs.DRIVE_ACLS, runs.DOMAINS, runs.COURSES,
+                                        runs.ADMINS, runs.ADMIN_TOKENS) for n in (0, 1, 2)],
         "unknown_because": [{"reads": [read_json(r) for r in reads], "needed": [s.key for s in needed],
                              "why": runs.unknown_because(reads, *needed)}
                             for reads, needed in [
@@ -1420,6 +1600,7 @@ def audit_runs_fixture() -> dict:
                                 ([read(runs.LICENSES), read(runs.DIRECTORY, runs.NOT_RUN)], (runs.LICENSES, runs.DIRECTORY)),
                                 ([read(runs.LICENSES, runs.UNKNOWN, "")], (runs.LICENSES,)),
                                 ([read(runs.LICENSES, runs.UNKNOWN, "  Why.  ")], (runs.LICENSES,)),
+                                ([read(runs.ADMIN_TOKENS, runs.PARTIAL, "Some.")], (runs.ADMIN_TOKENS,)),
                                 ([], (runs.LICENSES,))]],
         "shown_time": [{"value": v, "shown": runs._shown_time(v)} for v in shown],
         "directory": directory,
@@ -1427,6 +1608,19 @@ def audit_runs_fixture() -> dict:
         "inactive_unknown": unread_inactive,
         "suspend": suspend,
         "licenses": licenses,
+        "domains": {"records": domains_records, "found": domains_found},
+        "drive_directory": drive_directory,
+        "drive_list": drive_list,
+        "acl_rows": acl_rows,
+        "shared_drives": shared_drives,
+        "course_directory": [u.raw for u in course_users],
+        "courses": courses,
+        "classroom": classroom,
+        "admin_directory": [u.raw for u in admin_users],
+        "token_rows": token_rows,
+        "admin_tokens": admin_tokens,
+        "holders": holders,
+        "complete": complete,
         "reads": reads_found,
     }
 
