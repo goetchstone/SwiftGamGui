@@ -570,12 +570,12 @@ final class PhishingChangesTests {
         let log = AuditLog(url: auditURL), write = try GamCommands.trashMessage(email: "alice@example.com", Self.message, copies: 1)
         let extra: JSONObject = ["preview": .string(UUID().uuidString), "step": .number("0"), "phase": .string("end")]
         try log.record(write.action.rawValue, target: "alice@example.com", argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
-                       extra: extra)
+                       extra: extra, domain: nil)
         #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.com").isEmpty)
         var named = extra
         for (key, value) in PhishingAudit.about(Self.message, on: "example.com", steps: 1, searchedEverywhere: true) { named[key] = .string(value) }
         try log.record(write.action.rawValue, target: "alice@example.com", argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
-                       extra: named)
+                       extra: named, domain: "example.com")
         #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.com").map { [$0.steps, $0.trashed] } == [[1, 1]])
         #expect(PhishingAudit.latestRuns(in: auditURL, on: "example.org").isEmpty, "another domain's run is its own")
     }

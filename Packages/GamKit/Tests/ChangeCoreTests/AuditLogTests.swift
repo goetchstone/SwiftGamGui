@@ -31,7 +31,7 @@ struct AuditLogTests {
             try log.record(call["action"]!.string!, connector: call["connector"]?.string ?? "google_workspace",
                            target: call["target"]?.string, argv: call["argv"]?.array?.compactMap(\.string),
                            exitCode: call["exit_code"]?.int.map(Int32.init), ok: call["ok"]?.bool,
-                           actor: call["actor"]?.string, extra: call["extra"]?.object,
+                           actor: call["actor"]?.string, extra: call["extra"]?.object, domain: call["domain"]?.string,
                            secrets: call["secrets"]?.array?.compactMap(\.string) ?? [], now: at)
             let line = try lastLine(log.url)
             #expect(Array(line.utf8) == Array(item["line"]!.string!.utf8), "\(call["action"]!)")
@@ -55,7 +55,7 @@ struct AuditLogTests {
         #expect(AuditLog.defaultMaxBytes == fixture["constants"]!["MAX_LOG_BYTES"]!.int)
         #expect(AuditLog.retainedGenerations == fixture["constants"]!["RETENTION_GENERATIONS"]!.int)
         let log = AuditLog(url: folder.appending(path: "audit.jsonl"), maxBytes: 1)
-        for number in 0..<13 { try log.record("n\(number)") }
+        for number in 0..<13 { try log.record("n\(number)", domain: nil) }
         let actions = AuditLog.records(at: log.url).compactMap { $0["action"]?.string }
         #expect(actions == (2..<13).reversed().map { "n\($0)" }, "the live file and ten generations, newest first")
         var info = stat()
@@ -67,7 +67,7 @@ struct AuditLogTests {
         try Data().write(to: elsewhere)
         let url = folder.appending(path: "audit.jsonl")
         try FileManager.default.createSymbolicLink(at: url, withDestinationURL: elsewhere)
-        #expect(throws: (any Error).self) { try AuditLog(url: url).record("x") }
+        #expect(throws: (any Error).self) { try AuditLog(url: url).record("x", domain: nil) }
         #expect(try Data(contentsOf: elsewhere).isEmpty)
     }
 

@@ -1102,6 +1102,15 @@ def audit_fixture() -> dict:
         dict(action="x", connector="mdm", target=None, argv=[], extra={}, secrets=["x"]),
         dict(action="recovery", argv=["update", "user", "a@example.com", "RecoveryEmail", "me@home.example",
                                       "recoveryphone", "+1 555", "PASSWORD"], exit_code=-9, ok=False),
+        # F1 (GamGUI #170): a record names its domain, stripped and lowercased, as extra's last key, or in the place
+        # extra already gave it; a blank one names none.
+        dict(action="apply", target="a@example.com", argv=["update", "user", "a@example.com"], ok=True,
+             extra={"command": "build.x"}, domain=" Example.COM "),
+        dict(action="remove_domain", connector="keychain", target="example.org", ok=True, domain="example.org"),
+        dict(action="moved", ok=True, extra={"domain": "old.example", "n": 1}, domain="New.Example"),
+        dict(action="blank", ok=True, extra={"n": 1}, domain="  "),
+        dict(action="empty", ok=True, domain=""),
+        dict(action="spaced", ok=True, domain=chr(0xA0) + "EXAMPLE.net" + chr(0x2028)),
     ]
     times = [datetime(2026, 10, 8, 12, 0, 0, 0, tzinfo=timezone.utc),
              datetime(2026, 10, 8, 12, 0, 0, 123456, tzinfo=timezone.utc),
@@ -1109,6 +1118,7 @@ def audit_fixture() -> dict:
              datetime(2028, 2, 29, 0, 0, 0, 500000, tzinfo=timezone.utc),
              datetime(2026, 10, 8, 12, 0, 0, 999999, tzinfo=timezone.utc),
              datetime(2000, 1, 1, tzinfo=timezone.utc)]
+    times += [datetime(2026, 11, 21, 9, 0, n, tzinfo=timezone.utc) for n in range(len(calls) - len(times))]
     written = []
     with tempfile.TemporaryDirectory() as folder:
         log = audit.AuditLog(Path(folder) / "audit.jsonl")
@@ -1130,8 +1140,79 @@ def audit_fixture() -> dict:
             (reader / name).write_text(text)
         read = list(audit.iter_records(reader / "audit.jsonl"))
         limited = list(audit.iter_records(reader / "audit.jsonl", limit=3))
-    return {"written": written, "files": files, "records": read, "limited": limited,
-            "constants": {"MAX_LOG_BYTES": audit.MAX_LOG_BYTES, "RETENTION_GENERATIONS": audit.RETENTION_GENERATIONS}}
+        reads = read_record_cases(Path(folder) / "reads")
+    return {"written": written, "files": files, "records": read, "limited": limited, "reads": reads,
+            "constants": {"MAX_LOG_BYTES": audit.MAX_LOG_BYTES, "RETENTION_GENERATIONS": audit.RETENTION_GENERATIONS,
+                          "READ_ACTIONS": sorted(audit.READ_ACTIONS), "DOMAIN_KEY": audit.DOMAIN_KEY}}
+
+
+def read_record_cases(folder: Path) -> list:
+    """F1 (GamGUI #170): the record GamGUI's `catalog_read` writes for a Builder read, over a runner that prints a
+    chosen output, fails or is cancelled: its action, target, argv, ok and extra (the time aside: `written` holds
+    the line's form). Rows are counted only when the output is a table (`table_records`); an origin outside
+    READ_ORIGINS is refused before GAM runs, and leaves no record."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from gamgui.core import audit
+    from gamgui.core.connectors import gam_connector
+    from gamgui.core.connectors.base import RiskLevel
+
+    class Runner:
+        def __init__(self, answer):
+            self.answer, self.calls = answer, []
+
+        async def run_authenticated(self, domain, argv, **kw):
+            self.calls.append(list(argv))
+            if isinstance(self.answer, BaseException):
+                raise self.answer
+            return self.answer
+
+    delegates = ["user", "alice@example.com", "print", "delegates"]
+    outputs = [
+        ("csv", "User,delegateAddress\nalice@example.com,assistant@example.com\nalice@example.com,boss@example.com\n"),
+        ("header only", "User,delegateAddress\n"),
+        ("crlf", "User,delegateAddress\r\nalice@example.com,assistant@example.com\r\n"),
+        ("json list", '[{"primaryEmail": "a@example.com"}, {"primaryEmail": "b@example.com"}, {"primaryEmail": "c@example.com"}]'),
+        ("json empty", "[]"),
+        ("json object", '{"primaryEmail": "a@example.com", "aliases": ["x@example.com"]}'),
+        ("ndjson", '{"a": 1}\n{"a": 2}\n'),
+        ("not json", "[not json"),
+        ("text", "Alice has no delegates set up\n"),
+        ("comma on line two", "Getting delegates\nUser,delegateAddress\nalice@example.com,boss@example.com\n"),
+        ("line separator", "User" + chr(0x2028) + "x,y\nalice,1\n"),
+        ("nothing", ""),
+        ("spaces", "  \n\t "),
+    ]
+    cases = [(name, out, "alice@example.com", delegates, "builder") for name, out in outputs]
+    cases += [
+        ("no target", "primaryEmail\na@example.com\n", "(command)", ["print", "users"], "builder"),
+        ("masked", "User,signature\nalice@example.com,Hi\n", "alice@example.com",
+         ["user", "alice@example.com", "show", "signature", "format"], "builder"),
+        ("failed", RuntimeError("Does not exist"), "missing@example.com", ["user", "missing@example.com", "print", "delegates"],
+         "builder"),
+        ("cancelled", asyncio.CancelledError(), "alice@example.com", delegates, "builder"),
+        ("sequence", "User,delegateAddress\n", "alice@example.com", delegates, "sequence"),
+        ("unknown origin", "User,delegateAddress\n", "alice@example.com", delegates, "elsewhere"),
+    ]
+    folder.mkdir()
+    found = []
+    for n, (name, answer, target, argv, origin) in enumerate(cases):
+        connector = object.__new__(gam_connector.GAMConnector)
+        connector.runner, connector.domain = Runner(answer), " Example.COM "
+        connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
+        command = SimpleNamespace(id="raw.1440", risk=RiskLevel.READ_ONLY, sensitive=False)
+        try:
+            asyncio.run(connector.catalog_read(command, list(argv), target, origin=origin))
+            raised = None
+        except BaseException as exc:    # noqa: BLE001: the failure, the cancel and the refused origin are the cases
+            raised = type(exc).__name__
+        records = [{k: v for k, v in r.items() if k != "ts"} for r in audit.iter_records(folder / f"{n}.jsonl")]
+        found.append({"name": name, "output": None if isinstance(answer, BaseException) else answer,
+                      "error": str(answer) if isinstance(answer, Exception) else None, "target": target, "argv": argv,
+                      "origin": origin, "domain": connector.domain, "raised": raised, "ran": connector.runner.calls,
+                      "records": records})
+    return found
 def reports_fixture(mock: Path) -> dict:
     """GamGUI's build_reports over the mock's users and seeded variants, at a fixed time: each report's
     key, title and members in order. Logins are written the ways GAM writes them (and a few it doesn't)."""
@@ -1234,20 +1315,22 @@ def audit_screen_fixture() -> dict:
 
     preview = "6F1D2C3B-0000-4000-8000-00000000000"
     swift = [
-        # This app's write: a begin with no result, then its end (ChangeCore.swift).
+        # This app's write: a begin with no result, then its end (ChangeCore.swift), naming its domain (F1).
         {"connector": "google_workspace", "action": "updateOrganization", "target": "alice@example.com",
          "argv": ["update", "user", "alice@example.com", "organization", "title", "IT Director", "primary"],
          "exit_code": None, "ok": None, "actor": "admin@example.com",
-         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "begin"}},
+         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "begin",
+                   "domain": "example.com"}},
         {"connector": "google_workspace", "action": "updateOrganization", "target": "alice@example.com",
          "argv": ["update", "user", "alice@example.com", "organization", "title", "IT Director", "primary"],
          "exit_code": 0, "ok": True, "actor": "admin@example.com",
-         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "end"}},
+         "extra": {"preview": preview + "1", "digest": "ab12", "origin": "form", "step": 0, "phase": "end",
+                   "domain": "example.com"}},
         {"connector": "google_workspace", "action": "addGroupMember", "target": "bob@example.com",
          "argv": ["update", "group", "sales@example.com", "add", "member", "bob@example.com"],
          "exit_code": 50, "ok": False, "actor": "admin@example.com",
          "extra": {"group": "sales@example.com", "error": "Member already exists.", "kind": "duplicate",
-                   "preview": preview + "2", "step": 0, "phase": "end"}},
+                   "preview": preview + "2", "step": 0, "phase": "end", "domain": "example.com"}},
         # A begin whose end never came, then the operator's acknowledgement of it.
         {"connector": "google_workspace", "action": "suspendUser", "target": "carol@example.com",
          "argv": ["update", "user", "carol@example.com", "suspended", "on"], "exit_code": None, "ok": None,
@@ -1259,13 +1342,26 @@ def audit_screen_fixture() -> dict:
     gamgui = [
         {"connector": "google_workspace", "action": "add_group_member", "target": "dana@example.com",
          "argv": ["update", "group", "sales@example.com", "add", "member", "dana@example.com"], "exit_code": 0,
-         "ok": True, "actor": None, "extra": {"group": "sales@example.com"}},
+         "ok": True, "actor": None, "extra": {"group": "sales@example.com", "domain": "Example.ORG"}},
         {"connector": "keychain", "action": "remove_domain", "target": "example.org", "argv": None, "exit_code": None,
          "ok": True, "actor": None, "extra": {"detail": "Deleted example.org's credentials from the Keychain.",
-                                              "outcome": "deleted"}},
+                                              "outcome": "deleted", "domain": "example.org"}},
         {"connector": "google_workspace", "action": "set_signature", "target": "erin@example.com",
          "argv": ["user", "erin@example.com", "signature", "***redacted***", "html"], "exit_code": 1, "ok": False,
          "actor": "admin@example.com", "extra": {"error": 'GAM said: "no", then\nmore\r\nlines, and a\rcarriage'}},
+        # F1's read records (catalog_read): the command, where it was started, the rows a table had, the domain.
+        {"connector": "google_workspace", "action": "read", "target": "alice@example.com",
+         "argv": ["user", "alice@example.com", "print", "delegates"], "exit_code": None, "ok": True, "actor": None,
+         "extra": {"command": "build.print_delegates", "origin": "builder", "rows": 2, "domain": "example.com"}},
+        {"connector": "google_workspace", "action": "read", "target": "missing@example.com",
+         "argv": ["user", "missing@example.com", "print", "delegates"], "exit_code": None, "ok": False, "actor": None,
+         "extra": {"command": "raw.1440", "origin": "builder", "error": "Does not exist", "domain": "example.com"}},
+        {"connector": "google_workspace", "action": "sensitive_read", "target": "bob@example.com",
+         "argv": ["user", "bob@example.com", "show", "backupcodes"], "exit_code": None, "ok": True, "actor": None,
+         "extra": {"command": "raw.2000", "origin": "sequence", "rows": 0, "domain": "example.org"}},
+        {"connector": "google_workspace", "action": "read", "target": "(command)", "argv": ["print", "users"],
+         "exit_code": None, "ok": True, "actor": None,
+         "extra": {"command": "raw.1500", "origin": "builder", "domain": " EXAMPLE.com "}},
     ]
     # Each value a spreadsheet reads as a formula is prefixed; a comma, quote, CR or LF is quoted.
     leads = ["=HYPERLINK(\"http://x.example\")", "+1 555", "-9", "@SUM(1)", "\tTab", "\rCR", " space", "'quote"]
@@ -1300,6 +1396,12 @@ def audit_screen_fixture() -> dict:
         {"action": "argv", "target": "string@example.com", "ok": True, "argv": "str"},
         {"action": "argv", "target": "object@example.com", "ok": True, "argv": {"k1": 1, "k2": 2}},
         {"action": "argv", "target": "empty@example.com", "ok": True, "argv": []},
+        # A domain, origin and rows of other types: str() of a domain, a blank one unknown; csv_safe of the others.
+        {"action": "dom", "target": "five@example.com", "ok": True, "extra": {"domain": 5, "rows": "x", "origin": None}},
+        {"action": "dom", "target": "flag@example.com", "ok": False, "extra": {"domain": True, "rows": -1}},
+        {"action": "dom", "target": "none@example.com", "ok": True, "extra": {"domain": None, "origin": "=cmd"}},
+        {"action": "dom", "target": "blank@example.com", "ok": True, "extra": {"domain": "  ", "rows": 1.5}},
+        {"action": "dom", "target": "empty@example.com", "ok": True, "extra": {"domain": ""}},
         # action and target of other types.
         {"action": None, "target": None, "ok": True},
         {"action": "", "target": 7, "ok": True},
@@ -1310,6 +1412,9 @@ def audit_screen_fixture() -> dict:
     filler = [{"connector": "google_workspace", "action": ["vacationOff", "set_vacation", "signOutUser"][n % 3],
                "target": f"user{n}@example.com", "argv": ["user", f"user{n}@example.com", "vacation", "off"],
                "exit_code": 0 if n % 4 else 50, "ok": bool(n % 4), "actor": "admin@example.com"} for n in range(24)]
+    for n, record in enumerate(filler):     # two domains, and records written before records named one
+        if n % 3 < 2:
+            record["extra"] = {"domain": ["example.com", "example.org"][n % 3]}
     records = []
     for n, record in enumerate(filler[:12] + gamgui + swift + odd + filler[12:]):
         records.append(record if "ts" in record else {"ts": stamp(n), **record})
@@ -1318,7 +1423,10 @@ def audit_screen_fixture() -> dict:
              "audit.jsonl": "\n".join(lines[20:]) + "\n\n"}
     queries = ["", "  ", "alice", " ALICE ", "ΟΔΥΣΣΕΥΣ", "οδυσσευς", "Σ", chr(0x130), "i" + chr(0x307), "STRASSE",
                "straße", "member already", "=hyperlink", "keychain", "credentials", "true", "5", "none", "s t r",
-               "k1 k2", "update user", "sales", "user1", chr(0x2028), "\x00", "\t", "nomatch"]
+               "k1 k2", "update user", "sales", "user1", chr(0x2028), "\x00", "\t", "nomatch",
+               "example.org", " EXAMPLE.ORG ", "example.com", "unknown", "read", "builder"]
+    # F1's domain filter, as the route reads it (`_domain_param`): a domain, "unknown" (records that name none), or "".
+    domains = ["example.com", " Example.ORG ", "unknown", "5", "true", "nomatch.example"]
     with tempfile.TemporaryDirectory() as folder:
         for name, text in files.items():
             Path(folder, name).write_text(text, encoding="utf-8")
@@ -1326,17 +1434,32 @@ def audit_screen_fixture() -> dict:
         newest_first = read_records(log)
         place = {id(r): n for n, r in enumerate(newest_first)}
         pages = []
+
+        def page_of(q, failed, page, domain):
+            shown = route._rows_context(newest_first, q, failed, page, route._domain_param(domain))
+            pages.append({"q": q, "failed": failed, "page": page, "domain": domain,
+                          "rows": [place[id(r)] for r in shown["rows"]],
+                          "shown_page": shown["page"], "pages": shown["pages"], "total": shown["total"]})
+
         for q in queries:
             for failed in (False, True):
                 for page in (1, 2, 3, 0, -1, 99):
-                    shown = route._rows_context(newest_first, q, failed, page)
-                    pages.append({"q": q, "failed": failed, "page": page, "rows": [place[id(r)] for r in shown["rows"]],
-                                  "shown_page": shown["page"], "pages": shown["pages"], "total": shown["total"]})
-        exports = [{"q": q, "failed": failed, "csv": "".join(route._export_csv(log, q, failed))}
-                   for q in ("", "alice", "ΟΔΥΣΣΕΥΣ", "true", "nomatch") for failed in (False, True)]
-    return {"constants": {"PAGE_SIZE": route.PAGE_SIZE}, "files": files, "read": len(newest_first),
+                    page_of(q, failed, page, "")
+        for domain in domains:
+            for q in ("", "alice", "read", "example.org"):
+                for failed in (False, True):
+                    for page in (1, 2, 99):
+                        page_of(q, failed, page, domain)
+        exports = [{"q": q, "failed": failed, "domain": "", "csv": "".join(route._export_csv(log, q, failed))}
+                   for q in ("", "alice", "ΟΔΥΣΣΕΥΣ", "true", "nomatch", "read") for failed in (False, True)]
+        exports += [{"q": q, "failed": failed, "domain": domain,
+                     "csv": "".join(route._export_csv(log, q, failed, route._domain_param(domain)))}
+                    for q, failed, domain in (("", False, "example.com"), ("", True, " Example.ORG "), ("", False, "unknown"),
+                                              ("read", False, "example.com"), ("alice", False, "nomatch.example"))]
+    return {"constants": {"PAGE_SIZE": route.PAGE_SIZE, "UNKNOWN_DOMAIN": route.UNKNOWN_DOMAIN}, "files": files,
+            "read": len(newest_first),
             "header": {"total": len(newest_first), "failures": sum(1 for r in newest_first if r.get("ok") is False)},
-            "pages": pages, "exports": exports}
+            "domains": route._domain_choices(newest_first), "pages": pages, "exports": exports}
 
 
 def usage_fixture(mock: Path) -> dict:

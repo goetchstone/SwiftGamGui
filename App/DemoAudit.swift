@@ -6,7 +6,8 @@ import GamEngine
 
 /// Debug builds only: the Audit screen's demo log, for its screenshots. Written fresh in the temporary folder
 /// `AppServices.demo()` hands it, never anywhere else: example changes as this app records them (a begin, then
-/// an end), one that failed, one the app stopped in the middle of, and two records GamGUI wrote. Enough for two pages.
+/// an end), one that failed, one the app stopped in the middle of, and two older records GamGUI wrote
+/// that name no domain. Two domains, example.com and example.org, and enough for two pages.
 enum DemoAudit {
     /// Empties the demo log, every generation, when it's in the temporary folder: false (and nothing touched) otherwise.
     @discardableResult
@@ -34,9 +35,10 @@ enum DemoAudit {
             var begin = extra, end = extra
             begin["phase"] = .string("begin")
             end["phase"] = .string("end")
-            _ = try? log.record(write.action.rawValue, target: mailbox, argv: write.argv, actor: "admin@example.com", extra: begin, now: at)
+            _ = try? log.record(write.action.rawValue, target: mailbox, argv: write.argv, actor: "admin@example.com", extra: begin,
+                                domain: "example.com", now: at)
             _ = try? log.record(write.action.rawValue, target: mailbox, argv: write.argv, exitCode: 0, ok: true, actor: "admin@example.com",
-                                extra: end, now: at + 1)
+                                extra: end, domain: "example.com", now: at + 1)
         }
     }
 
@@ -50,12 +52,13 @@ enum DemoAudit {
             return Date(timeIntervalSince1970: 1_791_450_000 + minutes * 60)
         }
         func change(_ write: GamWrite, _ target: String, about: [String: String] = [:], failing error: String? = nil,
-                    kind: String = "", ends: Bool = true) {
+                    kind: String = "", ends: Bool = true, on domain: String = "example.com") {
             var extra: JSONObject = ["preview": .string(UUID().uuidString), "origin": .string("form"), "step": .number("0")]
             for (key, value) in about { extra[key] = .string(value) }
             var begin = extra
             begin["phase"] = .string("begin")
-            _ = try? log.record(write.action.rawValue, target: target, argv: write.argv, actor: "admin@example.com", extra: begin, now: next())
+            _ = try? log.record(write.action.rawValue, target: target, argv: write.argv, actor: "admin@example.com", extra: begin,
+                                domain: domain, now: next())
             guard ends else { return }
             var end = extra
             end["phase"] = .string("end")
@@ -64,14 +67,15 @@ enum DemoAudit {
                 end["kind"] = .string(kind)
             }
             _ = try? log.record(write.action.rawValue, target: target, argv: write.argv, exitCode: error == nil ? 0 : 50,
-                            ok: error == nil, actor: "admin@example.com", extra: end, now: next())
+                            ok: error == nil, actor: "admin@example.com", extra: end, domain: domain, now: next())
         }
+        // Written by GamGUI before records named their domain: Unknown.
         _ = try? log.record("add_group_member", target: "dana@example.com",
                         argv: ["update", "group", "staff@example.com", "add", "member", "dana@example.com"], exitCode: 0, ok: true,
-                        extra: ["group": .string("staff@example.com")], now: next())
+                        extra: ["group": .string("staff@example.com")], domain: nil, now: next())
         _ = try? log.record("remove_domain", connector: "keychain", target: "example.net", ok: true,
                         extra: ["detail": .string("Deleted example.net's credentials from the Keychain."), "outcome": .string("deleted")],
-                        now: next())
+                        domain: nil, now: next())
         for (index, name) in ["erin", "frank", "grace", "heidi", "ivan", "judy", "mallory"].enumerated() {
             change(GamCommands.updateOrganization(email: "\(name)@example.com", title: "Account Manager",
                                                   department: index.isMultiple(of: 2) ? "Sales" : "Support"), "\(name)@example.com")
@@ -83,6 +87,8 @@ enum DemoAudit {
                about: ["group": "staff@example.com"])
         change(GamCommands.signOutUser(email: "bob@example.com"), "bob@example.com",
                failing: "User: bob@example.com, Sign Out Failed: Not Authorized to access this resource/api", kind: "scope_missing")
+        change(GamCommands.updateOrganization(email: "olivia@example.org", title: "Teacher", department: "Science"), "olivia@example.org",
+               on: "example.org")
         change(GamCommands.setSignature(email: "alice@example.com", signature: "<p>Alice Anders</p>"), "alice@example.com")
         change(GamCommands.setSuspended(email: "dana@example.com", suspended: true), "dana@example.com", ends: false)
         change(GamCommands.addGroupMember(group: "sales@example.com", member: "bob@example.com"), "bob@example.com",

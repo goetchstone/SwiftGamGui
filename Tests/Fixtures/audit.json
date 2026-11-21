@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "d03f5a6",
+  "gamgui_commit": "4eb8165",
   "generator": "scripts/gen_fixtures.py"
  },
  "written": [
@@ -132,6 +132,78 @@
     "ts": "2000-01-01T00:00:00+00:00"
    },
    "line": "{\"ts\": \"2000-01-01T00:00:00+00:00\", \"connector\": \"google_workspace\", \"action\": \"recovery\", \"target\": null, \"argv\": [\"update\", \"user\", \"a@example.com\", \"RecoveryEmail\", \"***redacted***\", \"recoveryphone\", \"***redacted***\", \"PASSWORD\"], \"exit_code\": -9, \"ok\": false, \"actor\": null}"
+  },
+  {
+   "call": {
+    "action": "apply",
+    "target": "a@example.com",
+    "argv": [
+     "update",
+     "user",
+     "a@example.com"
+    ],
+    "ok": true,
+    "extra": {
+     "command": "build.x"
+    },
+    "domain": " Example.COM ",
+    "ts": "2026-11-21T09:00:00+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:00+00:00\", \"connector\": \"google_workspace\", \"action\": \"apply\", \"target\": \"a@example.com\", \"argv\": [\"update\", \"user\", \"a@example.com\"], \"exit_code\": null, \"ok\": true, \"actor\": null, \"extra\": {\"command\": \"build.x\", \"domain\": \"example.com\"}}"
+  },
+  {
+   "call": {
+    "action": "remove_domain",
+    "connector": "keychain",
+    "target": "example.org",
+    "ok": true,
+    "domain": "example.org",
+    "ts": "2026-11-21T09:00:01+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:01+00:00\", \"connector\": \"keychain\", \"action\": \"remove_domain\", \"target\": \"example.org\", \"argv\": null, \"exit_code\": null, \"ok\": true, \"actor\": null, \"extra\": {\"domain\": \"example.org\"}}"
+  },
+  {
+   "call": {
+    "action": "moved",
+    "ok": true,
+    "extra": {
+     "domain": "old.example",
+     "n": 1
+    },
+    "domain": "New.Example",
+    "ts": "2026-11-21T09:00:02+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:02+00:00\", \"connector\": \"google_workspace\", \"action\": \"moved\", \"target\": null, \"argv\": null, \"exit_code\": null, \"ok\": true, \"actor\": null, \"extra\": {\"domain\": \"new.example\", \"n\": 1}}"
+  },
+  {
+   "call": {
+    "action": "blank",
+    "ok": true,
+    "extra": {
+     "n": 1
+    },
+    "domain": "  ",
+    "ts": "2026-11-21T09:00:03+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:03+00:00\", \"connector\": \"google_workspace\", \"action\": \"blank\", \"target\": null, \"argv\": null, \"exit_code\": null, \"ok\": true, \"actor\": null, \"extra\": {\"n\": 1}}"
+  },
+  {
+   "call": {
+    "action": "empty",
+    "ok": true,
+    "domain": "",
+    "ts": "2026-11-21T09:00:04+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:04+00:00\", \"connector\": \"google_workspace\", \"action\": \"empty\", \"target\": null, \"argv\": null, \"exit_code\": null, \"ok\": true, \"actor\": null}"
+  },
+  {
+   "call": {
+    "action": "spaced",
+    "ok": true,
+    "domain": "\u00a0EXAMPLE.net\u2028",
+    "ts": "2026-11-21T09:00:05+00:00"
+   },
+   "line": "{\"ts\": \"2026-11-21T09:00:05+00:00\", \"connector\": \"google_workspace\", \"action\": \"spaced\", \"target\": null, \"argv\": null, \"exit_code\": null, \"ok\": true, \"actor\": null, \"extra\": {\"domain\": \"example.net\"}}"
   }
  ],
  "files": {
@@ -179,8 +251,833 @@
    "action": "fourth"
   }
  ],
+ "reads": [
+  {
+   "name": "csv",
+   "output": "User,delegateAddress\nalice@example.com,assistant@example.com\nalice@example.com,boss@example.com\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 2,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "header only",
+   "output": "User,delegateAddress\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "crlf",
+   "output": "User,delegateAddress\r\nalice@example.com,assistant@example.com\r\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "json list",
+   "output": "[{\"primaryEmail\": \"a@example.com\"}, {\"primaryEmail\": \"b@example.com\"}, {\"primaryEmail\": \"c@example.com\"}]",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 3,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "json empty",
+   "output": "[]",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "json object",
+   "output": "{\"primaryEmail\": \"a@example.com\", \"aliases\": [\"x@example.com\"]}",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "ndjson",
+   "output": "{\"a\": 1}\n{\"a\": 2}\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 2,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "not json",
+   "output": "[not json",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "text",
+   "output": "Alice has no delegates set up\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "comma on line two",
+   "output": "Getting delegates\nUser,delegateAddress\nalice@example.com,boss@example.com\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "line separator",
+   "output": "User\u2028x,y\nalice,1\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "nothing",
+   "output": "",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "spaces",
+   "output": "  \n\t ",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "no target",
+   "output": "primaryEmail\na@example.com\n",
+   "error": null,
+   "target": "(command)",
+   "argv": [
+    "print",
+    "users"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "print",
+     "users"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "(command)",
+     "argv": [
+      "print",
+      "users"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "masked",
+   "output": "User,signature\nalice@example.com,Hi\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "show",
+    "signature",
+    "format"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "show",
+     "signature",
+     "format"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "show",
+      "signature",
+      "***redacted***"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "failed",
+   "output": null,
+   "error": "Does not exist",
+   "target": "missing@example.com",
+   "argv": [
+    "user",
+    "missing@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": "RuntimeError",
+   "ran": [
+    [
+     "user",
+     "missing@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "missing@example.com",
+     "argv": [
+      "user",
+      "missing@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "error": "Does not exist",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "cancelled",
+   "output": null,
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "builder",
+   "domain": " Example.COM ",
+   "raised": "CancelledError",
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "builder",
+      "error": "interrupted (the app quit or the job was cancelled) before GAM reported a result; it may have done part of its work",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "sequence",
+   "output": "User,delegateAddress\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "sequence",
+   "domain": " Example.COM ",
+   "raised": null,
+   "ran": [
+    [
+     "user",
+     "alice@example.com",
+     "print",
+     "delegates"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "alice@example.com",
+     "argv": [
+      "user",
+      "alice@example.com",
+      "print",
+      "delegates"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "raw.1440",
+      "origin": "sequence",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "unknown origin",
+   "output": "User,delegateAddress\n",
+   "error": null,
+   "target": "alice@example.com",
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "delegates"
+   ],
+   "origin": "elsewhere",
+   "domain": " Example.COM ",
+   "raised": "ValueError",
+   "ran": [],
+   "records": []
+  }
+ ],
  "constants": {
   "MAX_LOG_BYTES": 16777216,
-  "RETENTION_GENERATIONS": 10
+  "RETENTION_GENERATIONS": 10,
+  "READ_ACTIONS": [
+   "read",
+   "sensitive_read"
+  ],
+  "DOMAIN_KEY": "domain"
  }
 }

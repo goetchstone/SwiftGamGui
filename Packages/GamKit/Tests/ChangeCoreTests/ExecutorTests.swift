@@ -147,6 +147,8 @@ final class ExecutorTests {
         #expect(end["actor"]?.string == "admin@example.com")
         #expect(end["extra"]?.object?["digest"]?.string == preview.digest)
         #expect(end["extra"]?.object?["origin"]?.string == "form")
+        // Plan F1: each record names the domain its preview was held for, lowercased.
+        #expect(records.map { $0["extra"]?.object?[AuditLog.domainKey]?.string } == ["example.com", "example.com"])
 
         let again = await executor.run(preview, confirmation: confirmed)
         #expect(again.refusal == "That preview has expired or was already run — preview again.", "a replay")
@@ -586,14 +588,19 @@ final class ExecutorTests {
         #expect(records.map { $0["actor"]?.string } == ["dana@example.com", "dana@example.com"])
     }
 
+    /// The acknowledgement names the domain its begin named (plan F1), and none for a begin written before records named one.
     @Test func anUnfinishedWriteCanBeAcknowledged() async throws {
         try audit.record("suspendUser", target: "bob@example.com", argv: [],
-                         extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])
+                         extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")], domain: "example.com")
+        try audit.record("suspendUser", target: "carol@example.com", argv: [],
+                         extra: ["preview": .string("P0"), "step": .number("0"), "phase": .string("begin")], domain: nil)
         let unfinished = Executor.unfinished(in: auditURL)
-        #expect(unfinished.count == 1)
+        #expect(unfinished.count == 2)
         try Executor.acknowledge(unfinished, in: auditURL)
         #expect(unfinished.first?.actionName == "Suspend user")
         #expect(Executor.unfinished(in: auditURL).isEmpty)
+        let acknowledged = records.suffix(2).map { "\($0["target"]?.string ?? "") \($0["extra"]?.object?[AuditLog.domainKey]?.string ?? "none")" }
+        #expect(Set(acknowledged) == ["bob@example.com example.com", "carol@example.com none"])
     }
 
     // MARK: signatures (S1c)
@@ -1034,11 +1041,12 @@ final class ExecutorTests {
             if let attempt { extra["attempt"] = .number(String(attempt)) }
             return extra
         }
-        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin"))
-        try audit.record("setSignature", target: "new@example.com", argv: [], ok: false, extra: extra("end"))
-        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 2))
-        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 3))
-        try audit.record("setSignature", target: "new@example.com", argv: [], ok: true, extra: extra("end", attempt: 3))
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin"), domain: "example.com")
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: false, extra: extra("end"), domain: "example.com")
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 2), domain: "example.com")
+        try audit.record("setSignature", target: "new@example.com", argv: [], extra: extra("begin", attempt: 3), domain: "example.com")
+        try audit.record("setSignature", target: "new@example.com", argv: [], ok: true, extra: extra("end", attempt: 3),
+                         domain: "example.com")
         let unfinished = Executor.unfinished(in: auditURL)
         #expect(unfinished.map(\.attempt) == [2])
         try Executor.acknowledge(unfinished, in: auditURL)
@@ -1048,11 +1056,11 @@ final class ExecutorTests {
 
     @Test func aBeginWithNoEndIsAnOutcomeUnknown() throws {
         try audit.record("suspendUser", target: "bob@example.com", argv: ["update", "user", "bob@example.com", "suspended", "on"],
-                         extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")])
+                         extra: ["preview": .string("P1"), "step": .number("0"), "phase": .string("begin")], domain: "example.com")
         try audit.record("suspendUser", target: "alice@example.com", argv: [],
-                         extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("begin")])
+                         extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("begin")], domain: "example.com")
         try audit.record("suspendUser", target: "alice@example.com", argv: [], ok: true,
-                         extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("end")])
+                         extra: ["preview": .string("P2"), "step": .number("0"), "phase": .string("end")], domain: "example.com")
         #expect(Executor.unfinished(in: auditURL).map(\.target) == ["bob@example.com"])
     }
 
