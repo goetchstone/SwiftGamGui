@@ -122,7 +122,8 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["exportToSheet("])
                 == ["Packages/GamKit/Sources/Directory/SheetExports.swift", "Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["todriveArgs("]) == ["Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
-        #expect(try Self.files(in: "App", matching: ["exportToSheet(", "todriveArgs(", "\"todrive\""]).isEmpty)
+        // The debug demo's log names one, to show Files; it runs nothing (no executor).
+        #expect(try Self.files(in: "App", matching: ["exportToSheet(", "todriveArgs(", "\"todrive\""]) == ["App/DemoAudit.swift"])
         let model = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/SheetExports.swift") })
         let reaching = ["WriteTicket", "ticket:", "runner.run(", "runRaw(", "Process", "OperatorConfirmation(", "catalogRead("]
         #expect(model.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
@@ -144,6 +145,21 @@ struct WriteRouteTests {
         #expect(refused < ran, "refused before GAM runs")
         #expect(try Self.files(in: "Packages/GamKit/Sources/Directory", matching: ["GamCommands.carriesToDrive("])
                 == ["Packages/GamKit/Sources/Directory/AuditRuns.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+    }
+
+    /// Files (plan F4) is read only: it runs no `gam` and reaches no write, and the only folders it lists are incidents' evidence,
+    /// through the incident store (by descriptor): never a run folder (each call's credentials) or the setup folder.
+    @Test func filesRunsNoGamAndListsNoPrivateFolder() throws {
+        let screens = try Self.swiftFiles(in: "App").filter { ["App/FilesView.swift", "App/SavedFiles.swift"].contains($0.path) }
+        #expect(screens.count == 2)
+        let reaching = ["Runner", "runner", "Executor", "executor", "GamWrite", "WriteStep", "HeldPreview", ".confirm(", "Confirmation",
+                        "catalogRead", "Process", "RuntimeDirectory", "EphemeralConfig", "setupFolder", "SetupFolder", "GAMCFGDIR",
+                        "contentsOfDirectory", "enumerator(", "readdir", "opendir"]
+        for file in screens {
+            #expect(file.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty, "\(file.path)")
+        }
+        let made = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/ChangeCore").first { $0.path.hasSuffix("/MadeFiles.swift") })
+        #expect(made.lines.filter { line in ["Runner", "Executor", "record(", "write(", "Process"].contains { line.contains($0) } }.isEmpty)
     }
 
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and

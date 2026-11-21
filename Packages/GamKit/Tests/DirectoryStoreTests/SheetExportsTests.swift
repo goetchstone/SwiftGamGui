@@ -142,6 +142,10 @@ final class SheetExportsTests {
         #expect(extra["command"]?.string == "build.print_delegates" && extra["domain"]?.string == "example.com")
         #expect(!String(describing: end).contains("delegateAddress"), "never the rows")
         #expect(records().map { $0["extra"]?.object?["phase"]?.string } == ["begin", "end"])
+        // Files reads it back from the record: one export, its link, its read.
+        let listed = MadeFiles.sheets(in: writeAuditURL)
+        #expect(listed.made.map(\.outcome.url) == [done.outcome.url] && listed.made.first?.command == "build.print_delegates")
+        #expect(listed.made.first?.domain == "example.com" && listed.made.first?.owner == Self.admin)
         // The preview is spent: the sheet is gone, and the same preview held again by hand runs nothing.
         await exports.confirm(pending, OperatorConfirmation(confirmed: true))
         #expect(exportCalls().count == 1 && made().count == 1)

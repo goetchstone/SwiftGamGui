@@ -287,3 +287,38 @@ struct IncidentStoreTests {
         #expect(!IncidentStore.readsBackLast(export, after: [], saved: IncidentStore.exportsCap), "past the count kept")
     }
 }
+
+/// Files (plan F4): each incident's count of saved reads, read by descriptor, a link in a folder's place refused, never followed.
+@Suite("Incident evidence counted")
+struct IncidentEvidenceCountTests {
+    let base = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-evidence-count-\(UUID().uuidString)")
+    var root: URL { base.appending(path: "incidents") }
+
+    @Test func savedReadsAreTheFoldersInItsEvidence() throws {
+        defer { try? FileManager.default.removeItem(at: base) }
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        var store = try IncidentStore(root: root)
+        let made = try store.create(domain: "example.com", title: "Takeover", opened: IncidentStoreTests.monday, openedBy: "", reported: "")
+        #expect(try store.savedReads(of: made.id) == 0, "no evidence folder yet")
+        let evidence = try store.evidenceFolder(of: made.id)
+        for name in ["2026-10-19 1330 Gmail", "2026-10-19 1400 Login"] {
+            try FileManager.default.createDirectory(at: evidence.appending(path: name), withIntermediateDirectories: false)
+        }
+        try Data("x".utf8).write(to: evidence.appending(path: "stray.txt"))
+        try FileManager.default.createDirectory(at: evidence.appending(path: ".hidden"), withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(at: evidence.appending(path: "linked"), withDestinationURL: base)
+        #expect(try store.savedReads(of: made.id) == 2, "folders only: a file, a dot name and a link aren't saved reads")
+        #expect(throws: IncidentStore.Problem.self) { try store.savedReads(of: "../\(made.id)") }
+    }
+
+    @Test func aLinkInTheEvidenceFoldersPlaceIsRefused() throws {
+        defer { try? FileManager.default.removeItem(at: base) }
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        var store = try IncidentStore(root: root)
+        let made = try store.create(domain: "example.com", title: "Takeover", opened: IncidentStoreTests.monday, openedBy: "", reported: "")
+        let elsewhere = base.appending(path: "elsewhere")
+        try FileManager.default.createDirectory(at: elsewhere.appending(path: "a read"), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: root.appending(path: made.id).appending(path: "evidence"), withDestinationURL: elsewhere)
+        #expect(throws: IncidentStore.Problem.self) { try store.savedReads(of: made.id) }
+    }
+}

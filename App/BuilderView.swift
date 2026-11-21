@@ -244,7 +244,8 @@ final class ReadRun {
     }
 
     /// The rows the filter keeps (every row for none), as a CSV to a file the operator picks: private (0600), whole or not at all.
-    func export(_ result: CatalogResult, _ rows: [Int], announce: Bool) {
+    /// Listed on Files once it's written (`saved`).
+    func export(_ result: CatalogResult, _ rows: [Int], announce: Bool, saved: SavedFiles?) {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = filter.isEmpty ? "gam-results.csv" : "gam-results-filtered.csv"
         panel.allowedContentTypes = [.commaSeparatedText]
@@ -256,6 +257,7 @@ final class ReadRun {
             Task {
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(table), to: destination) }.value
+                    saved?.record(destination, what: "Builder table")
                     self.say("Exported \(rows.count.formatted()) row\(rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).",
                              failed: false, announce: announce)
                 } catch {
@@ -309,6 +311,8 @@ private struct CommandDetail: View {
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     /// Why a command doesn't run from here, short for the list and whole for its page.
     static func notRun(_ command: CommandCatalog.Command) -> (short: String, why: String) {
@@ -359,7 +363,8 @@ private struct CommandDetail: View {
             .formStyle(.grouped)
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
-                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) },
+                ResultView(result: result, filter: $reading.filter,
+                           export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
                            toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
                            sheetBusy: exports.isBusy)
@@ -430,6 +435,9 @@ private struct CuratedDetail: View {
     @State private var debugApplied = false
     /// Debug builds' snapshots: the export previewed once the read's table is there.
     @State private var debugSheet = false
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
+
     @Environment(\.appearsActive) private var appearsActive
 
     /// What it does here, for the list.
@@ -490,7 +498,8 @@ private struct CuratedDetail: View {
             .formStyle(.grouped)
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
-                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) },
+                ResultView(result: result, filter: $reading.filter,
+                           export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
                            toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true) && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,
                            sheetBusy: exports.isBusy)

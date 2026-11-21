@@ -29,6 +29,8 @@ struct AuditView: View {
     @State private var notice: (text: String, failed: Bool)?
     @State private var exporting = false
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     private var filter: AuditFilter { AuditFilter(text: query, failuresOnly: failuresOnly, domain: domain) }
 
@@ -145,6 +147,7 @@ struct AuditView: View {
             let count = try await Task.detached(priority: .userInitiated) {
                 try AuditExport.write(from: url, filter: filter, to: destination)
             }.value
+            savedFiles?.record(destination, what: "Audit log")
             say("Exported \(count.formatted()) record\(count == 1 ? "" : "s") to \(destination.lastPathComponent).", failed: false)
         } catch {
             say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
@@ -210,7 +213,8 @@ struct AuditView: View {
                     .font(.headline)
             }
             Text("Read-only: this screen reads the audit log on this Mac and never runs GAM. Each change is "
-                 + "recorded when it starts and again when it ends; each read run from the Builder once it ends, never its output.")
+                 + "recorded when it starts and again when it ends; each read run from the Builder once it ends, never its output. "
+                 + "The Google Sheets exported, each incident's evidence and the files you saved are listed on Files.")
                 .font(.callout).foregroundStyle(.secondary)
             if let notice {
                 Label(notice.text, systemImage: notice.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")

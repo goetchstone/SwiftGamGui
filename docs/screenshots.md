@@ -108,6 +108,13 @@ steps and failures in words, and Stop.
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words and its domain, a page at a time](screenshots/audit.png) |
 
+Files: what the app made, read only. The Google Sheets exported, read back from the audit log with their links, each kept
+incident's evidence folder, and the CSV files saved from the app; Return opens a Sheet or shows a folder or file in Finder.
+
+| Files |
+|---|
+| ![Files: two exports to a Google Sheet, one made with its link and one GAM refused because the service account isn't allowed Drive, an incident's evidence folder with one saved read, and a CSV saved from the Builder](screenshots/files.png) |
+
 | Audit, one domain |
 |---|
 | ![Audit narrowed to example.org: its change and its two Builder reads, the licenses read with its row count](screenshots/audit-domain.png) |

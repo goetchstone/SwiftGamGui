@@ -26,6 +26,8 @@ struct AuditRunPanel: View {
     @State private var exported: (text: String, failed: Bool, about: Date)?
     /// The table a row was last picked in: what ⌘E exports.
     @State private var picked: String?
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     var body: some View {
         ScrollView {
@@ -229,6 +231,7 @@ struct AuditRunPanel: View {
             Task {
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(table), to: destination) }.value
+                    savedFiles?.record(destination, what: "\(run.title): \(finding.title)")
                     say("Exported \(finding.rows.count.formatted()) row\(finding.rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).",
                         failed: false, about: when)
                 } catch {

@@ -275,6 +275,50 @@ public struct IncidentStore: Sendable {
         return Export(export: ActivityLogs.Export(name: folder.lastPathComponent, about: about, logs: logs), files: files)
     }
 
+    /// Entries a count of saved reads reads at most (invariant 9): far past `exportsCap`, so a folder anyone could fill is never
+    /// read whole.
+    public static let countCap = 10_000
+
+    /// How many saved reads the incident `id`'s evidence folder holds, each a folder of its own (a stray file is none), for Files
+    /// (plan F4). Read by descriptor: the incidents' folder, the incident's and its `evidence` each opened `O_NOFOLLOW`, so a
+    /// link in their place is refused, never followed, and every name is read from the folder opened, never a path again. 0 when
+    /// there's no evidence folder yet; throws when it can't be read, which Files says as unread, never as empty.
+    public func savedReads(of id: String) throws(Problem) -> Int {
+        guard Self.isID(id) else { throw .invalid("That isn't an incident's ID.") }
+        let flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC
+        let top = open(root.path, flags)
+        guard top >= 0 else { throw .file("read the evidence", errno) }
+        defer { close(top) }
+        let incident = openat(top, id, flags)
+        guard incident >= 0 else { throw .file("read the evidence", errno) }
+        defer { close(incident) }
+        let evidence = openat(incident, "evidence", flags)
+        guard evidence >= 0 else {
+            if errno == ENOENT { return 0 }
+            throw .file("read the evidence", errno)
+        }
+        guard let folder = fdopendir(evidence) else {
+            let code = errno
+            close(evidence)
+            throw .file("read the evidence", code)
+        }
+        defer { closedir(folder) }
+        var count = 0, read = 0
+        while read < Self.countCap, let entry = readdir(folder) {
+            read += 1
+            let name = withUnsafeBytes(of: entry.pointee.d_name) { bytes in
+                String(decoding: bytes.prefix(Int(entry.pointee.d_namlen)), as: UTF8.self)
+            }
+            guard !name.hasPrefix(".") else { continue }
+            var info = stat()
+            // The entry's own kind, never a link's target: a saved read is a folder.
+            let isFolder = entry.pointee.d_type == UInt8(DT_DIR) || (entry.pointee.d_type == UInt8(DT_UNKNOWN)
+                && fstatat(dirfd(folder), name, &info, AT_SYMLINK_NOFOLLOW) == 0 && (info.st_mode & S_IFMT) == S_IFDIR)
+            if isFolder { count += 1 }
+        }
+        return count
+    }
+
     /// Keeps `export` as evidence of the incident `id`: a new folder in its evidence (named as the export's, " (2)" and on
     /// when that's taken), each file written `0600`, never through a link. Whole or not at all. Returns the folder's name.
     @discardableResult

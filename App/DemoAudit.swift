@@ -43,6 +43,35 @@ enum DemoAudit {
         }
     }
 
+    /// Files' picture: two exports of a Builder table to a Google Sheet, as the executor records them (a begin, then an end
+    /// keeping what GAM's own lines said): one made, its link the mock's, and one GAM refused before making anything (the service
+    /// account not allowed Drive). Nothing is run: the argv is the builder's, written to the demo log only.
+    static func writeExports(to url: URL) {
+        guard reset(url), let made = try? GamCommands.exportToSheet(GamCommands.printDelegates(email: "carol@example.com"),
+                                                                     title: "example.com - List mailbox delegates"),
+              let refused = try? GamCommands.exportToSheet(GamCommands.printForwardingAddresses(email: "alice@example.com"),
+                                                           title: "example.com - List forwarding addresses")
+        else { return }
+        let log = AuditLog(url: url)
+        let ends: [(GamWrite, String, Bool, JSONObject)] = [
+            (refused, "build.print_forwarding", false, ["upload": .string("drive_refused"), "kind": .string("service_not_enabled"),
+                                                         "error": .string("User: admin@example.com, Drive API v3 Service/App not enabled")]),
+            (made, "build.print_delegates", true, ["url": .string("https://docs.google.com/spreadsheets/d/1MockSheet3215791460/edit?usp=drivesdk")]),
+        ]
+        for (index, (write, command, ok, kept)) in ends.enumerated() {
+            // 2026-11-21 14:00 UTC, an hour apart.
+            let at = Date(timeIntervalSince1970: 1_795_788_000 + Double(index) * 3_600)
+            var begin: JSONObject = ["command": .string(command), "preview": .string(UUID().uuidString), "origin": .string("form"),
+                                     "step": .number("0"), "phase": .string("begin")]
+            _ = try? log.record(write.action.rawValue, target: "admin@example.com", argv: write.argv, actor: "admin@example.com",
+                                extra: begin, domain: "example.com", now: at)
+            begin["phase"] = .string("end")
+            for (key, value) in kept { begin[key] = value }
+            _ = try? log.record(write.action.rawValue, target: "admin@example.com", argv: write.argv, exitCode: ok ? 0 : 73, ok: ok,
+                                actor: "admin@example.com", extra: begin, domain: "example.com", now: at + 20)
+        }
+    }
+
     static func write(to url: URL) {
         guard reset(url) else { return }
         let log = AuditLog(url: url)

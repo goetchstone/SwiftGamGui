@@ -92,7 +92,9 @@ status=0
 # reports-run-suspend Inactive users' Suspend these… preview over it (tab `suspend`: the directory read again, held, never
 # run); Audit on a
 # demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
-# then narrowed to one domain (the person is the domain: example.org).
+# then narrowed to one domain (the person is the domain: example.org). Files (plan F4) on a demo log with two exports to a
+# Sheet (one made, its link the mock's; one Drive refused), a demo incident with one saved read, and one CSV listed as saved:
+# all written fresh in the temporary folder; nothing runs. narrow-files in the smallest window.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
@@ -159,6 +161,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
             narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
+            files:files narrow-files:files:::smallest \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \
             reports-run-inactive:reports:run.inactive_users::1100x940 reports-run-licenses:reports:run.license_usage::1100x940 \

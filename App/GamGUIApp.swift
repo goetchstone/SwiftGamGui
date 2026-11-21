@@ -28,6 +28,8 @@ struct GamGUIApp: App {
     var body: some Scene {
         WindowGroup("GAM GUI") {
             ContentView(services: services)
+                // Each CSV a screen saves through a save panel is listed on Files (plan F4).
+                .environment(services.savedFiles)
                 .task { await Spikes.runIfRequested(services: services) }
         }
         // Every launch opens a fresh window: an admin tool has nothing worth restoring, and a restored
@@ -55,6 +57,8 @@ enum Screen: String, CaseIterable, Identifiable {
     case builder = "Builder"
     case reports = "Reports"
     case audit = "Audit"
+    /// What this app made, read only: the Sheets exported, each incident's evidence, the files saved (plan F4).
+    case files = "Files"
     case setup = "Setup"
 
     var id: Self { self }
@@ -74,6 +78,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .builder: "terminal"
         case .reports: "chart.bar.doc.horizontal"
         case .audit: "list.bullet.clipboard"
+        case .files: "folder"
         case .setup: "key"
         }
     }
@@ -266,6 +271,9 @@ struct ContentView: View {
             case .audit:
                 AuditView(auditURL: services.auditURL, showFailures: $auditFailures)
                     .navigationTitle("Audit")
+            case .files:
+                FilesView(auditURL: services.auditURL, incidents: services.incidents, saved: services.savedFiles)
+                    .navigationTitle("Files")
             case .setup:
                 SetupView(model: services.setup)
                     .navigationTitle("Setup")

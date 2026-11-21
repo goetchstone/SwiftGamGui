@@ -413,6 +413,8 @@ struct IncidentReportView: View {
 
 /// A number's list: what it is, every row in a table, and Export CSV…
 private struct CountSheet: View {
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
     let count: IncidentReport.Count
     let title: String
     @State private var exported: (text: String, failed: Bool)?
@@ -470,6 +472,7 @@ private struct CountSheet: View {
                 let text: String, failed: Bool
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    savedFiles?.record(destination, what: "Incident report: \(count.label)")
                     (text, failed) = ("Exported to \(destination.lastPathComponent).", false)
                 } catch {
                     (text, failed) = ("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", true)

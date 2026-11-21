@@ -621,6 +621,8 @@ private struct OwnedClassesNote: View {
     let classes: OffboardChanges.OwnedClasses
     @State private var notice: (text: String, failed: Bool)?
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -668,6 +670,7 @@ private struct OwnedClassesNote: View {
             try await Task.detached(priority: .userInitiated) {
                 try AuditExport.writePrivately(AuditExport.csv(rows), to: destination)
             }.value
+            savedFiles?.record(destination, what: "A leaver's classes")
             say("Saved \(rows.count - 1) class\(rows.count == 2 ? "" : "es") to \(name).", failed: false)
         } catch {
             // Fixed words, never the error's own text.
