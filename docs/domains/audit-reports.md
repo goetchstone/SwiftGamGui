@@ -48,7 +48,8 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   nothing about Google.
 
 ## Reports: audit runs (plan F3)
-GamGUI #171 (`086d2f8`): ready-made lists of reads, each run when the operator asks, listed under **Audit runs** on Reports.
+GamGUI #171 (`086d2f8`) and #172 (`db579c7`): ready-made lists of reads, each run when the operator asks, listed under
+**Audit runs** on Reports: Inactive users, Shared drive permissions, License usage, Classroom and the Admin token review.
 A run changes nothing; Inactive users' Suspend these… is a write of its own.
 - **The runs and their steps** (`AuditRuns`, GamGUI's `core/audit_runs.py`): Inactive users reads the directory (the cache's
   own read, `cacheFields`, suspended accounts included); License usage reads `print licenses` (no product named), then the
@@ -92,6 +93,40 @@ A run changes nothing; Inactive users' Suspend these… is a write of its own.
   isn't every row's.
 - **Not run on a real domain yet.** `print licenses` has never run live: check the counts against Billing → Licenses on its
   first run. Then one Inactive users run, and its records on Audit.
+
+### Shared drive permissions, Classroom, admin token review (GamGUI #172)
+Each step says which exits are its answer (`Step.okCodes`: 60 is GAM's "no drive at all") and which keep the rows with the
+accounts GAM named as unread (`Step.partialCodes`, 56 and 73: state `partial`, the read record's `extra.partial` true, the
+accounts said in words, unknown never none). A warning exit that names nobody is unknown whole. A step that reads for what an
+earlier step found (the admins' apps) doesn't run when that step has no answer, and is unknown (`AuditRuns.read(step,
+tables:)` nil). `AuditRuns.answer` is GamGUI's `audit_read` after GAM ended, held to it over every exit in `audit_runs.json`.
+- **Shared drive permissions:** `print shareddrives noorgunits formatjson`, `print shareddriveacls oneitemperrow
+  shownopermissionsdrives true formatjson` (both as the admin, domain admin access), `print domains formatjson`, the
+  directory. The ACL read is each drive's own permissions, its members, which Google's sharing guide says are users and
+  groups only, so the run flags a member from outside the domain (an address in none of `print domains`' own domains or
+  aliases, `AuditRuns.domainsFrom`) and claims nothing about "anyone with the link" or a whole domain: that is the sharing of
+  files inside a drive, which it doesn't read (GamGUI's failure log 2026-11-21: its first fixture invented such members).
+  printShowSharedDriveACLs drops a drive whose permissions Google refused without a word or a code, so a listed drive
+  missing from the ACL table is in "Drives whose members weren't read". A drive is flagged when every organizer is a user
+  who is suspended, gone from the directory (or `deleted`), or being offboarded here (`OffboardChanges.leaversStarted`: an
+  offboarding started in this app since it opened, on this tenant, GamGUI's `offboard_jobs`); a group organizer isn't; a drive
+  with no organizer is.
+- **Classroom:** `print courses states <every state> show all countsonly fields … formatjson` (no `owneremail`: owners are
+  joined by `ownerId` to the directory's `id`). A roster GAM couldn't read counts 0 without a word, so no table reads a 0 as
+  an empty class. Stale: ACTIVE or PROVISIONED, `updateTime` more than 365 days ago. Read only; not yet checked on a school
+  domain.
+- **Admin token review:** `print admins recursive` (not `types user`: with `recursive` it drops a group's row and its members),
+  the directory, then `print tokens users <every holder, one comma-joined argv element>` (`GamCommands.printTokens(users:)`:
+  `users` is convertEntityToList, so suspended admins are read). A holder GAM couldn't name has `assignedToUnknown` True and
+  `assignedTo` alone, exit 0: `AuditRuns.holder(of:users:)` joins it to the directory's `id`, and one neither can name stays in
+  "Every admin" as `ID <id>` with everything unknown, and the run isn't complete (`Finding.partial`). Flags reuse
+  `ConnectedApps` (AI by its name, broad reach). Revoking stays in Incident's previewed flow.
+- **The mock:** `shared_drives.json`, `shared_drive_acls.tsv` (users and groups only; `nodrives` 60, `denied/drives` 50,
+  `acl_dropped/<id>` the silent drop); `print admins recursive` (admin@ and alice@ direct, bob@, suspended, through
+  it-admins@, a service account; `admin_unnamed` adds carol@'s ID and one no read names; `denied/admins` 12); `print tokens
+  users` (bob@ has a broad-access grant; unknown or `tokens_gone/<u>` 56, outside the domain 73, `denied/tokens` 12); `print
+  courses … show all countsonly` (counts from course_participants.tsv; `roster_gone/<id>` the silent 0).
+- **Not run on a real domain yet**, none of them; the Classroom run can't be until an Education domain is there.
 
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`, `record_domain`), `AuditEntry` (a
@@ -235,6 +270,10 @@ this app; GamGUI has no such page. Reads only.
   (its Stop is the executor's), so a run shows its steps and Stop on its own pane, and goes on while another screen shows.
 - **A domain switch stops a run**: GAM is stopped and the step in flight recorded as interrupted, as a directory load is.
   GamGUI reads on to the end on the old connector, then doesn't keep the result.
+- **A table's notes name this app** ("an offboarding started in GAM GUI", "GAM GUI changes nothing in Classroom") where
+  GamGUI's name itself; the parity test reads GamGUI's name as this one's and holds every other word.
+- **A warning exit that names nobody** says so in its own words ("GAM said it couldn't read an account but not which"), where
+  GamGUI's panel says its "no table" sentence; the read record's error is GamGUI's.
 - **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and
   opens them; GamGUI's card has the same preview with its fixed 90 days.
 
@@ -250,6 +289,8 @@ this app; GamGUI has no such page. Reads only.
 - **Record the logic, not just the argv.** The generator running GamGUI's audit-run code over edge cases held the port to
   Python's stable sort with code-point order, the cutoff to the microsecond, `str.strip()` on a whole sentence and
   `splitlines()` on GAM's titles, none of which a reading of the code would have pinned down.
+- **A recorded error held a second parity for free**: GamGUI's `audit_read` writes `str(GAMError)` as a failed step's
+  error, and the fixture holds this app's `GamError.message` to it, over GAM's own failure lines.
 - **The mock's directory had no `creationTime`**, though the app's read names it and GAM returns it: every inactive account
   would have read as "new account". A field a flag reads must be in the mock as GAM prints it.
 
@@ -275,8 +316,8 @@ this app; GamGUI has no such page. Reads only.
 ## Testing / live-verification status
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's
   screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, `audit-domain` (narrowed to example.org), the audit
-  runs (`reports-run-inactive`, `reports-run-licenses`, `reports-run-suspend`), and their `narrow-` runs in the smallest
-  window.
+  runs (`reports-run-inactive`, `reports-run-licenses`, `reports-run-suspend`, `reports-run-drives`, `reports-run-classroom`,
+  `reports-run-admins`), and their `narrow-` runs in the smallest window.
 - **Not live yet:** a read record from a real tenant. Run any Builder read, then open Audit: one `read` record, the domain
   connected, the command and its row count, nothing of the output.
 - **Audit needs no tenant.** **Live check of the usage report** (read-only): open Reports, choose Storage and
