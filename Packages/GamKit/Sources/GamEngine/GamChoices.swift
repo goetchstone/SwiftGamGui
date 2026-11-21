@@ -17,11 +17,13 @@ extension GamCommands {
     ]
     public static let fileListFields = ["id", "name", "mimeType", "owners", "modifiedTime", "webViewLink"]
     /// Fetched once and cached: serves the users list (it needs the title), reports, and the detail
-    /// view, so opening a user is instant and uses the JSON path rather than `info user`'s text.
+    /// view, so opening a user is instant and uses the JSON path rather than `info user`'s text. The API
+    /// returns only the fields named, so `id` is named: the account ID every match by account reads (GamGUI
+    /// #156; failure log 2026-11-21, the read without `id`). `aliases` brings `nonEditableAliases` with it.
     public static let cacheFields = [
         "primaryEmail", "name", "suspended", "orgUnitPath", "organizations",
         "isAdmin", "isDelegatedAdmin", "isEnrolledIn2Sv", "lastLoginTime", "recoveryEmail",
-        "aliases", "locations", "phones",
+        "aliases", "locations", "phones", "creationTime", "id",
     ]
 
     /// Group membership roles (Directory).

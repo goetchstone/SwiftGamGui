@@ -705,6 +705,21 @@ def _after(argv: list, word: str) -> str:
     return argv[argv.index(word) + 1] if word in argv else ""
 
 
+def _fields_named(argv: list) -> set:
+    """The field names a read's `fields` names, as GAM's _getFieldsList reads them: lowercased, `_` dropped, split at
+    commas and spaces."""
+    return set(_after(argv, "fields").lower().replace("_", "").replace(",", " ").split())
+
+
+# Each record as a read prints it, where that isn't the data file's whole record: the Directory API returns only the
+# fields asked for, and GAM adds no `id` of its own, so a users read whose fields don't name `id` gets none (GamGUI #156;
+# its failure log 2026-11-19).
+GAM_SHOWN = {
+    "print_users": lambda argv, record: record if "id" in _fields_named(argv)
+    else {key: value for key, value in record.items() if key != "id"},
+}
+
+
 # The records of a read's data file it prints, where it selects some: a group's members; the events a query (the
 # mock's: a case-insensitive substring of the title) or an event id selects.
 GAM_SELECTED = {
@@ -757,7 +772,9 @@ def mock_outputs(mock: Path) -> dict:
                     printed = "\n".join(line for line in run.stdout.split("\n") if config not in line)
                     header, name, keys = GAM_PRINTED[builder](argv)
                     selected = GAM_SELECTED.get(builder, lambda argv, record: True)
-                    records = [line for line in (data / name).read_text(encoding="utf-8").splitlines()
+                    shown = GAM_SHOWN.get(builder, lambda argv, record: record)
+                    records = [json.dumps(shown(argv, json.loads(line)), ensure_ascii=False, sort_keys=True)
+                               for line in (data / name).read_text(encoding="utf-8").splitlines()
                                if selected(argv, json.loads(line))]
                     if printed != gam_csv([header] + [keys(json.loads(line)) + [line] for line in records]):
                         raise SystemExit(f"the mock's bytes aren't GAM's for {argv}")
