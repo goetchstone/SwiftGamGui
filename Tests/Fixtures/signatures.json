@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
+  "gamgui_commit": "d03f5a6",
   "gam_version": "7.52.04",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -63,7 +63,6 @@
  "users": [
   {
    "primaryEmail": "admin@example.com",
-   "id": "100000000000000000009",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -79,7 +78,6 @@
    "aliases": [
     "a.anders@example.com"
    ],
-   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -94,6 +92,9 @@
     "familyName": "Anders",
     "givenName": "Alice"
    },
+   "nonEditableAliases": [
+    "alice@alias.example.net"
+   ],
    "orgUnitPath": "/Staff",
    "organizations": [
     {
@@ -107,7 +108,6 @@
   },
   {
    "primaryEmail": "bob@example.com",
-   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -126,7 +126,6 @@
   },
   {
    "primaryEmail": "carol@example.com",
-   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -139,7 +138,6 @@
   },
   {
    "primaryEmail": "dana@example.com",
-   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -160,7 +158,6 @@
   },
   {
    "primaryEmail": "admin@example.com",
-   "id": "100000000000000000009",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -176,7 +173,6 @@
    "aliases": [
     "a.anders@example.com"
    ],
-   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -191,6 +187,9 @@
     "familyName": "Anders",
     "givenName": "Alice"
    },
+   "nonEditableAliases": [
+    "alice@alias.example.net"
+   ],
    "orgUnitPath": "/Staff",
    "organizations": [
     {
@@ -204,7 +203,6 @@
   },
   {
    "primaryEmail": "bob@example.com",
-   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -223,7 +221,6 @@
   },
   {
    "primaryEmail": "carol@example.com",
-   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -236,7 +233,6 @@
   },
   {
    "primaryEmail": "dana@example.com",
-   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",

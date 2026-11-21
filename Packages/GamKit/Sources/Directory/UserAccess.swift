@@ -400,13 +400,15 @@ public final class UserAccess {
         }
     }
 
-    /// Every account's primary address, lowercased, read fresh (`print users`, as the directory reads it): what the roster
-    /// compare may add. Nil when it couldn't be read; the compare then says addresses weren't checked (GamGUI's).
-    public func directoryAddresses(in pinned: Domain? = nil) async -> [String]? {
+    /// Every address of every account to its account's primary (`GamUser.primaryOfEveryAddress`), read fresh with their
+    /// aliases (`print users`, as the directory reads it, whose fields name `aliases`): what the roster compare plans by, so a
+    /// SIS address that is an alias is planned as its account, never as no account (GamGUI #128). Nil when it couldn't be
+    /// read; the compare then says addresses weren't checked (GamGUI's).
+    public func directoryAddresses(in pinned: Domain? = nil) async -> [String: String]? {
         let read = GamCommands.printUsers(fields: GamCommands.cacheFields)
         let found = await readNow(read, in: pinned, timeout: GamRunner.domainWideTimeout) { $0 }
         guard case .success(let stdout) = found else { return nil }
-        return await Task.detached { GamOutput.records(stdout).map { PythonText.lower(GamUser(record: $0).primaryEmail) } }.value
+        return await Task.detached { GamUser.primaryOfEveryAddress(GamOutput.records(stdout).map(GamUser.init(record:))) }.value
     }
 
     /// A Classroom read, its failure in words: a missing scope points at Setup, not-found names what Classroom doesn't know

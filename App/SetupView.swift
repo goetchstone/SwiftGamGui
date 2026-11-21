@@ -114,7 +114,7 @@ struct SetupView: View {
 
             Section("Domain-wide delegation") {
                 DisclosureGroup("Scopes to authorize in the Admin console") {
-                    ForEach(DelegationScopes.all, id: \.scope) { item in
+                    ForEach(DelegationScopes.offered, id: \.scope) { item in
                         LabeledContent(item.purpose) {
                             Text(item.scope).font(.caption.monospaced()).textSelection(.enabled)
                         }
@@ -238,7 +238,7 @@ private struct DelegationView: View {
         } else {
             LabeledContent("Client ID") { CopyableLine(text: delegation.clientID) }
         }
-        LabeledContent("Scopes (\(DelegationScopes.all.count))") { CopyableLine(text: Delegation.scopesText) }
+        LabeledContent("Scopes (\(DelegationScopes.offered.count))") { CopyableLine(text: Delegation.scopesText) }
         if let url = delegation.authorizationURL {
             Link("Authorize in the Google Admin console", destination: url)
                 .accessibilityIdentifier("setup.delegation.authorize")

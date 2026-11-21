@@ -1725,8 +1725,9 @@ private struct ActivityList: View {
 
 /// The directory as Who it reached reads it: each person's addresses (their own, their aliases, and the domain aliases Google
 /// adds, `nonEditableAliases`, which GAM returns with the aliases asked for) to their own, a person's own address never taken
-/// by another's alias; and every domain those are at, with the connected one. Built once a snapshot (`DirectoryStore.revision`),
-/// never at every redraw (review 2026-10-24); nil people until the directory is read.
+/// by another's alias (`GamUser.primaryOfEveryAddress`, the roster compare's map too, as in GamGUI since its #128); and every
+/// domain those are at, with the connected one. Built once a snapshot (`DirectoryStore.revision`), never at every redraw
+/// (review 2026-10-24); nil people until the directory is read.
 @MainActor
 final class DirectoryIndex {
     /// A person's 2-Step Verification, as the directory holds it. Not the report's own type: this file reaches writes, so it never
@@ -1752,20 +1753,8 @@ final class DirectoryIndex {
         if let built, built.revision == revision { return Index(key: built.key, people: built.people, domains: built.domains, twoStep: built.twoStep) }
         var people: [String: String]?, twoStep: [String: TwoStep]?
         if let users = directory.users {
-            var map: [String: String] = [:], steps: [String: TwoStep] = [:]
-            for user in users {
-                map[user.primaryEmail.lowercased()] = user.primaryEmail.lowercased()
-                steps[user.primaryEmail.lowercased()] = TwoStep(enrolled: user.isEnrolledIn2SV, suspended: user.suspended)
-            }
-            for user in users {
-                let aliases = user.aliases + (user.record["nonEditableAliases"]?.array ?? []).compactMap(\.string)
-                for alias in aliases where map[alias.lowercased()] == nil {
-                    map[alias.lowercased()] = user.primaryEmail.lowercased()
-                    steps[alias.lowercased()] = TwoStep(enrolled: user.isEnrolledIn2SV, suspended: user.suspended)
-                }
-            }
-            people = map
-            twoStep = steps
+            people = GamUser.primaryOfEveryAddress(users)
+            twoStep = GamUser.accountOfEveryAddress(users).mapValues { TwoStep(enrolled: $0.isEnrolledIn2SV, suspended: $0.suspended) }
         }
         let domains = Set(((people.map { Array($0.keys) } ?? []) + ["@" + domain])
             .compactMap { $0.split(separator: "@").last.map { String($0).lowercased() } }.filter { !$0.isEmpty })

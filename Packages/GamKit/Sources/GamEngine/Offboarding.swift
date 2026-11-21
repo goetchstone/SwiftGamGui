@@ -208,7 +208,9 @@ public enum Offboarding {
             return nil
         }
         check.user = find(user, "departing user")
-        check.manager = find(manager, "manager")
+        // No manager is looked up when none is given (GamGUI #161): nobody is named. OffboardChanges still refuses a run
+        // without one, since every routine here hands the leaver on to the manager.
+        check.manager = PythonText.strip(manager).isEmpty ? nil : find(manager, "manager")
         if let leaver = check.user, !connectedAdmin.isEmpty, key(leaver.primaryEmail) == key(connectedAdmin) {
             check.errors.append("GamGUI is connected as \(leaver.primaryEmail), so it can't offboard that account: "
                 + "revoking its access would delete GamGUI's own authorization partway through. "
@@ -347,7 +349,7 @@ public enum Offboarding {
                 + "user, so it can take many minutes (stopped and reported failed after \(sweepMinutes) min). Secondary "
                 + "calendars shared with \(user), and suspended users' calendars, are not swept",
              GamCommands.removeAllCalendarACLs(email: user)),
-            (.reminder, "\(days)-day reminder for \(manager)",
+            (.reminder, "\(days)-day reminder for \(manager.isEmpty ? "the manager" : manager)",
              "Add a calendar reminder on \(manager)"
                 + (notify.isEmpty ? "" : " (also invites \(notify), who gets an invitation email)")
                 + " for \(due.iso) to confirm deletion",

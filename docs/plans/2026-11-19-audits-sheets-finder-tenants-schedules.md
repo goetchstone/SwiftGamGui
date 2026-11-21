@@ -1,6 +1,6 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-19): plan only, nothing built.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-20): F2 built (Swift); F1 built in GamGUI (#170), its port next; F3 being built in GamGUI.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -44,6 +44,14 @@ read record (command, domain, origin, row count, no rows) and `extra.domain` on 
 ### F2 — Named reports · *port GamGUI 3.1 (#151, merged as `2286631`)*
 Nine domain-wide reads by name, each opening its Builder read with CSV export: licenses, shared drives, shared drive
 permissions and the rest of #151's table. Fixtures regenerated from GamGUI at its merge.
+
+*As built (2026-11-20):* on Reports, a "Domain-wide reads" section; each pane opens its read in the Builder and says the
+access it needs (runbook audit-reports.md). **No fixture regeneration in this PR**, a change of plan: the fixtures' GamGUI
+commit (`8f9e766`) is 25 merges before #151, and regenerating brought in that whole drift (a roster planner change, GamGUI's
+stores setting a file aside, and more), which is its own PR, a **parity catch-up** to GamGUI's main before the F1 port. #151's
+one fixture-held change, the Alert Center scope in Setup's Admin-console link, came with it (offered, never verified, as in
+GamGUI). Found on the way: GamGUI's role and signature stores (`RunbookStore`, `SignatureStore`,
+since #142) crash on a file that isn't UTF-8 instead of setting it aside; this app sets it aside (a GamGUI fix, from GamGUI).
 
 ### F3 — Audit runs · *both apps*
 A run is a fixed list of reads (no writes), started by the operator, Stop between steps, each step's table kept for

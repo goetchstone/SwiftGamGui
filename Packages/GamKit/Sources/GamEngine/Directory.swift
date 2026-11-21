@@ -26,6 +26,9 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
     public let recoveryEmail: String
     public let lastLoginTime: String?
     public let aliases: [String]
+    /// The alias-domain addresses Google adds (`nonEditableAliases`), which GAM's `fields aliases` returns with the aliases
+    /// (`USER_FIELDS_CHOICE_MAP`): read as the aliases are (GamGUI #128).
+    public let nonEditableAliases: [String]
     /// The name, or the address when there is none. Stored, not worked out on each read: the list sorts
     /// by it, and a sort reads it a hundred thousand times in a large directory.
     public let fullName: String
@@ -66,6 +69,7 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
         recoveryEmail = Fields.text(Fields.truthy(Fields.first(record, "recoveryEmail")))
         lastLoginTime = Fields.first(record, "lastLoginTime", "Last Login Time").map(Fields.text)
         aliases = Fields.list(Fields.first(record, "aliases", "Aliases"))
+        nonEditableAliases = Fields.list(Fields.first(record, "nonEditableAliases", "NonEditableAliases"))
         let joined = PythonText.strip(givenName + " " + familyName)
         fullName = joined.isEmpty ? primaryEmail : joined
         id = Fields.identity(primaryEmail)
@@ -73,6 +77,32 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
 }
 
 extension GamUser {
+    /// Every address of every account, stripped and lowercased, to that account: its primary, its aliases and its
+    /// non-editable aliases (alias-domain addresses; `fields aliases` asks GAM for both). A primary is always its own
+    /// account's, whatever another's alias says; an alias two accounts list is the first's; an alias without `@` is no
+    /// address. GamGUI's `primary_of_every_address` (#128), used wherever an address must be read as the person it names:
+    /// the roster compare, and who an incident reached. Google's addresses are ASCII, so a `String` key loses nothing.
+    public static func accountOfEveryAddress(_ users: [GamUser]) -> [String: GamUser] {
+        var out: [String: GamUser] = [:]
+        for user in users where !user.primaryAddress.isEmpty {
+            for alias in user.aliases + user.nonEditableAliases {
+                let address = PythonText.lower(PythonText.strip(alias))
+                if address.unicodeScalars.contains("@"), out[address] == nil { out[address] = user }
+            }
+        }
+        for user in users where !user.primaryAddress.isEmpty { out[user.primaryAddress] = user }
+        return out
+    }
+
+    /// Every address of every account to its account's primary address, as `accountOfEveryAddress` reads them: what the
+    /// roster compare plans by, so a SIS address that is an alias is planned as its account, never as no account.
+    public static func primaryOfEveryAddress(_ users: [GamUser]) -> [String: String] {
+        accountOfEveryAddress(users).mapValues(\.primaryAddress)
+    }
+
+    /// The primary address as an address is compared: stripped and lowercased, as Python does it.
+    var primaryAddress: String { PythonText.lower(PythonText.strip(primaryEmail)) }
+
     /// One of the person's phones (`GamCommands.Phone`, there so the platform-free fuzz build has it).
     public typealias Phone = GamCommands.Phone
 

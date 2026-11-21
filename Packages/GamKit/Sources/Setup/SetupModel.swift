@@ -75,6 +75,11 @@ public final class SetupModel {
     /// no classes. Taken from the token read at Check access, so no Keychain read (no Touch ID) per page.
     public var classroomReadable: Bool? { active == nil ? nil : activeClassroomReadable }
     private var activeClassroomReadable: Bool?
+    /// The scopes the connected domain's admin token records it was granted, nil when it doesn't record them as a list: what
+    /// Reports' named reports say each admin-token read needs. Taken from the token read at Check access, so no Keychain
+    /// read per page.
+    public var connectedAdminScopes: [String]? { active == nil ? nil : activeAdminScopes }
+    private var activeAdminScopes: [String]?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.
@@ -264,7 +269,8 @@ public final class SetupModel {
         }
         activity = .working("Checking access to \(domain)…")
         do {
-            let token = try await vault.credentials(for: domain)[.oauth2]
+            let credentials = try await vault.credentials(for: domain)
+            let token = credentials[.oauth2]
             let typed = typedAdmin.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard let admin = token.flatMap({ CredentialFacts.adminEmail(inOAuth2: $0.bytes) })
                 ?? (typed.contains("@") ? typed : nil)
@@ -272,13 +278,17 @@ public final class SetupModel {
                 activity = .problem("This domain's oauth2.txt names no admin. Enter the admin address GAM signs in as.")
                 return
             }
+            // GAM's link would drop the optional scopes Setup's link asked for: Setup's own stands in (GamGUI's verify).
+            let clientID = credentials[.oauth2Service].map { CredentialFacts.clientID(inServiceAccount: $0.bytes) } ?? ""
             let result = try await runner.checkAccess(admin: admin, as: domain)
+                .linkingEveryOfferedScope(clientID: clientID, domain: domain)
             lastCheck = CheckRecord(domain: domain, admin: admin, result: result)
             if result.isAuthorized {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
                                                                 of: admin, in: domain, runner: runner)
                 activate(domain, admin: admin, accountID: account.id,
-                         classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) })
+                         classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) },
+                         adminScopes: token.flatMap { CredentialFacts.grantedScopes(inOAuth2: $0.bytes) })
                 activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
                     " Which account that is isn't confirmed (\($0)), so a change that could sign it out isn't made here."
                 } ?? ""))
@@ -368,12 +378,13 @@ public final class SetupModel {
         return (id, nil)
     }
 
-    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?) {
+    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?, adminScopes: [String]?) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         activeAdmin = admin
         activeAdminID = accountID
         activeClassroomReadable = classroomReadable
+        activeAdminScopes = adminScopes
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -403,6 +414,7 @@ public final class SetupModel {
             activeAdmin = nil
             activeAdminID = nil
             activeClassroomReadable = nil
+            activeAdminScopes = nil
             generation += 1
             tenantChanged()
         }

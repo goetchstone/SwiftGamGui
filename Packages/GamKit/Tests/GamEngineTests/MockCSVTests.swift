@@ -67,9 +67,29 @@ struct MockCSVTests {
         #expect(Array(it.description.utf8) == Array("The \"IT\" team\nC:\\Support, Zoë".utf8))
     }
 
+    /// The Directory API returns only the fields asked for, and GAM adds no `id` of its own: a users read whose fields don't
+    /// name `id` gets none, however the names are written (GAM lowercases them and drops `_`). The mock once returned
+    /// every record whole, and the Classroom owners matched on an `id` the directory read never asked for (GamGUI #156;
+    /// failure log 2026-11-21, the read without `id`).
+    @Test func aUsersReadGetsTheAccountIDOnlyWhenItsFieldsNameIt() async throws {
+        let everyone = try lines("print_users.json").count
+        for (fields, named) in [(GamCommands.userListFields, false), (GamCommands.cacheFields, true), (["primaryEmail", "ID"], true),
+                                (["primaryEmail", "i_d"], true), (["primaryEmail", "orgUnitPath"], false)] {
+            let read = try await run(GamCommands.printUsers(fields: fields).argv)
+            let users = GamOutput.records(read.stdout).map(GamUser.init(record:))
+            #expect(read.exitCode == 0 && users.count == everyone, "\(fields): \(read.stderr)")
+            #expect(users.allSatisfy { ($0.accountID != nil) == named }, "\(fields)")
+        }
+    }
+
     /// Reads whose GAM shape the mock doesn't model fail, as the mock fails an unhandled command.
     @Test(arguments: [
         GamCommands.printUsers().argv.filter { $0 != "formatjson" },
+        // Without fields GAM asks for `primaryEmail` alone (doPrintUsers): no record the data file holds.
+        ["print", "users", "formatjson"],
+        // Org units (GamGUI #169) and kept signatures (#163) aren't built here yet.
+        ["print", "orgs", "fields", "orgunitpath,name,description"],
+        ["user", "alice@example.com", "print", "signature"],
         GamCommands.printCros().argv.filter { $0 != "formatjson" },
         GamCommands.printFileList(email: "alice@example.com").argv,
         GamCommands.printAllCalendars().argv,

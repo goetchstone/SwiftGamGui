@@ -337,24 +337,39 @@ if [ -n "$td_read" ]; then
 fi
 
 # Read commands -> the matching fixture, as GAM prints it.
-# `gam print users [query <QueryUser>] [fields <UserFieldNameList>] formatjson` -> GAM's CSV: a `primaryEmail`
+# `gam print users [query <QueryUser>] fields <UserFieldNameList> formatjson` -> GAM's CSV: a `primaryEmail`
 # and a `JSON` column per user (gam/__init__.py:48707-48716, header :49045-49058). Every user in
-# mock_gam/print_users.json, whatever the query or fields (approximate: GAM asks Google for only the users the
-# query matches and the fields named). Without formatjson GAM flattens each user into columns this mock
-# doesn't model, and quotechar changes the CSV itself: each is refused rather than answered in a guessed
-# shape, as is any other option of the grammar's (`gam print users`), none of which the app sends.
+# mock_gam/print_users.json, whatever the query (approximate: GAM asks Google for only the users the query matches).
+# The Directory API returns only the fields asked for and GAM adds no `id` of its own (doPrintUsers asks for
+# `users(<fields>)`, 7.52.04 :49533): a read whose fields don't name `id` gets none. Every record once came whole, and
+# the Classroom owners matched on an `id` the directory read never asked for (failure log 2026-11-21, the read without
+# `id`; GamGUI's 2026-11-19). Only `id` is dropped: other fields not asked for still come back (approximate). Without
+# fields GAM asks for `primaryEmail` alone, without formatjson it flattens each user into columns, and quotechar
+# changes the CSV itself: each is refused rather than answered in a guessed shape, as is any other option of the
+# grammar's (`gam print users`), none of which the app sends.
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "users" ]; then
-  shift 2; fj=""
+  shift 2; fj=""; named=""
   while [ $# -gt 0 ]; do
     case "$1" in
       query) need_value $# "QueryUser"; shift 2 ;;
-      fields) need_value $# "UserFieldNameList"; [ -n "$2" ] || empty_arg "UserFieldNameList"; shift 2 ;;
+      fields) need_value $# "UserFieldNameList"; [ -n "$2" ] || empty_arg "UserFieldNameList"; named=$2; shift 2 ;;
       formatjson) fj=1; shift ;;
       *) not_modelled "print users with $1" ;;
     esac
   done
   [ -n "$fj" ] || not_modelled "print users without formatjson"
-  print_formatjson primaryEmail print_users.json
+  [ -n "$named" ] || not_modelled "print users without fields"
+  # The names as GAM's _getFieldsList reads them: lowercased, `_` dropped, split at commas and white space.
+  case " $(lower "$named" | tr -d '_' | tr ',\t\n\r' '    ') " in
+    *" id "*) print_formatjson primaryEmail print_users.json ;;
+    *)
+      echo "primaryEmail,JSON"
+      while IFS= read -r record; do
+        record=$(printf '%s\n' "$record" | sed 's/"id": "[^"]*", //')
+        gam_row "$(json_text primaryEmail "$record")" "$record"
+      done < "$GAM_MOCK_FIXTURES/print_users.json"
+      ;;
+  esac
   exit 0
 fi
 
@@ -841,6 +856,12 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "signature" ];
   exit 0
 fi
 
+# `gam user <email> print signature` (GamGUI #163's keep-before-replace read): not modelled. Signature backups aren't
+# built here yet, so nothing reads it; refused rather than answered in a guessed shape.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "signature" ]; then
+  not_modelled "user print signature"
+fi
+
 # `gam print groups member <email>` -> CSV of THAT user's group emails: the groups listing them directly, in
 # GAM's order (alice: sales, staff; bob: staff; carol: it; dana: none, the header alone). For an address
 # that isn't a user the Directory API says "Invalid Input: memberKey" and GAM stops (invalidMember ->
@@ -856,6 +877,12 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ] && [ "${3:-}" = "member" ];
     if member_record "$group" "$user" | grep -qF '"type": "USER"'; then echo "$group"; fi
   done < "$GAM_MOCK_FIXTURES/groups.json"
   exit 0
+fi
+
+# `gam print orgs|ous ...` (GamGUI #169's org-unit tree): not modelled. Org units aren't built here yet, so nothing
+# reads it; refused rather than answered in a guessed shape.
+if [ "${1:-}" = "print" ] && { [ "${2:-}" = "orgs" ] || [ "${2:-}" = "ous" ]; }; then
+  not_modelled "print orgs"
 fi
 
 # `gam print domains formatjson` -> GAM's CSV, a `domainName` and a `JSON` column per domain (gam/__init__.py

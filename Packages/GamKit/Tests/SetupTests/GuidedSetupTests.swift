@@ -18,6 +18,7 @@ final class GuidedSetupTests {
         struct Readable: Decodable { let oauth2: String; let readable: Bool? }
         struct Commands: Decodable { let admin: String; let cfgdir: String; let gam: String; let env: String; let commands: [String] }
         let dwd_scopes: [[String]]
+        let offered_dwd_scopes: [[String]]
         let user_security_scope: String
         let admin_console_dwd_url: String
         let facts: [Fact]
@@ -33,6 +34,13 @@ final class GuidedSetupTests {
 
     @Test func theConstantsAreGamGUIs() {
         #expect(document.dwd_scopes.map { $0[0] } == DelegationScopes.scopes)
+        #expect(document.dwd_scopes.map { $0[1] } == DelegationScopes.all.map(\.purpose))
+        // What the link offers (GamGUI #151): the verified scopes, then the optional ones, which Check access doesn't ask.
+        #expect(document.offered_dwd_scopes == DelegationScopes.offered.map { [$0.scope, $0.purpose] })
+        #expect(DelegationScopes.optional.map(\.scope) == ["https://www.googleapis.com/auth/cloud-identity.devices",
+                                                           "https://www.googleapis.com/auth/apps.alerts"])
+        #expect(Set(DelegationScopes.optional.map(\.scope)).isDisjoint(with: DelegationScopes.scopes), "never verified")
+        #expect(Delegation.scopesText == DelegationScopes.offered.map(\.scope).joined(separator: ","))
         #expect(document.user_security_scope == CredentialFacts.userSecurityScope)
         #expect(document.admin_console_dwd_url == DelegationScopes.adminConsoleURL)
     }

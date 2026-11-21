@@ -17,6 +17,7 @@ final class ClassroomReadsTests {
     let scratch = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-classroom-\(UUID().uuidString)")
     let setup: SetupModel
     let access: UserAccess
+    let directory: DirectoryStore
     let state: URL
     let argvLog: URL
     var clock = Date(timeIntervalSince1970: 1_800_000_000)
@@ -33,6 +34,7 @@ final class ClassroomReadsTests {
         argvLog = scratch.appending(path: "argv.log")
         access = UserAccess(setup: setup, runner: runner)
         access.environment = ["GAM_MOCK_STATE": state.path, "GAM_MOCK_ARGV_LOG": argvLog.path]
+        directory = DirectoryStore(setup: setup, runner: runner)
     }
 
     deinit {
@@ -165,14 +167,17 @@ final class ClassroomReadsTests {
     }
 
     /// The index names no owner's address: the directory does, by Google account ID (never `GamUser.id`, the address, which
-    /// matched no class and left every owner blank: found in the screen's first render, 2026-11-12).
+    /// matched no class and left every owner blank: found in the screen's first render, 2026-11-12). Read through the
+    /// directory's own load, as the screen reads it: the API returns only the fields named, and the read once named no `id`,
+    /// so every owner was blank on a real tenant while this test, built from the mock's data file, passed (GamGUI #156;
+    /// failure log 2026-11-21, the read without `id`).
     @Test func ownersAreNamedFromTheDirectoryByAccountID() async throws {
         try await connect()
         await reads.loadIndex()
-        // The mock's directory, one record a line as GAM prints each.
-        let lines = try String(contentsOf: Fixtures.mockGamData.appending(path: "print_users.json"), encoding: .utf8).split(separator: "\n")
-        let users = lines.compactMap { JSONValue.parse(String($0))?.object }.map(GamUser.init(record:))
+        await directory.load()
+        let users = try #require(directory.users, "\(String(describing: directory.problem))")
         #expect(!users.isEmpty && users.allSatisfy { $0.id.contains("@") }, "GamUser.id is the address")
+        #expect(users.allSatisfy { $0.accountID != nil }, "the read names `id`, which GAM gives only when it's asked for")
         let owners = ClassroomReads.owners(users)
         let index = try #require(reads.indexState?.value)
         #expect(index.map { owners[$0.ownerID] } == ["alice@example.com", "alice@example.com", "alice@example.com"])
@@ -196,6 +201,18 @@ final class ClassroomReadsTests {
         #expect(setup.classroomReadable == true)
         await setup.remove(Domain("example.com")!)
         #expect(setup.classroomReadable == nil)
+    }
+
+    /// Reports' named reports say whether the admin token holds each read's scope: the token's list as Check access read it,
+    /// nil when it records none, and gone with the domain.
+    @Test func theTokensScopesAreKeptFromCheckAccess() async throws {
+        try await connect(scopes: Self.noClassroom)
+        #expect(setup.connectedAdminScopes == Self.noClassroom)
+        try await connect()
+        #expect(setup.connectedAdminScopes == nil, "no scopes recorded: unknown")
+        try await connect(scopes: Self.noClassroom)
+        await setup.remove(Domain("example.com")!)
+        #expect(setup.connectedAdminScopes == nil)
     }
 
     @Test func aTeachersClassesSayWhichTheyOwn() async throws {

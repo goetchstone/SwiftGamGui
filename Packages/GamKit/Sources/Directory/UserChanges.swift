@@ -223,7 +223,7 @@ public final class UserChanges {
             state = .problem("Google didn't say which account \(email) is, so nothing is held.")
             return
         }
-        // The directory list holds no ID, so its name is what can show the page is stale.
+        // The directory list names `id` (GamGUI #156): another account ID, or another name, shows the page is stale.
         if (user.accountID.map { $0 != accountID } ?? false) || (user.record["name"] != nil && Guard.normalized(user.fullName) != Guard.normalized(current.fullName)) {
             state = .problem("\(email) is \(current.fullName.isEmpty ? "another account" : current.fullName) now, not who this page shows. Refresh Users, and check it's who you mean.")
             return

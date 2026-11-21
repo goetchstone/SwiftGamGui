@@ -132,6 +132,13 @@ struct GoldenArgvTests {
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
         "todrive_args": "Sheet export is dropped; CSV only (operator, 2026-10-08)",
+        "all_users_print_forward": "Reports' forwarding review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
+        "all_users_print_delegates": "Reports' delegates review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
+        "print_org_units": "Org units (GamGUI #169): not built here yet; the mock refuses the read",
+        "move_user_to_org_unit": "Org units (GamGUI #169): not built here yet",
+        "create_org_unit": "Org units (GamGUI #169): not built here yet",
+        "rename_org_unit": "Org units (GamGUI #169): not built here yet",
+        "delete_org_unit": "Org units (GamGUI #169): not built here yet",
     ]
 
     /// Ported builders, by GamGUI's name.
@@ -161,6 +168,7 @@ struct GoldenArgvTests {
         "print_user_calendars": { try GamCommands.printUserCalendars(email: $0.string("email")) },
         "print_all_calendars": { _ in GamCommands.printAllCalendars() },
         "print_calendar_acls_cal": { try GamCommands.printCalendarACLs(calendarID: $0.string("calendar_id")) },
+        "print_calendar_data_owner": { try GamCommands.printCalendarSettings(calendarID: $0.string("calendar_id")) },
         "add_calendar_acl_cal": {
             try GamCommands.addCalendarACL(calendarID: $0.string("calendar_id"), scope: $0.string("scope"),
                                            role: .init(validating: $0.string("role")), sendNotifications: $0.flag("send_notifications"))
@@ -180,7 +188,7 @@ struct GoldenArgvTests {
         "create_datatransfer": {
             try GamCommands.createDataTransfer(
                 oldOwner: $0.string("old_owner"), service: $0.string("service"), newOwner: $0.string("new_owner"),
-                privacy: .init(validating: $0.string("privacy")))
+                privacy: .init(validating: $0.string("privacy")), releaseResources: $0.flag("release_resources"))
         },
         "print_datatransfers": { try GamCommands.printDataTransfers(oldOwner: $0.string("old_owner")) },
         "remove_all_calendar_acls": { try GamCommands.removeAllCalendarACLs(email: $0.string("email")) },
@@ -199,6 +207,7 @@ struct GoldenArgvTests {
         "send_email": { try GamCommands.sendEmail(to: $0.string("to"), subject: $0.string("subject"), body: $0.string("body"), html: $0.flag("html")) },
         "set_signature": { try GamCommands.setSignature(email: $0.string("email"), signature: $0.string("signature"), html: $0.flag("html")) },
         "show_signature": { try GamCommands.showSignature(email: $0.string("email")) },
+        "print_signature": { try GamCommands.printSignature(email: $0.string("email")) },
         "add_delegate": { try GamCommands.addDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "remove_delegate": { try GamCommands.removeDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "print_delegates": { try GamCommands.printDelegates(email: $0.string("email")) },

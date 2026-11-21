@@ -34,7 +34,7 @@ struct OnboardingTests {
             let name: String, steps: [String], signature: String, org_unit: String, groups: [String], calendars: [String]
             let welcome: String
         }
-        let text: String?, hex: String?, unreadable: Bool?, roles: [Role]?, welcomes: [[String]]?
+        let text: String?, hex: String?, unreadable: Bool?, raises: String?, roles: [Role]?, welcomes: [[String]]?
     }
     struct Document: Decodable {
         let password: Password, split_name: [Split], waits: [Int], not_ready_reason: String, stopped_reason: String
@@ -181,9 +181,17 @@ struct OnboardingTests {
         }
     }
 
+    /// Where this app's load departs from GamGUI's, each listed and tested (docs/domains/onboarding.md): a file that isn't
+    /// UTF-8 makes GamGUI's RunbookStore raise (`UnicodeDecodeError`: since its #142 `read_text()` sits outside the catch);
+    /// this app moves it aside and shows the seed, as any file it can't read
+    /// (`RoleStoreTests.aFileItCantReadIsMovedAsideNeverOverwritten`). By the file's bytes, in hex.
+    static let raisesInGamGUI: [String: String] = ["7bff7d": "UnicodeDecodeError"]
+
     /// GamGUI's RunbookStore load over crafted files: the old forms migrated, odd types read as Python
-    /// reads them, and what it couldn't read reported (GamGUI fell back to its seed).
+    /// reads them, and what it couldn't read reported (GamGUI fell back to its seed), but for the listed deviations.
     @Test func theRoleFileLoadsAsGamGUILoadsIt() {
+        #expect(Set(document.load.compactMap { $0.raises == nil ? nil : $0.hex }) == Set(Self.raisesInGamGUI.keys),
+                "every case GamGUI raises on is a listed deviation, and every listed one is still a case")
         #expect(document.load.contains { $0.unreadable == true } && document.load.contains { $0.roles != nil })
         for item in document.load {
             let text: String
@@ -191,7 +199,12 @@ struct OnboardingTests {
                 let data = Data(stride(from: 0, to: hex.count, by: 2).map {
                     UInt8(hex[hex.index(hex.startIndex, offsetBy: $0)...].prefix(2), radix: 16)!
                 })
-                guard let decoded = String(validating: data, as: UTF8.self) else { #expect(item.unreadable == true); continue }
+                let decoded = String(validating: data, as: UTF8.self)
+                if let raised = item.raises {
+                    #expect(Self.raisesInGamGUI[hex] == raised && decoded == nil, "\(hex): GamGUI raises \(raised); set aside here")
+                    continue
+                }
+                guard let decoded else { #expect(item.unreadable == true); continue }
                 text = decoded
             } else {
                 text = item.text ?? ""

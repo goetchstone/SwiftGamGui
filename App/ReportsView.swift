@@ -6,17 +6,22 @@ import SwiftUI
 /// Reports: GamGUI's directory reports (no 2SV, inactive, admins, no recovery, suspended, and the missing title,
 /// department, phone and location), each a list of people counted from the loaded directory with no GAM call of
 /// its own; GamGUI's storage and mail usage, read with `gam report users` when its row is first shown for a
-/// tenant; and every account's connected apps and agents, read with `gam print tokens` when asked
-/// (`ConnectedAppsPanel`). A person opens on Users.
+/// tenant; every account's connected apps and agents, read with `gam print tokens` when asked
+/// (`ConnectedAppsPanel`); and GamGUI's named domain-wide reads (`NamedReport`), each opening its Builder read. A person
+/// opens on Users.
 struct ReportsView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let usage: UsageStore
     /// Every account's connected apps and AI agents.
     let apps: ConnectedAppsRead
+    /// Opens a catalog command in the Builder.
+    let openCommand: (String) -> Void
     /// Opens a person's page on Users.
     let openPerson: (String) -> Void
     @State private var item: Item? = .report("no_2sv")
+    /// GAM's command catalog, read when a named report is first shown: which command each opens.
+    @State private var catalog: Result<CommandCatalog, BuilderView.CatalogProblem>?
     @State private var person: GamUser.ID?
     @State private var usagePerson: UsageRow.ID?
     /// Only the window in front speaks a load's outcome (every window sees the same stores).
@@ -27,6 +32,8 @@ struct ReportsView: View {
         case report(String)
         case usage
         case apps
+        /// A named domain-wide read, by its key.
+        case named(String)
     }
 
     var body: some View {
@@ -54,6 +61,10 @@ struct ReportsView: View {
                 person = nil
                 usagePerson = nil
             }
+            .task(id: item) {
+                guard case .named? = item, catalog == nil else { return }
+                catalog = await Task.detached(priority: .userInitiated) { BuilderView.load() }.value
+            }
             .task { selectForSnapshot() }
             .toolbar {
                 ToolbarItem {
@@ -67,7 +78,8 @@ struct ReportsView: View {
                         }
                     }
                     .keyboardShortcut("r")
-                    .disabled(setup.active == nil || refreshing)
+                    // A named report reads nothing here: it runs in the Builder.
+                    .disabled(setup.active == nil || refreshing || isNamed)
                     .accessibilityIdentifier("reports.refresh")
                 }
             }
@@ -79,6 +91,10 @@ struct ReportsView: View {
         case .apps: "Read Connected Apps Again"
         default: "Refresh the Directory"
         }
+    }
+
+    private var isNamed: Bool {
+        if case .named? = item { true } else { false }
     }
 
     private var refreshing: Bool {
@@ -94,11 +110,12 @@ struct ReportsView: View {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, `usage` or `apps`, for the snapshot of it.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, `usage`, `apps` or `named.<key>`, for the snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
         guard let key = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] else { return }
-        item = key == "usage" ? .usage : key == "apps" ? .apps : .report(key)
+        item = key == "usage" ? .usage : key == "apps" ? .apps
+            : key.hasPrefix("named.") ? .named(String(key.dropFirst("named.".count))) : .report(key)
         #endif
     }
 
@@ -128,6 +145,18 @@ struct ReportsView: View {
                         Label("Connected apps and agents", systemImage: "puzzlepiece.extension")
                             .tag(Item.apps)
                             .accessibilityHint("Every account's apps and AI agents, read from Google when you ask.")
+                    }
+                    Section("Domain-wide reads") {
+                        ForEach(NamedReport.all) { report in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(report.title)
+                                Text(report.what).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.vertical, 2)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityHint("Runs in the Builder.")
+                            .tag(Item.named(report.key))
+                        }
                     }
                 }
                 .frame(width: 240)
@@ -216,8 +245,106 @@ struct ReportsView: View {
             UsagePanel(usage: usage, directory: directory, selection: $usagePerson, open: openPerson)
         case .apps:
             ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
+        case .named(let key):
+            if let report = NamedReport.all.first(where: { $0.key == key }) {
+                NamedReportPanel(report: report, catalog: catalog, granted: setup.connectedAdminScopes,
+                                 connected: setup.active != nil, open: openCommand)
+            }
         case nil:
             Text("Choose a report.").foregroundStyle(.secondary).padding()
+        }
+    }
+}
+
+/// A named domain-wide read (GamGUI #151): what it reads, the access it needs in words, and the Builder read it opens, where it
+/// runs, filters and exports. Nothing runs here.
+private struct NamedReportPanel: View {
+    let report: NamedReport
+    let catalog: Result<CommandCatalog, BuilderView.CatalogProblem>?
+    /// The admin token's recorded scopes, nil when unknown.
+    let granted: [String]?
+    let connected: Bool
+    let open: (String) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(report.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                    Text(report.what)
+                }
+                command
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Access it needs").font(.headline).accessibilityAddTraits(.isHeader)
+                    Text(report.scope).font(.callout.monospaced()).textSelection(.enabled)
+                    access
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder private var command: some View {
+        switch catalog {
+        case nil:
+            ProgressView("Reading GAM's commands…").controlSize(.small)
+        case .failure(let problem)?:
+            Label(problem.why, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+        case .success(let catalog)?:
+            if let command = report.command(in: catalog) {
+                VStack(alignment: .leading, spacing: 6) {
+                    // ⌘O as well as the button: with the Mac's default keyboard settings Tab never reaches a button, and the
+                    // list's ⌘R refreshes nothing here (review 2026-11-20).
+                    Button("Open in the Builder") { open(command.id) }
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut("o")
+                        .accessibilityIdentifier("reports.named.open")
+                    Text("⌘O opens it too. It runs in the Builder, where its table filters and exports as a CSV.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Label("GAM \(catalog.version) has no single command for this read.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    /// Whether the read can be expected to pass, in words: never color alone.
+    @ViewBuilder private var access: some View {
+        switch report.token {
+        case .serviceAccount:
+            if DelegationScopes.scopes.contains(report.scope) {
+                Text("Delegated to the service account: Setup asks for it with the others.")
+                    .foregroundStyle(.secondary)
+            } else if DelegationScopes.offered.contains(where: { $0.scope == report.scope }) {
+                // Offered on Setup's link, never verified by Check Access (GamGUI's OPTIONAL_DWD_SCOPES): a domain without it
+                // stays connected, and only this read is refused.
+                Text("Delegated to the service account: Setup's link asks for it, but Check Access doesn't check it, so if "
+                     + "it wasn't authorized, only this read is refused.")
+                    .foregroundStyle(.secondary)
+            } else {
+                // Setup's Authorize link sets the client's scopes to its own list (`overwriteClientId`), so a scope added by
+                // hand goes the next time it's used (review 2026-11-20); said until the link carries this one.
+                Label("Delegated to the service account, but Setup doesn't ask for it yet: add it to the service account's "
+                      + "domain-wide delegation in the Admin console, or Google refuses this read. Setup's Authorize link "
+                      + "replaces the scopes with its own, so add this one again after using it.",
+                      systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+        case .admin:
+            switch report.adminScopeHeld(granted) {
+            case true?:
+                Label("The admin token has it.", systemImage: "checkmark.circle")
+            case false?:
+                Label("The admin token doesn't have it, so Google refuses this read. Create GAM's OAuth client again with this "
+                      + "scope ticked, then import again.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            case nil:
+                Text(connected ? "On the admin token, whose scopes couldn't be read."
+                               : "On the admin token. Connect a domain on Setup to see whether it has it.")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

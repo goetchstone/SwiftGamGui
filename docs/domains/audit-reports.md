@@ -18,6 +18,30 @@ generation for the usage report and the apps.
 and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summary, from the mock's `tokens.csv`),
 `WriteRouteTests.theConnectedAppsPanelTalksToNoModel`.
 
+## Reports: domain-wide reads (named reports)
+GamGUI #151 (roadmap 3.1, merged as `2286631`), ported in F2 (plan 2026-11-19). Nine reads the Builder already runs, named on
+Reports with the access each needs: licenses, shared drives, their permissions and organizers, org units, mobile devices,
+group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI's `NAMED_REPORTS` in its order).
+- **No builder of their own, and nothing runs on Reports.** Each pane's Open in the Builder opens that catalog read
+  (`ContentView.builderCommand` → `BuilderView.requested`), where it runs, filters and exports like any read.
+- **Named by grammar, not by id** (`NamedReport.command(in:)`): the syntax up to its first option, matched in bytes, wanting
+  exactly one runnable read; a GAM bump that renames one or makes it ambiguous fails `NamedReportsTests`, and the pane says
+  "GAM <version> has no single command for this read" rather than open another.
+- **The access, from GAM's own tables** (`gamlib/glapi.py` at 7.52.04, checked against GamGUI's 7.52.03 reading): licenses,
+  org units, mobile devices, group memberships and data transfers use the **admin token** (`_CLIENT_SCOPES`); the shared
+  drive reads and the alerts use the **service account** (`_SVCACCT_SCOPES`). An admin-token row says whether `oauth2.txt`
+  records the scope or its `.readonly` form (`adminScopeHeld`), from the scopes Check access read
+  (`SetupModel.connectedAdminScopes`, so no Touch ID per page); unknown is said as unknown, never "held". A service-account
+  row says whether Setup asks for the scope, since only GAM's own check sees delegation: verified with the others
+  (`DelegationScopes.scopes`), or offered on Setup's link and never verified (`DelegationScopes.offered`, GamGUI's
+  `OPTIONAL_DWD_SCOPES`: the devices scope and the Alert Center's `apps.alerts`), so a domain without it stays connected and
+  only that read is refused. A failed Check Access shows Setup's own link, never GAM's: GAM's names only the checked scopes
+  with `overwriteClientId=true` and would drop the offered ones (`AccessCheck.linkingEveryOfferedScope`, GamGUI's
+  `_with_every_scope`).
+- **Not run on a real domain yet.** The mock answers only a bare `print datatransfers` (the form the Builder emits: an empty
+  table, or a person's transfers from its state); the other eight it refuses as not modelled. A green run of those proves
+  nothing about Google.
+
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`), `AuditEntry` (a
   record in words), `AuditPage` (`_rows_context`), `AuditExport` (`_export_csv`).
@@ -28,7 +52,9 @@ and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summa
 - `Packages/GamKit/Sources/GamEngine/ConnectedApps.swift`: the grants grouped by app (`apps`), broad access by kind (`Area`),
   and `Summary` (the counts and their sentences); `Packages/GamKit/Sources/Directory/ConnectedAppsRead.swift` (the read, kept
   for the tenant).
-- `App/AuditView.swift`, `App/ReportsView.swift`, `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
+- `Packages/GamKit/Sources/GamEngine/NamedReports.swift`: `NamedReport` (GamGUI's `NAMED_REPORTS`, `named_report_command`,
+  `admin_scope_held`).
+- `App/AuditView.swift`, `App/ReportsView.swift` (`NamedReportPanel`), `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
   Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
   Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
 - `scripts/gen_fixtures.py` (`audit_screen_fixture`, `usage_fixture`), `Tests/Fixtures/mock_gam.sh` (`report users`).

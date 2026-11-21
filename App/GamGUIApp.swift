@@ -147,6 +147,8 @@ struct ContentView: View {
     @State private var compromisedPerson: String?
     /// A Message-ID another screen asked Phishing to find (the log reader's "Pull … from Every Mailbox…").
     @State private var phishingMessage: String?
+    /// The catalog command another screen asked the Builder to open (Reports' named reports).
+    @State private var builderCommand: String?
     /// Incident's reading of the logs, and the directory as it reads it: kept by the window, so going to another screen and
     /// back reads nothing again (the operator, 2026-10-27: each return re-read every event).
     @State private var incidentReading = LogReaderView.Memory()
@@ -247,11 +249,14 @@ struct ContentView: View {
                     .navigationTitle("Phishing")
             case .builder:
                 BuilderView(setup: services.setup, access: services.userAccess, directory: services.directory, groups: services.groups,
-                            changes: services.builderChanges)
+                            changes: services.builderChanges, requested: $builderCommand)
                     .navigationTitle("Builder")
             case .reports:
                 ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
-                            apps: services.connectedApps) { email in
+                            apps: services.connectedApps, openCommand: { id in
+                                builderCommand = id
+                                screen = .builder
+                            }) { email in
                     usersPerson = email
                     screen = .users
                 }

@@ -113,6 +113,29 @@ final class RosterCompareTests {
         #expect(!String(describing: record).contains("bob@example.com"), "never a row")
     }
 
+    /// A SIS that lists Alice by an address of hers that isn't her primary keeps her in her classes (GamGUI #128's
+    /// `test_compare_reads_a_sis_alias_as_its_account`): her alias, and the alias-domain address Google adds
+    /// (`nonEditableAliases`). The mock prints them whatever `fields` names; GAM prints only what is: the read must ask.
+    @Test(arguments: ["a.anders@example.com", "alice@alias.example.net"])
+    func aSISAddressThatIsAnAliasIsReadAsItsAccount(_ alias: String) async throws {
+        try await connect()
+        var snapshot = try Self.webCase().snapshot
+        snapshot.people = snapshot.people.map {
+            $0.email == "alice@example.com" ? .init(id: $0.id, role: $0.role, email: alias, given: "", family: "") : $0
+        }
+        let meta = try keep(snapshot)
+        await compare.compare()
+        let plan = try #require(compare.held(for: meta.sha256)?.plan)
+        #expect(!plan.changes.contains { $0.kind == .owner || $0.kind == .removeTeacher }, "\(plan.changes)")
+        #expect(!plan.changes.contains { $0.person == alias })
+        #expect(plan.changes.contains { $0.kind == .create && $0.title == "Physics" && $0.person == "alice@example.com" })
+        #expect(plan.notes.contains { $0.contains("another address (an alias)") })
+        let reads = calls().filter { $0.starts(with: ["print", "users"]) }
+        #expect(!reads.isEmpty && reads.allSatisfy { argv in
+            argv.firstIndex(of: "fields").map { argv.indices.contains($0 + 1) && argv[$0 + 1].split(separator: ",").contains("aliases") } == true
+        }, "\(reads)")
+    }
+
     @Test func aNewRosterOrAPurgeDropsTheCompareAndATenantSwitchToo() async throws {
         try await connect()
         let meta = try keep(try Self.webCase().snapshot)
