@@ -1,6 +1,6 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-21): F1 and F2 built (Swift); F3 being built in GamGUI.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-21): F1, F2 and F5a built (Swift); F3 built in GamGUI, its port in review; F6 and F4 in review in GamGUI; signature backups first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
