@@ -3,15 +3,18 @@ import Foundation
 import GamEngine
 import Observation
 import Setup
+import Stores
 import Vault
 
 /// The Signatures screen's write (GamGUI's designer): a template rendered for one person is previewed (held by the
-/// executor exactly as it will run), confirmed from its confirm step, run once and audited. After it, "Put Back
-/// Previous" previews the signature read before the change. For a scope (a group's members, an org unit, the whole
-/// company) the preview holds one write per person, each with that person's render; the run is in the jobs tray with
-/// Stop, each write audited, and "Retry the N that failed" previews exactly those people again with the same template.
-/// Nothing here runs a `gam` write itself; every write goes through `Executor`. Ports GamGUI's `routes/signatures.py`
-/// (preview, retry, apply) and its 2026-09-23 incidents (design doc S1c, D4, D5).
+/// executor exactly as it will run), confirmed from its confirm step, run once and audited. For a scope (a group's
+/// members, an org unit, the whole company) the preview holds one write per person, each with that person's render; the
+/// run is in the jobs tray with Stop, each write audited, and "Retry the N that failed" previews exactly those people
+/// again with the same template. Every write keeps the signature it replaces first (`WriteStep.KeepFirst`: ChangeCore
+/// reads it exactly and keeps it on this Mac before the write), and "Put Back" previews a kept run's old signatures as
+/// a run of their own. Nothing here runs a `gam` write itself, or keeps a signature; every write goes through `Executor`.
+/// Ports GamGUI's `routes/signatures.py` (preview, retry, apply, kept, putback) and its 2026-09-23 incidents (design doc
+/// S1c, D4, D5; GamGUI #163, #164).
 @MainActor
 @Observable
 public final class SignatureChanges {
@@ -31,13 +34,12 @@ public final class SignatureChanges {
         public let title: String
         /// What the confirm button says.
         public let confirmLabel: String
-        /// Their signature as read when this was previewed: what "Put Back Previous" restores. Nil when it
-        /// wasn't read (still reading, or the read failed), and for a put back itself.
-        public let previous: Previous?
+        /// One person's signature as the screen showed it when this was previewed (GAM's display form), beside the new
+        /// one on the sheet. Not what's kept: the run reads it again, exactly, and keeps that. Nil when it wasn't read.
+        public let current: String?
         /// Said before the confirm, each in words: a curly quote in a tag, a render that clears the
         /// signature, GAM storing something other than the body.
         public let warnings: [String]
-        public let isPutBack: Bool
         /// A scope's run: whom it was previewed for (nil for one person and a put back).
         public let scope: SignatureScope?
         /// A scope's people, one write each, in the held steps' order; `person` is the first, the sample.
@@ -48,27 +50,36 @@ public final class SignatureChanges {
         public let isRetry: Bool
         /// Who the preview leaves out, and why, in words (a render GAM would read as a file, someone no longer active).
         public let notes: [String]
+        /// A Put Back of a kept run (GamGUI's `/signatures/putback`); nil for a new signature.
+        public let putBack: PutBack?
 
         public var id: UUID { preview.id }
-        /// One write per person of a scope, run in the jobs tray: no Put Back, a sample on the sheet.
-        public var isScoped: Bool { scope != nil }
+        /// One write per person, run in the jobs tray with Stop, a sample on the sheet: a scope's, or a Put Back's.
+        public var isScoped: Bool { scope != nil || putBack != nil }
+        public var isPutBack: Bool { putBack != nil }
         /// The signature the run will send: the held argv element itself, not a copy made beside it.
         public var body: String { preview.steps.first?.signatureBody ?? "" }
     }
 
-    /// A person's signature as read before a change, with the tenant it was read on: a Put Back of it is
-    /// refused on any other (GamGUI failure-log 2026-09-25).
-    public struct Previous: Sendable {
-        public let person: GamUser
-        public let body: String
-        let domain: Domain
-        let generation: Int
+    /// The kept run a Put Back sets again, and who it leaves out.
+    public struct PutBack: Sendable {
+        /// The kept run's id (`SignatureBackupStore`).
+        public let run: String
+        public let what: String
+        public let when: Date
+        /// Who can't go back exactly, and why, in words: never sent.
+        public let leftOut: [LeftOut]
+    }
+
+    public struct LeftOut: Sendable, Hashable {
+        public let email: String
+        public let why: String
     }
 
     public struct Done: Sendable {
         public let message: String
-        /// What "Put Back Previous" restores; nil after a put back, or when the signature wasn't read.
-        public let previous: Previous?
+        /// The kept run holding the signatures this run replaced, for its Put Back; nil when it replaced none.
+        public let keptRun: String?
         /// A scope's run: each person it failed for, with why (the first `failuresKept`), and how many in all.
         public let failures: [String]
         public let failedCount: Int
@@ -77,10 +88,10 @@ public final class SignatureChanges {
         /// What "Retry the N that failed" previews; nil when nothing failed.
         public let retry: Retry?
 
-        init(message: String, previous: Previous?, failures: [String] = [], failedCount: Int = 0, partial: Bool = false,
+        init(message: String, keptRun: String?, failures: [String] = [], failedCount: Int = 0, partial: Bool = false,
              retry: Retry? = nil) {
             self.message = message
-            self.previous = previous
+            self.keptRun = keptRun
             self.failures = failures
             self.failedCount = failedCount
             self.partial = partial
@@ -103,8 +114,10 @@ public final class SignatureChanges {
         public var total: Int
         public var applied = 0
         public var failed = 0
+        /// A Put Back's people whose signature changed since that run: left as they are.
+        public var leftAsTheyAre = 0
         public var stopping = false
-        public var done: Int { applied + failed }
+        public var done: Int { applied + failed + leftAsTheyAre }
 
         public init(total: Int) { self.total = total }
     }
@@ -145,12 +158,19 @@ public final class SignatureChanges {
     private let directory: DirectoryStore
     /// For a group scope's members, read when its preview is made.
     private let runner: AuthenticatedRunner?
+    /// The signatures runs kept (`SignatureBackupStore`), read for the list and a Put Back. The executor keeps into it.
+    private let backups: SignatureBackupStore?
+    /// The kept runs, newest first, as last read (`loadKept`); nil until then.
+    public private(set) var kept: [SignatureBackupStore.Listed]?
+    public private(set) var isLoadingKept = false
 
-    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore, runner: AuthenticatedRunner? = nil) {
+    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore, runner: AuthenticatedRunner? = nil,
+                backups: SignatureBackupStore? = nil) {
         self.executor = executor
         self.setup = setup
         self.directory = directory
         self.runner = runner
+        self.backups = backups
     }
 
     public var isBusy: Bool {
@@ -177,8 +197,8 @@ public final class SignatureChanges {
 
     // MARK: previews
 
-    /// `template` rendered for `person`, held as one `signature … html` write with its confirm step (D5).
-    /// `current` is their signature as the screen read it, kept for "Put Back Previous". A render GAM
+    /// `template` rendered for `person`, held as one `signature … html` write with its confirm step (D5), keeping the
+    /// signature it replaces first. `current` is their signature as the screen showed it, for the sheet. A render GAM
     /// would read as a file keyword is refused here, before any preview.
     public func preview(person: GamUser, template: String, current: String?) async {
         guard !isBusy else { return }
@@ -191,49 +211,34 @@ public final class SignatureChanges {
             state = .problem(Problem(Self.keywordRefusal(render)))
             return
         }
-        let previous = current.flatMap { body in
-            tenant.map { Previous(person: person, body: body, domain: $0.domain, generation: $0.generation) }
-        }
-        await hold(render, for: person, title: "Replace \(person.fullName)'s signature", confirmLabel: "Replace Signature",
-                   warnings: Self.warnings(template: template, render: render, for: person), previous: previous,
-                   isPutBack: false, expecting: tenant, serial: serial)
-    }
-
-    /// The signature read before the last change, set again as GAM showed it (its reader strips each line).
-    /// Refused on any tenant but the one it was read on.
-    public func previewPutBack(previous: Previous) async {
-        guard !isBusy else { return }
-        serial += 1
-        typedProblem = nil
-        if Signature.readAsKeyword(previous.body) != nil {
-            state = .problem(Problem(Self.keywordRefusal(previous.body)))
-            return
-        }
-        await hold(previous.body, for: previous.person, title: "Put back \(previous.person.fullName)'s previous signature",
-                   confirmLabel: "Put Back Signature", warnings: Self.warnings(template: "", render: previous.body, for: previous.person),
-                   previous: nil, isPutBack: true, expecting: (previous.domain, previous.generation), serial: serial)
-    }
-
-    private func hold(_ body: String, for person: GamUser, title: String, confirmLabel: String, warnings: [String],
-                      previous: Previous?, isPutBack: Bool, expecting: (domain: Domain, generation: Int)?, serial: Int) async {
         guard let executor else {
-            state = .problem(Problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh."))
+            state = .problem(Problem(Self.noGam))
             return
         }
         let email = person.primaryEmail
-        let step = WriteStep(GamCommands.setSignature(email: email, signature: body, html: true), target: email,
-                             summary: isPutBack ? "Put back \(email)'s previous Gmail signature." : "Replace \(email)'s Gmail signature.")
-        let held = await executor.preview([step], confirmStep: true, typedCountAbove: typedCountAbove, expecting: expecting)
+        let held = await executor.preview([Self.step(email, setting: render, summary: "Replace \(email)'s Gmail signature.")],
+                                          confirmStep: true, typedCountAbove: typedCountAbove, expecting: tenant)
         guard await isCurrent(serial, held, executor) else { return }
         switch held {
         case .success(let preview):
-            state = .previewing(Pending(preview: preview, person: person, title: title, confirmLabel: confirmLabel,
-                                        previous: previous, warnings: warnings, isPutBack: isPutBack, scope: nil, people: [person],
-                                        template: "", isRetry: false, notes: []))
+            state = .previewing(Pending(preview: preview, person: person, title: "Replace \(person.fullName)'s signature",
+                                        confirmLabel: "Replace Signature", current: current,
+                                        warnings: Self.warnings(template: template, render: render, for: person), scope: nil,
+                                        people: [person], template: "", isRetry: false, notes: [], putBack: nil))
         case .failure(let refusal):
             state = .problem(Problem(refusal.message))
         }
     }
+
+    /// Every signature write this screen holds, and the only place it makes one: `email`'s signature set to `setting`, with
+    /// the signature it replaces kept first (`WriteStep.KeepFirst`), and, for a Put Back, left alone unless it's still
+    /// `expectedNow` (`WriteRouteTests`).
+    nonisolated static func step(_ email: String, setting: String, expectedNow: String? = nil, summary: String) -> WriteStep {
+        WriteStep(GamCommands.setSignature(email: email, signature: setting, html: true), target: email, summary: summary,
+                  keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow))
+    }
+
+    static let noGam = "This build has no GAM. Build the app again after running scripts/fetch_gam.sh."
 
     // MARK: a scope (GamGUI's `/signatures/preview`, `/retry`, `/apply`)
 
@@ -285,7 +290,7 @@ public final class SignatureChanges {
     private func holdScope(_ matched: [GamUser], template: String, scope: SignatureScope, isRetry: Bool, gone: Int,
                            expecting: (domain: Domain, generation: Int)?, serial: Int) async {
         guard let executor else {
-            state = .problem(Problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh."))
+            state = .problem(Problem(Self.noGam))
             return
         }
         var notes: [String] = []
@@ -304,8 +309,7 @@ public final class SignatureChanges {
             if PythonText.strip(render).isEmpty { empty += 1 }
             let email = person.primaryEmail
             people.append(person)
-            steps.append(WriteStep(GamCommands.setSignature(email: email, signature: render, html: true), target: email,
-                                   summary: "Replace \(email)'s Gmail signature."))
+            steps.append(Self.step(email, setting: render, summary: "Replace \(email)'s Gmail signature."))
         }
         if !keywords.isEmpty {
             notes.append("Left out \(keywords.count): GAM would take their signature as a file or document to load, not as the "
@@ -337,8 +341,8 @@ public final class SignatureChanges {
             state = .previewing(Pending(
                 preview: preview, person: sample,
                 title: isRetry ? "Retry the signature for \(whom) in \(scope.who)" : "Set the signature for \(whom) in \(scope.who)",
-                confirmLabel: "Replace \(count) Signature\(count == 1 ? "" : "s")", previous: nil, warnings: warnings,
-                isPutBack: false, scope: scope, people: people, template: template, isRetry: isRetry, notes: notes))
+                confirmLabel: "Replace \(count) Signature\(count == 1 ? "" : "s")", current: nil, warnings: warnings,
+                scope: scope, people: people, template: template, isRetry: isRetry, notes: notes, putBack: nil))
         case .failure(let refusal):
             state = .problem(Problem(refusal.message))
         }
@@ -349,6 +353,99 @@ public final class SignatureChanges {
         guard serial != self.serial else { return true }
         if case .success(let preview) = held { await executor.discard(preview.id) }
         return false
+    }
+
+    // MARK: the kept signatures, and putting them back (GamGUI's `/signatures/kept`, `/putback/preview`, `/putback`)
+
+    /// The kept runs, read again from this Mac (off the main actor: each is read whole).
+    public func loadKept() async {
+        guard let backups, !isLoadingKept else { return }
+        isLoadingKept = true
+        kept = await Task.detached { backups.runs() }.value
+        isLoadingKept = false
+    }
+
+    /// The kept run `id`'s old signatures, previewed to be set again (GamGUI's Put Back, #164): its people, but anyone whose
+    /// old signature GAM would read as a file to load or change on the way in, who is left out and named. Each is held as a
+    /// step that keeps what it replaces (so a Put Back can be put back too) and is left alone unless their signature is
+    /// still, byte for byte, what that run set as GAM stored it. Only on the domain the run was on, with the count typed
+    /// above the guard's threshold. Loaded from the store now, never from the list as shown.
+    public func previewPutBack(_ id: String) async {
+        guard !isBusy else { return }
+        serial += 1
+        typedProblem = nil
+        let serial = serial
+        // The tenant this is for, before any await: the run is checked against it, and the preview held for it.
+        let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
+        guard let executor, let backups else {
+            state = .problem(Problem(Self.noGam))
+            return
+        }
+        let loaded = await Task.detached { () -> Result<SignatureBackupStore.Run, SignatureBackupStore.Problem> in
+            do throws(SignatureBackupStore.Problem) { return .success(try backups.load(id)) } catch { return .failure(error) }
+        }.value
+        guard serial == self.serial else { return }
+        let run: SignatureBackupStore.Run
+        switch loaded {
+        case .success(let found): run = found
+        case .failure(let problem):
+            state = .problem(Problem("That run can't be put back: \(problem.reason)."))
+            return
+        }
+        guard let tenant else {
+            state = .problem(Problem(Executor.PreviewRefusal.notConnected.message))
+            return
+        }
+        guard run.domain.utf8.elementsEqual(tenant.domain.name.utf8) else {
+            state = .problem(Problem("That run was on \(run.domain), so it's put back only there: connect \(run.domain) on Setup first."))
+            return
+        }
+        let plan = Self.putBackPlan(run)
+        let notes = plan.leftOut.isEmpty ? [] : ["Left out \(plan.leftOut.count), each put back only by hand: "
+            + plan.leftOut.prefix(Self.namedLeftOut).map { "\($0.email) (\($0.why))" }.joined(separator: "; ")
+            + (plan.leftOut.count > Self.namedLeftOut ? "; and \(plan.leftOut.count - Self.namedLeftOut) more" : "") + "."]
+        guard !plan.steps.isEmpty else {
+            state = .problem(Problem(run.entries.isEmpty ? "That run kept nobody's signature." : notes.joined()))
+            return
+        }
+        let users = directory.users ?? []
+        let people = plan.steps.map { step in
+            users.first { Guard.normalized($0.primaryEmail) == Guard.normalized(step.target) }
+                ?? GamUser(record: ["primaryEmail": .string(step.target)])
+        }
+        let count = people.count, whom = "\(count) \(count == 1 ? "person" : "people")"
+        let held = await executor.preview(plan.steps, confirmStep: true, typedCountAbove: typedCountAbove, expecting: tenant,
+                                          title: "Put back of \(run.what)")
+        guard await isCurrent(serial, held, executor) else { return }
+        switch held {
+        case .success(let preview):
+            state = .previewing(Pending(
+                preview: preview, person: people[0], title: "Put back the signatures \u{201C}\(run.what)\u{201D} replaced: \(whom).",
+                confirmLabel: "Put Back \(count) Signature\(count == 1 ? "" : "s")", current: nil, warnings: [], scope: nil,
+                people: people, template: "", isRetry: false, notes: notes,
+                putBack: PutBack(run: run.id, what: run.what, when: run.when, leftOut: plan.leftOut)))
+        case .failure(let refusal):
+            state = .problem(Problem(refusal.message))
+        }
+    }
+
+    /// GamGUI's `put_back_plan`: each of `run`'s people whose old signature can be set again exactly, as a step, and those
+    /// left out with why. One GAM would read as a file to load (`Signature.readAsKeyword`), or store as something else
+    /// (`Signature.stored`: a CR, or a backslash-n), can't go back as it was. Each step expects what the run set, as GAM
+    /// stored it: anything else there now is someone's change since, left as it is.
+    nonisolated static func putBackPlan(_ run: SignatureBackupStore.Run) -> (steps: [WriteStep], leftOut: [LeftOut]) {
+        var steps: [WriteStep] = [], leftOut: [LeftOut] = []
+        for entry in run.entries {
+            if Signature.readAsKeyword(entry.previous) != nil {
+                leftOut.append(LeftOut(email: entry.email, why: "GAM would read it as a file to load, so it's left for you to put back by hand"))
+            } else if !Signature.stored(entry.previous).utf8.elementsEqual(entry.previous.utf8) {
+                leftOut.append(LeftOut(email: entry.email, why: "GAM would change it on the way in, so it can't go back exactly"))
+            } else {
+                steps.append(step(entry.email, setting: entry.previous, expectedNow: Signature.stored(entry.set),
+                                  summary: "Put back \(entry.email)'s Gmail signature."))
+            }
+        }
+        return (steps, leftOut)
     }
 
     /// The addresses a note names before "and N more".
@@ -387,6 +484,7 @@ public final class SignatureChanges {
                 switch result {
                 case .succeeded: self?.progress?.applied += 1
                 case .failed, .waiting: self?.progress?.failed += 1
+                case .skipped(let reason) where reason == Executor.changedSince: self?.progress?.leftAsTheyAre += 1
                 // A step never begun (after a Stop) isn't a failure: the result counts it as not attempted.
                 case .skipped: break
                 }
@@ -401,7 +499,7 @@ public final class SignatureChanges {
             return
         }
         if outcome.steps.contains(where: \.isSucceeded) { finished += 1 }
-        state = .done(Self.scopeDone(pending, outcome.steps, note: outcome.auditProblem.map { " \($0)" } ?? ""))
+        state = .done(Self.scopeDone(pending, outcome.steps, note: outcome.auditProblem.map { " \($0)" } ?? "", kept: outcome.kept))
     }
 
     /// Stop a scope's run after the write in flight (GamGUI's Stop): the rest read "Not run: stopped."
@@ -412,13 +510,17 @@ public final class SignatureChanges {
     }
 
     /// GamGUI's `_sig_apply.html` result: how many were set, why it stopped and how many weren't attempted, and who failed.
-    nonisolated static func scopeDone(_ pending: Pending, _ steps: [RunOutcome.Step], note: String) -> Done {
+    /// A Put Back's says how many went back, and who was left as they are, changed since that run (skipped, not failed: a
+    /// retry wouldn't put them back either). `kept` is the run's kept signatures, for its own Put Back.
+    nonisolated static func scopeDone(_ pending: Pending, _ steps: [RunOutcome.Step], note: String, kept: String?) -> Done {
         let total = pending.people.count
-        var set = 0, failures: [String] = [], failed: [String] = [], notRun = 0, stoppedBy: String?
+        var set = 0, failures: [String] = [], failed: [String] = [], notRun = 0, stoppedBy: String?, changed: [String] = []
         for (index, person) in pending.people.enumerated() {
             let step = index < steps.count ? steps[index] : nil
             switch step {
             case .succeeded?: set += 1
+            case .skipped(let reason)? where reason == Executor.changedSince:
+                changed.append(person.primaryEmail)
             case .skipped(let reason)?:
                 notRun += 1
                 if stoppedBy == nil { stoppedBy = reason }
@@ -434,19 +536,30 @@ public final class SignatureChanges {
                 if failures.count < failuresKept { failures.append("\(person.primaryEmail) \u{2014} \(message)") }
             }
         }
-        let message: String
+        var message: String
+        let done = pending.isPutBack ? "Put back" : "Applied to"
         if notRun > 0 {
             let why = stoppedBy == Executor.stopped || stoppedBy == nil ? "Stopped by you \u{2014} \(notRun) not attempted."
                 : "\(stoppedBy!) The remaining \(notRun) \(notRun == 1 ? "was" : "were") not attempted."
-            message = "\(why) Applied to \(set) of \(total) before stopping."
+            message = "\(why) \(done) \(set) of \(total) before stopping."
         } else {
-            message = "Applied to \(set) of \(total) user\(total == 1 ? "" : "s")."
+            message = "\(done) \(set) of \(total) \(pending.isPutBack ? "signature" : "user")\(total == 1 ? "" : "s")."
+        }
+        if !changed.isEmpty {
+            message += " \(changed.count) \(changed.count == 1 ? "was" : "were") left as \(changed.count == 1 ? "it is" : "they are"), "
+                + "changed since that run: \(Self.named(changed))."
         }
         let retry = failed.isEmpty || pending.scope == nil ? nil
             : Retry(template: pending.template, failed: failed, scope: pending.scope!, domain: pending.preview.domain,
                     generation: pending.preview.generation)
-        return Done(message: message + note, previous: nil, failures: failures, failedCount: failed.count,
-                    partial: notRun > 0 || !failed.isEmpty, retry: retry)
+        return Done(message: message + note, keptRun: kept, failures: failures, failedCount: failed.count,
+                    partial: notRun > 0 || !failed.isEmpty || !changed.isEmpty, retry: retry)
+    }
+
+    /// The first `namedLeftOut` addresses, then "and N more".
+    nonisolated static func named(_ emails: [String]) -> String {
+        emails.prefix(namedLeftOut).joined(separator: ", ")
+            + (emails.count > namedLeftOut ? " and \(emails.count - namedLeftOut) more" : "")
     }
 
     // MARK: confirming
@@ -476,9 +589,12 @@ public final class SignatureChanges {
         case .succeeded:
             finished += 1
             let note = outcome.auditProblem.map { " \($0)" } ?? ""
-            state = .done(Done(message: (pending.isPutBack ? "Put back \(name)'s previous signature." : "Replaced \(name)'s signature.")
-                                   + note,
-                               previous: pending.previous))
+            state = .done(Done(message: "Replaced \(name)'s signature."
+                                   + (outcome.kept == nil ? "" : " The one it replaced is kept on this Mac.") + note,
+                               keptRun: outcome.kept))
+        case .failed(let message, nil) where message.hasPrefix(Executor.notRead):
+            // ChangeCore's words already say it wasn't replaced, and why.
+            state = .problem(Problem(message))
         case .failed(let message, let kind):
             let why = Self.remediation(message, kind: kind, for: pending.person)
             state = .problem(Problem("Couldn't set the signature. \(why)", detail: kind == nil ? nil : message))
@@ -496,7 +612,7 @@ public final class SignatureChanges {
         let people = SignatureScope.match(directory.users ?? [], scope).map(\.primaryEmail)
         guard !isBusy, let active = setup.active, people.count > 2 else { return }
         let failed = Array(people.suffix(2)), why = GamError.Kind.serviceNotEnabled.remediation
-        state = .done(Done(message: "Applied to \(people.count - 2) of \(people.count) users.", previous: nil,
+        state = .done(Done(message: "Applied to \(people.count - 2) of \(people.count) users.", keptRun: nil,
                            failures: failed.map { "\($0) \u{2014} \(why)" }, failedCount: 2, partial: true,
                            retry: Retry(template: template, failed: failed, scope: scope, domain: active, generation: setup.generation)))
     }
@@ -508,6 +624,17 @@ public final class SignatureChanges {
         serial += 1
         typedProblem = nil
         state = .idle
+    }
+
+    /// What a confirm sheet says about the signatures it replaces (GamGUI's preview: "kept on this Mac first", "two GAM calls
+    /// a person"): Gmail keeps no copy, so each is read and kept first, and one that can't be read isn't replaced.
+    public nonisolated static func keptFirst(_ count: Int) -> String {
+        count == 1
+            ? "Replaces their current Gmail signature. Gmail keeps no copy, so it's read and kept on this Mac first, and Put Back "
+                + "can set it again. If it can't be read, it isn't replaced."
+            : "Replaces each one's current Gmail signature. Gmail keeps no copy, so each is read and kept on this Mac first (two "
+                + "GAM calls a person, so it takes about twice as long), and Put Back can set them again. Anyone whose signature "
+                + "can't be read isn't replaced."
     }
 
     /// The count a scope wants typed, in words.

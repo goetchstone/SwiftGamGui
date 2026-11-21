@@ -6,6 +6,10 @@ switching across Workspace tenants, and scheduled runs. That ask lifts the "not 
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
 doc §1's "Sheet export: dropped". Those plans' rows point here.
 
+**Status (2026-11-21): signature backups first (operator, 2026-11-21).** Before this plan's tasks: every Signatures run
+keeps the signatures it replaces on this Mac (ChangeCore reads each exactly and keeps it before the write), and Put Back
+sets a kept run's old ones again, ported from GamGUI's #163 and #164 (`docs/domains/signatures.md`, "Kept signatures").
+
 **Both apps.** Per GamGUI's roadmap ("one feature, two PRs, GamGUI first"), each task below that GamGUI can have is
 added to its roadmap and built there first, then here from regenerated fixtures. Two are Swift-only, listed deviations
 with no parity fixture: **F5** (Apple's on-device model has no Python route) and **F7b** (the Keychain). GamGUI gets

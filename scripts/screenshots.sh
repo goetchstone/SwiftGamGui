@@ -44,7 +44,10 @@ status=0
 # isn't in the directory), then on alice@example.com with the saved template Classic loaded, in a window
 # tall enough to show the current and new signatures side by side; signatures-staff is everyone in /Staff
 # (tab `orgUnit`, the unit as the person), Classic rendered for the first of them; `orgUnit+confirm` its confirm sheet
-# (held, never run) and `orgUnit+result` a made-up finished run with two failures and Retry (no gam). On Team Calendar's
+# (held, never run) and `orgUnit+result` a made-up finished run with two failures and Retry (no gam); signatures-kept
+# scrolls to Kept signatures (tab `kept`: the demo's one kept run, Tests/Fixtures/demo/signature-backups, copied into a
+# fresh folder) and signatures-putback reviews its Put Back (tab `putback`: the sheet, held, never run, carol@ left out
+# because GAM would change her old signature on the way in). On Team Calendar's
 # page the tab shows a change's state: `share-group` the confirm sheet of sharing it with the mock's twelve-member
 # allhands@ (nothing typed yet, so Share is off), `group-result` a made-up partial group share, `delete` the calendar delete's confirm
 # (nothing typed yet, so Delete is off), `events` the event search's results, `event-delete` an event delete's confirm; each held, never run. Onboard opens on the demo role
@@ -120,6 +123,9 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-signatures-staff-confirm:signatures:/Staff:orgUnit+confirm:smallest:Classic \
             signatures-staff-result:signatures:/Staff:orgUnit+result::Classic \
             narrow-signatures-staff-result:signatures:/Staff:orgUnit+result:smallest:Classic \
+            signatures-kept:signatures:alice@example.com:kept narrow-signatures-kept:signatures:alice@example.com:kept:smallest \
+            signatures-putback:signatures:alice@example.com:putback \
+            narrow-signatures-putback:signatures:alice@example.com:putback:smallest \
             calendars:calendars calendars-alice:calendars:alice@example.com::::c_team@group.calendar.google.com \
             person-calendar:users:alice@example.com:calendar narrow-person-calendar:users:alice@example.com:calendar:smallest \
             narrow-calendars-alice:calendars:alice@example.com::smallest::c_team@group.calendar.google.com \
