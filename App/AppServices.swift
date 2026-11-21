@@ -135,6 +135,15 @@ struct AppServices {
             }, extraEnvironment: extraEnvironment, jobs: jobs.report, signatureKeeper: signatureBackups)
         }
         if let executor { jobs.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) } }
+        // A switch to another domain (plan F6): Setup's check first names the runs it would stop, from the tray; once it
+        // lands, the tray says why each stopped, and the executor drops what it held for the old domain.
+        setup.runningRuns = { [weak jobs] in
+            jobs?.runningJobs.map { SetupModel.RunningRun(id: $0.id, title: $0.title, leftHalfDone: $0.routine) } ?? []
+        }
+        setup.onTenantChange { [weak setup, weak jobs] in
+            if let domain = setup?.active { jobs?.switched(to: domain.name) }
+            if let executor { Task { await executor.dropOtherTenants() } }
+        }
         let directory = DirectoryStore(setup: setup, runner: runner)
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)

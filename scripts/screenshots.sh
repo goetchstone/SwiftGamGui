@@ -82,6 +82,9 @@ status=0
 # (`SWIFTGAMGUI_SELECT` its id) with carol@example.com and the Sales group filled in (`fill`), and builder-confirm its confirm
 # sheet (`preview`): held, never run.
 # The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with three made-up runs (`ContentView.showDemoJobs`): nothing runs.
+# The toolbar's domain menu (plan F6) has its panel drawn over Home as a sheet: example.com active and example.org offered
+# (`domain`), then example.org chosen while the tray's made-up runs go (`domain-warning`): what a switch would stop, the
+# offboarding left half done, nothing checked. narrow-domain is Home in the smallest window, its toolbar holding the menu.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list), then on a
@@ -92,6 +95,7 @@ status=0
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
 for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
+            domain:home::domain domain-warning:home::domain-warning narrow-domain:home:::smallest \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
