@@ -1,7 +1,7 @@
 /// GAM's command catalog (`Vendor/gam7/command_catalog.json`: GamGUI's shallow parse of the vendored grammar, regenerated on each
 /// GAM bump) and invariant 3's one door from it to a `GamRead`. A command runs here iff the catalog calls it confidently
 /// read-only, GamGUI's verb rule checked again here agrees (so an edited catalog can't promote a write), and it isn't a
-/// sensitive read (a download or a secret, which GamGUI runs only with an audit record this app doesn't keep yet). Its required
+/// sensitive read (a download or a secret, which GamGUI runs and records; browse-only here until the operator asks). Its required
 /// arguments become slots; a value is always exactly one argv element, and the keywords around it come only from the grammar
 /// line. GamGUI's `core/catalog/readbuilder.py`, held to it command by command by `Tests/Fixtures/catalog_reads.json`.
 public struct CommandCatalog: Sendable {
@@ -53,7 +53,7 @@ public struct CommandCatalog: Sendable {
         public let area: String
         /// GamGUI makes it runnable (`_make_reads_buildable`): read-only and certain, by the catalog and by the verb rule.
         public let promoted: Bool
-        /// A download or a secret (GamGUI's `_is_sensitive`): browse-only here until its run can be audited.
+        /// A download or a secret (GamGUI's `_is_sensitive`): browse-only here, the operator's choice, until asked.
         public let sensitive: Bool
         /// Empty unless promoted.
         public let slots: [Slot]
@@ -61,6 +61,13 @@ public struct CommandCatalog: Sendable {
 
         /// It can be run from the Builder.
         public var runnable: Bool { promoted && !sensitive }
+
+        /// Whom a run is about, as its read record names it: GamGUI's `_assemble`, the first person or group given (stripped as
+        /// `catalogRead` strips it), else "(command)".
+        public func target(_ values: [String: String]) -> String {
+            slots.filter { [.targetUser, .user, .group].contains($0.kind) }.lazy
+                .map { PythonText.strip(values[$0.key] ?? "") }.first { !$0.isEmpty } ?? "(command)"
+        }
     }
 
     public let version: String

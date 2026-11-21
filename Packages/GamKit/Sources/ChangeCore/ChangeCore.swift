@@ -1005,7 +1005,7 @@ public actor Executor {
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
             do {
-                try record(step, phase: "begin", extra: base, actor: who, secrets: secrets)
+                try record(step, phase: "begin", extra: base, on: preview.domain, actor: who, secrets: secrets)
             } catch {
                 AuditFailure.report(error)
                 stoppedBy = "Stopped: the audit log couldn't be written."
@@ -1148,7 +1148,7 @@ public actor Executor {
         }
         let ok: Bool = if case .succeeded = result { true } else { false }
         do {
-            try record(step, phase: "end", extra: extra, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
+            try record(step, phase: "end", extra: extra, on: preview.domain, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
             return (result, stop, nil, stdout)
         } catch {
             AuditFailure.report(error)
@@ -1172,12 +1172,13 @@ public actor Executor {
         return extra
     }
 
-    private func record(_ step: WriteStep, phase: String, extra: JSONObject, exitCode: Int32? = nil, ok: Bool? = nil,
-                        actor: String?, secrets: [String]) throws {
+    /// A step's begin or end record, naming the domain its preview was held for (`extra.domain`, plan F1).
+    private func record(_ step: WriteStep, phase: String, extra: JSONObject, on domain: Domain, exitCode: Int32? = nil,
+                        ok: Bool? = nil, actor: String?, secrets: [String]) throws {
         var extra = extra
         extra["phase"] = .string(phase)
         try audit.record(step.write.action.rawValue, target: step.target, argv: step.write.argv, exitCode: exitCode,
-                         ok: ok, actor: actor, extra: extra, secrets: secrets)
+                         ok: ok, actor: actor, extra: extra, domain: domain.name, secrets: secrets)
     }
 
     private func dropExpired() {
@@ -1220,6 +1221,8 @@ extension Executor {
         public var actionName: String { WriteAction(rawValue: action)?.displayName ?? action }
         let preview: String
         let step: Int
+        /// The domain its begin named, which the acknowledgement names too; nil for a begin written before records named one.
+        let domain: String?
         /// A retry round's attempt (2 and up); nil for the run's own.
         public let attempt: Int?
     }
@@ -1244,21 +1247,22 @@ extension Executor {
                 if extra["error"]?.string != interrupted || extra["acknowledged"]?.bool == true { ended.insert(key) }
             } else if phase == "begin", !ended.contains(key) {
                 found.append(Unfinished(action: record["action"]?.string ?? "", target: record["target"]?.string ?? "",
-                                        at: record["ts"]?.string ?? "", preview: preview, step: step, attempt: attempt))
+                                        at: record["ts"]?.string ?? "", preview: preview, step: step,
+                                        domain: extra[AuditLog.domainKey]?.string, attempt: attempt))
             }
         }
         return found
     }
 
-    /// The operator checked these in Google: an end record each, marked acknowledged, so they stop showing.
-    /// Only the audit log is written, so it needs no gam.
+    /// The operator checked these in Google: an end record each, marked acknowledged, so they stop showing, in the domain
+    /// its begin named. Only the audit log is written, so it needs no gam.
     public static func acknowledge(_ unfinished: [Unfinished], in log: URL) throws {
         let audit = AuditLog(url: log)
         for write in unfinished {
             var extra: JSONObject = ["preview": .string(write.preview), "step": .number(String(write.step)),
                                      "phase": .string("end"), "acknowledged": .bool(true)]
             if let attempt = write.attempt { extra["attempt"] = .number(String(attempt)) }
-            try audit.record(write.action, target: write.target, extra: extra)
+            try audit.record(write.action, target: write.target, extra: extra, domain: write.domain)
         }
     }
 }

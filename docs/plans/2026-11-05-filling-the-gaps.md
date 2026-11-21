@@ -44,7 +44,8 @@ asked, each on its own, because these earn their place by being used.
 - **Calendars** (`docs/domains/calendars.md`): delete a secondary calendar; list a calendar's events and delete one; find a calendar by
   name across the domain (GamGUI's index); share a calendar with a group (one change per member, a background job).
 - **Many people at once** (slice 4): a signature, a department, hires from a CSV.
-- **Builder** (slice 5): sequences with Stop; the 14 sensitive reads, which need an audit record first.
+- **Builder** (slice 5): sequences with Stop; the 14 sensitive reads (reads are recorded since plan 2026-11-19's F1: browse-only
+  now by the operator's choice, until asked).
 
 Left out on purpose: Sheet export (design doc §1). Not counted: running in a browser on other systems (macOS-only is deliberate).
 
@@ -98,7 +99,8 @@ already do, with the typed count, the jobs tray and a retry of what failed.
 ### 5. The Builder's remaining pieces
 
 - Sequences, with Stop (GamGUI has them).
-- An audit record for reads, so the 14 sensitive reads can run (GamGUI runs them).
+- ~~An audit record for reads~~: built as plan 2026-11-19's F1 (every Builder read recorded). The 14 sensitive reads stay
+  browse-only by the operator's choice, until asked (GamGUI runs them).
 - Beyond GamGUI: saved reads, a Builder read kept by name with its values, if the same ones keep coming up; the curated "List a shared
   drive's files" read, new to both apps.
 

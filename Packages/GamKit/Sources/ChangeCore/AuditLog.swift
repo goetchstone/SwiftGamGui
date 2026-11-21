@@ -33,13 +33,28 @@ public final class AuditLog: Sendable {
         self.maxBytes = maxBytes
     }
 
-    /// Appends one record and returns it as written. `now` is for tests.
+    /// The `extra` key that names a record's domain (GamGUI's `DOMAIN_KEY`, plan F1). A record without it was written before
+    /// records named one: unknown, never some domain.
+    public static let domainKey = "domain"
+    /// A read record's actions (GamGUI's `READ_ACTIONS`): a catalog read the operator ran, sensitive or not. This app writes
+    /// only `read` (`ReadAudit`); GamGUI's `sensitive_read` reads the same. They change nothing, so a screen about changes
+    /// (Home's failures, the incident report's changes) passes them over.
+    public static let readActions: Set<String> = ["read", "sensitive_read"]
+
+    /// Appends one record and returns it as written. `domain` is the Workspace domain it belongs to, kept stripped and
+    /// lowercased as `extra.domain` (GamGUI's `domain=`); nil or blank names none, as a record written before F1 did.
+    /// Required, so no record leaves it out unseen. `now` is for tests.
     @discardableResult
     public func record(
         _ action: String, connector: String = "google_workspace", target: String? = nil, argv: [String]? = nil,
-        exitCode: Int32? = nil, ok: Bool? = nil, actor: String? = nil, extra: JSONObject? = nil,
+        exitCode: Int32? = nil, ok: Bool? = nil, actor: String? = nil, extra: JSONObject? = nil, domain: String?,
         secrets: [String] = [], now: Date = Date()
     ) throws -> JSONObject {
+        var extra = extra
+        if let domain, case let named = PythonText.lower(PythonText.strip(domain)), !named.isEmpty {
+            // Python's `{**extra, "domain": d}`: a key extra already has keeps its place.
+            extra = (extra ?? [:]).merging([Self.domainKey: .string(named)])
+        }
         var entry: JSONObject = [:]
         entry["ts"] = .string(Self.timestamp(now))
         entry["connector"] = .string(connector)

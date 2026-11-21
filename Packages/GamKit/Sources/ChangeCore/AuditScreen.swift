@@ -2,34 +2,50 @@ import Darwin
 import Foundation
 import GamEngine
 
-/// What the Audit screen narrows the log to: GamGUI's search box and its "Failures only" (`web/routes/audit.py`,
+/// What the Audit screen narrows the log to: GamGUI's search box, its "Failures only" and its domain (`web/routes/audit.py`,
 /// `_keep`). GamGUI offers no other filter. Held to `Tests/Fixtures/audit_screen.json` by `AuditScreenTests`.
 public struct AuditFilter: Sendable, Hashable {
-    /// Searched for in the action, the target, the error, the detail and the command.
+    /// Searched for in the action, the target, the error, the detail, the domain and the command.
     public var text: String
     /// Only records whose `ok` is `false`.
     public var failuresOnly: Bool
+    /// One domain's records: a domain, `unknownDomain` for the records that name none, or "" for every record.
+    public var domain: String
 
-    public init(text: String = "", failuresOnly: Bool = false) {
+    /// The domain filter's value for records that name no domain, written before records did (GamGUI's `UNKNOWN_DOMAIN`). No
+    /// Workspace domain is spelled this way (a domain has a dot), so it never matches a real one.
+    public static let unknownDomain = "unknown"
+
+    public init(text: String = "", failuresOnly: Bool = false, domain: String = "") {
         self.text = text
         self.failuresOnly = failuresOnly
+        self.domain = domain
     }
 
     /// Something narrows the log (a search of only spaces doesn't).
-    public var isActive: Bool { failuresOnly || !needle.isEmpty }
+    public var isActive: Bool { failuresOnly || !needle.isEmpty || !wanted.isEmpty }
 
     /// The search as GamGUI compares it: stripped, then lowercased as Python's `str.lower()` does.
     var needle: [Unicode.Scalar] { Array(PythonText.lower(PythonText.strip(text)).unicodeScalars) }
+    /// The domain as GamGUI's route reads it (`_domain_param`): stripped, lowercased.
+    var wanted: String { PythonText.lower(PythonText.strip(domain)) }
 
-    /// `_keep`: a failure is `ok` exactly `false`; the search is a substring, scalar by scalar, of any of the five
-    /// fields lowercased, each read as `str(field or "")`.
-    func keeps(_ record: JSONObject, needle: [Unicode.Scalar]) -> Bool {
+    /// `_keep`: a failure is `ok` exactly `false`; the domain is the one the record names, or `unknownDomain` when it names none;
+    /// the search is a substring, scalar by scalar, of any of the six fields lowercased, each read as `str(field or "")`.
+    func keeps(_ record: JSONObject, needle: [Unicode.Scalar], domain wanted: String) -> Bool {
         if failuresOnly, record["ok"] != .bool(false) { return false }
+        let named = Self.domain(of: record)
+        if !wanted.isEmpty, (named.isEmpty ? Self.unknownDomain : named) != wanted { return false }
         guard !needle.isEmpty else { return true }
         let extra = record["extra"]?.object
         let fields = [AuditText.truthy(record["action"]), AuditText.truthy(record["target"]),
-                      AuditText.truthy(extra?["error"]), AuditText.truthy(extra?["detail"]), AuditText.argv(record["argv"])]
+                      AuditText.truthy(extra?["error"]), AuditText.truthy(extra?["detail"]), named, AuditText.argv(record["argv"])]
         return fields.contains { AuditText.contains(Array(PythonText.lower($0).unicodeScalars), needle) }
+    }
+
+    /// The domain a record names (`extra.domain`), stripped and lowercased, or "" when it names none (GamGUI's `record_domain`).
+    public static func domain(of record: JSONObject) -> String {
+        PythonText.lower(PythonText.strip(AuditText.truthy(record["extra"]?.object?[AuditLog.domainKey])))
     }
 }
 
@@ -79,6 +95,10 @@ public struct AuditEntry: Sendable, Identifiable {
     public let target: String
     /// Who ran it (the connected admin), or "".
     public let actor: String
+    /// The domain it names, lowercased, or "" for a record written before records named one (shown as unknown).
+    public let domain: String
+    /// A read's row count, beside its command (GamGUI's "· 2 rows"): only when the summary is the command and the record has one.
+    public let rows: Int?
     /// GamGUI's Detail column: the error, else the command, else the detail, cut at 160 characters.
     public let summary: String
     /// Every field of the record, the long ones cut at `detailLimit` characters.
@@ -87,10 +107,11 @@ public struct AuditEntry: Sendable, Identifiable {
     public static let summaryLimit = 160
     public static let detailLimit = 4_000
 
-    /// Home's Recent failures (GamGUI's `recent_failures`): the newest `limit` failed records from the last `days`, newest first.
-    /// The log streams newest first, so the read stops at the first record older than that, or once `limit` are found, and at
-    /// most `scanLimit` records (invariant 9). "Recent", since June's already-fixed failures once headlined Home in September. Off
-    /// the main thread: the log can hold a million records.
+    /// Home's Recent failures (GamGUI's `recent_failures`): the newest `limit` failed changes from the last `days`, newest first.
+    /// A failed read (`AuditLog.readActions`) changed nothing, so it isn't one; Audit lists it. The log streams newest first, so
+    /// the read stops at the first record older than that, or once `limit` are found, and at most `scanLimit` records
+    /// (invariant 9). "Recent", since June's already-fixed failures once headlined Home in September. Off the main thread: the
+    /// log can hold a million records.
     public static func recentFailures(in log: URL, limit: Int = 3, days: Int = 30, now: Date = Date(), scanLimit: Int = 100_000) -> [AuditEntry] {
         let cutoff = now.addingTimeInterval(-Double(days) * 86_400)
         var found: [AuditEntry] = [], read = 0
@@ -99,7 +120,9 @@ public struct AuditEntry: Sendable, Identifiable {
             // The two fields first: most records aren't failures, and an entry's details are worth cutting only for those that are.
             let date = instant(AuditText.truthy(record["ts"]))
             if let date, date < cutoff { return false }
-            if date != nil, record["ok"] == .bool(false) { found.append(AuditEntry(place: read - 1, record: record, unfinished: [:])) }
+            if date != nil, record["ok"] == .bool(false), !AuditLog.readActions.contains(record["action"]?.string ?? "") {
+                found.append(AuditEntry(place: read - 1, record: record, unfinished: [:]))
+            }
             return found.count < limit && read < scanLimit
         }
         return found
@@ -124,6 +147,7 @@ public struct AuditEntry: Sendable, Identifiable {
         actionName = WriteAction(rawValue: action)?.displayName ?? Self.words(action)
         target = AuditText.truthy(record["target"])
         actor = AuditText.truthy(record["actor"])
+        domain = AuditFilter.domain(of: record)
 
         let error = extra?["error"], detail = extra?["detail"], argv = record["argv"]
         func cut(_ text: String, ellipsis: Bool) -> String {
@@ -131,15 +155,18 @@ public struct AuditEntry: Sendable, Identifiable {
             guard scalars.count > Self.summaryLimit else { return text }
             return String(String.UnicodeScalarView(scalars.prefix(Self.summaryLimit))) + (ellipsis ? "…" : "")
         }
+        var rows: Int?
         if error?.truthy == true {
             summary = cut(error!.pythonText, ellipsis: true)
         } else if argv?.truthy == true {
             summary = cut(AuditText.argv(argv), ellipsis: true)
+            if case .number = extra?["rows"] { rows = extra?["rows"]?.int }
         } else if detail?.truthy == true {
             summary = cut(detail!.pythonText, ellipsis: false)
         } else {
             summary = ""
         }
+        self.rows = rows
 
         var details: [Detail] = []
         func add(_ label: String, _ value: JSONValue?) {
@@ -240,20 +267,30 @@ public struct AuditPage: Sendable {
     /// Every record in the log, and those whose `ok` is `false` (GamGUI's header).
     public let logged: Int
     public let failures: Int
+    /// The domain filter's choices (GamGUI's `_domain_choices`): the domains the whole log names, sorted, then
+    /// `AuditFilter.unknownDomain` when a record names none.
+    public let domains: [String]
+
+    /// Distinct domains listed at most (invariant 9: the log is the app's, but held only a page at a time): the first this
+    /// many the log names, newest first. One past it is still found by the search. GamGUI lists every one.
+    public static let domainsListed = 100
 
     /// Reads the log: call it off the main actor. `unfinished` is Home's list (`Executor.unfinished`): a begin
     /// record in it is the outcome unknown. Throws `CancellationError` when the task is cancelled mid-read.
     public static func read(_ requested: Int, at url: URL, filter: AuditFilter,
                             unfinished: [Executor.Unfinished] = []) throws -> AuditPage {
-        let wanted = max(1, requested), needle = filter.needle
+        let wanted = max(1, requested), needle = filter.needle, domain = filter.wanted
         var logged = 0, failures = 0, matches = 0
+        var named: Set<String> = [], unnamed = false
         var kept: [(place: Int, record: JSONObject)] = [], filling: [(place: Int, record: JSONObject)] = []
         try AuditLog.forEachRecord(at: url) { record in
             if logged % 1_024 == 0, Task.isCancelled { throw CancellationError() }
             let place = logged
             logged += 1
             if record["ok"] == .bool(false) { failures += 1 }
-            guard filter.keeps(record, needle: needle) else { return true }
+            let its = AuditFilter.domain(of: record)
+            if its.isEmpty { unnamed = true } else if named.count < domainsListed { named.insert(its) }
+            guard filter.keeps(record, needle: needle, domain: domain) else { return true }
             if matches % size == 0 { filling.removeAll(keepingCapacity: true) }
             filling.append((place, record))
             if matches / size + 1 == wanted { kept.append((place, record)) }
@@ -264,8 +301,12 @@ public struct AuditPage: Sendable {
         let page = min(wanted, pages)
         let open = Dictionary(unfinished.map { ("\($0.preview)/\($0.step)", $0) }, uniquingKeysWith: { first, _ in first })
         let rows = page == wanted ? kept : filling
+        // Python's `sorted`: by code point, never by Unicode's collation. Unknown once, even beside a record naming "unknown" (no
+        // app writes one; GamGUI would list it twice, which a picker can't hold).
+        let domains = named.sorted { $0.unicodeScalars.lexicographicallyPrecedes($1.unicodeScalars) { $0.value < $1.value } }
+            + (unnamed && !named.contains(AuditFilter.unknownDomain) ? [AuditFilter.unknownDomain] : [])
         return AuditPage(entries: rows.map { AuditEntry(place: $0.place, record: $0.record, unfinished: open) },
-                         page: page, pages: pages, matches: matches, logged: logged, failures: failures)
+                         page: page, pages: pages, matches: matches, logged: logged, failures: failures, domains: domains)
     }
 }
 
@@ -274,7 +315,9 @@ public struct AuditPage: Sendable {
 /// only when it holds a comma, a quote, CR or LF, a quote doubled), as UTF-8. Every generation of the log, newest
 /// first, streamed: the file is the operator's choice, written beside it and renamed over it once whole.
 public enum AuditExport {
-    public static let columns = ["ts", "action", "target", "ok", "exit_code", "error", "argv", "detail"]
+    /// New columns go last, so the earlier keep their places: `domain` (`unknown` for a record naming none), then a read's
+    /// `origin` and `rows` (blank when its output wasn't a table).
+    public static let columns = ["ts", "action", "target", "ok", "exit_code", "error", "argv", "detail", "domain", "origin", "rows"]
     /// GamGUI's download name.
     public static let suggestedName = "audit-export.csv"
 
@@ -282,16 +325,17 @@ public enum AuditExport {
     /// how many. Call it off the main actor; it throws `CancellationError` when the task is cancelled.
     @discardableResult
     public static func write(from url: URL, filter: AuditFilter, to destination: URL) throws -> Int {
-        let needle = filter.needle
+        let needle = filter.needle, domain = filter.wanted
         var written = 0
         try writePrivately(to: destination) { emit in
             try emit(row(columns))
             try AuditLog.forEachRecord(at: url) { record in
                 if written % 1_024 == 0, Task.isCancelled { throw CancellationError() }
-                guard filter.keeps(record, needle: needle) else { return true }
-                let extra = record["extra"]?.object ?? [:]
+                guard filter.keeps(record, needle: needle, domain: domain) else { return true }
+                let extra = record["extra"]?.object ?? [:], named = AuditFilter.domain(of: record)
                 try emit(row([record["ts"], record["action"], record["target"], record["ok"], record["exit_code"],
-                              extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"]].map(safe)))
+                              extra["error"], .string(AuditText.argv(record["argv"])), extra["detail"],
+                              .string(named.isEmpty ? AuditFilter.unknownDomain : named), extra["origin"], extra["rows"]].map(safe)))
                 written += 1
                 return true
             }

@@ -11,16 +11,21 @@ public struct CatalogResult: Sendable, Equatable {
     public let rows: [GamOutput.Record]
     /// GAM's output, when it isn't a table.
     public let text: String
+    /// How many rows GAM's table had, nil when it printed no table (GamGUI's `table_records`): a header alone is 0, never
+    /// "no table", and text or nothing is nil, never "0 rows". A read's audit record counts by it (`ReadAudit`).
+    public let tableRows: Int?
     /// Each row's text to filter on, lowercased: what the table shows, and a structured value's raw form too (GamGUI's
     /// `_filter_text`), so a search finds what's on screen and still matches a field's name.
     private let searchable: [String]
 
     public init(argv: [String], stdout: String) {
         self.argv = argv
+        // `table_records`: JSON (`[` or `{` first) or CSV, a first line (as `splitlines` ends it) holding a comma.
         let text = PythonText.strip(stdout)
-        let first = text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
-        let tabular = text.hasPrefix("[") || text.hasPrefix("{") || first.contains(",")
+        let lead = text.unicodeScalars.first
+        let tabular = lead == "[" || lead == "{" || PythonText.lines(text).first?.unicodeScalars.contains(",") == true
         let rows = tabular ? GamOutput.records(stdout) : []
+        tableRows = tabular ? rows.count : nil
         var seen: Set<String> = [], columns: [String] = []
         for row in rows {
             for key in row.keys where seen.insert(key).inserted { columns.append(key) }
