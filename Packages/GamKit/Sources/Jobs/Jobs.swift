@@ -8,7 +8,9 @@ import Observation
 public enum JobEvent: Sendable, Equatable {
     /// A confirmed run of `preview`'s steps began checking: `total` steps to decide (a retry round's, only the steps still
     /// waiting). It may wait for another write to end and reads again what its preview assumed, seconds before a step runs.
-    case started(job: UUID, preview: UUID, title: String, total: Int)
+    /// `routine`: an offboarding or a Secure, whose steps go on past a failure (`HeldPreview.stopsAtAccountWideFailure`
+    /// false): stopped part-way, it's left half done.
+    case started(job: UUID, preview: UUID, title: String, total: Int, routine: Bool = false)
     /// The checks passed: its steps begin.
     case checked(job: UUID)
     /// One step decided: what it was, in words, and how it ended.
@@ -42,6 +44,9 @@ public struct Job: Sendable, Identifiable, Equatable {
     public let preview: UUID
     public let title: String
     public let total: Int
+    /// An offboarding or a Secure (GamGUI's `CONFIRM_STOP`): stopped part-way, the leaver is left half offboarded or the
+    /// attacker half locked out. A domain switch's warning says so (plan F6).
+    public let routine: Bool
     public internal(set) var done = 0
     public internal(set) var succeeded = 0
     public internal(set) var failedTotal = 0
@@ -58,6 +63,8 @@ public struct Job: Sendable, Identifiable, Equatable {
     public internal(set) var finished = false
     /// Stop was asked; the step in flight finishes, nothing after it begins.
     public internal(set) var stopping = false
+    /// The domain switched to while it ran (plan F6, GamGUI's `stop_why`): the executor stops it after the step in hand.
+    public internal(set) var switchedTo: String?
     public let started: Date
     public internal(set) var ended: Date?
 
@@ -74,6 +81,11 @@ public struct Job: Sendable, Identifiable, Equatable {
         if let refusal { return "Didn't run: " + refusal }
         var parts = ["\(succeeded) of \(total) succeeded"]
         if failedTotal > 0 { parts.append("\(failedTotal) failed") }
+        // A switch stopped it: GamGUI's words first ("Stopped: you switched to example.org — 3 not attempted."), then the rest.
+        if let switchedTo, notRun > 0 {
+            if waiting > 0 { parts.append("\(waiting) waiting for Google") }
+            return "Stopped: you switched to \(switchedTo) — \(notRun) not attempted. " + parts.joined(separator: ", ") + "."
+        }
         if notRun > 0 { parts.append("\(notRun) not run") }
         if waiting > 0 { parts.append("\(waiting) waiting for Google") }
         return (failedTotal + notRun + waiting == 0 ? "Done: " : "Ended: ") + parts.joined(separator: ", ") + "."
@@ -125,8 +137,8 @@ public final class JobBoard {
     /// One event, as the executor reported it.
     public func handle(_ event: JobEvent) {
         switch event {
-        case .started(let id, let preview, let title, let total):
-            jobs.append(Job(id: id, preview: preview, title: title, total: total, started: Date()))
+        case .started(let id, let preview, let title, let total, let routine):
+            jobs.append(Job(id: id, preview: preview, title: title, total: total, routine: routine, started: Date()))
             running += 1
         case .checked(let id):
             guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
@@ -180,6 +192,20 @@ public final class JobBoard {
         guard let stopRun, await stopRun(preview) else { return false }
         if let index = jobs.firstIndex(where: { $0.id == job }), !jobs[index].finished { jobs[index].stopping = true }
         return true
+    }
+
+    /// The runs going now, oldest first: what a domain switch would stop (plan F6).
+    public var runningJobs: [Job] { jobs.filter { !$0.finished } }
+
+    /// Another domain was made active straight after the one these runs are on (plan F6; `SetupModel.onSwitch`): every run
+    /// going now is stopped by the executor after the step in hand, since its tenant isn't the connected one any more, and
+    /// says so here once it ends, in GamGUI's words (its `stop_why`). A run already stopping (the operator's Stop, or an
+    /// earlier switch) keeps what stopped it.
+    public func switched(to domain: String) {
+        for index in jobs.indices where !jobs[index].finished && !jobs[index].stopping {
+            jobs[index].switchedTo = domain
+            jobs[index].stopping = true
+        }
     }
 
     /// The tray's rows (running first, then finished, newest first in each, at most `trayRows`) and how many more there are.

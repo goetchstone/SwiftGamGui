@@ -177,6 +177,7 @@ public final class SignatureChanges {
         self.directory = directory
         self.runner = runner
         self.backups = backups
+        setup.onTenantChange { [weak self] in self?.dismiss() }
     }
 
     public var isBusy: Bool {
@@ -525,6 +526,12 @@ public final class SignatureChanges {
             state = .problem(Problem(refusal))
             return
         }
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        // Its Retry would preview the old domain's people on this one (GamGUI's `before_switch`). What it kept still lists.
+        guard setup.isConnected(to: pending.preview) else {
+            state = .idle
+            return await loadKept()
+        }
         if outcome.steps.contains(where: \.isSucceeded) { finished += 1 }
         state = .done(Self.scopeDone(pending, outcome.steps, note: outcome.auditProblem.map { " \($0)" } ?? "", kept: outcome.kept))
         // Whatever it kept, or pruned, shows: every run that ends reads the kept runs again, not only one that set someone.
@@ -610,7 +617,8 @@ public final class SignatureChanges {
         if pending.isScoped { return await confirmScope(pending, confirmation, executor: executor) }
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
         if outcome.refusal == nil, outcome.steps.first?.isSucceeded == true { finished += 1 }
-        state = Self.personResult(pending, outcome)
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        state = outcome.refusal == nil && !setup.isConnected(to: pending.preview) ? .idle : Self.personResult(pending, outcome)
         // Whatever it kept shows, a write whose outcome is unknown included.
         await loadKept()
     }

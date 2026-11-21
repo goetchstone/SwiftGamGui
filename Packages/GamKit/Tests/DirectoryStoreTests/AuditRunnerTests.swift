@@ -2,6 +2,7 @@ import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
+import Jobs
 import Setup
 import TestSupport
 import Testing
@@ -213,6 +214,27 @@ final class AuditRunnerTests {
         #expect(calls().map { Array($0.prefix(2)) } == [["print", "licenses"]])
         #expect(records.map { $0["extra"]?["command"]?.string } == ["license_usage/licenses"])
         #expect(!runner.stop(AuditRuns.licenseUsage), "nothing going to stop")
+    }
+
+    /// F3 met F6: a switch stops an audit run's GAM, so Setup's warning names a run going (and the same id in the check after
+    /// it), and none once it has ended.
+    @Test func aRunGoingIsNamedBeforeASwitch() async throws {
+        try await connect()
+        let runner = runner
+        var named: [[String]] = []
+        var ids: [UUID] = []
+        runner.afterEachStep = { index in
+            guard index == 0 else { return }
+            let first = SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: nil, audits: runner)
+            let again = SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: nil, audits: runner)
+            named.append(first.map(\.title))
+            ids = first.map(\.id) + again.map(\.id)
+        }
+        #expect(runner.start(AuditRuns.licenseUsage) == nil)
+        await runner.finish(AuditRuns.licenseUsage)
+        #expect(named == [[SwitchStops.auditLine(AuditRuns.licenseUsage)]])
+        #expect(ids.count == 2 && ids[0] == ids[1], "the warning and the check after it name the run alike")
+        #expect(SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: nil, audits: runner).isEmpty)
     }
 
     // MARK: the second half (GamGUI #172)

@@ -76,6 +76,14 @@ public final class GroupChanges {
         self.executor = executor
         self.setup = setup
         self.members = members
+        setup.onTenantChange { [weak self] in self?.tenantChanged() }
+    }
+
+    /// A switch (plan F6): a preview, result or problem shown was the old domain's. A run going keeps its sheet to its end.
+    private func tenantChanged() {
+        guard !isBusy else { return }
+        dismiss()
+        subject = nil
     }
 
     public var isBusy: Bool {
@@ -182,9 +190,12 @@ public final class GroupChanges {
             state = .problem(Problem(refusal))
             return
         }
-        if setup.active == pending.preview.domain, setup.generation == pending.preview.generation {
-            await members.load(pending.group)
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        guard setup.isConnected(to: pending.preview) else {
+            state = .idle
+            return
         }
+        await members.load(pending.group)
         let result = Self.result(of: pending, outcome.steps)
         let note = outcome.auditProblem.map { " \($0)" } ?? ""
         switch result {

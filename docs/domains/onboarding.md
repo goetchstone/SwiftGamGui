@@ -101,6 +101,12 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
 - **After:** GamGUI's tallies; "Retry the N That Failed…" previews exactly those steps again (D8), from
   the plan held: the same signature, tasks on the list that exists (by the id it printed), or the list
   and every task again. Never the create: a new account needs a new password, from the form.
+- **A domain switch** (plan F6): the wait for Google stops as Stop stops it, its steps "not done" with "Stopped: you
+  switched to example.org."; a held preview goes; the run's panel and card stay (a password shown once), but Retry is
+  offered and held only on the domain the run was on. Found porting F6: the retry was held for whichever domain was
+  connected, so after Setup's switch it would have previewed the old domain's new hire on the new one. The wait is named
+  before a switch ("Finishing setup for <hire>", left half done: `waitForGoogle`, `SwitchStops`), and a switch during the
+  run itself starts no wait on the new domain: the executor parks nothing, and the waiting steps are said stopped.
 
 ## ChangeCore for onboarding (D3)
 - **a, b: `.waiting` and `newAccountFrom`.** A step may wait only if it's in

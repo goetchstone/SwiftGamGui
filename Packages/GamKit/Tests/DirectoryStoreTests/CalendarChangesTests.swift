@@ -590,15 +590,16 @@ final class CalendarChangesTests {
         #expect(writes().count == 2, "a bare confirm")
     }
 
-    /// GamGUI failure-log 2026-09-25: a preview held on one tenant never runs on another.
+    /// GamGUI failure-log 2026-09-25: a preview held on one tenant never runs on another. Since plan F6 the switch also
+    /// drops it from the sheet, so its confirm runs nothing.
     @Test func aPreviewAfterATenantSwitchIsRefused() async throws {
         try await connect()
         let changes = changes()
         await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "dana@example.com", role: "reader")
         let held = try pending(changes)
         try await connect("example.org", admin: "admin@example.org")
+        guard case .idle = changes.state else { Issue.record("\(changes.state)"); return }
         await changes.confirm(held, confirmed)
-        #expect(try problem(changes).summary.hasPrefix("The active domain changed after the preview"))
         #expect(writes().isEmpty)
     }
 

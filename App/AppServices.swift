@@ -139,13 +139,25 @@ struct AppServices {
             }, extraEnvironment: extraEnvironment, jobs: jobs.report, signatureKeeper: signatureBackups)
         }
         if let executor { jobs.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) } }
+        // A switch to another domain (plan F6): once it lands, the tray says why each run stopped, and the executor drops
+        // what it held for the old domain. What Setup's check names first is set below, once the screens' models exist.
+        // Only a switch from one domain straight to another is said as one; a removal or re-import is the domain changing.
+        setup.onSwitch { [weak jobs] domain in jobs?.switched(to: domain.name) }
+        setup.onTenantChange { if let executor { Task { await executor.dropOtherTenants() } } }
         let directory = DirectoryStore(setup: setup, runner: runner)
+        let userChanges = UserChanges(executor: executor, directory: directory)
+        let onboardChanges = OnboardChanges(executor: executor, setup: setup, directory: directory)
         // Its own reader: the leaver's delegates are read live, never from a page's lists.
         let offboardChanges = OffboardChanges(executor: executor, setup: setup, directory: directory,
                                               access: UserAccess(setup: setup, runner: runner))
         // An offboarding started here is what the shared drive run calls "being offboarded".
         let auditRuns = AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit))
         auditRuns.leaving = { [weak offboardChanges] in offboardChanges?.leaversStarted ?? [] }
+        // What a switch would stop or hide, named before Setup's check reads anything: the tray's runs, onboarding's wait
+        // for Google, a temporary password not handed over yet, and an audit run going.
+        setup.runningRuns = { [weak jobs, weak onboardChanges, weak userChanges, weak auditRuns] in
+            jobs.map { SwitchStops.running(jobs: $0, onboarding: onboardChanges, users: userChanges, audits: auditRuns) } ?? []
+        }
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)
         let calendarReads = CalendarReads(setup: setup, runner: runner)
@@ -155,7 +167,7 @@ struct AppServices {
             nobodyHas?.record(domain: domain, messageIDs: messageIDs, notGone: notGone, by: setup?.connectedAdmin ?? "", at: at)
         }
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor, jobs: jobs,
-                           userChanges: UserChanges(executor: executor, directory: directory),
+                           userChanges: userChanges,
                            userAccess: UserAccess(setup: setup, runner: runner),
                            signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner,
                                                               backups: signatureBackups),
@@ -163,7 +175,7 @@ struct AppServices {
                            groups: groups,
                            groupMembers: groupMembers,
                            groupChanges: GroupChanges(executor: executor, setup: setup, members: groupMembers),
-                           onboardChanges: OnboardChanges(executor: executor, setup: setup, directory: directory),
+                           onboardChanges: onboardChanges,
                            onboardRoles: onboardRoles,
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
