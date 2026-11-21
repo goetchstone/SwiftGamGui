@@ -203,7 +203,7 @@ public final class OnboardChanges {
         discardPending()
         problem = nil
         if finishing?.isLive == true {
-            finishStoppedBy = setup.active.map(Executor.switchedTo)
+            finishStoppedBy = runTenant.map { Executor.stopReason(ranOn: $0, now: setup.active.map { ($0, setup.generation) }) }
             finishTask?.cancel()
         }
     }
@@ -504,7 +504,14 @@ public final class OnboardChanges {
             // A read: the directory shows the account (Google can lag; Users → Refresh shows it later).
             Task { [directory] in await directory.load() }
         }
-        if let retry = outcome.retry { startFinishing(retry) }
+        if let retry = outcome.retry {
+            startFinishing(retry)
+        } else if !setup.isConnected(to: pending.preview) {
+            // A switch during the run (plan F6's review): the executor parks nothing, so no wait begins on the new domain;
+            // what waited for Google is said stopped, as a switch during the wait says it.
+            giveUp(Executor.stopReason(ranOn: (pending.preview.domain, pending.preview.generation),
+                                       now: setup.active.map { ($0, setup.generation) }), phase: .stopped)
+        }
     }
 
     /// One step's result as it ends. The create's: the card, or no card (a failed create never shows its

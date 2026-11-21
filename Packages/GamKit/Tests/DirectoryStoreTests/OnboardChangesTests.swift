@@ -4,6 +4,7 @@ import Foundation
 @testable import GamEngine
 import Setup
 import Stores
+import Synchronization
 import TestSupport
 import Testing
 import Vault
@@ -705,12 +706,7 @@ final class OnboardChangesTests {
         await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
                                                               createAccount: true), role: role), confirmed)
         #expect(changes.finishing?.isLive == true && changes.card != nil)
-        let folder = scratch.appending(path: "config-other")
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
-            .write(to: folder.appending(path: "oauth2service.json"))
-        try Data(#"{"decoded_id_token": {"email": "admin@example.org"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
-        await setup.importFolder(folder, as: "example.org")
+        try await storeOther()
         await setup.checkAccess(Domain("example.org")!)
         #expect(setup.active == Domain("example.org")!)
         await changes.waitForFinishing()
@@ -720,6 +716,40 @@ final class OnboardChangesTests {
         #expect(changes.failedSteps.isEmpty, "no Retry on another domain")
         await changes.previewRetry()
         #expect(changes.pending == nil && changes.run != nil && changes.card != nil)
+    }
+
+    /// Review of plan F6: a switch during the run itself parked its waiting steps, so the wait for Google began on the new
+    /// domain, showing the old domain's hire there. Nothing waits now: those steps are said stopped, and no Retry is offered.
+    @Test func aSwitchDuringTheRunStartsNoWait() async throws {
+        try await connect()
+        try lag(100)
+        try await storeOther()
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", groups: ["missing@example.com"])
+        let held = try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                   createAccount: true), role: role)
+        let setup = setup, steps = Mutex(0)
+        await executor.setBeforeEachStep {
+            if steps.withLock({ $0 += 1; return $0 }) == 3 { _ = await setup.checkAccess(Domain("example.org")!) }
+        }
+        await changes.confirm(held, confirmed)
+        #expect(setup.active == Domain("example.org")!)
+        let parked = await executor.parkedRuns
+        #expect(changes.finishing == nil && !changes.isBusy && parked == 0)
+        let run = try #require(changes.run)
+        #expect(run.results[1]?.isWaiting == true, "the signature, begun before the switch, waited")
+        #expect(Set(run.notDone.values.map(\.reason)) == ["Stopped: you switched to example.org."])
+        #expect(changes.failedSteps.isEmpty)
+    }
+
+    /// example.org's credentials, stored but not checked.
+    private func storeOther() async throws {
+        let folder = scratch.appending(path: "config-other")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2service.json"))
+        try Data(#"{"decoded_id_token": {"email": "admin@example.org"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        await setup.importFolder(folder, as: "example.org")
     }
 
     // MARK: retrying what failed (D8)
