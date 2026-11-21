@@ -189,7 +189,7 @@ struct GoldenArgvTests {
         "create_datatransfer": {
             try GamCommands.createDataTransfer(
                 oldOwner: $0.string("old_owner"), service: $0.string("service"), newOwner: $0.string("new_owner"),
-                privacy: .init(validating: $0.string("privacy")))
+                privacy: .init(validating: $0.string("privacy")), releaseResources: $0.flag("release_resources"))
         },
         "print_datatransfers": { try GamCommands.printDataTransfers(oldOwner: $0.string("old_owner")) },
         "remove_all_calendar_acls": { try GamCommands.removeAllCalendarACLs(email: $0.string("email")) },
