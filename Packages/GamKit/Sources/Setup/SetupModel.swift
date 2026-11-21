@@ -75,6 +75,11 @@ public final class SetupModel {
     /// no classes. Taken from the token read at Check access, so no Keychain read (no Touch ID) per page.
     public var classroomReadable: Bool? { active == nil ? nil : activeClassroomReadable }
     private var activeClassroomReadable: Bool?
+    /// The scopes the connected domain's admin token records it was granted, nil when it doesn't record them as a list: what
+    /// Reports' named reports say each admin-token read needs. Taken from the token read at Check access, so no Keychain
+    /// read per page.
+    public var connectedAdminScopes: [String]? { active == nil ? nil : activeAdminScopes }
+    private var activeAdminScopes: [String]?
     /// GamGUI's domains, once looked up (reading them asks the operator to Allow access).
     public private(set) var gamguiEntries: [GamGUIKeychain.Entry]?
     /// The delegation step for the domain just imported or copied: its client ID and the link.
@@ -282,7 +287,8 @@ public final class SetupModel {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
                                                                 of: admin, in: domain, runner: runner)
                 activate(domain, admin: admin, accountID: account.id,
-                         classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) })
+                         classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) },
+                         adminScopes: token.flatMap { CredentialFacts.grantedScopes(inOAuth2: $0.bytes) })
                 activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
                     " Which account that is isn't confirmed (\($0)), so a change that could sign it out isn't made here."
                 } ?? ""))
@@ -372,12 +378,13 @@ public final class SetupModel {
         return (id, nil)
     }
 
-    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?) {
+    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?, adminScopes: [String]?) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         activeAdmin = admin
         activeAdminID = accountID
         activeClassroomReadable = classroomReadable
+        activeAdminScopes = adminScopes
         guard active != domain else { return }
         active = domain
         generation += 1
@@ -407,6 +414,7 @@ public final class SetupModel {
             activeAdmin = nil
             activeAdminID = nil
             activeClassroomReadable = nil
+            activeAdminScopes = nil
             generation += 1
             tenantChanged()
         }

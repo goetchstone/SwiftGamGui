@@ -17,6 +17,9 @@ struct BuilderView: View {
     let directory: DirectoryStore
     let groups: GroupStore
     let changes: BuilderChanges
+    /// A catalog command another screen asked to open (Reports' named reports): selected once the catalog is read, with the
+    /// search and area cleared so its row is listed, then let go.
+    @Binding var requested: String?
     @State private var catalog: Result<CommandCatalog, CatalogProblem>?
     @State private var query = ""
     @State private var area = ""
@@ -104,18 +107,31 @@ struct BuilderView: View {
             }
         }
         .task {
-            guard catalog == nil else { return }
-            catalog = await Task.detached(priority: .userInitiated) { Self.load() }.value
-            #if DEBUG
-            // Snapshots: a curated command by its id, or the first runnable command whose grammar starts with the words given,
-            // `+` between them.
-            if let wanted = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"], case .success(let loaded)? = catalog {
-                let words = wanted.replacingOccurrences(of: "+", with: " ")
-                selected = CuratedCommand.all.first { $0.id == wanted }?.id
-                    ?? loaded.commands.first { $0.runnable && $0.syntax.hasPrefix("gam \(words) ") }?.id
+            if catalog == nil {
+                catalog = await Task.detached(priority: .userInitiated) { Self.load() }.value
+                #if DEBUG
+                // Snapshots: a curated command by its id, or the first runnable command whose grammar starts with the words given,
+                // `+` between them.
+                if let wanted = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"], case .success(let loaded)? = catalog {
+                    let words = wanted.replacingOccurrences(of: "+", with: " ")
+                    selected = CuratedCommand.all.first { $0.id == wanted }?.id
+                        ?? loaded.commands.first { $0.runnable && $0.syntax.hasPrefix("gam \(words) ") }?.id
+                }
+                #endif
             }
-            #endif
+            openRequested()
         }
+        .onChange(of: requested) { openRequested() }
+    }
+
+    /// Selects the requested command once the catalog is read; an id this catalog doesn't hold opens nothing.
+    private func openRequested() {
+        guard let id = requested, case .success(let loaded)? = catalog else { return }
+        requested = nil
+        guard loaded.commands.contains(where: { $0.id == id }) else { return }
+        query = ""
+        area = ""
+        selected = id
     }
 
     @ViewBuilder private var list: some View {

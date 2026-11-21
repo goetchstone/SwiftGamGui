@@ -35,9 +35,10 @@ public enum CredentialFacts {
         return nil
     }
 
-    /// The scopes the admin token was granted (`oauth2.txt`'s top-level `scopes`), when recorded.
+    /// The scopes the admin token was granted (`oauth2.txt`'s top-level `scopes`), nil when that isn't a list (GamGUI's
+    /// `admin_token_scopes`). Its strings only: Python's `in` over the list can never match anything else either.
     public static func grantedScopes(inOAuth2 data: Data) -> [String]? {
-        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["scopes"] as? [String]
+        ((try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["scopes"] as? [Any])?.compactMap { $0 as? String }
     }
 
     /// The service account's client ID (`oauth2service.json`), for the delegation step, as GamGUI's

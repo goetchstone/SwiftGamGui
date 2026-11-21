@@ -86,6 +86,10 @@ it) and 11 (parity is a test).
   model, no executor, write or `AppServices`, and confirms nothing (its sheet does); `BuilderChanges` is named only by the
   screen, its sheet and the wiring, and nothing Siri or a model touches reaches it.
 
+- **Another screen can open a command** (Reports' named reports): it sets `ContentView.builderCommand` to a catalog id and
+  switches to the Builder, which selects it once its catalog is read, with the search and area cleared so its row is listed
+  (`BuilderView.requested`, GamGUI's `/builder?cid=`); an id the catalog doesn't hold opens nothing.
+
 ## Gotchas / mock-lies traps
 - **The mock answers only `gam version`** of the 501. The strict mock models the exact forms this app's typed builders send
   (`formatjson` and named fields) and refuses anything else as GAM refuses what it doesn't know (`not_modelled`), never in a
