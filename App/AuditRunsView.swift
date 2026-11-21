@@ -180,7 +180,7 @@ private struct StepReadLine: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            StepLine(title: read.step.title, ok: read.state == .read, words: words)
+            StepLine(title: read.step.title, ok: read.state == .read || read.state == .partial, words: words)
             if !read.detail.isEmpty {
                 DisclosureGroup("GAM's error") {
                     Text(read.detail).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
@@ -195,6 +195,7 @@ private struct StepReadLine: View {
     private var words: String {
         switch read.state {
         case .read: "\(read.rows.formatted()) row\(read.rows == 1 ? "" : "s")"
+        case .partial: "\(read.rows.formatted()) row\(read.rows == 1 ? "" : "s"), in part. \(read.why)"
         case .unknown: "unknown. \(read.why)"
         case .notRun: "not run. \(read.why)"
         }
@@ -235,6 +236,10 @@ private struct FindingView: View {
                 .font(.headline).accessibilityAddTraits(.isHeader)
             if finding.known {
                 Text(finding.summary)
+                if finding.partial {
+                    Label("Part of this table is unknown: what no read could tell is said beneath it.", systemImage: "questionmark.circle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
                 if !finding.rows.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(finding.rows.prefix(AuditRuns.rowsShown).enumerated()), id: \.offset) { index, row in
