@@ -33,8 +33,7 @@ final class SignatureChangesTests {
     init() throws {
         setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         let base = try RuntimeDirectory.prepare(scratch.appending(path: "run"))
-        let gam = try Fixtures.gamReadingSignatures(in: scratch.appending(path: "gam"))
-        let runner = AuthenticatedRunner(runner: GamRunner(binary: gam), vault: vault, runtimeDirectory: base)
+        let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
         setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         directory = DirectoryStore(setup: setup, runner: runner)
         argvLog = scratch.appending(path: "argv.log")

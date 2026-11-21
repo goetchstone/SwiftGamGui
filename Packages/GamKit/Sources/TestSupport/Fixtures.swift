@@ -54,54 +54,6 @@ public enum Fixtures {
         return Data(#"{"decoded_id_token": {"email": "\#(admin)"\#(sub)}, "refresh_token": "placeholder"\#(granted)}"#.utf8)
     }
 
-    /// A stand-in `gam` in `folder` for the strict mock plus `user <email> print signature`, the exact read ChangeCore keeps
-    /// before a signature is replaced, until the mock models it from GAM's source (with the fixtures' next regeneration).
-    /// Every other call is the mock's own. The read first asks the mock's `show signature` about the person, so an unknown
-    /// user or Gmail off fails in the mock's words; then it prints, as GAM 7.52.04's printShowSignature does, the getting
-    /// line on stderr and its titles and the person's row, the signature the mock last set (`GAM_MOCK_STATE`) or the mock's
-    /// canned one, quoted as GAM's CSV writer quotes, and no `signature` column for none.
-    public static func gamReadingSignatures(in folder: URL) throws -> URL {
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appending(path: "gam-reading-signatures.sh")
-        let script = #"""
-        #!/bin/sh
-        mock='\#(mockGam.path)'
-        if [ "${1:-}" = user ] && [ "${3:-}" = print ] && [ "${4:-}" = signature ] && [ $# -eq 4 ]; then
-          [ -z "${GAM_MOCK_ARGV_LOG:-}" ] || printf '%s\0' "$#" "$@" >> "$GAM_MOCK_ARGV_LOG"
-          user=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')
-          err=$(GAM_MOCK_ARGV_LOG= "$mock" user "$user" show signature 2>&1 >/dev/null); rc=$?
-          if [ "$rc" -ne 0 ]; then printf '%s\n' "$err" >&2; exit "$rc"; fi
-          printf 'Getting Signatures for %s\n' "$user" >&2
-          sfile="${GAM_MOCK_STATE:-}/signature/$user"
-          if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$sfile" ]; then
-            sig=$(cat "$sfile"; printf .); sig=${sig%.}
-          else
-            case "$user" in
-              alice@example.com) sig='Best,<br>Alice' ;;
-              carol@example.com) sig='Carol Clark<br>Operations' ;;
-              *) sig='' ;;
-            esac
-          fi
-          titles='User,displayName,sendAsEmail,replyToAddress,isPrimary,isDefault,treatAsAlias,verificationStatus'
-          row="$user,,$user,,True,True,,"
-          if [ -z "$sig" ]; then printf '%s\n%s\n' "$titles" "$row"; exit 0; fi
-          cell=$(printf '%s.' "$sig" | LC_ALL=C sed 's/\\/\\\\/g'); cell=${cell%.}
-          nl='
-        '
-          case "$cell" in
-            *[,\"]*|*"$nl"*|*"$(printf '\r')"*)
-              cell=$(printf '%s.' "$cell" | LC_ALL=C sed 's/"/""/g'); cell="\"${cell%.}\"" ;;
-          esac
-          printf '%s,signature\n%s,%s\n' "$titles" "$row" "$cell"
-          exit 0
-        fi
-        exec "$mock" "$@"
-        """#
-        try Data(script.utf8).write(to: url)
-        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
-        return url
-    }
-
     /// A fresh temp dir holding placeholder credential files. The mock only checks that they exist and
     /// aren't empty; nothing real is ever written here.
     public static func placeholderConfigDirectory() throws -> URL {

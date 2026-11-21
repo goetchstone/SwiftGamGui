@@ -601,8 +601,7 @@ final class ExecutorTests {
     /// The confirm sheet shows the signature the run will send, not a copy made beside it: `signatureBody`
     /// is the held argv element, byte for byte, while `shownArgv` (what the audit and logs see) masks it.
     @Test func aHeldSignatureBodyIsTheArgvElement() async throws {
-        let gam = try Fixtures.gamReadingSignatures(in: base.deletingLastPathComponent().appending(path: "gam"))
-        let executor = executor(gam: gam, keeper: LoggingKeeper(log: base.deletingLastPathComponent().appending(path: "kept.log")))
+        let executor = executor(gam: Fixtures.mockGam, keeper: LoggingKeeper(log: base.deletingLastPathComponent().appending(path: "kept.log")))
         // Bytes a copy could lose: a decomposed accent, a CR, a literal backslash-n, a token left as typed.
         let body = "<div>Ame\u{301}lie\r\nBest,\\n{x}</div>"
         let step = WriteStep(GamCommands.setSignature(email: "alice@example.com", signature: body, html: true),

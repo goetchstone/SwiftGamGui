@@ -25,15 +25,14 @@ final class SignatureScopeTests {
     let argvLog: URL
     let auditURL: URL
     let state: URL
-    /// The strict mock, and the exact signature read ChangeCore keeps before each write.
-    let gam: URL
+    /// The strict mock, which answers the exact signature read ChangeCore keeps before each write.
+    let gam = Fixtures.mockGam
     let backups: SignatureBackupStore
     let confirmed = OperatorConfirmation(confirmed: true)
 
     init() throws {
         setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         base = try RuntimeDirectory.prepare(scratch.appending(path: "run"))
-        gam = try Fixtures.gamReadingSignatures(in: scratch.appending(path: "gam"))
         backups = SignatureBackupStore(folder: scratch.appending(path: "signature-backups"))
         runner = AuthenticatedRunner(runner: GamRunner(binary: gam), vault: vault, runtimeDirectory: base)
         setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
