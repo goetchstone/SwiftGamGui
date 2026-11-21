@@ -244,6 +244,32 @@ final class SheetExportsTests {
         #expect(records().last?["extra"]?.object?["upload"]?.string == "sheets_refused")
     }
 
+    /// The review of F4: a switch landing after the executor checked the tenant, before the preview is shown, used to leave
+    /// the old domain's held export on screen with Export enabled. Now it's dropped, and said.
+    @Test func aSwitchWhileTheExportIsHeldDropsIt() async throws {
+        try await connect("example.org", admin: "admin@example.org")
+        try await connect()
+        final class Arm: @unchecked Sendable { var armed = false }
+        let arm = Arm(), setup = setup
+        let base = try RuntimeDirectory.prepare(scratch.appending(path: "run-switch"))
+        let gam = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
+        let executor = Executor(runner: gam, audit: AuditLog(url: writeAuditURL), tenant: { @MainActor in
+            let held = setup.active.map { ($0, setup.generation) }
+            if arm.armed {
+                arm.armed = false
+                await setup.checkAccess(Domain("example.org")!)   // lands as the executor holds the old domain's preview
+            }
+            return held
+        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_STATE": state.path])
+        let switching = SheetExports(executor: executor, setup: setup, access: access)
+        arm.armed = true
+        await switching.preview(read: Self.read, command: "build.print_delegates", commandName: "List mailbox delegates", rows: 2)
+        #expect(setup.active?.name == "example.org")
+        guard case .problem(let words) = switching.state else { Issue.record("\(switching.state)"); return }
+        #expect(words.contains("changed while the export was held"))
+        #expect(exportCalls().isEmpty && made().isEmpty)
+    }
+
     /// A read carrying todrive in any spelling GAM reads is refused at the preview, before any read, and by the Builder's read
     /// door, before GAM runs and unrecorded (it ran nothing). A curated search's value is one element GAM reads as a query,
     /// but it's refused all the same, as GamGUI's `catalog_read` refuses it: the stricter side.

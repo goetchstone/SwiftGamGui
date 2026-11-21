@@ -185,6 +185,13 @@ public final class SheetExports {
             if case .success(let preview) = held { await executor.discard(preview.id) }
             return
         }
+        // A switch can land after the executor checked the tenant and before this resumes (a switch during `.checking` drops
+        // nothing): what it held is the old domain's, so it's dropped, never shown with Export.
+        guard setup.active == domain, setup.generation == generation else {
+            if case .success(let preview) = held { await executor.discard(preview.id) }
+            state = .problem("The connected domain changed while the export was held, so nothing is held. Export again.")
+            return
+        }
         switch held {
         case .success(let preview): state = .previewing(pending(preview))
         case .failure(let refusal): state = .problem(refusal.message)
