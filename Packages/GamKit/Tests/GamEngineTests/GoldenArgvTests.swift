@@ -261,6 +261,7 @@ struct GoldenArgvTests {
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
+        "print_licenses": { _ in GamCommands.printLicenses() },
         "print_user_tokens": { try GamCommands.printTokens(user: $0.string("user")) },
         "print_chrome_profiles": { try GamCommands.printChromeProfiles(user: $0.string("user")) },
         "print_mobile_devices": { try GamCommands.printMobileDevices(user: $0.string("user")) },
