@@ -469,6 +469,18 @@ final class ExecutorTests {
         guard case .failed(let message, _) = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
         #expect(message.hasPrefix("The audit log couldn't be written"))
         #expect(wrote().isEmpty)
+        // GAM was never started for it: the outcome says so (`began`), and noted nothing (plan F4's export reads both).
+        #expect(outcome.began.isEmpty && outcome.noted.isEmpty)
+    }
+
+    /// Which steps GAM was started for, and what a write's own output says to keep: a write that isn't a Sheet export notes
+    /// nothing, on its record or in the outcome (plan F4; `SheetExportsTests` holds the export's).
+    @Test func theOutcomeSaysWhichStepsRanAndNotesNothingForOtherWrites() async throws {
+        let executor = executor()
+        let outcome = await executor.run(try await held(executor, [suspend()]), confirmation: confirmed)
+        #expect(outcome.succeeded && outcome.began == [0] && outcome.noted.isEmpty)
+        let end = try #require(AuditLog.records(at: auditURL).first?["extra"]?.object)
+        #expect(end["phase"]?.string == "end" && end["url"] == nil && end["upload"] == nil)
     }
 
     /// GamGUI's write lock: a second write waits for the first, whatever its target.

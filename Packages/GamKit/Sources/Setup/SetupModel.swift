@@ -345,6 +345,14 @@ public final class SetupModel {
         }
     }
 
+    /// Setup's Domain-Wide Delegation link for `domain`, every scope this app asks for (`DelegationScopes.authorizationURL`), or
+    /// nil when its service account's client ID can't be read. A screen that found a scope refused links here (the Sheet export's
+    /// preview, plan F4), never to GAM's own link, which names only the scopes it checked and overwrites the client's list.
+    public func delegationLink(for domain: Domain) async -> URL? {
+        guard let key = try? await vault.credentials(for: domain)[.oauth2Service] else { return nil }
+        return DelegationScopes.authorizationURL(clientID: CredentialFacts.clientID(inServiceAccount: key.bytes), domain: domain)
+    }
+
     /// Adds an observer of tenant changes. It is kept as long as the model, so it should hold its owner weakly.
     public func onTenantChange(_ observer: @escaping @MainActor () -> Void) {
         tenantObservers.append(observer)

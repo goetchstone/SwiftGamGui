@@ -935,6 +935,37 @@ public enum GamCommands {
         ["todrive"] + optional("tdtitle", title) + ["tdnobrowser", "true", "tdnoemail", "true"]
     }
 
+    /// `token` as GAM reads a keyword (`getArgument`, 7.52.04: lowercased, every `_` dropped), stripped first as GamGUI's
+    /// `as_keyword` strips (GAM doesn't: the stricter side). `to_drive` and `ToDrive` are `todrive` to GAM: compare this, never
+    /// the raw spelling.
+    public static func asKeyword(_ token: String) -> String {
+        String(String.UnicodeScalarView(PythonText.lower(PythonText.strip(token)).unicodeScalars.filter { $0 != "_" }))
+    }
+
+    /// Whether GAM would read any element of `argv` as `todrive`: a read that writes a Sheet (GamGUI's `carries_todrive`). Every
+    /// read path refuses one (`UserAccess.catalogRead`, `AuditRuns.isAuditRead`); only `exportToSheet` adds the word, as a write.
+    public static func carriesToDrive(_ argv: [String]) -> Bool {
+        argv.contains { asKeyword($0) == "todrive" }
+    }
+
+    /// Whether `argv` is a read GAM takes `todrive` on: a `print` or `report` command, its verb first (`print users`) or after an
+    /// entity (`user <x> print delegates`, `all users print …`), as the mock reads it. Only those print a CSV (CSVPrintFile).
+    static func printsATable(_ argv: [String]) -> Bool {
+        argv.first == "print" || argv.first == "report" || (argv.count > 2 && argv[2] == "print")
+    }
+
+    /// A read's table to a new Google Sheet (plan F4, GamGUI's `export_to_sheet`): `read`'s exact argv, then `todriveArgs(title:)`.
+    /// GAM runs the read again and uploads what it gets then, so it's a write: only ChangeCore runs it, from its held preview.
+    /// Refuses a read that isn't a `print` or `report` read and one that already carries `todrive` in any spelling GAM reads
+    /// (`carriesToDrive`): a second file, made under GAM's own defaults (its browser, its email).
+    public static func exportToSheet(_ read: GamRead, title: String) throws(Invalid) -> GamWrite {
+        guard printsATable(read.argv) else { throw .argument("Only a print or report read can go to a Google Sheet") }
+        guard !carriesToDrive(read.argv) else {
+            throw .argument("This read already says todrive, so it can't be exported again: build it without that word")
+        }
+        return GamWrite(read.argv + todriveArgs(title: title), action: .exportToSheet)
+    }
+
     // MARK: the Builder's catalog reads (invariant 3's one door from the catalog)
 
     /// A catalog command's read with `values` (by slot key), as GamGUI's generic read builder puts it together: each value trimmed

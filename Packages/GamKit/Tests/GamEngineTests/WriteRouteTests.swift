@@ -112,6 +112,33 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
     }
 
+    /// Plan F4: a read's export to a Google Sheet is a write (GAM makes a file in the admin's Drive), run only from its held
+    /// preview. Its builder (`GamCommands.exportToSheet`, the only place `todriveArgs` is appended) is called by its model alone;
+    /// the model reaches the executor only to hold one preview and to run the one its sheet shows, never a runner or a ticket.
+    /// Every read path refuses a read GAM would read as carrying `todrive` (`carriesToDrive`): the Builder's door, before GAM
+    /// runs, and the audit runs' steps.
+    @Test func theSheetExportRunsOnlyFromItsHeldPreview() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["exportToSheet("])
+                == ["Packages/GamKit/Sources/Directory/SheetExports.swift", "Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["todriveArgs("]) == ["Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
+        #expect(try Self.files(in: "App", matching: ["exportToSheet(", "todriveArgs(", "\"todrive\""]).isEmpty)
+        let model = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/SheetExports.swift") })
+        let reaching = ["WriteTicket", "ticket:", "runner.run(", "runRaw(", "Process", "OperatorConfirmation(", "catalogRead("]
+        #expect(model.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        let runs = model.lines.filter { $0.contains("executor.run(") }
+        #expect(runs.count == 1 && runs.allSatisfy { $0.contains("executor.run(preview, confirmation: confirmation)") }, "\(runs)")
+        // What it runs is the preview its sheet shows, unchanged: the one held, by its id.
+        #expect(model.lines.contains { $0.contains("case .previewing(let held) = state, held.id == pending.id, let preview = pending.preview") })
+        #expect(model.lines.filter { $0.contains("executor.preview(") }.count == 1)
+        let door = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/UserAccess.swift") })
+        let start = try #require(door.lines.firstIndex { $0.contains("public func catalogRead(_ read: GamRead") })
+        let refused = try #require(door.lines[start...].firstIndex { $0.contains("guard !GamCommands.carriesToDrive(read.argv) else") })
+        let ran = try #require(door.lines[start...].firstIndex { $0.contains("readNow(read") })
+        #expect(refused < ran, "refused before GAM runs")
+        #expect(try Self.files(in: "Packages/GamKit/Sources/Directory", matching: ["GamCommands.carriesToDrive("])
+                == ["Packages/GamKit/Sources/Directory/AuditRuns.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+    }
+
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
     /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
     @Test func theJobsTrayReachesNoWrite() throws {

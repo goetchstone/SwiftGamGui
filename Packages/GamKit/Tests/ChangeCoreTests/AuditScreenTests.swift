@@ -35,6 +35,8 @@ struct AuditScreenTests {
         #expect(WriteAction.deleteCalendarACL.displayName == "Delete calendar ACL")
         #expect(WriteAction.imapOff.displayName == "IMAP off" && WriteAction.popOff.displayName == "POP off")
         #expect(WriteAction.suspendUser.displayName == "Suspend user" && WriteAction.deleteSendAs.displayName == "Delete send as")
+        // Named as GamGUI's record names it (plan F4): its underscores are word breaks; a low-risk write, as GamGUI's.
+        #expect(WriteAction.exportToSheet.displayName == "Export to sheet" && WriteAction.exportToSheet.minimumRisk == .low)
         for action in WriteAction.allCases {
             let words = action.displayName.split(separator: " ")
             #expect(words.first?.first?.isUppercase == true, "\(action)")
