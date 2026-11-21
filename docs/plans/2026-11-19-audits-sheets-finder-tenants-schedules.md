@@ -135,6 +135,54 @@ GamGUI's #132 (continuation lines joined) isn't ported; over GamGUI's own catalo
 code over this repo's catalog. About 80 glosses say little (a placeholder for a verb, "Calendar.", "Create for a user.", one
 "Show details for for"): GamGUI's to fix first. Not done: the model (steps 2 to 6, F5b), and screenshots from CI.
 
+*As built, F5b (2026-11-21, steps 2 to 6; Swift only):* **kept**: on the held-out samples the finder found the right command
+for 6 of 13, the Builder's search for 1 of 13 (first result and top three alike). `CommandFinder` (Assist) takes the commands
+as plain words (the runnable reads' glosses, the curated commands' names), so the model module still reaches no command; the
+Builder's Ask in Plain English… sheet (`App/PlainEnglishFinder.swift`) hands back a `FinderDraft` (an id and the fields' words)
+through `requested`, and the Builder fills the fields and shows the exact `gam` line: Run, or Preview… and confirm, as always
+(`WriteRouteTests.theFinderReachesNoRunOrTicket`). Runbook catalog-builder.md has the details. Changed from the plan, each by
+measurement on the dev samples:
+- **See or change comes first**, a two-way pick with no none (every request is one; offered none, it said none for 2 of 22
+  questions). A change picks among the curated changes alone and a read never reaches one. Offered first as a pick of their
+  own, the curated commands drafted changes for questions ("Is bob suspended?" became Suspend account; "does carol have an
+  auto reply turned on", Set vacation): a pick almost never says none. Curated reads lead their categories' lists instead.
+- **Categories largest first**, with a line naming the subcategories of the one big category ("Users holds: Calendars, …"):
+  its bare name doesn't say a person's signature or Drive files are in it, and asked for them the category pick said none.
+- A text field shows GAM's grammar word (`Device (<CrOSDeviceID>)`): without it, "chromebook" was copied into a device-ID field.
+- **A choice is held to the request's words too** (left at its default otherwise): given "put alice in the sales group", the
+  model filled Role with member, which the request never said; the same pick could have been owner. Found by the held-out
+  run's no-invented-value check, so the held-out numbers below are given before and after.
+- Alike glosses (`print users` and `print users select …`) are one choice; the filled fields pick among them.
+
+Measured with Apple's Evaluations under `swift test`, on demand (`SWIFTGAMGUI_MODEL=1 swift test --package-path Packages/GamKit
+--filter CommandFinderEvals`): 22 dev and 13 held-out requests of the operator's kinds (user lookups, group membership,
+licenses, signatures, offboarding reads and changes, devices, shared drives, two that nothing fits), against the strict
+mock's people, in `Tests/Fixtures/finder` with the saved runs. Greedy, so a run repeats.
+
+| Run (dev) | Right command | Category right | Fields right | Invented a value | Seconds, mean / most |
+|---|---|---|---|---|---|
+| Plan as written: category, subcategory, command | 8 of 22 | 0.57 | 0.86 | 0 | 3.5 / 6.8 |
+| Curated commands a pick of their own, first | 11 of 22 | 0.80 | 0.80 | 0 | 3.6 / 7.4 |
+| See or change first | 11 of 22 | 0.67 | 0.90 | 0 | 3.4 / 6.1 |
+| No none in see or change; the line naming Users' subcategories; the grammar word | 14 of 22 | 0.76 | 0.92 | 0 | 4.4 / 7.2 |
+
+| Held-out, run once, at the last row | Right first | Right in top three |
+|---|---|---|
+| The finder | 6 of 13 (asked which of two on 3; the other never the right one) | (no list: one command, or a question) |
+| The Builder's search, the sentence as typed | 1 of 13 (the request nothing fits) | 1 of 13 |
+| A word ranker (not in the app: commands ranked by the request's words in their name and gloss) | 1 of 13 | 2 of 13 |
+
+After the choice fix, the held-out run again: 6 of 13, no invented value (before it, 1 of 13 had one: the role). See or change
+was right on every sample a command fits, in both splits; fields right on every held-out sample whose command was right. The word ranker found
+9 of 22 on dev but 1 of 13 held out: a word search fits the words it was written for, where the model's reading of new words
+held better. Still wrong on dev (no held-out case is read one by one): "Is bob suspended?" (Users, then no subcategory), "find
+all suspended users" (List users, not Find users), a person's groups and "who's in the sales group?" (the wrong category),
+"how many licenses" (category none since the Users line), Drive files (Shared Drives), a person's shared drives and a drive's
+permissions (the drive list instead), and two people swapped ("give dana access to bob's mailbox" made dana the mailbox's
+owner; code can't tell, the exact command and the preview show it). The three-sample ask held the right command on no sample
+whose greedy pick was wrong, at two calls (about 1.5 s) each time: kept as the plan says, worth measuring again. Not done:
+screenshots (the sheet needs the model, which CI hasn't), and the operator's own use.
+
 ### F6 — Tenant switching from anywhere · *both apps*
 A domain menu in the toolbar when more than one domain is connected; choosing one runs the same `checkAccess`
 (switches only on a pass, Touch ID if the Vault session ended), disabled while busy, warns that a run in progress stops

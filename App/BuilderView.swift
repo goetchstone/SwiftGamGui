@@ -27,6 +27,10 @@ struct BuilderView: View {
     @State private var area = ""
     @State private var runnableOnly = true
     @State private var selected: String?
+    /// Ask in Plain English (plan F5b): the sheet, and the command it found with its values, filled into that command's fields
+    /// when it opens (`requested`). Nothing runs from it.
+    @State private var asking = false
+    @State private var drafted: FinderDraft?
 
     struct CatalogProblem: Error, Sendable { let why: String }
 
@@ -87,10 +91,11 @@ struct BuilderView: View {
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
                     CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
-                                  readAudit: readAudit)
-                        .id(curated.id)
+                                  readAudit: readAudit, drafted: drafted(selected))
+                        .id(curated.id + (drafted(selected)?.id.uuidString ?? ""))
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
-                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit).id(command.id)
+                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, drafted: drafted(selected))
+                        .id(command.id + (drafted(selected)?.id.uuidString ?? ""))
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
                                            description: Text("Search GAM's commands on the left. One that only reads runs from here, "
@@ -109,6 +114,17 @@ struct BuilderView: View {
                 .help("Show one area's commands")
                 Toggle("Runnable Only", systemImage: "play.circle", isOn: $runnableOnly)
                     .help("Show only the commands that run from here")
+                Button("Ask in Plain English…", systemImage: "text.bubble") { asking = true }
+                    .disabled({ if case .success? = catalog { false } else { true } }())
+                    .help("Describe what to see or change; the on-device model picks a command and fills it in. Nothing runs.")
+            }
+        }
+        .sheet(isPresented: $asking) {
+            if case .success(let loaded)? = catalog {
+                PlainEnglishSheet(catalog: loaded, directory: directory, groups: groups) { draft in
+                    drafted = draft
+                    requested = draft.command
+                }
             }
         }
         .task {
@@ -129,15 +145,19 @@ struct BuilderView: View {
         .onChange(of: requested) { openRequested() }
     }
 
-    /// Selects the requested command once the catalog is read; an id this catalog doesn't hold opens nothing.
+    /// Selects the requested command once the catalog is read (a curated one too, which Ask in Plain English opens); an id
+    /// neither holds opens nothing.
     private func openRequested() {
         guard let id = requested, case .success(let loaded)? = catalog else { return }
         requested = nil
-        guard loaded.commands.contains(where: { $0.id == id }) else { return }
+        guard loaded.commands.contains(where: { $0.id == id }) || CuratedCommand.all.contains(where: { $0.id == id }) else { return }
         query = ""
         area = ""
         selected = id
     }
+
+    /// The values Ask in Plain English found for `id`, when it's the command it found.
+    private func drafted(_ id: String) -> FinderDraft? { drafted?.command == id ? drafted : nil }
 
     @ViewBuilder private var list: some View {
         switch catalog {
@@ -287,6 +307,8 @@ private struct CommandDetail: View {
     let setup: SetupModel
     let access: UserAccess
     let readAudit: ReadAudit
+    /// The fields Ask in Plain English found, filled in as the page opens: shown, never run.
+    let drafted: FinderDraft?
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
@@ -343,6 +365,7 @@ private struct CommandDetail: View {
                 ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) })
             }
         }
+        .onAppear { if let drafted { values = drafted.values } }
     }
 
     @ViewBuilder private var runSection: some View {
@@ -397,6 +420,8 @@ private struct CuratedDetail: View {
     let groups: GroupStore
     let changes: BuilderChanges
     let readAudit: ReadAudit
+    /// The fields Ask in Plain English found, filled in as the page opens: shown, never previewed or run until asked.
+    let drafted: FinderDraft?
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
@@ -464,6 +489,7 @@ private struct CuratedDetail: View {
             }
         }
         .onAppear {
+            if let drafted { values = drafted.values }
             for field in command.fields where field.kind == .choice && values[field.key] == nil { values[field.key] = field.defaultValue }
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }

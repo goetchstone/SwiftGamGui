@@ -194,6 +194,33 @@ struct WriteRouteTests {
             .contains("App/LogReaderView.swift"), "the scan must see the reader")
     }
 
+    /// Plan F5b: what Ask in Plain English finds never reaches a run or a ticket (invariant 10). The finder, `CommandFinder`, is
+    /// in Assist, which depends on nothing (`theLogReaderCanRunNothing`). Its one screen names no command builder, runner,
+    /// write, preview or confirmation, and hands the Builder a `FinderDraft` alone: a command's id and its fields' words, made
+    /// only there. The Builder fills a command's fields from it and selects the command; no line naming a draft runs, reads
+    /// or previews anything: a read runs on the operator's Run, a change after their Preview… and confirm.
+    @Test func theFinderReachesNoRunOrTicket() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["CommandFinder"]) == ["Packages/GamKit/Sources/Assist/CommandFinder.swift"])
+        #expect(try Self.files(in: "App", matching: ["CommandFinder"]) == ["App/PlainEnglishFinder.swift"])
+        let app = try Self.swiftFiles(in: "App")
+        let sheet = try #require(app.first { $0.path == "App/PlainEnglishFinder.swift" })
+        let reaching = ["WriteTicket", "ticket:", "Executor", "executor", "GamWrite", "GamRead", "WriteStep", "HeldPreview", "Confirmation",
+                        "Process", "catalogRead", ".built(", ".run(", "Runner", "runner", "BuilderChanges", "changes.", ".preview(", "UserAccess",
+                        "ReadAudit", "AppServices"]
+        #expect(sheet.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        // The draft holds words only, and only the sheet makes one.
+        let draft = sheet.lines.drop { !$0.contains("struct FinderDraft") }.prefix { $0 != "}" }
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("let ") || $0.hasPrefix("var ") }
+        #expect(draft == ["let id = UUID()", "let command: String", "let values: [String: String]"], "\(draft)")
+        #expect(try Self.files(in: "App", matching: ["FinderDraft("]) == ["App/PlainEnglishFinder.swift"])
+        // The Builder: every line naming a draft selects it, fills fields from it, or passes it on.
+        let builder = try #require(app.first { $0.path == "App/BuilderView.swift" })
+        let drafting = builder.lines.filter { $0.contains("drafted") || $0.contains("draft.") || $0.contains("draft in") }
+        #expect(drafting.count >= 6, "the scan must see the Builder's draft lines: \(drafting)")
+        let acting = ["run(", "preview(", "reading.", "changes.", "catalogRead", ".built(", "access."]
+        #expect(drafting.filter { line in acting.contains { line.contains($0) } }.isEmpty, "\(drafting)")
+    }
+
     /// The connected apps' summary is code's own sentences: its model was retired (plan 2026-11-18, R1), and the panel
     /// talks to no model again unless someone means it to.
     @Test func theConnectedAppsPanelTalksToNoModel() throws {
