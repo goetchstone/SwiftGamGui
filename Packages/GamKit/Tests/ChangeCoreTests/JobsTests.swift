@@ -268,6 +268,16 @@ final class JobsTests {
         #expect(byTitle["Offboarding alice@example.com"] == "Stopped: you switched to example.org — 3 not attempted. 1 of 4 succeeded.")
         #expect(byTitle["Suspend user for carol@example.com"] == "Done: 1 of 1 succeeded.")
         #expect(byTitle["Earlier"] == "Done: 1 of 1 succeeded.")
+        // A run the operator stopped keeps what stopped it (plan F6's review): a later switch doesn't relabel it.
+        let mine = UUID()
+        board.stopRun = { _ in true }
+        board.handle(.started(job: mine, preview: UUID(), title: "Mine", total: 3))
+        #expect(await board.stop(mine))
+        board.switched(to: "example.net")
+        board.handle(.step(job: mine, item: "One", outcome: .succeeded, detail: ""))
+        for _ in 0..<2 { board.handle(.step(job: mine, item: "Next", outcome: .notRun, detail: "Not run: stopped.")) }
+        board.handle(.finished(job: mine))
+        #expect(board.jobs.first { $0.id == mine }?.status == "Ended: 1 of 3 succeeded, 2 not run.")
         // The executor reports a routine as one.
         let executor = try executor(), events = events
         let steps = [suspend("alice@example.com"), suspend("bob@example.com")]

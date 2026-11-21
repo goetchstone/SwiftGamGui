@@ -151,6 +151,21 @@ struct DomainSwitchTests {
                 == "Setup is busy with another action. Wait for it to finish, then try again. Nothing changed.")
     }
 
+    /// The tray's "you switched" is a switch's only: another domain straight after the active one, never a re-check, a
+    /// removal or a connect after one (plan F6's review: nil → example.org was called a switch).
+    @Test func onlyAStraightChangeOfDomainIsASwitch() async throws {
+        let model = try await connected()
+        var switched: [String] = []
+        model.onSwitch { switched.append($0.name) }
+        #expect(await model.checkAccess(example) == .connected)
+        #expect(switched.isEmpty, "a re-check")
+        #expect(await model.checkAccess(other) == .connected)
+        #expect(switched == ["example.org"])
+        await model.remove(other)
+        #expect(await model.checkAccess(example) == .connected)
+        #expect(switched == ["example.org"], "a connect after a removal")
+    }
+
     @Test func nothingIsSaidForAPassOrAWarning() {
         #expect(DomainMenu.answer(.connected, switchingTo: other, from: example) == nil)
         #expect(DomainMenu.answer(.warned, switchingTo: other, from: example) == nil)

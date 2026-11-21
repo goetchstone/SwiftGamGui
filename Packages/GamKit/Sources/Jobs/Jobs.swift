@@ -197,10 +197,12 @@ public final class JobBoard {
     /// The runs going now, oldest first: what a domain switch would stop (plan F6).
     public var runningJobs: [Job] { jobs.filter { !$0.finished } }
 
-    /// Another domain was made active (plan F6): every run going now is stopped by the executor after the step in hand, since
-    /// its tenant isn't the connected one any more, and says so here once it ends, in GamGUI's words (its `stop_why`).
+    /// Another domain was made active straight after the one these runs are on (plan F6; `SetupModel.onSwitch`): every run
+    /// going now is stopped by the executor after the step in hand, since its tenant isn't the connected one any more, and
+    /// says so here once it ends, in GamGUI's words (its `stop_why`). A run already stopping (the operator's Stop, or an
+    /// earlier switch) keeps what stopped it.
     public func switched(to domain: String) {
-        for index in jobs.indices where !jobs[index].finished {
+        for index in jobs.indices where !jobs[index].finished && !jobs[index].stopping {
             jobs[index].switchedTo = domain
             jobs[index].stopping = true
         }

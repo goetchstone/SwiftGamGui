@@ -140,10 +140,9 @@ struct AppServices {
         setup.runningRuns = { [weak jobs] in
             jobs?.runningJobs.map { SetupModel.RunningRun(id: $0.id, title: $0.title, leftHalfDone: $0.routine) } ?? []
         }
-        setup.onTenantChange { [weak setup, weak jobs] in
-            if let domain = setup?.active { jobs?.switched(to: domain.name) }
-            if let executor { Task { await executor.dropOtherTenants() } }
-        }
+        // Only a switch from one domain straight to another is said as one; a removal or re-import is the domain changing.
+        setup.onSwitch { [weak jobs] domain in jobs?.switched(to: domain.name) }
+        setup.onTenantChange { if let executor { Task { await executor.dropOtherTenants() } } }
         let directory = DirectoryStore(setup: setup, runner: runner)
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)

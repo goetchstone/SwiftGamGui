@@ -107,6 +107,10 @@ public final class SetupModel {
     /// the order added: with one slot, the store made last took it, and the directory silently stopped
     /// loading on connect.
     @ObservationIgnored private var tenantObservers: [@MainActor () -> Void] = []
+    /// Told when another domain is made active straight after the active one (plan F6): a switch, with the domain switched
+    /// to. A change through no active domain (a removal or re-import, then a check) isn't one: what stops then stops because
+    /// the domain changed, not because of a switch.
+    @ObservationIgnored private var switchObservers: [@MainActor (Domain) -> Void] = []
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
     /// The domain whose access check runs now: one at a time (plan F6), and a second is refused naming this one.
@@ -460,6 +464,11 @@ public final class SetupModel {
         for observer in tenantObservers { observer() }
     }
 
+    /// Adds an observer of switches from one domain straight to another (`switchObservers`). Kept as long as the model.
+    public func onSwitch(_ observer: @escaping @MainActor (Domain) -> Void) {
+        switchObservers.append(observer)
+    }
+
     /// The token's account ID when GAM reads the same `id` for `admin` now (an alias reads as its account); otherwise none,
     /// and why, in words Setup shows: the token has none (an admin typed in has none either), GAM can't read the admin (a
     /// delegated admin whose role doesn't reach its own account, an admin outside this directory), or GAM reads another
@@ -492,9 +501,11 @@ public final class SetupModel {
         activeClassroomReadable = classroomReadable
         activeAdminScopes = adminScopes
         guard active != domain else { return }
+        let from = active
         active = domain
         generation += 1
         tenantChanged()
+        if from != nil { for observer in switchObservers { observer(domain) } }
     }
 
     /// Makes `found` the domain's whole set. New credentials haven't been checked, so a domain that
