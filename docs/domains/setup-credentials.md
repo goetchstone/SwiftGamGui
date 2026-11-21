@@ -31,8 +31,12 @@ Python GamGUI's Keychain items, and checking that delegation actually works ("Ch
   byte-identical to GamGUI's on every fixture case.
 - `GamEngine/AccessCheck.swift`:
   - `DelegationScopes` — GamGUI's `DWD_SCOPES` (`scopes`, what Check access verifies), its `OPTIONAL_DWD_SCOPES`
-    (`optional`: Cloud Identity devices and the Alert Center, offered but never verified, GamGUI #151), and the
-    pre-filled Admin-console link, which offers both (`offered`), as GamGUI's delegation step does (`setup.json`).
+    (`optional`: Cloud Identity devices, the Alert Center and, since plan F4 (GamGUI #174), Google Sheets for a read's export
+    to a Sheet, which the export's preview checks; offered but never verified, GamGUI #151), and the pre-filled Admin-console
+    link, which offers them all (`offered`), as GamGUI's delegation step does (`setup.json`). `SetupModel.delegationLink(for:)`
+    makes the same link for a screen that found a scope refused (the export's preview), never GAM's own, which names only the
+    scopes it checked and overwrites the client's list. The mock's tenant authorizes Sheets too, less any scope listed in
+    `GAM_MOCK_STATE/dwd_missing`, which its todrive upload reads as well.
   - `GamExitCode` — 10 and 16, held to the build's table.
   - `AccessCheck.interpret` — GamGUI's `_check_result` / `_parse_check` / `_extract_auth_url`.
   - `AuthenticatedRunner.checkAccess(admin:as:)`.

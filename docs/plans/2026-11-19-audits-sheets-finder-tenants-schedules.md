@@ -107,6 +107,24 @@ counts checked against the Admin console (Billing → Licenses).
   Finder), Sheet URLs read back from `export_to_sheet` records, incident evidence folders. Runs no `gam`, never lists
   the run or setup folders.
 
+*As built, F4 (2026-11-21; GamGUI #174, `38ea01b`, fixtures generated from it):* Export to a Google Sheet… beside the Builder's
+Export CSV… (⇧⌘E), for a table GAM's `todrive` takes: a curated write (`SheetExports`, `GamCommands.exportToSheet`), its preview
+holding the read's exact argv then `todrive tdtitle "<domain> - <command>" tdnobrowser true tdnoemail true` (GamGUI's
+`todrive_args`, held to `argv.json`), after a Drive and Sheets scope check (a refused scope offers no Export, with Setup's link,
+which now offers the Sheets scope: `setup.json`); run once from that preview, audited `export_to_sheet`, its outcome read from
+the upload's own lines (`SheetExport`, GamGUI's `sheet_export.py` word for word; the executor keeps what a write's output says,
+`RunOutcome.noted`, and which steps ran, `began`). Every read path refuses a read carrying `todrive` in any spelling GAM reads.
+The mock answers `todrive` as GAM 7.52.04's `writeCSVToDrive` does, read from GAM's source (GamGUI's mock the lead). Files, a
+sidebar screen, read only: the Sheets read back from the log, each incident's evidence counted by descriptor, the CSVs saved.
+Runbooks catalog-builder.md, guard-audit.md, gam-runner.md, setup-credentials.md; SECURITY.md. Deviations from GamGUI, each
+listed there: two records per export (begin, end), never `sensitive_export` (sensitive reads stay browse-only); Files also lists
+the last 50 CSVs saved through a save panel, and has a sidebar entry; a catalog command whose `todrive` is on a later grammar
+line isn't offered (this catalog holds first lines); the export also refuses a read that isn't a `print`/`report` read; a link
+is stricter (no empty port, `[`, `\`); GAM's error is shown, not behind a disclosure. The regeneration brings GamGUI #172's
+and #175's builders, listed as not ported (`print_courses` takes `counts` as GamGUI's does); `audit_runs.json` stays at
+`086d2f8`, #172's three new runs being F3b's to port. Not verified: no export has run on a real domain (the first waits on the
+operator's yes); the mock's upload lines are GAM's source, never seen live; screenshots come from CI.
+
 ### F5 — Plain English to a checked command · *Swift only; the D&D model's method*
 The model never writes GAM syntax. It narrows and fills; code checks and builds; the result is a draft (invariant 10).
 1. **Descriptions without a model**: port GamGUI's `gloss()` (grammar-derived) so all 1,052 commands have words to be

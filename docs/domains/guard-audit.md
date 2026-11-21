@@ -218,5 +218,20 @@ Suspend had none (RULE-FEEDBACK 2026-10-28).
   can't be tested against those forms (the Builder's fields refuse them); and `GamError.classify` reads "404" or "not
   found" anywhere in a line, the address included, which only the alias-delete check still relies on.
 
+## Built for the Sheet export (plan F4, 2026-11-21)
+A read's table exported to a new Google Sheet is a curated write through the executor (runbook catalog-builder.md). Two small
+additions, each a test (`ExecutorTests`, `SheetExportsTests`):
+- **`GamWrite.noted` and `RunOutcome.noted`**: what a write's own stdout and stderr say to keep (GamGUI's `_run_write`
+  `noted`), read whether GAM exited 0 or not and written on the end record's `extra` (masked as every field). Only the export
+  notes anything: `url`, the link GAM printed, else `upload`, which of the upload's own failure lines it printed about the
+  admin. Never the output itself.
+- **`RunOutcome.began`**: the steps whose begin record was written, so GAM was started: any other changed nothing.
+- **The action is named as GamGUI's record names it**, `export_to_sheet` (`WriteAction.exportToSheet`'s raw value), so both
+  apps' logs read alike and Files finds either's; `displayName` reads an underscore as a word break ("Export to sheet").
+- **The export's records**: action `export_to_sheet`, target the connected admin (whose Drive), `extra.command` the catalog
+  id, `extra.domain`, then `url` or `upload` (and `error`, `kind` on a failure) on the end record, beside the executor's
+  `preview`, `digest`, `origin`, `step`, `phase`. Never the rows. GamGUI records one line per export; this app a begin and an
+  end, as every write. Sensitive reads stay browse-only here, so `sensitive_export` is never written (Files reads GamGUI's).
+
 ## Not built yet
 The §8 voice ticket (today the executor takes only an operator's confirmation).
