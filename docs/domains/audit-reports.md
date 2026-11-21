@@ -1,11 +1,12 @@
 # Audit and Reports
 
-**One line:** two read-only screens ported from GamGUI. **Audit** shows this app's audit log on this Mac (every change, and
+**One line:** two screens ported from GamGUI, read-only but for Inactive users' Suspend these…. **Audit** shows this app's audit log on this Mac (every change, and
 every read run from the Builder, each naming its domain), 25 records a page, searched and narrowed to failures and to one
 domain, with GamGUI's CSV export; it runs no `gam`. **Reports**
 lists GamGUI's directory reports from the loaded directory, reads the storage and mail usage with one
 `gam report users` walk, and (new to this app) every account's connected apps and AI agents with `gam print tokens`,
-counted by code, worded on request by the on-device model.
+counted by code, worded on request by the on-device model; and GamGUI's audit runs (plan F3), fixed lists of reads run when
+asked, with Stop between steps.
 
 **Owns invariants:** #9 (the log is read a page at a time; the usage output is refused past the runner's
 cap and only the top 25 kept), #11 (the page, the filter, the CSV bytes and the usage parsing are GamGUI's,
@@ -18,7 +19,9 @@ record's domain, and `reads`, the read record), `BuilderReadTests` (a read recor
 `Tests/DirectoryStoreTests/UsageReportTests.swift` (`usage_report.json` and the strict mock),
 `Tests/GamEngineTests/MockReportTests.swift` (the mock's `report users`), `Tests/GamEngineTests/ConnectedAppsTests.swift`
 and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summary, from the mock's `tokens.csv`),
-`WriteRouteTests.theConnectedAppsPanelTalksToNoModel`.
+`WriteRouteTests.theConnectedAppsPanelTalksToNoModel`; for the audit runs `Tests/DirectoryStoreTests/AuditRunsTests.swift`
+(`audit_runs.json`), `AuditRunnerTests`, `InactiveSuspendTests`, `Tests/GamEngineTests/MockAuditRunTests.swift` and
+`WriteRouteTests.anAuditRunIsNoWritePath`.
 
 ## Reports: domain-wide reads (named reports)
 GamGUI #151 (roadmap 3.1, merged as `2286631`), ported in F2 (plan 2026-11-19). Nine reads the Builder already runs, named on
@@ -44,6 +47,52 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   table, or a person's transfers from its state); the other eight it refuses as not modelled. A green run of those proves
   nothing about Google.
 
+## Reports: audit runs (plan F3)
+GamGUI #171 (`086d2f8`): ready-made lists of reads, each run when the operator asks, listed under **Audit runs** on Reports.
+A run changes nothing; Inactive users' Suspend these… is a write of its own.
+- **The runs and their steps** (`AuditRuns`, GamGUI's `core/audit_runs.py`): Inactive users reads the directory (the cache's
+  own read, `cacheFields`, suspended accounts included); License usage reads `print licenses` (no product named), then the
+  directory. Each step's read is its run's own builder (`AuditRuns.read`).
+- **The runner** (`AuditRunner`, GamGUI's `web/routes/audit_runs.py`): the steps one after another as the connected domain,
+  Stop checked before each (the step in flight finishes and is recorded; the rest are not run). A failed step is unknown and
+  the run goes on. One of each run at a time: Run while it goes is ignored. Each step's table is kept in memory for the
+  tenant it was read on; a switch stops a run (GAM stopped, the step in flight recorded as interrupted) and hides what was
+  kept. Only a `print` read without `todrive` runs (`AuditRuns.isAuditRead`, every spelling GAM reads as todrive).
+- **A read record per step** (plan F1's `ReadAudit`, origin `audit_run`): command `<run>/<step>` (`license_usage/licenses`),
+  no target, the domain, `rows`, or GAM's words as `error`; never the output. A read the log can't record isn't used.
+- **Unknown, never none (invariant 10).** Any exit but 0 is unknown (`print users` that loses a page writes the rows it had
+  and exits 50, doPrintUsers: never used). Output without the step's key column in its titles (`primaryEmail`, `userId`) is
+  unknown ("GAM ended without writing the table"). No account, or no seat at all, is unknown: with no product named,
+  `print licenses` passes over a product Google refuses without a word or a code (doPrintLicenses, `suppressErrorMsg`), so
+  every license table carries that caveat too. Every table says which step it needs and why it's unknown, and an unknown
+  table has no Export CSV…, never a sheet of titles.
+- **The tables, on Google's fields** (cited in `AuditRuns`): Inactive is `DirectoryReport`'s bucket for the window, never
+  signed in first; `new account` when `creationTime` is inside the window or missing, `admin` for `isAdmin` or
+  `isDelegatedAdmin`. License usage joins `userId` (lowercased by GAM; "the user's current primary email address") to
+  `primaryEmail`, lowercased: seats per SKU, seats held by a `suspended` account, seats on an address the directory read
+  didn't list. An unknown directory leaves the per-SKU counts, "unknown" in the last two columns.
+- **Bounded (invariant 9).** While a run goes only its steps are drawn, one line each; a finished table draws its first 100
+  rows (`AuditRuns.rowsShown`), each wrapped to fit the smallest window, and Export CSV… (formula-safe, 0600, GamGUI's name
+  `<run>-<table>.csv`) holds all of them.
+- **Suspend these…** (`InactiveSuspend`, GamGUI's `/reports/inactive/preview` and `/apply`, roadmap 3.3, new here): the
+  run's window, one of 30, 60, 90, 180, 365; the directory read again (`DirectoryStore.load`, so Users updates too) and the
+  window's people held in address order (GamGUI's `inactive_to_suspend`); the connected admin left out by address and by
+  account ID, and nothing offered without a confirmed admin; new accounts flagged. One preview through the executor
+  (`confirmStep`, the guard's word from ten, the count above 25), run once in the jobs tray with Stop; each suspend that
+  worked is patched into the cached directory, and any failure has the directory read again. The confirm sheet is
+  `InactiveSuspendSheet` (ChangePreviewSheet.swift, where every confirmation is made).
+- **Held to GamGUI's own code**: the generator runs GamGUI's `core/audit_runs.py` and `GAMConnector.audit_read` over edge
+  cases (`audit_runs.json`): the steps, the windows, the unknown rules, the inactive table at every window (the cutoff to the
+  microsecond, Python's stable sorts and code-point order), the license tables over every way the two steps end, the suspend
+  targets, and the read record over each output, failure, cancel and refused argv.
+- **The mock** answers `print licenses` (bare only) from `licenses.csv` (bob@, suspended, holds two seats; left@ isn't in the
+  directory): `nolicensing` exits 15 as a token without the License Manager scope, `licenses_silent` is the titles alone,
+  exit 0, `licenses_partial` drops Google Vault, exit 0. `print users` with `directory_fails` writes one row and exits 50.
+  Every directory account says when it was made, as GAM prints `creationTime` (formatLocalTime), so the new-account flag
+  isn't every row's.
+- **Not run on a real domain yet.** `print licenses` has never run live: check the counts against Billing → Licenses on its
+  first run. Then one Inactive users run, and its records on Audit.
+
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`, `record_domain`), `AuditEntry` (a
   record in words), `AuditPage` (`_rows_context`, `_domain_choices`), `AuditExport` (`_export_csv`).
@@ -59,10 +108,14 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   for the tenant).
 - `Packages/GamKit/Sources/GamEngine/NamedReports.swift`: `NamedReport` (GamGUI's `NAMED_REPORTS`, `named_report_command`,
   `admin_scope_held`).
+- `Packages/GamKit/Sources/Directory/AuditRuns.swift` (the runs, their tables, `inactiveToSuspend`), `AuditRunner.swift` (the
+  runner), `InactiveSuspend.swift` (Suspend these…); `App/AuditRunsView.swift` (`AuditRunPanel`), `InactiveSuspendSheet` in
+  `App/ChangePreviewSheet.swift`.
 - `App/AuditView.swift`, `App/ReportsView.swift` (`NamedReportPanel`), `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
   Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
   Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
-- `scripts/gen_fixtures.py` (`audit_fixture` and `read_record_cases`, `audit_screen_fixture`, `usage_fixture`),
+- `scripts/gen_fixtures.py` (`audit_fixture` and `read_record_cases`, `audit_screen_fixture`, `usage_fixture`,
+  `audit_runs_fixture`),
   `Tests/Fixtures/mock_gam.sh` (`report users`).
 
 ## Audit: how it works
@@ -178,6 +231,13 @@ this app; GamGUI has no such page. Reads only.
   has no other case; an origin GamGUI refuses can't be spelled at all).
 - **The acknowledgement names a domain** (the begin's): GamGUI has no Mark as Checked.
 
+- **Audit runs aren't in the jobs tray.** GamGUI lists each run there as a job; here the tray lists the executor's writes
+  (its Stop is the executor's), so a run shows its steps and Stop on its own pane, and goes on while another screen shows.
+- **A domain switch stops a run**: GAM is stopped and the step in flight recorded as interrupted, as a directory load is.
+  GamGUI reads on to the end on the old connector, then doesn't keep the result.
+- **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and
+  opens them; GamGUI's card has the same preview with its fixed 90 days.
+
 ## What F1 taught
 - **Make the rule a parameter, not a scan.** GamGUI holds "every record names its domain" with a source scan; here
   `AuditLog.record`'s `domain:` has no default, so a new record can't leave it out without the compiler saying so.
@@ -185,6 +245,13 @@ this app; GamGUI has no such page. Reads only.
   now runs GamGUI's own `catalog_read` over chosen outputs (a header alone, JSON, text, nothing, a U+2028 in the first line, a
   failure, a cancel, a refused origin), which found that `CatalogResult` split its first line on LF where GamGUI's
   `splitlines()` splits on U+2028 too.
+
+## What F3 taught
+- **Record the logic, not just the argv.** The generator running GamGUI's audit-run code over edge cases held the port to
+  Python's stable sort with code-point order, the cutoff to the microsecond, `str.strip()` on a whole sentence and
+  `splitlines()` on GAM's titles, none of which a reading of the code would have pinned down.
+- **The mock's directory had no `creationTime`**, though the app's read names it and GAM returns it: every inactive account
+  would have read as "new account". A field a flag reads must be in the mock as GAM prints it.
 
 ## Gotchas / mock-lies traps
 - **The mock's `report users`** took any words and answered every one (GamGUI's reports runbook names the
@@ -207,8 +274,9 @@ this app; GamGUI has no such page. Reads only.
 
 ## Testing / live-verification status
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's
-  screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, `audit-domain` (narrowed to example.org), and their
-  `narrow-` runs in the smallest window.
+  screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, `audit-domain` (narrowed to example.org), the audit
+  runs (`reports-run-inactive`, `reports-run-licenses`, `reports-run-suspend`), and their `narrow-` runs in the smallest
+  window.
 - **Not live yet:** a read record from a real tenant. Run any Builder read, then open Audit: one `read` record, the domain
   connected, the command and its row count, nothing of the output.
 - **Audit needs no tenant.** **Live check of the usage report** (read-only): open Reports, choose Storage and
