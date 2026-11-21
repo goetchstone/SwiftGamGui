@@ -1195,3 +1195,114 @@ struct BuilderPreviewSheet: View {
         }
     }
 }
+
+/// Inactive users' Suspend these… confirm step (GamGUI's `_inactive_suspend.html`): how many accounts, read again just now; the
+/// new accounts among them, flagged in words (a new hire who hasn't signed in yet looks inactive); the admin left out; who it
+/// suspends, by name, address and last sign-in; and, as the guard asks, the word `confirm` (ten or more) and the count (more
+/// than 25) typed. Suspend is never the default button, so Return alone doesn't run it. Confirming runs exactly these people,
+/// once, in the jobs tray with Stop; Cancel drops it.
+struct InactiveSuspendSheet: View {
+    let pending: InactiveSuspend.Pending
+    let suspend: InactiveSuspend
+    @State private var typedCount = ""
+    @State private var word = ""
+
+    private var count: Int { pending.count }
+    private var countMatches: Bool { pending.preview.decision.typedCountMatches(typedCount) }
+    private var wordMatches: Bool {
+        !pending.needsWord || word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == Guard.typedWord
+    }
+    private var accounts: String { "\(count) account\(count == 1 ? "" : "s")" }
+
+    private func confirm() {
+        let pending = pending, suspend = suspend
+        let confirmation = OperatorConfirmation(confirmed: true, typedWord: pending.needsWord ? word : "",
+                                                typedCount: pending.needsCount ? typedCount : "")
+        Task { await suspend.confirm(pending, confirmation) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                Text("Suspend \(accounts) that \(count == 1 ? "hasn't" : "haven't") signed in for \(pending.days) days, read again just now. "
+                     + "Each can't sign in until it's unsuspended; nothing in it is deleted.")
+                if pending.new > 0 {
+                    Label("\(pending.new) of them \(pending.new == 1 ? "was" : "were") made in the last \(pending.days) days, or when "
+                          + "isn't known, marked new account below: a new hire who hasn't signed in yet looks inactive. Check them first.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                if !pending.leftOut.isEmpty {
+                    Label("Left out: \(pending.leftOut.joined(separator: ", ")), the admin this app is connected as. Suspending it "
+                          + "would sign this app out.", systemImage: "info.circle")
+                }
+                ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                    Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                }
+            } header: {
+                Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+            }
+            Section("Who it suspends") {
+                ForEach(pending.targets.prefix(InactiveSuspend.shown)) { target in
+                    let last = target.lastLogin.isEmpty ? "never signed in" : "last sign-in \(target.lastLogin.prefix(10))"
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(target.name)
+                        Text("\(target.email) · \(last)" + (target.new ? " · new account" : ""))
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if count > InactiveSuspend.shown {
+                    Text("… and \(count - InactiveSuspend.shown) more.").foregroundStyle(.secondary)
+                }
+                DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                    Text(pending.preview.steps.map(\.commandLine).joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            if pending.needsWord {
+                Section {
+                    TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the word confirm to suspend \(accounts)")
+                        .onChange(of: word) { suspend.typingChanged() }
+                } header: {
+                    Text("Type \(Guard.typedWord) to suspend \(count == 1 ? "it" : "them")")
+                }
+            }
+            if pending.needsCount {
+                Section {
+                    TextField("Number of accounts", text: $typedCount, prompt: Text(verbatim: String(count)))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type the number of accounts, \(count), to confirm")
+                        .onChange(of: typedCount) { suspend.typingChanged() }
+                } header: {
+                    Text("And type \(count), the number of accounts")
+                }
+            }
+            if let problem = suspend.typedProblem {
+                Section { Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
+            }
+            Section {
+                Text("Suspends exactly this list, one account at a time, in the jobs tray with Stop. Preview again for a newer one.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 480)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { suspend.dismiss() } }
+            // Not the confirmation action: Return in a field mustn't suspend anyone.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Suspend \(accounts)", role: .destructive) { confirm() }
+                    .disabled(suspend.isBusy || !countMatches || !wordMatches)
+                    .help(!wordMatches ? "Type confirm first" : !countMatches ? "Type \(count) first" : "Runs exactly these suspends, once")
+            }
+        }
+        .onChange(of: suspend.typedRefusals) {
+            if let problem = suspend.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+}

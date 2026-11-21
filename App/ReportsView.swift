@@ -7,14 +7,17 @@ import SwiftUI
 /// department, phone and location), each a list of people counted from the loaded directory with no GAM call of
 /// its own; GamGUI's storage and mail usage, read with `gam report users` when its row is first shown for a
 /// tenant; every account's connected apps and agents, read with `gam print tokens` when asked
-/// (`ConnectedAppsPanel`); and GamGUI's named domain-wide reads (`NamedReport`), each opening its Builder read. A person
-/// opens on Users.
+/// (`ConnectedAppsPanel`); GamGUI's audit runs (plan F3, `AuditRunPanel`), fixed lists of reads run when asked, with Stop
+/// between steps; and GamGUI's named domain-wide reads (`NamedReport`), each opening its Builder read. A person opens on Users.
 struct ReportsView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let usage: UsageStore
     /// Every account's connected apps and AI agents.
     let apps: ConnectedAppsRead
+    /// The audit runs, and Inactive users' Suspend these….
+    let runs: AuditRunner
+    let suspend: InactiveSuspend
     /// Opens a catalog command in the Builder.
     let openCommand: (String) -> Void
     /// Opens a person's page on Users.
@@ -24,6 +27,8 @@ struct ReportsView: View {
     @State private var catalog: Result<CommandCatalog, BuilderView.CatalogProblem>?
     @State private var person: GamUser.ID?
     @State private var usagePerson: UsageRow.ID?
+    /// Inactive users' window: the picker's, and ⌘R's.
+    @State private var days = DirectoryReport.inactiveDays
     /// Only the window in front speaks a load's outcome (every window sees the same stores).
     @Environment(\.appearsActive) private var appearsActive
 
@@ -34,6 +39,8 @@ struct ReportsView: View {
         case apps
         /// A named domain-wide read, by its key.
         case named(String)
+        /// An audit run, by its key.
+        case run(String)
     }
 
     var body: some View {
@@ -57,6 +64,13 @@ struct ReportsView: View {
                 case .failure(let problem): announce("Couldn't read the connected apps. \(problem.summary)")
                 }
             }
+            // A run that ends is said, whichever screen of Reports is shown: it may have taken minutes.
+            .onChange(of: runsEnded) { old, new in
+                for run in AuditRuns.all where new[run.key] != nil && new[run.key] != old[run.key] {
+                    guard case .finished(let outcome)? = runs.state(of: run) else { continue }
+                    announce("\(run.title) read. " + (outcome.complete ? "Every step was read." : "Part of it is unknown: each table that needs it says so."))
+                }
+            }
             .onChange(of: item) {
                 person = nil
                 usagePerson = nil
@@ -73,6 +87,10 @@ struct ReportsView: View {
                             switch item {
                             case .usage: await usage.load()
                             case .apps: await apps.read()
+                            case .run(let key):
+                                if let run = AuditRuns.all.first(where: { $0.key == key }), let refusal = runs.start(run, days: days) {
+                                    announce(refusal)
+                                }
                             default: await directory.load()
                             }
                         }
@@ -89,6 +107,7 @@ struct ReportsView: View {
         switch item {
         case .usage: "Refresh Usage"
         case .apps: "Read Connected Apps Again"
+        case .run(let key): runs.state(of: run(key)) == nil ? "Run" : "Run Again"
         default: "Refresh the Directory"
         }
     }
@@ -101,8 +120,22 @@ struct ReportsView: View {
         switch item {
         case .usage: usage.isLoading
         case .apps: apps.isReading
+        case .run(let key): runs.isRunning(run(key))
         default: directory.isLoading
         }
+    }
+
+    private func run(_ key: String) -> AuditRuns.Run {
+        AuditRuns.all.first { $0.key == key } ?? AuditRuns.inactiveUsers
+    }
+
+    /// When each run last ended, for the tenant shown: what the announcement watches.
+    private var runsEnded: [String: Date] {
+        var ended: [String: Date] = [:]
+        for run in AuditRuns.all {
+            if case .finished(let outcome)? = runs.state(of: run) { ended[run.key] = outcome.when }
+        }
+        return ended
     }
 
     private func announce(_ text: String) {
@@ -110,12 +143,14 @@ struct ReportsView: View {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, `usage`, `apps` or `named.<key>`, for the snapshot of it.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` opens a report by its key, `usage`, `apps`, `named.<key>` or `run.<key>`, for the
+    /// snapshot of it.
     private func selectForSnapshot() {
         #if DEBUG
         guard let key = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] else { return }
         item = key == "usage" ? .usage : key == "apps" ? .apps
-            : key.hasPrefix("named.") ? .named(String(key.dropFirst("named.".count))) : .report(key)
+            : key.hasPrefix("named.") ? .named(String(key.dropFirst("named.".count)))
+            : key.hasPrefix("run.") ? .run(String(key.dropFirst("run.".count))) : .report(key)
         #endif
     }
 
@@ -145,6 +180,19 @@ struct ReportsView: View {
                         Label("Connected apps and agents", systemImage: "puzzlepiece.extension")
                             .tag(Item.apps)
                             .accessibilityHint("Every account's apps and AI agents, read from Google when you ask.")
+                    }
+                    Section("Audit runs") {
+                        ForEach(AuditRuns.all) { run in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(run.title)
+                                Text(runStatus(run)).font(.caption).foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 2)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(run.title), audit run, \(runStatus(run))")
+                            .accessibilityHint(run.what)
+                            .tag(Item.run(run.key))
+                        }
                     }
                     Section("Domain-wide reads") {
                         ForEach(NamedReport.all) { report in
@@ -224,6 +272,15 @@ struct ReportsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// A run in the list, in words: not run yet, running, or how its last run ended.
+    private func runStatus(_ run: AuditRuns.Run) -> String {
+        switch runs.state(of: run) {
+        case nil: "Not run yet"
+        case .running(let progress)?: progress.stopping ? "Stopping" : "Running: step \(min(progress.done + 1, progress.total)) of \(progress.total)"
+        case .finished(let outcome)?: outcome.complete ? "Read, every step" : "Read, part unknown"
+        }
+    }
+
     /// "Across 1,204 accounts · directory as of 9:41 AM".
     private func across(_ count: Int) -> String {
         let counted = "Across \(count.formatted()) account\(count == 1 ? "" : "s")"
@@ -245,6 +302,10 @@ struct ReportsView: View {
             UsagePanel(usage: usage, directory: directory, selection: $usagePerson, open: openPerson)
         case .apps:
             ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
+        case .run(let key):
+            if let run = AuditRuns.all.first(where: { $0.key == key }) {
+                AuditRunPanel(run: run, runs: runs, suspend: suspend, connected: setup.active != nil, days: $days, openPerson: openPerson)
+            }
         case .named(let key):
             if let report = NamedReport.all.first(where: { $0.key == key }) {
                 NamedReportPanel(report: report, catalog: catalog, granted: setup.connectedAdminScopes,

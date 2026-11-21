@@ -52,6 +52,14 @@ enum Spikes {
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "usage" { await services.usage.load() }
                     // …and its connected apps (`apps`): every account's, from the mock's tokens.
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "apps" { await services.connectedApps.read() }
+                    // …and an audit run (`run.<key>`): run against the mock before the picture; `suspend` holds Suspend these…'s
+                    // preview over it (the directory read again, nothing run).
+                    if Screen.initial == .reports, let key = environment["SWIFTGAMGUI_SELECT"], key.hasPrefix("run."),
+                       let run = AuditRuns.all.first(where: { $0.key == key.dropFirst(4) }) {
+                        services.auditRuns.start(run, days: DirectoryReport.inactiveDays)
+                        await services.auditRuns.finish(run)
+                        if environment["SWIFTGAMGUI_TAB"] == "suspend" { await services.inactiveSuspend.preview(days: DirectoryReport.inactiveDays) }
+                    }
                     // Plan an Import compared with the mock's Classroom (`SWIFTGAMGUI_TAB=compare`): the demo roster's change list.
                     if Screen.initial == .classroom, environment["SWIFTGAMGUI_TAB"] == "compare" { await services.roster.compare.compare() }
                 } else {
