@@ -250,7 +250,7 @@ final class ReadRun {
 
     /// The rows the filter keeps (every row for none), as a CSV to a file the operator picks: private (0600), whole or not at all.
     /// Listed on Files once it's written (`saved`).
-    func export(_ result: CatalogResult, _ rows: [Int], announce: Bool, saved: SavedFiles?) {
+    func export(_ result: CatalogResult, _ rows: [Int], announce: Bool, savedFiles: SavedFiles?) {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = filter.isEmpty ? "gam-results.csv" : "gam-results-filtered.csv"
         panel.allowedContentTypes = [.commaSeparatedText]
@@ -262,7 +262,7 @@ final class ReadRun {
             Task {
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(table), to: destination) }.value
-                    saved?.record(destination, what: "Builder table")
+                    savedFiles?.record(destination, what: "Builder table")
                     self.say("Exported \(rows.count.formatted()) row\(rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).",
                              failed: false, announce: announce)
                 } catch {
@@ -369,7 +369,7 @@ private struct CommandDetail: View {
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
                 ResultView(result: result, filter: $reading.filter,
-                           export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
+                           export: { reading.export(result, $0, announce: appearsActive, savedFiles: savedFiles) },
                            toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && reading.readOn == setup.active
                                && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
@@ -505,7 +505,7 @@ private struct CuratedDetail: View {
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
                 ResultView(result: result, filter: $reading.filter,
-                           export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
+                           export: { reading.export(result, $0, announce: appearsActive, savedFiles: savedFiles) },
                            toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true)
                                && reading.readOn == setup.active && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,

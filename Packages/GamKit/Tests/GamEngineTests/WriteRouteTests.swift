@@ -162,6 +162,19 @@ struct WriteRouteTests {
         #expect(made.lines.filter { line in ["Runner", "Executor", "record(", "write(", "Process"].contains { line.contains($0) } }.isEmpty)
     }
 
+    /// Files lists the CSVs saved through a save panel (plan F4): every screen that saves one lists it (`savedFiles?.record(`),
+    /// at least once per CSV panel, so Files' "CSV files you saved" is every one (review of F4, 2026-11-21).
+    @Test func everyCSVSavePanelListsWhatItSaved() throws {
+        var panels = 0
+        for file in try Self.swiftFiles(in: "App") {
+            let csv = file.lines.count { $0.contains("allowedContentTypes = [.commaSeparatedText]") }
+            guard csv > 0 else { continue }
+            panels += csv
+            #expect(file.lines.count { $0.contains("savedFiles?.record(") } >= csv, "\(file.path)")
+        }
+        #expect(panels >= 10, "the scan must see the panels")
+    }
+
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
     /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
     @Test func theJobsTrayReachesNoWrite() throws {

@@ -13,11 +13,19 @@ final class SavedFiles {
     /// Why a saved file isn't listed: the list didn't open (its file couldn't be read, or was moved aside, so nothing is saved
     /// over it), or the last save to it failed. Nil while files are listed.
     private(set) var problem: String?
+    private let root: URL
 
     init(root: URL) {
+        self.root = root
+        reopen()
+    }
+
+    /// Opens the list again when it didn't open (Files' ⌘R): a list that opens clears the problem.
+    func reopen() {
+        guard store == nil else { return }
         do {
             store = try SavedFilesStore(root: root)
-            if store?.quarantined != nil { problem = "The list of saved files couldn't be read, so it was set aside and started again." }
+            problem = store?.quarantined != nil ? "The list of saved files couldn't be read, so it was set aside and started again." : nil
         } catch {
             problem = Self.words(error)
         }

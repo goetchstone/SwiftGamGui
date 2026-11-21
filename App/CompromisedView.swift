@@ -1338,6 +1338,8 @@ private struct IncidentLogsSection: View {
     private var flaggedOnly: Bool { form.flaggedOnly }
     @State private var exported: (text: String, failed: Bool)?
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     private var typedAccounts: [String] { IncidentLogs.Query.accounts(accounts) }
 
@@ -1548,6 +1550,7 @@ private struct IncidentLogsSection: View {
             Task {
                 do {
                     try await Task.detached { try AuditExport.writePrivately(IncidentLogs.csv(log), to: destination) }.value
+                    savedFiles?.record(destination, what: "The \(log.application.name) log")
                     say("Exported the \(log.application.name) log to \(destination.lastPathComponent).", failed: false)
                 } catch {
                     say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)

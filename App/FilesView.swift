@@ -26,7 +26,10 @@ struct FilesView: View {
     @State private var names: [String: String] = [:]
     @State private var evidence: [Evidence]?
     @State private var selection: Item?
+    /// What the last Return couldn't do (a file or folder no longer where it was), said on the screen and spoken.
+    @State private var notice: String?
     @Environment(\.openURL) private var openURL
+    @Environment(\.appearsActive) private var appearsActive
 
     enum Item: Hashable {
         case sheet(Int), evidence(String), saved(String)
@@ -51,6 +54,9 @@ struct FilesView: View {
                      + "saved. It runs no GAM and changes nothing in your domain.")
                 Text("Tab to the list and pick a row: Return opens a Sheet, or shows a folder or a file in Finder. ⌘R reads it all again.")
                     .font(.callout).foregroundStyle(.secondary)
+                if let notice {
+                    Label(notice, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                }
             }
             sheetsSection
             evidenceSection
@@ -65,7 +71,10 @@ struct FilesView: View {
         }
         .toolbar {
             ToolbarItem {
-                Button("Read Again", systemImage: "arrow.clockwise") { Task { await load() } }
+                Button("Read Again", systemImage: "arrow.clockwise") {
+                    saved.reopen()
+                    Task { await load() }
+                }
                     .keyboardShortcut("r")
                     .help("Read the audit log, the incidents and the saved files again (⌘R)")
             }
@@ -128,12 +137,16 @@ struct FilesView: View {
 
     @ViewBuilder private var savedSection: some View {
         Section {
-            Text("The CSV files you saved from this app, newest first: the newest \(SavedFilesStore.cap) are kept in this list.")
+            Text("The CSV files you saved from this app through a save panel, newest first: the newest \(SavedFilesStore.cap) are "
+                 + "kept in this list. An incident report's folder and a roster hand-over ZIP aren't listed.")
                 .font(.callout).foregroundStyle(.secondary)
             if let problem = saved.problem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
             }
-            if saved.files.isEmpty {
+            if saved.store == nil {
+                // Unknown, never "none": the list didn't open.
+                Text("What you saved can't be listed until the list can be read. ⌘R tries again.").foregroundStyle(.secondary)
+            } else if saved.files.isEmpty {
                 Text("None saved yet.").foregroundStyle(.secondary)
             } else {
                 ForEach(saved.files) { file in SavedRow(file: file).tag(Item.saved(file.path)) }
@@ -162,10 +175,24 @@ struct FilesView: View {
         case .sheet(let id):
             if let url = link(id) { openURL(url) }
         case .evidence(let id):
-            if let folder = evidence?.first(where: { $0.id == id })?.folder { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+            if let folder = evidence?.first(where: { $0.id == id })?.folder { show(folder, what: "That evidence folder") }
         case .saved(let path):
-            NSWorkspace.shared.activateFileViewerSelecting([URL(filePath: path)])
+            show(URL(filePath: path), what: "That file")
         }
+    }
+
+    /// Shows `url` in Finder, or says it isn't there any more (moved or deleted since): Finder would open nothing, and say
+    /// nothing.
+    private func show(_ url: URL, what: String) {
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else {
+            let text = "\(what) isn't at \(url.path) any more: it was moved or deleted."
+            notice = text
+            if appearsActive { AccessibilityNotification.Announcement(text).post() }
+            return
+        }
+        notice = nil
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     // MARK: reading
@@ -233,9 +260,14 @@ private struct SheetRow: View {
                   sheet.owner.isEmpty || sheet.owner == "(admin Drive)" ? "the admin's Drive" : "\(sheet.owner)'s Drive"]
                 .joined(separator: " · "))
                 .font(.callout).foregroundStyle(.secondary)
-            Label(sheet.outcome.url.isEmpty ? sheet.outcome.said : "Made: Return opens it. \(sheet.outcome.url)",
-                  systemImage: made == .yes ? "checkmark.circle" : made == .no ? "xmark.octagon" : "questionmark.circle")
+            // What became of it, as its result said: a Sheet made while the read reported a problem may hold only headers, and a
+            // result too large for a Sheet is a plain CSV file.
+            Label(sheet.outcome.said, systemImage: made == .yes ? (sheet.ok ? "checkmark.circle" : "exclamationmark.triangle")
+                  : made == .no ? "xmark.octagon" : "questionmark.circle")
                 .font(.callout)
+            if !sheet.outcome.url.isEmpty {
+                Text("Return opens it: \(sheet.outcome.url)").font(.caption).foregroundStyle(.secondary)
+            }
             if !sheet.commandLine.isEmpty {
                 Text(sheet.commandLine).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
             }

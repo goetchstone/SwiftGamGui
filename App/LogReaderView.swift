@@ -986,6 +986,8 @@ private struct ReachSection: View {
         #endif
     }()
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
     private static let shown = 300
 
     /// The list as a CSV, to a file the operator picks: private (0600), whole or not at all, written off the main thread.
@@ -1002,6 +1004,7 @@ private struct ReachSection: View {
                 let text: String, failed: Bool
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    savedFiles?.record(destination, what: "Who it reached")
                     (text, failed) = ("Exported who it reached to \(destination.lastPathComponent).", false)
                 } catch {
                     (text, failed) = ("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", true)
@@ -1308,6 +1311,8 @@ private struct GotItSection: View {
     let got: [IncidentReport.GotIt]
     @State private var said: (text: String, failed: Bool)?
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     var body: some View {
         Section {
@@ -1355,6 +1360,7 @@ private struct GotItSection: View {
             Task {
                 do {
                     try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    savedFiles?.record(destination, what: "Everyone it got to")
                     say("Exported \(got.count) \(got.count == 1 ? "address" : "addresses") to \(destination.lastPathComponent).", failed: false)
                 } catch {
                     say("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)
