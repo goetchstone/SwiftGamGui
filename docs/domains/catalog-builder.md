@@ -66,8 +66,16 @@ it) and 11 (parity is a test).
   tables are one here (`glossNouns`), merged as its lookup reads them, and held whole. All 1,052 commands have one, as in
   GamGUI, whose parser writes no descriptions (the generator refuses a catalog that has some, until GamGUI's
   vendored-description-wins rule is ported).
-- **The screen**: the list by category and subcategory, runnable first, Runnable Only on by default, an area picker; a command
-  shows its area, its grammar line, why it doesn't run when it doesn't, its fields, and the exact `gam` command as it's typed.
+- **Search finds a command by what it does** (plan F5a; a deliberate difference from GamGUI, whose search reads only the name
+  and grammar line): `CommandCatalog.Search` finds what GamGUI's finds (the text as typed, in the name or the grammar line)
+  and a command whose gloss holds every word typed, each anywhere in it: "backup codes" finds `print backupcodes`, "chrome
+  devices" finds `print cros`, "vault holds" finds `print vaultholds`; none did before. Words are matched in the gloss only,
+  never across the grammar line, so a grammar search stays as narrow as GamGUI's ("info user" finds GamGUI's 4, where words
+  across every field found 46). A curated command's description is read as its gloss. No model: plan F5b adds one.
+- **The screen**: the list by category and subcategory, each row its name and, in words, what it does here and its gloss
+  (GamGUI's row: "Reads · List users."; VoiceOver reads the row as one, without the dot), runnable first, Runnable Only on by
+  default, an area picker, a search of names, grammar and glosses; a command shows its gloss, its area, its grammar line, why
+  it doesn't run when it doesn't, its fields, and the exact `gam` command as it's typed.
   Run (⌘R) runs that, on the domain connected at the press; one that comes back after a switch is dropped and said. The result
   is a table (`TableColumnForEach`, every column any row has) when GAM printed one, with a filter over every row (GamGUI's
   plan U1) and Export CSV… (`AuditExport`: private file, whole or nothing, formula-safe cells; a structured value as JSON), or

@@ -5,7 +5,8 @@ import TestSupport
 
 /// What each catalog command does, in words (plan F5a, invariant 11): GamGUI's `gloss()` ported, every command's held byte for
 /// byte to GamGUI's own run over this repo's catalog (`Tests/Fixtures/catalog_glosses.json`, made by
-/// `scripts/gen_catalog_glosses.py` from a GamGUI clone pinned at its commit), and the noun table to GamGUI's lookup.
+/// `scripts/gen_catalog_glosses.py` from a GamGUI clone pinned at its commit), the noun table to GamGUI's lookup, and the
+/// Builder's search on them (this app's, no fixture).
 @Suite("Command glosses")
 struct CommandGlossTests {
     struct File: Decodable {
@@ -41,4 +42,31 @@ struct CommandGlossTests {
             #expect(Array(CommandCatalog.nounPhrase(noun).utf8) == Array(phrase.utf8), "\(noun)")
         }
     }
+
+    /// Search finds what GamGUI's finds (the text in the name or the grammar line), and a command whose gloss holds every word
+    /// typed, each anywhere in it; words are never matched across the grammar line, so a grammar search stays as narrow as
+    /// GamGUI's.
+    @Test func searchFindsWhatACommandDoes() throws {
+        let catalog = CommandGlossTests.catalog
+        func gamguis(_ text: String) -> Set<String> {
+            Set(catalog.commands.filter { $0.name.lowercased().contains(text) || $0.syntax.lowercased().contains(text) }.map(\.id))
+        }
+        #expect(!gamguis("print users").isEmpty && Set(catalog.search("PRINT USERS").map(\.id)) == gamguis("print users"))
+        #expect(Set(catalog.search("info user").map(\.id)) == gamguis("info user"), "not every info that names a user")
+        // Plain words: GAM writes `backupcodes` and `cros`; the glosses say "backup verification codes" and "ChromeOS devices".
+        let codes = catalog.search("  Backup  CODES ")
+        #expect(gamguis("backup codes").isEmpty && !codes.isEmpty && codes.allSatisfy { $0.syntax.contains("backupcodes") })
+        let printCros = try #require(catalog.commands.first { $0.syntax.hasPrefix("gam print cros ") })
+        #expect(printCros.gloss == "List ChromeOS devices." && catalog.search("chrome devices").contains { $0.id == printCros.id })
+        #expect(catalog.search("vault holds").contains { $0.syntax.hasPrefix("gam print vaultholds") })
+        // A curated command is searched the same way, its description read as its gloss (the Builder's rows).
+        let delegate = try #require(CuratedCommand.all.first { $0.id == "build.add_delegate" })
+        func finds(_ text: String) -> Bool {
+            CommandCatalog.Search(text).finds(name: delegate.name, syntax: delegate.syntax, does: delegate.description)
+        }
+        #expect(finds("MAILBOX delegate") && finds("add delegate") && finds("another person mailbox"))
+        #expect(!finds("mail delegate") && !finds("another person calendar"))
+    }
+
+    static var catalog: CommandCatalog { CommandCatalogTests.catalog }
 }

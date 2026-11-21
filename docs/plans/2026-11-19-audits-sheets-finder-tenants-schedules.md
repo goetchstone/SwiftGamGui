@@ -100,6 +100,15 @@ The model never writes GAM syntax. It narrows and fills; code checks and builds;
    ~30 samples from the operator's kinds of request, a held-out split, code metrics (right command, right slots, no
    invented value, latency). Kept only if it beats plain search on the held-out samples.
 
+*As built, F5a (2026-11-21, step 1; GamGUI `d03f5a6`, fixture generated from it):* GamGUI's `gloss()` and its noun tables
+ported (`CommandGloss.swift`), so all 1,052 catalog commands carry their words (`Command.gloss`), each held byte for byte to
+GamGUI's own run over this repo's catalog (`catalog_glosses.json`, `scripts/gen_catalog_glosses.py`, run by `bump_gam.py`).
+The Builder's search finds GamGUI's finds plus a command whose gloss holds every word typed ("backup codes", "chrome
+devices"), its rows read "Reads · List users." as GamGUI's do, and a command's page leads with it (runbook catalog-builder.md).
+GamGUI's #132 (continuation lines joined) isn't ported; over GamGUI's own catalog one gloss differs, so the fixture is GamGUI's
+code over this repo's catalog. About 80 glosses say little (a placeholder for a verb, "Calendar.", "Create for a user.", one
+"Show details for for"): GamGUI's to fix first. Not done: the model (steps 2 to 6, F5b), and screenshots from CI.
+
 ### F6 — Tenant switching from anywhere · *both apps*
 A domain menu in the toolbar when more than one domain is connected; choosing one runs the same `checkAccess`
 (switches only on a pass, Touch ID if the Vault session ended), disabled while busy, warns that a run in progress stops
