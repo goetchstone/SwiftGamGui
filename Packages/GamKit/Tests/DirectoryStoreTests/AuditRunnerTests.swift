@@ -305,6 +305,11 @@ final class AuditRunnerTests {
         #expect(outcome.reads[2].why == AuditRunner.someUnread(["bob@example.com"]))
         #expect(records.last?["ok"] == .bool(true) && records.last?["extra"]?["partial"] == .bool(true))
         #expect(outcome.finding("admins")?.rows.first { $0[0] == "bob@example.com" }?[3] == "unknown")
+        // Its CSV says what wasn't read before anything else: bob@'s missing rows never read as "no apps".
+        let apps = try #require(outcome.finding("admin_apps").flatMap(AuditRuns.exportRows))
+        #expect(apps.first == ["Part of this table is unknown. GAM couldn't read the apps of bob@example.com: unknown, not none."])
+        #expect(apps[1] == AuditRuns.adminAppColumns && !apps.dropFirst(2).contains { $0[0] == "bob@example.com" })
+        #expect(AuditRuns.exportRows(try #require(outcome.finding("admins")))?.first?.first?.contains("bob@example.com") == true)
         try FileManager.default.removeItem(at: state.appending(path: "tokens_gone"))
         try mark("denied/admins")
         let before = calls().count, recorded = records.count

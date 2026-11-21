@@ -348,6 +348,9 @@ private struct FindingView: View {
                     Text(finding.links ? "Tab to the table: the arrows pick a row, Return or a double-click opens the person."
                          : "Tab to the table: the arrows pick a row.")
                         .font(.caption).foregroundStyle(.secondary)
+                    if finding.partial {
+                        Text("Its CSV starts with a line saying what wasn't read.").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } else {
                 Label(finding.why, systemImage: "questionmark.circle.fill")

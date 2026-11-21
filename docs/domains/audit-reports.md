@@ -287,6 +287,10 @@ this app; GamGUI has no such page. Reads only.
   GamGUI reads on to the end on the old connector, then doesn't keep the result.
 - **A table's notes name this app** ("an offboarding started in GAM GUI", "GAM GUI changes nothing in Classroom") where
   GamGUI's name itself; the parity test reads GamGUI's name as this one's and holds every other word.
+- **A table known only in part exports with a first line saying what wasn't read** (`AuditRuns.exportRows`: "Part of this
+  table is unknown. GAM couldn't read the apps of …"), so an admin whose apps GAM couldn't read, or a holder no read could
+  name, never reads as "no apps" in the file (review of F3, 2026-11-21). For GamGUI: its `table_csv` writes the columns and
+  rows alone for a `partial` table, the same gap; the fix there is the same leading line.
 - **A warning exit that names nobody** says so in its own words ("GAM said it couldn't read an account but not which"), where
   GamGUI's panel says its "no table" sentence; the read record's error is GamGUI's.
 - **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and

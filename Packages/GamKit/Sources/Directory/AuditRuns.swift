@@ -289,11 +289,14 @@ public enum AuditRuns {
         public let links: Bool
         /// Known, but holding something no read could tell (an admin GAM couldn't name or read).
         public let partial: Bool
+        /// What no read could tell, in words, when `partial`: its CSV's first line says it.
+        public let unknownPart: String
         public var id: String { key }
 
         init(_ key: String, _ title: String, _ summary: String, _ columns: [String], _ rows: [[String]] = [], known: Bool = true,
-             why: String = "", note: String = "", links: Bool = false, partial: Bool = false) {
+             why: String = "", note: String = "", links: Bool = false, partial: Bool = false, unknownPart: String = "") {
             self.partial = partial
+            self.unknownPart = unknownPart
             self.key = key
             self.title = title
             self.summary = summary
@@ -342,9 +345,13 @@ public enum AuditRuns {
     }
 
     /// A table as its CSV holds it, whole: its columns, then every row. None for an unknown table: a sheet holding only its
-    /// titles would read as "none" (invariant 10); its screen says why instead.
+    /// titles would read as "none" (invariant 10); its screen says why instead. A table known only in part starts with a line
+    /// saying what wasn't read, so an admin whose apps GAM couldn't read never reads as one with no apps in the file (review of
+    /// F3, 2026-11-21; GamGUI's `table_csv` writes the columns and rows alone).
     public static func exportRows(_ finding: Finding) -> [[String]]? {
-        finding.known ? [finding.columns] + finding.rows : nil
+        guard finding.known else { return nil }
+        let note = finding.partial ? [[PythonText.strip("Part of this table is unknown. " + finding.unknownPart)]] : []
+        return note + [finding.columns] + finding.rows
     }
 
     /// The run's tables, from its step reads and their kept tables. A table whose step is unknown says so. `leaving` is who
@@ -811,14 +818,14 @@ public enum AuditRuns {
                     adminColumns, adminRows, known: adminsWhy.isEmpty, why: adminsWhy,
                     note: "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory "
                         + "by ID. A service account's role names no person, so it isn't listed." + partial,
-                    links: true, partial: someUnknown),
+                    links: true, partial: someUnknown, unknownPart: PythonText.strip(partial)),
             Finding("admin_apps", "Admins' connected apps",
                     appRows.isEmpty ? "No admin read has given an app access."
                         : "\(appRows.count) grant\(appRows.count == 1 ? "" : "s") across the admins; \(nFlagged) flagged, listed first.",
                     adminAppColumns, appRows, known: appsWhy.isEmpty, why: appsWhy,
                     note: "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is "
                         + "taken away there, after a preview." + partial,
-                    links: true, partial: someUnknown),
+                    links: true, partial: someUnknown, unknownPart: PythonText.strip(partial)),
         ]
     }
 
