@@ -74,14 +74,29 @@ A run changes nothing; Inactive users' Suspend these… is a write of its own.
   didn't list. An unknown directory leaves the per-SKU counts, "unknown" in the last two columns.
 - **Bounded (invariant 9).** While a run goes only its steps are drawn, one line each; a finished table draws its first 100
   rows (`AuditRuns.rowsShown`), each wrapped to fit the smallest window, and Export CSV… (formula-safe, 0600, GamGUI's name
-  `<run>-<table>.csv`) holds all of them.
+  `<run>-<table>.csv`, `AuditRuns.exportRows`) holds all of them. The header says when the run was read, as a time, never
+  "now", so a pane left open never calls old tables fresh.
+- **The keyboard, with the Mac's default settings** (Tab reaches only lists and text fields; review of F3, 2026-11-21, as
+  Reports' ⌘O before it), each said in visible words beside its control: ⌘R runs the selected run, ⌘. stops it, ⌘1 to ⌘5
+  pick Inactive users' window; each table is a list Tab reaches, where the arrows pick a row and Return or a double-click
+  opens the person; ⌘E exports the table a row was last picked in (else the first with rows); ⌘Return previews Suspend
+  these…, and in its sheet ⌘Return suspends (never Return alone; with fewer than ten accounts the sheet has no field to type
+  in). A Suspend these… that ends without a sheet (nothing to suspend, or why not) is announced to VoiceOver.
 - **Suspend these…** (`InactiveSuspend`, GamGUI's `/reports/inactive/preview` and `/apply`, roadmap 3.3, new here): the
   run's window, one of 30, 60, 90, 180, 365; the directory read again (`DirectoryStore.load`, so Users updates too) and the
   window's people held in address order (GamGUI's `inactive_to_suspend`); the connected admin left out by address and by
   account ID, and nothing offered without a confirmed admin; new accounts flagged. One preview through the executor
   (`confirmStep`, the guard's word from ten, the count above 25), run once in the jobs tray with Stop; each suspend that
   worked is patched into the cached directory, and any failure has the directory read again. The confirm sheet is
-  `InactiveSuspendSheet` (ChangePreviewSheet.swift, where every confirmation is made).
+  `InactiveSuspendSheet` (ChangePreviewSheet.swift, where every confirmation is made). What it shows is kept with the domain
+  and generation it was made on and the run (its read time) it was asked from (`InactiveSuspend.state(about:)`): a switch, or
+  a newer run of the table, never shows another tenant's preview or an older run's outcome; a run that ends after a switch
+  keeps the tenant it ran on.
+- **Follow-up, not changed here (ChangeCore):** the executor's `lockoutRefusal` reads `info user` for every target, one after
+  another, inside the write lock and before the first suspend. One target it can't read (deleted since the preview, or a
+  Google error GAM gives up on) refuses the whole run: it fails closed, nothing wrong is suspended, but a large run waits
+  minutes and is spent. GamGUI asks `cut_off_refusal` per write, so a bad target fails only its own. Suspend these… is the
+  first bulk flow of writes that cut accounts off; a per-step check in the executor is the fix, on its own review.
 - **Held to GamGUI's own code**: the generator runs GamGUI's `core/audit_runs.py` and `GAMConnector.audit_read` over edge
   cases (`audit_runs.json`): the steps, the windows, the unknown rules, the inactive table at every window (the cutoff to the
   microsecond, Python's stable sorts and code-point order), the license tables over every way the two steps end, the suspend

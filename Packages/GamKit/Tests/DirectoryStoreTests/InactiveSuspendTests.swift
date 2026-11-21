@@ -56,6 +56,18 @@ final class InactiveSuspendTests {
         await setup.checkAccess(Domain("example.com")!)
     }
 
+    /// A second domain, connected: a switch.
+    private func connectOther() async throws {
+        let folder = scratch.appending(path: "config-other")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2service.json"))
+        try Fixtures.oauth2(admin: "admin@example.org").write(to: folder.appending(path: "oauth2.txt"))
+        await setup.importFolder(folder, as: "example.org")
+        await setup.checkAccess(Domain("example.org")!)
+        #expect(setup.active?.name == "example.org")
+    }
+
     /// Every gam call the mock ran, as argv.
     private func calls() -> [[String]] {
         guard let data = try? Data(contentsOf: argvLog) else { return [] }
@@ -100,6 +112,28 @@ final class InactiveSuspendTests {
 
     /// The admin this app signs in as is left out of the people held, and a window the run doesn't offer is refused before any
     /// read. A Confirm without the click isn't one.
+    /// What Suspend these… shows belongs to the tenant and the run it was asked from: a switch hides another tenant's preview and
+    /// outcome (and a held preview from it never shows, so it can't be confirmed from here), and a newer run's table never shows an
+    /// older run's outcome.
+    @Test func whatItShowsBelongsToOneTenantAndOneRun() async throws {
+        try await connect()
+        let older = Date(timeIntervalSince1970: 1), newer = Date(timeIntervalSince1970: 2)
+        await suspend.preview(days: 90, about: older)
+        let pending = try pending()
+        guard case .previewing = suspend.state(about: older) else { Issue.record("\(suspend.state)"); return }
+        guard case .idle = suspend.state(about: newer) else { Issue.record("a newer run shows the older preview"); return }
+        await suspend.preview(days: 365, about: older)
+        guard case .done(let words) = suspend.state(about: older), words.hasSuffix("Nothing to suspend.") else {
+            Issue.record("\(suspend.state)"); return
+        }
+        try await connectOther()
+        guard case .idle = suspend.state, case .idle = suspend.state(about: older) else {
+            Issue.record("another tenant's outcome shows: \(suspend.state)"); return
+        }
+        await suspend.confirm(pending, OperatorConfirmation(confirmed: true))
+        #expect(calls().allSatisfy { $0.first == "print" }, "nothing held for another tenant runs from here")
+    }
+
     @Test func suspendTheseLeavesTheConnectedAdminOut() async throws {
         try await connect()
         await suspend.preview(days: 45)

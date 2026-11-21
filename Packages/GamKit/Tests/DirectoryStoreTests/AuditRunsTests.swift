@@ -207,6 +207,18 @@ struct AuditRunsTests {
         }
     }
 
+    /// A table's CSV is the whole of it, its columns first; an unknown table has none, never a sheet of titles that reads as
+    /// "none" (GamGUI's `table_csv` answers 409 in words).
+    @Test func aTablesCSVIsWholeAndAnUnknownOneHasNone() throws {
+        let rows = (0..<(AuditRuns.rowsShown + 30)).map { ["u\($0)@example.com", "", "never", "", "/", ""] }
+        let known = AuditRuns.Finding("inactive", "Inactive 90+ days", "", AuditRuns.inactiveColumns, rows)
+        let exported = try #require(AuditRuns.exportRows(known))
+        #expect(exported.first == AuditRuns.inactiveColumns && exported.count == rows.count + 1)
+        let unknown = AuditRuns.findings(for: AuditRuns.inactiveUsers, reads: [.init(step: AuditRuns.directory, state: .unknown, why: "x")],
+                                         tables: .init(), now: now, days: 90)[0]
+        #expect(AuditRuns.exportRows(unknown) == nil)
+    }
+
     /// Each step's read record, as GamGUI's `audit_read` writes it over the same output: a `print` read without `todrive` or
     /// nothing runs; the rows, or GAM's words, or "the table wasn't written" when the step's key column isn't in GAM's titles;
     /// never the output. A cancelled read is said in this app's words, as F1's.
