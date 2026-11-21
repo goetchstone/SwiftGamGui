@@ -187,6 +187,19 @@ struct WriteRouteTests {
                 "\(reaching)")
     }
 
+    /// Signature backups (GamGUI's #163, #164): only the executor starts a kept run and keeps into it, in the write lock,
+    /// after the exact read; a screen or a model only reads what was kept and puts it back through a preview. Only the
+    /// app's wiring hands the executor its keeper.
+    @Test func onlyTheExecutorKeepsSignatures() throws {
+        let keeping = [".keep(email:", ".start(what:", "KeptSignatureRun"]
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: keeping)
+                == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift", "Packages/GamKit/Sources/ChangeCore/SignatureKeeping.swift",
+                    "Packages/GamKit/Sources/Stores/SignatureBackupStore.swift"])
+        #expect(try Self.files(in: "App", matching: keeping).isEmpty)
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["signatureKeeper:"]) == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift"])
+        #expect(try Self.files(in: "App", matching: ["signatureKeeper:"]).subtracting(["App/AppServices.swift"]).isEmpty)
+    }
+
     /// Offboarding's routine and the compromised-account lock are the previews only `requires` stops (a refused sign-out
     /// mustn't stop forwarding off), and the offboarding sweep the one step that counts benign failures as done
     /// (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.

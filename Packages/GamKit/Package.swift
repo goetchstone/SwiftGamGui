@@ -23,7 +23,8 @@ let package = Package(
         .target(name: "ChangeCore", dependencies: ["GamEngine", "Vault", "Jobs"]),
         .target(name: "Vault"),
         .target(name: "Jobs"),
-        .target(name: "Stores", dependencies: ["GamEngine"]),
+        // ChangeCore for the protocol its signature backups implement (`SignatureKeeper`): only the executor keeps into them.
+        .target(name: "Stores", dependencies: ["GamEngine", "ChangeCore", "Vault"]),
         .target(name: "Assist"),
         .target(name: "Setup", dependencies: ["GamEngine", "Vault"]),
         .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault", "ChangeCore", "Stores"]),
@@ -33,7 +34,7 @@ let package = Package(
         .testTarget(name: "ChangeCoreTests", dependencies: ["ChangeCore", "GamEngine", "Vault", "Jobs", "TestSupport"]),
         .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "ChangeCore", "Stores", "TestSupport"]),
-        .testTarget(name: "StoresTests", dependencies: ["Stores", "GamEngine", "TestSupport"]),
+        .testTarget(name: "StoresTests", dependencies: ["Stores", "GamEngine", "ChangeCore", "Vault", "TestSupport"]),
         .testTarget(name: "AssistTests", dependencies: ["Assist", "GamEngine", "TestSupport"]),
         .testTarget(name: "SpikeTests"),
     ]
