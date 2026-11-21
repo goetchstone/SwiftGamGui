@@ -149,8 +149,9 @@ struct AppServices {
         let onboardChanges = OnboardChanges(executor: executor, setup: setup, directory: directory)
         // What a switch would stop or hide, named before Setup's check reads anything: the tray's runs, onboarding's wait
         // for Google, and a temporary password not handed over yet.
-        setup.runningRuns = { [weak jobs, weak onboardChanges, weak userChanges] in
-            jobs.map { SwitchStops.running(jobs: $0, onboarding: onboardChanges, users: userChanges) } ?? []
+        let auditRuns = AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit))
+        setup.runningRuns = { [weak jobs, weak onboardChanges, weak userChanges, weak auditRuns] in
+            jobs.map { SwitchStops.running(jobs: $0, onboarding: onboardChanges, users: userChanges, audits: auditRuns) } ?? []
         }
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)
@@ -199,7 +200,7 @@ struct AppServices {
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
                            readAudit: ReadAudit(log: audit),
-                           auditRuns: AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit)),
+                           auditRuns: auditRuns,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, lockVault: { await vault.lock() })
     }

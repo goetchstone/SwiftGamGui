@@ -139,7 +139,8 @@ switch path**: the menu calls `SetupModel.checkAccess`, the one Setup's Check Ac
 - **The check** (`Setup/SetupModel.swift`, `checkAccess`): it returns how it ended (`CheckOutcome`) besides setting
   `activity` and `lastCheck` as before. While a run goes (`runningRuns`, set by `AppServices` from
   `Directory/SwitchStops.swift`: the jobs tray's runs, Onboarding's wait for Google between its rounds as "Finishing setup
-  for <hire>", once and left half done, as GamGUI's FinishJob, and a temporary password not handed over yet), making
+  for <hire>", once and left half done, as GamGUI's FinishJob, a temporary password not handed over yet, and an audit
+  run going: reads only, a switch stops its GAM at once and changes nothing), making
   another domain active is refused **before any Keychain read**: `switchWarning` names every run going ("Switching to
   example.org stops what's running on example.com after its current step:", an offboarding or Secure "— stopped part-way,
   it is left half done"), and Switch Anyway passes `agreedToStop`, exactly those runs' IDs. After a pass the runs are asked
