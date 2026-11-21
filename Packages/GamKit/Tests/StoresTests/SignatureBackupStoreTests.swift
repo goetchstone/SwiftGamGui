@@ -210,10 +210,16 @@ struct SignatureBackupStoreTests {
         let id = try keptRun(SignatureBackupStore(folder: folder), "x", keeping: [Self.alice])
         let holder = open(file(id).path, O_RDONLY | O_CLOEXEC), pruner = open(file(id).path, O_RDONLY | O_CLOEXEC)
         defer { close(pruner) }
-        #expect(holder >= 0 && pruner >= 0 && flock(holder, LOCK_EX | LOCK_NB) == 0)
+        // The holder rides out a process started beside the suite holding the file for a moment, as pruning does; a single
+        // try failed here twice in full runs (failure log 2026-11-21).
+        #expect(holder >= 0 && pruner >= 0 && SignatureBackupStore.lockedNow(holder, tries: 250))
         #expect(!SignatureBackupStore.lockedNow(pruner, tries: 2), "held throughout: never taken")
-        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(40)) { close(holder) }
-        #expect(SignatureBackupStore.lockedNow(pruner, tries: 250), "released a moment later: taken")
+        // Released after the first refused try, at a known point in the wait: no timer to race on a busy machine.
+        var released = false
+        #expect(SignatureBackupStore.lockedNow(pruner, tries: 250, afterRefused: {
+            if !released { released = true; close(holder) }
+        }), "released a moment later: taken")
+        #expect(released, "the first try was refused: the lock was held when the wait began")
     }
 
     /// Review of Phase A: a keep into a file someone removed flushed into nothing and said it was kept. It throws, so the
