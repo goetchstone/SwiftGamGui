@@ -136,6 +136,10 @@
    "records": "[{\"SendAs Address: <alice@example.com>\": \"  IsPrimary: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Default: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Signature:\"}, {\"SendAs Address: <alice@example.com>\": \"    Best\"}]"
   },
   {
+   "stdout": "User,displayName,sendAsEmail,replyToAddress,isPrimary,isDefault,treatAsAlias,verificationStatus,signature\nalice@example.com,,alice@example.com,,True,True,,,\"Best,<br>Alice\"\n",
+   "records": "[{\"User\": \"alice@example.com\", \"displayName\": \"\", \"sendAsEmail\": \"alice@example.com\", \"replyToAddress\": \"\", \"isPrimary\": \"True\", \"isDefault\": \"True\", \"treatAsAlias\": \"\", \"verificationStatus\": \"\", \"signature\": \"Best,<br>Alice\"}]"
+  },
+  {
    "stdout": "User,delegateAddress,delegationStatus\nalice@example.com,assistant@example.com,accepted\nalice@example.com,backup@example.com,accepted\n",
    "records": "[{\"User\": \"alice@example.com\", \"delegateAddress\": \"assistant@example.com\", \"delegationStatus\": \"accepted\"}, {\"User\": \"alice@example.com\", \"delegateAddress\": \"backup@example.com\", \"delegationStatus\": \"accepted\"}]"
   },

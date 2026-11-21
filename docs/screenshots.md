@@ -49,7 +49,14 @@ with the two that failed and Retry.
 
 | Everyone in an org unit | Its confirm | The result |
 |---|---|---|
-| ![Signatures set for everyone in an org unit: Who, /Staff and the units inside it, suspended accounts left out, the new signature as the first of them gets it, and Review for 14 People…](screenshots/signatures-staff.png) | ![The confirm for setting the signature for 14 people in /Staff: the first ten named and Show all 14, the new signature as one of them would get it, the warning that Gmail keeps no copy, and Replace 14 Signatures](screenshots/signatures-staff-confirm.png) | ![Signatures after a run for /Staff: applied to 12 of 14 users, Failed (2), and Retry the 2 That Failed…](screenshots/signatures-staff-result.png) |
+| ![Signatures set for everyone in an org unit: Who, /Staff and the units inside it, suspended accounts left out, the new signature as the first of them gets it, and Review for 14 People…](screenshots/signatures-staff.png) | ![The confirm for setting the signature for 14 people in /Staff: the first ten named and Show all 14, the new signature as one of them would get it, that each old signature is read and kept on this Mac first, and Replace 14 Signatures](screenshots/signatures-staff-confirm.png) | ![Signatures after a run for /Staff: applied to 12 of 14 users, Failed (2), and Retry the 2 That Failed…](screenshots/signatures-staff-result.png) |
+
+Gmail keeps no copy of a replaced signature, so every run keeps each old one on this Mac first: Kept signatures lists
+the last five runs, and Put Back reviews one's old signatures before it sets them again.
+
+| Kept signatures | Put Back |
+|---|---|
+| ![Kept signatures: a run for the whole company, when, its domain and four signatures, with Put Back…](screenshots/signatures-kept.png) | ![The Put Back confirm: the three people whose signature goes back, the first one's old signature, carol@example.com left out because GAM would change hers on the way in, and Put Back 3 Signatures](screenshots/signatures-putback.png) |
 
 Classroom, read only: the open classes, found by name, section, room or a teacher's address, and a class's card
 with its teachers and students. Plan an Import reads a SIS's OneRoster export on this Mac and shows what it holds and

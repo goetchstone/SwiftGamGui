@@ -160,14 +160,15 @@ has_delegate() { delegates_of "$1" | grep -qixF -- "$2"; }   # Gmail compares ad
 # GAM's CSV (failure-log 2026-10-10, "GAM's CSV escapes"). GAM 7.48.22 writes every CSV with CPython 3.14's
 # csv module in setDialect's dialect (gam/__init__.py:8830-8839): comma, double quote, quotes doubled, a
 # backslash escape (csv_output_no_escape_char is off by default), QUOTE_MINIMAL, rows ending in "\n". So a
-# backslash in a value is doubled, and a value holding a comma or a quote is quoted, its quotes doubled.
-# A value here is one line (a JSON cell never holds a raw newline); one with CR or LF is refused.
+# backslash in a value is doubled, and a value holding a comma, a quote, a CR or a LF is quoted, its quotes doubled and
+# its line breaks written as they are (CPython's join_append_data: a line break sets `quoted`, a backslash is escaped and
+# doesn't). Only a stored signature (`print signature`) holds a line break here: a JSON cell never does. The `.` rides
+# through sed so `$(…)` keeps the value's own trailing line breaks.
 CR=$(printf '\r')
 gam_cell() {  # <value>: one CSV field as GAM writes it
-  case "$1" in *"$CR"*|*'
-'*) echo "ERROR: mock: a CSV value with a line break isn't modelled" 1>&2; exit 2 ;; esac
-  escaped=$(printf '%s' "$1" | LC_ALL=C sed -e 's/\\/\\\\/g' -e 's/"/""/g')
-  case "$1" in *[,\"]*) printf '"%s"' "$escaped" ;; *) printf '%s' "$escaped" ;; esac
+  escaped=$(printf '%s.' "$1" | LC_ALL=C sed -e 's/\\/\\\\/g' -e 's/"/""/g'); escaped=${escaped%.}
+  case "$1" in *[,\"]*|*"$CR"*|*'
+'*) printf '"%s"' "$escaped" ;; *) printf '%s' "$escaped" ;; esac
 }
 gam_row() {  # <value>...: one CSV row as GAM writes it
   separator=""
@@ -854,12 +855,6 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "signature" ];
   while :; do case "$shown" in *[[:space:]]) shown=${shown%?} ;; *) break ;; esac; done
   printf 'SendAs Address: <%s>\n  IsPrimary: True\n  Default: True\n  Signature:\n    %s\n' "$2" "$shown"
   exit 0
-fi
-
-# `gam user <email> print signature` (GamGUI #163's keep-before-replace read): not modelled. Signature backups aren't
-# built here yet, so nothing reads it; refused rather than answered in a guessed shape.
-if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "signature" ]; then
-  not_modelled "user print signature"
 fi
 
 # `gam print groups member <email>` -> CSV of THAT user's group emails: the groups listing them directly, in
@@ -2283,6 +2278,45 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "sendas" ]; t
   sendas_of "$user" | while IFS= read -r address; do
     sendas_deleted "$user" "$address" || printf '%s,Billing Desk,False,False,,%s,False,False,accepted\n' "$user" "$address"
   done
+  exit 0
+fi
+
+# `gam user <u> print signature` (printShowSignature's print mode, gam/__init__.py:79433-79499 at 7.52.04, read to the
+# end): GamGUI's print_signature, the exact read ChangeCore keeps before a signature is replaced. Its CSVPrintFile's own
+# titles, User, displayName, sendAsEmail, replyToAddress, isPrimary, isDefault, treatAsAlias, verificationStatus, stay
+# first and in that order (`sortall` sorts only the titles a row adds). The row is the person's own send-as address
+# (sendAs.get with sendAsEmail=<u>), so `signature` is a column only when Gmail's reply has the field, which an empty
+# signature's doesn't; the primary address's reply has no treatAsAlias or verificationStatus (custom aliases only), so
+# those cells are empty. GAM writes "Getting Signatures for <u>" first (printGettingEntityItemForWhom, Ent.SIGNATURE's
+# plural; `show_gettings` is on). An address that isn't a user fails at its token (not_a_user); a refused token
+# (GAM_MOCK_STATE/quiet/<u>) is GAM skipping the person without a word, the titles alone, exit 0; Gmail off is
+# serviceNotAvailable, userGmailServiceNotEnabledWarning, exit 73 and the titles alone. The signature is the one the
+# mock last set, in the form GAM stored it, or each fixture user's own, as `show signature` has it; written by
+# gam_cell, its line breaks as they are. Only the arguments the app sends. A just-created account still being set up
+# (provisioning/) isn't modelled for this read: the app never reads one, since a new hire's signature keeps nothing.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "signature" ]; then
+  [ $# -eq 4 ] || not_modelled "print signature with $5"
+  user=$(lower "$2")
+  known_user "$user" || not_a_user "$user" Print
+  titles='User,displayName,sendAsEmail,replyToAddress,isPrimary,isDefault,treatAsAlias,verificationStatus'
+  if is_quiet "$user"; then printf '%s\n' "$titles"; exit 0; fi
+  getting Signatures "$user"
+  if gmail_off "$user"; then printf 'User: %s, Gmail Service/App not enabled\n' "$user" 1>&2; printf '%s\n' "$titles"; exit 73; fi
+  sfile="${GAM_MOCK_STATE:-}/signature/$user"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$sfile" ]; then
+    sig=$(cat "$sfile"; printf .); sig=${sig%.}
+  else
+    case "$user" in
+      alice@example.com) sig='Best,<br>Alice' ;;
+      carol@example.com) sig='Carol Clark<br>Operations' ;;
+      *) sig='' ;;
+    esac
+  fi
+  if [ -z "$sig" ]; then
+    printf '%s\n' "$titles"; gam_row "$user" "" "$user" "" True True "" ""
+  else
+    printf '%s,signature\n' "$titles"; gam_row "$user" "" "$user" "" True True "" "" "$sig"
+  fi
   exit 0
 fi
 

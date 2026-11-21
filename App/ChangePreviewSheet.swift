@@ -119,7 +119,7 @@ extension SignatureChanges {
 
 /// A signature's confirm step (design doc D5): whose signature, the new one exactly as held (Rendered
 /// draws GAM's stored form of it; HTML is the argv element itself, `WriteStep.signatureBody`), the one
-/// they have now, what to know first, and that nothing keeps the old one. Confirming runs exactly this
+/// they have now, what to know first, and that the old one is kept on this Mac first. Confirming runs exactly this
 /// preview, once.
 struct SignaturePreviewSheet: View {
     let pending: SignatureChanges.Pending
@@ -136,20 +136,18 @@ struct SignaturePreviewSheet: View {
             Section(pending.title) {
                 Text(pending.person.primaryEmail).foregroundStyle(.secondary).textSelection(.enabled)
             }
-            Section(pending.isPutBack ? "Their previous signature, to set again" : "New") {
+            Section("New") {
                 SignaturePane(html: pending.body, rendered: Signature.stored(pending.body),
-                              label: "\(pending.isPutBack ? "Previous" : "New") signature for \(pending.person.fullName)",
+                              label: "New signature for \(pending.person.fullName)",
                               empty: "Empty: confirming clears their signature.")
             }
-            if !pending.isPutBack {
-                Section("Current") {
-                    if let previous = pending.previous {
-                        SignaturePane(html: previous.body, rendered: previous.body,
-                                      label: "Current signature of \(pending.person.fullName)", height: 200)
-                    } else {
-                        Text("Their current signature wasn't read, so it can't be put back afterwards.")
-                            .foregroundStyle(.secondary)
-                    }
+            Section("Current") {
+                if let current = pending.current {
+                    SignaturePane(html: current, rendered: current,
+                                  label: "Current signature of \(pending.person.fullName)", height: 200)
+                } else {
+                    Text("Their current signature wasn't shown here. It's read again when this runs.")
+                        .foregroundStyle(.secondary)
                 }
             }
             if !pending.warnings.isEmpty {
@@ -160,7 +158,7 @@ struct SignaturePreviewSheet: View {
                 }
             }
             Section {
-                Label("Replaces their current Gmail signature. Gmail keeps no copy.", systemImage: "info.circle")
+                Label(SignatureChanges.keptFirst(1), systemImage: "info.circle")
                 // The exact command is there for an admin who wants it, the signature masked as the audit keeps it.
                 DisclosureGroup("Show command") {
                     Text(pending.preview.steps.first?.shownArgv.joined(separator: " ") ?? "")
@@ -254,8 +252,7 @@ struct SignatureScopePreviewSheet: View {
                 }
             }
             Section {
-                Label("Replaces each one's current Gmail signature. Gmail keeps no copy, and there's no Put Back for many people.",
-                      systemImage: "info.circle")
+                Label(SignatureChanges.keptFirst(count), systemImage: "info.circle")
                 Text(pending.isRetry ? "Confirming writes exactly this: the template that run used, to the people it failed for."
                      : "Confirming writes exactly this. Change who it's for or the template and you'll need to review again.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -276,8 +273,7 @@ struct SignatureScopePreviewSheet: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { changes.dismiss() }
             }
-            // Gmail keeps no copy and there is no Put Back for many people: Return alone never runs it (not the default
-            // button), as the calendar sheet's deletes.
+            // Many signatures at once: Return alone never runs it (not the default button), as the calendar sheet's deletes.
             ToolbarItem(placement: .primaryAction) {
                 // Off until the count typed is the guard's (GamGUI's `data-unlocks`); the model refuses a mismatch too.
                 Button(pending.confirmLabel) { confirm() }
@@ -286,6 +282,99 @@ struct SignatureScopePreviewSheet: View {
             }
         }
         // Said on each refusal, a repeated one too: the label alone appears only once.
+        .onChange(of: changes.typedRefusals) {
+            if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+}
+
+/// A Put Back's confirm step (GamGUI's `_sig_putback.html`): the kept run it sets again, whose signatures go back (the first
+/// one's shown, as held), who is left out and why, the count typed above the guard's threshold, and what the run checks
+/// first. Confirming runs exactly these people and these signatures, once.
+struct SignaturePutBackSheet: View {
+    let pending: SignatureChanges.Pending
+    let changes: SignatureChanges
+    @State private var typedCount = ""
+
+    private var count: Int { pending.people.count }
+    private var needsCount: Bool { pending.preview.decision.requiresTypedCount }
+    private static let named = 10
+
+    private func confirm() {
+        let confirmation = OperatorConfirmation(confirmed: true, typedCount: needsCount ? typedCount : "")
+        Task { await changes.confirm(pending, confirmation) }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                if let putBack = pending.putBack {
+                    Text("Kept \(putBack.when.formatted(date: .abbreviated, time: .shortened)) on \(pending.preview.domain.name)")
+                        .foregroundStyle(.secondary)
+                }
+                let addresses = pending.people.map(\.primaryEmail)
+                let more = count - min(count, Self.named)
+                Text(addresses.prefix(Self.named).joined(separator: ", ") + (more > 0 ? " \u{2026} and \(more) more" : ""))
+                    .textSelection(.enabled)
+                if more > 0 {
+                    DisclosureGroup("Show all \(count)") {
+                        Text(addresses.joined(separator: "\n")).font(.callout).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } header: {
+                Text(pending.title).accessibilityAddTraits(.isHeader)
+            }
+            Section("Their signature before that run, for \(pending.person.fullName)") {
+                SignaturePane(html: pending.body, rendered: pending.body,
+                              label: "Signature to put back for \(pending.person.fullName), the first of \(count)",
+                              empty: "Empty: they had no signature, so confirming clears theirs.")
+            }
+            if let leftOut = pending.putBack?.leftOut, !leftOut.isEmpty {
+                Section("Left out (\(leftOut.count)), to put back by hand") {
+                    ForEach(leftOut, id: \.self) { person in
+                        Label("\(person.email): \(person.why).", systemImage: "info.circle").textSelection(.enabled)
+                    }
+                }
+            }
+            ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+            if needsCount {
+                Section("This puts back the Gmail signature of \(count) people") {
+                    TextField("Type \(count) to confirm", text: $typedCount)
+                        .accessibilityLabel("Type the number of people, \(count), to confirm")
+                        .onChange(of: typedCount) { changes.typingChanged() }
+                    if let problem = changes.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
+                }
+            }
+            Section {
+                Label("Each one's signature is read first: anyone whose signature changed since that run is left as it is. "
+                      + "What this replaces is kept on this Mac too, so it can be put back in turn.", systemImage: "info.circle")
+                Text("It runs in the jobs tray, one change per person, with Stop.").font(.callout).foregroundStyle(.secondary)
+                DisclosureGroup(count == 1 ? "Show command" : "Show \(count) commands") {
+                    Text(pending.preview.steps.map { $0.shownArgv.joined(separator: " ") }.joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 640, idealWidth: 760, minHeight: 600, idealHeight: 780)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { changes.dismiss() }
+            }
+            // Many signatures at once: Return alone never runs it (not the default button).
+            ToolbarItem(placement: .primaryAction) {
+                Button(pending.confirmLabel) { confirm() }
+                    .disabled(changes.isBusy || !pending.preview.decision.typedCountMatches(typedCount))
+                    .accessibilityLabel("Put back the Gmail signatures of \(count) \(count == 1 ? "person" : "people")")
+            }
+        }
         .onChange(of: changes.typedRefusals) {
             if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
         }

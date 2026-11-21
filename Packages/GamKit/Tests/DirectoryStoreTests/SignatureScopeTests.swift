@@ -1,8 +1,9 @@
-import ChangeCore
+@testable import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
 import Setup
+import Stores
 import TestSupport
 import Testing
 import Vault
@@ -24,12 +25,16 @@ final class SignatureScopeTests {
     let argvLog: URL
     let auditURL: URL
     let state: URL
+    /// The strict mock, which answers the exact signature read ChangeCore keeps before each write.
+    let gam = Fixtures.mockGam
+    let backups: SignatureBackupStore
     let confirmed = OperatorConfirmation(confirmed: true)
 
     init() throws {
         setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         base = try RuntimeDirectory.prepare(scratch.appending(path: "run"))
-        runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
+        backups = SignatureBackupStore(folder: scratch.appending(path: "signature-backups"))
+        runner = AuthenticatedRunner(runner: GamRunner(binary: gam), vault: vault, runtimeDirectory: base)
         setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         directory = DirectoryStore(setup: setup, runner: runner)
         argvLog = scratch.appending(path: "argv.log")
@@ -47,8 +52,8 @@ final class SignatureScopeTests {
         let executor = Executor(runner: writer ?? runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": state.path])
-        let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner)
+                              "GAM_MOCK_STATE": state.path], signatureKeeper: backups)
+        let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner, backups: backups)
         changes.environment = ["GAM_MOCK_STATE": state.path]
         return changes
     }
@@ -80,7 +85,10 @@ final class SignatureScopeTests {
     }
 
     /// The signature writes the mock ran, as argv.
-    private func writes() -> [[String]] {
+    private func writes() -> [[String]] { calls().filter { $0.count > 2 && $0[2] == "signature" } }
+
+    /// Everything the mock ran, as argv (logged as a count then its elements, NUL-separated).
+    private func calls() -> [[String]] {
         guard let data = try? Data(contentsOf: argvLog) else { return [] }
         var fields = data.split(separator: 0, omittingEmptySubsequences: false).map { String(decoding: $0, as: UTF8.self) }
         var calls: [[String]] = []
@@ -88,7 +96,7 @@ final class SignatureScopeTests {
             calls.append(Array(fields[1...count]))
             fields.removeFirst(count + 1)
         }
-        return calls.filter { $0.count > 2 && $0[2] == "signature" }
+        return calls
     }
 
     private func bytes(_ calls: [[String]]) -> [[[UInt8]]] { calls.map { $0.map { Array($0.utf8) } } }
@@ -110,7 +118,7 @@ final class SignatureScopeTests {
     private func wrapped(_ prefix: String) throws -> AuthenticatedRunner {
         try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
         let script = scratch.appending(path: "mock-\(UUID().uuidString).sh")
-        try Data("#!/bin/sh\n\(prefix)exec '\(Fixtures.mockGam.path)' \"$@\"\n".utf8).write(to: script)
+        try Data("#!/bin/sh\n\(prefix)exec '\(gam.path)' \"$@\"\n".utf8).write(to: script)
         chmod(script.path, 0o755)
         return AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault, runtimeDirectory: base)
     }
@@ -181,7 +189,8 @@ final class SignatureScopeTests {
         let changes = changes()
         await changes.previewScope(.company, template: "{name} | {email}")
         let pending = try pending(changes)
-        #expect(pending.isScoped && !pending.isRetry && pending.previous == nil)
+        #expect(pending.isScoped && !pending.isRetry && !pending.isPutBack && pending.current == nil)
+        #expect(pending.preview.steps.allSatisfy { $0.keepFirst == .signature(email: $0.target, setting: $0.signatureBody ?? "", expectedNow: nil) })
         #expect(pending.people.map(\.primaryEmail) == ["admin@example.com", "alice@example.com", "carol@example.com", "dana@example.com"])
         #expect(pending.person.primaryEmail == "admin@example.com" && pending.body == "IT Admin | admin@example.com")
         #expect(pending.preview.steps.map(\.signatureBody) == pending.people.map { Signature.render("{name} | {email}", for: $0) })
@@ -265,8 +274,13 @@ final class SignatureScopeTests {
         #expect(audited().map(\.target) == ["admin@example.com", "alice@example.com", "dana@example.com"])
         #expect(audited().allSatisfy { $0.action == "setSignature" && $0.ok })
         let done = try done(changes)
-        #expect(done.message == "Applied to 3 of 3 users." && !done.partial && done.retry == nil && done.previous == nil)
+        #expect(done.message == "Applied to 3 of 3 users." && !done.partial && done.retry == nil)
         #expect(changes.finished == 1 && changes.progress == nil)
+        // Each one's old signature kept first (GamGUI #163), in one run, which the result names for its Put Back.
+        let kept = try #require(try backups.runs().first?.run)
+        #expect(done.keptRun == kept.id && kept.what == "Signature for /Staff \u{2014} 3 users")
+        #expect(kept.entries.map(\.email) == ["admin@example.com", "alice@example.com", "dana@example.com"])
+        #expect(kept.entries.map(\.previous) == ["", "Best,<br>Alice", ""])
     }
 
     /// `test_signatures_apply_over_the_threshold_needs_the_count_typed` (the threshold lowered, as GamGUI's test does):
@@ -300,8 +314,8 @@ final class SignatureScopeTests {
         let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": state.path])
-        let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner)
+                              "GAM_MOCK_STATE": state.path], signatureKeeper: backups)
+        let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner, backups: backups)
         changes.typedCountAbove = 1
         await changes.previewScope(.company, template: "{name}")
         let outcome = await executor.run(try pending(changes).preview, confirmation: OperatorConfirmation(confirmed: true, typedCount: "3"))
@@ -335,7 +349,8 @@ final class SignatureScopeTests {
     }
 
     /// `test_a_signature_retry_is_the_preview_and_confirm_step_for_exactly_the_failed`: a failure is named with why, and
-    /// its retry is a new preview of exactly those people with the run's template, written only from its confirm.
+    /// its retry is a new preview of exactly those people with the run's template, run only from its confirm. Their
+    /// signature is read first (GamGUI #163), and GAM still can't read it, so nothing is written over it.
     @Test func aRetryPreviewsExactlyTheFailedWithTheSameTemplate() async throws {
         try await connect()
         try marker("nogmail/carol@example.com")
@@ -344,21 +359,23 @@ final class SignatureScopeTests {
         await changes.confirm(try pending(changes), confirmed)
         let ran = try done(changes)
         #expect(ran.message == "Applied to 3 of 4 users." && ran.partial && ran.failedCount == 1)
-        #expect(ran.failures == ["carol@example.com \u{2014} \(GamError.Kind.serviceNotEnabled.remediation)"])
+        #expect(ran.failures == ["carol@example.com \u{2014} \(Executor.notRead) \(GamError.Kind.serviceNotEnabled.remediation)"])
         let retry = try #require(ran.retry)
         #expect(retry.failed == ["carol@example.com"] && retry.template == "Hi {first}")
-        #expect(writes().count == 4)
+        #expect(writes().count == 3)
 
         await changes.previewRetry(retry)
         let pending = try pending(changes)
         #expect(pending.isRetry && pending.people.map(\.primaryEmail) == ["carol@example.com"] && pending.body == "Hi Carol")
         #expect(pending.preview.title == "Signature retry \u{2014} 1 user")
-        #expect(writes().count == 4, "a retry is a preview")
+        #expect(writes().count == 3, "a retry is a preview")
+        let reads = calls().filter { $0 == GamCommands.printSignature(email: "carol@example.com").argv }.count
         await changes.confirm(pending, confirmed)
-        #expect(bytes(Array(writes().dropFirst(4))) == bytes([["user", "carol@example.com", "signature", "Hi Carol", "html"]]))
+        #expect(writes().count == 3 && calls().filter { $0 == GamCommands.printSignature(email: "carol@example.com").argv }.count == reads + 1)
         #expect(try done(changes).retry?.failed == ["carol@example.com"], "GAM still refuses: it can be retried again")
         await changes.confirm(pending, confirmed)
-        #expect(writes().count == 5, "a replayed confirm")
+        #expect(calls().filter { $0 == GamCommands.printSignature(email: "carol@example.com").argv }.count == reads + 1,
+                "a replayed confirm")
     }
 
     /// A retry after a switch is refused: its people were the old tenant's (GamGUI binds the retry's preview to its tenant).
@@ -372,7 +389,7 @@ final class SignatureScopeTests {
         try await connect("example.org", admin: "admin@example.org")
         await changes.previewRetry(retry)
         #expect(try problem(changes).summary == Executor.PreviewRefusal.tenantChanged.message)
-        #expect(writes().count == 1)
+        #expect(writes().isEmpty && retry.failed == ["carol@example.com"])
     }
 
     /// `test_stop_ends_the_signature_apply_after_the_write_in_flight`: Stop ends the run after the write in flight; the
@@ -420,9 +437,10 @@ final class SignatureScopeTests {
         let count = SignatureChanges.failuresKept + 100
         let people = (0..<count).map { Self.user("u\($0)@example.com") }
         let pending = SignatureChanges.Pending(preview: held.preview, person: people[0], title: held.title, confirmLabel: held.confirmLabel,
-                                               previous: nil, warnings: [], isPutBack: false, scope: .company, people: people,
-                                               template: "{name}", isRetry: false, notes: [])
-        let done = SignatureChanges.scopeDone(pending, Array(repeating: .failed(message: "x", kind: .notFound), count: count), note: "")
+                                               current: nil, warnings: [], scope: .company, people: people,
+                                               template: "{name}", isRetry: false, notes: [], putBack: nil)
+        let done = SignatureChanges.scopeDone(pending, Array(repeating: .failed(message: "x", kind: .notFound), count: count), note: "",
+                                              kept: nil)
         #expect(done.failedCount == count && done.failures.count == SignatureChanges.failuresKept)
         #expect(done.retry?.failed.count == count)
         #expect(done.message == "Applied to 0 of \(count) users." && done.partial)

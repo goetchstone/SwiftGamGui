@@ -99,6 +99,8 @@ struct AppServices {
         return assemble(vault: Vault(store: KeychainStore()), gam: gam, gamgui: GamGUIKeychain(),
                         setupFolderURL: SetupFolder.defaultURL, auditURL: AuditLog.defaultURL,
                         templates: SignatureTemplates(root: SignatureStore.defaultRoot, gamGUIFile: SignatureStore.gamGUIFile),
+                        // Each signature a run replaces, kept here first by the executor (GamGUI's signature backups).
+                        signatureBackups: SignatureBackupStore(folder: SignatureBackupStore.defaultFolder),
                         offboardTemplates: OffboardTemplates(root: SignatureStore.defaultRoot),
                         // This app's roles; GamGUI's file, built here at run time only (GamGUI's `paths.py`,
                         // `onboarding.py:47`), is read only when the operator copies it once.
@@ -114,7 +116,7 @@ struct AppServices {
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
-                                 offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
+                                 signatureBackups: SignatureBackupStore, offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
                                  nobodyHas: NobodyHasChecks, incidents: Incidents, roster: RosterStore, rosterMaps: RosterMaps,
                                  lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
@@ -130,7 +132,7 @@ struct AppServices {
                      currentActor: { @MainActor [weak setup] in setup?.connectedAdmin },
                      adminAccountID: { @MainActor [weak setup] in setup?.connectedAdminID }, tenant: { @MainActor [weak setup] in
                 setup?.active.map { ($0, setup!.generation) }
-            }, extraEnvironment: extraEnvironment, jobs: jobs.report)
+            }, extraEnvironment: extraEnvironment, jobs: jobs.report, signatureKeeper: signatureBackups)
         }
         if let executor { jobs.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) } }
         let directory = DirectoryStore(setup: setup, runner: runner)
@@ -145,7 +147,8 @@ struct AppServices {
         return AppServices(setup: setup, directory: directory, gam: gam, executor: executor, jobs: jobs,
                            userChanges: UserChanges(executor: executor, directory: directory),
                            userAccess: UserAccess(setup: setup, runner: runner),
-                           signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner),
+                           signatureChanges: SignatureChanges(executor: executor, setup: setup, directory: directory, runner: runner,
+                                                              backups: signatureBackups),
                            signatureTemplates: templates,
                            groups: groups,
                            groupMembers: groupMembers,
@@ -218,6 +221,7 @@ struct AppServices {
                         templates: SignatureTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-signatures-\(UUID().uuidString)"),
                             gamGUIFile: nil),
+                        signatureBackups: demoSignatureBackups(beside: mock),
                         offboardTemplates: OffboardTemplates(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-offboarding-\(UUID().uuidString)")),
                         onboardRoles: demoRoles(beside: mock),
@@ -238,6 +242,21 @@ struct AppServices {
             services.roster.demoPick = [sheet]
         }
         return services
+    }
+
+    /// The demo's kept signatures: a fresh temporary folder each launch, never the operator's, holding
+    /// `Tests/Fixtures/demo/signature-backups`' run (this app's format: app data, not GAM's output), so Signatures lists one
+    /// and its Put Back can be previewed. Nothing is ever kept into it but by the executor, against the mock.
+    private static func demoSignatureBackups(beside mock: URL?) -> SignatureBackupStore {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-kept-\(UUID().uuidString)")
+        if let source = mock?.deletingLastPathComponent().appending(path: "demo/signature-backups"),
+           let names = try? FileManager.default.contentsOfDirectory(atPath: source.path) {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            for name in names where name.hasSuffix(".jsonl") {
+                try? FileManager.default.copyItem(at: source.appending(path: name), to: folder.appending(path: name))
+            }
+        }
+        return SignatureBackupStore(folder: folder)
     }
 
     /// The demo's saved column maps: a fresh temporary folder each launch, never the operator's. For the map step's

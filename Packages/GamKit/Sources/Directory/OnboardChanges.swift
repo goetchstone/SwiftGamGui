@@ -682,9 +682,12 @@ public final class OnboardChanges {
                 continue
             case .signature(let template):
                 guard failed.contains(row.index), let signature = plan.signature else { continue }
+                // A later run, on an account that has been there since: whatever signature it has now (set by its owner, or
+                // on Signatures) is kept first, as any replaced signature is.
                 add(WriteStep(GamCommands.setSignature(email: plan.email, signature: signature.body, html: true), target: plan.email,
                               summary: "Set \(plan.email)'s Gmail signature to \u{201C}\(template)\u{201D}",
-                              about: ["signature": template]), row)
+                              about: ["signature": template],
+                              keepFirst: .signature(email: plan.email, setting: signature.body, expectedNow: nil)), row)
             case .group(let group):
                 guard failed.contains(row.index) else { continue }
                 add(WriteStep(GamCommands.addGroupMember(group: group, member: plan.email), target: plan.email,

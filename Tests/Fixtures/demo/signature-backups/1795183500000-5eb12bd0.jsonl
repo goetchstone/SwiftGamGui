@@ -1,0 +1,5 @@
+{"run": "1795183500000-5eb12bd0", "when": 1795183500.0, "what": "Signature for the whole company — 4 users", "domain": "example.com"}
+{"email": "admin@example.com", "previous": "", "set": "IT Admin<br>IT"}
+{"email": "alice@example.com", "previous": "Best,<br>Alice", "set": "Alice Anders<br>IT Director"}
+{"email": "carol@example.com", "previous": "Carol Clark\\nOperations", "set": "Carol Clark<br>Operations"}
+{"email": "dana@example.com", "previous": "", "set": "Dana Diaz"}
