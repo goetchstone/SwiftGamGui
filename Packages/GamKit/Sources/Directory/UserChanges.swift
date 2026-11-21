@@ -95,6 +95,16 @@ public final class UserChanges {
         self.directory = directory
         self.today = today
         self.now = now
+        directory.setup.onTenantChange { [weak self] in self?.tenantChanged() }
+    }
+
+    /// A switch (plan F6): a preview, result or problem shown was the old domain's. A run going keeps its sheet to its end;
+    /// the sign-in details stay, held as ever (a password shown once, under its own person, whom this domain doesn't list).
+    private func tenantChanged() {
+        guard !isBusy else { return }
+        state = .idle
+        subject = nil
+        deleted = nil
     }
 
     public nonisolated static func day(_ date: Date) -> String {
@@ -503,6 +513,8 @@ public final class UserChanges {
                       precondition: (@Sendable () async throws -> Bool)? = nil) async {
         guard !isBusy else { return }
         subject = email
+        // The tenant the page showed, before the await: a switch meanwhile (plan F6) refuses it rather than holding it there.
+        let expecting = expecting ?? directory.setup.active.map { (domain: $0, generation: directory.setup.generation) }
         guard let executor else {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
@@ -535,6 +547,11 @@ public final class UserChanges {
         }
         if let refusal = outcome.refusal {
             state = .problem(refusal)
+            return
+        }
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        guard directory.setup.isConnected(to: pending.preview) else {
+            state = .idle
             return
         }
         switch outcome.steps.first {

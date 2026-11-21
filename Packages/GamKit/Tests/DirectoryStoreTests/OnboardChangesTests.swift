@@ -693,6 +693,35 @@ final class OnboardChangesTests {
         #expect(try self.pending(changes).plan.warnings.first?.contains("GAM reads as a file") == true)
     }
 
+    // MARK: a domain switch (plan F6)
+
+    /// A switch while Google readies a new account: the wait stops as Stop stops it, saying why in GamGUI's words, and the
+    /// run's Retry is withdrawn (it would preview example.com's new hire on example.org); the run's panel stays, as its card.
+    @Test func aSwitchStopsTheWaitAndWithdrawsTheRetry() async throws {
+        try await connect()
+        try lag(100)
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", groups: ["missing@example.com"])
+        await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                              createAccount: true), role: role), confirmed)
+        #expect(changes.finishing?.isLive == true && changes.card != nil)
+        let folder = scratch.appending(path: "config-other")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2service.json"))
+        try Data(#"{"decoded_id_token": {"email": "admin@example.org"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        await setup.importFolder(folder, as: "example.org")
+        await setup.checkAccess(Domain("example.org")!)
+        #expect(setup.active == Domain("example.org")!)
+        await changes.waitForFinishing()
+        #expect(changes.finishing?.phase == .stopped)
+        let reasons = Set(try #require(changes.run).notDone.values.map(\.reason))
+        #expect(reasons == ["Stopped: you switched to example.org."])
+        #expect(changes.failedSteps.isEmpty, "no Retry on another domain")
+        await changes.previewRetry()
+        #expect(changes.pending == nil && changes.run != nil && changes.card != nil)
+    }
+
     // MARK: retrying what failed (D8)
 
     /// "Retry the N that failed" is a new preview of exactly those steps, from the plan held: the same

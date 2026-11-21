@@ -171,6 +171,10 @@ public final class OnboardChanges {
     private let timeout: Duration
     private var finishTask: Task<Void, Never>?
     private var cardTimer: Task<Void, Never>?
+    /// The tenant the run shown ran on: its Retry is offered, and held, only there (plan F6).
+    private var runTenant: (domain: Domain, generation: Int)?
+    /// Why the wait for Google stopped when a switch stopped it (plan F6), in GamGUI's words; nil for Stop.
+    private var finishStoppedBy: String?
 
     /// The card is held this long (GamGUI's `_CREDS_TTL`); `ContinuousClock` counts time asleep.
     public static let cardLifetime: Duration = .seconds(15 * 60)
@@ -189,6 +193,19 @@ public final class OnboardChanges {
         self.makePassword = makePassword
         self.now = now
         self.timeout = timeout
+        setup.onTenantChange { [weak self] in self?.tenantChanged() }
+    }
+
+    /// A switch (plan F6): a held preview and a problem were the old domain's, and the wait for Google stops, as Stop does,
+    /// saying why (GamGUI's `stop_why`). The run's panel and its card stay (the card's password shows once), but its Retry is
+    /// withdrawn: it would preview the old domain's new hire on this one.
+    private func tenantChanged() {
+        discardPending()
+        problem = nil
+        if finishing?.isLive == true {
+            finishStoppedBy = setup.active.map(Executor.switchedTo)
+            finishTask?.cancel()
+        }
     }
 
     /// Tests: until the wait for Google has ended.
@@ -458,6 +475,8 @@ public final class OnboardChanges {
         let previous = run
         run = Run(plan: pending.plan, isRetry: pending.isRetry, results: Array(repeating: nil, count: pending.plan.rows.count),
                   auditProblem: nil, notDone: [:])
+        let previousTenant = runTenant
+        runTenant = (pending.preview.domain, pending.preview.generation)
         // The password leaves the pending here and lives only until the create ends: then on the card, or nowhere.
         creatingPassword = pending.password
         let (events, observer) = AsyncStream<(Int, RunOutcome.Step)>.makeStream()
@@ -470,6 +489,7 @@ public final class OnboardChanges {
         creatingPassword = nil
         if let refusal = outcome.refusal {
             run = previous
+            runTenant = previousTenant
             problem = refusal
             return
         }
@@ -557,6 +577,7 @@ public final class OnboardChanges {
     /// then retry what still waits, as the confirmed run continued.
     private func finish(_ first: PendingRetry) async {
         guard let executor else { return }
+        finishStoppedBy = nil
         var handle = first
         for wait in waits {
             finishing?.phase = .waiting
@@ -565,7 +586,7 @@ public final class OnboardChanges {
                 try await Task.sleep(for: wait)
             } catch {
                 await executor.abandon(handle)
-                giveUp(Onboarding.stoppedReason, phase: .stopped)
+                giveUp(finishStoppedBy ?? Onboarding.stoppedReason, phase: .stopped)
                 return
             }
             finishing?.phase = .trying
@@ -591,7 +612,7 @@ public final class OnboardChanges {
             finishing?.waiting = run?.results.count { $0?.isWaiting == true } ?? 0
             if Task.isCancelled {
                 if let next = outcome.retry { await executor.abandon(next) }
-                giveUp(Onboarding.stoppedReason, phase: .stopped)
+                giveUp(finishStoppedBy ?? Onboarding.stoppedReason, phase: .stopped)
                 return
             }
             guard let next = outcome.retry else { break }
@@ -637,7 +658,9 @@ public final class OnboardChanges {
     /// The steps a retry would preview again: failed, given up, or skipped because of one of those; never
     /// the create (a new account needs a new password, from the form).
     public var failedSteps: [Row] {
-        guard let run, run.ended, !(finishing?.isLive ?? false) else { return [] }
+        // Only on the tenant it ran on (plan F6, GamGUI's `before_switch`).
+        guard let run, run.ended, !(finishing?.isLive ?? false), let runTenant,
+              runTenant.domain == setup.active, runTenant.generation == setup.generation else { return [] }
         if run.plan.creates, let first = run.results.first, first?.isSucceeded != true { return [] }
         return run.plan.rows.filter { row in
             guard let result = run.results[row.index] else { return false }
@@ -653,9 +676,9 @@ public final class OnboardChanges {
         guard !isBusy, let run else { return }
         let failed = Set(failedSteps.map(\.index))
         guard !failed.isEmpty else { return }
-        let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
+        // Held for the tenant the run ran on: a switch since refuses it (plan F6).
         let planned = Self.retryPlan(run.plan, results: run.results, failed: failed)
-        await hold(planned.steps, plan: planned.plan, password: nil, isRetry: true, expecting: tenant)
+        await hold(planned.steps, plan: planned.plan, password: nil, isRetry: true, expecting: runTenant)
     }
 
     /// The retry's steps (pure). The rows keep the plan's order; a task goes on the list made again, or on

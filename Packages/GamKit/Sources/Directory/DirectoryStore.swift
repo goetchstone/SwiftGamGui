@@ -43,7 +43,8 @@ public final class DirectoryStore {
     /// The list as last filtered and sorted, and what for. Not observed: it is filled while a view reads it.
     @ObservationIgnored private var listed: (revision: Int, filter: UserFilter, order: [KeyPathComparator<GamUser>], rows: [GamUser])?
 
-    private let setup: SetupModel
+    /// Internal: the user page's changes follow its tenant changes too (`UserChanges`).
+    let setup: SetupModel
     private let runner: AuthenticatedRunner?
     private let now: @Sendable () -> Date
 
