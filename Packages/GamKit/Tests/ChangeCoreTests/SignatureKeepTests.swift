@@ -87,9 +87,9 @@ final class SignatureKeepTests {
         return url
     }
 
-    func executor(_ gam: URL, keeper: (any SignatureKeeper)?) -> Executor {
+    func executor(_ gam: URL, keeper: (any SignatureKeeper)?, tenant: Executor.Tenant? = nil) -> Executor {
         Executor(runner: AuthenticatedRunner(runner: GamRunner(binary: gam), vault: vault, runtimeDirectory: base),
-                 audit: AuditLog(url: auditURL), actor: "admin@example.com", tenant: { [example] in (example, 1) },
+                 audit: AuditLog(url: auditURL), actor: "admin@example.com", tenant: tenant ?? { [example] in (example, 1) },
                  extraEnvironment: ["GAM_MOCK_ARGV_LOG": log.path], signatureKeeper: keeper)
     }
 
@@ -154,6 +154,20 @@ final class SignatureKeepTests {
         #expect(keeper.started.map(\.restoring) == [["R1"]])
         #expect(try await run(executor, [step(Self.alice, "x")]).succeeded)
         #expect(keeper.started.last?.restoring == [])
+    }
+
+    /// Review of Phase A: the tenant was checked before the read, which takes seconds, and not again before the write: a
+    /// domain imported again meanwhile stopped only the steps after. It stops this one too, unkept and unwritten.
+    @Test func aDomainChangedDuringTheReadStopsThatStep() async throws {
+        let keeper = LoggingKeeper(log: log)
+        // Generation 1 until the gam's first call (the read), then 2: the domain was imported again while it ran.
+        let log = log, example = example
+        let executor = executor(try gam([Self.alice: .signature(Self.aliceOld)]), keeper: keeper, tenant: {
+            (example, (try? Data(contentsOf: log)).map { $0.isEmpty ? 1 : 2 } ?? 1)
+        })
+        let outcome = try await run(executor, [step(Self.alice, "new"), step(Self.bob, "new")])
+        #expect(outcome.steps == [.skipped(reason: Executor.domainChanged), .skipped(reason: Executor.domainChanged)])
+        #expect(happened() == [read(Self.alice)] && keeper.kept.isEmpty)
     }
 
     /// No signature column (Gmail leaves an empty one out) is no signature: kept as empty.

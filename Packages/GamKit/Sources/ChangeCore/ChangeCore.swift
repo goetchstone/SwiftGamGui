@@ -645,6 +645,8 @@ public actor Executor {
     /// GamGUI's words for a Put Back's person whose signature isn't what the run being put back left there: left as it is.
     public static let changedSince = "Changed since that run, so it's left as it is: put it back by hand if you mean to."
     static let cancelledBeforeRun = "Cancelled before it ran."
+    /// A step whose domain was removed or imported again during the run (its generation changed): it, and the rest, stop.
+    static let domainChanged = "Stopped: the active domain changed during the run."
 
     /// The kept run for `preview`'s signatures, when a step keeps one: nil when none does. Throws when there's no keeper or
     /// it can't start one.
@@ -691,6 +693,8 @@ public actor Executor {
                 let message = GamEngineMessage.of(error)
                 return (.failed(message: "\(Self.notRead) \(message)", kind: nil), "Stopped: \(message)")
             }
+            // The read takes seconds: a domain removed or imported again meanwhile stops this step too, not only the next.
+            guard await isCurrent(preview) else { return (.skipped(reason: Self.domainChanged), Self.domainChanged) }
             if let expectedNow, !Self.same(previous, expectedNow) { return (.skipped(reason: Self.changedSince), nil) }
             do {
                 try kept.keep(email: email, previous: previous, setting: setting)
@@ -973,8 +977,8 @@ public actor Executor {
             }
             // Every step, not just the first: removing or re-importing the domain mid-plan stops the rest.
             guard await isCurrent(preview) else {
-                stoppedBy = "Stopped: the active domain changed during the run."
-                results.append(.skipped(reason: "Stopped: the active domain changed during the run."))
+                stoppedBy = Self.domainChanged
+                results.append(.skipped(reason: Self.domainChanged))
                 continue
             }
             // A listed task runs on the id its list printed, or not at all (D3c).

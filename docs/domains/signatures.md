@@ -210,6 +210,9 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   - **unread** (GAM's error, no getting line, no whole row, a cut answer): the step fails, "Couldn't read their current
     signature, so it wasn't replaced: there'd be nothing to put back." with why, and the run goes on, unless the error is
     account-wide (the usual stop: "Stopped: <remediation>"), a Vault or launch failure (stops), or a cancel (stops);
+  - **the domain changed** during the read (removed or imported again: its generation moved): skipped, and the run stops
+    there, "Stopped: the active domain changed during the run." (the read takes seconds, so the per-step check before it
+    isn't enough);
   - **changed since** (`expectedNow` set and the read differs in bytes): skipped, "Changed since that run, so it's left as
     it is: put it back by hand if you mean to.";
   - **keep** `(email, previous, setting)`; if that throws, this step and every later one are skipped, "Couldn't keep a copy
