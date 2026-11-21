@@ -64,15 +64,25 @@ package enum PythonText {
     /// a word becomes ς, any other σ (PR #8's review: a search for "νικος" missed "ΝΙΚΟΣ").
     package static func lower(_ text: String) -> String {
         let scalars = Array(text.unicodeScalars)
-        var out: [Unicode.Scalar] = []
-        for (index, scalar) in scalars.enumerated() {
-            if scalar == "\u{03A3}" {
-                out.append(finalSigma(scalars, at: index) ? "\u{03C2}" : "\u{03C3}")
-            } else {
-                out += mapping(scalar) { $0.properties.lowercaseMapping }
-            }
-        }
-        return string(out)
+        return string(scalars.indices.flatMap { lowered(scalars, at: $0) })
+    }
+
+    /// `str.capitalize()` (Python 3.8 on, CPython's `do_capitalize`): the first character in title case, the rest as
+    /// `lower` lowers them, a sigma's end of word read over the whole text.
+    package static func capitalize(_ text: String) -> String {
+        let scalars = Array(text.unicodeScalars)
+        return string(scalars.indices.flatMap { $0 == 0 ? mapping(scalars[0]) { $0.properties.titlecaseMapping } : lowered(scalars, at: $0) })
+    }
+
+    /// One scalar of `scalars` as `str.lower()` maps it there.
+    private static func lowered(_ scalars: [Unicode.Scalar], at index: Int) -> [Unicode.Scalar] {
+        if scalars[index] == "\u{03A3}" { return [finalSigma(scalars, at: index) ? "\u{03C2}" : "\u{03C3}"] }
+        return mapping(scalars[index]) { $0.properties.lowercaseMapping }
+    }
+
+    /// `str.split()`: the runs of text between whitespace (`isSpace`), none empty.
+    package static func split(_ text: String) -> [String] {
+        text.unicodeScalars.split(whereSeparator: isSpace).map { string($0) }
     }
 
     /// CPython's `handle_capital_sigma`: a cased letter before it (case-ignorables skipped), and none

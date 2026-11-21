@@ -44,6 +44,8 @@ public struct CommandCatalog: Sendable {
         /// The grammar line, as GAM's own reference writes it.
         public let syntax: String
         public let verb: String
+        /// What it does, in GamGUI's plain words from the grammar line (`gloss`, plan F5a): what the list shows and search reads.
+        public let gloss: String
         public let risk: Risk
         /// No known verb: what it does can't be told, so it never runs.
         public let uncertain: Bool
@@ -90,7 +92,8 @@ public struct CommandCatalog: Sendable {
         let (slots, template) = readTemplate(entry.syntax)
         let promoted = risk == .read && !entry.uncertain && readOnly(entry.syntax) && readOnly(literals: template)
         return Command(id: entry.id, category: entry.category, subcategory: entry.subcategory, name: entry.name, syntax: entry.syntax,
-                       verb: entry.verb, risk: risk, uncertain: entry.uncertain, area: area(of: entry.category), promoted: promoted,
+                       verb: entry.verb, gloss: gloss(verb: entry.verb, syntax: entry.syntax), risk: risk, uncertain: entry.uncertain,
+                       area: area(of: entry.category), promoted: promoted,
                        sensitive: promoted && sensitive(syntax: entry.syntax, verb: verb(of: entry.syntax)),
                        slots: promoted ? slots : [], template: promoted ? template : [])
     }

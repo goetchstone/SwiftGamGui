@@ -33,6 +33,10 @@ it) and 11 (parity is a test).
   `Tests/Fixtures/catalog_reads.json` (frozen GamGUI's own read builder and gate run over this repo's catalog, so the same code
   on the same input) and `catalog_curated.json` (`_curated()`: each command's fields, and the argv its `build` makes with every
   field filled, once per choice, and with only the required ones). `bump_gam.py` runs it after `gen_fixtures.py`.
+- Glosses (plan F5a): `Packages/GamKit/Sources/GamEngine/CommandGloss.swift` (GamGUI's `core/catalog/describe.py`, `gloss()`,
+  and its noun tables) gives each command its `gloss`. `GamEngineTests/CommandGlossTests.swift` holds every one, byte for byte,
+  to `Tests/Fixtures/catalog_glosses.json`, made by `scripts/gen_catalog_glosses.py` (GamGUI's own `gloss()` run over this
+  repo's catalog, from a clone pinned at the fixture's commit; `bump_gam.py` runs it after `gen_catalog_reads.py`).
 
 ## How it works
 - **Runnable** = the catalog calls it read-only (`risk` 0) and certain, GamGUI's verb rule checked again here agrees (the first
@@ -55,6 +59,13 @@ it) and 11 (parity is a test).
   its own (`user <x>` when given) and a single optional placeholder. A fragment of an alternation or a paren group is passed
   over. GamGUI's quirk is kept: the sensitive rule looks for the catalog's `verb`, its first alternative, so an alternation
   line can't match it.
+- **Every command says what it does** (plan F5a, GamGUI's `gloss()`): one sentence made from the grammar line alone, so it
+  says nothing the line doesn't and at worst is terse. The verb's action (`print` "List", `info` "Show details for"; any other
+  verb is itself, capitalized), the keyword right after the verb in GamGUI's noun words (`cros` "ChromeOS devices"; a
+  placeholder names no noun), and "for a user" or "for a ChromeOS device" from the word after `gam`. GamGUI's three noun
+  tables are one here (`glossNouns`), merged as its lookup reads them, and held whole. All 1,052 commands have one, as in
+  GamGUI, whose parser writes no descriptions (the generator refuses a catalog that has some, until GamGUI's
+  vendored-description-wins rule is ported).
 - **The screen**: the list by category and subcategory, runnable first, Runnable Only on by default, an area picker; a command
   shows its area, its grammar line, why it doesn't run when it doesn't, its fields, and the exact `gam` command as it's typed.
   Run (⌘R) runs that, on the domain connected at the press; one that comes back after a switch is dropped and said. The result
@@ -113,11 +124,20 @@ it) and 11 (parity is a test).
 - `print filelist query …` isn't modelled by the mock, so the demo can't show Find a user's Drive files run.
 - A Builder change doesn't patch the cached directory (GamGUI's Builder doesn't either): Users → Refresh shows a suspend or a
   title set here.
+- **Glosses are GamGUI's, quirks and all** (parity holds them; a fix is GamGUI's first, then a regenerated fixture). About 80
+  of 1,052 say little: a line with no known verb leads with its placeholder ("<usertypeentity> for a user.", 34),
+  `gam calendar <CalendarEntity> …` reads "Calendar." (7), an alternated verb loses its noun (`create|add`: "Create for a
+  user.", 15), and `gam <CrOSTypeEntity> info` reads "Show details for for a ChromeOS device."; `print alias|aliases` takes
+  the first alternative ("List an email alias."). 26 of GamGUI's 29 hand-table nouns are never read: its generated glossary
+  holds them first.
+- **GamGUI's own catalog joins the grammar's continuation lines** (GamGUI #132), not ported here: over it one gloss differs
+  (that `info` line reads "Show details for basic …"). The fixture is GamGUI's code run over this repo's first-line catalog,
+  the input the app reads.
 
 ## Testing / live-verification status
-`swift test --package-path Packages/GamKit --filter "CommandCatalog|CatalogResult|CuratedCommand|BuilderRead|BuilderChanges"`.
-Offline: the promotion boundary, every promoted command's slots and argv against GamGUI's, an edited catalog promoting no
-write, the door's refusals, the result's table, filter and CSV; every curated command's fields and argv against GamGUI's, the
+`swift test --package-path Packages/GamKit --filter "CommandCatalog|CommandGloss|CatalogResult|CuratedCommand|BuilderRead|BuilderChanges"`.
+Offline: the promotion boundary, every promoted command's slots and argv against GamGUI's, every command's gloss against
+GamGUI's, an edited catalog promoting no write, the door's refusals, the result's table, filter and CSV; every curated command's fields and argv against GamGUI's, the
 form's refusals, each change held, refused without the click, run as held and audited with its command, the risk floor, and
 the checks above. **Not proven offline:** that GAM accepts each read live (B1) and each curated command run from here (B2 to
 B4 in docs/live-verification.md).
@@ -125,7 +145,7 @@ B4 in docs/live-verification.md).
 ## Not built yet (later slices)
 - Sequences, with Stop (GamGUI's `MAX_SEQUENCE_STEPS` 25, the typed word at ten with a destructive step); External Only (needs the
   tenant's domains, as Who it reached has); a click on an address in a result for its curated follow-ups (GamGUI's
-  `ROW_ACTIONS`); descriptions for each catalog command (GamGUI's `gloss()`, by rule).
+  `ROW_ACTIONS`).
 - The curated "List a shared drive's files" read (plan §8): new to both apps, its argv checked against the grammar and run once
   live before it's relied on.
 - Sensitive reads, once a read can be audited.
