@@ -28,7 +28,8 @@ public struct ReadAudit: Sendable {
     /// How the read ended.
     public enum Outcome: Sendable, Equatable {
         /// GAM answered: `rows` is how many rows its table had (`CatalogResult.tableRows`), nil when it printed no table.
-        case read(rows: Int?)
+        /// `partial`: an audit run's step whose rows stand though GAM named accounts it couldn't read (`extra.partial`).
+        case read(rows: Int?, partial: Bool = false)
         /// GAM's words, or why it couldn't run.
         case failed(String)
         /// Its task was cancelled before GAM finished. Nothing cancels a Builder read today; this is for a Stop, when one comes.
@@ -54,7 +55,9 @@ public struct ReadAudit: Sendable {
                        outcome: Outcome, now: Date = Date()) throws -> JSONObject {
         var extra: JSONObject = ["command": .string(command), "origin": .string(origin.rawValue)]
         switch outcome {
-        case .read(let rows): if let rows { extra["rows"] = .number(String(rows)) }
+        case .read(let rows, let partial):
+            if partial { extra["partial"] = .bool(true) }
+            if let rows { extra["rows"] = .number(String(rows)) }
         case .failed(let error): extra["error"] = .string(error)
         case .interrupted: extra["error"] = .string(Self.interrupted)
         }

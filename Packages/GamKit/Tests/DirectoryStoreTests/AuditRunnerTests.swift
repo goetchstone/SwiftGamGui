@@ -115,7 +115,7 @@ final class AuditRunnerTests {
     @Test func theInactiveRunReadsTheDirectoryOnceForTheWindow() async throws {
         try await connect()
         let outcome = try await run(AuditRuns.inactiveUsers, days: 90)
-        #expect(calls() == [AuditRuns.read(AuditRuns.directory).argv])
+        #expect(calls() == [AuditRuns.read(AuditRuns.directory)?.argv])
         #expect(outcome.days == 90 && outcome.reads.map(\.rows) == [5])
         let table = try #require(outcome.finding("inactive"))
         #expect(table.title == "Inactive 90+ days" && table.known && table.links)
@@ -209,6 +209,112 @@ final class AuditRunnerTests {
         #expect(calls().map { Array($0.prefix(2)) } == [["print", "licenses"]])
         #expect(records.map { $0["extra"]?["command"]?.string } == ["license_usage/licenses"])
         #expect(!runner.stop(AuditRuns.licenseUsage), "nothing going to stop")
+    }
+
+    // MARK: the second half (GamGUI #172)
+
+    /// Shared drive members: outside members first, a group member listed, the drive with none has no row and claims nothing
+    /// about links; a suspended organizer and a drive with no organizer flagged; every listed drive's members read.
+    @Test func theSharedDriveRunListsOutsideMembersFirstAndASuspendedOrganizer() async throws {
+        try await connect()
+        let outcome = try await run(AuditRuns.sharedDrives)
+        #expect(outcome.complete && outcome.reads.map(\.state) == [.read, .read, .read, .read])
+        let members = try #require(outcome.finding("permissions"))
+        #expect(members.rows.first?[1] == "pat@partner.org" && members.rows.first?[4] == AuditRuns.external)
+        #expect(members.rows.contains { $0[1] == "it-admins@example.com" && $0[2] == "group" } && !members.rows.contains { $0[0] == "Unused" })
+        #expect(!members.summary.contains("anyone"))
+        #expect(outcome.finding("orphaned")?.rows == [["Old projects", "bob@example.com", "bob@example.com: suspended"],
+                                                      ["Unused", "none", "no organizer at all"]])
+        #expect(outcome.finding("unread")?.summary == "GAM read every listed drive's members.")
+    }
+
+    /// A drive GAM dropped without a word is named as unread, never "shared with no one"; an offboarding started here makes its
+    /// organizer a leaver.
+    @Test func aDriveGamSilentlyDroppedIsNamedAndAnOffboardingMakesALeaver() async throws {
+        try await connect()
+        try mark("acl_dropped/0ALEGALuk9PVA")
+        runner.leaving = { ["alice@example.com"] }
+        let outcome = try await run(AuditRuns.sharedDrives)
+        #expect(outcome.finding("unread")?.rows == [["Legal hold", "0ALEGALuk9PVA"]])
+        #expect(outcome.finding("orphaned")?.rows.map { $0[0] } == ["Finance", "Old projects", "Unused"])
+        #expect(outcome.finding("orphaned")?.rows.first?[2] == "alice@example.com: being offboarded")
+    }
+
+    /// No shared drive is GAM's own none (exit 60 with the titles); a refused list is unknown, and so is every table.
+    @Test func noSharedDriveIsGamsNoneAndARefusedListIsUnknown() async throws {
+        try await connect()
+        try mark("nodrives")
+        var outcome = try await run(AuditRuns.sharedDrives)
+        #expect(outcome.complete && outcome.finding("permissions")?.known == true && outcome.finding("permissions")?.rows.isEmpty == true)
+        try FileManager.default.removeItem(at: state.appending(path: "nodrives"))
+        try mark("denied/drives")
+        outcome = try await run(AuditRuns.sharedDrives)
+        #expect(outcome.reads.map(\.state) == [.unknown, .unknown, .read, .read])
+        #expect(outcome.findings.allSatisfy { !$0.known })
+    }
+
+    /// Classroom: every state read with counts and no owneremail; owners joined by ID; a roster GAM couldn't read counts 0 and
+    /// the table says a 0 isn't an empty class; a Classroom refusal, or GAM answering nothing, is unknown.
+    @Test func theClassroomRunReadsEveryClassWithItsCounts() async throws {
+        try await connect()
+        var outcome = try await run(AuditRuns.classroom)
+        let courses = try #require(calls().first { $0.prefix(2) == ["print", "courses"] })
+        #expect(courses.contains("active,archived,provisioned,declined,suspended") && Array(courses.suffix(6).prefix(3)) == ["show", "all", "countsonly"])
+        #expect(!courses.contains("owneremail"))
+        let biology = try #require(outcome.finding("courses")?.rows.first { $0[0] == "Biology" })
+        #expect(biology[2] == "alice@example.com" && biology[4] == "1" && biology[5] != "0")
+        #expect(outcome.finding("owner_not_in_directory")?.rows.isEmpty == true && outcome.finding("owned_by_suspended")?.known == true)
+        try mark("roster_gone/500000000001")
+        outcome = try await run(AuditRuns.classroom)
+        let unread = try #require(outcome.finding("courses")?.rows.first { $0[0] == "Biology" })
+        #expect(Array(unread[4...5]) == ["0", "0"] && outcome.finding("courses")?.note.contains("isn't an empty class") == true)
+        for trigger in ["noclassroom", "classroom_silent"] {
+            try mark(trigger)
+            outcome = try await run(AuditRuns.classroom)
+            #expect(outcome.reads[0].state == .unknown && outcome.finding("courses")?.known == false, "\(trigger)")
+            try FileManager.default.removeItem(at: state.appending(path: trigger))
+        }
+    }
+
+    /// The admin token review reads each admin's apps, a suspended admin's included and nobody else's, flagged.
+    @Test func theAdminRunReadsSuspendedAdminsAndLeavesOtherPeopleOut() async throws {
+        try await connect()
+        let outcome = try await run(AuditRuns.adminTokenReview)
+        #expect(outcome.complete)
+        #expect(calls().contains(["print", "tokens", "users", "admin@example.com,alice@example.com,bob@example.com"]))
+        let apps = try #require(outcome.finding("admin_apps")).rows
+        #expect(Set(apps.map { $0[0] }) == ["alice@example.com", "bob@example.com"], "carol's and dana's grants aren't an admin's")
+        #expect(apps.first == ["bob@example.com", "Only Bob Has This", "all of Drive", "suspended admin, broad access"])
+        let admins = try #require(outcome.finding("admins")).rows
+        #expect(admins.first { $0[0] == "bob@example.com" } == ["bob@example.com", "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+                                                                  "yes", "2"])
+        #expect(outcome.finding("admin_apps")?.note.contains("Incident") == true)
+    }
+
+    /// An admin whose apps GAM couldn't read is partial, recorded so, and their apps unknown; refused admins mean the token read
+    /// never runs; a holder GAM couldn't name is joined by ID or shown as unknown, never dropped.
+    @Test func whatGamCouldntReadOrNameIsUnknownNeverNone() async throws {
+        try await connect()
+        try mark("tokens_gone/bob@example.com")
+        var outcome = try await run(AuditRuns.adminTokenReview)
+        #expect(outcome.reads[2].state == .partial && outcome.reads[2].unread == ["bob@example.com"] && !outcome.complete)
+        #expect(outcome.reads[2].why == AuditRunner.someUnread(["bob@example.com"]))
+        #expect(records.last?["ok"] == .bool(true) && records.last?["extra"]?["partial"] == .bool(true))
+        #expect(outcome.finding("admins")?.rows.first { $0[0] == "bob@example.com" }?[3] == "unknown")
+        try FileManager.default.removeItem(at: state.appending(path: "tokens_gone"))
+        try mark("denied/admins")
+        let before = calls().count, recorded = records.count
+        outcome = try await run(AuditRuns.adminTokenReview)
+        #expect(!calls().dropFirst(before).contains { $0.prefix(2) == ["print", "tokens"] })
+        #expect(records.dropFirst(recorded).map { $0["extra"]?["command"]?.string } == ["admin_tokens/admins", "admin_tokens/directory"])
+        #expect(outcome.reads[2].why == AuditRunner.needsEarlier && outcome.findings.allSatisfy { !$0.known })
+        try FileManager.default.removeItem(at: state.appending(path: "denied"))
+        try mark("admin_unnamed")
+        outcome = try await run(AuditRuns.adminTokenReview)
+        #expect(calls().contains(["print", "tokens", "users", "admin@example.com,alice@example.com,bob@example.com,carol@example.com"]))
+        let admins = try #require(outcome.finding("admins"))
+        #expect(admins.rows.contains { $0[0] == "ID 100000000000000000077" && $0[2] == "unknown" && $0[3] == "unknown" })
+        #expect(admins.partial && !outcome.complete)
     }
 
     /// A switch of the connected domain drops what was kept for the old one.

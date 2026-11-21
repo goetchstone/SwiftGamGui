@@ -262,6 +262,10 @@ struct GoldenArgvTests {
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
         "print_licenses": { _ in GamCommands.printLicenses() },
+        "print_tokens_of": { try GamCommands.printTokens(users: $0.strings("users")) },
+        "print_all_admins": { _ in GamCommands.printAllAdmins() },
+        "print_shared_drives": { _ in GamCommands.printSharedDrives() },
+        "print_shared_drive_acls": { _ in GamCommands.printSharedDriveACLs() },
         "print_user_tokens": { try GamCommands.printTokens(user: $0.string("user")) },
         "print_chrome_profiles": { try GamCommands.printChromeProfiles(user: $0.string("user")) },
         "print_mobile_devices": { try GamCommands.printMobileDevices(user: $0.string("user")) },
@@ -285,7 +289,8 @@ struct GoldenArgvTests {
                     guard let state = GamCommands.CourseState(rawValue: name) else { throw Missing.argument("states") }
                     return state
                 },
-                courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"), aliases: args.flag("aliases"))
+                courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"), aliases: args.flag("aliases"),
+                counts: args.flag("counts"))
         },
         "print_all_course_participants": { args in
             try GamCommands.printAllCourseParticipants(states: args.strings("states").map { name in

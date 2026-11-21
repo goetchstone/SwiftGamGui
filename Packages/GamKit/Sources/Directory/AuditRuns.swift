@@ -1,7 +1,7 @@
 import Foundation
 import GamEngine
 
-/// Audit runs (plan F3, GamGUI #171's `core/audit_runs.py`): ready-made lists of reads, started by the operator, with Stop
+/// Audit runs (plan F3, GamGUI #171's and #172's `core/audit_runs.py`): ready-made lists of reads, started by the operator, with Stop
 /// between steps. Pure: what each run reads and what its tables say. `AuditRunner` runs each step's read and leaves its read
 /// record (origin `audit_run`); a run never writes. Inactive users' Suspend these… is a write of its own (`InactiveSuspend`),
 /// which reads the directory again. Held to GamGUI's by `Tests/Fixtures/audit_runs.json` (`AuditRunsTests`).
@@ -19,6 +19,19 @@ import GamEngine
 /// - Licensing `licenseAssignments` (developers.google.com/workspace/admin/licensing/reference/rest/v1/licenseAssignments):
 ///   `userId` "The user's current primary email address." (GAM lowercases it); `productId`, `skuId` the product's and SKU's
 ///   identifiers. GAM adds `productDisplay` and `skuDisplay` from its own table, the ID itself for one it doesn't know.
+/// - Drive `permissions` (developers.google.com/workspace/drive/api/reference/rest/v3/permissions): `type` "The type of the
+///   grantee."; `role` (organizer, fileOrganizer, writer, commenter, reader); `emailAddress` "The email address of the user or
+///   group to which this permission refers."; `domain` "The domain to which this permission refers." (GAM also sets it from
+///   emailAddress, _mapDrivePermissionNames); `deleted`. A shared drive's own permissions are its members: Google's sharing
+///   guide (…/drive/api/guides/manage-sharing, the Membership row) says "Applies to `user` or `group` only (not domains)".
+/// - Classroom `courses` (developers.google.com/workspace/classroom/reference/rest/v1/courses): `ownerId` "The identifier of
+///   the owner of a course." (joined to the directory's `id`, "The unique ID for the user."); `courseState` ACTIVE, ARCHIVED,
+///   PROVISIONED, DECLINED, SUSPENDED; `updateTime` "Time of the most recent update to this course." GAM adds `teachers` and
+///   `students` counts with `show all countsonly`, and counts a roster it couldn't read as 0.
+/// - Directory `roleAssignments` (…/admin/directory/reference/rest/v1/roleAssignments): `assignedTo` "The unique ID of the
+///   entity this role is assigned to"; GAM adds `assignedToUser`, `assignedToGroup`, `assignedToUnknown` and `role`. Directory
+///   `tokens` (…/tokens): `clientId`; `displayText` "The displayable name of the application the token is issued to.";
+///   `scopes` "A list of authorization scopes the application is granted." (GAM joins them with spaces).
 public enum AuditRuns {
     /// Rows a finished table draws; its count and its CSV are the whole of it (invariant 9).
     public static let rowsShown = 100
@@ -32,8 +45,25 @@ public enum AuditRuns {
         public let title: String
         /// The column the step's joins read: output without it isn't the table asked for.
         public let keyColumn: String
+        /// The exits that are the step's whole answer (60 is GAM's "none", the titles written).
+        public let okCodes: [Int32]
+        /// The exits whose rows stand, with accounts GAM named as unread (entityUnknownWarning).
+        public let partialCodes: [Int32]
         public var id: String { key }
+
+        init(key: String, title: String, keyColumn: String, okCodes: [Int32] = [0], partialCodes: [Int32] = []) {
+            self.key = key
+            self.title = title
+            self.keyColumn = keyColumn
+            self.okCodes = okCodes
+            self.partialCodes = partialCodes
+        }
     }
+
+    /// GAM's own "none", the titles written (NO_ENTITIES_FOUND_RC: no shared drive at all).
+    public static let noEntitiesFound: Int32 = 60
+    /// entityUnknownWarning: an account GAM couldn't read, in the domain (56) or outside it (73).
+    public static let accountWarnings: [Int32] = [56, 73]
 
     /// A fixed list of reads.
     public struct Run: Sendable, Hashable, Identifiable {
@@ -49,23 +79,52 @@ public enum AuditRuns {
 
     public static let directory = Step(key: "directory", title: "The directory, suspended accounts included", keyColumn: "primaryEmail")
     public static let licenses = Step(key: "licenses", title: "Every license seat", keyColumn: "userId")
+    public static let drives = Step(key: "drives", title: "Every shared drive", keyColumn: "id", okCodes: [0, noEntitiesFound])
+    public static let driveACLs = Step(key: "drive_acls", title: "Every shared drive's members", keyColumn: "id",
+                                       okCodes: [0, noEntitiesFound])
+    public static let domains = Step(key: "domains", title: "The domain's own domains and aliases", keyColumn: "domainName")
+    public static let courses = Step(key: "courses", title: "Every Classroom class, with its counts", keyColumn: "id")
+    public static let admins = Step(key: "admins", title: "Every admin role, a group's members included", keyColumn: "roleAssignmentId")
+    public static let adminTokens = Step(key: "admin_tokens", title: "Each admin's connected apps, suspended admins included",
+                                         keyColumn: "user", partialCodes: accountWarnings)
 
     public static let inactiveUsers = Run(
         key: "inactive_users", title: "Inactive users",
         what: "Active accounts with no sign-in inside a window you pick; accounts made inside it are flagged.", steps: [directory])
+    public static let sharedDrives = Run(
+        key: "shared_drive_permissions", title: "Shared drive permissions",
+        what: "Every shared drive's members, outside members first, and drives no active organizer looks after.",
+        steps: [drives, driveACLs, domains, directory])
     public static let licenseUsage = Run(
         key: "license_usage", title: "License usage",
         what: "Every license seat against the directory: seats per license, and seats on suspended accounts.",
         steps: [licenses, directory])
+    public static let classroom = Run(
+        key: "classroom_courses", title: "Classroom",
+        what: "Every class with its owner, state and counts; classes owned by suspended accounts; stale classes.",
+        steps: [courses, directory])
+    public static let adminTokenReview = Run(
+        key: "admin_tokens", title: "Admin token review",
+        what: "Every admin's connected apps, suspended admins included, AI and broad access flagged.",
+        steps: [admins, directory, adminTokens])
     /// Every run, in GamGUI's order.
-    public static let all = [inactiveUsers, licenseUsage]
+    public static let all = [inactiveUsers, sharedDrives, licenseUsage, classroom, adminTokenReview]
 
     /// The GAM read a step runs, from its builder. The directory is the cache's own read (`cacheFields`, suspended accounts
-    /// included); the seats are `print licenses` with no product named.
-    public static func read(_ step: Step) -> GamRead {
+    /// included); the seats are `print licenses` with no product named. The admins' apps are read for the people the admins
+    /// step found, so nil when that step has no table: the step can't run, and is unknown.
+    public static func read(_ step: Step, tables: Tables = Tables()) -> GamRead? {
         switch step.key {
-        case licenses.key: GamCommands.printLicenses()
-        default: GamCommands.printUsers(fields: GamCommands.cacheFields)
+        case licenses.key: return GamCommands.printLicenses()
+        case drives.key: return GamCommands.printSharedDrives()
+        case driveACLs.key: return GamCommands.printSharedDriveACLs()
+        case domains.key: return GamCommands.printDomains()
+        case courses.key: return try? GamCommands.printCourses(states: GamCommands.CourseState.allCases, ownerEmail: false, counts: true)
+        case admins.key: return GamCommands.printAllAdmins()
+        case adminTokens.key:
+            let people = adminAddresses(tables.rows[admins.key] ?? [], users: tables.users)
+            return people.isEmpty ? nil : try? GamCommands.printTokens(users: people)
+        default: return GamCommands.printUsers(fields: GamCommands.cacheFields)
         }
     }
 
@@ -75,6 +134,9 @@ public enum AuditRuns {
     public enum State: String, Sendable {
         /// Its table is kept.
         case read
+        /// GAM read all but some accounts it named (an account warning exit): its rows stand, and what it couldn't read is
+        /// unknown, never "none".
+        case partial
         /// It failed, or read nothing where something must be: why is said.
         case unknown
         /// A Stop came before it.
@@ -89,13 +151,16 @@ public enum AuditRuns {
         public let rows: Int
         /// GAM's own error, for a collapsed "GAM's error".
         public let detail: String
+        /// Partial: the accounts GAM named as not read.
+        public let unread: [String]
 
-        public init(step: Step, state: State, why: String = "", rows: Int = 0, detail: String = "") {
+        public init(step: Step, state: State, why: String = "", rows: Int = 0, detail: String = "", unread: [String] = []) {
             self.step = step
             self.state = state
             self.why = why
             self.rows = rows
             self.detail = detail
+            self.unread = unread
         }
     }
 
@@ -118,6 +183,55 @@ public enum AuditRuns {
         return .success(GamOutput.records(stdout))
     }
 
+    /// How GAM's answer to a step's read failed: GAM's error (an exit that is neither the step's answer nor a partial one), or
+    /// output that isn't the step's table, or a warning exit that names nobody.
+    public enum Failure: Error, Sendable {
+        case gam(GamError)
+        case incomplete(Incomplete)
+    }
+
+    /// GamGUI's `audit_read` once GAM ended: an exit in `okCodes` is the whole answer, one in `partialCodes` keeps the rows and
+    /// names who wasn't read (and one that names nobody is unknown whole: who wasn't read can't be told), any other is GAM's
+    /// failure; and output whose titles don't name the step's key column is never "none".
+    public static func answer(_ result: GamResult, step: Step, argv: [String]) -> Result<(records: [GamOutput.Record], unread: [String]), Failure> {
+        let code = result.exitCode
+        guard step.okCodes.contains(code) || step.partialCodes.contains(code) else {
+            return .failure(.gam(GamError(exitCode: code, stderr: result.stderr, argv: argv, stdout: result.stdout)))
+        }
+        let records: [GamOutput.Record]
+        switch table(result.stdout, keyColumn: step.keyColumn) {
+        case .failure(let incomplete): return .failure(.incomplete(incomplete))
+        case .success(let found): records = found
+        }
+        guard step.partialCodes.contains(code) else { return .success((records, [])) }
+        let unread = unreadAccounts(result.stderr)
+        guard !unread.isEmpty else {
+            return .failure(.incomplete(Incomplete(reason: "GAM exited \(code) without naming the account it couldn't read")))
+        }
+        return .success((records, unread))
+    }
+
+    /// The accounts GAM couldn't read and carried on past (entityUnknownWarning: "User: <u>, Does not exist (i/N)", or "…,
+    /// Service not applicable" outside the domain), lowercased, each once in order: GamGUI's `_UNREAD_ACCOUNT`,
+    /// `^\s*User: ([^,\s]+@[^,\s]+), (?:Does not exist|Service not applicable)` over each line.
+    static func unreadAccounts(_ stderr: String) -> [String] {
+        var found: [String] = [], seen: Set<String> = []
+        for line in PythonText.splitLF(stderr) {
+            var rest = Substring(line).unicodeScalars.drop { PythonText.isSpace($0) }
+            guard rest.starts(with: "User: ".unicodeScalars) else { continue }
+            rest = rest.dropFirst(6)
+            let account = rest.prefix { $0 != "," && !PythonText.isSpace($0) }
+            let after = rest.dropFirst(account.count)
+            // `[^,\s]+@[^,\s]+`: an `@` with something on each side of it.
+            guard account.dropFirst().dropLast().contains("@"),
+                  after.starts(with: ", Does not exist".unicodeScalars) || after.starts(with: ", Service not applicable".unicodeScalars)
+            else { continue }
+            let address = PythonText.lower(PythonText.string(account))
+            if seen.insert(address).inserted { found.append(address) }
+        }
+        return found
+    }
+
     /// Whether `argv` is a read an audit run may run: a `print` read that never exports. GAM reads an argument lowercased with
     /// its underscores dropped (getArgument), so `to_drive` and `ToDrive` are `todrive`.
     public static func isAuditRead(_ argv: [String]) -> Bool {
@@ -135,13 +249,17 @@ public enum AuditRuns {
         case licenses.key:
             return "GAM listed no license seat at all. It passes over a product Google won't let it read without saying so, "
                 + "so the seats are unknown, not none. Check that the admin token holds the License Manager scope (Setup)."
+        case domains.key: return "GAM listed no domain at all, and a Workspace has at least one, so its domains are unknown."
+        case admins.key:
+            return "GAM listed no admin role at all, and a Workspace always has a super admin, so its admins are unknown."
         default: return ""
         }
     }
 
-    /// Why a table needing `needed` is unknown, in words, or "" when every one was read.
+    /// Why a table needing `needed` is unknown, in words, or "" when every one was read (a partial read counts: what it
+    /// couldn't read is said where it's shown).
     public static func unknownBecause(_ reads: [StepRead], _ needed: Step...) -> String {
-        for read in reads where needed.contains(read.step) && read.state != .read {
+        for read in reads where needed.contains(read.step) && read.state != .read && read.state != .partial {
             if read.state == .notRun { return "Not known: the run was stopped before “\(read.step.title)”." }
             return PythonText.strip("Not known: “\(read.step.title)” couldn't be read. \(read.why)")
         }
@@ -169,10 +287,13 @@ public enum AuditRuns {
         public let note: String
         /// The first column is an account's address in the directory: it opens the person.
         public let links: Bool
+        /// Known, but holding something no read could tell (an admin GAM couldn't name or read).
+        public let partial: Bool
         public var id: String { key }
 
         init(_ key: String, _ title: String, _ summary: String, _ columns: [String], _ rows: [[String]] = [], known: Bool = true,
-             why: String = "", note: String = "", links: Bool = false) {
+             why: String = "", note: String = "", links: Bool = false, partial: Bool = false) {
+            self.partial = partial
             self.key = key
             self.title = title
             self.summary = summary
@@ -214,14 +335,16 @@ public enum AuditRuns {
             self.days = days
         }
 
-        /// Every step was read.
-        public var complete: Bool { reads.allSatisfy { $0.state == .read } }
+        /// Every step was read, and no table holds something no read could tell.
+        public var complete: Bool { reads.allSatisfy { $0.state == .read } && !findings.contains(where: \.partial) }
 
         public func finding(_ key: String) -> Finding? { findings.first { $0.key == key } }
     }
 
-    /// The run's tables, from its step reads and their kept tables. A table whose step is unknown says so.
-    public static func findings(for run: Run, reads: [StepRead], tables: Tables, now: Date, days: Int) -> [Finding] {
+    /// The run's tables, from its step reads and their kept tables. A table whose step is unknown says so. `leaving` is who
+    /// has an offboarding started in this app (the shared drives' organizers).
+    public static func findings(for run: Run, reads: [StepRead], tables: Tables, now: Date, days: Int,
+                                leaving: Set<String> = []) -> [Finding] {
         let users = unknownBecause(reads, directory).isEmpty ? tables.users : nil
         switch run.key {
         case inactiveUsers.key:
@@ -230,6 +353,15 @@ public enum AuditRuns {
                 return [Finding("inactive", "Inactive \(days)+ days", why, inactiveColumns, known: false, why: why)]
             }
             return [inactiveFinding(users, days: days, now: now)]
+        case sharedDrives.key:
+            let known = unknownBecause(reads, domains).isEmpty ? domainsFrom(tables.rows[domains.key] ?? []) : nil
+            return sharedDriveFindings(drives: tables.rows[drives.key] ?? [], acls: tables.rows[driveACLs.key] ?? [], domains: known,
+                                       users: users, leaving: Set(leaving.map { PythonText.lower(PythonText.strip($0)) }), reads: reads)
+        case classroom.key:
+            return classroomFindings(courses: tables.rows[courses.key] ?? [], users: users, reads: reads, now: now)
+        case adminTokenReview.key:
+            return adminTokenFindings(admins: tables.rows[admins.key] ?? [], users: users, tokens: tables.rows[adminTokens.key] ?? [],
+                                      reads: reads)
         default:
             return licenseFindings(seats: tables.rows[licenses.key] ?? [], users: users, reads: reads)
         }
@@ -389,6 +521,298 @@ public enum AuditRuns {
                         : "Every seat read is on an account the directory read listed.",
                     straySeatColumns, strayRows, known: joinWhy.isEmpty, why: joinWhy,
                     note: "An account made, renamed or deleted between the two reads shows here too. " + skipped),
+        ]
+    }
+
+    // MARK: 2. Shared drive permissions
+    // `print shareddriveacls` reads each shared drive's OWN permissions: its members, users and groups only (Google's sharing
+    // guide). "Anyone with the link" and a whole domain are sharing of the files inside a drive, which this run doesn't read,
+    // and no flag here claims to.
+
+    public static let permissionColumns = ["Drive", "Member", "Type", "Role", "Flags"]
+    public static let orphanColumns = ["Drive", "Organizers", "Why"]
+    public static let unreadDriveColumns = ["Drive", "Drive ID"]
+    public static let external = "outside the domain"
+
+    /// Every domain the tenant's addresses can end in, from `print domains formatjson` (GamGUI's `domains_from`): each
+    /// `domainName`, `domainAliasName` and `parentDomainName` text, at any depth, stripped and lowercased, sorted, once each.
+    public static func domainsFrom(_ records: [GamOutput.Record]) -> [String] {
+        var found: [String] = []
+        func walk(_ value: JSONValue) {
+            switch value {
+            case .object(let members):
+                for (key, member) in members {
+                    let last = key.split(separator: ".", omittingEmptySubsequences: false).last.map(String.init) ?? key
+                    if ["domainName", "domainAliasName", "parentDomainName"].contains(last), case .string(let name) = member {
+                        found.append(PythonText.lower(PythonText.strip(name)))
+                    } else {
+                        walk(member)
+                    }
+                }
+            case .array(let items): items.forEach(walk)
+            default: break
+            }
+        }
+        records.forEach { walk(.object($0)) }
+        return Array(Set(found.filter { !$0.isEmpty })).sorted { pyLess([$0], [$1], 0, 0) }
+    }
+
+    /// A member whose address isn't in one of the domain's own domains or aliases is from outside it.
+    static func permissionFlag(_ permission: GamOutput.Record, domains: [String]) -> String {
+        var domain = text(permission["domain"])
+        if domain.isEmpty {
+            let address = text(permission["emailAddress"])
+            domain = address.unicodeScalars.lastIndex(of: "@").map { PythonText.string(address.unicodeScalars[address.unicodeScalars.index(after: $0)...]) } ?? address
+        }
+        domain = PythonText.lower(PythonText.strip(domain))
+        return !domain.isEmpty && !domains.contains(domain) ? external : ""
+    }
+
+    /// Every drive's members (outside members first), drives no active organizer looks after, and drives whose members GAM didn't
+    /// read: it drops a drive whose permissions Google refused without a word or a code, so a listed drive missing from the
+    /// members table is unknown, never "shared with no one".
+    public static func sharedDriveFindings(drives: [GamOutput.Record], acls: [GamOutput.Record], domains: [String]?, users: [GamUser]?,
+                                           leaving: Set<String>, reads: [StepRead]) -> [Finding] {
+        let permsWhy = unknownBecause(reads, driveACLs, AuditRuns.domains), orphanWhy = unknownBecause(reads, driveACLs, directory)
+        let unreadWhy = unknownBecause(reads, AuditRuns.drives, driveACLs)
+        var rows: [[String]] = [], order: [String] = [], byDrive: [String: [GamOutput.Record]] = [:], names: [String: String] = [:]
+        for row in acls {
+            let driveID = text(row["id"]), name = text(row["name"])
+            names[driveID] = name
+            if byDrive[driveID] == nil {
+                order.append(driveID)
+                byDrive[driveID] = []
+            }
+            guard case .object(let permission)? = row["permission"] else { continue }   // a drive read with no permission
+            byDrive[driveID]!.append(permission)
+            let who = text(permission["emailAddress"]).isEmpty ? text(permission["displayName"]) : text(permission["emailAddress"])
+            rows.append([name, who, text(permission["type"]), text(permission["role"]), permissionFlag(permission, domains: domains ?? [])])
+        }
+        rows = sorted(rows) { [$0[4].isEmpty ? "1" : "0", PythonText.lower($0[0]), PythonText.lower($0[1])] }
+        let outside = rows.count { !$0[4].isEmpty }
+        var status: [String: GamUser] = [:]
+        for user in users ?? [] { status[PythonText.lower(PythonText.strip(user.primaryEmail))] = user }
+        var orphans: [[String]] = []
+        for driveID in order {
+            let organizers = byDrive[driveID]!.filter { text($0["role"]) == "organizer" }
+            if organizers.contains(where: { text($0["type"]) != "user" }) { continue }   // a group organizer: not flagged
+            var whys: [String] = [], looked = true
+            for permission in organizers {
+                let address = PythonText.lower(PythonText.strip(text(permission["emailAddress"])))
+                let holder = status[address]
+                if permission["deleted"] == .bool(true) || (holder == nil && !address.isEmpty) {
+                    whys.append("\(address.isEmpty ? "an account" : address): not in the directory read")
+                } else if let holder, holder.suspended {
+                    whys.append("\(address): suspended")
+                } else if leaving.contains(address) {
+                    whys.append("\(address): being offboarded")
+                } else {
+                    looked = false
+                    break
+                }
+            }
+            guard looked else { continue }
+            let listed = organizers.map { text($0["emailAddress"]) }.joined(separator: ", ")
+            orphans.append([names[driveID] ?? "", listed.isEmpty ? "none" : listed,
+                            whys.isEmpty ? "no organizer at all" : whys.joined(separator: "; ")])
+        }
+        orphans = sorted(orphans) { [PythonText.lower($0[0])] }
+        let readIDs = Set(order)
+        let unread = sorted(drives.filter { !readIDs.contains(text($0["id"])) }.map { [text($0["name"]), text($0["id"])] }) {
+            [PythonText.lower($0[0])]
+        }
+        let n = rows.count, nDrives = byDrive.count, nOrphans = orphans.count, nUnread = unread.count
+        return [
+            Finding("permissions", "Every drive's members",
+                    "\(n) member\(n == 1 ? "" : "s") across \(nDrives) drive\(nDrives == 1 ? "" : "s"); \(outside) "
+                        + "\(outside == 1 ? "is" : "are") from outside the domain, listed first.",
+                    permissionColumns, rows, known: permsWhy.isEmpty, why: permsWhy,
+                    note: "A shared drive's members are users and groups only. Outside the domain means an address not in one of "
+                        + "the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the "
+                        + "link, say): this run reads each drive's members, not its files' sharing."),
+            Finding("orphaned", "Drives no active organizer looks after",
+                    nOrphans > 0 ? "\(nOrphans) drive\(nOrphans == 1 ? "" : "s") \(nOrphans == 1 ? "has" : "have") no organizer who is "
+                        + "active here." : "Every drive read has an active organizer, or a group as one.",
+                    orphanColumns, orphans, known: orphanWhy.isEmpty, why: orphanWhy,
+                    note: "Being offboarded means an offboarding started in GAM GUI since it opened. A group organizer isn't "
+                        + "flagged: its members can't be told from here."),
+            Finding("unread", "Drives whose members weren't read",
+                    nUnread > 0 ? "GAM listed \(nUnread) drive\(nUnread == 1 ? "" : "s") but didn't read \(nUnread == 1 ? "its" : "their") "
+                        + "members: unknown, not shared with no one." : "GAM read every listed drive's members.",
+                    unreadDriveColumns, unread, known: unreadWhy.isEmpty, why: unreadWhy,
+                    note: "GAM passes over a drive whose permissions Google won't return without a word or a code."),
+        ]
+    }
+
+    // MARK: 4. Classroom (read only)
+
+    public static let staleDays = 365
+    public static let courseColumns = ["Class", "Section", "Owner", "State", "Teachers", "Students", "Updated"]
+    public static let ownedColumns = ["Owner", "Class", "State", "Updated"]
+    public static let strayOwnerColumns = ["Class", "Owner ID", "State"]
+
+    /// Every class with its owner (joined by `ownerId` to the directory's `id`), state and counts; classes owned by a suspended
+    /// account; classes whose owner the directory read doesn't list; and active or provisioned classes not updated in a year.
+    public static func classroomFindings(courses: [GamOutput.Record], users: [GamUser]?, reads: [StepRead], now: Date) -> [Finding] {
+        let coursesWhy = unknownBecause(reads, AuditRuns.courses), joinWhy = unknownBecause(reads, AuditRuns.courses, directory)
+        var byID: [String: GamUser] = [:]
+        for user in users ?? [] {
+            guard let id = user.record["id"], id.truthy else { continue }
+            byID[id.pythonText] = user
+        }
+        let cutoff = micros(now) - Int64(staleDays) * 86_400_000_000
+        var every: [[String]] = [], owned: [[String]] = [], strays: [[String]] = [], stale: [[String]] = []
+        for course in courses {
+            let ownerID = text(course["ownerId"])
+            let owner = byID[ownerID]
+            let shown = owner?.primaryEmail ?? (users != nil ? "ID \(course["ownerId"].map { $0.pythonText } ?? "None")" : ownerID)
+            let state = text(course["courseState"]), updated = shownTime(text(course["updateTime"])), name = text(course["name"])
+            every.append([name, text(course["section"]), shown, state, course["teachers"].map { $0.pythonText } ?? "",
+                          course["students"].map { $0.pythonText } ?? "", updated])
+            if users != nil, owner == nil {
+                strays.append([name, ownerID, state])
+            } else if let owner, owner.suspended {
+                owned.append([owner.primaryEmail, name, state, updated])
+            }
+            if ["ACTIVE", "PROVISIONED"].contains(state), let made = ISOTime.microseconds(text(course["updateTime"])), made < cutoff {
+                stale.append([name, shown, state, updated])
+            }
+        }
+        every = sorted(every) { [PythonText.lower($0[0]), PythonText.lower($0[1])] }
+        owned = sorted(owned) { [PythonText.lower($0[0]), PythonText.lower($0[1])] }
+        strays = sorted(strays) { [PythonText.lower($0[0])] }
+        stale = sorted(stale) { [$0[3], PythonText.lower($0[0])] }
+        let n = every.count, nOwned = owned.count, nStrays = strays.count, nStale = stale.count
+        return [
+            Finding("courses", "Every class", "\(n) class\(n == 1 ? "" : "es") in every state.", courseColumns, every,
+                    known: coursesWhy.isEmpty, why: coursesWhy,
+                    note: "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a "
+                        + "0 isn't an empty class. Not yet checked on a school domain."),
+            Finding("owned_by_suspended", "Classes owned by a suspended account",
+                    nOwned > 0 ? "\(nOwned) class\(nOwned == 1 ? "" : "es") \(nOwned == 1 ? "is" : "are") owned by a suspended account."
+                        : "No class read is owned by a suspended account.",
+                    ownedColumns, owned, known: joinWhy.isEmpty, why: joinWhy,
+                    note: "GAM GUI changes nothing in Classroom: hand a class over in Classroom itself.", links: true),
+            Finding("owner_not_in_directory", "Classes whose owner the directory read doesn't list",
+                    nStrays > 0 ? "\(nStrays) class\(nStrays == 1 ? "" : "es") \(nStrays == 1 ? "has" : "have") an owner the directory "
+                        + "read didn't list." : "Every class read has an owner the directory read listed.",
+                    strayOwnerColumns, strays, known: joinWhy.isEmpty, why: joinWhy, note: "A deleted account, or one outside the domain."),
+            Finding("stale", "Active or provisioned classes not updated in \(staleDays) days",
+                    nStale > 0 ? "\(nStale) class\(nStale == 1 ? "" : "es") \(nStale == 1 ? "has" : "have")n't changed in a year."
+                        : "Every active or provisioned class read has changed within \(staleDays) days.",
+                    ["Class", "Owner", "State", "Updated"], stale, known: coursesWhy.isEmpty, why: coursesWhy),
+        ]
+    }
+
+    // MARK: 5. Admin token review
+
+    public static let adminColumns = ["Admin", "Roles", "Suspended", "Apps"]
+    public static let adminAppColumns = ["Admin", "App", "What it may do", "Flags"]
+    public static let aiName = "AI, by its name", broad = "broad access", suspendedAdmin = "suspended admin"
+
+    /// A role holder GAM couldn't name: its lookup of `assignedTo` failed (convertUIDtoEmailAddressWithType returns the bare ID
+    /// as type `unknown`), so the row has `assignedToUnknown` True and no address, and GAM exits 0 (doPrintShowAdmins,
+    /// _setNamesFromIds, the 7.52.04 tag). A group's member expanded by `recursive` can be one too.
+    static func unnamed(_ row: GamOutput.Record) -> Bool {
+        PythonText.lower(PythonText.strip(text(row["assignedToUnknown"]))) == "true"
+    }
+
+    /// Who holds an admin row: its `assignedToUser`; for a holder GAM couldn't name, the directory account whose `id` is its
+    /// `assignedTo`; else "" (a service account, a group with no member, or a holder no read can name).
+    public static func holder(of row: GamOutput.Record, users: [GamUser]?) -> String {
+        let address = PythonText.lower(PythonText.strip(text(row["assignedToUser"])))
+        if GamCommands.isOneAddress(address) { return address }
+        if unnamed(row), let users, !users.isEmpty {
+            let id = PythonText.strip(text(row["assignedTo"]))
+            if !id.isEmpty, let user = users.first(where: { text($0.record["id"]) == id }) {
+                return PythonText.lower(PythonText.strip(user.primaryEmail))
+            }
+        }
+        return ""
+    }
+
+    /// The IDs of role holders neither GAM nor the directory read could name: unknown admins, never left out.
+    public static func unnamedHolders(_ rows: [GamOutput.Record], users: [GamUser]?) -> [String] {
+        Array(Set(rows.filter { unnamed($0) && holder(of: $0, users: users).isEmpty }.map { text($0["assignedTo"]) }).subtracting([""]))
+            .sorted { pyLess([$0], [$1], 0, 0) }
+    }
+
+    /// Every person who holds an admin role, from `print admins recursive` (a group's members each get a row of their own), a
+    /// holder GAM couldn't name joined to the directory by ID. A service account's row, or a group with no member, names none.
+    public static func adminAddresses(_ rows: [GamOutput.Record], users: [GamUser]? = nil) -> [String] {
+        Array(Set(rows.map { holder(of: $0, users: users) }.filter { !$0.isEmpty })).sorted { pyLess([$0], [$1], 0, 0) }
+    }
+
+    /// Every admin (suspended ones included) with their roles and how many apps; and every grant those admins gave, suspended
+    /// admins, AI by name and broad access flagged, flagged first. An admin whose apps GAM couldn't read, or a holder no read
+    /// could name, is unknown, never none, and the run isn't complete.
+    public static func adminTokenFindings(admins rows: [GamOutput.Record], users: [GamUser]?, tokens: [GamOutput.Record],
+                                          reads: [StepRead]) -> [Finding] {
+        let adminsWhy = unknownBecause(reads, admins), appsWhy = unknownBecause(reads, admins, adminTokens)
+        let unread = Set(reads.first { $0.step == adminTokens }?.unread ?? [])
+        var roles: [String: [String]] = [:]
+        for row in rows {
+            let via = text(row["assignedToGroup"])
+            let role = (text(row["role"]).isEmpty ? text(row["roleId"]) : text(row["role"])) + (via.isEmpty ? "" : " (through \(via))")
+            let address = holder(of: row, users: users)
+            if !address.isEmpty {
+                roles[address, default: []].append(role)
+            } else if unnamed(row), row["assignedTo"]?.truthy == true {
+                roles["ID \(text(row["assignedTo"]))", default: []].append(role)   // a holder no read could name: unknown
+            }
+        }
+        let nameless = unnamedHolders(rows, users: users)
+        var status: [String: GamUser] = [:]
+        for user in users ?? [] { status[PythonText.lower(PythonText.strip(user.primaryEmail))] = user }
+        let grants = appsWhy.isEmpty ? tokens.map(ConnectedApps.Grant.init(record:)).filter { !$0.clientID.isEmpty } : []
+        var appsOf: [String: Int] = [:]
+        for grant in grants { appsOf[PythonText.lower(PythonText.strip(grant.user)), default: 0] += 1 }
+        var adminRows: [[String]] = []
+        for address in roles.keys.sorted(by: { pyLess([$0], [$1], 0, 0) }) {
+            let held = Array(Set(roles[address]!)).sorted { pyLess([$0], [$1], 0, 0) }.joined(separator: "; ")
+            if address.hasPrefix("ID ") {
+                adminRows.append([address, held, "unknown", "unknown"])
+                continue
+            }
+            let suspended = users == nil ? "unknown" : status[address].map { $0.suspended ? "yes" : "no" } ?? "not in the directory read"
+            let apps = !appsWhy.isEmpty || unread.contains(address) ? "unknown" : String(appsOf[address] ?? 0)
+            adminRows.append([address, held, suspended, apps])
+        }
+        var appRows: [[String]] = []
+        for grant in grants {
+            let address = PythonText.lower(PythonText.strip(grant.user))
+            let described = grant.scopes.map(ConnectedApps.describe)
+            var flags: [String] = []
+            if status[address]?.suspended == true { flags.append(suspendedAdmin) }
+            if ConnectedApps.looksLikeAI(grant.name) { flags.append(aiName) }
+            if described.contains(where: { $0.reach == .broad }) { flags.append(broad) }
+            var seenWords: Set<String> = []
+            let words = described.enumerated().sorted { ($0.element.reach, $0.offset) < ($1.element.reach, $1.offset) }
+                .map(\.element.words).filter { seenWords.insert($0).inserted }
+            appRows.append([address, grant.name, words.joined(separator: ", "), flags.joined(separator: ", ")])
+        }
+        appRows = sorted(appRows) { [$0[3].isEmpty ? "1" : "0", $0[0], PythonText.lower($0[1])] }
+        let nAdmins = adminRows.count, nFlagged = appRows.count { !$0[3].isEmpty }
+        var partial = unread.isEmpty ? "" : " GAM couldn't read the apps of \(unread.sorted { pyLess([$0], [$1], 0, 0) }.joined(separator: ", ")): unknown, not none."
+        if !nameless.isEmpty {
+            partial += " GAM couldn't name \(nameless.count) role holder\(nameless.count == 1 ? "" : "s") and the directory read "
+                + "has no account with \(nameless.count == 1 ? "that ID" : "those IDs") (\(nameless.joined(separator: ", "))): "
+                + "who they are, and their apps, are unknown."
+        }
+        let someUnknown = !unread.isEmpty || !nameless.isEmpty
+        return [
+            Finding("admins", "Every admin", "\(nAdmins) role holder\(nAdmins == 1 ? "" : "s"), suspended ones included.",
+                    adminColumns, adminRows, known: adminsWhy.isEmpty, why: adminsWhy,
+                    note: "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory "
+                        + "by ID. A service account's role names no person, so it isn't listed." + partial,
+                    links: true, partial: someUnknown),
+            Finding("admin_apps", "Admins' connected apps",
+                    appRows.isEmpty ? "No admin read has given an app access."
+                        : "\(appRows.count) grant\(appRows.count == 1 ? "" : "s") across the admins; \(nFlagged) flagged, listed first.",
+                    adminAppColumns, appRows, known: appsWhy.isEmpty, why: appsWhy,
+                    note: "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is "
+                        + "taken away there, after a preview." + partial,
+                    links: true, partial: someUnknown),
         ]
     }
 
