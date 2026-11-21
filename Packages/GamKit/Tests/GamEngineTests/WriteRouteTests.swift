@@ -139,6 +139,20 @@ struct WriteRouteTests {
         #expect(confirming.isDisjoint(with: voiceOrModel))
     }
 
+    /// Invariant 10 for a domain switch (plan F6's review): agreeing to stop the runs going now (an offboarding or a Secure left
+    /// half done) is the operator's, given on a screen that showed what stops, as a confirmation is. Only Setup takes it, only
+    /// the domain menu's panel and Setup pass it, only `AppServices` says what's running, and no file that speaks to Siri or
+    /// a model reaches any of it.
+    @Test func onlyAScreenAgreesToStopRuns() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["agreedToStop"])
+                == ["Packages/GamKit/Sources/Setup/SetupModel.swift"])
+        let agreeing = try Self.files(in: "App", matching: ["agreedToStop", "switchAnyway", "runIDs"])
+        #expect(agreeing == ["App/DomainMenuView.swift", "App/SetupView.swift"], "\(agreeing)")
+        #expect(try Self.files(in: "App", matching: ["runningRuns", "SwitchStops"]) == ["App/AppServices.swift"])
+        let voiceOrModel = try Self.files(in: "App", matching: ["AppIntent", "FoundationModels", "LanguageModel", "Assist"])
+        #expect(agreeing.isDisjoint(with: voiceOrModel) && !voiceOrModel.contains("App/AppServices.swift"))
+    }
+
     /// Invariant 10, the other half: code that speaks to Siri or a model reaches no write at all, not even
     /// a preview. It hands its words to the screens (`SiriDrafts`), which draft the preview the operator
     /// confirms; the executor then demands the Confirm click for it.
