@@ -32,11 +32,12 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   drive reads and the alerts use the **service account** (`_SVCACCT_SCOPES`). An admin-token row says whether `oauth2.txt`
   records the scope or its `.readonly` form (`adminScopeHeld`), from the scopes Check access read
   (`SetupModel.connectedAdminScopes`, so no Touch ID per page); unknown is said as unknown, never "held". A service-account
-  row says whether Setup asks for the scope (`DelegationScopes.scopes`), since only GAM's own check sees delegation.
-- **The Alert Center scope isn't asked for on Setup yet.** GamGUI #151 offers `apps.alerts` beside the devices scope
-  (`setup.OPTIONAL_DWD_SCOPES`); the Admin-console link is held to `setup.json`, generated before #151, so the scope joins the
-  link with the next fixture regeneration. Until then the alerts pane says Setup doesn't ask for it, how to add it, and that
-  Setup's Authorize link (`overwriteClientId=true`, its own scopes only) drops a scope added by hand.
+  row says whether Setup asks for the scope, since only GAM's own check sees delegation: verified with the others
+  (`DelegationScopes.scopes`), or offered on Setup's link and never verified (`DelegationScopes.offered`, GamGUI's
+  `OPTIONAL_DWD_SCOPES`: the devices scope and the Alert Center's `apps.alerts`), so a domain without it stays connected and
+  only that read is refused. A failed Check Access shows Setup's own link, never GAM's: GAM's names only the checked scopes
+  with `overwriteClientId=true` and would drop the offered ones (`AccessCheck.linkingEveryOfferedScope`, GamGUI's
+  `_with_every_scope`).
 - **Not run on a real domain yet.** The mock answers only a bare `print datatransfers` (the form the Builder emits: an empty
   table, or a person's transfers from its state); the other eight it refuses as not modelled. A green run of those proves
   nothing about Google.

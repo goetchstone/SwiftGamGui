@@ -317,6 +317,12 @@ private struct NamedReportPanel: View {
             if DelegationScopes.scopes.contains(report.scope) {
                 Text("Delegated to the service account: Setup asks for it with the others.")
                     .foregroundStyle(.secondary)
+            } else if DelegationScopes.offered.contains(where: { $0.scope == report.scope }) {
+                // Offered on Setup's link, never verified by Check Access (GamGUI's OPTIONAL_DWD_SCOPES): a domain without it
+                // stays connected, and only this read is refused.
+                Text("Delegated to the service account: Setup's link asks for it, but Check Access doesn't check it, so if "
+                     + "it wasn't authorized, only this read is refused.")
+                    .foregroundStyle(.secondary)
             } else {
                 // Setup's Authorize link sets the client's scopes to its own list (`overwriteClientId`), so a scope added by
                 // hand goes the next time it's used (review 2026-11-20); said until the link carries this one.
