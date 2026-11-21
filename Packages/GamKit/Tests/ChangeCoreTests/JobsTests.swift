@@ -59,7 +59,7 @@ final class JobsTests {
         #expect(preview.title == "Suspend user for 2 addresses")
         #expect(await executor.run(preview, confirmation: confirmed).succeeded)
         let reported = events.value.withLock { $0 }
-        guard case .started(let job, preview.id, "Suspend user for 2 addresses", 2)? = reported.first else { Issue.record("\(reported)"); return }
+        guard case .started(let job, preview.id, "Suspend user for 2 addresses", 2, false)? = reported.first else { Issue.record("\(reported)"); return }
         #expect(Array(reported.dropFirst()) == [
             .checked(job: job),
             .step(job: job, item: "Suspend user: alice@example.com", outcome: .succeeded, detail: ""),
@@ -96,7 +96,7 @@ final class JobsTests {
         }).get()
         #expect(await executor.run(preview, confirmation: confirmed).succeeded)
         let (before, status) = seen.value.withLock { $0 }
-        guard case .started(let job, preview.id, _, 1)? = before.first, before.count == 1 else { Issue.record("\(before)"); return }
+        guard case .started(let job, preview.id, _, 1, _)? = before.first, before.count == 1 else { Issue.record("\(before)"); return }
         #expect(status == "Checking before it runs (after any change running now)…")
         #expect(events.value.withLock { Array($0.dropFirst().prefix(1)) } == [.checked(job: job)])
         for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
@@ -208,7 +208,7 @@ final class JobsTests {
         let before = events.value.withLock { $0.count }
         _ = await executor.retry(handle)
         let round = events.value.withLock { Array($0.dropFirst(before)) }
-        guard case .started(let job, preview.id, "Onboarding new@example.com (waiting for Google, try 2)", 1)? = round.first,
+        guard case .started(let job, preview.id, "Onboarding new@example.com (waiting for Google, try 2)", 1, false)? = round.first,
               round.count == 4, case .step(job, "Set signature: new@example.com", _, _) = round[2] else { Issue.record("\(round)"); return }
         #expect(round[1] == .checked(job: job) && round[3] == .finished(job: job))
     }
@@ -241,5 +241,41 @@ final class JobsTests {
         #expect(board.finishedCount == 12 && board.lastFinished?.title == "Run 11", "counted though only ten are kept")
         board.handle(.finished(job: runs[11]))
         #expect(board.finishedCount == 12 && board.running == 1, "a second end of one run counts once")
+    }
+
+    /// Plan F6: an offboarding is reported as a routine (stopped part-way, it's left half done), and a switch while it runs is
+    /// said when it ends in GamGUI's words: "Stopped: you switched to <new> — N not attempted." A run that had already ended
+    /// says nothing of the switch, and one a switch lands in on its last step ends as done.
+    @Test func aSwitchIsSaidByTheRunsItStopped() async throws {
+        let board = JobBoard()
+        let (stopped, ended, last) = (UUID(), UUID(), UUID())
+        board.handle(.started(job: ended, preview: UUID(), title: "Earlier", total: 1))
+        board.handle(.step(job: ended, item: "Suspend user: dana@example.com", outcome: .succeeded, detail: ""))
+        board.handle(.finished(job: ended))
+        board.handle(.started(job: stopped, preview: UUID(), title: "Offboarding alice@example.com", total: 4, routine: true))
+        board.handle(.started(job: last, preview: UUID(), title: "Suspend user for carol@example.com", total: 1))
+        #expect(board.runningJobs.map(\.routine) == [true, false])
+        board.handle(.step(job: stopped, item: "Sign out: alice@example.com", outcome: .succeeded, detail: ""))
+        board.switched(to: "example.org")
+        #expect(board.runningJobs.allSatisfy { $0.stopping })
+        for _ in 0..<3 {
+            board.handle(.step(job: stopped, item: "Next: alice@example.com", outcome: .notRun, detail: "Stopped: you switched to example.org."))
+        }
+        board.handle(.finished(job: stopped))
+        board.handle(.step(job: last, item: "Suspend user: carol@example.com", outcome: .succeeded, detail: ""))
+        board.handle(.finished(job: last))
+        let byTitle = Dictionary(uniqueKeysWithValues: board.jobs.map { ($0.title, $0.status) })
+        #expect(byTitle["Offboarding alice@example.com"] == "Stopped: you switched to example.org — 3 not attempted. 1 of 4 succeeded.")
+        #expect(byTitle["Suspend user for carol@example.com"] == "Done: 1 of 1 succeeded.")
+        #expect(byTitle["Earlier"] == "Done: 1 of 1 succeeded.")
+        // The executor reports a routine as one.
+        let executor = try executor(), events = events
+        let steps = [suspend("alice@example.com"), suspend("bob@example.com")]
+        events.value.withLock { $0 = [] }
+        let held = try await executor.preview(steps, stopsAtAccountWideFailure: false, typedAddress: "alice@example.com").get()
+        _ = await executor.run(held, confirmation: OperatorConfirmation(confirmed: true, typedAddresses: ["alice@example.com"]))
+        guard case .started(_, held.id, _, 2, true)? = events.value.withLock({ $0.first }) else {
+            Issue.record("\(events.value.withLock { $0 })"); return
+        }
     }
 }

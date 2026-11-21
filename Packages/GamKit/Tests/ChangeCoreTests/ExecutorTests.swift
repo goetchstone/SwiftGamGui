@@ -538,6 +538,36 @@ final class ExecutorTests {
         #expect(outcome.steps[1] == .skipped(reason: "Stopped: the active domain changed during the run."))
     }
 
+    /// Plan F6: a switch to another domain mid-plan stops the rest in GamGUI's words, and the step in flight finished and is
+    /// recorded under the domain the preview was made on.
+    @Test func aSwitchMidPlanStopsTheRestSayingWhere() async throws {
+        let executor = executor()
+        let tenant = tenantState, other = other
+        let preview = try await held(executor, ["alice", "bob", "carol"].map { suspend("\($0)@example.com") })
+        let count = Shared(0)
+        await executor.setBeforeEachStep {
+            if count.value.withLock({ $0 += 1; return $0 }) == 1 { tenant.value.withLock { $0 = (other, 2) } }
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(wrote().count == 1)
+        #expect(Array(outcome.steps.dropFirst()) == Array(repeating: .skipped(reason: "Stopped: you switched to example.org."), count: 2))
+        // The step that ran, begun and ended, and nothing after it.
+        #expect(records.map { $0["extra"]?.object?[AuditLog.domainKey]?.string } == ["example.com", "example.com"])
+    }
+
+    /// Plan F6 (GamGUI's `previews.clear()` on a switch): previews held for another tenant are dropped, one held for the
+    /// connected tenant stays, and a dropped one's confirm is refused as expired.
+    @Test func aSwitchDropsThePreviewsHeldForTheOldTenant() async throws {
+        let executor = executor()
+        let old = try await held(executor, [suspend()])
+        tenantState.value.withLock { $0 = (other, 2) }
+        let current = try await held(executor, [suspend("bob@example.com")])
+        await executor.dropOtherTenants()
+        #expect(await executor.heldCount == 1)
+        #expect(await executor.run(old, confirmation: confirmed).refusal == "That preview has expired or was already run — preview again.")
+        #expect(await executor.run(current, confirmation: confirmed).succeeded)
+    }
+
     @Test func aRunCancelledBeforeGamStartsIsNotRecordedAsInterrupted() async throws {
         let executor = executor()
         // A write nobody's account is read for first, so the cancel meets the step itself.

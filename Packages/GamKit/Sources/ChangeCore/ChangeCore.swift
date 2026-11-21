@@ -557,6 +557,23 @@ public actor Executor {
         return held[id] != nil
     }
 
+    /// A switch (plan F6, GamGUI's `previews.clear()`): every preview held for a tenant that isn't the connected one is dropped,
+    /// and every run's steps waiting to be retried there, so what their argv carries (a temporary password) doesn't stay here
+    /// for `previewLifetime`. None of them could run any more (`isCurrent`); a run under way took its preview when it began.
+    public func dropOtherTenants() async {
+        let current = await tenant()
+        func stale(_ preview: HeldPreview) -> Bool {
+            current.map { $0.domain != preview.domain || $0.generation != preview.generation } ?? true
+        }
+        for (id, preview) in held where stale(preview) { held[id] = nil }
+        order.removeAll { held[$0] == nil }
+        for (id, state) in parked where stale(state.preview) { parked[id] = nil }
+        parkedOrder.removeAll { parked[$0] == nil }
+    }
+
+    /// Tests: how many previews are held.
+    var heldCount: Int { held.count }
+
     /// Drops a held preview the operator cancelled or replaced, so what its argv carries (a temporary
     /// password) doesn't stay here for `previewLifetime`. An unknown id is ignored.
     public func discard(_ id: UUID) {
@@ -606,7 +623,8 @@ public actor Executor {
         // In the jobs tray from here, not from its first step: the wait for the lock and the reads below take seconds, and a
         // confirmed offboarding wasn't listed until they ended (2026-10-30). Its Stop works from here too.
         let job = UUID()
-        jobs?(.started(job: job, preview: taken.id, title: taken.title, total: taken.steps.count))
+        jobs?(.started(job: job, preview: taken.id, title: taken.title, total: taken.steps.count,
+                       routine: !taken.stopsAtAccountWideFailure))
         await acquireWriteLock()
         defer { releaseWriteLock() }
         if let why = await refusalBeforeSteps(taken) {
@@ -647,6 +665,16 @@ public actor Executor {
     static let cancelledBeforeRun = "Cancelled before it ran."
     /// A step whose domain was removed or imported again during the run (its generation changed): it, and the rest, stop.
     static let domainChanged = "Stopped: the active domain changed during the run."
+
+    /// Why a run whose tenant isn't the connected one any more stops (plan F6): another domain made active is a switch, said
+    /// in GamGUI's words (its `stop_why`); a domain removed or imported again is `domainChanged`.
+    private func stopWords(for preview: HeldPreview) async -> String {
+        guard let current = await tenant(), current.domain != preview.domain else { return Self.domainChanged }
+        return Self.switchedTo(current.domain)
+    }
+
+    /// GamGUI's words for a run a switch stopped (plan F6, `AppState._end_the_old_tenants_runs`).
+    public static func switchedTo(_ domain: Domain) -> String { "Stopped: you switched to \(domain)." }
 
     /// The kept run for `preview`'s signatures, when a step keeps one: nil when none does. Throws when there's no keeper or
     /// it can't start one.
@@ -694,7 +722,10 @@ public actor Executor {
                 return (.failed(message: "\(Self.notRead) \(message)", kind: nil), "Stopped: \(message)")
             }
             // The read takes seconds: a domain removed or imported again meanwhile stops this step too, not only the next.
-            guard await isCurrent(preview) else { return (.skipped(reason: Self.domainChanged), Self.domainChanged) }
+            guard await isCurrent(preview) else {
+                let stop = await stopWords(for: preview)
+                return (.skipped(reason: stop), stop)
+            }
             if let expectedNow, !Self.same(previous, expectedNow) { return (.skipped(reason: Self.changedSince), nil) }
             do {
                 try kept.keep(email: email, previous: previous, setting: setting)
@@ -787,7 +818,7 @@ public actor Executor {
         // In the jobs tray from here, as `run`'s: a round of its own, of the steps still waiting.
         let job = UUID()
         jobs?(.started(job: job, preview: state.preview.id, title: state.preview.title + " (waiting for Google, try \(round + 1))",
-                       total: again.count))
+                       total: again.count, routine: !state.preview.stopsAtAccountWideFailure))
         await acquireWriteLock()
         defer { releaseWriteLock() }
         if let why = await refusalBeforeRetry(state) {
@@ -975,10 +1006,12 @@ public actor Executor {
                 results.append(.skipped(reason: "Cancelled before it ran."))
                 continue
             }
-            // Every step, not just the first: removing or re-importing the domain mid-plan stops the rest.
+            // Every step, not just the first: removing or re-importing the domain mid-plan, or switching to another (plan F6),
+            // stops the rest. The step in flight finished, recorded under the preview's domain.
             guard await isCurrent(preview) else {
-                stoppedBy = Self.domainChanged
-                results.append(.skipped(reason: Self.domainChanged))
+                let stop = await stopWords(for: preview)
+                stoppedBy = stop
+                results.append(.skipped(reason: stop))
                 continue
             }
             // A listed task runs on the id its list printed, or not at all (D3c).
