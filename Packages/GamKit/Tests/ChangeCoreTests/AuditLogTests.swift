@@ -43,7 +43,7 @@ struct AuditLogTests {
 
     /// Plan F1: the record of a Builder read as GamGUI's `catalog_read` writes it over the same output (`reads`): the rows
     /// counted only for a table (`CatalogResult.tableRows`, GamGUI's `table_records`), GAM's words when it failed, the domain
-    /// lowercased, never the output. A read cut off is said in this app's words: GamGUI's `INTERRUPTED` is its own. GamGUI's
+    /// lowercased, never the output. A cancelled read is said in this app's words: GamGUI's `INTERRUPTED` is its own. GamGUI's
     /// `sequence` origin has no Builder sequence here to come from, and the origin it refuses can't be spelled here at all.
     @Test func everyReadIsRecordedAsGamGUIRecordsIt() throws {
         let audit = ReadAudit(log: AuditLog(url: folder.appending(path: "reads.jsonl")))

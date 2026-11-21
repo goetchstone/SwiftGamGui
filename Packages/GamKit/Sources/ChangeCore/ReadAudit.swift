@@ -3,9 +3,13 @@ import GamEngine
 import Vault
 
 /// The read record (plan F1, GamGUI #170's `catalog_read`): one per catalog read the operator runs from the Builder, appended
-/// to the audit log `Executor` writes once the read has ended, ok, failed or cut off. It says which command (`extra.command`),
+/// to the audit log `Executor` writes once the read has ended, ok or failed. It says which command (`extra.command`),
 /// whom it was about (`target`), where it was started (`extra.origin`), how many rows a table had (`extra.rows`) and the domain
 /// (`extra.domain`); never the output. Held to GamGUI's records by `Tests/Fixtures/audit.json` (`reads`).
+///
+/// A read the app quits during leaves no record: `applicationWillTerminate` stops GAM and the app exits before the read's own
+/// code runs again to write one. There is no begin record for a read, by choice: a read changed nothing, so there is no outcome
+/// to check afterwards.
 ///
 /// Not a write path (invariant 2): it holds an audit log and nothing else, so it can run no `gam`, and its one action is
 /// `read` (`WriteRouteTests.theReadRecordIsNoWritePath`). Sensitive reads stay browse-only here, so `sensitive_read` is never
@@ -23,14 +27,15 @@ public struct ReadAudit: Sendable {
         case read(rows: Int?)
         /// GAM's words, or why it couldn't run.
         case failed(String)
-        /// Cut off before GAM finished: the app quit or the read was stopped.
+        /// Its task was cancelled before GAM finished. Nothing cancels a Builder read today; this is for a Stop, when one comes.
+        /// A quit records nothing (above).
         case interrupted
     }
 
     /// The one action this writes.
     public static let action = "read"
-    /// A read cut off before GAM finished, as its record says it (`extra.error`).
-    public static let interrupted = "Interrupted before GAM finished: the app quit or the read was stopped."
+    /// A read stopped before GAM finished (its task cancelled), as its record says it (`extra.error`).
+    public static let interrupted = "Stopped before GAM finished, so nothing was read."
 
     private let log: AuditLog
 

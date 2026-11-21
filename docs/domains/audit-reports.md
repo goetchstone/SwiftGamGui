@@ -169,8 +169,11 @@ this app; GamGUI has no such page. Reads only.
 - **Audit counts records**, not actions: this app records a begin and an end for each step.
 - **The domain list holds at most 100** (`AuditPage.domainsListed`, invariant 9), the first the log names newest first;
   GamGUI lists every one. A domain past it is still found by the search. A log of the app's own names a handful.
-- **A read cut off** (a quit, a stopped task) is recorded in this app's words ("Interrupted before GAM finished: the app quit
-  or the read was stopped."), not GamGUI's `INTERRUPTED`; the record is otherwise GamGUI's.
+- **A read the app quits during leaves no record**: at a quit `applicationWillTerminate` stops GAM and the app exits before
+  the read's code resumes to write one (GamGUI records its cancelled read, then cancels). Reads get no begin record, by choice:
+  a read changed nothing, so there's no outcome to check. A read whose task is cancelled is recorded as interrupted in this
+  app's words ("Stopped before GAM finished, so nothing was read."), not GamGUI's `INTERRUPTED`; nothing cancels a Builder
+  read today, so that is for a Stop when one comes.
 - **No `sequence` origin:** this app has no Builder sequences, so every read record's origin is `builder` (`ReadAudit.Origin`
   has no other case; an origin GamGUI refuses can't be spelled at all).
 - **The acknowledgement names a domain** (the begin's): GamGUI has no Mark as Checked.

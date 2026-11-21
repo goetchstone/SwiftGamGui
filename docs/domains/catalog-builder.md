@@ -49,13 +49,15 @@ it) and 11 (parity is a test).
 - **Sensitive reads are browse-only here** (a deliberate difference): GamGUI runs them and records each run as
   `sensitive_read`, never the output. Every other read is recorded here too now (plan F1), so they wait only on the operator's
   choice: browse-only until asked.
-- **Every read run here is recorded** (plan F1, GamGUI #170), once it ends, ok, failed or cut off, in the audit log the
+- **Every read run here is recorded** (plan F1, GamGUI #170), once it ends, ok or failed, in the audit log the
   executor writes: `read`, whom it was about (`target`: a catalog command's first person or group given, `Command.target`, as
   GamGUI's `_assemble`; a curated read's `CuratedCommand.target`; else "(command)"), the masked argv, `ok`, and in `extra` the
   catalog id (`command`), `origin` (`builder`: this app has no sequences, GamGUI's other origin), the domain, and `rows` when GAM
   printed a table (`CatalogResult.tableRows`, GamGUI's `table_records`: a header alone is 0; words or nothing have none) or
-  `error` (GAM's words; a cut-off read "Interrupted before GAM finished…"). Never the output. A read the log can't record isn't
-  shown, as GamGUI's isn't. Audit shows them (runbook audit-reports.md).
+  `error` (GAM's words). Never the output. A read the log can't record isn't shown, as GamGUI's isn't. Audit shows them (runbook
+  audit-reports.md). **A read the app quits during leaves no record**: the app stops GAM and exits before the read resumes to
+  write one, and reads get no begin record (they change nothing). A cancelled read task is recorded as interrupted ("Stopped
+  before GAM finished, so nothing was read."), but the Builder has no Stop yet, so nothing cancels one today.
 - **The read record is no write path** (invariant 2, `WriteRouteTests.theReadRecordIsNoWritePath`): `ReadAudit` holds an audit
   log and nothing else (no runner, ticket or executor), writes one action, `read`, and only `UserAccess.catalogRead` calls it;
   the app makes one in its wiring (the executor's own `AuditLog`) and hands it only to the Builder. Reads the app makes for itself

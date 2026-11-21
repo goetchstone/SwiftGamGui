@@ -48,8 +48,9 @@ is recorded once it ends (`ReadAudit`, written by `UserAccess.catalogRead`: `rea
 GamGUI's three new columns; Home's failures and the incident report pass reads over (`AuditLog.readActions`). The generator
 now records GamGUI's `catalog_read` over chosen outputs and a domain-named log (`audit.json` `reads`, `audit_screen.json`).
 Listed differences (runbooks audit-reports.md, catalog-builder.md): sensitive reads stay browse-only, the operator's choice, so
-`sensitive_read` is read but never written; no `sequence` origin (no Builder sequences here); a cut-off read in this app's
-words; the domain list bounded at 100. Not live yet: one Builder read on the operator's tenant, then its record in Audit.
+`sensitive_read` is read but never written; no `sequence` origin (no Builder sequences here); a read the app quits during
+leaves no record (a cancelled one is recorded, in this app's words, though nothing cancels one yet); the domain list bounded
+at 100. Not live yet: one Builder read on the operator's tenant, then its record in Audit.
 
 ### F2 — Named reports · *port GamGUI 3.1 (#151, merged as `2286631`)*
 Nine domain-wide reads by name, each opening its Builder read with CSV export: licenses, shared drives, shared drive

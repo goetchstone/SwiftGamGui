@@ -481,9 +481,10 @@ public final class UserAccess {
 
     /// A Builder read (`GamCommands.catalogRead`) run now as `domain`, the tenant it was started on: GAM's output, read off the
     /// main actor as the screen shows it, or GAM's own words. As long as a log read may take: a whole-tenant `print` is slow.
-    /// Recorded in `audit` once it has ended, ok, failed or cut off (plan F1, GamGUI's `catalog_read`): `command` (the catalog
-    /// id), `target` (whom it was about), the domain and the rows a table had, never the output. A read the log couldn't record
-    /// isn't shown, as GamGUI's isn't: it says so instead.
+    /// Recorded in `audit` once it has ended, ok or failed (plan F1, GamGUI's `catalog_read`): `command` (the catalog id),
+    /// `target` (whom it was about), the domain and the rows a table had, never the output. A cancelled task records it as
+    /// interrupted (no screen cancels one yet). A read the app quits during leaves no record: the app exits before this resumes.
+    /// A read the log couldn't record isn't shown, as GamGUI's isn't: it says so instead.
     public func catalogRead(_ read: GamRead, command: String, target: String, in domain: Domain,
                             recordingTo audit: ReadAudit) async -> Result<CatalogResult, Problem> {
         let output = await readNow(read, in: domain, timeout: ActivityLogs.timeout) { $0 }
@@ -504,7 +505,8 @@ public final class UserAccess {
         }.value
     }
 
-    /// A read cut off before GAM finished: the app quit or the read was stopped (`GamRunner` throws `CancellationError`).
+    /// A read stopped before GAM finished: its task was cancelled (`GamRunner` throws `CancellationError`). At a quit GAM is
+    /// stopped the same way, but the app exits before anyone reads this.
     public nonisolated static let interrupted = Problem(summary: ReadAudit.interrupted)
 
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.

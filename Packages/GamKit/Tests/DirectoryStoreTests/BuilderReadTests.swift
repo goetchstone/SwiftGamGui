@@ -91,8 +91,9 @@ final class BuilderReadTests {
         #expect(records.last?["ok"] == .bool(false) && extra["error"] == .string(problem.summary) && extra["rows"] == nil)
     }
 
-    /// A read cut off before GAM finished (here, its task cancelled) is recorded as interrupted, in the read's own words.
-    @Test func aCancelledReadIsRecordedAsInterrupted() async throws {
+    /// A read whose task is cancelled before GAM finished is recorded as interrupted, in the read's own words. No screen cancels
+    /// a Builder read today (this is for a Stop); a read the app quits during leaves no record, since the app exits first.
+    @Test func aCancelledReadTaskIsRecordedAsInterrupted() async throws {
         let domain = try await connect()
         let command = try command("gam version")
         let version = try GamCommands.catalogRead(command, values: [:])
