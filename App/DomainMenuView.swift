@@ -91,6 +91,11 @@ struct DomainButton: View {
             .help("\(active.name) is active\(admin.map { ", signed in as \($0)" } ?? ""). Switch to another domain here (⇧⌘D).")
             .accessibilityLabel("Domain, \(active.name)")
             .accessibilityHint(admin.map { "Signed in as \($0)" } ?? "")
+            // Closed any way (a click outside, Escape, a pass), a warning it showed is answered as Cancel: it never waits,
+            // stale, on Setup or the panel's next opening with Return still on Switch Anyway (plan F6's review).
+            .onChange(of: switcher.isOpen) { _, open in
+                if !open { setup.dismissSwitchWarning() }
+            }
             .popover(isPresented: $switcher.isOpen, arrowEdge: .bottom) {
                 DomainPanel(setup: setup, switcher: switcher, openSetup: {
                     switcher.isOpen = false
