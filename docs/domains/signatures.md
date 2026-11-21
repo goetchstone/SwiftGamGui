@@ -287,10 +287,8 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
 - **Not verified live** (none of it): the getting line, the titles and the CSV against real GAM; that Gmail stores and
   returns a signature exactly as GAM sent it in `html` (if it normalizes, every Put Back reads "changed since" and puts
   nothing back: safe, but owed a check); a kept run's file after a real run.
-- **Until the mock models `print signature`** (Phase B, after the parity catch-up's fixtures): the signature tests run a
-  stand-in in front of the strict mock, `Fixtures.gamReadingSignatures`, which answers the read from the mock's state or
-  its canned signatures and passes everything else to the mock; `print_signature` is in `CommandKindTests.appOnlyReads`
-  with its argv in `NativeArgvTests`.
+- **Parity:** `GamCommands.printSignature` is GamGUI's `print_signature`, held to `argv.json` (generated from GamGUI
+  d03f5a6, `GoldenArgvTests.implemented`); `gam_output.json` holds the mock's answer for GamGUI's own read of it.
 
 ## The mock (`Tests/Fixtures/mock_gam.sh`)
 - `show signature` prints GAM's shape for the address given, with the indent; with `GAM_MOCK_STATE`,
@@ -301,6 +299,16 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   read `html` (exit 6), a document keyword wants its file (exit 2; wording approximate).
 - Accounts `create user` made are known users while the mock keeps state, so onboarding's signature set
   reaches the same handler.
+- `print signature` (the exact read), from printShowSignature's print mode at 7.52.04, read to the end: "Getting
+  Signatures for <u>" on stderr; CSVPrintFile's own titles (User, displayName, sendAsEmail, replyToAddress, isPrimary,
+  isDefault, treatAsAlias, verificationStatus) first and in that order, then `signature` only when there is one (Gmail
+  leaves an empty one out of its reply); the person's row, the primary's empty treatAsAlias and verificationStatus; the
+  signature the mock last set, in the form GAM stored it, or the canned one `show signature` has. Its cell is written by
+  `gam_cell`, which now quotes a value holding a CR or a LF and writes the line breaks as they are, as CPython's csv
+  writer does in GAM's dialect (a backslash doubled, a quote doubled, no quoting for a backslash alone). A refused token
+  (`quiet/<u>`) is the titles alone, exit 0; Gmail off, exit 73 and the titles alone; not a user, the token's refusal
+  (exit 50). Other options (`compact`, `primary`…) aren't modelled. A just-created account still being set up isn't
+  modelled for this read (the app never reads one: a new hire's signature keeps nothing).
 - Approximations, invisible to the reader: the mock's strips are ASCII whitespace only.
 
 ## The store
