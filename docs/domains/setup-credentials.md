@@ -30,7 +30,9 @@ Python GamGUI's Keychain items, and checking that delegation actually works ("Ch
 - `GamEngine/GamCommands.swift`: `version`, `checkServiceAccount` — the first ported builders,
   byte-identical to GamGUI's on every fixture case.
 - `GamEngine/AccessCheck.swift`:
-  - `DelegationScopes` — GamGUI's `DWD_SCOPES`, plus the pre-filled Admin-console link.
+  - `DelegationScopes` — GamGUI's `DWD_SCOPES` (`scopes`, what Check access verifies), its `OPTIONAL_DWD_SCOPES`
+    (`optional`: Cloud Identity devices and the Alert Center, offered but never verified, GamGUI #151), and the
+    pre-filled Admin-console link, which offers both (`offered`), as GamGUI's delegation step does (`setup.json`).
   - `GamExitCode` — 10 and 16, held to the build's table.
   - `AccessCheck.interpret` — GamGUI's `_check_result` / `_parse_check` / `_extract_auth_url`.
   - `AuthenticatedRunner.checkAccess(admin:as:)`.

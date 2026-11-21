@@ -111,7 +111,8 @@ struct AccessCheckTests {
         let url = DelegationScopes.authorizationURL(clientID: "1234567890", domain: example)
         let items = URLComponents(url: url!, resolvingAgainstBaseURL: false)!.queryItems!
         #expect(url?.host() == "admin.google.com")
-        #expect(items.first { $0.name == "clientScopeToAdd" }?.value == DelegationScopes.scopes.joined(separator: ","))
+        #expect(items.first { $0.name == "clientScopeToAdd" }?.value == DelegationScopes.offered.map(\.scope).joined(separator: ","),
+                "every offered scope, the optional ones too (GamGUI #151)")
         #expect(items.first { $0.name == "dn" }?.value == "example.com")
         #expect(DelegationScopes.authorizationURL(clientID: "") == nil)
     }

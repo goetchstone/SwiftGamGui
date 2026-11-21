@@ -386,7 +386,7 @@ the same second as the sign-in), and the phones list never shows a computer. Rea
   each row as this check does. Shown, not changed: blocking is Secure Account's plan, and a wipe the Admin console's.
 - **The scope:** GAM reads devices as the admin through the service account, so domain-wide delegation needs
   `https://www.googleapis.com/auth/cloud-identity.devices` (GAM's default service account scope, or its `.readonly` form
-  when the service account was set up read-only; Setup's check doesn't test it). Each cause has its own fix
+  when the service account was set up read-only; Setup's link offers it, and its check doesn't test it). Each cause has its own fix
   (`Compromised.Computer.note(for:)`), never "no computer", and the rest of the check reads as before:
   - "User: <admin>, Cloud Identity API - Devices Service/App not enabled" (73): the delegation, in the Admin console.
   - "API access Denied" (12): the service account's own list of APIs (in its file) lacks it, and GAM refuses before it

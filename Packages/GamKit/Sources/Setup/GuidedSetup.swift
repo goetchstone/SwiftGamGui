@@ -63,7 +63,8 @@ public struct Delegation: Equatable, Sendable {
     /// Nil when `oauth2.txt` doesn't record its scopes as a list.
     public let grantsUserSecurity: Bool?
 
-    public static var scopesText: String { DelegationScopes.scopes.joined(separator: ",") }
+    /// Every scope Setup offers, the optional ones too, as the link fills them in.
+    public static var scopesText: String { DelegationScopes.offered.map(\.scope).joined(separator: ",") }
 
     init(domain: Domain, credentials: [Credential: Secret]) {
         self.domain = domain
