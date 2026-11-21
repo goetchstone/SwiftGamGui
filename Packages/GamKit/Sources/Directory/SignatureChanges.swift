@@ -129,10 +129,14 @@ public final class SignatureChanges {
     public struct Problem: Error, Sendable, Equatable {
         public let summary: String
         public let detail: String?
+        /// A run whose write may have landed (a timeout, an interruption) kept what it replaced first: this is that kept
+        /// run, for its Put Back. Nil otherwise.
+        public let keptRun: String?
 
-        init(_ summary: String, detail: String? = nil) {
+        init(_ summary: String, detail: String? = nil, keptRun: String? = nil) {
             self.summary = summary
             self.detail = detail
+            self.keptRun = keptRun
         }
     }
 
@@ -361,22 +365,32 @@ public final class SignatureChanges {
     // MARK: the kept signatures, and putting them back (GamGUI's `/signatures/kept`, `/putback/preview`, `/putback`)
 
     /// The kept runs, read again from this Mac (off the main actor: each is read whole).
+    /// Asked while a read is under way, that read reads again as it ends, so the list is never older than the last ask.
     public func loadKept() async {
-        guard let backups, !isLoadingKept else { return }
+        guard let backups else { return }
+        keptAsked += 1
+        guard !isLoadingKept else { return }
         isLoadingKept = true
-        let read = await Task.detached { () -> Result<[SignatureBackupStore.Listed], SignatureBackupStore.Problem> in
-            do throws(SignatureBackupStore.Problem) { return .success(try backups.runs()) } catch { return .failure(error) }
-        }.value
-        switch read {
-        case .success(let runs):
-            kept = runs
-            keptProblem = nil
-        case .failure(let problem):
-            kept = nil
-            keptProblem = "The kept signatures couldn't be read: \(problem.reason). Nothing here says none are kept."
+        defer { isLoadingKept = false }
+        var answered = 0
+        while answered != keptAsked {
+            answered = keptAsked
+            let read = await Task.detached { () -> Result<[SignatureBackupStore.Listed], SignatureBackupStore.Problem> in
+                do throws(SignatureBackupStore.Problem) { return .success(try backups.runs()) } catch { return .failure(error) }
+            }.value
+            switch read {
+            case .success(let runs):
+                kept = runs
+                keptProblem = nil
+            case .failure(let problem):
+                kept = nil
+                keptProblem = "The kept signatures couldn't be read: \(problem.reason). Nothing here says none are kept."
+            }
         }
-        isLoadingKept = false
     }
+
+    /// How many times the kept runs were asked for: a read under way reads again until it has answered the last.
+    private var keptAsked = 0
 
     /// The kept run `id`'s old signatures, previewed to be set again (GamGUI's Put Back, #164): its people, but anyone whose
     /// old signature GAM would read as a file to load or change on the way in, who is left out and named. Each is held as a
@@ -513,6 +527,8 @@ public final class SignatureChanges {
         }
         if outcome.steps.contains(where: \.isSucceeded) { finished += 1 }
         state = .done(Self.scopeDone(pending, outcome.steps, note: outcome.auditProblem.map { " \($0)" } ?? "", kept: outcome.kept))
+        // Whatever it kept, or pruned, shows: every run that ends reads the kept runs again, not only one that set someone.
+        await loadKept()
     }
 
     /// Stop a scope's run after the write in flight (GamGUI's Stop): the rest read "Not run: stopped."
@@ -593,28 +609,36 @@ public final class SignatureChanges {
         state = .running(pending)
         if pending.isScoped { return await confirmScope(pending, confirmation, executor: executor) }
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
-        if let refusal = outcome.refusal {
-            state = .problem(Problem(refusal))
-            return
-        }
+        if outcome.refusal == nil, outcome.steps.first?.isSucceeded == true { finished += 1 }
+        state = Self.personResult(pending, outcome)
+        // Whatever it kept shows, a write whose outcome is unknown included.
+        await loadKept()
+    }
+
+    /// One person's run in words: done with its kept run, or why not. A write whose outcome is unknown (a timeout, an
+    /// interruption: it may have landed) keeps its kept run, for Put Back; one GAM refused changed nothing, and has none.
+    nonisolated static func personResult(_ pending: Pending, _ outcome: RunOutcome) -> State {
+        if let refusal = outcome.refusal { return .problem(Problem(refusal)) }
         let name = pending.person.fullName
         switch outcome.steps.first {
         case .succeeded:
-            finished += 1
             let note = outcome.auditProblem.map { " \($0)" } ?? ""
-            state = .done(Done(message: "Replaced \(name)'s signature."
-                                   + (outcome.kept == nil ? "" : " The one it replaced is kept on this Mac.") + note,
-                               keptRun: outcome.kept))
+            return .done(Done(message: "Replaced \(name)'s signature."
+                                  + (outcome.kept == nil ? "" : " The one it replaced is kept on this Mac.") + note,
+                              keptRun: outcome.kept))
         case .failed(let message, nil) where message.hasPrefix(Executor.notRead):
             // ChangeCore's words already say it wasn't replaced, and why.
-            state = .problem(Problem(message))
-        case .failed(let message, let kind):
-            let why = Self.remediation(message, kind: kind, for: pending.person)
-            state = .problem(Problem("Couldn't set the signature. \(why)", detail: kind == nil ? nil : message))
-        case .skipped(let reason), .waiting(let reason):
-            state = .problem(Problem("Couldn't set the signature. \(reason)"))
+            return .problem(Problem(message))
+        case .failed(let message, let kind)?:
+            let why = remediation(message, kind: kind, for: pending.person)
+            let unknown = outcome.steps.first?.mayHaveChanged == true
+            return .problem(Problem("Couldn't set the signature. \(why)" + (unknown && outcome.kept != nil
+                                        ? " What it replaced, if it did, is kept on this Mac." : ""),
+                                    detail: kind == nil ? nil : message, keptRun: unknown ? outcome.kept : nil))
+        case .skipped(let reason)?, .waiting(let reason)?:
+            return .problem(Problem("Couldn't set the signature. \(reason)"))
         case nil:
-            state = .problem(Problem("Nothing ran."))
+            return .problem(Problem("Nothing ran."))
         }
     }
 

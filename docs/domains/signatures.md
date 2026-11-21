@@ -252,9 +252,12 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   (its title, when, domain and how many) with Put Back… (off on another domain, said in words); an unreadable run is
   listed by its id with why, and a folder that can't be opened or listed says so ("The kept signatures couldn't be read:
   …"), never "None kept yet." (`runs()` throws; only no folder at all is none). Read when the screen opens, after each run, and with ⌘R (Read Again reads the person's
-  signature and the kept runs). `SignaturePutBackSheet`: who goes back (ten, then Show all), the first one's old signature,
+  signature and the kept runs); every run that ends reads them again itself (`SignatureChanges.loadKept` after each
+  `executor.run`, one that set nobody too), and a read asked for while one is under way is read again as that one ends.
+  `SignaturePutBackSheet`: who goes back (ten, then Show all), the first one's old signature,
   who is left out and why, the count typed above 25, what the run checks first, the commands masked; not the default
-  button. Each result banner has Put Back… for the run it just made. Screenshots: `signatures-kept`, `signatures-putback`
+  button. Each result banner has Put Back… for the run it just made, a one-person write whose outcome is unknown (a
+  timeout or an interruption: it may have landed) included; a write GAM refused changed nothing and offers none. Screenshots: `signatures-kept`, `signatures-putback`
   and their `narrow-` (smallest window) runs, from `Tests/Fixtures/demo/signature-backups` copied into a fresh folder.
   No new column, so `ColumnWidths` is unchanged.
 - **Deviations from GamGUI, each tested:**

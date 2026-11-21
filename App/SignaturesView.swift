@@ -98,8 +98,8 @@ struct SignaturesView: View {
             guard let person else { return }
             await access.load(person.primaryEmail)
         }
-        // The kept signatures, read when the screen opens and again after a run (it may have kept some).
-        .task(id: changes.finished) { await changes.loadKept() }
+        // The kept signatures, read when the screen opens; every run that ends reads them again itself.
+        .task { await changes.loadKept() }
         .task(id: "\(template)#\(personEmail)") {
             // Drawn a moment after typing stops, and at once for a new person.
             if drawn.person == personEmail, (try? await Task.sleep(for: .milliseconds(300))) == nil { return }
@@ -696,6 +696,12 @@ private struct SignatureResult: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // A write whose outcome is unknown may have landed: what it replaced is kept, and can be put back.
+                if let kept = problem.keptRun {
+                    Button("Put Back\u{2026}") { Task { await changes.previewPutBack(kept) } }
+                        .accessibilityLabel("Put back the signature this run may have replaced")
+                        .accessibilityHint("Shows the old signature, and whether it can go back, before anything changes.")
+                }
                 dismiss
             }
         case .idle, .previewing:

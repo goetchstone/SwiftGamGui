@@ -1,4 +1,4 @@
-import ChangeCore
+@testable import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
@@ -441,6 +441,37 @@ final class SignatureChangesTests {
         #expect(changes.kept == nil)
         #expect(changes.keptProblem == "The kept signatures couldn't be read: their folder couldn't be opened (Permission denied). "
                 + "Nothing here says none are kept.")
+    }
+
+    /// Review of Phase A: a one-person write whose outcome is unknown (a timeout, an interruption: it may have landed) lost its
+    /// kept run, so no Put Back was offered. It keeps it; a write GAM refused changed nothing and offers none.
+    @Test func anUnknownOutcomeKeepsItsPutBack() async throws {
+        try await connect()
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
+        let pending = try pending()
+        func result(_ step: RunOutcome.Step) -> SignatureChanges.State {
+            SignatureChanges.personResult(pending, RunOutcome(refusal: nil, steps: [step], auditProblem: nil, kept: "R"))
+        }
+        guard case .problem(let timedOut) = result(.failed(message: "GAM didn't answer within 120 seconds", kind: .timeout)),
+              case .problem(let interrupted) = result(.failed(message: Executor.interrupted, kind: nil)),
+              case .problem(let refused) = result(.failed(message: "GAM failed (unknown, exit=1): x", kind: .unknown))
+        else { Issue.record("not problems"); return }
+        #expect(timedOut.keptRun == "R" && interrupted.keptRun == "R" && refused.keptRun == nil)
+        #expect(timedOut.summary.hasSuffix("What it replaced, if it did, is kept on this Mac."))
+    }
+
+    /// Review of Phase A: the kept list was read again only when a run set someone. Every run that ends reads it again, one
+    /// that set nobody too.
+    @Test func everyRunThatEndsReadsTheKeptListAgain() async throws {
+        try await connect()
+        #expect(changes.kept == nil)
+        try marker("nogmail/alice@example.com")
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        #expect(changes.finished == 0 && changes.kept?.isEmpty == true)
+        await changes.preview(person: try user("carol@example.com"), template: "{name}", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        #expect(changes.kept?.count == 1 && changes.kept?.first?.run?.entries.map(\.email) == ["carol@example.com"])
     }
 
     /// Many people's Put Back asks for the count typed, as any run of many signatures (D5).
