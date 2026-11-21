@@ -26,10 +26,16 @@ public struct AuthenticatedRunner: Sendable {
         timeout: Duration = GamRunner.defaultTimeout,
         extraEnvironment: [String: String] = [:]
     ) async throws -> GamResult {
+        // A read GAM would read as carrying `todrive` makes a Sheet, under GAM's own defaults (its browser, its email), with no
+        // preview or record: refused here, before the Vault, whichever builder made it (plan F4). Only the executor's write entry
+        // sends it, from a held preview.
+        guard !GamCommands.carriesToDrive(read.argv) else {
+            throw GamRunnerError.invalidArgument("todrive: a read never makes a Google Sheet")
+        }
         // Only the mock's own variables (passed in debug builds only): a caller outside GamKit can't
         // change HOME, PATH or a proxy for a credentialed call.
-        try await run(argv: read.argv, as: domain, timeout: timeout,
-                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
+        return try await run(argv: read.argv, as: domain, timeout: timeout,
+                             extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
     }
 
     /// A write, for ChangeCore's executor only: it takes a `WriteTicket`, which nothing else can make.

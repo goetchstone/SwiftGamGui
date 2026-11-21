@@ -136,6 +136,16 @@ struct CommandKindTests {
         #expect(Self.isDoit("DO_IT") && Self.isDoit("doit") && !Self.isDoit("doit:") && !Self.isDoit("rfc822msgid:doit"))
     }
 
+    /// A read that carried `todrive` in any spelling GAM reads would make a Sheet, under GAM's own defaults, with no preview or
+    /// record (plan F4's review): no read builder may emit one, an app-only read included. The runner refuses one too.
+    @Test func noReadCarriesTodrive() throws {
+        for (name, command) in try commands() where command is GamRead {
+            #expect(!GamCommands.carriesToDrive(command.argv), "\(name) carries todrive")
+        }
+        for (name, read) in Self.appOnlyReads { #expect(!GamCommands.carriesToDrive(read.argv), "\(name) carries todrive") }
+        #expect(GamCommands.carriesToDrive(["print", "users", "TO_DRIVE"]) && !GamCommands.carriesToDrive(["print", "users", "todrive:"]))
+    }
+
     @Test func noWriteHasAReadVerb() throws {
         var writes = 0
         for (name, command) in try commands() where command is GamWrite {
