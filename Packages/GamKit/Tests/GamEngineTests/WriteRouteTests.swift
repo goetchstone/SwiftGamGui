@@ -92,7 +92,8 @@ struct WriteRouteTests {
 
     /// Plan F3: an audit run is no write path (invariant 2, GamGUI's `/reports/runs/start` in its LOCAL_ONLY list). Its runner and
     /// its tables reach no executor, write or ticket; each step's read is its run's own builder (`AuditRuns.read`), and only a
-    /// `print` read without `todrive` runs (`AuditRuns.isAuditRead`, checked before GAM).
+    /// `print` read without `todrive` runs (`AuditRuns.isAuditRead`, checked before GAM). The run's one write, Suspend these…, is
+    /// `InactiveSuspend`, through the executor like every other.
     @Test func anAuditRunIsNoWritePath() throws {
         let files = try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").filter {
             $0.path.hasSuffix("/AuditRunner.swift") || $0.path.hasSuffix("/AuditRuns.swift")
@@ -108,6 +109,7 @@ struct WriteRouteTests {
         #expect(runs.count == 1 && runs.allSatisfy { $0.contains("runner.run(read, as: domain") }, "\(runs)")
         #expect(runner.lines.contains { $0.contains("let read = AuditRuns.read(step)") })
         #expect(runner.lines.contains { $0.contains("guard AuditRuns.isAuditRead(read.argv) else") })
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
     }
 
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
