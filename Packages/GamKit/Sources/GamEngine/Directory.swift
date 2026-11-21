@@ -25,6 +25,10 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
     public let phone: String
     public let recoveryEmail: String
     public let lastLoginTime: String?
+    /// When the account was made (`creationTime`, "The time the user's account was created.", Google's `users` reference), as
+    /// GAM prints a time; nil when the record doesn't say (GamGUI's `creation_time`, its roadmap 3.3: a new hire is never just
+    /// "inactive").
+    public let creationTime: String?
     public let aliases: [String]
     /// The alias-domain addresses Google adds (`nonEditableAliases`), which GAM's `fields aliases` returns with the aliases
     /// (`USER_FIELDS_CHOICE_MAP`): read as the aliases are (GamGUI #128).
@@ -68,6 +72,7 @@ public struct GamUser: Sendable, Identifiable, CustomReflectable {
         self.phone = Fields.text(Fields.truthy(phone["value"]))
         recoveryEmail = Fields.text(Fields.truthy(Fields.first(record, "recoveryEmail")))
         lastLoginTime = Fields.first(record, "lastLoginTime", "Last Login Time").map(Fields.text)
+        creationTime = Fields.first(record, "creationTime", "Creation Time").map(Fields.text)
         aliases = Fields.list(Fields.first(record, "aliases", "Aliases"))
         nonEditableAliases = Fields.list(Fields.first(record, "nonEditableAliases", "NonEditableAliases"))
         let joined = PythonText.strip(givenName + " " + familyName)

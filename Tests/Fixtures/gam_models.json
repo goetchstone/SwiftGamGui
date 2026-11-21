@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "4eb8165",
+  "gamgui_commit": "086d2f8",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -9439,7 +9439,7 @@
  },
  "users": [
   {
-   "record": "{\"primaryEmail\": \"admin@example.com\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-10-20T08:00:00Z\", \"name\": {\"familyName\": \"Admin\", \"givenName\": \"IT\"}, \"orgUnitPath\": \"/Staff\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"admin@example.com\", \"creationTime\": \"2021-09-01T09:00:00Z\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-10-20T08:00:00Z\", \"name\": {\"familyName\": \"Admin\", \"givenName\": \"IT\"}, \"orgUnitPath\": \"/Staff\", \"suspended\": false}",
    "model": {
     "primary_email": "admin@example.com",
     "given_name": "IT",
@@ -9455,14 +9455,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-10-20T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2021-09-01T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "IT Admin"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"alice@example.com\", \"aliases\": [\"a.anders@example.com\"], \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-06-18T08:00:00Z\", \"locations\": [{\"buildingName\": \"HQ\", \"primary\": true, \"type\": \"desk\"}], \"name\": {\"familyName\": \"Anders\", \"givenName\": \"Alice\"}, \"nonEditableAliases\": [\"alice@alias.example.net\"], \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"IT\", \"primary\": true, \"title\": \"IT Director\"}], \"recoveryEmail\": \"alice.personal@example.org\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"aliases\": [\"a.anders@example.com\"], \"creationTime\": \"2023-05-02T09:00:00Z\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-06-18T08:00:00Z\", \"locations\": [{\"buildingName\": \"HQ\", \"primary\": true, \"type\": \"desk\"}], \"name\": {\"familyName\": \"Anders\", \"givenName\": \"Alice\"}, \"nonEditableAliases\": [\"alice@alias.example.net\"], \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"IT\", \"primary\": true, \"title\": \"IT Director\"}], \"recoveryEmail\": \"alice.personal@example.org\", \"suspended\": false}",
    "model": {
     "primary_email": "alice@example.com",
     "given_name": "Alice",
@@ -9478,7 +9478,7 @@
     "phone": "",
     "recovery_email": "alice.personal@example.org",
     "last_login_time": "2026-06-18T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2023-05-02T09:00:00Z",
     "aliases": [
      "a.anders@example.com"
     ],
@@ -9489,7 +9489,7 @@
    }
   },
   {
-   "record": "{\"primaryEmail\": \"bob@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2025-12-01T08:00:00Z\", \"name\": {\"familyName\": \"Brown\", \"givenName\": \"Bob\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"primary\": true, \"title\": \"Sales Lead\"}], \"suspended\": true}",
+   "record": "{\"primaryEmail\": \"bob@example.com\", \"creationTime\": \"2024-02-11T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2025-12-01T08:00:00Z\", \"name\": {\"familyName\": \"Brown\", \"givenName\": \"Bob\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"primary\": true, \"title\": \"Sales Lead\"}], \"suspended\": true}",
    "model": {
     "primary_email": "bob@example.com",
     "given_name": "Bob",
@@ -9505,14 +9505,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2025-12-01T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2024-02-11T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Bob Brown"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"carol@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-01-01T00:00:00Z\", \"name\": {\"familyName\": \"Clark\", \"givenName\": \"Carol\"}, \"orgUnitPath\": \"/Students\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"carol@example.com\", \"creationTime\": \"2025-03-03T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-01-01T00:00:00Z\", \"name\": {\"familyName\": \"Clark\", \"givenName\": \"Carol\"}, \"orgUnitPath\": \"/Students\", \"suspended\": false}",
    "model": {
     "primary_email": "carol@example.com",
     "given_name": "Carol",
@@ -9528,14 +9528,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-01-01T00:00:00Z",
-    "creation_time": null,
+    "creation_time": "2025-03-03T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Carol Clark"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"dana@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-10-01T09:30:00Z\", \"name\": {\"familyName\": \"Zo\\u00eb \\ud83d\\ude00\", \"givenName\": \"Dana \\\"DJ\\\"\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"Sales, EMEA\", \"description\": \"line1\\nline2\\tend\", \"primary\": true, \"title\": \"R&D\\\\Ops\"}], \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"dana@example.com\", \"creationTime\": \"2026-02-02T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-10-01T09:30:00Z\", \"name\": {\"familyName\": \"Zo\\u00eb \\ud83d\\ude00\", \"givenName\": \"Dana \\\"DJ\\\"\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"Sales, EMEA\", \"description\": \"line1\\nline2\\tend\", \"primary\": true, \"title\": \"R&D\\\\Ops\"}], \"suspended\": false}",
    "model": {
     "primary_email": "dana@example.com",
     "given_name": "Dana \"DJ\"",
@@ -9551,14 +9551,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-10-01T09:30:00Z",
-    "creation_time": null,
+    "creation_time": "2026-02-02T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Dana \"DJ\" Zo\u00eb \ud83d\ude00"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"admin@example.com\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-10-20T08:00:00Z\", \"name\": {\"familyName\": \"Admin\", \"givenName\": \"IT\"}, \"orgUnitPath\": \"/Staff\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"admin@example.com\", \"creationTime\": \"2021-09-01T09:00:00Z\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-10-20T08:00:00Z\", \"name\": {\"familyName\": \"Admin\", \"givenName\": \"IT\"}, \"orgUnitPath\": \"/Staff\", \"suspended\": false}",
    "model": {
     "primary_email": "admin@example.com",
     "given_name": "IT",
@@ -9574,14 +9574,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-10-20T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2021-09-01T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "IT Admin"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"alice@example.com\", \"aliases\": [\"a.anders@example.com\"], \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-06-18T08:00:00Z\", \"locations\": [{\"buildingName\": \"HQ\", \"primary\": true, \"type\": \"desk\"}], \"name\": {\"familyName\": \"Anders\", \"givenName\": \"Alice\"}, \"nonEditableAliases\": [\"alice@alias.example.net\"], \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"IT\", \"primary\": true, \"title\": \"IT Director\"}], \"recoveryEmail\": \"alice.personal@example.org\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"alice@example.com\", \"aliases\": [\"a.anders@example.com\"], \"creationTime\": \"2023-05-02T09:00:00Z\", \"isAdmin\": true, \"isEnrolledIn2Sv\": true, \"lastLoginTime\": \"2026-06-18T08:00:00Z\", \"locations\": [{\"buildingName\": \"HQ\", \"primary\": true, \"type\": \"desk\"}], \"name\": {\"familyName\": \"Anders\", \"givenName\": \"Alice\"}, \"nonEditableAliases\": [\"alice@alias.example.net\"], \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"IT\", \"primary\": true, \"title\": \"IT Director\"}], \"recoveryEmail\": \"alice.personal@example.org\", \"suspended\": false}",
    "model": {
     "primary_email": "alice@example.com",
     "given_name": "Alice",
@@ -9597,7 +9597,7 @@
     "phone": "",
     "recovery_email": "alice.personal@example.org",
     "last_login_time": "2026-06-18T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2023-05-02T09:00:00Z",
     "aliases": [
      "a.anders@example.com"
     ],
@@ -9608,7 +9608,7 @@
    }
   },
   {
-   "record": "{\"primaryEmail\": \"bob@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2025-12-01T08:00:00Z\", \"name\": {\"familyName\": \"Brown\", \"givenName\": \"Bob\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"primary\": true, \"title\": \"Sales Lead\"}], \"suspended\": true}",
+   "record": "{\"primaryEmail\": \"bob@example.com\", \"creationTime\": \"2024-02-11T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2025-12-01T08:00:00Z\", \"name\": {\"familyName\": \"Brown\", \"givenName\": \"Bob\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"primary\": true, \"title\": \"Sales Lead\"}], \"suspended\": true}",
    "model": {
     "primary_email": "bob@example.com",
     "given_name": "Bob",
@@ -9624,14 +9624,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2025-12-01T08:00:00Z",
-    "creation_time": null,
+    "creation_time": "2024-02-11T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Bob Brown"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"carol@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-01-01T00:00:00Z\", \"name\": {\"familyName\": \"Clark\", \"givenName\": \"Carol\"}, \"orgUnitPath\": \"/Students\", \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"carol@example.com\", \"creationTime\": \"2025-03-03T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-01-01T00:00:00Z\", \"name\": {\"familyName\": \"Clark\", \"givenName\": \"Carol\"}, \"orgUnitPath\": \"/Students\", \"suspended\": false}",
    "model": {
     "primary_email": "carol@example.com",
     "given_name": "Carol",
@@ -9647,14 +9647,14 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-01-01T00:00:00Z",
-    "creation_time": null,
+    "creation_time": "2025-03-03T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Carol Clark"
    }
   },
   {
-   "record": "{\"primaryEmail\": \"dana@example.com\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-10-01T09:30:00Z\", \"name\": {\"familyName\": \"Zo\\u00eb \\ud83d\\ude00\", \"givenName\": \"Dana \\\"DJ\\\"\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"Sales, EMEA\", \"description\": \"line1\\nline2\\tend\", \"primary\": true, \"title\": \"R&D\\\\Ops\"}], \"suspended\": false}",
+   "record": "{\"primaryEmail\": \"dana@example.com\", \"creationTime\": \"2026-02-02T09:00:00Z\", \"isAdmin\": false, \"isEnrolledIn2Sv\": false, \"lastLoginTime\": \"2026-10-01T09:30:00Z\", \"name\": {\"familyName\": \"Zo\\u00eb \\ud83d\\ude00\", \"givenName\": \"Dana \\\"DJ\\\"\"}, \"orgUnitPath\": \"/Staff\", \"organizations\": [{\"department\": \"Sales, EMEA\", \"description\": \"line1\\nline2\\tend\", \"primary\": true, \"title\": \"R&D\\\\Ops\"}], \"suspended\": false}",
    "model": {
     "primary_email": "dana@example.com",
     "given_name": "Dana \"DJ\"",
@@ -9670,7 +9670,7 @@
     "phone": "",
     "recovery_email": "",
     "last_login_time": "2026-10-01T09:30:00Z",
-    "creation_time": null,
+    "creation_time": "2026-02-02T09:00:00Z",
     "aliases": [],
     "non_editable_aliases": [],
     "full_name": "Dana \"DJ\" Zo\u00eb \ud83d\ude00"

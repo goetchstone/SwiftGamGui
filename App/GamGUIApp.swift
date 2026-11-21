@@ -274,7 +274,8 @@ struct ContentView: View {
                         .navigationTitle("Builder")
                 case .reports:
                     ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
-                                apps: services.connectedApps, openCommand: { id in
+                                apps: services.connectedApps, runs: services.auditRuns, suspend: services.inactiveSuspend,
+                                openCommand: { id in
                                     builderCommand = id
                                     screen = .builder
                                 }) { email in

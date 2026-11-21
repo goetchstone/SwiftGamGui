@@ -77,6 +77,10 @@ struct AppServices {
     let builderChanges: BuilderChanges
     /// The Builder's reads, each recorded in the audit log the executor writes once it ends (plan F1): never a write path.
     let readAudit: ReadAudit
+    /// Reports' audit runs (plan F3): fixed lists of reads, each step recorded in the same log; never a write path.
+    let auditRuns: AuditRunner
+    /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
+    let inactiveSuspend: InactiveSuspend
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
     /// Siri's requests, waiting for the screens to draft them.
@@ -195,6 +199,8 @@ struct AppServices {
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
                            readAudit: ReadAudit(log: audit),
+                           auditRuns: AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit)),
+                           inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, lockVault: { await vault.lock() })
     }
 

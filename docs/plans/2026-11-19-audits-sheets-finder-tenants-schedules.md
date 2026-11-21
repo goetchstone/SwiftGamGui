@@ -1,6 +1,7 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-21): F1, F2, F5a and F6 built (Swift); F3's port in review; F4 and F7a in GamGUI; signature backups first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-21): F1, F2, F3's first half, F5a and F6 built (Swift); F3's second half in review; F4 and F7a in
+GamGUI; signature backups first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -78,6 +79,19 @@ the run, bounded (invariant 9). The five asked for:
    skips them); AI and broad scopes flagged. Revoke stays in Incident's previewed flow.
 GAM grammar lines and output fields are read from GAM's source at the pin when each is built; the mock answers as GAM
 does (CLAUDE.md, "the mock lies").
+
+*As built, first half (2026-11-21, GamGUI #171 merged as `086d2f8`, fixtures regenerated from it):* Reports lists **Audit
+runs**; each run is a pane (`AuditRunPanel`) over `AuditRunner` (the steps, Stop between them, each step's table kept for
+the tenant) and `AuditRuns` (GamGUI's `core/audit_runs.py`: the steps, the unknown rules, the tables and flags). Each step
+is one `print` read without `todrive` and leaves one read record (`ReadAudit.Origin.auditRun`, command `<run>/<step>`).
+Inactive users (window 30 to 365, flags `new account` and `admin`) leads to **Suspend these…** (`InactiveSuspend`, GamGUI's
+Reports preview, roadmap 3.3, which this app didn't have): the directory read again, the connected admin left out, one
+previewed write through the executor. License usage joins `print licenses` (new builder) to the directory. The generator
+now runs GamGUI's own audit-run code and `audit_read` over edge cases (`audit_runs.json`), so the port is held to it.
+Listed differences (runbook audit-reports.md, "Audit runs"): a run isn't in the jobs tray (which lists the executor's
+writes; its Stop is on its pane, and it goes on while another screen shows); a domain switch stops a run (GamGUI reads on
+and discards); Suspend these… is reached from the run only. Not live yet: one run of each on the operator's tenant (reads),
+counts checked against the Admin console (Billing → Licenses).
 
 ### F4 — Sheets export and Files · *both apps; reverses design doc §1*
 - **Export to a Google Sheet…** beside Export CSV…, a curated **write** through ChangeCore: the preview holds the read's

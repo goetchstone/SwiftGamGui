@@ -19,7 +19,8 @@ struct DirectoryTests {
     struct User: Decodable {
         let primary_email: String, given_name: String, family_name: String, suspended: Bool, org_unit_path: String
         let is_admin: Bool, is_delegated_admin: Bool, enrolled_2sv: Bool, title: String, department: String
-        let location: String, phone: String, recovery_email: String, last_login_time: String?, aliases: [String]
+        let location: String, phone: String, recovery_email: String, last_login_time: String?, creation_time: String?
+        let aliases: [String]
         let non_editable_aliases: [String]
         let full_name: String
     }
@@ -72,6 +73,8 @@ struct DirectoryTests {
             #expect(Self.same(user.recoveryEmail, want.recovery_email), "recovery \(label)")
             #expect((user.lastLoginTime == nil) == (want.last_login_time == nil)
                     && Self.same(user.lastLoginTime ?? "", want.last_login_time ?? ""), "last login \(label)")
+            #expect((user.creationTime == nil) == (want.creation_time == nil)
+                    && Self.same(user.creationTime ?? "", want.creation_time ?? ""), "made \(label)")
             #expect(user.aliases.map { Array($0.utf8) } == want.aliases.map { Array($0.utf8) }, "aliases \(label)")
             #expect(user.nonEditableAliases.map { Array($0.utf8) } == want.non_editable_aliases.map { Array($0.utf8) },
                     "non-editable aliases \(label)")

@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "4eb8165",
+  "gamgui_commit": "086d2f8",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -71529,6 +71529,7 @@
  "users": [
   {
    "primaryEmail": "admin@example.com",
+   "creationTime": "2021-09-01T09:00:00Z",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -71544,6 +71545,7 @@
    "aliases": [
     "a.anders@example.com"
    ],
+   "creationTime": "2023-05-02T09:00:00Z",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -71574,6 +71576,7 @@
   },
   {
    "primaryEmail": "bob@example.com",
+   "creationTime": "2024-02-11T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -71592,6 +71595,7 @@
   },
   {
    "primaryEmail": "carol@example.com",
+   "creationTime": "2025-03-03T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -71604,6 +71608,7 @@
   },
   {
    "primaryEmail": "dana@example.com",
+   "creationTime": "2026-02-02T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -71624,6 +71629,7 @@
   },
   {
    "primaryEmail": "admin@example.com",
+   "creationTime": "2021-09-01T09:00:00Z",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -71639,6 +71645,7 @@
    "aliases": [
     "a.anders@example.com"
    ],
+   "creationTime": "2023-05-02T09:00:00Z",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -71669,6 +71676,7 @@
   },
   {
    "primaryEmail": "bob@example.com",
+   "creationTime": "2024-02-11T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -71687,6 +71695,7 @@
   },
   {
    "primaryEmail": "carol@example.com",
+   "creationTime": "2025-03-03T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -71699,6 +71708,7 @@
   },
   {
    "primaryEmail": "dana@example.com",
+   "creationTime": "2026-02-02T09:00:00Z",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",

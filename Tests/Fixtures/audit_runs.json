@@ -1,0 +1,5630 @@
+{
+ "source": {
+  "gamgui_commit": "086d2f8",
+  "generator": "scripts/gen_fixtures.py"
+ },
+ "now": "2026-11-19T00:00:00+00:00",
+ "constants": {
+  "ROWS_SHOWN": 100,
+  "INACTIVE_WINDOWS": [
+   30,
+   60,
+   90,
+   180,
+   365
+  ],
+  "INACTIVE_DAYS": 90,
+  "STATES": [
+   "read",
+   "unknown",
+   "not_run"
+  ],
+  "ORIGIN": "audit_run"
+ },
+ "runs": [
+  {
+   "key": "inactive_users",
+   "title": "Inactive users",
+   "what": "Active accounts with no sign-in inside a window you pick; accounts made inside it are flagged.",
+   "steps": [
+    {
+     "key": "directory",
+     "title": "The directory, suspended accounts included",
+     "key_column": "primaryEmail",
+     "command": "inactive_users/directory",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "license_usage",
+   "title": "License usage",
+   "what": "Every license seat against the directory: seats per license, and seats on suspended accounts.",
+   "steps": [
+    {
+     "key": "licenses",
+     "title": "Every license seat",
+     "key_column": "userId",
+     "command": "license_usage/licenses",
+     "argv": [
+      "print",
+      "licenses"
+     ]
+    },
+    {
+     "key": "directory",
+     "title": "The directory, suspended accounts included",
+     "key_column": "primaryEmail",
+     "command": "license_usage/directory",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ]
+    }
+   ]
+  }
+ ],
+ "implausibly_empty": [
+  {
+   "step": "directory",
+   "rows": 0,
+   "why": "GAM listed no account at all, and a domain always has one, so the directory is unknown."
+  },
+  {
+   "step": "directory",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "directory",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "licenses",
+   "rows": 0,
+   "why": "GAM listed no license seat at all. It passes over a product Google won't let it read without saying so, so the seats are unknown, not none. Check that the admin token holds the License Manager scope (Setup)."
+  },
+  {
+   "step": "licenses",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "licenses",
+   "rows": 2,
+   "why": ""
+  }
+ ],
+ "unknown_because": [
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "needed": [
+    "licenses",
+    "directory"
+   ],
+   "why": ""
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "Refused."
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "needed": [
+    "directory"
+   ],
+   "why": ""
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "Refused."
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": ""
+    }
+   ],
+   "needed": [
+    "licenses",
+    "directory"
+   ],
+   "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused."
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": ""
+    }
+   ],
+   "needed": [
+    "licenses",
+    "directory"
+   ],
+   "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d."
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": ""
+    }
+   ],
+   "needed": [
+    "licenses"
+   ],
+   "why": "Not known: \u201cEvery license seat\u201d couldn't be read."
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "  Why.  "
+    }
+   ],
+   "needed": [
+    "licenses"
+   ],
+   "why": "Not known: \u201cEvery license seat\u201d couldn't be read.   Why."
+  },
+  {
+   "reads": [],
+   "needed": [
+    "licenses"
+   ],
+   "why": ""
+  }
+ ],
+ "shown_time": [
+  {
+   "value": "",
+   "shown": ""
+  },
+  {
+   "value": null,
+   "shown": ""
+  },
+  {
+   "value": "Never",
+   "shown": "never"
+  },
+  {
+   "value": "never",
+   "shown": "never"
+  },
+  {
+   "value": " NEVER ",
+   "shown": "never"
+  },
+  {
+   "value": "1970-01-01T00:00:00Z",
+   "shown": "never"
+  },
+  {
+   "value": "2026-01-02T03:04:05Z",
+   "shown": "2026-01-02"
+  },
+  {
+   "value": "2026-01-02",
+   "shown": "2026-01-02"
+  },
+  {
+   "value": "2026",
+   "shown": "2026"
+  },
+  {
+   "value": "  2026-01-02T03:04:05Z",
+   "shown": "  2026-01-"
+  },
+  {
+   "value": "\u00e9t\u00e9 2026-01-02 x",
+   "shown": "\u00e9t\u00e9 2026-0"
+  },
+  {
+   "value": "x",
+   "shown": "x"
+  }
+ ],
+ "directory": [
+  {
+   "primaryEmail": "old@example.com",
+   "name": {
+    "givenName": "old",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-03-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000100"
+  },
+  {
+   "primaryEmail": "never@example.com",
+   "name": {
+    "givenName": "never",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "Never",
+   "creationTime": "2020-01-01T00:00:00Z",
+   "id": "100000000000000000101"
+  },
+  {
+   "primaryEmail": "hire@example.com",
+   "name": {
+    "givenName": "hire",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "Never",
+   "creationTime": "2026-11-01T00:00:00Z",
+   "id": "100000000000000000102"
+  },
+  {
+   "primaryEmail": "unknown@example.com",
+   "name": {
+    "givenName": "unknown",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "id": "100000000000000000103"
+  },
+  {
+   "primaryEmail": "blank@example.com",
+   "name": {
+    "givenName": "blank",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "",
+   "id": "100000000000000000104"
+  },
+  {
+   "primaryEmail": "garbled@example.com",
+   "name": {
+    "givenName": "garbled",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "not a date",
+   "id": "100000000000000000105"
+  },
+  {
+   "primaryEmail": "boss@example.com",
+   "name": {
+    "givenName": "boss",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000106"
+  },
+  {
+   "primaryEmail": "helper@example.com",
+   "name": {
+    "givenName": "helper",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": true,
+   "lastLoginTime": "2026-05-05T05:05:05Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000107"
+  },
+  {
+   "primaryEmail": "gone@example.com",
+   "name": {
+    "givenName": "gone",
+    "familyName": "Test"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "Never",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000108"
+  },
+  {
+   "primaryEmail": "busy@example.com",
+   "name": {
+    "givenName": "busy",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-11-18T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000109"
+  },
+  {
+   "primaryEmail": "epoch@example.com",
+   "name": {
+    "givenName": "epoch",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "1970-01-01T00:00:00.000Z",
+   "creationTime": "1970-01-01T00:00:00Z",
+   "id": "100000000000000000110"
+  },
+  {
+   "primaryEmail": "offset@example.com",
+   "name": {
+    "givenName": "offset",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-08-20T23:30:00-05:00",
+   "creationTime": "2026-08-21T00:00:00Z",
+   "id": "100000000000000000111"
+  },
+  {
+   "primaryEmail": "edge@example.com",
+   "name": {
+    "givenName": "edge",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-08-21T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000112"
+  },
+  {
+   "primaryEmail": "madeatcutoff@example.com",
+   "name": {
+    "givenName": "madeatcutoff",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2025-01-01T00:00:00Z",
+   "creationTime": "2026-08-21T00:00:00Z",
+   "id": "100000000000000000113"
+  },
+  {
+   "primaryEmail": "Upper.Case@Example.com",
+   "name": {
+    "givenName": "Upper.Case",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2025-07-07T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000114"
+  },
+  {
+   "primaryEmail": "zo\u00eb@example.com",
+   "name": {
+    "givenName": "Zo\u00eb",
+    "familyName": "\u00c5ngstr\u00f6m"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2025-02-02T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000115"
+  },
+  {
+   "primaryEmail": "noname@example.com",
+   "name": {},
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000116"
+  },
+  {
+   "primaryEmail": "admin@example.com",
+   "name": {
+    "givenName": "admin",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": true,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-06-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "999"
+  },
+  {
+   "primaryEmail": "noid@example.com",
+   "name": {
+    "givenName": "noid",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-02-02T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z"
+  },
+  {
+   "primaryEmail": "aaa@example.com",
+   "name": {
+    "givenName": "aaa",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Students/Grade 9",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-03-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "100000000000000000119"
+  }
+ ],
+ "inactive": [
+  {
+   "days": 30,
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 30+ days",
+    "summary": "18 active accounts have not signed in within 30 days; 4 of them were made inside the window, or when isn't known.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "epoch@example.com",
+      "epoch Test",
+      "never",
+      "never",
+      "/Staff",
+      ""
+     ],
+     [
+      "hire@example.com",
+      "hire Test",
+      "never",
+      "2026-11-01",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "madeatcutoff@example.com",
+      "madeatcutoff Test",
+      "2025-01-01",
+      "2026-08-21",
+      "/Staff",
+      ""
+     ],
+     [
+      "zo\u00eb@example.com",
+      "Zo\u00eb \u00c5ngstr\u00f6m",
+      "2025-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "Upper.Case@Example.com",
+      "Upper.Case Test",
+      "2025-07-07",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "blank@example.com",
+      "blank Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "boss@example.com",
+      "boss Test",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "garbled@example.com",
+      "garbled Test",
+      "2026-01-01",
+      "not a date",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noname@example.com",
+      "noname@example.com",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "unknown@example.com",
+      "unknown Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noid@example.com",
+      "noid Test",
+      "2026-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "aaa@example.com",
+      "aaa Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Students/Grade 9",
+      ""
+     ],
+     [
+      "old@example.com",
+      "old Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "helper@example.com",
+      "helper Test",
+      "2026-05-05",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "admin@example.com",
+      "admin Test",
+      "2026-06-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "offset@example.com",
+      "offset Test",
+      "2026-08-20",
+      "2026-08-21",
+      "/Staff",
+      ""
+     ],
+     [
+      "edge@example.com",
+      "edge Test",
+      "2026-08-21",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 60,
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 60+ days",
+    "summary": "18 active accounts have not signed in within 60 days; 4 of them were made inside the window, or when isn't known.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "epoch@example.com",
+      "epoch Test",
+      "never",
+      "never",
+      "/Staff",
+      ""
+     ],
+     [
+      "hire@example.com",
+      "hire Test",
+      "never",
+      "2026-11-01",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "madeatcutoff@example.com",
+      "madeatcutoff Test",
+      "2025-01-01",
+      "2026-08-21",
+      "/Staff",
+      ""
+     ],
+     [
+      "zo\u00eb@example.com",
+      "Zo\u00eb \u00c5ngstr\u00f6m",
+      "2025-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "Upper.Case@Example.com",
+      "Upper.Case Test",
+      "2025-07-07",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "blank@example.com",
+      "blank Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "boss@example.com",
+      "boss Test",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "garbled@example.com",
+      "garbled Test",
+      "2026-01-01",
+      "not a date",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noname@example.com",
+      "noname@example.com",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "unknown@example.com",
+      "unknown Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noid@example.com",
+      "noid Test",
+      "2026-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "aaa@example.com",
+      "aaa Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Students/Grade 9",
+      ""
+     ],
+     [
+      "old@example.com",
+      "old Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "helper@example.com",
+      "helper Test",
+      "2026-05-05",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "admin@example.com",
+      "admin Test",
+      "2026-06-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "offset@example.com",
+      "offset Test",
+      "2026-08-20",
+      "2026-08-21",
+      "/Staff",
+      ""
+     ],
+     [
+      "edge@example.com",
+      "edge Test",
+      "2026-08-21",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 90,
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 90+ days",
+    "summary": "16 active accounts have not signed in within 90 days; 5 of them were made inside the window, or when isn't known.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "epoch@example.com",
+      "epoch Test",
+      "never",
+      "never",
+      "/Staff",
+      ""
+     ],
+     [
+      "hire@example.com",
+      "hire Test",
+      "never",
+      "2026-11-01",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "madeatcutoff@example.com",
+      "madeatcutoff Test",
+      "2025-01-01",
+      "2026-08-21",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "zo\u00eb@example.com",
+      "Zo\u00eb \u00c5ngstr\u00f6m",
+      "2025-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "Upper.Case@Example.com",
+      "Upper.Case Test",
+      "2025-07-07",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "blank@example.com",
+      "blank Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "boss@example.com",
+      "boss Test",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "garbled@example.com",
+      "garbled Test",
+      "2026-01-01",
+      "not a date",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noname@example.com",
+      "noname@example.com",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "unknown@example.com",
+      "unknown Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noid@example.com",
+      "noid Test",
+      "2026-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "aaa@example.com",
+      "aaa Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Students/Grade 9",
+      ""
+     ],
+     [
+      "old@example.com",
+      "old Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "helper@example.com",
+      "helper Test",
+      "2026-05-05",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "admin@example.com",
+      "admin Test",
+      "2026-06-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 180,
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 180+ days",
+    "summary": "15 active accounts have not signed in within 180 days; 5 of them were made inside the window, or when isn't known.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "epoch@example.com",
+      "epoch Test",
+      "never",
+      "never",
+      "/Staff",
+      ""
+     ],
+     [
+      "hire@example.com",
+      "hire Test",
+      "never",
+      "2026-11-01",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "madeatcutoff@example.com",
+      "madeatcutoff Test",
+      "2025-01-01",
+      "2026-08-21",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "zo\u00eb@example.com",
+      "Zo\u00eb \u00c5ngstr\u00f6m",
+      "2025-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "Upper.Case@Example.com",
+      "Upper.Case Test",
+      "2025-07-07",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "blank@example.com",
+      "blank Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "boss@example.com",
+      "boss Test",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ],
+     [
+      "garbled@example.com",
+      "garbled Test",
+      "2026-01-01",
+      "not a date",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noname@example.com",
+      "noname@example.com",
+      "2026-01-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "unknown@example.com",
+      "unknown Test",
+      "2026-01-01",
+      "",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "noid@example.com",
+      "noid Test",
+      "2026-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "aaa@example.com",
+      "aaa Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Students/Grade 9",
+      ""
+     ],
+     [
+      "old@example.com",
+      "old Test",
+      "2026-03-01",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "helper@example.com",
+      "helper Test",
+      "2026-05-05",
+      "2024-01-01",
+      "/Staff",
+      "admin"
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 365,
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 365+ days",
+    "summary": "6 active accounts have not signed in within 365 days; 2 of them were made inside the window, or when isn't known.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "epoch@example.com",
+      "epoch Test",
+      "never",
+      "never",
+      "/Staff",
+      ""
+     ],
+     [
+      "hire@example.com",
+      "hire Test",
+      "never",
+      "2026-11-01",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "madeatcutoff@example.com",
+      "madeatcutoff Test",
+      "2025-01-01",
+      "2026-08-21",
+      "/Staff",
+      "new account"
+     ],
+     [
+      "zo\u00eb@example.com",
+      "Zo\u00eb \u00c5ngstr\u00f6m",
+      "2025-02-02",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ],
+     [
+      "Upper.Case@Example.com",
+      "Upper.Case Test",
+      "2025-07-07",
+      "2024-01-01",
+      "/Staff",
+      ""
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 90,
+   "directory": [],
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 90+ days",
+    "summary": "Every active account has signed in within 90 days.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 30,
+   "directory": [
+    {
+     "primaryEmail": "busy@example.com",
+     "name": {
+      "givenName": "busy",
+      "familyName": "Test"
+     },
+     "suspended": false,
+     "orgUnitPath": "/Staff",
+     "isAdmin": false,
+     "isDelegatedAdmin": false,
+     "lastLoginTime": "2026-11-18T00:00:00Z",
+     "creationTime": "2024-01-01T00:00:00Z",
+     "id": "100000000000000000109"
+    }
+   ],
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 30+ days",
+    "summary": "Every active account has signed in within 30 days.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  },
+  {
+   "days": 365,
+   "directory": [
+    {
+     "primaryEmail": "never@example.com",
+     "name": {
+      "givenName": "never",
+      "familyName": "Test"
+     },
+     "suspended": false,
+     "orgUnitPath": "/Staff",
+     "isAdmin": false,
+     "isDelegatedAdmin": false,
+     "lastLoginTime": "Never",
+     "creationTime": "2020-01-01T00:00:00Z",
+     "id": "100000000000000000101"
+    }
+   ],
+   "finding": {
+    "key": "inactive",
+    "title": "Inactive 365+ days",
+    "summary": "1 active account has not signed in within 365 days.",
+    "columns": [
+     "Email",
+     "Name",
+     "Last sign-in",
+     "Created",
+     "Org unit",
+     "Flags"
+    ],
+    "rows": [
+     [
+      "never@example.com",
+      "never Test",
+      "never",
+      "2020-01-01",
+      "/Staff",
+      ""
+     ]
+    ],
+    "known": true,
+    "why": "",
+    "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
+    "links": true
+   }
+  }
+ ],
+ "inactive_unknown": [
+  {
+   "reads": [
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused."
+    }
+   ],
+   "days": 60,
+   "findings": [
+    {
+     "key": "inactive",
+     "title": "Inactive 60+ days",
+     "summary": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "columns": [
+      "Email",
+      "Name",
+      "Last sign-in",
+      "Created",
+      "Org unit",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "note": "",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    }
+   ],
+   "days": 60,
+   "findings": [
+    {
+     "key": "inactive",
+     "title": "Inactive 60+ days",
+     "summary": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "columns": [
+      "Email",
+      "Name",
+      "Last sign-in",
+      "Created",
+      "Org unit",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "",
+     "links": false
+    }
+   ]
+  }
+ ],
+ "suspend": [
+  {
+   "admin": "admin@example.com",
+   "admin_id": "",
+   "days": 30,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "admin@example.com",
+   "admin_id": "",
+   "days": 60,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "admin@example.com",
+   "admin_id": "",
+   "days": 90,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "admin@example.com",
+   "admin_id": "",
+   "days": 180,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "admin@example.com",
+   "admin_id": "",
+   "days": 365,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": " ADMIN@example.com ",
+   "admin_id": "",
+   "days": 30,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": " ADMIN@example.com ",
+   "admin_id": "",
+   "days": 60,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": " ADMIN@example.com ",
+   "admin_id": "",
+   "days": 90,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": " ADMIN@example.com ",
+   "admin_id": "",
+   "days": 180,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": " ADMIN@example.com ",
+   "admin_id": "",
+   "days": 365,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "999",
+   "days": 30,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "999",
+   "days": 60,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "999",
+   "days": 90,
+   "left_out": [
+    "admin@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "999",
+   "days": 180,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "999",
+   "days": 365,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "",
+   "days": 30,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "",
+   "days": 60,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "",
+   "days": 90,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "",
+   "days": 180,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "someone@example.com",
+   "admin_id": "",
+   "days": 365,
+   "left_out": [],
+   "targets": [
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "hire@example.com",
+     "name": "hire Test",
+     "last_login": "Never",
+     "new": true
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "hire@example.com",
+   "admin_id": "100000000000000000102",
+   "days": 30,
+   "left_out": [
+    "hire@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "hire@example.com",
+   "admin_id": "100000000000000000102",
+   "days": 60,
+   "left_out": [
+    "hire@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "edge@example.com",
+     "name": "edge Test",
+     "last_login": "2026-08-21T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "offset@example.com",
+     "name": "offset Test",
+     "last_login": "2026-08-20T23:30:00-05:00",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "hire@example.com",
+   "admin_id": "100000000000000000102",
+   "days": 90,
+   "left_out": [
+    "hire@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "admin@example.com",
+     "name": "admin Test",
+     "last_login": "2026-06-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "hire@example.com",
+   "admin_id": "100000000000000000102",
+   "days": 180,
+   "left_out": [
+    "hire@example.com"
+   ],
+   "targets": [
+    {
+     "email": "aaa@example.com",
+     "name": "aaa Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "blank@example.com",
+     "name": "blank Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "boss@example.com",
+     "name": "boss Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "garbled@example.com",
+     "name": "garbled Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "helper@example.com",
+     "name": "helper Test",
+     "last_login": "2026-05-05T05:05:05Z",
+     "new": false
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "noid@example.com",
+     "name": "noid Test",
+     "last_login": "2026-02-02T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "noname@example.com",
+     "name": "noname@example.com",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "old@example.com",
+     "name": "old Test",
+     "last_login": "2026-03-01T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "unknown@example.com",
+     "name": "unknown Test",
+     "last_login": "2026-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  },
+  {
+   "admin": "hire@example.com",
+   "admin_id": "100000000000000000102",
+   "days": 365,
+   "left_out": [
+    "hire@example.com"
+   ],
+   "targets": [
+    {
+     "email": "epoch@example.com",
+     "name": "epoch Test",
+     "last_login": "1970-01-01T00:00:00.000Z",
+     "new": false
+    },
+    {
+     "email": "madeatcutoff@example.com",
+     "name": "madeatcutoff Test",
+     "last_login": "2025-01-01T00:00:00Z",
+     "new": true
+    },
+    {
+     "email": "never@example.com",
+     "name": "never Test",
+     "last_login": "Never",
+     "new": false
+    },
+    {
+     "email": "Upper.Case@Example.com",
+     "name": "Upper.Case Test",
+     "last_login": "2025-07-07T00:00:00Z",
+     "new": false
+    },
+    {
+     "email": "zo\u00eb@example.com",
+     "name": "Zo\u00eb \u00c5ngstr\u00f6m",
+     "last_login": "2025-02-02T00:00:00Z",
+     "new": false
+    }
+   ]
+  }
+ ],
+ "licenses": [
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": [
+    {
+     "userId": "old@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "busy@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "left@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Vault",
+     "productDisplay": "Google Vault",
+     "skuId": "Google-Vault-Former-Employee",
+     "skuDisplay": "Google Vault - Former Employee"
+    },
+    {
+     "userId": "Upper.Case@Example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "GONE@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "x@other.example",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "aaa@example.com",
+     "productId": "Unknown-Product",
+     "productDisplay": "",
+     "skuId": "Unknown-SKU",
+     "skuDisplay": ""
+    },
+    {
+     "userId": "zo\u00eb@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    },
+    {
+     "userId": "helper@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    }
+   ],
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "12 seats across 5 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [
+      [
+       "Google Workspace",
+       "Google Workspace Business Standard",
+       "1010020028",
+       "6",
+       "1",
+       "1"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Plus",
+       "1010020025",
+       "2",
+       "0",
+       "0"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Starter",
+       "1010020027",
+       "2",
+       "1",
+       "1"
+      ],
+      [
+       "Google Vault",
+       "Google Vault - Former Employee",
+       "Google-Vault-Former-Employee",
+       "1",
+       "1",
+       "0"
+      ],
+      [
+       "Unknown-Product",
+       "Unknown-SKU",
+       "Unknown-SKU",
+       "1",
+       "0",
+       "0"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "3 seats are held by a suspended account.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [
+      [
+       "gone@example.com",
+       "gone Test",
+       "Google Vault - Former Employee",
+       "/Staff",
+       "never"
+      ],
+      [
+       "gone@example.com",
+       "gone Test",
+       "Google Workspace Business Standard",
+       "/Staff",
+       "never"
+      ],
+      [
+       "gone@example.com",
+       "gone Test",
+       "Google Workspace Business Starter",
+       "/Staff",
+       "never"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "2 seats are on an address the directory read didn't list.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [
+      [
+       "left@example.com",
+       "Google Workspace Business Standard"
+      ],
+      [
+       "x@other.example",
+       "Google Workspace Business Starter"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "Refused."
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": null,
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": null,
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused."
+    }
+   ],
+   "seats": [
+    {
+     "userId": "old@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "busy@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "left@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Vault",
+     "productDisplay": "Google Vault",
+     "skuId": "Google-Vault-Former-Employee",
+     "skuDisplay": "Google Vault - Former Employee"
+    },
+    {
+     "userId": "Upper.Case@Example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "GONE@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "x@other.example",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "aaa@example.com",
+     "productId": "Unknown-Product",
+     "productDisplay": "",
+     "skuId": "Unknown-SKU",
+     "skuDisplay": ""
+    },
+    {
+     "userId": "zo\u00eb@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    },
+    {
+     "userId": "helper@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    }
+   ],
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "12 seats across 5 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [
+      [
+       "Google Workspace",
+       "Google Workspace Business Standard",
+       "1010020028",
+       "6",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Plus",
+       "1010020025",
+       "2",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Starter",
+       "1010020027",
+       "2",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Vault",
+       "Google Vault - Former Employee",
+       "Google-Vault-Former-Employee",
+       "1",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Unknown-Product",
+       "Unknown-SKU",
+       "Unknown-SKU",
+       "1",
+       "unknown",
+       "unknown"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 12 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "Refused."
+    },
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused."
+    }
+   ],
+   "seats": null,
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    },
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused."
+    }
+   ],
+   "seats": null,
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    }
+   ],
+   "seats": [
+    {
+     "userId": "old@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "busy@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "left@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Vault",
+     "productDisplay": "Google Vault",
+     "skuId": "Google-Vault-Former-Employee",
+     "skuDisplay": "Google Vault - Former Employee"
+    },
+    {
+     "userId": "Upper.Case@Example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "GONE@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    },
+    {
+     "userId": "x@other.example",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020027",
+     "skuDisplay": "Google Workspace Business Starter"
+    },
+    {
+     "userId": "aaa@example.com",
+     "productId": "Unknown-Product",
+     "productDisplay": "",
+     "skuId": "Unknown-SKU",
+     "skuDisplay": ""
+    },
+    {
+     "userId": "zo\u00eb@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    },
+    {
+     "userId": "helper@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020025",
+     "skuDisplay": "Google Workspace Business Plus"
+    }
+   ],
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "12 seats across 5 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [
+      [
+       "Google Workspace",
+       "Google Workspace Business Standard",
+       "1010020028",
+       "6",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Plus",
+       "1010020025",
+       "2",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Workspace",
+       "Google Workspace Business Starter",
+       "1010020027",
+       "2",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Google Vault",
+       "Google Vault - Former Employee",
+       "Google-Vault-Former-Employee",
+       "1",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "Unknown-Product",
+       "Unknown-SKU",
+       "Unknown-SKU",
+       "1",
+       "unknown",
+       "unknown"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 12 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "unknown",
+     "why": "Refused."
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    }
+   ],
+   "seats": null,
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step."
+    }
+   ],
+   "seats": null,
+   "directory": false,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": [],
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "0 seats across 0 licenses.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 0 seats read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": [
+    {
+     "userId": "old@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    }
+   ],
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "1 seat across 1 license.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [
+      [
+       "Google Workspace",
+       "Google Workspace Business Standard",
+       "1010020028",
+       "1",
+       "0",
+       "0"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "No suspended account holds any of the 1 seat read.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "licenses",
+     "state": "read",
+     "why": ""
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": ""
+    }
+   ],
+   "seats": [
+    {
+     "userId": "gone@example.com",
+     "productId": "Google-Apps",
+     "productDisplay": "Google Workspace",
+     "skuId": "1010020028",
+     "skuDisplay": "Google Workspace Business Standard"
+    }
+   ],
+   "directory": true,
+   "findings": [
+    {
+     "key": "per_sku",
+     "title": "Seats per license",
+     "summary": "1 seat across 1 license.",
+     "columns": [
+      "Product",
+      "License",
+      "SKU ID",
+      "Seats",
+      "On suspended accounts",
+      "Not in the directory read"
+     ],
+     "rows": [
+      [
+       "Google Workspace",
+       "Google Workspace Business Standard",
+       "1010020028",
+       "1",
+       "1",
+       "0"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
+     "links": false
+    },
+    {
+     "key": "on_suspended",
+     "title": "Seats on suspended accounts",
+     "summary": "1 seat is held by a suspended account.",
+     "columns": [
+      "Email",
+      "Name",
+      "License",
+      "Org unit",
+      "Last sign-in"
+     ],
+     "rows": [
+      [
+       "gone@example.com",
+       "gone Test",
+       "Google Workspace Business Standard",
+       "/Staff",
+       "never"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": true
+    },
+    {
+     "key": "not_in_directory",
+     "title": "Seats on an address the directory read doesn't list",
+     "summary": "Every seat read is on an account the directory read listed.",
+     "columns": [
+      "Email",
+      "License"
+     ],
+     "rows": [],
+     "known": true,
+     "why": "",
+     "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "links": false
+    }
+   ]
+  }
+ ],
+ "reads": [
+  {
+   "name": "seats",
+   "output": "userId,productId,productDisplay,skuId,skuDisplay\na@example.com,Google-Apps,Google Workspace,1010020028,x\nb@example.com,Google-Apps,Google Workspace,1010020028,x\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": null,
+   "rows": 2,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 2,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "titles alone",
+   "output": "userId,productId,productDisplay,skuId,skuDisplay\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": null,
+   "rows": 0,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "crlf",
+   "output": "userId,productId,productDisplay,skuId,skuDisplay\r\na@example.com,Google-Apps,G,1,x\r\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": null,
+   "rows": 1,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "spaced titles",
+   "output": " userId , productId \na@example.com,Google-Apps\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": null,
+   "rows": 1,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "another table",
+   "output": "userId,productId,productDisplay,skuId,skuDisplay\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "primaryEmail",
+   "raised": "Incomplete",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the primaryEmail table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "nothing",
+   "output": "",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "Incomplete",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the userId table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "spaces",
+   "output": "  \n\t ",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "Incomplete",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the userId table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "json",
+   "output": "[{\"userId\": \"a@example.com\"}]",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "Incomplete",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the userId table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "line separator",
+   "output": "userId\u2028x,productId\na@example.com,y\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": null,
+   "rows": 1,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a title holding it",
+   "output": "userIdx,productId\na,b\n",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "Incomplete",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the userId table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "directory",
+   "output": "primaryEmail,JSON\na@example.com,\"{\"\"primaryEmail\"\": \"\"a@example.com\"\"}\"\n",
+   "error": null,
+   "argv": [
+    "print",
+    "users",
+    "fields",
+    "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+    "formatjson"
+   ],
+   "key_column": "primaryEmail",
+   "raised": null,
+   "rows": 1,
+   "ran": [
+    [
+     "print",
+     "users",
+     "fields",
+     "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "failed",
+   "output": null,
+   "error": "ERROR: There are no scopes authorized for the API(s): License Manager API",
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "RuntimeError",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "ERROR: There are no scopes authorized for the API(s): License Manager API",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "cancelled",
+   "output": null,
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "raised": "CancelledError",
+   "rows": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "interrupted (the app quit or the job was cancelled) before GAM reported a result; it may have done part of its work",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "not a print",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "update",
+    "user",
+    "a@example.com",
+    "suspended",
+    "on"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "a person's read",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "user",
+    "a@example.com",
+    "print",
+    "tokens"
+   ],
+   "key_column": "user",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "todrive",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses",
+    "todrive"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "to_drive",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses",
+    "to_drive"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "ToDrive",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses",
+    "ToDrive"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "TODRIVE",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses",
+    "TODRIVE"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "T_o_Drive",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "licenses",
+    "T_o_Drive"
+   ],
+   "key_column": "userId",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  },
+  {
+   "name": "todrive inside",
+   "output": "x",
+   "error": null,
+   "argv": [
+    "print",
+    "users",
+    "todrive",
+    "formatjson"
+   ],
+   "key_column": "primaryEmail",
+   "raised": "ValueError",
+   "rows": null,
+   "ran": [],
+   "records": []
+  }
+ ]
+}

@@ -111,6 +111,10 @@ says what a switch would stop.
 |---|
 | ![Audit narrowed to example.org: its change and its two Builder reads, the licenses read with its row count](screenshots/audit-domain.png) |
 
+| Audit run: inactive users | Audit run: license usage | Suspend these… |
+|---|---|---|
+| ![The Inactive users run: a 90-day window, every step read, the three inactive accounts with their flags in words, Suspend These… and Export](screenshots/reports-run-inactive.png) | ![The License usage run: seats per license and the seats held by suspended accounts](screenshots/reports-run-licenses.png) | ![Suspend these…: the accounts read again, the connected admin left out, the count to type](screenshots/reports-run-suspend.png) |
+
 Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
 attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
 a switch, with what you tick undone, once you've typed the person's address.
