@@ -5,6 +5,7 @@ import GamEngine
 import Setup
 import SwiftUI
 import UniformTypeIdentifiers
+import Vault
 
 /// Builder (docs/domains/catalog-builder.md): GAM's whole command catalog to browse and search, every command that only reads run
 /// from here (GamGUI's generic read builder ported, `CommandCatalog`, invariant 3), and GamGUI's curated commands with typed fields
@@ -207,8 +208,10 @@ private struct CommandRow: View {
 final class ReadRun {
     var running = false
     var result: CatalogResult?
-    /// The read `result` came from, exactly: what Export to a Google Sheet… runs again (plan F4).
+    /// The read `result` came from, exactly, and the domain it was read on: what Export to a Google Sheet… runs again (plan F4),
+    /// offered only while that domain is the one connected (GamGUI drops the table on a switch).
     var read: GamRead?
+    var readOn: Domain?
     var problem: String?
     var filter = ""
     var notice: (text: String, failed: Bool)?
@@ -231,12 +234,14 @@ final class ReadRun {
             case .success(let found):
                 result = found
                 self.read = read
+                readOn = domain
                 filter = ""
                 say(found.isTable ? "\(found.rows.count.formatted()) row\(found.rows.count == 1 ? "" : "s")." : "Done.", failed: false,
                     announce: announce)
             case .failure(let failure):
                 result = nil
                 self.read = nil
+                readOn = nil
                 problem = failure.summary
                 if announce { AccessibilityNotification.Announcement(failure.summary).post() }
             }
@@ -277,7 +282,7 @@ final class ReadRun {
     /// Previews the export of the read the table came from (command `id`, named `name`) to a new Google Sheet: what runs, where,
     /// and the scope check. Nothing is made until its sheet is confirmed.
     func previewSheet(_ exports: SheetExports, command id: String, name: String) {
-        guard let read, let result, result.isTable else { return }
+        guard let read, let result, result.isTable, readOn != nil else { return }
         Task { await exports.preview(read: read, command: id, commandName: name, rows: result.rows.count) }
     }
 }
@@ -365,7 +370,8 @@ private struct CommandDetail: View {
             if let result = reading.result {
                 ResultView(result: result, filter: $reading.filter,
                            export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
-                           toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && setup.active != nil
+                           toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && reading.readOn == setup.active
+                               && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
                            sheetBusy: exports.isBusy)
             }
@@ -500,7 +506,8 @@ private struct CuratedDetail: View {
             if let result = reading.result {
                 ResultView(result: result, filter: $reading.filter,
                            export: { reading.export(result, $0, announce: appearsActive, saved: savedFiles) },
-                           toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true) && setup.active != nil
+                           toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true)
+                               && reading.readOn == setup.active && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,
                            sheetBusy: exports.isBusy)
             }
