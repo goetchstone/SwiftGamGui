@@ -1311,3 +1311,182 @@ struct InactiveSuspendSheet: View {
         }
     }
 }
+
+/// Export to a Google Sheet… (plan F4, GamGUI's `_sheet_preview.html` and `_export_result.html`): what will run, exactly; where
+/// the Sheet goes (the connected admin's own Drive, shared with nobody, no browser, no email); that it holds a fresh read; the
+/// scope check, each scope said in words, never by color alone; then Export, once, exactly as held. A scope known to be refused
+/// offers no Export, only Setup's delegation link. Afterwards, what became of it: made, not made or can't be told, the link only
+/// when it's a Google file's, what to do, and GAM's own error a click away. Return exports, Escape cancels, said on the sheet.
+struct SheetExportSheet: View {
+    let exports: SheetExports
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Group {
+            switch exports.state {
+            case .idle:
+                EmptyView()
+            case .checking:
+                Form {
+                    Section {
+                        HStack { ProgressView().controlSize(.small); Text("Checking what the service account may do for the admin…") }
+                            .accessibilityElement(children: .combine)
+                    }
+                }
+                .formStyle(.grouped)
+            case .previewing(let pending), .running(let pending):
+                preview(pending)
+            case .done(let done):
+                result(done)
+            case .problem(let words):
+                Form {
+                    Section {
+                        Label(words, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor).textSelection(.enabled)
+                    } header: {
+                        Text("Export to a Google Sheet").accessibilityAddTraits(.isHeader)
+                    }
+                }
+                .formStyle(.grouped)
+            }
+        }
+        .frame(minWidth: 520, minHeight: 360)
+        .interactiveDismissDisabled(exports.isBusy)
+        .toolbar {
+            switch exports.state {
+            case .previewing(let pending):
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { exports.dismiss() } }
+                if pending.canExport {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Export to a New Sheet") {
+                            Task { await exports.confirm(pending, OperatorConfirmation(confirmed: true)) }
+                        }
+                        .help("Runs exactly this, once")
+                    }
+                }
+            case .checking, .running:
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") {}.disabled(true) }
+            case .done, .problem, .idle:
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { exports.dismiss() } }
+            }
+        }
+        .onChange(of: exports.isBusy) { _, busy in
+            guard !busy, case .done(let done) = exports.state else { return }
+            AccessibilityNotification.Announcement(done.outcome.said).post()
+        }
+    }
+
+    private func preview(_ pending: SheetExports.Pending) -> some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Will run").font(.callout).foregroundStyle(.secondary)
+                    Text(pending.commandLine).font(.body.monospaced()).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .accessibilityElement(children: .combine)
+                Label {
+                    Text("A new Sheet named “\(pending.name)” in \(pending.owner.isEmpty ? "the connected admin's" : pending.owner + "'s") "
+                         + "own Drive. It is shared with nobody, GAM opens no browser and sends no email.")
+                } icon: { Image(systemName: "lock.doc") }
+                Label {
+                    Text("It holds a fresh read: GAM runs this read again and uploads what it gets then, so its rows can differ from the "
+                         + "\(pending.rows.formatted()) row\(pending.rows == 1 ? "" : "s") on screen, and it has every row, not only those "
+                         + "a filter shows.")
+                } icon: { Image(systemName: "arrow.clockwise") }
+            } header: {
+                Text("Export \(pending.commandName) to a Google Sheet").accessibilityAddTraits(.isHeader)
+            }
+            Section {
+                ForEach(pending.scopes) { scope in
+                    let word = scope.allowed == true ? "Allowed" : scope.allowed == false ? "Not allowed" : "Not checked"
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(word) · \(scope.purpose)")
+                            Text(scope.scope).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                        }
+                    } icon: {
+                        Image(systemName: scope.allowed == true ? "checkmark.circle.fill"
+                              : scope.allowed == false ? "xmark.octagon.fill" : "questionmark.circle")
+                            .foregroundStyle(scope.allowed == true ? .green : scope.allowed == false ? .red : .orange)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(word): \(scope.purpose)")
+                }
+                if !pending.scopeWords.isEmpty {
+                    Label(pending.scopeWords, systemImage: pending.canExport ? "exclamationmark.triangle" : "hand.raised")
+                }
+                if let link = pending.delegationLink {
+                    // A button with ⌘O, not a bare link: Tab doesn't reach a link with the Mac's default keyboard settings.
+                    Button("Authorize It in the Admin Console") { openURL(link) }
+                        .keyboardShortcut("o")
+                        .help("Domain-Wide Delegation, with every scope this app asks for")
+                    Text("⌘O opens it in your browser (Domain-Wide Delegation, every scope this app asks for). Then preview the "
+                         + "export again.").font(.callout).foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("The service account, acting for the admin").accessibilityAddTraits(.isHeader)
+            }
+            Section {
+                if case .running = exports.state {
+                    HStack { ProgressView().controlSize(.small); Text("Exporting… GAM reads it again, then uploads it.") }
+                        .accessibilityElement(children: .combine)
+                } else if pending.canExport {
+                    Text("Return exports it, once; Escape cancels. Changes \(pending.domain.name)'s Drive: one new file.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    Text("Nothing can be exported until the service account is allowed both. Escape closes this.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func result(_ done: SheetExports.Done) -> some View {
+        let made = done.outcome.made
+        let word = made == .yes ? "Made" : made == .no ? "Not made" : "Can't be told"
+        return Form {
+            Section {
+                Label {
+                    Text(done.outcome.said).textSelection(.enabled)
+                } icon: {
+                    Image(systemName: made == .yes && done.detail.isEmpty ? "checkmark.circle.fill"
+                          : made == .no ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+                LabeledContent("The Sheet", value: word)
+                if let url = URL(string: done.outcome.url), SheetExport.isGoogleLink(done.outcome.url) {
+                    // A button with ⌘O, not a bare link: Tab doesn't reach a link with the Mac's default keyboard settings.
+                    Button("Open \(done.name)") { openURL(url) }
+                        .keyboardShortcut("o")
+                        .help("Opens the Sheet in your browser")
+                    Text("⌘O opens it in your browser: \(done.outcome.url)").font(.caption).foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                if !done.outcome.todo.isEmpty { Text(done.outcome.todo) }
+                if done.unrecorded.isEmpty {
+                    Text("Kept in the audit log, and listed on Files.").font(.callout).foregroundStyle(.secondary)
+                } else {
+                    Label("\(done.unrecorded) Files won't list it: keep the link above.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+            } header: {
+                Text("Export to a Google Sheet").accessibilityAddTraits(.isHeader)
+            }
+            Section {
+                Text(done.commandLine).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                if !done.detail.isEmpty {
+                    // Shown, not behind a disclosure: Tab doesn't reach one with the Mac's default keyboard settings.
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("GAM's error").font(.callout).foregroundStyle(.secondary)
+                        Text(done.detail).font(.callout.monospaced()).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                Text("Return closes this.").font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}

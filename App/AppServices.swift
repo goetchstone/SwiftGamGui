@@ -77,6 +77,8 @@ struct AppServices {
     let builderChanges: BuilderChanges
     /// The Builder's reads, each recorded in the audit log the executor writes once it ends (plan F1): never a write path.
     let readAudit: ReadAudit
+    /// A Builder table's export to a new Google Sheet (plan F4): a curated write, held and run through the executor.
+    let sheetExports: SheetExports
     /// Reports' audit runs (plan F3): fixed lists of reads, each step recorded in the same log; never a write path.
     let auditRuns: AuditRunner
     /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
@@ -187,6 +189,8 @@ struct AppServices {
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
                            readAudit: ReadAudit(log: audit),
+                           // Its own reader: the scope check is the export's, live.
+                           sheetExports: SheetExports(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            auditRuns: AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit)),
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, lockVault: { await vault.lock() })

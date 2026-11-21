@@ -89,6 +89,14 @@ exact command, and it runs once you click Run.
 |---|---|---|
 | ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) | ![Add member to group: the group, the member and the role, and the exact command](screenshots/builder-change.png) | ![The confirm sheet: the change, its exact command, and that it changes the domain once you click Run](screenshots/builder-confirm.png) |
 
+A read's table can go to a new Google Sheet in the connected admin's own Drive, shared with nobody: its preview shows the
+exact command, that the Sheet holds a fresh read, and whether the service account may use Drive and Sheets; the result says
+whether a Sheet was made, with its link.
+
+| Export to a Google Sheet | Its result |
+|---|---|
+| ![The export's preview: the read's exact command with GAM's todrive options, a new Sheet in admin@example.com's own Drive shared with nobody, that it holds a fresh read of every row, and Drive and Sheets each Allowed](screenshots/builder-sheet.png) | ![The export's result: exported to a new Google Sheet in admin@example.com's Drive, shared with nobody, the Sheet Made, Open with its link, and that it's kept in the audit log and listed on Files](screenshots/builder-sheet-result.png) |
+
 The jobs tray, in every window's toolbar: each change run since launch, running first, with where it stands, its newest
 steps and failures in words, and Stop.
 

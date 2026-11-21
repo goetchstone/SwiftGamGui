@@ -80,7 +80,9 @@ status=0
 # Builder opens on `gam print users` (`SWIFTGAMGUI_SELECT`, its words with `+` between them): the catalog listed, the command's
 # grammar, its fields and the exact command it runs; nothing is run. builder-change is GamGUI's curated Add member to group
 # (`SWIFTGAMGUI_SELECT` its id) with carol@example.com and the Sales group filled in (`fill`), and builder-confirm its confirm
-# sheet (`preview`): held, never run.
+# sheet (`preview`): held, never run. builder-sheet is List mailbox delegates read for carol@example.com (against the mock),
+# then its Export to a Google Sheet… preview (`sheet`: the scope check, a read; held, never run), in the smallest window too;
+# builder-sheet-result a made-up export's result over it (`sheet-result`: made, with the mock's link; nothing is written).
 # The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with three made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # Reports opens on its first report, then on its
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
@@ -154,6 +156,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
             builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \
+            builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
+            narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \

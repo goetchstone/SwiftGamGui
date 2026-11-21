@@ -55,8 +55,9 @@ struct WriteRouteTests {
     }
 
     /// The Builder (invariants 2 and 3): only its screen runs a catalog read (a `GamRead` from `GamCommands.catalogRead`, which
-    /// refuses any command that isn't runnable), and its changes reach ChangeCore through `BuilderChanges` alone: the screen names
-    /// no other changes model, no executor or write, and confirms nothing (its sheet does, `onlyAScreenMakesTheOperatorsConfirmation`).
+    /// refuses any command that isn't runnable), and its changes reach ChangeCore through `BuilderChanges` alone, its tables' export
+    /// to a Sheet through `SheetExports` (`theSheetExportRunsOnlyFromItsHeldPreview`): the screen names no other changes model, no
+    /// executor or write, and confirms nothing (its sheets do, `onlyAScreenMakesTheOperatorsConfirmation`).
     @Test func theBuilderWritesOnlyThroughBuilderChanges() throws {
         #expect(try Self.files(in: "App", matching: ["catalogRead"]) == ["App/BuilderView.swift"])
         let writing = try Self.files(in: "App", matching: ["UserChanges", "GroupChanges", "groupChanges", "CalendarChanges",
@@ -130,6 +131,12 @@ struct WriteRouteTests {
         // What it runs is the preview its sheet shows, unchanged: the one held, by its id.
         #expect(model.lines.contains { $0.contains("case .previewing(let held) = state, held.id == pending.id, let preview = pending.preview") })
         #expect(model.lines.filter { $0.contains("executor.preview(") }.count == 1)
+        // In the app: the Builder's table asks for the preview, its sheet confirms it (`onlyAScreenMakesTheOperatorsConfirmation`),
+        // the wiring makes the model; nothing else reaches it.
+        #expect(try Self.files(in: "App", matching: ["SheetExports", "sheetExports"])
+                == ["App/AppServices.swift", "App/BuilderView.swift", "App/ChangePreviewSheet.swift", "App/GamGUIApp.swift"])
+        let builder = try #require(try Self.swiftFiles(in: "App").first { $0.path == "App/BuilderView.swift" })
+        #expect(!builder.lines.contains { $0.contains("exports.confirm") || $0.contains(".confirm(") }, "the Builder confirms nothing")
         let door = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/UserAccess.swift") })
         let start = try #require(door.lines.firstIndex { $0.contains("public func catalogRead(_ read: GamRead") })
         let refused = try #require(door.lines[start...].firstIndex { $0.contains("guard !GamCommands.carriesToDrive(read.argv) else") })

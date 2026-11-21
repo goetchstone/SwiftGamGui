@@ -79,6 +79,14 @@ public final class SheetExports {
         public let detail: String
         /// The write happened but the audit log couldn't record it: Files won't list it. "" otherwise.
         public let unrecorded: String
+
+        public init(outcome: SheetExport.Outcome, name: String, commandLine: String, detail: String, unrecorded: String) {
+            self.outcome = outcome
+            self.name = name
+            self.commandLine = commandLine
+            self.detail = detail
+            self.unrecorded = unrecorded
+        }
     }
 
     public private(set) var state: State = .idle
@@ -106,6 +114,12 @@ public final class SheetExports {
         case .checking, .running: true
         default: false
         }
+    }
+
+    /// Whether the export's sheet is up: checking, a preview, running, or what came of it.
+    public var isShown: Bool {
+        if case .idle = state { return false }
+        return true
     }
 
     /// Whether a catalog command's table can go to a Sheet: a read GAM's `todrive` takes (`SheetExport.takesToDrive`).
@@ -220,9 +234,10 @@ public final class SheetExports {
     }
 
     #if DEBUG
-    /// Debug builds' screenshots only: `done` shown as the last export's result. Nothing is held and no `gam` runs.
+    /// Debug builds' screenshots only: `done` shown as the last export's result, any held preview dropped. No `gam` runs.
     public func showDemo(_ done: Done) {
         guard !isBusy else { return }
+        dismiss()
         state = .done(done)
     }
     #endif

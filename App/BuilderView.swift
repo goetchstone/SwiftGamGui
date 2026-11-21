@@ -11,7 +11,9 @@ import UniformTypeIdentifiers
 /// (`CuratedCommand`). A read runs as shown; a curated write is previewed through ChangeCore (`BuilderChanges`), confirmed on its
 /// sheet and run once, exactly as held (invariant 2). The exact `gam` command is shown as it's typed. The result of a read is a
 /// table, filtered over every row and exported as a CSV, or GAM's words as it printed them. Each read is recorded in the audit
-/// log once it ends (`readAudit`, plan F1): the command, whom it was about and its row count, never its output.
+/// log once it ends (`readAudit`, plan F1): the command, whom it was about and its row count, never its output. A table GAM's
+/// `todrive` takes can go to a new Google Sheet (plan F4): Export to a Google Sheet… previews it (`SheetExports`), and its sheet
+/// confirms it; nothing is made from this page.
 struct BuilderView: View {
     let setup: SetupModel
     let access: UserAccess
@@ -19,6 +21,7 @@ struct BuilderView: View {
     let groups: GroupStore
     let changes: BuilderChanges
     let readAudit: ReadAudit
+    let exports: SheetExports
     /// A catalog command another screen asked to open (Reports' named reports): selected once the catalog is read, with the
     /// search and area cleared so its row is listed, then let go.
     @Binding var requested: String?
@@ -87,10 +90,10 @@ struct BuilderView: View {
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
                     CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
-                                  readAudit: readAudit)
+                                  readAudit: readAudit, exports: exports)
                         .id(curated.id)
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
-                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit).id(command.id)
+                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, exports: exports).id(command.id)
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
                                            description: Text("Search GAM's commands on the left. One that only reads runs from here, "
@@ -127,6 +130,10 @@ struct BuilderView: View {
             openRequested()
         }
         .onChange(of: requested) { openRequested() }
+        // Export to a Google Sheet…: its preview, then its result (plan F4). Confirming is the sheet's.
+        .sheet(isPresented: Binding(get: { exports.isShown }, set: { if !$0 { exports.dismiss() } })) {
+            SheetExportSheet(exports: exports)
+        }
     }
 
     /// Selects the requested command once the catalog is read; an id this catalog doesn't hold opens nothing.
@@ -200,6 +207,8 @@ private struct CommandRow: View {
 final class ReadRun {
     var running = false
     var result: CatalogResult?
+    /// The read `result` came from, exactly: what Export to a Google Sheet… runs again (plan F4).
+    var read: GamRead?
     var problem: String?
     var filter = ""
     var notice: (text: String, failed: Bool)?
@@ -221,11 +230,13 @@ final class ReadRun {
             switch outcome {
             case .success(let found):
                 result = found
+                self.read = read
                 filter = ""
                 say(found.isTable ? "\(found.rows.count.formatted()) row\(found.rows.count == 1 ? "" : "s")." : "Done.", failed: false,
                     announce: announce)
             case .failure(let failure):
                 result = nil
+                self.read = nil
                 problem = failure.summary
                 if announce { AccessibilityNotification.Announcement(failure.summary).post() }
             }
@@ -260,6 +271,13 @@ final class ReadRun {
         notice = (text, failed)
         if announce { AccessibilityNotification.Announcement(text).post() }
     }
+
+    /// Previews the export of the read the table came from (command `id`, named `name`) to a new Google Sheet: what runs, where,
+    /// and the scope check. Nothing is made until its sheet is confirmed.
+    func previewSheet(_ exports: SheetExports, command id: String, name: String) {
+        guard let read, let result, result.isTable else { return }
+        Task { await exports.preview(read: read, command: id, commandName: name, rows: result.rows.count) }
+    }
 }
 
 /// A read's state beside its Run button: running, why it didn't, or what it gave.
@@ -287,6 +305,7 @@ private struct CommandDetail: View {
     let setup: SetupModel
     let access: UserAccess
     let readAudit: ReadAudit
+    let exports: SheetExports
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
@@ -340,9 +359,17 @@ private struct CommandDetail: View {
             .formStyle(.grouped)
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
-                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) })
+                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) },
+                           toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && setup.active != nil
+                               ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
+                           sheetBusy: exports.isBusy)
             }
         }
+    }
+
+    /// What the new Sheet is named after: the command's name, or what it does for one the catalog doesn't name.
+    private var sheetName: String {
+        command.name.isEmpty ? String(command.gloss.trimmingCharacters(in: CharacterSet(charactersIn: ".")))  : command.name
     }
 
     @ViewBuilder private var runSection: some View {
@@ -397,9 +424,12 @@ private struct CuratedDetail: View {
     let groups: GroupStore
     let changes: BuilderChanges
     let readAudit: ReadAudit
+    let exports: SheetExports
     @State private var values: [String: String] = [:]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
+    /// Debug builds' snapshots: the export previewed once the read's table is there.
+    @State private var debugSheet = false
     @Environment(\.appearsActive) private var appearsActive
 
     /// What it does here, for the list.
@@ -460,9 +490,13 @@ private struct CuratedDetail: View {
             .formStyle(.grouped)
             .frame(maxHeight: reading.result == nil ? .infinity : 360)
             if let result = reading.result {
-                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) })
+                ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) },
+                           toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true) && setup.active != nil
+                               ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,
+                           sheetBusy: exports.isBusy)
             }
         }
+        .onChange(of: reading.result?.rows.count) { exportForSnapshot() }
         .onAppear {
             for field in command.fields where field.kind == .choice && values[field.key] == nil { values[field.key] = field.defaultValue }
         }
@@ -545,7 +579,7 @@ private struct CuratedDetail: View {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
         guard environment["SWIFTGAMGUI_DEMO"] == "1", directory.users != nil, !debugApplied, let tab = environment["SWIFTGAMGUI_TAB"],
-              ["fill", "preview"].contains(tab) else { return }
+              ["fill", "preview", "sheet", "sheet-result"].contains(tab) else { return }
         debugApplied = true
         for field in command.fields {
             switch field.kind {
@@ -557,6 +591,27 @@ private struct CuratedDetail: View {
             }
         }
         if tab == "preview" { preview() }
+        // A read's table to a Sheet: the read runs against the mock, then its export is previewed (`exportForSnapshot`).
+        if tab == "sheet" || tab == "sheet-result" { run() }
+        #endif
+    }
+
+    /// Debug builds: `SWIFTGAMGUI_TAB=sheet` previews the export of the table just read (a read, the scope check, against the mock;
+    /// nothing is made), `sheet-result` shows a made-up result over that preview, its link the mock's. Nothing is written.
+    private func exportForSnapshot() {
+        #if DEBUG
+        let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
+        guard ProcessInfo.processInfo.environment["SWIFTGAMGUI_DEMO"] == "1", tab == "sheet" || tab == "sheet-result", !debugSheet,
+              let result = reading.result, result.isTable, let read = reading.read else { return }
+        debugSheet = true
+        let (exports, id, name) = (exports, command.id, command.name)
+        Task {
+            await exports.preview(read: read, command: id, commandName: name, rows: result.rows.count)
+            guard tab == "sheet-result", case .previewing(let pending) = exports.state else { return }
+            let link = "https://docs.google.com/spreadsheets/d/1MockSheet3215791460/edit?usp=drivesdk"
+            exports.showDemo(SheetExports.Done(outcome: SheetExport.outcome(ok: true, url: link, upload: "", owner: pending.owner),
+                                               name: pending.name, commandLine: pending.commandLine, detail: "", unrecorded: ""))
+        }
         #endif
     }
 }
@@ -641,11 +696,16 @@ private struct GroupAddressField: View {
     }
 }
 
-/// A read's result: a table filtered over every row, with a count and Export CSV…; or GAM's words as it printed them.
+/// A read's result: a table filtered over every row, with a count and Export CSV…, and for a read GAM's `todrive` takes,
+/// Export to a Google Sheet… (⇧⌘E, said under it: Tab doesn't reach a button with the Mac's default keyboard settings); or GAM's
+/// words as it printed them.
 private struct ResultView: View {
     let result: CatalogResult
     @Binding var filter: String
     let export: ([Int]) -> Void
+    /// Previews the table's export to a new Google Sheet; nil when the read can't go to one.
+    var toSheet: (() -> Void)?
+    var sheetBusy = false
 
     struct Row: Identifiable {
         let id: Int
@@ -669,6 +729,19 @@ private struct ResultView: View {
                         .help(filter.isEmpty ? "Save every row as a CSV file" : "Save the rows that match as a CSV file")
                 }
                 .padding(.horizontal)
+                if let toSheet {
+                    HStack(alignment: .firstTextBaseline) {
+                        Button("Export to a Google Sheet…", systemImage: "tablecells") { toSheet() }
+                            .keyboardShortcut("e", modifiers: [.command, .shift])
+                            .disabled(sheetBusy)
+                            .help("A new Sheet in your Drive, shared with nobody. You see exactly what runs first.")
+                            .accessibilityHint("Shows exactly what will run and where the Sheet goes. Nothing is made until you confirm.")
+                        Text("⇧⌘E. GAM reads it again for the Sheet, every row, whatever the filter shows.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal)
+                }
                 Table(matching.map { Row(id: $0, record: result.rows[$0]) }) {
                     TableColumnForEach(result.columns, id: \.self) { column in
                         TableColumn(column) { row in
