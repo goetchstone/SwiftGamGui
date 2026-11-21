@@ -124,18 +124,30 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
 
     /// Makes room as a run that kept someone ends: the newest `keptRuns` runs that aren't being written stay, and `sparing`
     /// (that run, and the runs it put back) stays whatever its age; the rest are removed. A run is being written while its
-    /// file is locked (`flock`, by whichever store or process holds it open): one that can't be locked now is neither
-    /// counted nor removed. Each removed is removed holding its lock. A folder that can't be listed prunes nothing.
+    /// file is locked (`flock`, by whichever store or process holds it open): one that can't be locked is neither counted
+    /// nor removed. Each removed is removed holding its lock. A folder that can't be listed prunes nothing.
     fileprivate func prune(in dir: Int32, sparing: Set<String>) {
         var closed = 0
         for old in (try? listed(in: dir)) ?? [] {
             let fd = openat(dir, old + Self.suffix, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
             guard fd >= 0 else { continue }
             defer { Darwin.close(fd) }
-            guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { continue }
+            guard Self.lockedNow(fd) else { continue }
             closed += 1
             if closed > Self.keptRuns, !sparing.contains(old) { unlinkat(dir, old + Self.suffix, 0) }
         }
+    }
+
+    /// An exclusive lock on `fd`'s file, tried a few times over a few tens of milliseconds: a closed run's lock can outlive
+    /// its close for a moment (seen in the full test suite, where processes start beside it), and a run still being
+    /// written holds its lock for as long as it runs, so a short wait tells them apart without ever taking an open run.
+    static func lockedNow(_ fd: Int32, tries: Int = 5) -> Bool {
+        for attempt in 0..<tries {
+            if flock(fd, LOCK_EX | LOCK_NB) == 0 { return true }
+            guard errno == EWOULDBLOCK || errno == EINTR, attempt + 1 < tries else { return false }
+            usleep(20_000)
+        }
+        return false
     }
 
     /// `<13-digit ms>-<8 hex>`, as GamGUI names a run, made to sort after `after` (the newest run's milliseconds): ids only
