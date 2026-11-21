@@ -1,0 +1,1087 @@
+{
+  "durationInMilliseconds" : 64496,
+  "endTime" : "2026-11-21T18:37:58.059Z",
+  "evaluationID" : "FinderEvaluation",
+  "evaluationInfo" : {
+    "split" : "heldout"
+  },
+  "resultID" : "C4CB6432-ED08-4E69-BF8D-118F7F95B7F6",
+  "results" : [
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.5984\",\n    \"raw.6022\",\n    \"raw.6060\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h01\",\n  \"input\" : \"Pull up Bob Brown's account\",\n  \"kind\" : \"user lookup\",\n  \"values\" : {\n    \"User\" : \"bob@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"Pull up Bob Brown's account\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.5984\",\n        \"raw.6022\",\n        \"raw.6060\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h01\",\n      \"input\" : \"Pull up Bob Brown's account\",\n      \"kind\" : \"user lookup\",\n      \"values\" : {\n        \"User\" : \"bob@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.5984\",\n    \"raw.6022\",\n    \"raw.6060\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n    \"User\" : \"bob@example.com\"\n  },\n  \"found\" : \"raw.5984\",\n  \"id\" : \"h01\",\n  \"input\" : \"Pull up Bob Brown's account\",\n  \"kind\" : \"user lookup\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Users\",\n    \"Users\",\n    \"Show details for a user.\"\n  ],\n  \"seconds\" : 5.464206334,\n  \"values\" : {\n    \"User\" : \"bob@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 5.464206334
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.8433\",\n    \"raw.8436\",\n    \"raw.8448\",\n    \"raw.8439\",\n    \"raw.8444\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h02\",\n  \"input\" : \"what groups does alice belong to\",\n  \"kind\" : \"group membership\",\n  \"values\" : {\n    \"User\" : \"alice@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"what groups does alice belong to\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.8433\",\n        \"raw.8436\",\n        \"raw.8448\",\n        \"raw.8439\",\n        \"raw.8444\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h02\",\n      \"input\" : \"what groups does alice belong to\",\n      \"kind\" : \"group membership\",\n      \"values\" : {\n        \"User\" : \"alice@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.8433\",\n    \"raw.8436\",\n    \"raw.8448\",\n    \"raw.8439\",\n    \"raw.8444\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n\n  },\n  \"found\" : \"raw.4092\",\n  \"id\" : \"h02\",\n  \"input\" : \"what groups does alice belong to\",\n  \"kind\" : \"group membership\",\n  \"notes\" : [\n    \"Group: Left empty: “alice” isn't a group in the directory.\"\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Groups\",\n    \"Show a group's membership tree.\"\n  ],\n  \"seconds\" : 5.442364333,\n  \"values\" : {\n    \"User\" : \"alice@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "Groups",
+        "value" : false
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "raw.4092",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 5.4423643330000004
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.4056\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h03\",\n  \"input\" : \"list everyone in the IT group\",\n  \"kind\" : \"group membership\",\n  \"values\" : {\n    \"Group\" : \"it@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"list everyone in the IT group\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.4056\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h03\",\n      \"input\" : \"list everyone in the IT group\",\n      \"kind\" : \"group membership\",\n      \"values\" : {\n        \"Group\" : \"it@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.4056\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n\n  },\n  \"found\" : \"raw.6078\",\n  \"id\" : \"h03\",\n  \"input\" : \"list everyone in the IT group\",\n  \"kind\" : \"group membership\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Users\",\n    \"Users\",\n    \"List users.\"\n  ],\n  \"seconds\" : 7.140926125,\n  \"values\" : {\n    \"Group\" : \"it@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "Users",
+        "value" : false
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "raw.6078",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 7.140926125
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.4497\",\n    \"raw.4500\"\n  ],\n  \"category\" : \"edge\",\n  \"id\" : \"h04\",\n  \"input\" : \"which license is assigned to dana\",\n  \"kind\" : \"licenses\",\n  \"note\" : \"a person's licenses aren't runnable: the list of every assignment is\",\n  \"values\" : {\n\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"which license is assigned to dana\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.4497\",\n        \"raw.4500\"\n      ],\n      \"category\" : \"edge\",\n      \"id\" : \"h04\",\n      \"input\" : \"which license is assigned to dana\",\n      \"kind\" : \"licenses\",\n      \"note\" : \"a person's licenses aren't runnable: the list of every assignment is\",\n      \"values\" : {\n\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.4497\",\n    \"raw.4500\"\n  ],\n  \"category\" : \"edge\",\n  \"filled\" : {\n\n  },\n  \"id\" : \"h04\",\n  \"input\" : \"which license is assigned to dana\",\n  \"kind\" : \"licenses\",\n  \"note\" : \"a person's licenses aren't runnable: the list of every assignment is\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"none\"\n  ],\n  \"seconds\" : 2.0339155,\n  \"values\" : {\n\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "none",
+        "value" : false
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "none",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 2.0339155
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.8337\",\n    \"raw.8339\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h05\",\n  \"input\" : \"I need to see what Carol Clark's email signature says\",\n  \"kind\" : \"signatures\",\n  \"values\" : {\n    \"User\" : \"carol@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"I need to see what Carol Clark's email signature says\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.8337\",\n        \"raw.8339\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h05\",\n      \"input\" : \"I need to see what Carol Clark's email signature says\",\n      \"kind\" : \"signatures\",\n      \"values\" : {\n        \"User\" : \"carol@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.8337\",\n    \"raw.8339\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n    \"User\" : \"carol@example.com\"\n  },\n  \"found\" : \"raw.8337\",\n  \"id\" : \"h05\",\n  \"input\" : \"I need to see what Carol Clark's email signature says\",\n  \"kind\" : \"signatures\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Users\",\n    \"Gmail - Send As\\\/Signature\\\/Vacation\",\n    \"Show a user's Gmail signature.\"\n  ],\n  \"seconds\" : 6.643874292,\n  \"values\" : {\n    \"User\" : \"carol@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 6.6438742919999996
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 1
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.8030\",\n    \"raw.8031\",\n    \"build.print_forwarding\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h06\",\n  \"input\" : \"Is erin forwarding her email somewhere?\",\n  \"kind\" : \"offboarding read\",\n  \"values\" : {\n    \"User\" : \"erin@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"Is erin forwarding her email somewhere?\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.8030\",\n        \"raw.8031\",\n        \"build.print_forwarding\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h06\",\n      \"input\" : \"Is erin forwarding her email somewhere?\",\n      \"kind\" : \"offboarding read\",\n      \"values\" : {\n        \"User\" : \"erin@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.8030\",\n    \"raw.8031\",\n    \"build.print_forwarding\"\n  ],\n  \"alternative\" : [\n    \"raw.8025\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n    \"User\" : \"erin@example.com\"\n  },\n  \"found\" : \"raw.8023\",\n  \"id\" : \"h06\",\n  \"input\" : \"Is erin forwarding her email somewhere?\",\n  \"kind\" : \"offboarding read\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Users\",\n    \"Gmail - Forwarding\",\n    \"Show a Gmail forwarding address for a user.\"\n  ],\n  \"seconds\" : 7.212746834,\n  \"values\" : {\n    \"User\" : \"erin@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "raw.8023",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 7.2127468339999998
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 1
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.9118\",\n    \"raw.9121\"\n  ],\n  \"category\" : \"edge\",\n  \"id\" : \"h07\",\n  \"input\" : \"show me the third-party apps bob has given access to his account\",\n  \"kind\" : \"offboarding read\",\n  \"values\" : {\n    \"User\" : \"bob@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"show me the third-party apps bob has given access to his account\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.9118\",\n        \"raw.9121\"\n      ],\n      \"category\" : \"edge\",\n      \"id\" : \"h07\",\n      \"input\" : \"show me the third-party apps bob has given access to his account\",\n      \"kind\" : \"offboarding read\",\n      \"values\" : {\n        \"User\" : \"bob@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.9118\",\n    \"raw.9121\"\n  ],\n  \"alternative\" : [\n    \"raw.7949\"\n  ],\n  \"category\" : \"edge\",\n  \"filled\" : {\n    \"User\" : \"bob@example.com\"\n  },\n  \"found\" : \"raw.7950\",\n  \"id\" : \"h07\",\n  \"input\" : \"show me the third-party apps bob has given access to his account\",\n  \"kind\" : \"offboarding read\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Users\",\n    \"Gmail - Delegates\",\n    \"List a user's Gmail delegates.\"\n  ],\n  \"seconds\" : 5.88109025,\n  \"values\" : {\n    \"User\" : \"bob@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "raw.7950",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 5.8810902499999997
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.2625\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h08\",\n  \"input\" : \"list all the chromebooks we manage\",\n  \"kind\" : \"devices\",\n  \"values\" : {\n\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"list all the chromebooks we manage\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.2625\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h08\",\n      \"input\" : \"list all the chromebooks we manage\",\n      \"kind\" : \"devices\",\n      \"values\" : {\n\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.2625\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n\n  },\n  \"found\" : \"raw.2625\",\n  \"id\" : \"h08\",\n  \"input\" : \"list all the chromebooks we manage\",\n  \"kind\" : \"devices\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"ChromeOS Devices\",\n    \"List ChromeOS devices.\"\n  ],\n  \"seconds\" : 5.664031041,\n  \"values\" : {\n\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 5.6640310410000003
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.4568\"\n  ],\n  \"category\" : \"edge\",\n  \"id\" : \"h09\",\n  \"input\" : \"What phones are syncing company mail?\",\n  \"kind\" : \"devices\",\n  \"values\" : {\n\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"What phones are syncing company mail?\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.4568\"\n      ],\n      \"category\" : \"edge\",\n      \"id\" : \"h09\",\n      \"input\" : \"What phones are syncing company mail?\",\n      \"kind\" : \"devices\",\n      \"values\" : {\n\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.4568\"\n  ],\n  \"category\" : \"edge\",\n  \"filled\" : {\n\n  },\n  \"id\" : \"h09\",\n  \"input\" : \"What phones are syncing company mail?\",\n  \"kind\" : \"devices\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"none\"\n  ],\n  \"seconds\" : 1.611370916,\n  \"values\" : {\n\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "none",
+        "value" : false
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "none",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 1.611370916
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 1
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"raw.5117\",\n    \"raw.5123\"\n  ],\n  \"category\" : \"golden\",\n  \"id\" : \"h10\",\n  \"input\" : \"show all shared drives in the domain\",\n  \"kind\" : \"shared drives\",\n  \"values\" : {\n\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"show all shared drives in the domain\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"raw.5117\",\n        \"raw.5123\"\n      ],\n      \"category\" : \"golden\",\n      \"id\" : \"h10\",\n      \"input\" : \"show all shared drives in the domain\",\n      \"kind\" : \"shared drives\",\n      \"values\" : {\n\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"raw.5117\",\n    \"raw.5123\"\n  ],\n  \"alternative\" : [\n    \"raw.5117\"\n  ],\n  \"category\" : \"golden\",\n  \"filled\" : {\n\n  },\n  \"found\" : \"raw.5123\",\n  \"id\" : \"h10\",\n  \"input\" : \"show all shared drives in the domain\",\n  \"kind\" : \"shared drives\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"See or list something\",\n    \"Shared Drives\",\n    \"Show shared drives.\"\n  ],\n  \"seconds\" : 4.313521792,\n  \"values\" : {\n\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 4.3135217920000004
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"build.add_group_member\"\n  ],\n  \"allow\" : {\n    \"Role\" : [\n      \"member\"\n    ]\n  },\n  \"category\" : \"golden\",\n  \"id\" : \"h11\",\n  \"input\" : \"put alice in the sales group\",\n  \"kind\" : \"group change\",\n  \"values\" : {\n    \"Group\" : \"sales@example.com\",\n    \"Member\" : \"alice@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"put alice in the sales group\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"build.add_group_member\"\n      ],\n      \"allow\" : {\n        \"Role\" : [\n          \"member\"\n        ]\n      },\n      \"category\" : \"golden\",\n      \"id\" : \"h11\",\n      \"input\" : \"put alice in the sales group\",\n      \"kind\" : \"group change\",\n      \"values\" : {\n        \"Group\" : \"sales@example.com\",\n        \"Member\" : \"alice@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"build.add_group_member\"\n  ],\n  \"allow\" : {\n    \"Role\" : [\n      \"member\"\n    ]\n  },\n  \"category\" : \"golden\",\n  \"filled\" : {\n    \"Group\" : \"sales@example.com\",\n    \"Member\" : \"alice@example.com\"\n  },\n  \"found\" : \"build.add_group_member\",\n  \"id\" : \"h11\",\n  \"input\" : \"put alice in the sales group\",\n  \"kind\" : \"group change\",\n  \"notes\" : [\n    \"Role: Left empty: “member” isn't in the request, so Role keeps its default.\"\n  ],\n  \"picks\" : [\n    \"Change something\",\n    \"Add member to group\"\n  ],\n  \"seconds\" : 4.627041167,\n  \"values\" : {\n    \"Group\" : \"sales@example.com\",\n    \"Member\" : \"alice@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 4.6270411669999998
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Expected" : "{\n  \"accept\" : [\n    \"build.vacation_off\"\n  ],\n  \"category\" : \"edge\",\n  \"id\" : \"h12\",\n  \"input\" : \"turn off the out of office reply for dana\",\n  \"kind\" : \"offboarding change\",\n  \"values\" : {\n    \"User\" : \"dana@example.com\"\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"turn off the out of office reply for dana\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n        \"build.vacation_off\"\n      ],\n      \"category\" : \"edge\",\n      \"id\" : \"h12\",\n      \"input\" : \"turn off the out of office reply for dana\",\n      \"kind\" : \"offboarding change\",\n      \"values\" : {\n        \"User\" : \"dana@example.com\"\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n    \"build.vacation_off\"\n  ],\n  \"category\" : \"edge\",\n  \"filled\" : {\n    \"User\" : \"dana@example.com\"\n  },\n  \"found\" : \"build.vacation_off\",\n  \"id\" : \"h12\",\n  \"input\" : \"turn off the out of office reply for dana\",\n  \"kind\" : \"offboarding change\",\n  \"notes\" : [\n\n  ],\n  \"picks\" : [\n    \"Change something\",\n    \"Turn off vacation auto-reply\"\n  ],\n  \"seconds\" : 3.7187045,\n  \"values\" : {\n    \"User\" : \"dana@example.com\"\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 3.7187044999999999
+      }
+    },
+    {
+      "Asked" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 0
+      },
+      "Builds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Expected" : "{\n  \"accept\" : [\n\n  ],\n  \"category\" : \"adversarial\",\n  \"id\" : \"h13\",\n  \"input\" : \"delete frank's account\",\n  \"kind\" : \"offboarding change\",\n  \"note\" : \"a delete runs from Users, not the Builder: nothing listed fits\",\n  \"values\" : {\n\n  }\n}",
+      "Input" : "{\n  \"input\" : {\n    \"instructions\" : \"null\",\n    \"prompt\" : \"delete frank's account\"\n  },\n  \"output\" : {\n    \"value\" : {\n      \"accept\" : [\n\n      ],\n      \"category\" : \"adversarial\",\n      \"id\" : \"h13\",\n      \"input\" : \"delete frank's account\",\n      \"kind\" : \"offboarding change\",\n      \"note\" : \"a delete runs from Users, not the Builder: nothing listed fits\",\n      \"values\" : {\n\n      }\n    }\n  }\n}",
+      "Invented a value" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "rationale" : "",
+        "value" : 0
+      },
+      "Ranked first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Ranked top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Response" : {
+        "typeName" : "FinderCase",
+        "value" : "{\n  \"accept\" : [\n\n  ],\n  \"category\" : \"adversarial\",\n  \"filled\" : {\n\n  },\n  \"found\" : \"build.suspend_user\",\n  \"id\" : \"h13\",\n  \"input\" : \"delete frank's account\",\n  \"kind\" : \"offboarding change\",\n  \"note\" : \"a delete runs from Users, not the Builder: nothing listed fits\",\n  \"notes\" : [\n    \"User: Left empty: “frank” isn't anyone in the directory.\"\n  ],\n  \"picks\" : [\n    \"Change something\",\n    \"Suspend account\"\n  ],\n  \"seconds\" : 4.342909125,\n  \"values\" : {\n\n  }\n}"
+      },
+      "Right category" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Right command" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "rationale" : "build.suspend_user",
+        "value" : false
+      },
+      "Right or offered" : {
+        "evaluatorKind" : "custom",
+        "kind" : "fail",
+        "value" : false
+      },
+      "Right see or change" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Right slots" : {
+        "evaluatorKind" : "custom",
+        "kind" : "ignore",
+        "value" : null
+      },
+      "Search first" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Search top 3" : {
+        "evaluatorKind" : "custom",
+        "kind" : "pass",
+        "value" : true
+      },
+      "Seconds" : {
+        "evaluatorKind" : "custom",
+        "kind" : "score",
+        "value" : 4.3429091250000003
+      }
+    }
+  ],
+  "startTime" : "2026-11-21T18:36:53.563Z",
+  "summary" : [
+    {
+      "Maximum of Seconds" : {
+        "operation" : {
+          "metric" : "Seconds",
+          "type" : "maximum"
+        },
+        "value" : 7.2127468339999998
+      },
+      "Mean of Asked" : {
+        "operation" : {
+          "metric" : "Asked",
+          "type" : "mean"
+        },
+        "value" : 0.23076923076923078
+      },
+      "Mean of Builds" : {
+        "operation" : {
+          "metric" : "Builds",
+          "type" : "mean"
+        },
+        "value" : 0.81818181818181823
+      },
+      "Mean of Invented a value" : {
+        "operation" : {
+          "metric" : "Invented a value",
+          "type" : "mean"
+        },
+        "value" : 0
+      },
+      "Mean of Ranked first" : {
+        "operation" : {
+          "metric" : "Ranked first",
+          "type" : "mean"
+        },
+        "value" : 0.076923076923076927
+      },
+      "Mean of Ranked top 3" : {
+        "operation" : {
+          "metric" : "Ranked top 3",
+          "type" : "mean"
+        },
+        "value" : 0.15384615384615385
+      },
+      "Mean of Right category" : {
+        "operation" : {
+          "metric" : "Right category",
+          "type" : "mean"
+        },
+        "value" : 0.59999999999999998
+      },
+      "Mean of Right command" : {
+        "operation" : {
+          "metric" : "Right command",
+          "type" : "mean"
+        },
+        "value" : 0.46153846153846156
+      },
+      "Mean of Right or offered" : {
+        "operation" : {
+          "metric" : "Right or offered",
+          "type" : "mean"
+        },
+        "value" : 0.46153846153846156
+      },
+      "Mean of Right see or change" : {
+        "operation" : {
+          "metric" : "Right see or change",
+          "type" : "mean"
+        },
+        "value" : 1
+      },
+      "Mean of Right slots" : {
+        "operation" : {
+          "metric" : "Right slots",
+          "type" : "mean"
+        },
+        "value" : 1
+      },
+      "Mean of Search first" : {
+        "operation" : {
+          "metric" : "Search first",
+          "type" : "mean"
+        },
+        "value" : 0.076923076923076927
+      },
+      "Mean of Search top 3" : {
+        "operation" : {
+          "metric" : "Search top 3",
+          "type" : "mean"
+        },
+        "value" : 0.076923076923076927
+      },
+      "Mean of Seconds" : {
+        "operation" : {
+          "metric" : "Seconds",
+          "type" : "mean"
+        },
+        "value" : 4.9305155545384611
+      }
+    }
+  ]
+}
