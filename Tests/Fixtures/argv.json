@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
+  "gamgui_commit": "d03f5a6",
   "gam_version": "7.52.04",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -11,11 +11,14 @@
   "add_delegate",
   "add_forwarding_address",
   "add_group_member",
+  "all_users_print_delegates",
+  "all_users_print_forward",
   "block_device_user",
   "check_svcacct",
   "clear_recovery",
   "create_datatransfer",
   "create_group",
+  "create_org_unit",
   "create_task",
   "create_tasklist",
   "create_user",
@@ -27,6 +30,7 @@
   "delete_event",
   "delete_filters",
   "delete_messages",
+  "delete_org_unit",
   "delete_send_as",
   "delete_user",
   "deprovision_user",
@@ -38,12 +42,14 @@
   "imap_off",
   "info_user",
   "list_drafts",
+  "move_user_to_org_unit",
   "pop_off",
   "print_admins",
   "print_all_calendars",
   "print_all_course_participants",
   "print_calendar_acls",
   "print_calendar_acls_cal",
+  "print_calendar_data_owner",
   "print_chrome_profiles",
   "print_course_participants",
   "print_courses",
@@ -61,10 +67,12 @@
   "print_groups",
   "print_groups_member",
   "print_mobile_devices",
+  "print_org_units",
   "print_owned_calendars",
   "print_resources",
   "print_script_projects",
   "print_send_as",
+  "print_signature",
   "print_tokens",
   "print_user_calendars",
   "print_user_tokens",
@@ -74,6 +82,7 @@
   "remove_calendar",
   "remove_delegate",
   "remove_group_member",
+  "rename_org_unit",
   "report_activity",
   "report_users",
   "reset_password",
@@ -182,6 +191,8 @@
     "default": "member"
    }
   ],
+  "all_users_print_delegates": [],
+  "all_users_print_forward": [],
   "block_device_user": [
    {
     "name": "name"
@@ -213,6 +224,10 @@
    {
     "name": "privacy",
     "default": ""
+   },
+   {
+    "name": "release_resources",
+    "default": false
    }
   ],
   "create_group": [
@@ -222,6 +237,15 @@
    {
     "name": "name",
     "default": ""
+   },
+   {
+    "name": "description",
+    "default": ""
+   }
+  ],
+  "create_org_unit": [
+   {
+    "name": "path"
    },
    {
     "name": "description",
@@ -343,6 +367,11 @@
     "name": "ids"
    }
   ],
+  "delete_org_unit": [
+   {
+    "name": "org_unit"
+   }
+  ],
   "delete_send_as": [
    {
     "name": "email"
@@ -411,6 +440,14 @@
     "name": "most"
    }
   ],
+  "move_user_to_org_unit": [
+   {
+    "name": "org_unit"
+   },
+   {
+    "name": "email"
+   }
+  ],
   "pop_off": [
    {
     "name": "email"
@@ -437,6 +474,11 @@
    }
   ],
   "print_calendar_acls_cal": [
+   {
+    "name": "calendar_id"
+   }
+  ],
+  "print_calendar_data_owner": [
    {
     "name": "calendar_id"
    }
@@ -570,6 +612,7 @@
     "name": "user"
    }
   ],
+  "print_org_units": [],
   "print_owned_calendars": [
    {
     "name": "email"
@@ -587,6 +630,11 @@
    }
   ],
   "print_send_as": [
+   {
+    "name": "email"
+   }
+  ],
+  "print_signature": [
    {
     "name": "email"
    }
@@ -644,6 +692,14 @@
    },
    {
     "name": "member"
+   }
+  ],
+  "rename_org_unit": [
+   {
+    "name": "org_unit"
+   },
+   {
+    "name": "name"
    }
   ],
   "report_activity": [
@@ -1041,7 +1097,9 @@
    "recoveryEmail",
    "aliases",
    "locations",
-   "phones"
+   "phones",
+   "creationTime",
+   "id"
   ],
   "PY_WHITESPACE": [
    9,
@@ -5699,6 +5757,28 @@
    ]
   },
   {
+   "builder": "all_users_print_delegates",
+   "kwargs": {},
+   "argv": [
+    "all",
+    "users",
+    "print",
+    "delegates",
+    "shownames"
+   ]
+  },
+  {
+   "builder": "all_users_print_forward",
+   "kwargs": {},
+   "argv": [
+    "all",
+    "users",
+    "print",
+    "forward",
+    "enabledonly"
+   ]
+  },
+  {
    "builder": "block_device_user",
    "kwargs": {
     "name": "devices/0vmcarol01/deviceUsers/u1"
@@ -6173,7 +6253,8 @@
     "old_owner": "  padded  ",
     "service": "  padded  ",
     "new_owner": "  padded  ",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6189,7 +6270,8 @@
     "old_owner": "",
     "service": "",
     "new_owner": "",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6205,7 +6287,8 @@
     "old_owner": "--double-dash",
     "service": "--double-dash",
     "new_owner": "--double-dash",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6221,7 +6304,8 @@
     "old_owner": "-leading-dash",
     "service": "-leading-dash",
     "new_owner": "-leading-dash",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6237,7 +6321,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "  all\t\n"
+    "privacy": "  all\t\n",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '  all\\t\\n'; expected one of ('private', 'shared', 'all')"
   },
@@ -6247,7 +6332,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "  private\t\n"
+    "privacy": "  private\t\n",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '  private\\t\\n'; expected one of ('private', 'shared', 'all')"
   },
@@ -6257,7 +6343,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "  shared\t\n"
+    "privacy": "  shared\t\n",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '  shared\\t\\n'; expected one of ('private', 'shared', 'all')"
   },
@@ -6267,7 +6354,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": " "
+    "privacy": " ",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level ' '; expected one of ('private', 'shared', 'all')"
   },
@@ -6277,7 +6365,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6293,7 +6382,26 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "ALL"
+    "privacy": "",
+    "release_resources": true
+   },
+   "argv": [
+    "create",
+    "datatransfer",
+    "<old_owner>",
+    "<service>",
+    "<new_owner>",
+    "release_resources"
+   ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "ALL",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'ALL'; expected one of ('private', 'shared', 'all')"
   },
@@ -6303,7 +6411,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "All"
+    "privacy": "All",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'All'; expected one of ('private', 'shared', 'all')"
   },
@@ -6313,7 +6422,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "PRIVATE"
+    "privacy": "PRIVATE",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'PRIVATE'; expected one of ('private', 'shared', 'all')"
   },
@@ -6323,7 +6433,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "Private"
+    "privacy": "Private",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'Private'; expected one of ('private', 'shared', 'all')"
   },
@@ -6333,7 +6444,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "SHARED"
+    "privacy": "SHARED",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'SHARED'; expected one of ('private', 'shared', 'all')"
   },
@@ -6343,7 +6455,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "Shared"
+    "privacy": "Shared",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'Shared'; expected one of ('private', 'shared', 'all')"
   },
@@ -6353,7 +6466,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　all\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　all\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000all\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
   },
@@ -6363,7 +6477,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　private\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　private\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000private\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
   },
@@ -6373,7 +6488,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　shared\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　"
+    "privacy": "\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　shared\t\n\u000b\f\r\u001c\u001d\u001e\u001f                  　",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000shared\\t\\n\\x0b\\x0c\\r\\x1c\\x1d\\x1e\\x1f \\x85\\xa0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000'; expected one of ('private', 'shared', 'all')"
   },
@@ -6383,7 +6499,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "admin"
+    "privacy": "admin",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'admin'; expected one of ('private', 'shared', 'all')"
   },
@@ -6393,7 +6510,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "all"
+    "privacy": "all",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6410,7 +6528,27 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "allx"
+    "privacy": "all",
+    "release_resources": true
+   },
+   "argv": [
+    "create",
+    "datatransfer",
+    "<old_owner>",
+    "<service>",
+    "<new_owner>",
+    "all",
+    "release_resources"
+   ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "allx",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'allx'; expected one of ('private', 'shared', 'all')"
   },
@@ -6420,7 +6558,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "all​"
+    "privacy": "all​",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'all\\u200b'; expected one of ('private', 'shared', 'all')"
   },
@@ -6430,7 +6569,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "null"
+    "privacy": "null",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'null'; expected one of ('private', 'shared', 'all')"
   },
@@ -6440,7 +6580,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "ownеr"
+    "privacy": "ownеr",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'ownеr'; expected one of ('private', 'shared', 'all')"
   },
@@ -6450,7 +6591,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "private"
+    "privacy": "private",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6467,7 +6609,27 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "privatex"
+    "privacy": "private",
+    "release_resources": true
+   },
+   "argv": [
+    "create",
+    "datatransfer",
+    "<old_owner>",
+    "<service>",
+    "<new_owner>",
+    "private",
+    "release_resources"
+   ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "privatex",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'privatex'; expected one of ('private', 'shared', 'all')"
   },
@@ -6477,7 +6639,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "privaté"
+    "privacy": "privaté",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'privaté'; expected one of ('private', 'shared', 'all')"
   },
@@ -6487,7 +6650,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "private​"
+    "privacy": "private​",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'private\\u200b'; expected one of ('private', 'shared', 'all')"
   },
@@ -6497,7 +6661,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "shared"
+    "privacy": "shared",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6514,7 +6679,27 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "sharedx"
+    "privacy": "shared",
+    "release_resources": true
+   },
+   "argv": [
+    "create",
+    "datatransfer",
+    "<old_owner>",
+    "<service>",
+    "<new_owner>",
+    "shared",
+    "release_resources"
+   ]
+  },
+  {
+   "builder": "create_datatransfer",
+   "kwargs": {
+    "old_owner": "<old_owner>",
+    "service": "<service>",
+    "new_owner": "<new_owner>",
+    "privacy": "sharedx",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'sharedx'; expected one of ('private', 'shared', 'all')"
   },
@@ -6524,7 +6709,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "shared​"
+    "privacy": "shared​",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'shared\\u200b'; expected one of ('private', 'shared', 'all')"
   },
@@ -6534,7 +6720,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": "sharéd"
+    "privacy": "sharéd",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level 'sharéd'; expected one of ('private', 'shared', 'all')"
   },
@@ -6544,7 +6731,8 @@
     "old_owner": "<old_owner>",
     "service": "<service>",
     "new_owner": "<new_owner>",
-    "privacy": " "
+    "privacy": " ",
+    "release_resources": false
    },
    "error": "ValueError: invalid transfer privacy level '\\xa0'; expected one of ('private', 'shared', 'all')"
   },
@@ -6554,7 +6742,8 @@
     "old_owner": "Zoë Ångström",
     "service": "Zoë Ångström",
     "new_owner": "Zoë Ångström",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6570,7 +6759,8 @@
     "old_owner": "carol@example.com",
     "service": "drive,calendar",
     "new_owner": "alice@example.com",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6586,7 +6776,8 @@
     "old_owner": "carol@example.com",
     "service": "drive,calendar",
     "new_owner": "alice@example.com",
-    "privacy": "all"
+    "privacy": "all",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6603,7 +6794,8 @@
     "old_owner": "carol@example.com",
     "service": "drive,calendar",
     "new_owner": "alice@example.com",
-    "privacy": "private"
+    "privacy": "private",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6620,7 +6812,8 @@
     "old_owner": "carol@example.com",
     "service": "drive,calendar",
     "new_owner": "alice@example.com",
-    "privacy": "shared"
+    "privacy": "shared",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6637,7 +6830,8 @@
     "old_owner": "line\nbreak",
     "service": "line\nbreak",
     "new_owner": "line\nbreak",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6653,7 +6847,8 @@
     "old_owner": "quote\"and'apos",
     "service": "quote\"and'apos",
     "new_owner": "quote\"and'apos",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6669,7 +6864,8 @@
     "old_owner": "semi;colon|pipe & $(cmd) `tick`",
     "service": "semi;colon|pipe & $(cmd) `tick`",
     "new_owner": "semi;colon|pipe & $(cmd) `tick`",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6685,7 +6881,8 @@
     "old_owner": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "service": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "new_owner": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6701,7 +6898,8 @@
     "old_owner": "{token}",
     "service": "{token}",
     "new_owner": "{token}",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6717,7 +6915,8 @@
     "old_owner": "日本語のテキスト",
     "service": "日本語のテキスト",
     "new_owner": "日本語のテキスト",
-    "privacy": ""
+    "privacy": "",
+    "release_resources": false
    },
    "argv": [
     "create",
@@ -6995,6 +7194,210 @@
     "group",
     "日本語のテキスト",
     "name",
+    "日本語のテキスト",
+    "description",
+    "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "  padded  ",
+    "description": "  padded  "
+   },
+   "argv": [
+    "create",
+    "org",
+    "  padded  ",
+    "description",
+    "  padded  "
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "",
+    "description": ""
+   },
+   "argv": [
+    "create",
+    "org",
+    ""
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "/Sales/East",
+    "description": ""
+   },
+   "argv": [
+    "create",
+    "org",
+    "/Sales/East"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "<path>",
+    "description": ""
+   },
+   "argv": [
+    "create",
+    "org",
+    "<path>"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "--double-dash",
+    "description": "--double-dash"
+   },
+   "argv": [
+    "create",
+    "org",
+    "--double-dash",
+    "description",
+    "--double-dash"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "-leading-dash",
+    "description": "-leading-dash"
+   },
+   "argv": [
+    "create",
+    "org",
+    "-leading-dash",
+    "description",
+    "-leading-dash"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "<path>",
+    "description": "<description>"
+   },
+   "argv": [
+    "create",
+    "org",
+    "<path>",
+    "description",
+    "<description>"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "/Sales/East",
+    "description": "The east team"
+   },
+   "argv": [
+    "create",
+    "org",
+    "/Sales/East",
+    "description",
+    "The east team"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "Zoë Ångström",
+    "description": "Zoë Ångström"
+   },
+   "argv": [
+    "create",
+    "org",
+    "Zoë Ångström",
+    "description",
+    "Zoë Ångström"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "line\nbreak",
+    "description": "line\nbreak"
+   },
+   "argv": [
+    "create",
+    "org",
+    "line\nbreak",
+    "description",
+    "line\nbreak"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "quote\"and'apos",
+    "description": "quote\"and'apos"
+   },
+   "argv": [
+    "create",
+    "org",
+    "quote\"and'apos",
+    "description",
+    "quote\"and'apos"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "semi;colon|pipe & $(cmd) `tick`",
+    "description": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "create",
+    "org",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "description",
+    "semi;colon|pipe & $(cmd) `tick`"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "create",
+    "org",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "description",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "{token}",
+    "description": "{token}"
+   },
+   "argv": [
+    "create",
+    "org",
+    "{token}",
+    "description",
+    "{token}"
+   ]
+  },
+  {
+   "builder": "create_org_unit",
+   "kwargs": {
+    "path": "日本語のテキスト",
+    "description": "日本語のテキスト"
+   },
+   "argv": [
+    "create",
+    "org",
     "日本語のテキスト",
     "description",
     "日本語のテキスト"
@@ -10695,6 +11098,149 @@
    ]
   },
   {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "  padded  "
+   },
+   "argv": [
+    "delete",
+    "org",
+    "  padded  "
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": ""
+   },
+   "argv": [
+    "delete",
+    "org",
+    ""
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "--double-dash"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "--double-dash"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "-leading-dash"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "-leading-dash"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "/Sales/West"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "/Sales/West"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "<org_unit>"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "<org_unit>"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "Zoë Ångström"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "Zoë Ångström"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "line\nbreak"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "line\nbreak"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "quote\"and'apos"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "quote\"and'apos"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "semi;colon|pipe & $(cmd) `tick`"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "{token}"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "{token}"
+   ]
+  },
+  {
+   "builder": "delete_org_unit",
+   "kwargs": {
+    "org_unit": "日本語のテキスト"
+   },
+   "argv": [
+    "delete",
+    "org",
+    "日本語のテキスト"
+   ]
+  },
+  {
    "builder": "delete_send_as",
    "kwargs": {
     "email": "carol@example.com",
@@ -12519,6 +13065,201 @@
    ]
   },
   {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "  padded  ",
+    "email": "  padded  "
+   },
+   "argv": [
+    "update",
+    "org",
+    "  padded  ",
+    "move",
+    "user",
+    "  padded  "
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "",
+    "email": ""
+   },
+   "argv": [
+    "update",
+    "org",
+    "",
+    "move",
+    "user",
+    ""
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "--double-dash",
+    "email": "--double-dash"
+   },
+   "argv": [
+    "update",
+    "org",
+    "--double-dash",
+    "move",
+    "user",
+    "--double-dash"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "-leading-dash",
+    "email": "-leading-dash"
+   },
+   "argv": [
+    "update",
+    "org",
+    "-leading-dash",
+    "move",
+    "user",
+    "-leading-dash"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "<org_unit>",
+    "email": "<email>"
+   },
+   "argv": [
+    "update",
+    "org",
+    "<org_unit>",
+    "move",
+    "user",
+    "<email>"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "Zoë Ångström",
+    "email": "Zoë Ångström"
+   },
+   "argv": [
+    "update",
+    "org",
+    "Zoë Ångström",
+    "move",
+    "user",
+    "Zoë Ångström"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "/Sales",
+    "email": "alice@example.com"
+   },
+   "argv": [
+    "update",
+    "org",
+    "/Sales",
+    "move",
+    "user",
+    "alice@example.com"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "line\nbreak",
+    "email": "line\nbreak"
+   },
+   "argv": [
+    "update",
+    "org",
+    "line\nbreak",
+    "move",
+    "user",
+    "line\nbreak"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "quote\"and'apos",
+    "email": "quote\"and'apos"
+   },
+   "argv": [
+    "update",
+    "org",
+    "quote\"and'apos",
+    "move",
+    "user",
+    "quote\"and'apos"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "semi;colon|pipe & $(cmd) `tick`",
+    "email": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "update",
+    "org",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "move",
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "update",
+    "org",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "move",
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "{token}",
+    "email": "{token}"
+   },
+   "argv": [
+    "update",
+    "org",
+    "{token}",
+    "move",
+    "user",
+    "{token}"
+   ]
+  },
+  {
+   "builder": "move_user_to_org_unit",
+   "kwargs": {
+    "org_unit": "日本語のテキスト",
+    "email": "日本語のテキスト"
+   },
+   "argv": [
+    "update",
+    "org",
+    "日本語のテキスト",
+    "move",
+    "user",
+    "日本語のテキスト"
+   ]
+  },
+  {
    "builder": "pop_off",
    "kwargs": {
     "email": "  padded  "
@@ -13255,6 +13996,201 @@
     "日本語のテキスト",
     "print",
     "calendaracls",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "  padded  "
+   },
+   "argv": [
+    "calendars",
+    "  padded  ",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": ""
+   },
+   "argv": [
+    "calendars",
+    "",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "--double-dash"
+   },
+   "argv": [
+    "calendars",
+    "--double-dash",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "-leading-dash"
+   },
+   "argv": [
+    "calendars",
+    "-leading-dash",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "<calendar_id>"
+   },
+   "argv": [
+    "calendars",
+    "<calendar_id>",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "Zoë Ångström"
+   },
+   "argv": [
+    "calendars",
+    "Zoë Ångström",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "c_team@group.calendar.google.com"
+   },
+   "argv": [
+    "calendars",
+    "c_team@group.calendar.google.com",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "line\nbreak"
+   },
+   "argv": [
+    "calendars",
+    "line\nbreak",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "quote\"and'apos"
+   },
+   "argv": [
+    "calendars",
+    "quote\"and'apos",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "calendars",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "calendars",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "{token}"
+   },
+   "argv": [
+    "calendars",
+    "{token}",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_calendar_data_owner",
+   "kwargs": {
+    "calendar_id": "日本語のテキスト"
+   },
+   "argv": [
+    "calendars",
+    "日本語のテキスト",
+    "print",
+    "settings",
+    "fields",
+    "id,dataowner",
     "formatjson"
    ]
   },
@@ -19452,6 +20388,16 @@
    ]
   },
   {
+   "builder": "print_org_units",
+   "kwargs": {},
+   "argv": [
+    "print",
+    "orgs",
+    "fields",
+    "orgunitpath,name,description"
+   ]
+  },
+  {
    "builder": "print_owned_calendars",
    "kwargs": {
     "email": "  padded  "
@@ -20051,6 +20997,162 @@
     "print",
     "sendas",
     "verifyonly"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "  padded  "
+   },
+   "argv": [
+    "user",
+    "  padded  ",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": ""
+   },
+   "argv": [
+    "user",
+    "",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "--double-dash"
+   },
+   "argv": [
+    "user",
+    "--double-dash",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "-leading-dash"
+   },
+   "argv": [
+    "user",
+    "-leading-dash",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "Zoë Ångström"
+   },
+   "argv": [
+    "user",
+    "Zoë Ångström",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "alice@example.com"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "line\nbreak"
+   },
+   "argv": [
+    "user",
+    "line\nbreak",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "quote\"and'apos"
+   },
+   "argv": [
+    "user",
+    "quote\"and'apos",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "{token}"
+   },
+   "argv": [
+    "user",
+    "{token}",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signature",
+   "kwargs": {
+    "email": "日本語のテキスト"
+   },
+   "argv": [
+    "user",
+    "日本語のテキスト",
+    "print",
+    "signature"
    ]
   },
   {
@@ -21443,6 +22545,188 @@
     "group",
     "日本語のテキスト",
     "remove",
+    "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "  padded  ",
+    "name": "  padded  "
+   },
+   "argv": [
+    "update",
+    "org",
+    "  padded  ",
+    "name",
+    "  padded  "
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "",
+    "name": ""
+   },
+   "argv": [
+    "update",
+    "org",
+    "",
+    "name",
+    ""
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "--double-dash",
+    "name": "--double-dash"
+   },
+   "argv": [
+    "update",
+    "org",
+    "--double-dash",
+    "name",
+    "--double-dash"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "-leading-dash",
+    "name": "-leading-dash"
+   },
+   "argv": [
+    "update",
+    "org",
+    "-leading-dash",
+    "name",
+    "-leading-dash"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "<org_unit>",
+    "name": "<name>"
+   },
+   "argv": [
+    "update",
+    "org",
+    "<org_unit>",
+    "name",
+    "<name>"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "/Sales/West",
+    "name": "West Coast"
+   },
+   "argv": [
+    "update",
+    "org",
+    "/Sales/West",
+    "name",
+    "West Coast"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "Zoë Ångström",
+    "name": "Zoë Ångström"
+   },
+   "argv": [
+    "update",
+    "org",
+    "Zoë Ångström",
+    "name",
+    "Zoë Ångström"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "line\nbreak",
+    "name": "line\nbreak"
+   },
+   "argv": [
+    "update",
+    "org",
+    "line\nbreak",
+    "name",
+    "line\nbreak"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "quote\"and'apos",
+    "name": "quote\"and'apos"
+   },
+   "argv": [
+    "update",
+    "org",
+    "quote\"and'apos",
+    "name",
+    "quote\"and'apos"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "semi;colon|pipe & $(cmd) `tick`",
+    "name": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "update",
+    "org",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "name",
+    "semi;colon|pipe & $(cmd) `tick`"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "update",
+    "org",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "name",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "{token}",
+    "name": "{token}"
+   },
+   "argv": [
+    "update",
+    "org",
+    "{token}",
+    "name",
+    "{token}"
+   ]
+  },
+  {
+   "builder": "rename_org_unit",
+   "kwargs": {
+    "org_unit": "日本語のテキスト",
+    "name": "日本語のテキスト"
+   },
+   "argv": [
+    "update",
+    "org",
+    "日本語のテキスト",
+    "name",
     "日本語のテキスト"
    ]
   },
@@ -87465,6 +88749,16 @@
     "create",
     "group",
     "<email>"
+   ]
+  },
+  "create_org_unit": {
+   "kwargs": {
+    "path": "<path>"
+   },
+   "argv": [
+    "create",
+    "org",
+    "<path>"
    ]
   },
   "create_task": {

@@ -17,15 +17,27 @@ public enum DelegationScopes {
         ("https://www.googleapis.com/auth/tasks", "Onboarding task lists"),
     ]
 
+    /// What Check access verifies.
     public static var scopes: [String] { all.map(\.scope) }
+
+    /// Delegated with the others but never verified (GamGUI's `OPTIONAL_DWD_SCOPES`, #151): an install without one stays
+    /// connected, and only the read that needs it is refused. The Security tab's computers read Cloud Identity devices;
+    /// Reports' alerts read the Alert Center (gamlib glapi `_SVCACCT_SCOPES`).
+    public static let optional: [(scope: String, purpose: String)] = [
+        ("https://www.googleapis.com/auth/cloud-identity.devices", "The computers signed in with an account"),
+        ("https://www.googleapis.com/auth/apps.alerts", "Google's alerts (Reports)"),
+    ]
+
+    /// What Setup offers to authorize, in its order: the verified scopes, then the optional ones (GamGUI's `dwd_details`).
+    public static var offered: [(scope: String, purpose: String)] { all + optional }
 
     public static let adminConsoleURL = "https://admin.google.com/ac/owl/domainwidedelegation"
 
     /// The Admin-console page that adds the client and its scopes, pre-filled: the same shape
-    /// `gam check serviceaccount` prints on a failure. Nil without a client ID. GamGUI's `dwd_auth_url`
-    /// byte for byte (`Tests/Fixtures/setup.json`): Python's `urlencode(…, safe=':/,')`, so a space is
-    /// `+` and `&` or `=` inside a value is escaped (`URLComponents` would leave those two as they are).
-    public static func authorizationURL(clientID: String, scopes: [String] = scopes, domain: Domain? = nil) -> URL? {
+    /// `gam check serviceaccount` prints on a failure, with every offered scope. Nil without a client ID. GamGUI's
+    /// `dwd_details` link byte for byte (`Tests/Fixtures/setup.json`): Python's `urlencode(…, safe=':/,')`, so a space
+    /// is `+` and `&` or `=` inside a value is escaped (`URLComponents` would leave those two as they are).
+    public static func authorizationURL(clientID: String, scopes: [String] = offered.map(\.scope), domain: Domain? = nil) -> URL? {
         guard !clientID.isEmpty else { return nil }
         var query = [("clientScopeToAdd", scopes.joined(separator: ",")), ("clientIdToAdd", clientID),
                      ("overwriteClientId", "true")]
@@ -85,6 +97,17 @@ public struct AccessCheck: Sendable, Equatable {
     public let authorizationURL: URL?
 
     public var isAuthorized: Bool { outcome == .authorized }
+
+    /// GamGUI's `_with_every_scope`: GAM's link names only the scopes it checked and overwrites the client's list
+    /// (`overwriteClientId=true`), so following it would take away the optional scopes Setup asks for (the devices, Google's
+    /// alerts). When the check failed with a link, Setup's own, with every offered scope, stands in for it; without a client
+    /// ID to make one, GAM's stays.
+    public func linkingEveryOfferedScope(clientID: String, domain: Domain) -> AccessCheck {
+        guard authorizationURL != nil, let full = DelegationScopes.authorizationURL(clientID: clientID, domain: domain) else {
+            return self
+        }
+        return AccessCheck(outcome: outcome, rows: rows, authorizationURL: full)
+    }
 
     public static func interpret(_ result: GamResult) -> AccessCheck {
         let rows = rows(in: result.stdout)

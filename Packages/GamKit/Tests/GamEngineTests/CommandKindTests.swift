@@ -51,10 +51,8 @@ struct CommandKindTests {
 
     /// Reads this app builds that GamGUI has no builder for (so `argv.json` holds no case): each held to the read-only rule
     /// here, its argv in `NativeArgvTests`, its mock in the domain's mock tests, and listed as a deviation in its runbook.
-    static let appOnlyReads: [String: GamRead] = [
-        // docs/domains/calendars.md: the calendar delete acts as the data owner this reads (GamGUI's first owner rule).
-        "print_calendar_settings": GamCommands.printCalendarSettings(calendarID: "<calendar_id>"),
-    ]
+    /// None since GamGUI #125 gave the calendar's data-owner read a builder (`print_calendar_data_owner`).
+    static let appOnlyReads: [String: GamRead] = [:]
 
     /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
     static let sharedBuilders: [String: String] = [
@@ -110,7 +108,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 42 + Self.sharedBuilders.count, "both shared builders are reads")
+        #expect(reads == 43 + Self.sharedBuilders.count, "both shared builders are reads")
         for (name, read) in Self.appOnlyReads {
             let verb = Self.verb(read.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")

@@ -666,9 +666,10 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
     return {"dialect": dialect, "cases": unique}
 
 
-# GamGUI's reads whose GAM shape the mock doesn't model (they printed NDJSON, which GAM never prints for
-# them): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars"}
+# GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
+# the org-unit tree, GamGUI #169, and the stored signature, #163, are features not built here yet): the mock refuses
+# them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "print_signature"}
 
 
 def _keyed(key: str, name: str):
@@ -703,6 +704,21 @@ GAM_PRINTED = {
 
 def _after(argv: list, word: str) -> str:
     return argv[argv.index(word) + 1] if word in argv else ""
+
+
+def _fields_named(argv: list) -> set:
+    """The field names a read's `fields` names, as GAM's _getFieldsList reads them: lowercased, `_` dropped, split at
+    commas and spaces."""
+    return set(_after(argv, "fields").lower().replace("_", "").replace(",", " ").split())
+
+
+# Each record as a read prints it, where that isn't the data file's whole record: the Directory API returns only the
+# fields asked for, and GAM adds no `id` of its own, so a users read whose fields don't name `id` gets none (GamGUI #156;
+# its failure log 2026-11-19).
+GAM_SHOWN = {
+    "print_users": lambda argv, record: record if "id" in _fields_named(argv)
+    else {key: value for key, value in record.items() if key != "id"},
+}
 
 
 # The records of a read's data file it prints, where it selects some: a group's members; the events a query (the
@@ -757,7 +773,9 @@ def mock_outputs(mock: Path) -> dict:
                     printed = "\n".join(line for line in run.stdout.split("\n") if config not in line)
                     header, name, keys = GAM_PRINTED[builder](argv)
                     selected = GAM_SELECTED.get(builder, lambda argv, record: True)
-                    records = [line for line in (data / name).read_text(encoding="utf-8").splitlines()
+                    shown = GAM_SHOWN.get(builder, lambda argv, record: record)
+                    records = [json.dumps(shown(argv, json.loads(line)), ensure_ascii=False, sort_keys=True)
+                               for line in (data / name).read_text(encoding="utf-8").splitlines()
                                if selected(argv, json.loads(line))]
                     if printed != gam_csv([header] + [keys(json.loads(line)) + [line] for line in records]):
                         raise SystemExit(f"the mock's bytes aren't GAM's for {argv}")
@@ -851,6 +869,10 @@ def models_fixture(mock: Path) -> dict:
         ' "recoveryEmail": 0}',
         '{"primaryEmail": "n5@example.com", "name": {"givenName": 0, "familyName": false},'
         ' "givenName": "Flat", "Last Name": "Name", "orgUnitPath": 5, "lastLoginTime": 1.5}',
+        # GamGUI #128: the alias-domain addresses GAM's `fields aliases` also returns, read as the aliases are.
+        '{"primaryEmail": "n6@example.com", "nonEditableAliases": "n6@alias.example.com, x@alias.example.com"}',
+        '{"primaryEmail": "n7@example.com", "nonEditableAliases": "",'
+        ' "NonEditableAliases": ["n7@alias.example.com", null, 7, " pad@alias.example.com "]}',
     ]
     raw_groups = ['{"email": "g@example.com", "directMembersCount": ' + count + '}' for count in
                   ['"' + chr(92) + 'u001c5"', '"5' + chr(92) + 'u001f"', "-3.7", "1e2", '"1__0"', '"_1"', '"1_"',
@@ -1394,7 +1416,8 @@ def usage_fixture(mock: Path) -> dict:
 
 def setup_fixture() -> dict:
     """GamGUI's guided setup (core/setup.py): the delegation step's facts and link (dwd_details,
-    dwd_auth_url) and the fresh-setup Terminal commands (setup_commands), over chosen inputs."""
+    dwd_auth_url), the scopes it verifies (DWD_SCOPES) and the scopes its link offers, and the fresh-setup Terminal
+    commands (setup_commands), over chosen inputs."""
     import json as _json
     from types import SimpleNamespace
 
@@ -1406,11 +1429,19 @@ def setup_fixture() -> dict:
                    _json.dumps({"scopes": ["https://mail.google.com/"]}), _json.dumps({"scopes": []}),
                    _json.dumps({"scopes": setup.USER_SECURITY_SCOPE}), '{}', 'not json', '']
     facts = []
+    offered = None
     for service in service_jsons:
         client_id = str(setup._json_field(service, "client_id") or "")
         for domain in ("", "example.com"):
+            # The delegation step as GamGUI shows it (dwd_details over a stand-in vault holding only this service
+            # account): since #151 its link offers the optional scopes too (OPTIONAL_DWD_SCOPES), never verified.
+            vault = SimpleNamespace(get=lambda _domain, name, held=service: held if name == "oauth2service" else None)
+            details = setup.SetupService.dwd_details(SimpleNamespace(vault=vault), domain)
+            if str(details["client_id"]) != client_id:
+                raise SystemExit(f"dwd_details read another client ID from {service!r}")
+            offered = [list(pair) for pair in details["scopes"]]
             facts.append({"oauth2service": service, "domain": domain, "client_id": client_id,
-                          "auth_url": setup.dwd_auth_url(client_id, [s for s, _ in setup.DWD_SCOPES], domain)})
+                          "auth_url": details["auth_url"]})
     security = []
     for oauth in oauth_jsons:
         granted = setup._json_field(oauth, "scopes")
@@ -1449,6 +1480,7 @@ def setup_fixture() -> dict:
     emails += [f"{w}a@example.com{w}" for w in ws] + [f"a{w}b@example.com" for w in ws]
     checks = [{"value": e, "ok": looks_like_email(e)} for e in emails]
     return {"looks_like_email": checks, "dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
+            "offered_dwd_scopes": offered,
             "user_security_scope": setup.USER_SECURITY_SCOPE,
             "admin_console_dwd_url": setup.ADMIN_CONSOLE_DWD_URL,
             "facts": facts, "user_security": security, "classroom_readable": classroom, "setup_commands": commands}
@@ -2050,19 +2082,28 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
             path = root / "load.json"
             path.write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
             onboarding._DEFAULT = {**json.loads(json.dumps(seed)), "__seed__": True}
+            case = {"hex": text.hex()} if isinstance(text, bytes) else {"text": text}
             try:
                 loaded = onboarding.RunbookStore(path)
+            except ValueError as exc:
+                # Since GamGUI #142 its `read_text()` sits outside the catch, so a file that isn't UTF-8 raises
+                # (UnicodeDecodeError) rather than being set aside: recorded as GamGUI does it, never as "unreadable".
+                loaded, case["raises"] = None, type(exc).__name__
             finally:
                 onboarding._DEFAULT = seed
-            case = {"hex": text.hex()} if isinstance(text, bytes) else {"text": text}
-            if "__seed__" in loaded._data:
+            if loaded is None:
+                pass
+            elif "__seed__" in loaded._data:
                 case["unreadable"] = True
             else:
                 case["roles"] = [{"name": r.name, "steps": r.steps, "signature": r.signature, "org_unit": r.org_unit,
                                   "groups": r.groups, "calendars": r.calendars, "welcome": r.welcome} for r in loaded.roles()]
                 case["welcomes"] = [[name, w["subject"], w["body"]] for name, w in loaded._data["welcomes"].items()]
             out["load"].append(case)
-            path.unlink()
+            # Since GamGUI #142 an unreadable file is moved to `load.json.unreadable-<time>`, not left in place.
+            path.unlink(missing_ok=True)
+            for moved in root.glob("load.json.unreadable-*"):
+                moved.unlink()
 
         # The store's rules (RunbookStore over a temporary file, never GamGUI's own: failure-log 2026-09-25): its
         # seed, what set_role keeps and refuses, and the welcome emails' names and refusals. The native role store
@@ -2732,7 +2773,8 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     from gamgui.core import roster as roster_mod
     from gamgui.core import roster_handover as handover
     from gamgui.core import roster_plan
-    from gamgui.core.gam.commands import GAMCommands
+    from gamgui.core.gam.commands import CACHE_FIELDS, GAMCommands
+    from gamgui.core.gam.models import GAMUser
     from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests import test_roster as tr
     from tests import test_roster_plan as tp
@@ -2761,7 +2803,8 @@ def roster_plan_fixture(gamgui: Path) -> dict:
         kept = handover.kept_changes(out)
         everything = handover.kept_changes(out, list(out.flags))
         return {"changes": [change_row(c) for c in out.changes], "counts": dict(out.counts), "flags": dict(out.flags),
-                "notes": list(out.notes), "summary": out.summary(), "managed": out.managed, "enrolled": out.enrolled,
+                "notes": list(out.notes), "summary": out.summary(), "managed": out.managed, "teachers": out.teachers,
+                "enrolled": out.enrolled,
                 "unmanaged_ignored": out.unmanaged_ignored, "incomplete": out.incomplete,
                 "kept": [out.changes.index(c) for c in kept],
                 "kept_with_flagged": [out.changes.index(c) for c in everything],
@@ -2770,11 +2813,17 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     cases: list = []
     real_plan = roster_plan.plan
 
+    def pairs(directory) -> list:
+        """The directory as [address, its account's primary] pairs, by address: a list, not a JSON object, so no reader
+        can merge two spellings of one address into one key."""
+        return sorted([address, primary] for address, primary in directory.items())
+
     def record(name: str, snap, classroom, directory=None, unread=0):
-        entry = {"name": name, "snapshot": snapshot(snap), "classroom": [managed(m) for m in classroom],
-                 "directory": None if directory is None else sorted(directory), "unread": unread,
-                 "limits": {k: list(v) for k, v in roster_plan.LIMITS.items()}}
+        # Planned first: since GamGUI #128 `plan` refuses a set as the directory (TypeError), which its test expects.
         out = real_plan(snap, classroom, directory, unread)
+        entry = {"name": name, "snapshot": snapshot(snap), "classroom": [managed(m) for m in classroom],
+                 "directory": None if directory is None else pairs(directory), "unread": unread,
+                 "limits": {k: list(v) for k, v in roster_plan.LIMITS.items()}}
         entry["expect"] = result(out)
         cases.append(entry)
         return out
@@ -2817,7 +2866,9 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     classroom, unread = roster_plan.managed_from(courses, people)
     if unread:
         raise SystemExit(f"GamGUI's mock left classes unread: {unread}")
-    directory = {str(r.get("primaryEmail") or "").lower() for r in parse_records(mock(GAMCommands.print_users()))}
+    # As the compare reads it since GamGUI #128: the users read now, with their aliases, as every address to its account.
+    directory = roster_plan.directory_from(GAMUser.from_json(r)
+                                           for r in parse_records(mock(GAMCommands.print_users(fields=CACHE_FIELDS))))
     web = tr._files(**{"classes.csv": tw.SIS_CLASSES, "users.csv": tw.SIS_USERS, "enrollments.csv": tw.SIS_ENROLL})
     snap = roster_mod.read_upload(list(web.items()))
     flagged = {"remove_student": (0, 0.0), "remove_teacher": (99, 1.0), "archive": (99, 1.0)}
@@ -2848,7 +2899,7 @@ def roster_plan_fixture(gamgui: Path) -> dict:
             got, unread_ids = roster_plan.managed_from([rec], participants)
             managed_cases.append({"courses": [rec], "participants": participants,
                                   "managed": [managed(m) for m in got], "unread": unread_ids})
-    return {"cases": cases, "web_reads": {"courses": courses, "participants": people, "directory": sorted(directory)},
+    return {"cases": cases, "web_reads": {"courses": courses, "participants": people, "directory": pairs(directory)},
             "alias_for": aliases, "managed_from": managed_cases}
 
 

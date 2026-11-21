@@ -664,7 +664,8 @@ public enum GamCommands {
     /// One calendar's data owner (Google's Calendars resource `dataOwner`, set only for a secondary calendar), read as the
     /// admin as the ACL read is: `calendars.get` with the fields asked (doCalendarsPrintShowSettings). `dataowner` is in GAM's
     /// CALENDAR_SETTINGS_FIELDS_CHOICE_MAP though the grammar's <CalendarSettingsField> (2010-2017) leaves it out; `id` comes
-    /// first anyway (`initialField`). Rows `calendarId,JSON`. Not GamGUI's: the calendar delete acts as this owner.
+    /// first anyway (`initialField`). Rows `calendarId,JSON`. The calendar delete acts as this owner. GamGUI's
+    /// `print_calendar_data_owner` since its #125.
     public static func printCalendarSettings(calendarID: String) -> GamRead {
         GamRead(["calendars", calendarID, "print", "settings", "fields", "id,dataowner", "formatjson"])
     }
@@ -728,9 +729,13 @@ public enum GamCommands {
 
     /// `service` is a `<DataTransferServiceList>`: one service (`drive`, `calendar`) or a comma-joined
     /// list riding as one element. Both in one transfer avoids Google's 409 "transfer already in
-    /// progress" when two transfers for the same user overlap.
-    public static func createDataTransfer(oldOwner: String, service: String, newOwner: String, privacy: TransferPrivacy? = nil) -> GamWrite {
-        GamWrite(["create", "datatransfer", oldOwner, service, newOwner] + (privacy.map { [$0.rawValue] } ?? []), action: .createDataTransfer)
+    /// progress" when two transfers for the same user overlap. `releaseResources` is a Calendar parameter
+    /// (`RELEASE_RESOURCES`, GamGUI #160), a bare word after the privacy: GAM refuses it, a usage error, when
+    /// Calendar isn't in `service`. Nothing here sends it yet.
+    public static func createDataTransfer(oldOwner: String, service: String, newOwner: String, privacy: TransferPrivacy? = nil,
+                                          releaseResources: Bool = false) -> GamWrite {
+        GamWrite(["create", "datatransfer", oldOwner, service, newOwner] + (privacy.map { [$0.rawValue] } ?? [])
+                 + (releaseResources ? ["release_resources"] : []), action: .createDataTransfer)
     }
 
     /// Transfers are asynchronous; the CSV carries `overallTransferStatusCode`.

@@ -9,8 +9,8 @@ calendar, and finding and deleting an event (C3b, C4 and events, below). Next: t
 those below). Deferred until asked: find by name (C3a, the domain-wide index).
 GamGUI's `web/routes/calendars.py` and `users.py:560-604` are the reference.
 
-**Owns invariants:** #1 and #11 (every write is a GamGUI builder held to `argv.json`; every read is too but one,
-`printCalendarSettings`, the delete's data owner, an app-only read held by `NativeArgvTests` and `CommandKindTests.appOnlyReads`;
+**Owns invariants:** #1 and #11 (every write is a GamGUI builder held to `argv.json`; every read is too, the delete's
+data-owner read `printCalendarSettings` included since GamGUI #125 gave it a builder, `print_calendar_data_owner`;
 the event search's days depart from GamGUI's at the screen, not in the builder), #2 (every share and removal through ChangeCore; nothing new in ChangeCore), the
 mock's fidelity for the calendar reads and writes, #9 for the reads kept.
 

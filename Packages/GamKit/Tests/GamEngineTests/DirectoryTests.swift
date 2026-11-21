@@ -20,6 +20,7 @@ struct DirectoryTests {
         let primary_email: String, given_name: String, family_name: String, suspended: Bool, org_unit_path: String
         let is_admin: Bool, is_delegated_admin: Bool, enrolled_2sv: Bool, title: String, department: String
         let location: String, phone: String, recovery_email: String, last_login_time: String?, aliases: [String]
+        let non_editable_aliases: [String]
         let full_name: String
     }
 
@@ -72,8 +73,26 @@ struct DirectoryTests {
             #expect((user.lastLoginTime == nil) == (want.last_login_time == nil)
                     && Self.same(user.lastLoginTime ?? "", want.last_login_time ?? ""), "last login \(label)")
             #expect(user.aliases.map { Array($0.utf8) } == want.aliases.map { Array($0.utf8) }, "aliases \(label)")
+            #expect(user.nonEditableAliases.map { Array($0.utf8) } == want.non_editable_aliases.map { Array($0.utf8) },
+                    "non-editable aliases \(label)")
         }
         #expect(document.users.count > 200)
+        #expect(document.users.contains { !$0.model.non_editable_aliases.isEmpty }, "an alias-domain address is read")
+    }
+
+    /// Every address GAM prints for an account, to its primary (GamGUI #128's
+    /// `test_the_directory_maps_every_address_gam_prints_to_its_primary`): `fields aliases` asks for aliases *and*
+    /// nonEditableAliases. A primary is always its own, whatever another's alias says; an alias two list is the first's.
+    @Test func everyAddressIsReadAsItsAccountsPrimary() {
+        func user(_ json: String) -> GamUser { GamUser(record: JSONValue.parse(json)?.object ?? [:]) }
+        let users = [user(#"{"primaryEmail": "Jane.Smith@x.com", "aliases": ["JDoe@x.com"], "nonEditableAliases": ["jane.smith@alias.x.com"]}"#),
+                     user(#"{"primaryEmail": "ben@x.com"}"#)]
+        #expect(GamUser.primaryOfEveryAddress(users) == ["jane.smith@x.com": "jane.smith@x.com", "jdoe@x.com": "jane.smith@x.com",
+                                                         "jane.smith@alias.x.com": "jane.smith@x.com", "ben@x.com": "ben@x.com"])
+        let clash = [user(#"{"primaryEmail": "ann@x.com", "aliases": ["ben@x.com", "shared@x.com", " Pad@X.com ", "no-at"]}"#),
+                     user(#"{"primaryEmail": "ben@x.com", "aliases": ["shared@x.com"]}"#), user(#"{"aliases": ["orphan@x.com"]}"#)]
+        #expect(GamUser.primaryOfEveryAddress(clash) == ["ann@x.com": "ann@x.com", "ben@x.com": "ben@x.com",
+                                                         "shared@x.com": "ann@x.com", "pad@x.com": "ann@x.com"])
     }
 
     /// `str.upper()` scalar by scalar over every code point, Swift-only assignments included (PR #7's

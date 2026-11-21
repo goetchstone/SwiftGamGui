@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
+  "gamgui_commit": "d03f5a6",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -12811,7 +12811,7 @@
     },
     {
      "key": "reminder",
-     "label": "31-day reminder for ",
+     "label": "31-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it's@example.com, who gets an invitation email) for 2052-08-05 to confirm deletion",
      "requires": [
       "password",
@@ -15709,7 +15709,7 @@
     },
     {
      "key": "reminder",
-     "label": "0-day reminder for ",
+     "label": "0-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2060-01-30 to confirm deletion",
      "requires": [
       "password",
@@ -15917,7 +15917,7 @@
     },
     {
      "key": "reminder",
-     "label": "90-day reminder for ",
+     "label": "90-day reminder for the manager",
      "summary": "Add a calendar reminder on  for 2013-11-20 to confirm deletion",
      "requires": [
       "password",
@@ -29527,7 +29527,7 @@
     },
     {
      "key": "reminder",
-     "label": "90-day reminder for ",
+     "label": "90-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it@example.com, who gets an invitation email) for 2010-05-18 to confirm deletion",
      "requires": [
       "password",
@@ -30149,7 +30149,7 @@
     },
     {
      "key": "reminder",
-     "label": "7-day reminder for ",
+     "label": "7-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2041-04-08 to confirm deletion",
      "requires": [
       "password",
@@ -31187,7 +31187,7 @@
     },
     {
      "key": "reminder",
-     "label": "1-day reminder for ",
+     "label": "1-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2043-12-23 to confirm deletion",
      "requires": [
       "password",
@@ -31602,7 +31602,7 @@
     },
     {
      "key": "reminder",
-     "label": "400-day reminder for ",
+     "label": "400-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites a b, who gets an invitation email) for 2046-09-08 to confirm deletion",
      "requires": [
       "password",
@@ -32222,7 +32222,7 @@
     },
     {
      "key": "reminder",
-     "label": "365-day reminder for ",
+     "label": "365-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it@example.com, who gets an invitation email) for 2011-12-23 to confirm deletion",
      "requires": [
       "password",
@@ -35119,7 +35119,7 @@
     },
     {
      "key": "reminder",
-     "label": "60-day reminder for ",
+     "label": "60-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it@example.com, who gets an invitation email) for 2031-06-28 to confirm deletion",
      "requires": [
       "password",
@@ -40496,7 +40496,7 @@
     },
     {
      "key": "reminder",
-     "label": "400-day reminder for ",
+     "label": "400-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it's@example.com, who gets an invitation email) for 2058-08-06 to confirm deletion",
      "requires": [
       "password",
@@ -44218,7 +44218,7 @@
     },
     {
      "key": "reminder",
-     "label": "365-day reminder for ",
+     "label": "365-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2041-04-03 to confirm deletion",
      "requires": [
       "password",
@@ -48342,7 +48342,7 @@
     },
     {
      "key": "reminder",
-     "label": "400-day reminder for ",
+     "label": "400-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2015-04-15 to confirm deletion",
      "requires": [
       "password",
@@ -53104,7 +53104,7 @@
     },
     {
      "key": "reminder",
-     "label": "14-day reminder for ",
+     "label": "14-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites \u00e9@example.com, who gets an invitation email) for 2046-10-22 to confirm deletion",
      "requires": [
       "password",
@@ -54963,7 +54963,7 @@
     },
     {
      "key": "reminder",
-     "label": "400-day reminder for ",
+     "label": "400-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it's@example.com, who gets an invitation email) for 2049-04-08 to confirm deletion",
      "requires": [
       "password",
@@ -55377,7 +55377,7 @@
     },
     {
      "key": "reminder",
-     "label": "14-day reminder for ",
+     "label": "14-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites it's@example.com, who gets an invitation email) for 2047-09-19 to confirm deletion",
      "requires": [
       "password",
@@ -58483,7 +58483,7 @@
     },
     {
      "key": "reminder",
-     "label": "31-day reminder for ",
+     "label": "31-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites a b, who gets an invitation email) for 1993-05-14 to confirm deletion",
      "requires": [
       "password",
@@ -59719,7 +59719,7 @@
     },
     {
      "key": "reminder",
-     "label": "90-day reminder for ",
+     "label": "90-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites a b, who gets an invitation email) for 2000-05-31 to confirm deletion",
      "requires": [
       "password",
@@ -61377,7 +61377,7 @@
     },
     {
      "key": "reminder",
-     "label": "-5-day reminder for ",
+     "label": "-5-day reminder for the manager",
      "summary": "Add a calendar reminder on  (also invites a b, who gets an invitation email) for 1998-02-06 to confirm deletion",
      "requires": [
       "password",
@@ -71529,7 +71529,6 @@
  "users": [
   {
    "primaryEmail": "admin@example.com",
-   "id": "100000000000000000009",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -71545,7 +71544,6 @@
    "aliases": [
     "a.anders@example.com"
    ],
-   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -71560,6 +71558,9 @@
     "familyName": "Anders",
     "givenName": "Alice"
    },
+   "nonEditableAliases": [
+    "alice@alias.example.net"
+   ],
    "orgUnitPath": "/Staff",
    "organizations": [
     {
@@ -71573,7 +71574,6 @@
   },
   {
    "primaryEmail": "bob@example.com",
-   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -71592,7 +71592,6 @@
   },
   {
    "primaryEmail": "carol@example.com",
-   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -71605,7 +71604,6 @@
   },
   {
    "primaryEmail": "dana@example.com",
-   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -71626,7 +71624,6 @@
   },
   {
    "primaryEmail": "admin@example.com",
-   "id": "100000000000000000009",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-10-20T08:00:00Z",
@@ -71642,7 +71639,6 @@
    "aliases": [
     "a.anders@example.com"
    ],
-   "id": "100000000000000000001",
    "isAdmin": true,
    "isEnrolledIn2Sv": true,
    "lastLoginTime": "2026-06-18T08:00:00Z",
@@ -71657,6 +71653,9 @@
     "familyName": "Anders",
     "givenName": "Alice"
    },
+   "nonEditableAliases": [
+    "alice@alias.example.net"
+   ],
    "orgUnitPath": "/Staff",
    "organizations": [
     {
@@ -71670,7 +71669,6 @@
   },
   {
    "primaryEmail": "bob@example.com",
-   "id": "100000000000000000002",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2025-12-01T08:00:00Z",
@@ -71689,7 +71687,6 @@
   },
   {
    "primaryEmail": "carol@example.com",
-   "id": "100000000000000000003",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-01-01T00:00:00Z",
@@ -71702,7 +71699,6 @@
   },
   {
    "primaryEmail": "dana@example.com",
-   "id": "100000000000000000004",
    "isAdmin": false,
    "isEnrolledIn2Sv": false,
    "lastLoginTime": "2026-10-01T09:30:00Z",
@@ -72179,9 +72175,7 @@
    "user": "carol@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "carol@example.com",
    "manager_found": null
@@ -72647,8 +72641,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    " CAROL@example.com  isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " CAROL@example.com  isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -73338,9 +73331,7 @@
    "user": "Carol@Example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "carol@example.com",
    "manager_found": null
@@ -73805,9 +73796,7 @@
    "user": "alice@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [
     "alice@example.com is a super admin. Offboarding doesn't remove the role \u2014 revoke it in the Admin console. If GamGUI is connected as this account, \u201cRevoke access & sign out\u201d deletes GamGUI's own authorization (its OAuth token) and the later steps fail."
    ],
@@ -74402,8 +74391,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -74414,8 +74402,7 @@
    "manager": "",
    "connected_admin": "alice@example.com",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -74426,8 +74413,7 @@
    "manager": "",
    "connected_admin": "CAROL@example.com",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -74438,8 +74424,7 @@
    "manager": "",
    "connected_admin": "eve@example.com",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -74450,8 +74435,7 @@
    "manager": "",
    "connected_admin": "kim@example.com",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -74462,8 +74446,7 @@
    "manager": "",
    "connected_admin": "nobody@example.com",
    "errors": [
-    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "a.anders@example.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -75001,8 +74984,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "A.Anders@EXAMPLE.com is an alias of alice@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "A.Anders@EXAMPLE.com is an alias of alice@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -75413,9 +75395,7 @@
    "user": "bob@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [
     "bob@example.com is already suspended \u2014 the mailbox steps (delegate, auto-reply) and \u201cRevoke access & sign out\u201d may fail for a suspended account."
    ],
@@ -75875,9 +75855,7 @@
    "user": "dana@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "dana@example.com",
    "manager_found": null
@@ -76307,9 +76285,7 @@
    "user": "dee@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [
     "Dee@Example.com holds a delegated admin role \u2014 offboarding doesn't remove it; revoke it in the Admin console."
    ],
@@ -76858,9 +76834,7 @@
    "user": "DEE@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [
     "Dee@Example.com holds a delegated admin role \u2014 offboarding doesn't remove it; revoke it in the Admin console."
    ],
@@ -77165,8 +77139,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "e.ve@example.com is an alias of eve@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "e.ve@example.com is an alias of eve@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -77634,9 +77607,7 @@
    "user": "eve@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [
     "eve@example.com is a super admin. Offboarding doesn't remove the role \u2014 revoke it in the Admin console. If GamGUI is connected as this account, \u201cRevoke access & sign out\u201d deletes GamGUI's own authorization (its OAuth token) and the later steps fail.",
     "eve@example.com is already suspended \u2014 the mailbox steps (delegate, auto-reply) and \u201cRevoke access & sign out\u201d may fail for a suspended account."
@@ -77958,9 +77929,7 @@
    "user": "kim@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "\u212aim@example.com",
    "manager_found": null
@@ -78489,9 +78458,7 @@
    "user": "\u212aim@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "\u212aim@example.com",
    "manager_found": null
@@ -78962,8 +78929,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -78974,8 +78940,7 @@
    "manager": "",
    "connected_admin": "alice@example.com",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -78986,8 +78951,7 @@
    "manager": "",
    "connected_admin": "CAROL@example.com",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -78998,8 +78962,7 @@
    "manager": "",
    "connected_admin": "eve@example.com",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -79010,8 +78973,7 @@
    "manager": "",
    "connected_admin": "kim@example.com",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -79022,8 +78984,7 @@
    "manager": "",
    "connected_admin": "nobody@example.com",
    "errors": [
-    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user.",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "kim@example.org is an alias of \u212aim@example.com \u2014 enter the primary address as the departing user."
    ],
    "warnings": [],
    "leaver": null,
@@ -79716,9 +79677,7 @@
    "user": "fay@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "fay@example.com",
    "manager_found": null
@@ -80274,9 +80233,7 @@
    "user": "gus@example.com",
    "manager": "",
    "connected_admin": "",
-   "errors": [
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
-   ],
+   "errors": [],
    "warnings": [],
    "leaver": "gus@example.com",
    "manager_found": null
@@ -80927,8 +80884,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "nobody@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "nobody@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81286,8 +81242,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "alcie@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "alcie@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81650,8 +81605,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81662,8 +81616,7 @@
    "manager": "",
    "connected_admin": "alice@example.com",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81674,8 +81627,7 @@
    "manager": "",
    "connected_admin": "CAROL@example.com",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81686,8 +81638,7 @@
    "manager": "",
    "connected_admin": "eve@example.com",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81698,8 +81649,7 @@
    "manager": "",
    "connected_admin": "kim@example.com",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -81710,8 +81660,7 @@
    "manager": "",
    "connected_admin": "nobody@example.com",
    "errors": [
-    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    " isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,
@@ -82244,8 +82193,7 @@
    "manager": "",
    "connected_admin": "",
    "errors": [
-    "\u0130@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh).",
-    " isn't in the directory \u2014 check the manager's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
+    "\u0130@example.com isn't in the directory \u2014 check the departing user's address (an account created in the last few minutes shows after Users \u2192 Refresh)."
    ],
    "warnings": [],
    "leaver": null,

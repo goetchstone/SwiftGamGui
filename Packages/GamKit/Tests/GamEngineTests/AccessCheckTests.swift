@@ -42,6 +42,21 @@ struct AccessCheckTests {
         #expect(result.authorizationURL?.host() == "admin.google.com")
     }
 
+    /// GamGUI's `_with_every_scope` (review 2026-11-21): GAM's link carries only the checked scopes with
+    /// `overwriteClientId=true`, so following it would remove the devices and alerts scopes Setup asked for.
+    @Test func aFailedCheckLinksEveryOfferedScopeNotGamsFew() async throws {
+        let gams = try await check("partialdwd@example.com")
+        let ours = gams.linkingEveryOfferedScope(clientID: "1234", domain: example)
+        #expect(ours.authorizationURL == DelegationScopes.authorizationURL(clientID: "1234", domain: example))
+        let added = try #require(ours.authorizationURL?.absoluteString)
+        #expect(DelegationScopes.optional.allSatisfy { added.contains($0.scope) })
+        #expect(ours.outcome == gams.outcome && ours.rows == gams.rows)
+        #expect(gams.linkingEveryOfferedScope(clientID: "", domain: example).authorizationURL == gams.authorizationURL,
+                "no client ID: GAM's link stays")
+        let passed = try await check("admin@example.com")
+        #expect(passed.linkingEveryOfferedScope(clientID: "1234", domain: example).authorizationURL == nil, "no link, none added")
+    }
+
     @Test func aRejectedKeyIsNamedNotBlamedOnDelegation() async throws {
         let result = try await check("badkey@example.com")
         #expect(result.outcome == .serviceAccountProblem(["Service Account Private Key Authentication"]))
@@ -111,7 +126,8 @@ struct AccessCheckTests {
         let url = DelegationScopes.authorizationURL(clientID: "1234567890", domain: example)
         let items = URLComponents(url: url!, resolvingAgainstBaseURL: false)!.queryItems!
         #expect(url?.host() == "admin.google.com")
-        #expect(items.first { $0.name == "clientScopeToAdd" }?.value == DelegationScopes.scopes.joined(separator: ","))
+        #expect(items.first { $0.name == "clientScopeToAdd" }?.value == DelegationScopes.offered.map(\.scope).joined(separator: ","),
+                "every offered scope, the optional ones too (GamGUI #151)")
         #expect(items.first { $0.name == "dn" }?.value == "example.com")
         #expect(DelegationScopes.authorizationURL(clientID: "") == nil)
     }

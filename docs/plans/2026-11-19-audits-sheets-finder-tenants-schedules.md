@@ -45,8 +45,8 @@ permissions and the rest of #151's table. Fixtures regenerated from GamGUI at it
 access it needs (runbook audit-reports.md). **No fixture regeneration in this PR**, a change of plan: the fixtures' GamGUI
 commit (`8f9e766`) is 25 merges before #151, and regenerating brought in that whole drift (a roster planner change, GamGUI's
 stores setting a file aside, and more), which is its own PR, a **parity catch-up** to GamGUI's main before the F1 port. #151's
-one fixture-held change, the Alert Center scope in Setup's Admin-console link, comes with it; until then the alerts pane says
-Setup doesn't ask for that scope. Found on the way: GamGUI's role and signature stores (`RunbookStore`, `SignatureStore`,
+one fixture-held change, the Alert Center scope in Setup's Admin-console link, came with it (offered, never verified, as in
+GamGUI). Found on the way: GamGUI's role and signature stores (`RunbookStore`, `SignatureStore`,
 since #142) crash on a file that isn't UTF-8 instead of setting it aside; this app sets it aside (a GamGUI fix, from GamGUI).
 
 ### F3 — Audit runs · *both apps*

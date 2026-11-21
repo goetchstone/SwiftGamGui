@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
+  "gamgui_commit": "d03f5a6",
   "generator": "scripts/gen_fixtures.py"
  },
  "looks_like_email": [
@@ -231,6 +231,44 @@
    "Onboarding task lists"
   ]
  ],
+ "offered_dwd_scopes": [
+  [
+   "https://www.googleapis.com/auth/calendar",
+   "Calendar sharing, the offboarding sweep and reminder"
+  ],
+  [
+   "https://mail.google.com/",
+   "Gmail full access \u2014 GAM's default Gmail scope; message search"
+  ],
+  [
+   "https://www.googleapis.com/auth/gmail.modify",
+   "Gmail messages and labels \u2014 GAM's default"
+  ],
+  [
+   "https://www.googleapis.com/auth/gmail.settings.basic",
+   "Signatures and auto-reply"
+  ],
+  [
+   "https://www.googleapis.com/auth/gmail.settings.sharing",
+   "Mail delegation and forwarding"
+  ],
+  [
+   "https://www.googleapis.com/auth/drive",
+   "A user's Drive file list"
+  ],
+  [
+   "https://www.googleapis.com/auth/tasks",
+   "Onboarding task lists"
+  ],
+  [
+   "https://www.googleapis.com/auth/cloud-identity.devices",
+   "The computers signed in with an account"
+  ],
+  [
+   "https://www.googleapis.com/auth/apps.alerts",
+   "Google's alerts (Reports)"
+  ]
+ ],
  "user_security_scope": "https://www.googleapis.com/auth/admin.directory.user.security",
  "admin_console_dwd_url": "https://admin.google.com/ac/owl/domainwidedelegation",
  "facts": [
@@ -238,25 +276,25 @@
    "oauth2service": "{\"client_id\": \"123456789012345678901\"}",
    "domain": "",
    "client_id": "123456789012345678901",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=123456789012345678901&overwriteClientId=true"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=123456789012345678901&overwriteClientId=true"
   },
   {
    "oauth2service": "{\"client_id\": \"123456789012345678901\"}",
    "domain": "example.com",
    "client_id": "123456789012345678901",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=123456789012345678901&overwriteClientId=true&dn=example.com"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=123456789012345678901&overwriteClientId=true&dn=example.com"
   },
   {
    "oauth2service": "{\"client_id\": 1234567890}",
    "domain": "",
    "client_id": "1234567890",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=1234567890&overwriteClientId=true"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=1234567890&overwriteClientId=true"
   },
   {
    "oauth2service": "{\"client_id\": 1234567890}",
    "domain": "example.com",
    "client_id": "1234567890",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=1234567890&overwriteClientId=true&dn=example.com"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=1234567890&overwriteClientId=true&dn=example.com"
   },
   {
    "oauth2service": "{\"client_id\": \"\"}",
@@ -334,13 +372,13 @@
    "oauth2service": "{\"client_id\": \"a&b=c d\"}",
    "domain": "",
    "client_id": "a&b=c d",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=a%26b%3Dc+d&overwriteClientId=true"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=a%26b%3Dc+d&overwriteClientId=true"
   },
   {
    "oauth2service": "{\"client_id\": \"a&b=c d\"}",
    "domain": "example.com",
    "client_id": "a&b=c d",
-   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks&clientIdToAdd=a%26b%3Dc+d&overwriteClientId=true&dn=example.com"
+   "auth_url": "https://admin.google.com/ac/owl/domainwidedelegation?clientScopeToAdd=https://www.googleapis.com/auth/calendar,https://mail.google.com/,https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.settings.basic,https://www.googleapis.com/auth/gmail.settings.sharing,https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/cloud-identity.devices,https://www.googleapis.com/auth/apps.alerts&clientIdToAdd=a%26b%3Dc+d&overwriteClientId=true&dn=example.com"
   }
  ],
  "user_security": [

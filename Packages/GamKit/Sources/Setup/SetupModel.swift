@@ -269,7 +269,8 @@ public final class SetupModel {
         }
         activity = .working("Checking access to \(domain)…")
         do {
-            let token = try await vault.credentials(for: domain)[.oauth2]
+            let credentials = try await vault.credentials(for: domain)
+            let token = credentials[.oauth2]
             let typed = typedAdmin.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard let admin = token.flatMap({ CredentialFacts.adminEmail(inOAuth2: $0.bytes) })
                 ?? (typed.contains("@") ? typed : nil)
@@ -277,7 +278,10 @@ public final class SetupModel {
                 activity = .problem("This domain's oauth2.txt names no admin. Enter the admin address GAM signs in as.")
                 return
             }
+            // GAM's link would drop the optional scopes Setup's link asked for: Setup's own stands in (GamGUI's verify).
+            let clientID = credentials[.oauth2Service].map { CredentialFacts.clientID(inServiceAccount: $0.bytes) } ?? ""
             let result = try await runner.checkAccess(admin: admin, as: domain)
+                .linkingEveryOfferedScope(clientID: clientID, domain: domain)
             lastCheck = CheckRecord(domain: domain, admin: admin, result: result)
             if result.isAuthorized {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },

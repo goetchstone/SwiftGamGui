@@ -251,7 +251,7 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   with `demo/schedule.csv` held for its map, opening on the demo's saved map. CI renders them (a hook blocks launching
   the app here).
 
-## Compare with Classroom (C3, from GamGUI 07c505d)
+## Compare with Classroom (C3, from GamGUI 07c505d; its #128 at d03f5a6)
 - **`RosterPlan.plan(snapshot, classroom:, directory:, unread:)`** is GamGUI's `roster_plan.plan`, pure: a `ChangeList`
   (changes in run order, counts, flags, notes, `summary`). No GAM, nothing written. It is held to
   `Tests/Fixtures/roster_plan.json`: the generator wraps GamGUI's `plan` while every synchronous test in its
@@ -266,6 +266,14 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   (count and share, both past) with each flag's sentence, the duplicate-create guard (a class matching an unaliased one by
   name and section is noted, never created), a directory that only limits who is added, an owner not read (no removals
   there), and the headline that never says "already matches" when the list is incomplete or has notes.
+- **Who is who** (GamGUI #128; failure log 2026-11-21, the roster alias): the directory is every address of every
+  account to its primary (`GamUser.primaryOfEveryAddress`, GamGUI's `primary_of_every_address`: primaries, `aliases` and
+  `nonEditableAliases`, which GAM's `fields aliases` both asks for). Each SIS address is read through it before anything
+  is compared, so an alias is planned as its account (and noted, "another address (an alias)"), never as no account.
+  Without the directory, a class whose roster names an address Classroom doesn't list in it gets no removal and no owner
+  change (noted).
+- **Risk bases**: each share is of what its kind acts on in **active** managed classes only: archives of the classes
+  (`managed`), teacher removals of their teachers (`teachers`), student removals of everyone in them (`enrolled`).
 - **Text is compared by its code points** (`ExactKey`), as Python's `str`: a Swift `String` takes "é" and "e" + U+0301 for
   one address or title, and would sort, dedupe and match differently. Sorting is Python's (code point; a stable sort's
   ties by position). `f"{n:,}"`, `.1%` and `.0%` are `RosterPlan.grouped` and `%.1f`/`%.0f` of the share × 100.
@@ -277,8 +285,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   be read, whose row is missing, or whose roster is unreadable or hides an address is **unread**, and any unread class
   makes the list incomplete. `ClassroomStateTests` holds the pairing to every `managed_from` case the generator recorded,
   and the Swift mock's two reads to the classes GamGUI's mock gave its web test.
-- **The directory** (`UserAccess.directoryAddresses`): `print users` with the cache's fields, read fresh each compare,
-  primary addresses lowercased. Unread, the plan has no directory and says so (`RosterPlan.directoryUnread`, GamGUI's note).
+- **The directory** (`UserAccess.directoryAddresses`): `print users` with the cache's fields (which name `aliases`, and
+  `id` since GamGUI #156), read fresh each compare, every address to its account's primary. Unread, the plan has no
+  directory and says so (`RosterPlan.directoryUnread`, GamGUI's note). `RosterCompareTests` plans a SIS that lists Alice by
+  her alias and by her alias-domain address through the mock, and checks the read asks for `aliases`.
 - **The compare** (`RosterCompare`, in Directory so it's tested; the app's `RosterKeeper` holds it): one at a time, not
   stoppable (the screen going away doesn't cancel it), its change list held in memory only, for the tenant and generation
   and the kept roster's SHA-256 it was made from. A new upload or a purge drops it (`drop()`), and so does a tenant switch
@@ -373,17 +383,16 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   again, and a cancellation is said in fixed words, never Swift's own text.
 - **A person with no address is said** ("Someone (no address shown)", "no address shown" under a name), never a blank row.
 
-## Open, shared with GamGUI (review 2026-11-14; fix in GamGUI first, then regenerate)
-The planner is held to `roster_plan.json`, so these are fixed in GamGUI and come here with the fixtures, never patched
-here alone:
-- **A SIS address that's an alias of an account plans that account's removal.** The directory read keeps primary
-  addresses only, so `jdoe@` (now an alias of `jane.smith@`) is "not an account": it's left out of the teachers, another
-  SIS teacher becomes owner (07), and `jane.smith@` is removed (08) from the class she owned; a student the same (10).
-  The note says such people "aren't added (nor removed)". Fix: read aliases and map each SIS address to its primary, or
-  hold the class's removals and owner change while any of its SIS addresses isn't an account.
-- **The risk check's bases are too wide.** Teacher removals are measured against teachers plus students (`enrolled`), so
-  dropping every co-teacher of 400 classes (~4%) isn't held back; archived managed classes, which can't be archived or
-  removed from, count in `managed` and `enrolled` too, so each year dilutes both shares.
+## Fixed with GamGUI (review 2026-11-14; GamGUI #128, ported with the fixtures at d03f5a6)
+Both were fixed in GamGUI first and came here with `roster_plan.json`, never patched here alone (failure log 2026-11-21,
+the roster alias):
+- **A SIS address that's an alias of an account planned that account's removal.** The directory read kept primary
+  addresses only, so `jdoe@` (now an alias of `jane.smith@`) was "not an account": left out of the teachers, another SIS
+  teacher became owner (07), and `jane.smith@` was removed (08) from the class she owned; a student the same (10). Now
+  every SIS address is read as its account's primary, and without the directory such a class is held (above).
+- **The risk check's bases were too wide.** Teacher removals were measured against teachers plus students, so dropping
+  every co-teacher of 400 classes (~4%) wasn't held back, and archived classes diluted both shares. Now each kind is
+  measured against what it acts on, in active classes only.
 
 ## Gotchas / mock-lies traps
 - **A failed side of a roster can read as empty, and nothing here can tell.** GAM's `_getCourseAliasesMembers` swallows
