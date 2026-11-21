@@ -61,6 +61,7 @@ struct AuditRunsTests {
         #expect(DirectoryReport.inactiveDays == constants["INACTIVE_DAYS"]!.int!)
         #expect([AuditRuns.State.read, .unknown, .notRun].map(\.rawValue) == constants["STATES"]!.array!.map { $0.string! })
         #expect(ReadAudit.Origin.auditRun.rawValue == constants["ORIGIN"]!.string!)
+        #expect(AuditRuns.all.flatMap(\.steps).allSatisfy { AuditRuns.isAuditRead(AuditRuns.read($0).argv) })
     }
 
     @Test func whatIsUnknownAndWhyIsGamGUIs() {
