@@ -1,5 +1,6 @@
 import Assist
 import Directory
+import FinderCatalog
 import GamEngine
 import SwiftUI
 
@@ -30,23 +31,6 @@ struct PlainEnglishSheet: View {
         case idle, finding
         case found(asked: String, CommandFinder.Finding)
         case failed(String)
-    }
-
-    /// The commands the finder picks from: the Builder's runnable reads and GamGUI's curated commands, as plain words.
-    /// `AssistTests/FinderSamples.swift` (`FinderMenu.commands`) makes the same field copy for the measured samples: change both.
-    static func menu(_ catalog: CommandCatalog) -> CommandFinder.Menu {
-        CommandFinder.Menu(CuratedCommand.all.map { command in
-            CommandFinder.Command(id: command.id, category: command.category, subcategory: command.subcategory, words: command.name, curated: true,
-                                  changes: !command.reads, slots: command.fields.map {
-                                      .init(key: $0.key, label: $0.label, gamKind: $0.kind.rawValue, required: $0.required, choices: $0.choices,
-                                            hint: $0.placeholder)
-                                  })
-        } + catalog.commands.filter(\.runnable).map { command in
-            CommandFinder.Command(id: command.id, category: command.category, subcategory: command.subcategory, words: command.gloss, curated: false,
-                                  changes: false, slots: command.slots.map {
-                                      .init(key: $0.key, label: $0.label, gamKind: $0.kind.rawValue, required: $0.required, hint: $0.placeholder)
-                                  })
-        })
     }
 
     /// The cached directory as far as it's read, for code's checks only: the model never reads it.
@@ -142,7 +126,7 @@ struct PlainEnglishSheet: View {
         let asked = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !asked.isEmpty, !busy, CommandFinder.unavailable == nil else { return }
         phase = .finding
-        let menu = Self.menu(catalog), known = Self.known(directory, groups)
+        let menu = CommandFinder.Menu(catalog), known = Self.known(directory, groups)
         Task {
             do {
                 let finding = try await CommandFinder.find(asked, in: menu, directory: known, using: CommandFinder.OnDevice())

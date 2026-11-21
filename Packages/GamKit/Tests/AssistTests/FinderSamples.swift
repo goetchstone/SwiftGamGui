@@ -1,29 +1,15 @@
+import FinderCatalog
 import Foundation
 import GamEngine
 import TestSupport
 @testable import Assist
 
-/// What the finder's tests and evals pick from: the Builder's commands as the app hands them over (`App/PlainEnglishFinder.swift`
-/// makes the same field copy: change both), the vendored catalog's runnable reads and GamGUI's curated commands.
+/// What the finder's tests and evals pick from: the vendored catalog's commands as the app hands them over, by the same code
+/// (`FinderCatalog`'s `CommandFinder.Menu(catalog)`).
 enum FinderMenu {
     static let catalog: CommandCatalog = try! CommandCatalog(json: Data(contentsOf: Fixtures.catalogJSON))
 
-    static func commands(_ catalog: CommandCatalog) -> [CommandFinder.Command] {
-        CuratedCommand.all.map { command in
-            CommandFinder.Command(id: command.id, category: command.category, subcategory: command.subcategory, words: command.name, curated: true,
-                                  changes: !command.reads, slots: command.fields.map {
-                                      .init(key: $0.key, label: $0.label, gamKind: $0.kind.rawValue, required: $0.required, choices: $0.choices,
-                                            hint: $0.placeholder)
-                                  })
-        } + catalog.commands.filter(\.runnable).map { command in
-            CommandFinder.Command(id: command.id, category: command.category, subcategory: command.subcategory, words: command.gloss, curated: false,
-                                  changes: false, slots: command.slots.map {
-                                      .init(key: $0.key, label: $0.label, gamKind: $0.kind.rawValue, required: $0.required, hint: $0.placeholder)
-                                  })
-        }
-    }
-
-    static let menu = CommandFinder.Menu(commands(catalog))
+    static let menu = CommandFinder.Menu(catalog)
 
     /// The directory the samples name: the strict mock's people and groups (`Tests/Fixtures/mock_gam`), and Erin.
     static let directory = CommandFinder.Directory(

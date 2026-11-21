@@ -195,19 +195,28 @@ struct WriteRouteTests {
     }
 
     /// Plan F5b: what Ask in Plain English finds never reaches a run or a ticket (invariant 10). The finder, `CommandFinder`, is
-    /// in Assist, which depends on nothing (`theLogReaderCanRunNothing`). Its one screen names no command builder, runner,
-    /// write, preview or confirmation, and hands the Builder a `FinderDraft` alone: a command's id and its fields' words, made
-    /// only there. The Builder fills a command's fields from it and selects the command; no line naming a draft runs, reads
-    /// or previews anything: a read runs on the operator's Run, a change after their Preview… and confirm.
+    /// in Assist, which depends on nothing (`theLogReaderCanRunNothing`); `FinderCatalog` hands it the catalog's commands and
+    /// joins Assist and GamEngine only. Its one screen names no command builder, runner, write, preview or confirmation, and
+    /// hands the Builder a `FinderDraft` alone: a command's id and its fields' words, made only there. The Builder fills a
+    /// command's fields from it and selects the command; no line naming a draft runs, reads or previews anything: a read runs
+    /// on the operator's Run, a change after their Preview… and confirm.
     @Test func theFinderReachesNoRunOrTicket() throws {
-        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["CommandFinder"]) == ["Packages/GamKit/Sources/Assist/CommandFinder.swift"])
+        let catalogFile = "Packages/GamKit/Sources/FinderCatalog/FinderCatalog.swift"
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["CommandFinder"])
+                == ["Packages/GamKit/Sources/Assist/CommandFinder.swift", catalogFile])
         #expect(try Self.files(in: "App", matching: ["CommandFinder"]) == ["App/PlainEnglishFinder.swift"])
-        let app = try Self.swiftFiles(in: "App")
-        let sheet = try #require(app.first { $0.path == "App/PlainEnglishFinder.swift" })
+        let manifest = try String(contentsOf: Self.root.appending(path: "Packages/GamKit/Package.swift"), encoding: .utf8)
+        #expect(manifest.contains(#".target(name: "FinderCatalog", dependencies: ["Assist", "GamEngine"]),"#))
         let reaching = ["WriteTicket", "ticket:", "Executor", "executor", "GamWrite", "GamRead", "WriteStep", "HeldPreview", "Confirmation",
                         "Process", "catalogRead", ".built(", ".run(", "Runner", "runner", "BuilderChanges", "changes.", ".preview(", "UserAccess",
                         "ReadAudit", "AppServices"]
+        let catalog = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources").first { $0.path == catalogFile })
+        #expect(Set(catalog.lines.filter { $0.hasPrefix("import ") }) == ["import Assist", "import GamEngine"])
+        #expect(catalog.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        let app = try Self.swiftFiles(in: "App")
+        let sheet = try #require(app.first { $0.path == "App/PlainEnglishFinder.swift" })
         #expect(sheet.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+
         // The draft holds words only, and only the sheet makes one.
         let draft = sheet.lines.drop { !$0.contains("struct FinderDraft") }.prefix { $0 != "}" }
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("let ") || $0.hasPrefix("var ") }
