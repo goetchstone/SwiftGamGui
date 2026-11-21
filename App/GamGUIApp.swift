@@ -110,9 +110,14 @@ struct ContentView: View {
     @State private var screen: Screen? = Screen.initial
     /// The toolbar's domain menu (plan F6): this window's panel, and what its last switch said.
     @State private var switcher: DomainSwitcher
-    /// Switches from one domain to another since the window opened: the screen is made again for the new domain, as GamGUI
+    /// Tenant changes since this window first had a domain connected: the screen is made again for the tenant now, as GamGUI
     /// reloads it, so nothing a screen held for the old one (a selection, a form, the Builder's last result) shows there.
+    /// Every change counts, a removal or re-import then a check included (plan F6's review), but not the window's first
+    /// connection (nothing was shown for a domain before it), and Setup is never made again: it holds no domain's data, and
+    /// its own Check Access is often what switched (its form, focus and scroll stay).
     @State private var switches = 0
+    /// A domain has been connected while this window was open, or was when it opened.
+    @State private var everConnected: Bool
     #if DEBUG
     @State private var demoJobs = false
     /// Snapshots (`SWIFTGAMGUI_TAB=domain` or `domain-warning`): the domain menu's panel over the screen.
@@ -168,6 +173,7 @@ struct ContentView: View {
     init(services: AppServices) {
         self.services = services
         _switcher = State(initialValue: DomainSwitcher(setup: services.setup))
+        _everConnected = State(initialValue: services.setup.active != nil)
     }
 
     private var connection: String {
@@ -284,8 +290,8 @@ struct ContentView: View {
                         .navigationTitle("Setup")
                 }
             }
-            // A switch to another domain makes the screen again, for the new domain (plan F6).
-            .id(switches)
+            // A tenant change makes the screen again, for the tenant now (plan F6); Setup stays as it is.
+            .id(screen == .setup ? -1 : switches)
         }
         // The domain menu (plan F6), then the jobs tray, on every screen: each run the executor makes, and Stop.
         .toolbar {
@@ -298,15 +304,17 @@ struct ContentView: View {
         .focusedSceneValue(\.domainMenu, DomainMenuActions(open: { switcher.open() },
                                                            choose: { switcher.choose($0, announce: announce) },
                                                            openSetup: { screen = .setup }))
-        .onChange(of: services.setup.active) { old, new in
-            guard let old, let new, old != new else { return }
-            switches += 1
-            // What one screen asked another to open belongs to the old domain.
-            (signaturesPerson, calendarsPerson, classroomCourse, groupsGroup, usersPerson) = (nil, nil, nil, nil, nil)
-            (compromisedPerson, phishingMessage, builderCommand) = (nil, nil, nil)
+        .onChange(of: services.setup.generation) {
+            // Incident's reading is the window's, kept across screens: another tenant's is dropped whichever screen shows.
+            incidentReading.clear()
+            if everConnected {
+                switches += 1
+                // What one screen asked another to open belongs to the old tenant.
+                (signaturesPerson, calendarsPerson, classroomCourse, groupsGroup, usersPerson) = (nil, nil, nil, nil, nil)
+                (compromisedPerson, phishingMessage, builderCommand) = (nil, nil, nil)
+            }
+            if services.setup.active != nil { everConnected = true }
         }
-        // Incident's reading is the window's, kept across screens: another tenant's is dropped whichever screen shows.
-        .onChange(of: services.setup.generation) { incidentReading.clear() }
         #if DEBUG
         // Snapshots (`SWIFTGAMGUI_TAB=jobs`): the tray over the screen, with made-up runs: nothing runs.
         .sheet(isPresented: $demoJobs) { JobsTray(board: services.jobs).frame(width: 440, height: 520) }
