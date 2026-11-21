@@ -102,9 +102,13 @@ enum DemoAudit {
                about: ["group": "sales@example.com"], failing: "Member already exists.", kind: "duplicate")
         change(GamCommands.updateOrganization(email: "alice@example.com", title: "IT Director", department: "IT"), "alice@example.com")
         read("raw.7950", "alice@example.com", ["user", "alice@example.com", "print", "delegates"], on: "example.com", .read(rows: 2))
-        read("raw.7950", "zoe@example.com", ["user", "zoe@example.com", "print", "delegates"], on: "example.com",
-             .failed("User: zoe@example.com, Does not exist"))
-        read("raw.6078", "(command)", ["print", "users"], on: "example.org", .read(rows: 318))
+        // A user who isn't one: the mock's (GAM's) stderr and exit code, worded as the Builder words any failed read.
+        let missing = ["user", "zoe@example.com", "print", "delegates"]
+        read("raw.7950", "zoe@example.com", missing, on: "example.com",
+             .failed(GamError(exitCode: 56, stderr: "Getting all Delegates for zoe@example.com\nUser: zoe@example.com, Does not exist\n",
+                              argv: missing).message))
+        // A bare `print users` prints one column (primaryEmail), no comma: not a table, so no row count, as GamGUI records it.
+        read("raw.6078", "(command)", ["print", "users"], on: "example.org", .read(rows: nil))
     }
 }
 #endif

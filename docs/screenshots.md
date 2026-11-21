@@ -102,7 +102,7 @@ steps and failures in words, and Stop.
 
 | Audit, one domain |
 |---|
-| ![Audit narrowed to example.org: its change and its two Builder reads, each read with its row count](screenshots/audit-domain.png) |
+| ![Audit narrowed to example.org: its change and its two Builder reads, the licenses read with its row count](screenshots/audit-domain.png) |
 
 Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
 attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
