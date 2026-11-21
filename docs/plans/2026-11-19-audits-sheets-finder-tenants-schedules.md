@@ -183,6 +183,18 @@ owner; code can't tell, the exact command and the preview show it). The three-sa
 whose greedy pick was wrong, at two calls (about 1.5 s) each time: kept as the plan says, worth measuring again. Not done:
 screenshots (the sheet needs the model, which CI hasn't), and the operator's own use.
 
+*Review (2026-11-21, a gam-command-reviewer pass; none broke invariant 10):* five defects fixed, each with a test that failed
+before. A value must be the request's whole words ("Carol" had passed for "Reset Caroline's password", "manager" for "the
+managers group", "delete" for "is deleted", "bob" inside bob@gmail.com), and is kept as the request writes it (it had kept the
+model's "SENIOR\nENGINEER", and cut "Children's" to "Children": a possessive is dropped from a name only); the eval's
+invented-value check uses the same rule. The Builder sets a page's fields from a draft in the page's init and lets the draft
+go once taken (it had refilled them whenever the command reopened), and the scan holds what runs as a page appears, and what
+that calls, free of any run, read or preview (an `.onAppear { …; run() }` had passed it). Cancel stops the model's work
+(the other command's fill had still opened after it). The commands are made once, `FinderCatalog` (Assist and GamEngine
+only), for the app and the samples alike. Then the evaluation again, once: held out 6 of 13 (fields right on every one whose
+command was right, no invented value), dev 14 of 22, both as before; slower this run (held out 5.8 s mean, 9.4 s at most;
+dev 4.6 and 7.6), not looked into. The fixes came from the review, not from held-out results.
+
 ### F6 — Tenant switching from anywhere · *both apps*
 A domain menu in the toolbar when more than one domain is connected; choosing one runs the same `checkAccess`
 (switches only on a pass, Touch ID if the Vault session ended), disabled while busy, warns that a run in progress stops

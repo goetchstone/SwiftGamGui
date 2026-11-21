@@ -33,8 +33,9 @@ it) and 11 (parity is a test).
   `WriteRouteTests.theReadRecordIsNoWritePath`, `ChangeCoreTests/AuditLogTests.everyReadIsRecordedAsGamGUIRecordsIt`,
   `CommandKindTests.everyBuilderInTheSourceIsChecked`.
 - Ask in Plain English (plan F5b): `Packages/GamKit/Sources/Assist/CommandFinder.swift` (the on-device model's picks and code's
-  checks, given the commands as plain words) and `App/PlainEnglishFinder.swift` (the sheet, the commands handed over, the
-  `FinderDraft` it gives the Builder). Tests: `AssistTests/CommandFinderTests.swift` (a scripted model),
+  checks, given the commands as plain words), `Packages/GamKit/Sources/FinderCatalog/FinderCatalog.swift` (those commands,
+  from the catalog: `CommandFinder.Menu(catalog)`, for the app and the samples alike) and `App/PlainEnglishFinder.swift` (the
+  sheet, and the `FinderDraft` it gives the Builder). Tests: `AssistTests/CommandFinderTests.swift` (a scripted model),
   `CommandFinderEvals.swift` (the real model, on demand) with `FinderSamples.swift` and `Tests/Fixtures/finder/`
   (samples and saved results), `WriteRouteTests.theFinderReachesNoRunOrTicket`.
 - Parity fixtures, both made by `scripts/gen_catalog_reads.py` from a GamGUI clone pinned at the fixtures' commit:
@@ -136,11 +137,13 @@ it) and 11 (parity is a test).
   sentences): see or change; a change among the curated changes alone, so a question never drafts one; a read by category
   (largest first, with a line naming Users' subcategories), Users' subcategory, then the command (curated reads first, alike
   glosses one choice). It copies the operator's words into the command's fields, and code checks each: the request's own
-  words, a choice too (else its default); a person or group found in the cached directory (address or alias, the address's
-  name, a name), never invented; one re-ask naming the fault, then left empty with a note; two matches or a directory not
-  read left for the operator. The model reads only the sentence, never the directory. The command pick is sampled twice
-  more; a split asks which of two. The sheet shows the command and notes; Open in Builder hands a `FinderDraft` (id and
-  values) through `requested`, and the Builder fills the fields and shows the exact command: Run or Preview… as always.
+  whole words, kept as the request writes them (`CommandFinder.span`), a choice too (else its default); a person or group
+  found in the cached directory (address or alias, the address's name, a name), never invented; one re-ask naming the fault,
+  then left empty with a note; two matches or a directory not read left for the operator. The model reads only the
+  sentence, never the directory. The command pick is sampled twice more; a split asks which of two. The sheet shows the
+  command and notes; Cancel stops the model's work. Open in Builder hands a `FinderDraft` (id and values) through
+  `requested`; the page sets its fields from it in its init, the Builder lets the draft go, and the page shows the exact
+  command: Run or Preview… as always.
 
 ## Gotchas / mock-lies traps
 - **The mock answers only `gam version`** of the 501. The strict mock models the exact forms this app's typed builders send
@@ -175,9 +178,11 @@ it) and 11 (parity is a test).
   (that `info` line reads "Show details for basic …"). The fixture is GamGUI's code run over this repo's first-line catalog,
   the input the app reads.
 
-- **Ask in Plain English's command list is a field copy made twice**: `PlainEnglishSheet.menu` in the app and
-  `FinderMenu.commands` in the tests (the Assist module can't see GamEngine's types). Change both, or the measurement measures
-  another menu.
+- **Ask in Plain English's commands are made in one place**, `FinderCatalog`, for the app and the measured samples: two copies
+  would let the measurement measure another menu (review 2026-11-21). It joins Assist and GamEngine only; the finder scan
+  holds its imports.
+- **A value is the request's whole words** (review 2026-11-21): a substring match had taken "Carol" from "Caroline's",
+  "manager" from "managers", "delete" from "deleted" and "bob" from bob@gmail.com, and kept the model's spelling.
 - **Two people in one command can be swapped**: "give dana access to bob's mailbox" filled dana as the mailbox's owner and bob
   as the delegate. Both are real people, so no check catches it; the Builder's exact command and a change's preview show it.
 
