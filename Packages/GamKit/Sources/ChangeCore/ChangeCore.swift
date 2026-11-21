@@ -54,16 +54,31 @@ public struct WriteStep: Sendable {
     /// else): one real failure among the benign per-user notices fails the step.
     public let tolerating: Set<GamError.Kind>
 
+    /// What the executor keeps before it runs this step (`KeepFirst`); nil for any step but a signature a screen replaces.
+    /// Not public: what it holds is the signature, kept from the screen as the argv is.
+    let keepFirst: KeepFirst?
+
+    /// Plain data, never a closure, so a screen can ask only for what ChangeCore itself does (`Executor`'s run, in the write
+    /// lock): a step with one runs only after this is done.
+    public enum KeepFirst: Sendable, Equatable {
+        /// Read `email`'s stored signature exactly (`Signature.exact`) and keep it, with `setting` (the body the step's own
+        /// argv sets: the preview refuses any other), in the run's kept signatures (`SignatureKeeper`). With `expectedNow`
+        /// (a Put Back: what the run being put back set, as GAM stored it), a signature that isn't byte for byte that is
+        /// left as it is: the step is skipped, "Changed since that run". `restoring` is the kept run a Put Back sets again:
+        /// the keeper never prunes it for this run, so whoever this run doesn't put back is still there to put back.
+        case signature(email: String, setting: String, expectedNow: String?, restoring: String? = nil)
+    }
+
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
                 about: [String: String] = [:], secrets: [Secret] = [], timeout: Duration = GamRunner.defaultTimeout,
-                newAccountFrom: Int? = nil, tolerating: Set<GamError.Kind> = []) {
+                newAccountFrom: Int? = nil, tolerating: Set<GamError.Kind> = [], keepFirst: KeepFirst? = nil) {
         self.init(write, target: target, summary: summary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: nil)
+                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: nil, keepFirst: keepFirst)
     }
 
     private init(_ write: GamWrite, target: String, summary: String, risk: Risk, requires: [Int], about: [String: String],
                  secrets: [Secret], timeout: Duration, newAccountFrom: Int?, tolerating: Set<GamError.Kind>,
-                 listedTask: ListedTask?) {
+                 listedTask: ListedTask?, keepFirst: KeepFirst?) {
         self.write = write
         self.target = target
         rawSummary = summary
@@ -75,6 +90,7 @@ public struct WriteStep: Sendable {
         self.newAccountFrom = newAccountFrom
         self.tolerating = tolerating
         self.listedTask = listedTask
+        self.keepFirst = keepFirst
     }
 
     /// A task on the list step `list` of the same preview makes for the same `assignee` (GamGUI's
@@ -88,7 +104,7 @@ public struct WriteStep: Sendable {
         WriteStep(GamCommands.createTask(assignee: assignee, taskListID: listIDPlaceholder(list), title: title, notes: notes),
                   target: target, summary: summary, risk: .low, requires: requires.contains(list) ? requires : requires + [list],
                   about: about, secrets: [], timeout: timeout, newAccountFrom: newAccountFrom, tolerating: [],
-                  listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes))
+                  listedTask: ListedTask(list: list, assignee: assignee, title: title, notes: notes), keepFirst: nil)
     }
 
     /// What a held task's list id element says until the run knows the id. `list` is the step's index.
@@ -97,7 +113,7 @@ public struct WriteStep: Sendable {
     /// The same step, running `write` (a listed task with its list's id put in).
     func running(_ write: GamWrite) -> WriteStep {
         WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,
-                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: listedTask)
+                  timeout: timeout, newAccountFrom: newAccountFrom, tolerating: tolerating, listedTask: listedTask, keepFirst: keepFirst)
     }
 
     public var action: WriteAction { write.action }
@@ -259,13 +275,17 @@ public struct RunOutcome: Sendable {
     /// Steps still waiting for a new account, when they can be retried: pass it to `Executor.retry`.
     public let retry: PendingRetry?
 
+    /// The kept run holding the signatures this run replaced (`WriteStep.KeepFirst`), for its Put Back; nil when it kept none.
+    public let kept: String?
+
     public var succeeded: Bool { refusal == nil && steps.allSatisfy { if case .succeeded = $0 { true } else { false } } }
 
-    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil) {
+    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil, kept: String? = nil) {
         self.refusal = refusal
         self.steps = steps
         self.auditProblem = auditProblem
         self.retry = retry
+        self.kept = kept
     }
 
     static func refused(_ why: String) -> RunOutcome { RunOutcome(refusal: why, steps: [], auditProblem: nil) }
@@ -314,6 +334,9 @@ public actor Executor {
     private let extraEnvironment: [String: String]
     /// Where each run is reported as it starts, as each step ends and as it finishes: the jobs tray (`JobBoard.report`).
     private let jobs: (@Sendable (JobEvent) -> Void)?
+    /// Where each signature a step replaces is kept before the step runs (`WriteStep.KeepFirst`): Stores'
+    /// `SignatureBackupStore`. Without one, a run with such a step is refused, and nothing is replaced.
+    private let signatureKeeper: (any SignatureKeeper)?
 
     private var held: [UUID: HeldPreview] = [:]
     private var order: [UUID] = []
@@ -335,8 +358,10 @@ public actor Executor {
                 currentActor: (@Sendable () async -> String?)? = nil, adminAccountID: (@Sendable () async -> String?)? = nil,
                 tenant: @escaping Tenant,
                 now: @escaping @Sendable () -> ContinuousClock.Instant = { ContinuousClock.now },
-                extraEnvironment: [String: String] = [:], jobs: (@Sendable (JobEvent) -> Void)? = nil) {
+                extraEnvironment: [String: String] = [:], jobs: (@Sendable (JobEvent) -> Void)? = nil,
+                signatureKeeper: (any SignatureKeeper)? = nil) {
         self.jobs = jobs
+        self.signatureKeeper = signatureKeeper
         self.runner = runner
         self.audit = audit
         self.actor = actor
@@ -367,6 +392,17 @@ public actor Executor {
         where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
             || !Self.newAccountWaitHolds(step, at: index, in: steps) {
             return .failure(.badPrerequisite(step: index))
+        }
+        // A signature kept first is the one the step's own argv sets, on an account that already has one to keep.
+        if let index = steps.indices.first(where: { !Self.keepHolds(steps[$0]) }) {
+            return .failure(.badKeep(step: index))
+        }
+        // Gmail keeps no copy of a replaced signature: every signature write keeps the one it replaces, unless it's on an
+        // account this run makes, which has none.
+        if let index = steps.indices.first(where: {
+            steps[$0].action == .setSignature && steps[$0].keepFirst == nil && steps[$0].newAccountFrom == nil
+        }) {
+            return .failure(.signatureNotKept(step: index))
         }
         // GamGUI's sweep alone tolerates, and only its benign per-user notices: never a 403, a scope or an unknown line.
         if let index = steps.firstIndex(where: {
@@ -434,6 +470,10 @@ public actor Executor {
         case adminUnconfirmed
         /// A change that would cut off the account this app signs in as: `admin` by that address, or by another of its own.
         case cutsOffConnectedAdmin(String, admin: String)
+        /// A step whose `KeepFirst` isn't its own write's signature (`keepHolds`).
+        case badKeep(step: Int)
+        /// A signature write that would keep nothing: no `KeepFirst`, and not on an account the run makes.
+        case signatureNotKept(step: Int)
 
         public var message: String {
             switch self {
@@ -442,6 +482,8 @@ public actor Executor {
             case .tenantChanged: "The active domain changed after this was read — preview again on this domain."
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
             case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
+            case .badKeep(let step): "Step \(step + 1) would keep a signature other than the one it replaces."
+            case .signatureNotKept(let step): "Step \(step + 1) would replace a signature without keeping the one it replaces."
             case .typedAddressNotATarget: "The address to type isn't one this change acts on."
             case .typedWordUnusable: "The word to type to confirm this can't be asked for here."
             case .adminUnconfirmed:
@@ -490,6 +532,19 @@ public actor Executor {
             && steps[create].action == .createUser && step.requires.contains(create)
             // The account the create makes, as GAM reads an address (GamGUI's `assignee.lower() == email.lower()`).
             && made.count > 2 && argv.count > 1 && argv[0] == "user" && Guard.normalized(argv[1]) == Guard.normalized(made[2])
+    }
+
+    /// A step that keeps a signature first (`WriteStep.KeepFirst`) sets exactly that person's signature to exactly its
+    /// `setting`, through the builder (`GamCommands.setSignature`, `html`): the copy kept is of the account the write
+    /// replaces, beside what the write sets. Never on an account this run makes: it has nothing to keep, and a step that
+    /// may wait for one would be run again by `retry`, which keeps nothing. Any other step holds trivially.
+    static func keepHolds(_ step: WriteStep) -> Bool {
+        guard let keep = step.keepFirst else { return true }
+        switch keep {
+        case .signature(let email, let setting, _, _):
+            return step.action == .setSignature && step.newAccountFrom == nil && step.listedTask == nil
+                && same(GamCommands.setSignature(email: email, signature: setting, html: true).argv, step.write.argv)
+        }
     }
 
     /// Byte-for-byte: Swift's `==` on strings compares canonically, so "é" would equal "e\u{301}".
@@ -558,14 +613,97 @@ public actor Executor {
             jobs?(.refused(job: job, reason: why))
             return .refused(why)
         }
+        // A run that replaces signatures keeps each one first: somewhere to keep them before its first step, or none runs.
+        let kept: (any KeptSignatureRun)?
+        do {
+            kept = try startKept(for: taken)
+        } catch {
+            KeepFailure.report("start", error)
+            jobs?(.refused(job: job, reason: Self.noPlaceToKeep))
+            return .refused(Self.noPlaceToKeep)
+        }
+        defer { kept?.close() }
         jobs?(.checked(job: job))
-        let ran = await execute(taken, job: job, progress: progress)
+        let ran = await execute(taken, job: job, kept: kept, progress: progress)
         // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13). Nor does a stopped one: a
         // Stop (the jobs tray's, on any run) means nothing more of it runs, a wait for Google included (review 2026-10-28). Read
         // before the `defer` above clears the request.
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(taken.id) ? nil
-                              : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()))
+                              : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()),
+                          kept: kept.flatMap { $0.keptCount > 0 ? $0.id : nil })
+    }
+
+    // MARK: keeping each signature first (GamGUI's signature backups, #163 and #164)
+
+    /// GamGUI's words: the run is refused when there's nowhere to keep the signatures it would replace.
+    public static let noPlaceToKeep = "Couldn't make a place on this Mac to keep the old signatures, so nothing was replaced."
+    /// GamGUI's words for a person whose signature couldn't be read: theirs isn't replaced (the step fails), and the run goes on.
+    public static let notRead = "Couldn't read their current signature, so it wasn't replaced: there'd be nothing to put back."
+    /// GamGUI's words when a copy couldn't be kept: that write and every later one don't run.
+    public static let notKept = "Couldn't keep a copy of the old signatures on this Mac, so the run stopped."
+    /// GamGUI's words for a Put Back's person whose signature isn't what the run being put back left there: left as it is.
+    public static let changedSince = "Changed since that run, so it's left as it is: put it back by hand if you mean to."
+    static let cancelledBeforeRun = "Cancelled before it ran."
+    /// A step whose domain was removed or imported again during the run (its generation changed): it, and the rest, stop.
+    static let domainChanged = "Stopped: the active domain changed during the run."
+
+    /// The kept run for `preview`'s signatures, when a step keeps one: nil when none does. Throws when there's no keeper or
+    /// it can't start one.
+    private func startKept(for preview: HeldPreview) throws -> (any KeptSignatureRun)? {
+        guard preview.steps.contains(where: { $0.keepFirst != nil }) else { return nil }
+        guard let signatureKeeper else { throw NoSignatureKeeper() }
+        let restoring = Set(preview.steps.compactMap { step -> String? in
+            guard case .signature(_, _, _, let source)? = step.keepFirst else { return nil }
+            return source
+        })
+        return try signatureKeeper.start(what: preview.title, domain: preview.domain, restoring: restoring)
+    }
+
+    private struct NoSignatureKeeper: Error {}
+
+    /// `keep` done before its step's write, in the write lock: the person's stored signature read exactly (`Signature.exact`),
+    /// compared with what it should be now (a Put Back's `expectedNow`), and kept in `kept`, flushed. Nil when it's kept, and
+    /// the write may run; otherwise the step's result and what stops the run, if anything. Unread: the step fails and the run
+    /// goes on, unless the failure is account-wide (as a write's). Changed since: skipped. Not kept, or no kept run: skipped,
+    /// and the run stops.
+    private func keepFirst(_ keep: WriteStep.KeepFirst, of preview: HeldPreview, into kept: (any KeptSignatureRun)?) async
+        -> (result: RunOutcome.Step, stop: String?)? {
+        switch keep {
+        case .signature(let email, let setting, let expectedNow, _):
+            guard let kept else { return (.skipped(reason: Self.notKept), Self.notKept) }
+            let previous: String
+            do {
+                let read = try await runner.run(GamCommands.printSignature(email: email), as: preview.domain,
+                                                extraEnvironment: extraEnvironment)
+                previous = try Signature.exact(read, for: email)
+            } catch is CancellationError {
+                return (.skipped(reason: Self.cancelledBeforeRun), Self.cancelledBeforeRun)
+            } catch let error as GamError {
+                // A sign-in expired or a scope missing fails every later read and write the same way: stop, as a write does.
+                let stop = error.kind.isAccountWide && preview.stopsAtAccountWideFailure ? "Stopped: \(error.kind.remediation)" : nil
+                return (.failed(message: "\(Self.notRead) \(error.kind == .unknown ? error.message : error.remediation)", kind: nil), stop)
+            } catch let unread as Signature.Unread {
+                return (.failed(message: "\(Self.notRead) \(unread.reason)", kind: nil), nil)
+            } catch GamRunnerError.timedOut(let seconds) {
+                // A read cut off changed nothing: this person only, never `.timeout` (which says the change may have been made).
+                return (.failed(message: "\(Self.notRead) GAM didn't answer within \(seconds) seconds.", kind: nil), nil)
+            } catch {
+                // The Vault, a launch failure: nothing later would fare better, as for a write.
+                let message = GamEngineMessage.of(error)
+                return (.failed(message: "\(Self.notRead) \(message)", kind: nil), "Stopped: \(message)")
+            }
+            // The read takes seconds: a domain removed or imported again meanwhile stops this step too, not only the next.
+            guard await isCurrent(preview) else { return (.skipped(reason: Self.domainChanged), Self.domainChanged) }
+            if let expectedNow, !Self.same(previous, expectedNow) { return (.skipped(reason: Self.changedSince), nil) }
+            do {
+                try kept.keep(email: email, previous: previous, setting: setting)
+            } catch {
+                KeepFailure.report("keep", error)
+                return (.skipped(reason: Self.notKept), Self.notKept)
+            }
+            return nil
+        }
     }
 
     /// What `run` checks holding the write lock, just before the first step: why none may run, or nil.
@@ -657,8 +795,9 @@ public actor Executor {
             return .refused(why)
         }
         jobs?(.checked(job: job))
-        let ran = await execute(state.preview, job: job, resuming: state.results, listOutputs: state.listOutputs, attempt: round + 1,
-                                progress: progress)
+        // Its steps keep nothing: a step that keeps a signature never waits (`keepHolds`), so none is run again here.
+        let ran = await execute(state.preview, job: job, kept: nil, resuming: state.results, listOutputs: state.listOutputs,
+                                attempt: round + 1, progress: progress)
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(state.preview.id) ? nil
                               : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
@@ -788,7 +927,7 @@ public actor Executor {
 
     /// Runs the preview's steps in order. `resuming` a retry: a step whose prior result isn't `.waiting`
     /// keeps it, unrun; `attempt` numbers the retry's audit records.
-    private func execute(_ preview: HeldPreview, job: UUID, resuming prior: [RunOutcome.Step]? = nil,
+    private func execute(_ preview: HeldPreview, job: UUID, kept: (any KeptSignatureRun)?, resuming prior: [RunOutcome.Step]? = nil,
                          listOutputs priorOutputs: [Int: String] = [:], attempt: Int? = nil,
                          progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
         -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
@@ -838,8 +977,8 @@ public actor Executor {
             }
             // Every step, not just the first: removing or re-importing the domain mid-plan stops the rest.
             guard await isCurrent(preview) else {
-                stoppedBy = "Stopped: the active domain changed during the run."
-                results.append(.skipped(reason: "Stopped: the active domain changed during the run."))
+                stoppedBy = Self.domainChanged
+                results.append(.skipped(reason: Self.domainChanged))
                 continue
             }
             // A listed task runs on the id its list printed, or not at all (D3c).
@@ -853,7 +992,15 @@ public actor Executor {
                 step = planned.running(write)
             }
             await beforeEachStep?()
-            let base = extra(for: step, of: preview, index: index, attempt: attempt)
+            // A signature it replaces is read exactly and kept first: unread, changed since or not kept, nothing is written.
+            if let keep = step.keepFirst, let notWritten = await keepFirst(keep, of: preview, into: kept) {
+                results.append(notWritten.result)
+                if let stop = notWritten.stop { stoppedBy = stop }
+                continue
+            }
+            var base = extra(for: step, of: preview, index: index, attempt: attempt)
+            // Where the signature it replaces is kept, for whoever reads the audit.
+            if step.keepFirst != nil, let kept { base["kept"] = .string(kept.id) }
             let secrets = step.secretTexts
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
@@ -1143,6 +1290,16 @@ enum GamEngineMessage {
         case let error as PreconditionFailure: error.reason
         default: "\(type(of: error))"
         }
+    }
+}
+
+/// A signature copy that couldn't be kept: said in the unified log as well as to the operator. The error's type and code only,
+/// never a signature.
+enum KeepFailure {
+    private static let log = Logger(subsystem: "io.github.goetchstone.swiftgamgui", category: "signature-backups")
+
+    static func report(_ what: String, _ error: any Error) {
+        log.error("a signature copy couldn't be kept (\(what, privacy: .public)): \(String(describing: type(of: error)), privacy: .public) \((error as NSError).code, privacy: .public)")
     }
 }
 

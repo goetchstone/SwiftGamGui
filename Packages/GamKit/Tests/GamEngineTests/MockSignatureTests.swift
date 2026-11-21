@@ -3,8 +3,9 @@ import Testing
 @testable import GamEngine
 import TestSupport
 
-/// The strict mock sets and shows signatures the way GAM 7.48.22 does: GAM changes the body as it stores
-/// it, `show signature` prints the one address asked about, an address that isn't a user fails on its
+/// The strict mock sets, shows and prints signatures the way GAM does (7.48.22; `print signature` 7.52.04): GAM changes
+/// the body as it stores it, `show signature` prints the one address asked about, `print signature` gives it back byte for
+/// byte as CSV, an address that isn't a user fails on its
 /// token, Gmail off is refused, and a body GAM reads as a file keyword never sets anything. Each once
 /// passed here and would have broken live: the mock answered any address and showed canned text whatever
 /// was set.
@@ -98,5 +99,85 @@ struct MockSignatureTests {
             _ = try await run(GamCommands.setSignature(email: "alice@example.com", signature: body).argv, state: state)
             #expect(try await shown("alice@example.com", state: state) == "<table>\n<tr><td>Al</td></tr>\n\n</table>")
         }
+    }
+
+    // MARK: `print signature`, the exact read (printShowSignature's print mode, 7.52.04)
+
+    static let titles = "User,displayName,sendAsEmail,replyToAddress,isPrimary,isDefault,treatAsAlias,verificationStatus"
+
+    /// `print signature` as the authenticated runner hands it on: without GAM's first-run banner naming the config folder.
+    private func printed(_ email: String, state: URL? = nil, extra: [String] = []) async throws -> GamResult {
+        let config = try Fixtures.placeholderConfigDirectory()
+        defer { try? FileManager.default.removeItem(at: config) }
+        var environment = Fixtures.mockEnvironment
+        if let state { environment["GAM_MOCK_STATE"] = state.path }
+        let raw = try await mock.runRaw(GamCommands.printSignature(email: email).argv + extra, configDirectory: config,
+                                        extraEnvironment: environment)
+        return GamResult(exitCode: raw.exitCode, stdout: AuthenticatedRunner.withoutConfigNoise(raw.stdout, configDirectory: config),
+                         stderr: raw.stderr, stdoutTruncated: raw.stdoutTruncated, stderrTruncated: raw.stderrTruncated)
+    }
+
+    /// GAM's titles first, `signature` after them; the getting line on stderr; the cell quoted for its comma.
+    @Test func printSignatureIsGamsCSV() async throws {
+        let read = try await printed("Alice@example.com")
+        #expect(read.exitCode == 0 && read.stderr == "Getting Signatures for alice@example.com\n", "\(read.stderr)")
+        #expect(read.stdout == "\(Self.titles),signature\nalice@example.com,,alice@example.com,,True,True,,,\"Best,<br>Alice\"\n")
+        #expect(try Signature.exact(read, for: "alice@example.com") == "Best,<br>Alice")
+    }
+
+    /// Gmail leaves an empty signature out of its reply, so GAM prints no `signature` column: the reader takes that as none.
+    @Test func noSignatureIsNoColumn() async throws {
+        let read = try await printed("dana@example.com")
+        #expect(read.stdout == "\(Self.titles)\ndana@example.com,,dana@example.com,,True,True,,\n")
+        #expect(try Signature.exact(read, for: "dana@example.com") == "")
+    }
+
+    /// What the mock set comes back from `print signature` byte for byte, in GAM's stored form, its line breaks written in a
+    /// quoted cell as GAM's CSV writer writes them (the bytes CPython's csv module writes in GAM's dialect for this row).
+    @Test func setThenPrintRoundTripsByteForByte() async throws {
+        try await withState { state in
+            let body = "<div>Al \"Ant\",</div>\n\t\\ back\n\n"
+            let set = try await run(GamCommands.setSignature(email: "bob@example.com", signature: body).argv, state: state)
+            #expect(set.exitCode == 0, "\(set.stderr)")
+            let read = try await printed("bob@example.com", state: state)
+            #expect(Array(read.stdout.utf8) == Array(("\(Self.titles),signature\nbob@example.com,,bob@example.com,,True,True,,,"
+                                                         + "\"<div>Al \"\"Ant\"\",</div>\n\t\\\\ back\n\n\"\n").utf8))
+            #expect(Array(try Signature.exact(read, for: "bob@example.com").utf8) == Array(body.utf8))
+            // GAM's stored form, not the body sent: its CRs gone and each backslash-n a <br/>.
+            let sent = "One\r\nTwo\\nThree "
+            _ = try await run(GamCommands.setSignature(email: "bob@example.com", signature: sent).argv, state: state)
+            let again = try await printed("bob@example.com", state: state)
+            #expect(Array(try Signature.exact(again, for: "bob@example.com").utf8) == Array(Signature.stored(sent).utf8))
+        }
+    }
+
+    /// A refused token GAM skips without a word (the titles alone, exit 0), Gmail off (exit 73, the titles alone), and an
+    /// address that isn't a user (its token): the reader takes none of them as "no signature".
+    @Test func whatGamCantReadIsNeverNone() async throws {
+        try await withState { state in
+            for (folder, user) in [("quiet", "alice@example.com"), ("nogmail", "carol@example.com")] {
+                try FileManager.default.createDirectory(at: state.appending(path: folder), withIntermediateDirectories: true)
+                try Data().write(to: state.appending(path: "\(folder)/\(user)"))
+            }
+            let quiet = try await printed("alice@example.com", state: state)
+            #expect(quiet.exitCode == 0 && quiet.stdout == "\(Self.titles)\n" && quiet.stderr.isEmpty)
+            #expect(throws: Signature.Unread.self) { try Signature.exact(quiet, for: "alice@example.com") }
+            let off = try await printed("carol@example.com", state: state)
+            #expect(off.exitCode == 73 && off.stdout == "\(Self.titles)\n" && off.stderr.hasPrefix("Getting Signatures for carol@example.com\n"))
+            #expect(GamError(exitCode: off.exitCode, stderr: off.stderr).kind == .serviceNotEnabled, "\(off.stderr)")
+            let nobody = try await printed("nobody@example.com", state: state)
+            #expect(nobody.exitCode == 50 && GamError(exitCode: nobody.exitCode, stderr: nobody.stderr).kind == .notFound)
+            // An account `create user` made is a user while the mock keeps state.
+            try FileManager.default.createDirectory(at: state.appending(path: "created"), withIntermediateDirectories: true)
+            try Data().write(to: state.appending(path: "created/new.hire@example.com"))
+            let hire = try await printed("new.hire@example.com", state: state)
+            #expect(try Signature.exact(hire, for: "new.hire@example.com") == "")
+        }
+    }
+
+    /// Only the arguments the app sends: GAM's other options change the answer, so the mock refuses them.
+    @Test func otherOptionsAreNotModelled() async throws {
+        let compact = try await printed("alice@example.com", extra: ["compact"])
+        #expect(compact.exitCode == 2 && compact.stderr.contains("isn't modelled"))
     }
 }

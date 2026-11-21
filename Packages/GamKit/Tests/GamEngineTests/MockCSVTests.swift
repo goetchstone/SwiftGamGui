@@ -87,9 +87,8 @@ struct MockCSVTests {
         GamCommands.printUsers().argv.filter { $0 != "formatjson" },
         // Without fields GAM asks for `primaryEmail` alone (doPrintUsers): no record the data file holds.
         ["print", "users", "formatjson"],
-        // Org units (GamGUI #169) and kept signatures (#163) aren't built here yet.
+        // Org units (GamGUI #169) aren't built here yet.
         ["print", "orgs", "fields", "orgunitpath,name,description"],
-        ["user", "alice@example.com", "print", "signature"],
         GamCommands.printCros().argv.filter { $0 != "formatjson" },
         GamCommands.printFileList(email: "alice@example.com").argv,
         GamCommands.printAllCalendars().argv,

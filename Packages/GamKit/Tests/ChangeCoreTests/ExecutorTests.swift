@@ -52,7 +52,7 @@ final class ExecutorTests {
 
     /// The executor over the strict mock, or over `gam` (a stand-in written by `fakeGam`). `state` is the
     /// mock's `GAM_MOCK_STATE`, for a test that needs the accounts `create user` made.
-    private func executor(gam: URL? = nil, state: URL? = nil) -> Executor {
+    private func executor(gam: URL? = nil, state: URL? = nil, keeper: (any SignatureKeeper)? = nil) -> Executor {
         let tenant = tenantState, offset = offset, start = start
         var environment = Fixtures.mockEnvironment
         environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
@@ -60,7 +60,7 @@ final class ExecutorTests {
         let runner = gam.map { AuthenticatedRunner(runner: GamRunner(binary: $0), vault: vault, runtimeDirectory: base) } ?? runner
         return Executor(runner: runner, audit: audit, actor: "admin@example.com", adminAccountID: { Self.adminID },
                         tenant: { tenant.value.withLock { $0 } }, now: { start + offset.value.withLock { $0 } },
-                        extraEnvironment: environment)
+                        extraEnvironment: environment, signatureKeeper: keeper)
     }
 
     /// The mock's account IDs (`mock_gam/print_users.json`): the connected admin's, and Alice's.
@@ -601,18 +601,20 @@ final class ExecutorTests {
     /// The confirm sheet shows the signature the run will send, not a copy made beside it: `signatureBody`
     /// is the held argv element, byte for byte, while `shownArgv` (what the audit and logs see) masks it.
     @Test func aHeldSignatureBodyIsTheArgvElement() async throws {
-        let executor = executor()
+        let executor = executor(gam: Fixtures.mockGam, keeper: LoggingKeeper(log: base.deletingLastPathComponent().appending(path: "kept.log")))
         // Bytes a copy could lose: a decomposed accent, a CR, a literal backslash-n, a token left as typed.
         let body = "<div>Ame\u{301}lie\r\nBest,\\n{x}</div>"
         let step = WriteStep(GamCommands.setSignature(email: "alice@example.com", signature: body, html: true),
-                             target: "alice@example.com", summary: "Replace alice@example.com's signature")
+                             target: "alice@example.com", summary: "Replace alice@example.com's signature",
+                             keepFirst: .signature(email: "alice@example.com", setting: body, expectedNow: nil))
         let preview = try await executor.preview([step], confirmStep: true).get()
         let held = try #require(preview.steps.first?.signatureBody)
         #expect(Array(held.utf8) == Array(body.utf8))
         #expect(preview.steps.first?.shownArgv == ["user", "alice@example.com", "signature", ArgvRedaction.mask, "html"])
         #expect(await executor.run(preview, confirmation: confirmed).succeeded)
         #expect(ran().map { $0.map { Array($0.utf8) } }
-                == [["user", "alice@example.com", "signature", body, "html"].map { Array($0.utf8) }])
+                == [GamCommands.printSignature(email: "alice@example.com").argv.map { Array($0.utf8) },
+                    ["user", "alice@example.com", "signature", body, "html"].map { Array($0.utf8) }])
         #expect(try !String(contentsOf: auditURL, encoding: .utf8).contains("Best,"), "the audit keeps the body masked")
         // Only a signature's body: no other write exposes an argv element this way.
         #expect(WriteStep(GamCommands.vacationOff(email: "a@example.com"), target: "a@example.com", summary: "").signatureBody == nil)
@@ -811,8 +813,13 @@ final class ExecutorTests {
                   requires: [0], about: ["calendar": id], newAccountFrom: create)
     }
 
-    private func notReady(_ email: String) -> String {
-        "GAM failed (unknown, exit=50): User: \(email), User Set Failed: access_denied: Requested client not authorized"
+    private func notReady(_ email: String, _ action: String = "User Set") -> String {
+        "GAM failed (unknown, exit=50): User: \(email), \(action) Failed: access_denied: Requested client not authorized"
+    }
+
+    /// A step that may wait for a new account, but isn't marked as on the one this run makes.
+    private func unmarkedList(_ email: String) -> WriteStep {
+        WriteStep(GamCommands.createTaskList(assignee: email, title: "Onboard"), target: email, summary: "List", requires: [0])
     }
 
     /// Only a signature, a calendar subscribe, a task list or a task waits for Google (GamGUI parks just
@@ -856,9 +863,10 @@ final class ExecutorTests {
         #expect(end["ok"]?.bool == false, "the attempt is audited as it went")
         #expect(end["extra"]?.object?["error"]?.string == notReady("new@example.com"))
 
-        let unmarked = await executor.run(try await held(executor, [create("new2@example.com"), signature("new2@example.com", waitsOn: nil)]),
+        // A step not marked as on the new account (a task list: a signature that keeps nothing must be, `signatureNotKept`).
+        let unmarked = await executor.run(try await held(executor, [create("new2@example.com"), unmarkedList("new2@example.com")]),
                                           confirmation: confirmed)
-        #expect(unmarked.steps[1] == .failed(message: notReady("new2@example.com"), kind: .unknown))
+        #expect(unmarked.steps[1] == .failed(message: notReady("new2@example.com", "Tasklist Create"), kind: .unknown))
 
         let duplicate = await executor.run(try await held(executor, [create("exists@example.com"), signature("exists@example.com", waitsOn: 0)]),
                                            confirmation: confirmed)
@@ -1017,7 +1025,7 @@ final class ExecutorTests {
     /// A run with nothing waiting leaves nothing to retry.
     @Test func aRunWithNothingWaitingHasNoRetry() async throws {
         let executor = executor(state: try mockState(lag: 1))
-        let outcome = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: nil)]),
+        let outcome = await executor.run(try await held(executor, [create("new@example.com"), unmarkedList("new@example.com")]),
                                          confirmation: confirmed)
         guard case .failed = outcome.steps[1] else { Issue.record("\(outcome.steps)"); return }
         #expect(outcome.retry == nil)

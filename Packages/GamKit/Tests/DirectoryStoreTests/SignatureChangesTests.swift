@@ -1,8 +1,9 @@
-import ChangeCore
+@testable import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
 import Setup
+import Stores
 import TestSupport
 import Testing
 import Vault
@@ -11,7 +12,9 @@ import Vault
 /// end against the strict mock with its argv log. Ports GamGUI's signature route tests
 /// (`tests/test_users_web.py`) and the incidents behind them (its failure-log 2026-09-23 and 2026-09-25):
 /// the designer opened on a colleague, an Apply ran what the form said then rather than what the preview
-/// showed, and a preview held on one tenant what was read on another.
+/// showed, and a preview held on one tenant what was read on another. And GamGUI's signature backups (#163, #164,
+/// `tests/test_signature_backups.py` and `test_signature_putback.py`): the signature a run replaces is kept first, and
+/// a kept run is put back as a run of its own.
 @MainActor
 @Suite("Signature changes", .serialized)
 final class SignatureChangesTests {
@@ -24,6 +27,7 @@ final class SignatureChangesTests {
     let argvLog: URL
     let auditURL: URL
     let state: URL
+    let backups: SignatureBackupStore
     let confirmed = OperatorConfirmation(confirmed: true)
 
     init() throws {
@@ -35,12 +39,13 @@ final class SignatureChangesTests {
         argvLog = scratch.appending(path: "argv.log")
         auditURL = scratch.appending(path: "audit/audit.jsonl")
         state = scratch.appending(path: "mock-state")
+        backups = SignatureBackupStore(folder: scratch.appending(path: "signature-backups"))
         let setup = setup
         let executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": state.path])
-        changes = SignatureChanges(executor: executor, setup: setup, directory: directory)
+                              "GAM_MOCK_STATE": state.path], signatureKeeper: backups)
+        changes = SignatureChanges(executor: executor, setup: setup, directory: directory, backups: backups)
         access = UserAccess(setup: setup, runner: runner)
         access.environment = ["GAM_MOCK_STATE": state.path]
     }
@@ -141,7 +146,7 @@ final class SignatureChangesTests {
         #expect(pending.preview.steps.first?.shownArgv == ["user", "alice@example.com", "signature", ArgvRedaction.mask, "html"])
         await changes.confirm(pending, confirmed)
         guard case .done(let done) = changes.state else { Issue.record("\(changes.state)"); return }
-        #expect(done.message == "Replaced Alice Anders's signature.")
+        #expect(done.message == "Replaced Alice Anders's signature. The one it replaced is kept on this Mac.")
         #expect(bytes(writes()) == bytes([["user", "alice@example.com", "signature", render, "html"]]))
         #expect(changes.finished == 1)
         let end = try #require(AuditLog.records(at: auditURL).first)
@@ -238,24 +243,37 @@ final class SignatureChangesTests {
         #expect(try self.pending().body == "Alice Anders\\nIT", "the argv keeps the body as rendered")
     }
 
-    /// `test_signature_set_failure_says_why_with_gams_error_expandable`: the headline says why in words, GAM's
-    /// own error is one click away, never in the headline.
-    @Test func aFailedSetSaysWhyWithGamsError() async throws {
+    /// `test_signature_set_failure_says_why_with_gams_error_expandable`, and GamGUI's
+    /// `test_someone_whose_signature_cant_be_read_isnt_overwritten`: a signature that can't be read first isn't replaced,
+    /// said in words with why, never "GAM failed"; nothing is written, and nothing kept.
+    @Test func aSignatureThatCantBeReadIsntReplaced() async throws {
         try await connect()
         try marker("nogmail/alice@example.com")
         await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
         await changes.confirm(try pending(), confirmed)
         let off = try problem()
-        #expect(off.summary == "Couldn't set the signature. \(GamError.Kind.serviceNotEnabled.remediation)")
-        #expect(off.detail?.contains("Gmail Service/App not enabled") == true)
+        #expect(off.summary == "\(Executor.notRead) \(GamError.Kind.serviceNotEnabled.remediation)")
 
         let gone = GamUser(record: ["primaryEmail": .string("gone-missing@example.com")])
         await changes.preview(person: gone, template: "Hi", current: nil)
         await changes.confirm(try pending(), confirmed)
         let missing = try problem()
-        #expect(missing.summary == "Couldn't set the signature. The requested user, group, or resource was not found.")
+        #expect(missing.summary == "\(Executor.notRead) The requested user, group, or resource was not found.")
         #expect(!missing.summary.contains("GAM failed"))
-        #expect(missing.detail?.contains("invalid_grant: Invalid email or User ID") == true)
+        #expect(try writes().isEmpty && backups.runs().isEmpty)
+    }
+
+    /// A set GAM refuses after the read: the headline says why in words, GAM's own error one click away. What was read is
+    /// kept all the same (GamGUI keeps before it writes).
+    @Test func aFailedSetSaysWhyWithGamsError() async throws {
+        try await connect()
+        try marker("provisioning/alice@example.com", "9")
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        let refused = try problem()
+        #expect(refused.summary == "Couldn't set the signature. \(GamError.Kind.unknown.remediation)")
+        #expect(refused.detail?.contains("Requested client not authorized") == true)
+        #expect(try backups.runs().first?.run?.entries == [.init(email: "alice@example.com", previous: "Best,<br>Alice", set: "Alice Anders")])
     }
 
     /// Live, 2026-09-30: a signature set seconds after `create user` was refused "Requested client not
@@ -296,36 +314,190 @@ final class SignatureChangesTests {
         #expect(failure.summary.contains("Gmail Service/App not enabled"))
     }
 
-    @Test func putBackPreviewsTheBodyAsRead() async throws {
+    /// GamGUI's `test_a_run_keeps_the_old_signature_before_it_writes` and
+    /// `test_a_run_s_old_signature_goes_back_and_what_it_replaces_is_kept`: the signature replaced is read exactly and kept
+    /// before the write; the kept run is listed, and its Put Back sets it again, keeping what it replaces in turn.
+    @Test func aReplacedSignatureIsKeptAndPutBack() async throws {
         try await connect()
         let alice = try user("alice@example.com")
-        await access.load("alice@example.com")
-        let current = try #require(try access.lists(for: "alice@example.com")?.signature.get())
-        await changes.preview(person: alice, template: "{name}", current: current)
+        await changes.preview(person: alice, template: "{name}", current: nil)
         await changes.confirm(try pending(), confirmed)
-        guard case .done(let done) = changes.state, let previous = done.previous else { Issue.record("\(changes.state)"); return }
-        #expect(previous.body == "Best,<br>Alice")
-        await access.load("alice@example.com")
-        #expect(try access.lists(for: "alice@example.com")?.signature.get() == "Alice Anders")
+        guard case .done(let done) = changes.state, let keptRun = done.keptRun else { Issue.record("\(changes.state)"); return }
+        await changes.loadKept()
+        let first = try #require(changes.kept?.first?.run)
+        #expect(changes.kept?.count == 1 && first.id == keptRun && first.domain == "example.com")
+        #expect(first.what == "Set signature for alice@example.com")
+        #expect(first.entries == [.init(email: "alice@example.com", previous: "Best,<br>Alice", set: "Alice Anders")])
 
-        await changes.previewPutBack(previous: previous)
+        await changes.previewPutBack(keptRun)
         let putBack = try pending()
-        #expect(putBack.body == "Best,<br>Alice")
-        #expect(putBack.title == "Put back Alice Anders's previous signature")
-        #expect(putBack.preview.needsConfirmClick)
+        #expect(putBack.isPutBack && putBack.isScoped && putBack.people.map(\.primaryEmail) == ["alice@example.com"])
+        #expect(putBack.title == "Put back the signatures \u{201C}Set signature for alice@example.com\u{201D} replaced: 1 person.")
+        #expect(putBack.body == "Best,<br>Alice" && putBack.confirmLabel == "Put Back 1 Signature")
+        #expect(putBack.preview.needsConfirmClick && putBack.preview.typedCountAbove == Guard.countConfirmAbove)
         await changes.confirm(putBack, confirmed)
         guard case .done(let restored) = changes.state else { Issue.record("\(changes.state)"); return }
-        #expect(restored.message == "Put back Alice Anders's previous signature.")
-        #expect(restored.previous == nil)
+        #expect(restored.message == "Put back 1 of 1 signature." && !restored.partial)
         #expect(writes().last == ["user", "alice@example.com", "signature", "Best,<br>Alice", "html"])
         await access.load("alice@example.com")
         #expect(try access.lists(for: "alice@example.com")?.signature.get() == "Best,<br>Alice")
+        // So a Put Back can be put back too.
+        let newest = try #require(try backups.runs().first?.run)
+        #expect(newest.id == restored.keptRun && newest.what == "Put back of Set signature for alice@example.com")
+        #expect(newest.entries == [.init(email: "alice@example.com", previous: "Alice Anders", set: "Best,<br>Alice")])
+    }
 
-        // A signature someone set in Gmail that is only a file keyword can't be put back through GAM.
-        let word = SignatureChanges.Previous(person: alice, body: " File ", domain: Domain("example.com")!, generation: setup.generation)
-        await changes.previewPutBack(previous: word)
-        #expect(try problem().summary.hasPrefix("GAM would take “File” as a file or document to load"))
-        #expect(writes().count == 2)
+    /// GamGUI's `test_someone_changed_since_that_run_is_left_as_they_are`: a signature that isn't what that run left there
+    /// is someone's change since, left as it is and said; nothing is written for them.
+    @Test func aSignatureChangedSinceThatRunIsLeftAsItIs() async throws {
+        try await connect()
+        let alice = try user("alice@example.com")
+        await changes.preview(person: alice, template: "<b>{name}</b>", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        guard case .done(let done) = changes.state, let first = done.keptRun else { Issue.record("\(changes.state)"); return }
+        await changes.preview(person: alice, template: "<i>changed later</i>", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        let written = writes().count
+        await changes.previewPutBack(first)
+        await changes.confirm(try pending(), confirmed)
+        guard case .done(let result) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(result.message == "Put back 0 of 1 signature. 1 was left as it is, changed since that run: alice@example.com.")
+        #expect(result.partial && result.failedCount == 0 && result.retry == nil && result.keptRun == nil)
+        #expect(writes().count == written)
+        await access.load("alice@example.com")
+        #expect(try access.lists(for: "alice@example.com")?.signature.get() == "<i>changed later</i>")
+    }
+
+    /// GamGUI's `test_an_empty_old_signature_goes_back_as_empty`, and `put_back_plan`: an old signature GAM would read as a
+    /// file to load, or change on the way in, is left out and named, never sent.
+    @Test func whoCantGoBackExactlyIsLeftOutAndNamed() async throws {
+        try await connect()
+        let id = "0000000000002-0000f00d"
+        try write(run: id, entries: [("carol@example.com", "", "Carol Clark<br>Operations"),
+                                     ("alice@example.com", " HTML_File ", "Best,<br>Alice"),
+                                     ("dana@example.com", "line\r\nbreak", "")])
+        await changes.previewPutBack(id)
+        let putBack = try pending()
+        #expect(putBack.people.map(\.primaryEmail) == ["carol@example.com"])
+        #expect(putBack.putBack?.leftOut == [
+            .init(email: "alice@example.com", why: "GAM would read it as a file to load, so it's left for you to put back by hand"),
+            .init(email: "dana@example.com", why: "GAM would change it on the way in, so it can't go back exactly")])
+        #expect(putBack.notes.count == 1 && putBack.notes[0].hasPrefix("Left out 2, each put back only by hand: alice@example.com ("))
+        await changes.confirm(putBack, confirmed)
+        #expect(writes() == [["user", "carol@example.com", "signature", "", "html"]])
+        await access.load("carol@example.com")
+        #expect(try access.lists(for: "carol@example.com")?.signature.get() == "")
+    }
+
+    /// GamGUI's `test_a_run_that_cant_be_read_or_doesnt_exist_puts_nothing_back`, and this app's domain check: a run of
+    /// another domain, one that isn't whole, and one that isn't there put nothing back.
+    @Test func aRunThatCantBePutBackPutsNothingBack() async throws {
+        try await connect()
+        try write(run: "0000000000003-0000beef", domain: "example.org", entries: [("alice@example.com", "Old", "Best,<br>Alice")])
+        await changes.previewPutBack("0000000000003-0000beef")
+        #expect(try problem().summary == "That run was on example.org, so it's put back only there: connect example.org on Setup first.")
+        for bad in ["nope", "../x", ""] {
+            await changes.previewPutBack(bad)
+            #expect(try problem().summary == "That run can't be put back: it isn't a kept run.")
+        }
+        try Data("{not json\n".utf8).write(to: scratch.appending(path: "signature-backups/0000000000004-0000cafe.jsonl"))
+        await changes.previewPutBack("0000000000004-0000cafe")
+        #expect(try problem().summary == "That run can't be put back: it isn't whole.")
+        await changes.loadKept()
+        #expect(changes.kept?.map(\.id) == ["0000000000004-0000cafe", "0000000000003-0000beef"])
+        #expect(writes().isEmpty)
+    }
+
+    /// Review of Phase A: putting back the oldest of five kept runs deleted it as the Put Back began, and with it the old
+    /// signature of whoever the Put Back left out. The run put back outlives its Put Back.
+    @Test func aPutBackKeepsTheRunItRestores() async throws {
+        try await connect()
+        for index in 2...SignatureBackupStore.keptRuns {
+            try write(run: "000000000000\(index)-0000000\(index)", entries: [("dana@example.com", "run \(index)", "")])
+        }
+        let oldest = "0000000000001-00000001"
+        try write(run: oldest, entries: [("alice@example.com", "Old A", "Best,<br>Alice"), ("carol@example.com", "Carol\\nClark", "x")])
+        await changes.previewPutBack(oldest)
+        let putBack = try pending()
+        #expect(putBack.people.map(\.primaryEmail) == ["alice@example.com"] && putBack.putBack?.leftOut.count == 1)
+        await changes.confirm(putBack, confirmed)
+        guard case .done(let done) = changes.state, done.keptRun != nil else { Issue.record("\(changes.state)"); return }
+        #expect(writes() == [["user", "alice@example.com", "signature", "Old A", "html"]])
+        #expect(try backups.load(oldest).entries.map(\.email) == ["alice@example.com", "carol@example.com"],
+                "carol's old signature, left out, is still there to put back by hand")
+    }
+
+    /// Review of Phase A: kept signatures that couldn't be read showed as "None kept yet". The list says why instead.
+    @Test func keptSignaturesThatCantBeReadAreSaid() async throws {
+        try await connect()
+        await changes.loadKept()
+        #expect(changes.kept?.isEmpty == true && changes.keptProblem == nil)
+        let folder = scratch.appending(path: "signature-backups")
+        try write(run: "0000000000001-00000001", entries: [("alice@example.com", "Old", "x")])
+        chmod(folder.path, 0)
+        defer { chmod(folder.path, 0o700) }
+        await changes.loadKept()
+        #expect(changes.kept == nil)
+        #expect(changes.keptProblem == "The kept signatures couldn't be read: their folder couldn't be opened (Permission denied). "
+                + "Nothing here says none are kept.")
+    }
+
+    /// Review of Phase A: a one-person write whose outcome is unknown (a timeout, an interruption: it may have landed) lost its
+    /// kept run, so no Put Back was offered. It keeps it; a write GAM refused changed nothing and offers none.
+    @Test func anUnknownOutcomeKeepsItsPutBack() async throws {
+        try await connect()
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
+        let pending = try pending()
+        func result(_ step: RunOutcome.Step) -> SignatureChanges.State {
+            SignatureChanges.personResult(pending, RunOutcome(refusal: nil, steps: [step], auditProblem: nil, kept: "R"))
+        }
+        guard case .problem(let timedOut) = result(.failed(message: "GAM didn't answer within 120 seconds", kind: .timeout)),
+              case .problem(let interrupted) = result(.failed(message: Executor.interrupted, kind: nil)),
+              case .problem(let refused) = result(.failed(message: "GAM failed (unknown, exit=1): x", kind: .unknown))
+        else { Issue.record("not problems"); return }
+        #expect(timedOut.keptRun == "R" && interrupted.keptRun == "R" && refused.keptRun == nil)
+        #expect(timedOut.summary.hasSuffix("What it replaced, if it did, is kept on this Mac."))
+    }
+
+    /// Review of Phase A: the kept list was read again only when a run set someone. Every run that ends reads it again, one
+    /// that set nobody too.
+    @Test func everyRunThatEndsReadsTheKeptListAgain() async throws {
+        try await connect()
+        #expect(changes.kept == nil)
+        try marker("nogmail/alice@example.com")
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        #expect(changes.finished == 0 && changes.kept?.isEmpty == true)
+        await changes.preview(person: try user("carol@example.com"), template: "{name}", current: nil)
+        await changes.confirm(try pending(), confirmed)
+        #expect(changes.kept?.count == 1 && changes.kept?.first?.run?.entries.map(\.email) == ["carol@example.com"])
+    }
+
+    /// Many people's Put Back asks for the count typed, as any run of many signatures (D5).
+    @Test func aPutBackOfManyWantsTheCountTyped() async throws {
+        try await connect()
+        changes.typedCountAbove = 1
+        try write(run: "0000000000005-0000d00d", entries: [("alice@example.com", "Old A", "Best,<br>Alice"),
+                                                         ("carol@example.com", "Old C", "Carol Clark<br>Operations")])
+        await changes.previewPutBack("0000000000005-0000d00d")
+        let putBack = try pending()
+        #expect(putBack.preview.decision.requiresTypedCount)
+        await changes.confirm(putBack, confirmed)
+        #expect(changes.typedProblem == SignatureChanges.typedCountRefusal(2) && writes().isEmpty)
+        await changes.confirm(putBack, OperatorConfirmation(confirmed: true, typedCount: "2"))
+        #expect(writes().map { $0[3] } == ["Old A", "Old C"])
+    }
+
+    /// A kept run's file as the store writes one, in the folder this suite's store keeps in.
+    private func write(run id: String, domain: String = "example.com", entries: [(String, String, String)]) throws {
+        let folder = scratch.appending(path: "signature-backups")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var lines = [JSONValue.dumps(.object(["run": .string(id), "when": .number("1.0"), "what": .string("a test run"),
+                                              "domain": .string(domain)]))]
+        for (email, previous, set) in entries {
+            lines.append(JSONValue.dumps(.object(["email": .string(email), "previous": .string(previous), "set": .string(set)])))
+        }
+        try Data((lines.joined(separator: "\n") + "\n").utf8).write(to: folder.appending(path: "\(id).jsonl"))
     }
 
     /// The person and their current signature are the screen's reads of the connected tenant; a switch
@@ -343,19 +515,17 @@ final class SignatureChangesTests {
         #expect(refused.summary == Executor.PreviewRefusal.tenantChanged.message)
     }
 
-    /// GamGUI failure-log 2026-09-25: what was read on one tenant is never held for another. The body a Put
-    /// Back restores was read on example.com; after a switch it isn't previewed on example.org.
+    /// GamGUI failure-log 2026-09-25: what was read on one tenant is never held for another. A run kept on example.com
+    /// isn't previewed on example.org after a switch.
     @Test func putBackAfterADomainSwitchIsRefused() async throws {
         try await connect()
-        await access.load("alice@example.com")
-        let current = try #require(try access.lists(for: "alice@example.com")?.signature.get())
-        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: current)
+        await changes.preview(person: try user("alice@example.com"), template: "{name}", current: nil)
         await changes.confirm(try pending(), confirmed)
-        guard case .done(let done) = changes.state, let previous = done.previous else { Issue.record("\(changes.state)"); return }
+        guard case .done(let done) = changes.state, let keptRun = done.keptRun else { Issue.record("\(changes.state)"); return }
         try await connect("example.org", admin: "admin@example.org")
         #expect(setup.active == Domain("example.org"))
-        await changes.previewPutBack(previous: previous)
-        #expect(try problem().summary == Executor.PreviewRefusal.tenantChanged.message)
+        await changes.previewPutBack(keptRun)
+        #expect(try problem().summary == "That run was on example.com, so it's put back only there: connect example.com on Setup first.")
         #expect(writes().count == 1)
     }
 }

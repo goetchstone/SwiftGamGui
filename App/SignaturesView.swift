@@ -8,8 +8,9 @@ import SwiftUI
 /// as it's typed, beside the signature they have now; "Review and Replace…" holds that render as a preview
 /// (`SignatureChanges`), and only the confirm sheet runs it, exactly as held. For a group's members, an org unit or the
 /// whole company, the review holds one write per person; the run is in the jobs tray and on this screen with Stop, and
-/// "Retry the N That Failed…" reviews exactly those again. Saved templates load into the editor; the editor saves as a
-/// template.
+/// "Retry the N That Failed…" reviews exactly those again. Every run keeps the signatures it replaces on this Mac first
+/// (ChangeCore does, before each write); "Kept signatures" lists the runs, and "Put Back…" reviews one's old signatures
+/// as a run of their own. Saved templates load into the editor; the editor saves as a template.
 struct SignaturesView: View {
     let setup: SetupModel
     let directory: DirectoryStore
@@ -33,6 +34,8 @@ struct SignaturesView: View {
     @State private var drawn = (template: "", person: "")
     @State private var defaultApplied = false
     @State private var debugApplied = false
+    /// A section to bring into view once the screen has settled (debug snapshots: the kept signatures).
+    @State private var scrollTarget: String?
     @Environment(\.appearsActive) private var appearsActive
 
     private var kind: SignatureScope.Kind { SignatureScope.Kind(rawValue: scopeKind) ?? .person }
@@ -57,6 +60,8 @@ struct SignaturesView: View {
                     }
                     TemplateSection(template: $template, templates: templates)
                     SavedTemplatesSection(template: $template, templates: templates, roles: roles)
+                    KeptSignaturesSection(setup: setup, changes: changes)
+                        .id(Self.kept)
                 }
                 .formStyle(.grouped)
                 // The editor takes the keyboard when the screen opens, and AppKit scrolls the form down to it,
@@ -64,7 +69,10 @@ struct SignaturesView: View {
                 // will change is what the screen is for. The editor keeps the keyboard.
                 .task(id: personEmail) {
                     guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
-                    scroller.scrollTo(Self.top, anchor: .top)
+                    scroller.scrollTo(scrollTarget ?? Self.top, anchor: .top)
+                }
+                .onChange(of: scrollTarget) { _, target in
+                    if let target { scroller.scrollTo(target, anchor: .top) }
                 }
             }
         }
@@ -73,12 +81,16 @@ struct SignaturesView: View {
         .toolbar {
             ToolbarItem {
                 Button("Read Again", systemImage: "arrow.clockwise") {
-                    Task { await access.load(personEmail) }
+                    let email = kind == .person ? person?.primaryEmail : nil, access = access, changes = changes
+                    Task {
+                        await changes.loadKept()
+                        if let email { await access.load(email) }
+                    }
                 }
                 .keyboardShortcut("r")
-                .disabled(kind != .person || person == nil || access.isReading(personEmail))
-                .help("Read the person's current signature again")
-                .accessibilityLabel("Read the current signature again")
+                .disabled(changes.isLoadingKept || person.map { access.isReading($0.primaryEmail) } == true)
+                .help("Read the person's current signature and the kept signatures again")
+                .accessibilityLabel("Read the current and kept signatures again")
             }
         }
         // The person's current signature, read when they're chosen and again after a change lands.
@@ -86,6 +98,8 @@ struct SignaturesView: View {
             guard let person else { return }
             await access.load(person.primaryEmail)
         }
+        // The kept signatures, read when the screen opens; every run that ends reads them again itself.
+        .task { await changes.loadKept() }
         .task(id: "\(template)#\(personEmail)") {
             // Drawn a moment after typing stops, and at once for a new person.
             if drawn.person == personEmail, (try? await Task.sleep(for: .milliseconds(300))) == nil { return }
@@ -112,7 +126,9 @@ struct SignaturesView: View {
         // After the directory loads: connecting (a new generation) clears the person first.
         .task(id: directory.users?.count ?? -1) { debugSelection() }
         .sheet(item: Binding(get: { changes.sheetPending }, set: { if $0 == nil { changes.dismissPreview() } })) { pending in
-            if pending.isScoped {
+            if pending.isPutBack {
+                SignaturePutBackSheet(pending: pending, changes: changes)
+            } else if pending.isScoped {
                 SignatureScopePreviewSheet(pending: pending, changes: changes)
             } else {
                 SignaturePreviewSheet(pending: pending, changes: changes)
@@ -144,6 +160,22 @@ struct SignaturesView: View {
             defaultApplied = true
         }
         if let name = environment["SWIFTGAMGUI_TEMPLATE"], let body = templates.body(name) { template = body }
+        // `kept` brings the kept signatures into view; `putback` reviews the demo's kept run (the sheet, held, never run).
+        switch environment["SWIFTGAMGUI_TAB"] {
+        case "kept":
+            Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                scrollTarget = Self.kept
+            }
+        case "putback":
+            let changes = changes
+            Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                await changes.loadKept()
+                if let run = changes.kept?.first?.run { await changes.previewPutBack(run.id) }
+            }
+        default: break
+        }
         // `<kind>+confirm` then reviews the scope (the confirm sheet, held, never run); `<kind>+result` shows a made-up
         // finished run with failures and its Retry (no gam). After the edits above have settled: they drop a preview.
         let tab = (environment["SWIFTGAMGUI_TAB"] ?? "").split(separator: "+").map(String.init)
@@ -289,6 +321,8 @@ struct SignaturesView: View {
 
     /// The screen's first section, scrolled to when it opens.
     private static let top = "signatures.top"
+    /// The kept signatures' section.
+    private static let kept = "signatures.kept"
 
     /// The narrowest a preview stands beside the other: a typical signature (a name, a title, a phone and a
     /// small logo) is about this wide in Gmail.
@@ -303,7 +337,8 @@ struct SignaturesView: View {
         }
         guard let person else { return "Choose a person to preview." }
         if template.isBlank { return "Write a template, or load a saved one." }
-        // Their signature now is what Put Back Previous restores: wait for its read.
+        // The sheet shows their signature now beside the new one: wait for its read. (What's kept is read again, exactly, by
+        // the run itself.)
         if access.isReading(person.primaryEmail) { return "Reading their current signature…" }
         let render = Signature.render(template, for: person)
         if Signature.readAsKeyword(render) != nil { return SignatureChanges.keywordRefusal(render) }
@@ -596,7 +631,7 @@ private struct SavedTemplatesSection: View {
     }
 }
 
-/// The last signature change's result, above the screen: running, done (with Put Back Previous), or why
+/// The last signature change's result, above the screen: running, done (with Put Back for what it replaced), or why
 /// it failed, with GAM's own error one click away.
 private struct SignatureResult: View {
     let changes: SignatureChanges
@@ -630,9 +665,12 @@ private struct SignatureResult: View {
                             .frame(maxHeight: 120)
                         }
                     }
-                    if let retry = done.retry {
-                        Button("Retry the \(retry.failed.count) That Failed\u{2026}") { Task { await changes.previewRetry(retry) } }
-                            .accessibilityHint("Shows exactly those people, with the same template, before anything changes.")
+                    HStack {
+                        if let retry = done.retry {
+                            Button("Retry the \(retry.failed.count) That Failed\u{2026}") { Task { await changes.previewRetry(retry) } }
+                                .accessibilityHint("Shows exactly those people, with the same template, before anything changes.")
+                        }
+                        putBack(done)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -642,11 +680,7 @@ private struct SignatureResult: View {
             banner(tint: .green) {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 Text(done.message).frame(maxWidth: .infinity, alignment: .leading)
-                if let previous = done.previous {
-                    Button("Put Back Previous…") { Task { await changes.previewPutBack(previous: previous) } }
-                        .accessibilityLabel("Put back \(previous.person.fullName)'s previous signature")
-                        .accessibilityHint("Shows the signature they had before, to set it again.")
-                }
+                putBack(done)
                 dismiss
             }
         case .problem(let problem):
@@ -662,10 +696,26 @@ private struct SignatureResult: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // A write whose outcome is unknown may have landed: what it replaced is kept, and can be put back.
+                if let kept = problem.keptRun {
+                    Button("Put Back\u{2026}") { Task { await changes.previewPutBack(kept) } }
+                        .accessibilityLabel("Put back the signature this run may have replaced")
+                        .accessibilityHint("Shows the old signature, and whether it can go back, before anything changes.")
+                }
                 dismiss
             }
         case .idle, .previewing:
             EmptyView()
+        }
+    }
+
+    /// The signatures this run replaced, kept on this Mac first: reviewed to be set again.
+    @ViewBuilder
+    private func putBack(_ done: SignatureChanges.Done) -> some View {
+        if let kept = done.keptRun {
+            Button("Put Back\u{2026}") { Task { await changes.previewPutBack(kept) } }
+                .accessibilityLabel("Put back the signatures this run replaced")
+                .accessibilityHint("Shows who gets their old signature back, and who can't, before anything changes.")
         }
     }
 
@@ -684,6 +734,63 @@ private struct SignatureResult: View {
     }
 }
 
+/// The signatures runs kept on this Mac before replacing them (GamGUI's Kept signatures panel), newest first: when, what,
+/// the domain and how many, each with "Put Back…", which reviews it first. A run that can't be read whole is listed, said,
+/// and offers nothing; a run of another domain says to connect that one.
+private struct KeptSignaturesSection: View {
+    let setup: SetupModel
+    let changes: SignatureChanges
+
+    var body: some View {
+        Section("Kept signatures") {
+            Text("Before a signature is replaced, the one it replaces is read and kept on this Mac, for the last "
+                 + "\(SignatureBackupStore.keptRuns) runs. Put Back sets a run's old signatures again, after you review them.")
+                .font(.callout).foregroundStyle(.secondary)
+            if let problem = changes.keptProblem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill")
+                    .textSelection(.enabled)
+            } else if let kept = changes.kept {
+                if kept.isEmpty {
+                    Text("None kept yet.").foregroundStyle(.secondary)
+                }
+                ForEach(kept) { listed in row(listed) }
+            } else if changes.isLoadingKept {
+                HStack { ProgressView().controlSize(.small); Text("Reading the kept signatures\u{2026}") }
+                    .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ listed: SignatureBackupStore.Listed) -> some View {
+        if let run = listed.run {
+            let count = run.entries.count, active = setup.active?.name
+            let when = run.when.formatted(date: .abbreviated, time: .shortened)
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(run.what)
+                    Text("\(when) \u{B7} \(run.domain) \u{B7} \(count) signature\(count == 1 ? "" : "s")")
+                        .font(.callout).foregroundStyle(.secondary)
+                    if let active, active != run.domain {
+                        Text("Kept on \(run.domain): connect it on Setup to put these back.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                Button("Put Back\u{2026}") { Task { await changes.previewPutBack(run.id) } }
+                    .disabled(changes.isBusy || active != run.domain || count == 0)
+                    .accessibilityLabel("Put back the signatures from \(run.what), \(when)")
+                    .accessibilityHint("Shows who gets their old signature back, and who can't, before anything changes.")
+            }
+        } else {
+            Label("A kept run (\(listed.id)) can't be read whole: \(listed.problem ?? "it isn't whole"). Its file stays in "
+                  + "\(SignatureBackupStore.folderName) in this app's data folder.", systemImage: "exclamationmark.triangle.fill")
+                .textSelection(.enabled)
+        }
+    }
+}
+
 /// A scope's run as it goes (GamGUI's `_sig_apply.html` while running): how many of how many, set and failed, who is
 /// being set now, and Stop, which asks first: the write in flight finishes, and the rest aren't attempted.
 private struct ScopeProgress: View {
@@ -697,9 +804,12 @@ private struct ScopeProgress: View {
         HStack(alignment: .firstTextBaseline) {
             ProgressView().controlSize(.small)
             VStack(alignment: .leading, spacing: 4) {
-                Text(progress.stopping ? "Stopping after this signature\u{2026}" : "Applying the signature\u{2026}")
+                Text(progress.stopping ? "Stopping after this signature\u{2026}"
+                     : pending.isPutBack ? "Putting the signatures back\u{2026}" : "Applying the signature\u{2026}")
                 Text("\(progress.done) of \(progress.total) \u{B7} \(progress.applied) set"
-                     + (progress.failed > 0 ? " \u{B7} \(progress.failed) failed" : "") + (current.map { " \u{B7} \($0)" } ?? ""))
+                     + (progress.failed > 0 ? " \u{B7} \(progress.failed) failed" : "")
+                     + (progress.leftAsTheyAre > 0 ? " \u{B7} \(progress.leftAsTheyAre) left as they are" : "")
+                     + (current.map { " \u{B7} \($0)" } ?? ""))
                     .font(.callout).foregroundStyle(.secondary)
                 ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
                     .accessibilityLabel("Signatures done")

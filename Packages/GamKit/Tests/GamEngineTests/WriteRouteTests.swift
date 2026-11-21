@@ -187,6 +187,42 @@ struct WriteRouteTests {
                 "\(reaching)")
     }
 
+    /// Signature backups (GamGUI's #163, #164): only the executor starts a kept run and keeps into it, in the write lock,
+    /// after the exact read; a screen or a model only reads what was kept and puts it back through a preview. Only the
+    /// app's wiring hands the executor its keeper.
+    @Test func onlyTheExecutorKeepsSignatures() throws {
+        let keeping = [".keep(email:", ".start(what:", "KeptSignatureRun"]
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: keeping)
+                == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift", "Packages/GamKit/Sources/ChangeCore/SignatureKeeping.swift",
+                    "Packages/GamKit/Sources/Stores/SignatureBackupStore.swift"])
+        #expect(try Self.files(in: "App", matching: keeping).isEmpty)
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["signatureKeeper:"]) == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift"])
+        #expect(try Self.files(in: "App", matching: ["signatureKeeper:"]).subtracting(["App/AppServices.swift"]).isEmpty)
+    }
+
+    /// Every signature a screen replaces is kept first: Signatures builds its writes in one place, each with its `KeepFirst`,
+    /// and onboarding sets one on an account its run makes (which has none to keep) or keeps it first in a later run's retry.
+    /// The executor refuses any other (`signatureNotKept`). The Builder's set_signature is Signatures'
+    /// (`CuratedCommand.elsewhere`); the demo's audit only names one.
+    @Test func everySignatureAScreenReplacesIsKeptFirst() throws {
+        let setting = "GamCommands.setSignature("
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: [setting])
+                == ["Packages/GamKit/Sources/ChangeCore/ChangeCore.swift", "Packages/GamKit/Sources/Directory/OnboardChanges.swift",
+                    "Packages/GamKit/Sources/Directory/SignatureChanges.swift"])
+        #expect(try Self.files(in: "App", matching: [setting]) == ["App/DemoAudit.swift"])
+        let lines = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory")
+            .first { $0.path.hasSuffix("/SignatureChanges.swift") }?.lines)
+        let built = lines.indices.filter { lines[$0].contains(setting) }
+        #expect(built.count == 1, "one place builds Signatures' writes")
+        #expect(built.allSatisfy { $0 + 1 < lines.count
+            && lines[$0 + 1].contains("keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow, restoring: restoring)") })
+        // Onboarding's sets: on the account its own run creates (`creates`, `newAccountFrom`), or a later run's retry of that
+        // step, which keeps first.
+        let onboarding = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory")
+            .first { $0.path.hasSuffix("/OnboardChanges.swift") }?.lines.joined(separator: "\n"))
+        #expect(onboarding.components(separatedBy: setting).count - 1 == 2)
+    }
+
     /// Offboarding's routine and the compromised-account lock are the previews only `requires` stops (a refused sign-out
     /// mustn't stop forwarding off), and the offboarding sweep the one step that counts benign failures as done
     /// (ChangeCore's additions A and B, the offboarding plan): no other caller loosens either.

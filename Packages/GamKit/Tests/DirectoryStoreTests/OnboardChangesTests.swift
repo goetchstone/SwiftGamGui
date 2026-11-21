@@ -3,6 +3,7 @@ import Foundation
 @testable import Directory
 @testable import GamEngine
 import Setup
+import Stores
 import TestSupport
 import Testing
 import Vault
@@ -47,7 +48,8 @@ final class OnboardChangesTests {
         executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": state.path])
+                              "GAM_MOCK_STATE": state.path],
+                            signatureKeeper: SignatureBackupStore(folder: scratch.appending(path: "signature-backups")))
     }
 
     deinit {
@@ -713,6 +715,10 @@ final class OnboardChangesTests {
                 template: classic, email: "jordan@example.com", first: "Jordan", last: "Lee")!).argv,
             GamCommands.addGroupMember(group: "missing@example.com", member: "jordan@example.com").argv])
         #expect(retry.preview.steps.allSatisfy { $0.newAccountFrom == nil && $0.requires.isEmpty })
+        // Review of Phase A: the retry is a later run on an account that has been there since, so the signature it has now
+        // is kept first (the executor refuses a signature write that keeps nothing).
+        #expect(retry.preview.steps[0].keepFirst == .signature(email: "jordan@example.com", setting: Onboarding.signatureHTML(
+            template: classic, email: "jordan@example.com", first: "Jordan", last: "Lee")!, expectedNow: nil))
         let before = writes().count
         await changes.confirm(retry, OperatorConfirmation())
         #expect(changes.problem == "This change needs confirmation — preview it, then confirm." && writes().count == before)

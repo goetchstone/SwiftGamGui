@@ -4,9 +4,11 @@
 one person, a group's members, everyone in an org unit or the whole company, and set as each one's Gmail
 signature through ChangeCore. Built: the parity core (S1a: the render, the reader of `show signature`,
 GAM's stored form, the strict mock), the template store (S1b), the screen and the write for one person
-(S1c, 2026-10-10, live 10-29), and a scope as a job with Stop and a retry of what failed (S2, 2026-11-13,
+(S1c, 2026-10-10, live 10-29), a scope as a job with Stop and a retry of what failed (S2, 2026-11-13,
 asked for by the operator: "signature across a group or whole ou"), following the plan for signatures
-(design doc D1–D5). The scope's live check is next. GamGUI's runbook
+(design doc D1–D5), and kept signatures with Put Back (GamGUI's #163 and #164, ported 2026-11-21: "signature
+backups first", the operator): every run keeps each signature it replaces on this Mac first. The scope's live check,
+and the kept signatures', are next. GamGUI's runbook
 of the same name is the history this inherits: its render rules, its 2026-09-23 apply incidents and its
 mock traps all carry over.
 
@@ -17,13 +19,20 @@ messages; the store's own rules below (no template is ever lost to a failed save
 `MockSignatureTests.swift`, `Packages/GamKit/Tests/StoresTests/SignatureStoreTests.swift`, all held to
 `Tests/Fixtures/signatures.json` (`scripts/gen_fixtures.py`'s `signature_fixture`); the write in
 `Packages/GamKit/Tests/DirectoryStoreTests/SignatureChangesTests.swift` and ChangeCore's
-`ExecutorTests`; the one confirm screen in `WriteRouteTests`.
+`ExecutorTests`; the one confirm screen in `WriteRouteTests`. Kept signatures: `SignatureExactTests` (the read),
+`SignatureKeepTests` (ChangeCore), `SignatureBackupStoreTests` (the store), the Put Back cases in
+`SignatureChangesTests` and `SignatureScopeTests`, and `WriteRouteTests.onlyTheExecutorKeepsSignatures` and
+`everySignatureAScreenReplacesIsKeptFirst`.
 
 ## Files
 - `Packages/GamKit/Sources/GamEngine/Signature.swift`: the variables, the seeds, `render`,
   `smartQuoteWarning`, `parseShown`, `stored`, `readAsKeyword`, and the preview's `previewDocument`
   (the CSP shell) and `contentRules` (the WKContentRuleList).
 - `Packages/GamKit/Sources/Stores/SignatureStore.swift`: the store.
+- Kept signatures: `Signature.exact` and `GamCommands.printSignature` (GamEngine), `WriteStep.KeepFirst` and the
+  executor's `keepFirst` (`ChangeCore/ChangeCore.swift`), `SignatureKeeper` (`ChangeCore/SignatureKeeping.swift`),
+  `SignatureBackupStore` (`Stores/SignatureBackupStore.swift`), and `SignatureChanges.previewPutBack`, `putBackPlan`,
+  `loadKept`.
 - `Packages/GamKit/Sources/Directory/SignatureChanges.swift`: the write, for one person and for a scope;
   `SignatureScope.swift` whom a scope matches; `UserAccess.swift` reads the current signature.
 - `App/SignaturesView.swift` (the screen), `App/SignatureWebView.swift` (the Rendered view and the
@@ -74,7 +83,10 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
 - **Failure:** "Couldn't set the signature." plus the kind's remediation, GAM's error as `detail`. A
   never-signed-in account refused "Requested client not authorized" is told to wait for Google
   (live 2026-09-30); for anyone else those words stay GAM's unexplained error.
-- **Put Back Previous:** the signature as read before the change (`current`, from `UserAccess`, stamped
+- **Put Back Previous (retired 2026-11-21):** was the signature as `show signature` displayed it before the change,
+  held in memory, and none when that read failed. A one-person replace is now a kept run like any other ("Kept
+  signatures" below), and its banner's Put Back… previews that run. What follows is the old rule, for the history:
+  the signature as read before the change (`current`, from `UserAccess`, stamped
   with its tenant), previewed again as GAM showed it; refused on another tenant or when it's a keyword.
 - **Reading the current signature:** `UserAccess` reads `show signature` with the person's other lists,
   on its own (Gmail off fails only it), parsed by `Signature.parseShown`; tenant-stamped and bounded
@@ -84,7 +96,7 @@ One person at a time, through ChangeCore (invariant 2); the operator sets signat
 Ports GamGUI's `routes/signatures.py` (`preview`, `retry`, `apply`, `_matched`, `_run_apply`) and
 `match_scope` at 487be35. One preview of N writes, one per person, through the executor; nothing new in
 ChangeCore.
-- **Who (`SignatureScope`):** one person (the S1c flow, unchanged, with Put Back), a group's members, an
+- **Who (`SignatureScope`):** one person (the S1c flow), a group's members, an
   org unit, the whole company. Active accounts only. Only `company` means everyone: a scope with no value
   matches nobody. An org unit is its path or any path under it (Python's `rstrip("/") + "/"`; `/` is
   everyone); a person matches in any case; the org units offered are every user's unit, suspended ones'
@@ -108,7 +120,7 @@ ChangeCore.
   screen's banner counting set and failed with who is being set, and Stop (asked first) after the write
   in flight. A failure every later write would share (an expired sign-in, a missing scope) stops the
   rest, as GamGUI's `stop_reason`. The sheet closes once confirmed (as Calendars' group share). Its confirm is
-  not the default button: Return alone never overwrites many signatures Gmail keeps no copy of. The sheet's
+  not the default button: Return alone never overwrites many signatures at once. The sheet's
   title names the scope ("Set the signature for N people in /Staff").
 - **A preview outdated while it reads** (a group's members): the scope, person or template changed, or a
   newer preview began. Its held preview is discarded and nothing is shown (a preview serial, `edited()`).
@@ -141,7 +153,8 @@ ChangeCore.
   was a little small, and the editor had pushed the preview below the window). The New view is the render for the chosen person, drawn a moment after typing stops
   and not held; "Review and Replace…" holds it. Why the button is off is said beside it: no domain, the
   directory loading or failed, nobody chosen, a blank template, a keyword body (refused in words before
-  any preview), their current signature still being read (it's what Put Back restores).
+  any preview), their current signature still being read (the sheet shows it beside the new one; what's kept is read
+  again, exactly, by the run).
 - **The panes:** each has Rendered | HTML and Copy HTML. The New pane's Rendered draws
   `Signature.stored(render)` (what Gmail will hold); its HTML is the render, the argv element. The
   sheet's HTML is the held element itself (`Pending.body`). Current is the body as GAM showed it, or
@@ -159,10 +172,11 @@ ChangeCore.
   app runs (`@SceneStorage`); another domain clears the person.
 - **The sheet** (`SignaturePreviewSheet`, beside the other confirm sheet: `WriteRouteTests` allows the
   operator's confirmation in that one file): "Replace Alice Anders's signature", the New and Current
-  panes, the warnings, "Replaces their current Gmail signature. Gmail keeps no copy.", the command with
+  panes, the warnings, `SignatureChanges.keptFirst` ("Gmail keeps no copy, so it's read and kept on this Mac first"), the command with
   the body masked, and Cancel and "Replace Signature", both off while it runs (the sheet stays until
   the run ends).
-- **The result** is a banner above the screen: "Replaced …'s signature." with "Put Back Previous…", or
+- **The result** is a banner above the screen: "Replaced …'s signature. The one it replaced is kept on this Mac." with
+  "Put Back…" (the run's kept signatures, previewed), or
   "Couldn't set the signature." with the remediation and GAM's error in a disclosure. It's announced
   once, from the window in front, and never reads the signature aloud. Saved templates' messages and the
   copy's report are announced the same way.
@@ -177,9 +191,104 @@ ChangeCore.
   own") and the button says "Review for N People…"; for a group, "Review…" (its members are read then).
 - **Screenshots** (`scripts/screenshots.sh`): `signatures` (nobody: the demo admin isn't in the
   directory), `signatures-alice` (Classic loaded; Current is `Best,<br>Alice`), `person-mail` (the card),
-  `narrow-signatures` (the smallest window), and `signatures-staff` and `narrow-signatures-staff` (everyone
-  in /Staff, Classic loaded). `cacheDisplay` draws a web view blank (WebKit draws in
+  `narrow-signatures` (the smallest window), `signatures-staff` and `narrow-signatures-staff` (everyone
+  in /Staff, Classic loaded), and `signatures-kept` and `signatures-putback` with their narrow runs. `cacheDisplay` draws a web view blank (WebKit draws in
   another process), so the debug snapshot draws each from its own `takeSnapshot` over its place.
+
+## Kept signatures and Put Back (GamGUI #163, #164; ported 2026-11-21)
+Gmail keeps no copy of a replaced signature. Every write Signatures holds keeps the one it replaces on this Mac first,
+and Put Back sets a kept run's old signatures again, as a run of its own.
+
+- **ChangeCore does the keeping (invariant 2).** `SignatureChanges.step` is the only place Signatures builds a write: each
+  carries `WriteStep.KeepFirst.signature(email:setting:expectedNow:)`, plain data, never a closure. The preview refuses one
+  whose `email` and `setting` aren't exactly its own write's (`keepHolds`: `GamCommands.setSignature(email, setting,
+  html)`'s argv, byte for byte), or that may wait for a new account (`.badKeep`). In `Executor.run`, holding the write lock
+  and after every pre-step check, a preview with such a step starts a kept run through the injected `SignatureKeeper`
+  (Stores' `SignatureBackupStore`, given by `AppServices`); none, or one that can't start, refuses the whole run: "Couldn't
+  make a place on this Mac to keep the old signatures, so nothing was replaced." Then, per step, before its begin record:
+  - read `user <email> print signature` and `Signature.exact` it;
+  - **unread** (GAM's error, no getting line, no whole row, a cut answer): the step fails, "Couldn't read their current
+    signature, so it wasn't replaced: there'd be nothing to put back." with why, and the run goes on, unless the error is
+    account-wide (the usual stop: "Stopped: <remediation>"), a Vault or launch failure (stops), or a cancel (stops);
+  - **the domain changed** during the read (removed or imported again: its generation moved): skipped, and the run stops
+    there, "Stopped: the active domain changed during the run." (the read takes seconds, so the per-step check before it
+    isn't enough);
+  - **changed since** (`expectedNow` set and the read differs in bytes): skipped, "Changed since that run, so it's left as
+    it is: put it back by hand if you mean to.";
+  - **keep** `(email, previous, setting)`; if that throws, this step and every later one are skipped, "Couldn't keep a copy
+    of the old signatures on this Mac, so the run stopped.";
+  - only then the begin record (its `extra.kept` names the kept run) and the held write.
+  The kept run closes when the run ends (removed if it kept nobody); `RunOutcome.kept` names it when it kept someone.
+  `WriteRouteTests`: only ChangeCore calls the keeper, only `AppServices` gives it one, and every `setSignature` a screen
+  builds is Signatures' one keeping step or onboarding's. The executor itself refuses a `.setSignature` step with neither
+  `KeepFirst` nor `newAccountFrom` (`signatureNotKept`: "Step N would replace a signature without keeping the one it
+  replaces."): only a signature on an account the run makes keeps nothing. Onboarding's retry of a failed signature, a
+  later run on an account that has been there since, keeps first (GamGUI's keeps nothing there).
+- **The exact read** (`Signature.exact`, GamGUI's `signature_exact`), from GAM 7.52.04's printShowSignature and its CSV
+  writer, read to the end: exit 0; "Getting Signatures for" on stderr (GAM skips a refused token without a word: titles
+  alone, exit 0); exactly one whole row whose `User` is the person (lowercased); the `signature` cell, or "" when there's
+  no such column (GAM's titles never hold one: Gmail leaves an empty signature out). GAM's titles: User, displayName,
+  sendAsEmail, replyToAddress, isPrimary, isDefault, treatAsAlias, verificationStatus (`sortall` keeps them first), then
+  `signature` sorted after. The CSV is read with `CSVReader` (GAM's dialect: a quoted cell, `""`, a doubled backslash).
+- **The store** (`SignatureBackupStore`, GamGUI's `signature_backups.py`): `signature-backups` in the app's data folder,
+  `0700`, opened without following a link; one `<13-digit ms>-<8 hex>.jsonl` per run, `0600`, `O_CREAT|O_EXCL|O_NOFOLLOW`;
+  a header `{run, when, what, domain}` (`what` is the run's jobs-tray title), then `{email, previous, set}` lines, each
+  `F_FULLFSYNC`ed before that person's write. Room is made only when a run that kept someone ends: the newest 5 runs not
+  being written stay, and so does the run it put back (KeepFirst's `restoring`, the Put Back's source, passed to `start`),
+  which then lives until a later run that keeps someone pushes it out. Nothing is pruned when a run starts, and a run that
+  kept nobody is removed on close without pruning anything. `runs()` lists every regular `<id>.jsonl`, newest first, whole or with its problem (never
+  dropped; a last line without a line break is an append that never finished, whose person was never written, and is
+  left out, where GamGUI reads the run as not whole); `load(id)` refuses an id with `/`, NUL or a leading `.`, picks only among the listed files, and gives the
+  whole run or a problem, never part of one. At most 32 MB a file, read or written (invariant 9).
+- **Put Back** (`SignatureChanges.previewPutBack(id)`): loads the run now; refuses a run of another domain ("That run was
+  on example.org, so it's put back only there: connect example.org on Setup first.") or one that can't be read ("That run
+  can't be put back: <why>."); leaves out, by name, anyone whose old signature GAM would read as a file to load
+  (`readAsKeyword`) or store as something else (`Signature.stored` differs); holds the rest as keeping steps that set
+  `previous` with `expectedNow` = `Signature.stored(set)`, titled "Put back of <what>" (so its own kept run says so, and
+  can be put back too), confirm step and the count typed above 25. It runs as a scope does (jobs tray, Stop, progress
+  counting "left as they are"); its result: "Put back X of N signatures.", and "K were left as they are, changed since
+  that run: …". No Retry (nothing to re-render).
+- **The screen:** "Kept signatures", the Signatures form's last section: what's kept and for how many runs, then each run
+  (its title, when, domain and how many) with Put Back… (off on another domain, said in words); an unreadable run is
+  listed by its id with why, and a folder that can't be opened or listed says so ("The kept signatures couldn't be read:
+  …"), never "None kept yet." (`runs()` throws; only no folder at all is none). Read when the screen opens, after each run, and with ⌘R (Read Again reads the person's
+  signature and the kept runs); every run that ends reads them again itself (`SignatureChanges.loadKept` after each
+  `executor.run`, one that set nobody too), and a read asked for while one is under way is read again as that one ends.
+  `SignaturePutBackSheet`: who goes back (ten, then Show all), the first one's old signature,
+  who is left out and why, the count typed above 25, what the run checks first, the commands masked; not the default
+  button. Each result banner has Put Back… for the run it just made, a one-person write whose outcome is unknown (a
+  timeout or an interruption: it may have landed) included; a write GAM refused changed nothing and offers none. Screenshots: `signatures-kept`, `signatures-putback`
+  and their `narrow-` (smallest window) runs, from `Tests/Fixtures/demo/signature-backups` copied into a fresh folder.
+  No new column, so `ColumnWidths` is unchanged.
+- **Deviations from GamGUI, each tested:**
+  - the getting line is GAM's "Getting Signatures for" (gamlib `Ent.SIGNATURE`'s plural). GamGUI looks for "Getting
+    Signature for", which only its mock prints: against real GAM its every read would be "unread" and no signature
+    replaced. Reported to the operator; GamGUI isn't edited from here;
+  - the CSV isn't stripped (GamGUI's `parse_records` strips the whole text, so an unquoted signature, the last cell,
+    loses its trailing whitespace); a row with more cells than titles, two `User` columns, or an answer cut at the
+    capture's cap is unknown;
+  - the header names the domain, and Put Back runs only there. GamGUI keeps one folder for every tenant and its header has
+    no domain, so a Put Back after a tenant switch would read and write the other tenant's addresses;
+  - a person changed since is skipped ("left as they are"), not a failure, so no Retry offers them;
+  - the unread failure carries why in its message (GamGUI keeps GamGUI's sentence and puts why in a detail);
+  - a keep that fails partway is cut back off the file, so the copies before it stay readable; a file never passes the
+    cap a load reads (the run stops instead);
+  - a read cut off by its timeout is "unread", not `.timeout` (which says a change may have been made);
+  - pruning happens when a run that kept someone ends, never when one starts, and never takes the run a Put Back is
+    restoring. GamGUI prunes as a run starts: putting back the oldest of five deleted it before the first step, so whoever
+    that Put Back didn't restore (left out, changed since, unread, stopped) lost their only copy; and an attempt that
+    kept nobody still pushed out the oldest real run (review of this branch, 2026-11-21);
+  - a run being written holds an exclusive `flock` on its file, and pruning skips any file it can't lock: no store, in
+    this process or another copy of the app, removes an open run (GamGUI's guard is one process's set; a lock is tried
+    for up to 200 ms, since a closed run's can outlive its close for a moment, seen once in three full suite runs); each keep then
+    checks its file is still linked (`fstat` `st_nlink`), so a copy is never "kept" into a removed file;
+  - run ids only go forward: a new id's milliseconds are the clock's or one past the newest run's, whichever is later, so a
+    clock set back never makes the newest run sort, and be pruned, as the oldest (GamGUI's are the clock's alone).
+- **Not verified live** (none of it): the getting line, the titles and the CSV against real GAM; that Gmail stores and
+  returns a signature exactly as GAM sent it in `html` (if it normalizes, every Put Back reads "changed since" and puts
+  nothing back: safe, but owed a check); a kept run's file after a real run.
+- **Parity:** `GamCommands.printSignature` is GamGUI's `print_signature`, held to `argv.json` (generated from GamGUI
+  d03f5a6, `GoldenArgvTests.implemented`); `gam_output.json` holds the mock's answer for GamGUI's own read of it.
 
 ## The mock (`Tests/Fixtures/mock_gam.sh`)
 - `show signature` prints GAM's shape for the address given, with the indent; with `GAM_MOCK_STATE`,
@@ -190,6 +299,16 @@ ChangeCore.
   read `html` (exit 6), a document keyword wants its file (exit 2; wording approximate).
 - Accounts `create user` made are known users while the mock keeps state, so onboarding's signature set
   reaches the same handler.
+- `print signature` (the exact read), from printShowSignature's print mode at 7.52.04, read to the end: "Getting
+  Signatures for <u>" on stderr; CSVPrintFile's own titles (User, displayName, sendAsEmail, replyToAddress, isPrimary,
+  isDefault, treatAsAlias, verificationStatus) first and in that order, then `signature` only when there is one (Gmail
+  leaves an empty one out of its reply); the person's row, the primary's empty treatAsAlias and verificationStatus; the
+  signature the mock last set, in the form GAM stored it, or the canned one `show signature` has. Its cell is written by
+  `gam_cell`, which now quotes a value holding a CR or a LF and writes the line breaks as they are, as CPython's csv
+  writer does in GAM's dialect (a backslash doubled, a quote doubled, no quoting for a backslash alone). A refused token
+  (`quiet/<u>`) is the titles alone, exit 0; Gmail off, exit 73 and the titles alone; not a user, the token's refusal
+  (exit 50). Other options (`compact`, `primary`…) aren't modelled. A just-created account still being set up isn't
+  modelled for this read (the app never reads one: a new hire's signature keeps nothing).
 - Approximations, invisible to the reader: the mock's strips are ASCII whitespace only.
 
 ## The store
