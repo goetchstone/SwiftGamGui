@@ -201,8 +201,9 @@ struct WriteRouteTests {
     }
 
     /// Every signature a screen replaces is kept first: Signatures builds its writes in one place, each with its `KeepFirst`,
-    /// and onboarding sets one only on an account its run makes, which has none to keep. The Builder's set_signature is
-    /// Signatures' (`CuratedCommand.elsewhere`); the demo's audit only names one.
+    /// and onboarding sets one on an account its run makes (which has none to keep) or keeps it first in a later run's retry.
+    /// The executor refuses any other (`signatureNotKept`). The Builder's set_signature is Signatures'
+    /// (`CuratedCommand.elsewhere`); the demo's audit only names one.
     @Test func everySignatureAScreenReplacesIsKeptFirst() throws {
         let setting = "GamCommands.setSignature("
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: [setting])
@@ -215,7 +216,8 @@ struct WriteRouteTests {
         #expect(built.count == 1, "one place builds Signatures' writes")
         #expect(built.allSatisfy { $0 + 1 < lines.count
             && lines[$0 + 1].contains("keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow, restoring: restoring)") })
-        // Onboarding's sets are on the account its own run creates (`creates`), or a later run's retry of that step.
+        // Onboarding's sets: on the account its own run creates (`creates`, `newAccountFrom`), or a later run's retry of that
+        // step, which keeps first.
         let onboarding = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory")
             .first { $0.path.hasSuffix("/OnboardChanges.swift") }?.lines.joined(separator: "\n"))
         #expect(onboarding.components(separatedBy: setting).count - 1 == 2)

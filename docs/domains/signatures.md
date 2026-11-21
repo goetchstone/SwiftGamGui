@@ -217,7 +217,10 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   - only then the begin record (its `extra.kept` names the kept run) and the held write.
   The kept run closes when the run ends (removed if it kept nobody); `RunOutcome.kept` names it when it kept someone.
   `WriteRouteTests`: only ChangeCore calls the keeper, only `AppServices` gives it one, and every `setSignature` a screen
-  builds is Signatures' one keeping step (onboarding's are on accounts its run creates, with nothing to keep, as GamGUI's).
+  builds is Signatures' one keeping step or onboarding's. The executor itself refuses a `.setSignature` step with neither
+  `KeepFirst` nor `newAccountFrom` (`signatureNotKept`: "Step N would replace a signature without keeping the one it
+  replaces."): only a signature on an account the run makes keeps nothing. Onboarding's retry of a failed signature, a
+  later run on an account that has been there since, keeps first (GamGUI's keeps nothing there).
 - **The exact read** (`Signature.exact`, GamGUI's `signature_exact`), from GAM 7.52.04's printShowSignature and its CSV
   writer, read to the end: exit 0; "Getting Signatures for" on stderr (GAM skips a refused token without a word: titles
   alone, exit 0); exactly one whole row whose `User` is the person (lowercased); the `signature` cell, or "" when there's

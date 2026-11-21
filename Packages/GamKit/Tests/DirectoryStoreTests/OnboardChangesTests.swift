@@ -3,6 +3,7 @@ import Foundation
 @testable import Directory
 @testable import GamEngine
 import Setup
+import Stores
 import TestSupport
 import Testing
 import Vault
@@ -36,7 +37,9 @@ final class OnboardChangesTests {
     init() throws {
         setenv("GAM_MOCK_FIXTURES", Fixtures.mockGamData.path, 1)
         let base = try RuntimeDirectory.prepare(scratch.appending(path: "run"))
-        let runner = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
+        // The strict mock, and the exact signature read a retry's signature keeps first.
+        let gam = try Fixtures.gamReadingSignatures(in: scratch.appending(path: "gam"))
+        let runner = AuthenticatedRunner(runner: GamRunner(binary: gam), vault: vault, runtimeDirectory: base)
         setup = SetupModel(vault: vault, runner: runner, gamgui: GamGUIKeychain { _, _ in nil }, lastDomain: .memory())
         directory = DirectoryStore(setup: setup, runner: runner)
         argvLog = scratch.appending(path: "argv.log")
@@ -47,7 +50,8 @@ final class OnboardChangesTests {
         executor = Executor(runner: runner, audit: AuditLog(url: auditURL), tenant: { @MainActor in
             setup.active.map { ($0, setup.generation) }
         }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path,
-                              "GAM_MOCK_STATE": state.path])
+                              "GAM_MOCK_STATE": state.path],
+                            signatureKeeper: SignatureBackupStore(folder: scratch.appending(path: "signature-backups")))
     }
 
     deinit {
@@ -713,6 +717,10 @@ final class OnboardChangesTests {
                 template: classic, email: "jordan@example.com", first: "Jordan", last: "Lee")!).argv,
             GamCommands.addGroupMember(group: "missing@example.com", member: "jordan@example.com").argv])
         #expect(retry.preview.steps.allSatisfy { $0.newAccountFrom == nil && $0.requires.isEmpty })
+        // Review of Phase A: the retry is a later run on an account that has been there since, so the signature it has now
+        // is kept first (the executor refuses a signature write that keeps nothing).
+        #expect(retry.preview.steps[0].keepFirst == .signature(email: "jordan@example.com", setting: Onboarding.signatureHTML(
+            template: classic, email: "jordan@example.com", first: "Jordan", last: "Lee")!, expectedNow: nil))
         let before = writes().count
         await changes.confirm(retry, OperatorConfirmation())
         #expect(changes.problem == "This change needs confirmation — preview it, then confirm." && writes().count == before)

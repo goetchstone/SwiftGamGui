@@ -243,9 +243,27 @@ final class SignatureKeepTests {
     @Test func otherWritesKeepNothing() async throws {
         let keeper = LoggingKeeper(log: log)
         let executor = executor(try gam([:]), keeper: keeper)
-        let plain = WriteStep(GamCommands.setSignature(email: Self.alice, signature: "x"), target: Self.alice, summary: "Set")
-        #expect(try await run(executor, [plain]).succeeded)
-        #expect(keeper.started.isEmpty && happened() == [set(Self.alice, "x")])
+        let add = GamCommands.addGroupMember(group: "sales@example.com", member: Self.alice)
+        #expect(try await run(executor, [WriteStep(add, target: Self.alice, summary: "Add to Sales")]).succeeded)
+        #expect(keeper.started.isEmpty && happened() == [add.argv])
+    }
+
+    /// Review of Phase A: the executor took any signature write without a `KeepFirst` (onboarding's retry replaced a signature
+    /// set since, keeping nothing). Only one on an account the run itself makes may keep nothing.
+    @Test func aSignatureWriteThatKeepsNothingIsRefused() async throws {
+        let executor = executor(try gam([:]), keeper: LoggingKeeper(log: log))
+        let bare = WriteStep(GamCommands.setSignature(email: Self.alice, signature: "x"), target: Self.alice, summary: "Set")
+        await #expect(throws: Executor.PreviewRefusal.signatureNotKept(step: 1)) {
+            try await executor.preview([WriteStep(GamCommands.vacationOff(email: Self.bob), target: Self.bob, summary: ""), bare]).get()
+        }
+        #expect(Executor.PreviewRefusal.signatureNotKept(step: 0).message
+                == "Step 1 would replace a signature without keeping the one it replaces.")
+        let create = WriteStep(GamCommands.createUser(email: "new@example.com", firstName: "N", lastName: "W", password: "x"),
+                               target: "new@example.com", summary: "")
+        let onTheNewAccount = WriteStep(GamCommands.setSignature(email: "new@example.com", signature: "x"), target: "new@example.com",
+                                        summary: "", requires: [0], newAccountFrom: 0)
+        #expect((try? await executor.preview([create, onTheNewAccount]).get()) != nil)
+        #expect(happened().isEmpty)
     }
 
     /// What's kept is the signature of the account the step's own write replaces, beside what that write sets: a keep for

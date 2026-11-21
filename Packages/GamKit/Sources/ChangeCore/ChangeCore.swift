@@ -397,6 +397,13 @@ public actor Executor {
         if let index = steps.indices.first(where: { !Self.keepHolds(steps[$0]) }) {
             return .failure(.badKeep(step: index))
         }
+        // Gmail keeps no copy of a replaced signature: every signature write keeps the one it replaces, unless it's on an
+        // account this run makes, which has none.
+        if let index = steps.indices.first(where: {
+            steps[$0].action == .setSignature && steps[$0].keepFirst == nil && steps[$0].newAccountFrom == nil
+        }) {
+            return .failure(.signatureNotKept(step: index))
+        }
         // GamGUI's sweep alone tolerates, and only its benign per-user notices: never a 403, a scope or an unknown line.
         if let index = steps.firstIndex(where: {
             !$0.tolerating.isEmpty && ($0.action != .removeAllCalendarACLs || !$0.tolerating.isSubset(of: Self.sweepTolerable))
@@ -465,6 +472,8 @@ public actor Executor {
         case cutsOffConnectedAdmin(String, admin: String)
         /// A step whose `KeepFirst` isn't its own write's signature (`keepHolds`).
         case badKeep(step: Int)
+        /// A signature write that would keep nothing: no `KeepFirst`, and not on an account the run makes.
+        case signatureNotKept(step: Int)
 
         public var message: String {
             switch self {
@@ -474,6 +483,7 @@ public actor Executor {
             case .badPrerequisite(let step): "Step \(step + 1) needs a step that doesn't come before it."
             case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
             case .badKeep(let step): "Step \(step + 1) would keep a signature other than the one it replaces."
+            case .signatureNotKept(let step): "Step \(step + 1) would replace a signature without keeping the one it replaces."
             case .typedAddressNotATarget: "The address to type isn't one this change acts on."
             case .typedWordUnusable: "The word to type to confirm this can't be asked for here."
             case .adminUnconfirmed:
