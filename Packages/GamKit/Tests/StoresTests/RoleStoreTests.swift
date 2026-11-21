@@ -220,6 +220,8 @@ struct RoleStoreTests {
         let role = #""steps": ["a"], "signature": "", "org_unit": "", "groups": [], "calendars": [], "welcome": """#
         let bad: [(String, [UInt8])] = [
             ("not JSON", Array("{".utf8)),
+            // GamGUI's RunbookStore raises on it (UnicodeDecodeError, since its #142): a listed deviation.
+            ("not UTF-8", [0x7B, 0xFF, 0x7D]),
             ("GamGUI's own form, no version", Array(#"{"roles": {"A": ["x"]}}"#.utf8)),
             ("a later version", Array(#"{"version": 2, "roles": {}, "welcomes": {}}"#.utf8)),
             ("no Default welcome", file(#""A": {\#(role)}"#, welcomes: #""Other": {"subject": "s", "body": "b"}"#)),

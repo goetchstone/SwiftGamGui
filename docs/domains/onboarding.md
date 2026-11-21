@@ -181,6 +181,10 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
 - An unreadable GamGUI roles file is reported, not replaced by GamGUI's starter role (D5); a list or
   object where text belongs is refused rather than read as Python's `repr`.
 - The roles are this app's (O2), with the bounds above; GamGUI's are copied in only when asked.
+- A roles file that isn't UTF-8 is moved aside and the seed shown, as any file this store can't read; GamGUI's
+  `RunbookStore` raises on it (`UnicodeDecodeError`, since its #142 its `read_text()` sits outside the catch).
+  `OnboardingTests.raisesInGamGUI` lists the case `onboarding.json` records as `raises`, and
+  `RoleStoreTests.aFileItCantReadIsMovedAsideNeverOverwritten` moves it aside.
 - A new create is refused while the last card is unhanded; GamGUI replaced its result panel.
 
 ## Testing and live verification
