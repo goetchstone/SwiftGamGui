@@ -412,7 +412,7 @@ course_has() {  # <course id> <teachers|students> <address>
 }
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "courses" ]; then
   shift 2
-  ids=""; teacher=""; student=""; states=""; owneremail=0; fj=0; aliases=0
+  ids=""; teacher=""; student=""; states=""; owneremail=0; fj=0; aliases=0; show=none; counts=0
   while [ $# -gt 0 ]; do
     case "$1" in
       course|class) need_value $# "CourseEntity"; [ -n "$2" ] || empty_arg "CourseEntity"; ids="$ids $2"; shift 2 ;;
@@ -437,6 +437,14 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "courses" ]; then
       # course_aliases.tsv holds the objects as GAM prints them. GamGUI's handler at 07c505d.
       alias|aliases) aliases=1; shift ;;
       aliasesincolumns) not_modelled "print courses aliasesincolumns" ;;
+      # Audit runs (plan F3): `show all countsonly` adds each class's teacher and student counts to its JSON (`teachers`,
+      # `students`: _saveParticipants, `course[role] = jcount`) and a JSON-teachers and JSON-students column holding the
+      # counts (doPrintCourses, 7.52.04 :52337-52500). A roster Google won't return (notFound, serviceNotAvailable) is passed
+      # over by _getCourseAliasesMembers and counted 0, without a word: GAM_MOCK_STATE/roster_gone/<course id>. GamGUI's
+      # handler at db579c7.
+      show) need_value $# "show"; case "$(lower "$2")" in none|all|students|teachers) show=$(lower "$2") ;;
+        *) invalid_choice "$2" "none|all|students|teachers" ;; esac; shift 2 ;;
+      countsonly) counts=1; shift ;;
       fields)
         need_value $# "CourseFieldNameList"; [ -n "$2" ] || empty_arg "CourseFieldNameList"
         for f in $(printf '%s' "$2" | tr ',' ' '); do
@@ -463,7 +471,11 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "courses" ]; then
     grep -qF "\"id\": \"$id\"" "$GAM_MOCK_FIXTURES/courses.json" || missing="$missing $id"
   done
   for id in $missing; do printf 'Course: %s, Does not exist\n' "$id" 1>&2; done
-  if [ "$aliases" = 1 ]; then printf 'id,JSON,JSON-aliases\n'; else printf 'id,JSON\n'; fi
+  { [ "$show" = none ] && [ "$counts" = 0 ]; } || { [ "$show" = all ] && [ "$counts" = 1 ] && [ "$aliases" = 0 ]; } \
+    || not_modelled "print courses with show other than all countsonly (or with aliases)"
+  if [ "$aliases" = 1 ]; then printf 'id,JSON,JSON-aliases\n'
+  elif [ "$counts" = 1 ]; then printf 'id,JSON,JSON-teachers,JSON-students\n'
+  else printf 'id,JSON\n'; fi
   while IFS= read -r record || [ -n "$record" ]; do
     [ -n "$record" ] || continue
     id=$(json_text id "$record")
@@ -489,6 +501,14 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "courses" ]; then
     fi
     if [ "$aliases" = 1 ]; then
       gam_row "$id" "$record" "$(grep "^$id$(printf '\t')" "$GAM_MOCK_FIXTURES/course_aliases.tsv" | cut -f 2)"
+    elif [ "$counts" = 1 ]; then
+      n_t=0; n_s=0
+      if [ -z "${GAM_MOCK_STATE:-}" ] || [ ! -e "$GAM_MOCK_STATE/roster_gone/$id" ]; then
+        n_t=$(course_participants_row "$id" | cut -f 3 | grep -o '"emailAddress"' | wc -l | tr -d ' ')
+        n_s=$(course_participants_row "$id" | cut -f 4 | grep -o '"emailAddress"' | wc -l | tr -d ' ')
+      fi
+      # The JSON's keys sorted, as GAM prints it: `students` and `teachers` sort after every field the record holds.
+      gam_row "$id" "${record%\}}, \"students\": $n_s, \"teachers\": $n_t}" "$n_t" "$n_s"
     else
       gam_row "$id" "$record"
     fi
@@ -1720,6 +1740,36 @@ fi
 # a row per grant, the scopes space-joined (csv_output_field_delimiter's default); an account with none writes no row. An
 # address that isn't a user is entityUnknownWarning: "User: <u>, Does not exist", ENTITY_DOES_NOT_EXIST_RC 56, outside the
 # domain "Service not applicable/Does not exist", 73. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. No option is modelled.
+# `gam print tokens users <a,b,...>` (audit runs, plan F3): those accounts' grants, suspended ones included (`users` is
+# convertEntityToList: no suspension filter; _printShowTokens, 7.52.04 :74517-74640), each announced ("Getting Access Tokens
+# for <u> (i/N)"), the same CSV. An address the directory doesn't hold, or GAM_MOCK_STATE/tokens_gone/<u>, is
+# entityUnknownWarning: "User: <u>, Does not exist (i/N)", 56 at the end (73, "Service not applicable", outside the domain),
+# the rest read. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. GamGUI's handler at db579c7.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "tokens" ] && [ "${3:-}" = "users" ]; then
+  [ $# -eq 4 ] && [ -n "$4" ] || not_modelled "print tokens users with other than one list"
+  listed=$(lower "$4" | tr ',' ' ')
+  count=$(printf '%s' "$listed" | wc -w | tr -d ' ')
+  i=0; rc=0; gone=""
+  for user in $listed; do
+    i=$((i + 1))
+    printf 'Getting Access Tokens for %s (%s/%s)\n' "$user" "$i" "$count" 1>&2
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/tokens" ]; then
+      printf '\nERROR: Not Authorized to access this resource/api\n' 1>&2; exit 12
+    fi
+    if ! in_directory "$user" || { [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/tokens_gone/$user" ]; }; then
+      case "$user" in *@example.com) printf 'User: %s, Does not exist (%s/%s)\n' "$user" "$i" "$count" 1>&2; rc=56 ;;
+        *) printf 'User: %s, Service not applicable/Does not exist (%s/%s)\n' "$user" "$i" "$count" 1>&2; [ "$rc" = 56 ] || rc=73 ;; esac
+      gone="$gone $user"
+    fi
+  done
+  head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"
+  tail -n +2 "$GAM_MOCK_FIXTURES/tokens.csv" | while IFS= read -r line; do
+    user=${line%%,*}
+    case "$gone " in *" $user "*) continue ;; esac   # an account GAM couldn't read has no row
+    case " $listed " in *" $user "*) printf '%s\n' "$line" ;; esac
+  done
+  exit $rc
+fi
 if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token" ]; }; } \
     || { [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "tokens" ] || [ "${4:-}" = "token" ]; }; }; then
   if [ "$1" = "user" ]; then owner=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); [ $# -eq 4 ] || not_modelled "print tokens with $5"
@@ -1770,6 +1820,55 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "licenses" ]; then
     exit 0
   fi
   cat "$GAM_MOCK_FIXTURES/licenses.csv"
+  exit 0
+fi
+
+# Audit runs' shared drive members (plan F3), as doPrintShowSharedDrives (printShowSharedDrives, 7.52.04 :71266-71438) and
+# doPrintShowSharedDriveACLs (printShowSharedDriveACLs, :71617-71877) print them: both as the admin with domain admin access
+# (the `User` column, no `role`), one row per drive or permission, sorted by drive name. Data: shared_drives.json (one drive a
+# line) and shared_drive_acls.tsv (drive id, a permission as Drive returns a shared drive's own: users and groups only, each
+# permissionDetails row its own, `domain` set from the address by _mapDrivePermissionNames). Only the shapes the app sends are
+# modelled. GAM_MOCK_STATE/nodrives is a domain with no shared drive: the titles and NO_ENTITIES_FOUND_RC (60).
+# GAM_MOCK_STATE/denied/drives is drives.list refused: entityActionFailedWarning, the titles alone, exit 50.
+# GAM_MOCK_STATE/acl_dropped/<drive id> is a drive whose permissions.list Google refused: printShowSharedDriveACLs passes
+# fileNotFound, forbidden, insufficient*Permissions, internalError, unknownError and invalid WITHOUT a word or a code, so the
+# drive is simply missing from the table, exit 0. GamGUI's handlers at db579c7.
+drives_admin() { printf 'admin@example.com'; }
+drives_refused() {  # <titles>
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/drives" ]; then
+    printf 'User: %s, Shared Drive: , Print Failed: The user does not have sufficient permissions\n' "$(drives_admin)" 1>&2
+    printf '%s\n' "$1"; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nodrives" ]; then printf '%s\n' "$1"; exit 60; fi
+}
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "shareddrives" ]; then
+  [ "$*" = "print shareddrives noorgunits formatjson" ] || not_modelled "print shareddrives other than noorgunits formatjson"
+  drives_refused 'User,id,name,JSON'
+  printf 'User,id,name,JSON\n'
+  while IFS= read -r record || [ -n "$record" ]; do
+    [ -n "$record" ] || continue
+    gam_row "$(drives_admin)" "$(json_text id "$record")" "$(json_text name "$record")" "$record"
+  done < "$GAM_MOCK_FIXTURES/shared_drives.json"
+  exit 0
+fi
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "shareddriveacls" ]; then
+  [ "$*" = "print shareddriveacls oneitemperrow shownopermissionsdrives true formatjson" ] \
+    || not_modelled "print shareddriveacls other than oneitemperrow shownopermissionsdrives true formatjson"
+  drives_refused 'User,id,name,createdTime,JSON'
+  printf 'User,id,name,createdTime,JSON\n'
+  TAB=$(printf '\t')
+  while IFS= read -r record || [ -n "$record" ]; do
+    [ -n "$record" ] || continue
+    sd_id=$(json_text id "$record"); sd_name=$(json_text name "$record"); sd_made=$(json_text createdTime "$record")
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/acl_dropped/$sd_id" ]; then continue; fi
+    if ! grep -q "^$sd_id$TAB" "$GAM_MOCK_FIXTURES/shared_drive_acls.tsv"; then
+      gam_row "$(drives_admin)" "$sd_id" "$sd_name" "$sd_made" '{}'   # shownopermissionsdrives true: the drive, no permission
+      continue
+    fi
+    grep "^$sd_id$TAB" "$GAM_MOCK_FIXTURES/shared_drive_acls.tsv" | cut -f 2 | while IFS= read -r perm; do
+      gam_row "$(drives_admin)" "$sd_id" "$sd_name" "$sd_made" "{\"permission\": $perm}"
+    done
+  done < "$GAM_MOCK_FIXTURES/shared_drives.json"
   exit 0
 fi
 
@@ -2388,6 +2487,32 @@ fi
 # `gam print admins user <u>` (doPrintShowAdmins, :17653-17846): "Getting all Admin Role Assignments" then
 # PRINT_ADMIN_TITLES and a row per role assigned to the person directly. alice@ is the super admin (_SEED_ADMIN_ROLE is
 # that role's name); others hold none. An address that isn't a user is userNotFound: entityUnknownWarning, exit 56.
+# `gam print admins recursive` (audit runs, plan F3): every role assignment, a group's expanded to a row per member user with
+# assignedToUser and assignedToGroup both set (doPrintShowAdmins, 7.52.04 :18071-18198; PRINT_ADMIN_TITLES). admin@ and alice@
+# are super admins directly; the it-admins@ group holds help desk admin and its member is bob@, who is suspended; a service
+# account holds a role too, a row with no person. GAM_MOCK_STATE/denied/admins is ClientAPIAccessDeniedExit, 12, before any
+# row. GAM_MOCK_STATE/admin_unnamed adds holders GAM couldn't name: _setNamesFromIds asks convertUIDtoEmailAddressWithType,
+# whose lookup passes over forbidden, badRequest, backendError, systemError and serviceNotAvailable, so the bare ID comes back
+# as type `unknown`: assignedToUnknown True, no address, exit 0 without a word. carol@'s ID (the directory has it), and an
+# it-admins@ member expanded by `recursive` that no read can name. GamGUI's handler at db579c7, with this mock's directory.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "admins" ] && [ "${3:-}" = "recursive" ]; then
+  [ $# -eq 3 ] || not_modelled "print admins recursive with $4"
+  printf 'Getting all Admin Role Assignments\n' 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/admins" ]; then
+    printf '\nERROR: Not Authorized to access this resource/api\n' 1>&2; exit 12
+  fi
+  printf 'roleAssignmentId,roleId,role,assignedTo,assignedToUser,assignedToGroup,assignedToServiceAccount,assignedToUnknown,'
+  printf 'scopeType,orgUnitId,orgUnit,expirationDetails.expireTime\n'
+  printf '9170001,9170000,_SEED_ADMIN_ROLE,100000000000000000009,admin@example.com,,,False,CUSTOMER,,,\n'
+  printf '9170002,9170000,_SEED_ADMIN_ROLE,100000000000000000001,alice@example.com,,,False,CUSTOMER,,,\n'
+  printf '9170003,9170005,_HELP_DESK_ADMIN_ROLE,100000000000000000002,bob@example.com,it-admins@example.com,,False,CUSTOMER,,,\n'
+  printf '9170004,9170006,_GROUPS_ADMIN_ROLE,104455,,,reports-bot@example-project.iam.gserviceaccount.com,False,CUSTOMER,,,\n'
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/admin_unnamed" ]; then
+    printf '9170005,9170007,_USER_MANAGEMENT_ADMIN_ROLE,100000000000000000003,,,,True,CUSTOMER,,,\n'
+    printf '9170006,9170005,_HELP_DESK_ADMIN_ROLE,100000000000000000077,,it-admins@example.com,,True,CUSTOMER,,,\n'
+  fi
+  exit 0
+fi
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "admins" ]; then
   [ "${3:-}" = "user" ] && [ $# -eq 4 ] || not_modelled "print admins ${3:-} ${5:-}"
   user=$(lower "$4")
