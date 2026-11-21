@@ -20,6 +20,8 @@ GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned
   Tests/Fixtures/audit.json       GamGUI's audit log: the line each record writes, and what its reader
                                   finds across generations.
   Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
+  Tests/Fixtures/audit_runs.json  GamGUI's audit runs (plan F3): each run's steps and argv, its tables and flags over edge
+                                  cases, the suspend preview's targets, and the read record each step's read writes.
   Tests/Fixtures/audit_screen.json  GamGUI's Audit screen over a log of odd records: the filter and the
                                   page each query shows, the header's counts, and the CSV export's bytes.
   Tests/Fixtures/usage_report.json  GamGUI's storage and mail usage: the progress lines dropped before the
@@ -1213,6 +1215,222 @@ def read_record_cases(folder: Path) -> list:
                       "origin": origin, "domain": connector.domain, "raised": raised, "ran": connector.runner.calls,
                       "records": records})
     return found
+def audit_runs_fixture() -> dict:
+    """Plan F3 (GamGUI #171): GamGUI's audit runs, recorded so the Swift port is held to them rather than to a reading of
+    them. Each run's steps (title, key column, the read record's command, the argv); the window choices and the rows a table
+    draws; which steps read nothing where something must be; why a finding is unknown; the inactive table and its flags over
+    a directory of edge cases at every window; the license tables over seats with and without the directory; findings_for
+    over every way a step can end; the suspend preview's targets (reports.inactive_to_suspend); and the read record
+    `audit_read` writes over chosen outputs, a failure, a cancel and the argv it refuses before GAM runs."""
+    import asyncio
+    import tempfile
+    from datetime import datetime, timezone
+
+    from gamgui.core import audit
+    from gamgui.core import audit_runs as runs
+    from gamgui.core import reports as reports_mod
+    from gamgui.core.connectors import gam_connector
+    from gamgui.core.gam.models import GAMUser
+
+    now = datetime(2026, 11, 19, tzinfo=timezone.utc)
+
+    def finding(f) -> dict:
+        out = {"key": f.key, "title": f.title, "summary": f.summary, "columns": list(f.columns),
+               "rows": [list(r) for r in f.rows], "known": f.known, "why": f.why, "note": f.note, "links": f.links}
+        if hasattr(f, "partial"):
+            out["partial"] = f.partial
+        return out
+
+    def user(email, last="2026-01-01T00:00:00Z", made="2024-01-01T00:00:00Z", **fields) -> dict:
+        record = {"primaryEmail": email, "name": {"givenName": email.split("@")[0], "familyName": "Test"},
+                  "suspended": False, "orgUnitPath": "/Staff", "isAdmin": False, "isDelegatedAdmin": False}
+        if last is not None:
+            record["lastLoginTime"] = last
+        if made is not None:
+            record["creationTime"] = made
+        record.update(fields)
+        return record
+
+    # A directory of edge cases (Google's `users` fields, as GAM prints them: formatLocalTime's YYYY-MM-DDThh:mm:ssZ, `Never`).
+    directory = [
+        user("old@example.com", last="2026-03-01T00:00:00Z"),
+        user("never@example.com", last="Never", made="2020-01-01T00:00:00Z"),
+        user("hire@example.com", last="Never", made="2026-11-01T00:00:00Z"),
+        user("unknown@example.com", made=None),
+        user("blank@example.com", made=""),
+        user("garbled@example.com", made="not a date"),
+        user("boss@example.com", isAdmin=True),
+        user("helper@example.com", isDelegatedAdmin=True, last="2026-05-05T05:05:05Z"),
+        user("gone@example.com", suspended=True, last="Never"),
+        user("busy@example.com", last="2026-11-18T00:00:00Z"),
+        user("epoch@example.com", last="1970-01-01T00:00:00.000Z", made="1970-01-01T00:00:00Z"),
+        user("offset@example.com", last="2026-08-20T23:30:00-05:00", made="2026-08-21T00:00:00Z"),
+        user("edge@example.com", last="2026-08-21T00:00:00Z"),
+        user("madeatcutoff@example.com", last="2025-01-01T00:00:00Z", made="2026-08-21T00:00:00Z"),
+        user("Upper.Case@Example.com", last="2025-07-07T00:00:00Z"),
+        user("zo\u00eb@example.com", last="2025-02-02T00:00:00Z", name={"givenName": "Zo\u00eb", "familyName": "\u00c5ngstr\u00f6m"}),
+        user("noname@example.com", name={}),
+        user("admin@example.com", last="2026-06-01T00:00:00Z", isAdmin=True, id="999"),
+        user("noid@example.com", last="2026-02-02T00:00:00Z"),
+        user("aaa@example.com", last="2026-03-01T00:00:00Z", orgUnitPath="/Students/Grade 9"),
+    ]
+    for n, record in enumerate(directory):
+        if record["primaryEmail"] != "noid@example.com":
+            record.setdefault("id", str(100000000000000000100 + n))
+    users = [GAMUser.from_json(r) for r in directory]
+
+    def read(step, state=runs.READ, why=""):
+        return runs.StepRead(step, state, why)
+
+    def read_json(r) -> dict:
+        return {"step": r.step.key, "state": r.state, "why": r.why}
+
+    states = [(runs.READ, ""), (runs.UNKNOWN, "Refused."), (runs.NOT_RUN, "The run was stopped before this step.")]
+    windows = list(runs.INACTIVE_WINDOWS)
+
+    inactive = [{"days": days, "finding": finding(runs.inactive_finding(users, days, now))} for days in windows]
+    inactive.append({"days": 90, "directory": [], "finding": finding(runs.inactive_finding([], 90, now))})
+    inactive.append({"days": 30, "directory": [directory[9]],
+                     "finding": finding(runs.inactive_finding([users[9]], 30, now))})
+    inactive.append({"days": 365, "directory": [directory[1]],
+                     "finding": finding(runs.inactive_finding([users[1]], 365, now))})
+
+    suspend = []
+    for admin, admin_id in (("admin@example.com", ""), (" ADMIN@example.com ", ""), ("someone@example.com", "999"),
+                            ("someone@example.com", ""), ("hire@example.com", "100000000000000000102")):
+        for days in windows:
+            targets, left_out = reports_mod.inactive_to_suspend(users, admin, admin_id, now=now, inactive_days=days)
+            suspend.append({"admin": admin, "admin_id": admin_id, "days": days, "left_out": left_out,
+                            "targets": [{"email": t.email, "name": t.name, "last_login": t.last_login, "new": t.new}
+                                        for t in targets]})
+
+    def seat(email, sku="1010020028", display="Google Workspace Business Standard", product="Google-Apps",
+             product_display="Google Workspace") -> dict:
+        row = {"userId": email, "productId": product, "productDisplay": product_display, "skuId": sku, "skuDisplay": display}
+        return row
+
+    seats = [seat("old@example.com"), seat("gone@example.com"), seat("busy@example.com"), seat("left@example.com"),
+             seat("gone@example.com", "Google-Vault-Former-Employee", "Google Vault - Former Employee", "Google-Vault",
+                  "Google Vault"),
+             seat("Upper.Case@Example.com"), seat("GONE@example.com", "1010020027", "Google Workspace Business Starter"),
+             seat(""), seat("x@other.example", "1010020027", "Google Workspace Business Starter"),
+             seat("aaa@example.com", "Unknown-SKU", "", "Unknown-Product", ""),
+             seat("zo\u00eb@example.com", "1010020025", "Google Workspace Business Plus"),
+             seat("helper@example.com", "1010020025", "Google Workspace Business Plus")]
+    licenses = []
+    for directory_state in states:
+        for seats_state in states:
+            reads = [read(runs.LICENSES, *seats_state), read(runs.DIRECTORY, *directory_state)]
+            tables = {"licenses": seats} if seats_state[0] == runs.READ else {}
+            if directory_state[0] == runs.READ:
+                tables["directory"] = users
+            licenses.append({"reads": [read_json(r) for r in reads], "seats": seats if "licenses" in tables else None,
+                             "directory": "directory" in tables,
+                             "findings": [finding(f) for f in runs.findings_for(runs.LICENSE_USAGE, reads, tables, now=now)]})
+    for few in ([], [seat("old@example.com")], [seat("gone@example.com")]):
+        reads = [read(runs.LICENSES), read(runs.DIRECTORY)]
+        licenses.append({"reads": [read_json(r) for r in reads], "seats": few, "directory": True,
+                         "findings": [finding(f) for f in runs.findings_for(runs.LICENSE_USAGE, reads,
+                                                                             {"licenses": few, "directory": users}, now=now)]})
+    unread_inactive = []
+    for state in states[1:]:
+        reads = [read(runs.DIRECTORY, *state)]
+        unread_inactive.append({"reads": [read_json(r) for r in reads], "days": 60,
+                                "findings": [finding(f) for f in runs.findings_for(runs.INACTIVE_USERS, reads, {}, now=now,
+                                                                                    days=60)]})
+
+    shown = ["", None, "Never", "never", " NEVER ", "1970-01-01T00:00:00Z", "2026-01-02T03:04:05Z", "2026-01-02",
+             "2026", "  2026-01-02T03:04:05Z", "\u00e9t\u00e9 2026-01-02 x", "x"]
+
+    # The read record each step leaves: GamGUI's audit_read over a runner answering chosen outputs, failing or cancelled.
+    class Runner:
+        def __init__(self, answer):
+            self.answer, self.calls = answer, []
+
+        async def run_authenticated(self, domain, argv, **kw):
+            self.calls.append(list(argv))
+            if isinstance(self.answer, BaseException):
+                raise self.answer
+            return self.answer
+
+    directory_argv = runs.step_argv(runs.DIRECTORY)
+    licenses_argv = runs.step_argv(runs.LICENSES)
+    titles = "userId,productId,productDisplay,skuId,skuDisplay"
+    read_cases = [
+        ("seats", "\n".join([titles, "a@example.com,Google-Apps,Google Workspace,1010020028,x",
+                             "b@example.com,Google-Apps,Google Workspace,1010020028,x"]) + "\n", licenses_argv, "userId"),
+        ("titles alone", titles + "\n", licenses_argv, "userId"),
+        ("crlf", titles + "\r\na@example.com,Google-Apps,G,1,x\r\n", licenses_argv, "userId"),
+        ("spaced titles", " userId , productId \na@example.com,Google-Apps\n", licenses_argv, "userId"),
+        ("another table", titles + "\n", licenses_argv, "primaryEmail"),
+        ("nothing", "", licenses_argv, "userId"),
+        ("spaces", "  \n\t ", licenses_argv, "userId"),
+        ("json", '[{"userId": "a@example.com"}]', licenses_argv, "userId"),
+        ("line separator", "userId\u2028x,productId\na@example.com,y\n", licenses_argv, "userId"),
+        ("a title holding it", "userIdx,productId\na,b\n", licenses_argv, "userId"),
+        ("directory", 'primaryEmail,JSON\na@example.com,"{""primaryEmail"": ""a@example.com""}"\n', directory_argv,
+         "primaryEmail"),
+        ("failed", RuntimeError("ERROR: There are no scopes authorized for the API(s): License Manager API"), licenses_argv,
+         "userId"),
+        ("cancelled", asyncio.CancelledError(), licenses_argv, "userId"),
+        ("not a print", "x", ["update", "user", "a@example.com", "suspended", "on"], "userId"),
+        ("a person's read", "x", ["user", "a@example.com", "print", "tokens"], "user"),
+        ("todrive", "x", licenses_argv + ["todrive"], "userId"),
+        ("to_drive", "x", licenses_argv + ["to_drive"], "userId"),
+        ("ToDrive", "x", licenses_argv + ["ToDrive"], "userId"),
+        ("TODRIVE", "x", licenses_argv + ["TODRIVE"], "userId"),
+        ("T_o_Drive", "x", licenses_argv + ["T_o_Drive"], "userId"),
+        ("todrive inside", "x", ["print", "users", "todrive", "formatjson"], "primaryEmail"),
+    ]
+    reads_found = []
+    scratch = tempfile.TemporaryDirectory()
+    folder = Path(scratch.name)
+    for n, (name, answer, argv, key) in enumerate(read_cases):
+        connector = object.__new__(gam_connector.GAMConnector)
+        connector.runner, connector.domain = Runner(answer), " Example.COM "
+        connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
+        try:
+            got = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key))
+            raised, rows = None, len(got)
+        except BaseException as exc:    # noqa: BLE001: the refusals, the failure and the cancel are the cases
+            raised, rows = type(exc).__name__, None
+        records = [{k: v for k, v in r.items() if k != "ts"} for r in audit.iter_records(folder / f"{n}.jsonl")]
+        reads_found.append({"name": name, "output": None if isinstance(answer, BaseException) else answer,
+                            "error": str(answer) if isinstance(answer, Exception) else None, "argv": argv,
+                            "key_column": key, "raised": raised, "rows": rows, "ran": connector.runner.calls,
+                            "records": records})
+    scratch.cleanup()
+
+    return {
+        "now": now.isoformat(),
+        "constants": {"ROWS_SHOWN": runs.ROWS_SHOWN, "INACTIVE_WINDOWS": windows, "INACTIVE_DAYS": reports_mod.INACTIVE_DAYS,
+                      "STATES": [runs.READ, runs.UNKNOWN, runs.NOT_RUN], "ORIGIN": gam_connector.READ_ORIGIN_AUDIT_RUN},
+        "runs": [{"key": r.key, "title": r.title, "what": r.what,
+                  "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "command": runs.step_command(r, s),
+                             "argv": runs.step_argv(s)} for s in r.steps]} for r in runs.RUNS],
+        "implausibly_empty": [{"step": s.key, "rows": n, "why": runs.implausibly_empty(s, n)}
+                              for s in (runs.DIRECTORY, runs.LICENSES) for n in (0, 1, 2)],
+        "unknown_because": [{"reads": [read_json(r) for r in reads], "needed": [s.key for s in needed],
+                             "why": runs.unknown_because(reads, *needed)}
+                            for reads, needed in [
+                                ([read(runs.LICENSES), read(runs.DIRECTORY)], (runs.LICENSES, runs.DIRECTORY)),
+                                ([read(runs.LICENSES, runs.UNKNOWN, "Refused."), read(runs.DIRECTORY)], (runs.DIRECTORY,)),
+                                ([read(runs.LICENSES, runs.UNKNOWN, "Refused."), read(runs.DIRECTORY, runs.NOT_RUN)],
+                                 (runs.LICENSES, runs.DIRECTORY)),
+                                ([read(runs.LICENSES), read(runs.DIRECTORY, runs.NOT_RUN)], (runs.LICENSES, runs.DIRECTORY)),
+                                ([read(runs.LICENSES, runs.UNKNOWN, "")], (runs.LICENSES,)),
+                                ([read(runs.LICENSES, runs.UNKNOWN, "  Why.  ")], (runs.LICENSES,)),
+                                ([], (runs.LICENSES,))]],
+        "shown_time": [{"value": v, "shown": runs._shown_time(v)} for v in shown],
+        "directory": directory,
+        "inactive": inactive,
+        "inactive_unknown": unread_inactive,
+        "suspend": suspend,
+        "licenses": licenses,
+        "reads": reads_found,
+    }
+
+
 def reports_fixture(mock: Path) -> dict:
     """GamGUI's build_reports over the mock's users and seeded variants, at a fixed time: each report's
     key, title and members in order. Logins are written the ways GAM writes them (and a few it doesn't)."""
@@ -3292,6 +3510,12 @@ def main() -> int:
     audit_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | audit_fixture()
     emit("audit.json", json.dumps(audit_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit.json: {len(audit_doc['written'])} records, {len(audit_doc['records'])} read back")
+
+    # The audit runs (plan F3): each run's steps, its tables over edge cases, and the read record each step leaves.
+    runs_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
+        | audit_runs_fixture()
+    emit("audit_runs.json", json.dumps(runs_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"audit_runs.json: {len(runs_doc['runs'])} runs, {len(runs_doc['reads'])} read records")
 
     # The directory's reports over those users, as GamGUI's Home and Reports count them.
     reports_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \
