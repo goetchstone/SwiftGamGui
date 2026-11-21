@@ -432,6 +432,13 @@ public actor Executor {
                 return .failure(.cutsOffConnectedAdmin(PythonText.strip(own), admin: admin.address))
             }
         }
+        // The admin's wait above lets a switch land (the executor is reentrant there): the tenant is read again, and from here to
+        // `held` nothing awaits, so nothing is held for a tenant a switch already dropped (plan F6's review).
+        if !cutOff.isEmpty {
+            guard let again = await tenant(), again.domain == current.domain, again.generation == current.generation else {
+                return .failure(.tenantChanged)
+            }
+        }
         let preview = HeldPreview(
             id: UUID(), steps: steps, title: title.isEmpty ? Self.title(of: steps) : title, digest: HeldPreview.digest(of: steps), domain: current.domain,
             generation: current.generation, origin: origin,
@@ -439,6 +446,7 @@ public actor Executor {
             confirmStep: confirmStep, typedCountAbove: typedCountAbove, stopsAtAccountWideFailure: stopsAtAccountWideFailure,
             typedAddress: typedAddress, typedExactWord: typedExactWord.map { PythonText.strip($0) }, createdAt: now(), precondition: precondition)
         dropExpired()
+        dropOtherThan(current)
         while order.count >= Self.previewsKept { held[order.removeFirst()] = nil }
         held[preview.id] = preview
         order.append(preview.id)
@@ -561,7 +569,12 @@ public actor Executor {
     /// and every run's steps waiting to be retried there, so what their argv carries (a temporary password) doesn't stay here
     /// for `previewLifetime`. None of them could run any more (`isCurrent`); a run under way took its preview when it began.
     public func dropOtherTenants() async {
-        let current = await tenant()
+        dropOtherThan(await tenant())
+    }
+
+    /// Drops every held preview and parked retry not of `current` (none connected: all of them). Called with no await
+    /// between the tenant's read and what is held next (a preview, a park), so a switch's drop can't be outrun.
+    private func dropOtherThan(_ current: (domain: Domain, generation: Int)?) {
         func stale(_ preview: HeldPreview) -> Bool {
             current.map { $0.domain != preview.domain || $0.generation != preview.generation } ?? true
         }
@@ -645,9 +658,13 @@ public actor Executor {
         let ran = await execute(taken, job: job, kept: kept, progress: progress)
         // A cancelled run leaves nothing to retry: its caller is stopping (review of O1, 2026-10-13). Nor does a stopped one: a
         // Stop (the jobs tray's, on any run) means nothing more of it runs, a wait for Google included (review 2026-10-28). Read
-        // before the `defer` above clears the request.
+        // before the `defer` above clears the request. Nor one whose tenant a switch ended (plan F6's review: its wait began on
+        // the new domain, and the park, after the switch's drop, kept the old preview's argv).
+        let current = await tenant()
+        let stillHere = current.map { $0.domain == taken.domain && $0.generation == taken.generation } ?? false
+        if stillHere { dropOtherThan(current) }
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: Task.isCancelled || stopRequests.contains(taken.id) ? nil
+                          retry: Task.isCancelled || stopRequests.contains(taken.id) || !stillHere ? nil
                               : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()),
                           kept: kept.flatMap { $0.keptCount > 0 ? $0.id : nil })
     }
@@ -664,13 +681,20 @@ public actor Executor {
     public static let changedSince = "Changed since that run, so it's left as it is: put it back by hand if you mean to."
     static let cancelledBeforeRun = "Cancelled before it ran."
     /// A step whose domain was removed or imported again during the run (its generation changed): it, and the rest, stop.
-    static let domainChanged = "Stopped: the active domain changed during the run."
+    public static let domainChanged = "Stopped: the active domain changed during the run."
 
-    /// Why a run whose tenant isn't the connected one any more stops (plan F6): another domain made active is a switch, said
-    /// in GamGUI's words (its `stop_why`); a domain removed or imported again is `domainChanged`.
+    /// Why a run whose tenant isn't the connected one any more stops (plan F6): another domain made active straight after
+    /// its own is a switch, said in GamGUI's words (its `stop_why`); anything else (the domain removed or imported again,
+    /// another connected only after that) is `domainChanged`.
     private func stopWords(for preview: HeldPreview) async -> String {
-        guard let current = await tenant(), current.domain != preview.domain else { return Self.domainChanged }
-        return Self.switchedTo(current.domain)
+        Self.stopReason(ranOn: (preview.domain, preview.generation), now: await tenant())
+    }
+
+    /// The words for a run made on `ranOn` that the tenant `now` ended. A switch is another domain at the very next
+    /// generation: `SetupModel` bumps it once per change, so a removal or re-import in between makes it two or more.
+    public static func stopReason(ranOn: (domain: Domain, generation: Int), now: (domain: Domain, generation: Int)?) -> String {
+        guard let now, now.domain != ranOn.domain, now.generation == ranOn.generation + 1 else { return domainChanged }
+        return switchedTo(now.domain)
     }
 
     /// GamGUI's words for a run a switch stopped (plan F6, `AppState._end_the_old_tenants_runs`).
@@ -829,8 +853,12 @@ public actor Executor {
         // Its steps keep nothing: a step that keeps a signature never waits (`keepHolds`), so none is run again here.
         let ran = await execute(state.preview, job: job, kept: nil, resuming: state.results, listOutputs: state.listOutputs,
                                 attempt: round + 1, progress: progress)
+        // As `run`: a switch during the round parks nothing more.
+        let current = await tenant()
+        let stillHere = current.map { $0.domain == state.preview.domain && $0.generation == state.preview.generation } ?? false
+        if stillHere { dropOtherThan(current) }
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
-                          retry: Task.isCancelled || stopRequests.contains(state.preview.id) ? nil
+                          retry: Task.isCancelled || stopRequests.contains(state.preview.id) || !stillHere ? nil
                               : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
     }
 

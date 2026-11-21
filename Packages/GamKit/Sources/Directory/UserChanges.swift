@@ -521,6 +521,13 @@ public final class UserChanges {
         }
         switch await executor.preview([step], origin: origin, confirmStep: confirmStep, expecting: expecting, precondition: precondition) {
         case .success(let preview):
+            // A switch that landed while the preview was made (plan F6's review): the page is the new domain's now, and its
+            // tenant change already ran, so nothing of the old one is shown or kept held.
+            guard directory.setup.isConnected(to: preview) else {
+                await executor.discard(preview.id)
+                state = .idle
+                return
+            }
             state = .previewing(Pending(preview: preview, title: title, confirmLabel: confirmLabel, email: email,
                                         warning: warning, patch: patch, password: password, removes: removes))
         case .failure(let refusal):

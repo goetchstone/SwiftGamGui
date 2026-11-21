@@ -983,6 +983,61 @@ final class ExecutorTests {
         #expect(third.retry == nil, "nothing left to wait for")
     }
 
+    /// Plan F6's review: a run a switch stopped parked its waiting steps, so its wait for Google began on the new domain and
+    /// the park, after the switch's drop, kept the old preview (the create's temporary password) held. It parks nothing now.
+    @Test func aRunASwitchStoppedParksNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let tenant = tenantState, other = other
+        let steps = [create("new@example.com"), signature("new@example.com", waitsOn: 0), suspend()]
+        let preview = try await held(executor, steps)
+        let count = Shared(0)
+        await executor.setBeforeEachStep {
+            if count.value.withLock({ $0 += 1; return $0 }) == 2 { tenant.value.withLock { $0 = (other, 2) } }
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        // The signature, begun before the switch, waits for Google; the step after it stops.
+        #expect(outcome.steps[0].isSucceeded && outcome.steps[1].isWaiting
+                && outcome.steps[2] == .skipped(reason: "Stopped: you switched to example.org."))
+        let (parked, held) = (await executor.parkedRuns, await executor.heldCount)
+        #expect(outcome.retry == nil && parked == 0 && held == 0)
+    }
+
+    /// A switch is another domain at the very next generation; a removal or re-import in between is not one, whatever is
+    /// connected after it (plan F6's review: nil → example.org read as a switch).
+    @Test func onlyTheNextGenerationOnAnotherDomainIsASwitch() {
+        #expect(Executor.stopReason(ranOn: (example, 1), now: (other, 2)) == "Stopped: you switched to example.org.")
+        for now in [(other, 3), (example, 2), (example, 3)] as [(Domain, Int)] {
+            #expect(Executor.stopReason(ranOn: (example, 1), now: now) == Executor.domainChanged)
+        }
+        #expect(Executor.stopReason(ranOn: (example, 1), now: nil) == Executor.domainChanged)
+    }
+
+    /// Plan F6's review: a preview that waits on the connected admin (a write that can cut an account off) let a switch land,
+    /// and was then held for the old tenant after the switch dropped what it held. It's refused instead.
+    @Test func aSwitchDuringThePreviewsAdminWaitHoldsNothing() async throws {
+        let tenant = tenantState, other = other
+        var environment = Fixtures.mockEnvironment
+        environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        let executor = Executor(runner: runner, audit: audit, actor: "admin@example.com", adminAccountID: {
+            tenant.value.withLock { $0 = (other, 2) }
+            return Self.adminID
+        }, tenant: { tenant.value.withLock { $0 } }, extraEnvironment: environment)
+        let result = await executor.preview([suspend()])
+        #expect(throws: Executor.PreviewRefusal.tenantChanged) { try result.get() }
+        #expect(await executor.heldCount == 0)
+    }
+
+    /// What one tenant held goes once another holds or parks something (plan F6's review), not only on the switch's drop.
+    @Test func holdingForOneTenantDropsWhatAnotherHeld() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let old = try await held(executor, [clearRecovery()])
+        tenantState.value.withLock { $0 = (other, 2) }
+        let run = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)])
+        #expect(await executor.heldCount == 1, "example.com's preview dropped when example.org's was held")
+        #expect(await executor.run(old, confirmation: confirmed).refusal == Executor.expired)
+        #expect(await executor.run(run, confirmation: confirmed).retry != nil, "the connected tenant's run parks as before")
+    }
+
     @Test func aRetryHandleIsSingleUse() async throws {
         let executor = executor(state: try mockState(lag: 100))
         let first = await executor.run(try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)]),
