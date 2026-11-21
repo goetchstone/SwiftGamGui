@@ -626,7 +626,8 @@ private struct CuratedDetail: View {
             guard tab == "sheet-result", case .previewing(let pending) = exports.state else { return }
             let link = "https://docs.google.com/spreadsheets/d/1MockSheet3215791460/edit?usp=drivesdk"
             exports.showDemo(SheetExports.Done(outcome: SheetExport.outcome(ok: true, url: link, upload: "", owner: pending.owner),
-                                               name: pending.name, commandLine: pending.commandLine, detail: "", unrecorded: ""))
+                                               name: pending.name, commandLine: pending.commandLine, detail: "", unrecorded: "",
+                                               recorded: true))
         }
         #endif
     }

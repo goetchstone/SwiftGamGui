@@ -244,6 +244,21 @@ final class SheetExportsTests {
         #expect(records().last?["extra"]?.object?["upload"]?.string == "sheets_refused")
     }
 
+    /// The review of F4: when GAM never runs (here the audit log can't take the begin record), nothing is made and nothing is
+    /// recorded, so the result never says it's kept in the audit log or listed on Files, and the app's own reason isn't
+    /// repeated as GAM's error.
+    @Test func anExportGamNeverRanIsNeitherMadeNorRecorded() async throws {
+        try await connect()
+        await preview()
+        let pending = try pending()
+        try FileManager.default.createDirectory(at: writeAuditURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: writeAuditURL, withDestinationURL: scratch.appending(path: "elsewhere"))
+        await exports.confirm(pending, OperatorConfirmation(confirmed: true))
+        let done = try done()
+        #expect(done.outcome.made == .no && done.outcome.said.hasPrefix("Nothing was made: GAM didn't run."))
+        #expect(!done.recorded && done.detail.isEmpty && done.unrecorded.isEmpty && exportCalls().isEmpty && made().isEmpty)
+    }
+
     /// The review of F4: a switch landing after the executor checked the tenant, before the preview is shown, used to leave
     /// the old domain's held export on screen with Export enabled. Now it's dropped, and said.
     @Test func aSwitchWhileTheExportIsHeldDropsIt() async throws {

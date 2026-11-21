@@ -1464,11 +1464,15 @@ struct SheetExportSheet: View {
                         .textSelection(.enabled)
                 }
                 if !done.outcome.todo.isEmpty { Text(done.outcome.todo) }
-                if done.unrecorded.isEmpty {
+                if done.recorded {
                     Text("Kept in the audit log, and listed on Files.").font(.callout).foregroundStyle(.secondary)
-                } else {
-                    Label("\(done.unrecorded) Files won't list it: keep the link above.", systemImage: "exclamationmark.triangle.fill")
+                } else if !done.unrecorded.isEmpty {
+                    Label("\(done.unrecorded) Files won't list it" + (SheetExport.isGoogleLink(done.outcome.url) ? ": keep the link above." : "."),
+                          systemImage: "exclamationmark.triangle.fill")
                         .symbolRenderingMode(.multicolor)
+                } else {
+                    Text("Nothing ran, so the audit log has no record of it and Files won't list it.")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
             } header: {
                 Text("Export to a Google Sheet").accessibilityAddTraits(.isHeader)

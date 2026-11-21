@@ -79,13 +79,18 @@ public final class SheetExports {
         public let detail: String
         /// The write happened but the audit log couldn't record it: Files won't list it. "" otherwise.
         public let unrecorded: String
+        /// Its end record is in the audit log, so Files lists it: false when GAM never ran (no record was written) or the end
+        /// couldn't be written.
+        public let recorded: Bool
 
-        public init(outcome: SheetExport.Outcome, name: String, commandLine: String, detail: String, unrecorded: String) {
+        public init(outcome: SheetExport.Outcome, name: String, commandLine: String, detail: String, unrecorded: String,
+                    recorded: Bool) {
             self.outcome = outcome
             self.name = name
             self.commandLine = commandLine
             self.detail = detail
             self.unrecorded = unrecorded
+            self.recorded = recorded
         }
     }
 
@@ -220,16 +225,18 @@ public final class SheetExports {
         case .skipped(let reason)?, .waiting(let reason)?: reason
         case .succeeded?, nil: ""
         }
-        let shown: SheetExport.Outcome = if outcome.began.contains(0) {
+        let began = outcome.began.contains(0)
+        let shown: SheetExport.Outcome = if began {
             SheetExport.outcome(ok: ok, url: noted["url"] ?? "", upload: noted["upload"] ?? "",
                                 owner: owner == "(admin Drive)" ? "" : owner, error: ok ? "" : detail)
         } else {
-            // GAM never started (no begin record, or the run stopped first): nothing was made.
+            // GAM never started (no begin record, or the run stopped first): nothing was made, and nothing was recorded.
             SheetExport.Outcome(url: "", made: .no, said: "Nothing was made: GAM didn't run. \(detail)",
                                 todo: "Export again once that's put right.")
         }
-        state = .done(Done(outcome: shown, name: pending.name, commandLine: pending.commandLine, detail: ok ? "" : detail,
-                           unrecorded: outcome.auditProblem ?? ""))
+        // The app's own reason is in `said` already when GAM never ran: GAM's error is shown only for a run it made.
+        state = .done(Done(outcome: shown, name: pending.name, commandLine: pending.commandLine, detail: ok || !began ? "" : detail,
+                           unrecorded: outcome.auditProblem ?? "", recorded: began && outcome.auditProblem == nil))
     }
 
     /// Back to the table; a held preview is dropped from the executor, so it can't be run later.
