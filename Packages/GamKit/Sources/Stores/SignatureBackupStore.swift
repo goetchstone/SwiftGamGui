@@ -98,7 +98,7 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         for old in listed(in: dir).filter({ !stillWriting.contains($0) }).dropFirst(Self.keptRuns - 1) {
             unlinkat(dir, old + Self.suffix, 0)
         }
-        let id = Self.newID(now())
+        let id = Self.newID(now(), after: listed(in: dir).first.flatMap(Self.milliseconds))
         let name = id + Self.suffix
         let fd = openat(dir, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw Problem("its file couldn't be made (\(String(cString: strerror(errno))))") }
@@ -127,12 +127,22 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         writing.withLock { _ = $0.remove(id) }
     }
 
-    /// `<13-digit ms>-<8 hex>`, as GamGUI names a run: they sort as they were made.
-    static func newID(_ when: Date) -> String {
-        let milliseconds = max(0, Int64((when.timeIntervalSince1970 * 1000).rounded(.down)))
+    /// `<13-digit ms>-<8 hex>`, as GamGUI names a run, made to sort after `after` (the newest run's milliseconds): ids only
+    /// go forward, so a clock set back, or two runs in one millisecond, never makes the newest run sort as the oldest, and
+    /// "the oldest" pruned is the oldest made. GamGUI's are the clock's alone.
+    static func newID(_ when: Date, after newest: Int64? = nil) -> String {
+        let clock = max(0, Int64((when.timeIntervalSince1970 * 1000).rounded(.down)))
+        let milliseconds = newest.map { max(clock, $0 + 1) } ?? clock
         let digits = String(milliseconds), hex = String(UInt32.random(in: .min ... .max), radix: 16)
         return String(repeating: "0", count: max(0, 13 - digits.count)) + digits + "-"
             + String(repeating: "0", count: 8 - hex.count) + hex
+    }
+
+    /// The milliseconds an id of this store's form starts with (13 digits, then `-`); nil for any other id.
+    static func milliseconds(_ id: String) -> Int64? {
+        let scalars = Array(id.unicodeScalars)
+        guard scalars.count > 14, scalars[13] == "-", scalars[..<13].allSatisfy({ ("0"..."9").contains($0) }) else { return nil }
+        return Int64(String(String.UnicodeScalarView(scalars[..<13])))
     }
 
     // MARK: the kept runs

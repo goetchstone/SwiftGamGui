@@ -3,6 +3,7 @@ import Darwin
 import Foundation
 import GamEngine
 @testable import Stores
+import Synchronization
 import Testing
 import Vault
 
@@ -72,6 +73,20 @@ struct SignatureBackupStoreTests {
         try run.keep(email: Self.alice, previous: "ORIGINAL", setting: "new")
         #expect(try SignatureBackupStore(folder: folder).load(run.id).entries == [.init(email: Self.alice, previous: "ORIGINAL", set: "new")])
         run.close()
+    }
+
+    /// Review of Phase A: a run's id was the clock's alone, so after the clock went back the newest run sorted as the oldest
+    /// (and was the next one pruned). Ids only go forward; runs in one millisecond keep the order they were made in.
+    @Test func runIDsOnlyGoForward() throws {
+        let clock = Mutex(Date(timeIntervalSince1970: 1_000))
+        let store = SignatureBackupStore(folder: folder, now: { clock.withLock { $0 } })
+        let first = try keptRun(store, "first", keeping: [Self.alice])
+        clock.withLock { $0 = Date(timeIntervalSince1970: 500) }
+        let second = try keptRun(store, "second", keeping: [Self.alice])
+        let third = try keptRun(store, "third", keeping: [Self.alice])
+        #expect(store.runs().map(\.id) == [third, second, first])
+        #expect(first.hasPrefix("0000001000000-") && second.hasPrefix("0000001000001-") && third.hasPrefix("0000001000002-"))
+        #expect(SignatureBackupStore.milliseconds("0000000000002-empty") == 2 && SignatureBackupStore.milliseconds("nope") == nil)
     }
 
     @Test func onlyTheLastRunsAreKept() throws {

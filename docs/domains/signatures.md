@@ -260,7 +260,9 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   - the unread failure carries why in its message (GamGUI keeps GamGUI's sentence and puts why in a detail);
   - a keep that fails partway is cut back off the file, so the copies before it stay readable; a file never passes the
     cap a load reads (the run stops instead);
-  - a read cut off by its timeout is "unread", not `.timeout` (which says a change may have been made).
+  - a read cut off by its timeout is "unread", not `.timeout` (which says a change may have been made);
+  - run ids only go forward: a new id's milliseconds are the clock's or one past the newest run's, whichever is later, so a
+    clock set back never makes the newest run sort, and be pruned, as the oldest (GamGUI's are the clock's alone).
 - **Not verified live** (none of it): the getting line, the titles and the CSV against real GAM; that Gmail stores and
   returns a signature exactly as GAM sent it in `html` (if it normalizes, every Put Back reads "changed since" and puts
   nothing back: safe, but owed a check); a kept run's file after a real run.
