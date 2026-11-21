@@ -1,7 +1,7 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-21): F1, F2, F3's first half, F5a and F6 built (Swift); F3's second half in review; F4 and F7a in
-GamGUI; signature backups first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-21): F1, F2, F3, F5a and F6 built (Swift); F4 and F5b in review; F7a in GamGUI; signature backups
+first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -92,6 +92,17 @@ Listed differences (runbook audit-reports.md, "Audit runs"): a run isn't in the 
 writes; its Stop is on its pane, and it goes on while another screen shows); a domain switch stops a run (GamGUI reads on
 and discards); Suspend these… is reached from the run only. Not live yet: one run of each on the operator's tenant (reads),
 counts checked against the Admin console (Billing → Licenses).
+
+*As built, second half (2026-11-21, GamGUI #172 merged as `db579c7`, fixtures regenerated from it):* Shared drive permissions
+(each drive's own members, users and groups only: outside members first, drives no active organizer looks after, drives GAM
+listed but didn't read the members of; no claim about link sharing), Classroom (every class with owner, state and counts;
+suspended and unlisted owners; stale classes) and the admin token review (`print admins recursive`, a holder GAM couldn't name
+joined by ID or kept as unknown, then `print tokens users` for those admins, suspended ones included; AI by name and broad
+access flagged). A step whose 56 or 73 keeps its rows is `partial` and its read record says so; a read for an earlier
+step's people doesn't run when that step has no answer. Four builders ported (`printSharedDrives`, `printSharedDriveACLs`,
+`printAllAdmins`, `printTokens(users:)`) and `printCourses(counts:)`. "Being offboarded" is an offboarding started in this app
+(`OffboardChanges.leaversStarted`). The generator holds all of it to GamGUI's own code. Not live yet: none of the three; the
+Classroom run waits for an Education domain.
 
 ### F4 — Sheets export and Files · *both apps; reverses design doc §1*
 - **Export to a Google Sheet…** beside Export CSV…, a curated **write** through ChangeCore: the preview holds the read's

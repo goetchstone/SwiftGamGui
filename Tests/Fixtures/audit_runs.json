@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "086d2f8",
+  "gamgui_commit": "db579c7",
   "generator": "scripts/gen_fixtures.py"
  },
  "now": "2026-11-19T00:00:00+00:00",
@@ -16,10 +16,20 @@
   "INACTIVE_DAYS": 90,
   "STATES": [
    "read",
+   "partial",
    "unknown",
    "not_run"
   ],
-  "ORIGIN": "audit_run"
+  "ORIGIN": "audit_run",
+  "STALE_DAYS": 365,
+  "FLAGS": [
+   "new account",
+   "admin",
+   "outside the domain",
+   "AI, by its name",
+   "broad access",
+   "suspended admin"
+  ]
  },
  "runs": [
   {
@@ -31,7 +41,86 @@
      "key": "directory",
      "title": "The directory, suspended accounts included",
      "key_column": "primaryEmail",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
      "command": "inactive_users/directory",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "shared_drive_permissions",
+   "title": "Shared drive permissions",
+   "what": "Every shared drive's members, outside members first, and drives no active organizer looks after.",
+   "steps": [
+    {
+     "key": "drives",
+     "title": "Every shared drive",
+     "key_column": "id",
+     "ok_rcs": [
+      0,
+      60
+     ],
+     "partial_rcs": [],
+     "command": "shared_drive_permissions/drives",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ]
+    },
+    {
+     "key": "drive_acls",
+     "title": "Every shared drive's members",
+     "key_column": "id",
+     "ok_rcs": [
+      0,
+      60
+     ],
+     "partial_rcs": [],
+     "command": "shared_drive_permissions/drive_acls",
+     "argv": [
+      "print",
+      "shareddriveacls",
+      "oneitemperrow",
+      "shownopermissionsdrives",
+      "true",
+      "formatjson"
+     ]
+    },
+    {
+     "key": "domains",
+     "title": "The domain's own domains and aliases",
+     "key_column": "domainName",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "shared_drive_permissions/domains",
+     "argv": [
+      "print",
+      "domains",
+      "formatjson"
+     ]
+    },
+    {
+     "key": "directory",
+     "title": "The directory, suspended accounts included",
+     "key_column": "primaryEmail",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "shared_drive_permissions/directory",
      "argv": [
       "print",
       "users",
@@ -51,6 +140,10 @@
      "key": "licenses",
      "title": "Every license seat",
      "key_column": "userId",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
      "command": "license_usage/licenses",
      "argv": [
       "print",
@@ -61,6 +154,10 @@
      "key": "directory",
      "title": "The directory, suspended accounts included",
      "key_column": "primaryEmail",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
      "command": "license_usage/directory",
      "argv": [
       "print",
@@ -69,6 +166,105 @@
       "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
       "formatjson"
      ]
+    }
+   ]
+  },
+  {
+   "key": "classroom_courses",
+   "title": "Classroom",
+   "what": "Every class with its owner, state and counts; classes owned by suspended accounts; stale classes.",
+   "steps": [
+    {
+     "key": "courses",
+     "title": "Every Classroom class, with its counts",
+     "key_column": "id",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "classroom_courses/courses",
+     "argv": [
+      "print",
+      "courses",
+      "states",
+      "active,archived,provisioned,declined,suspended",
+      "show",
+      "all",
+      "countsonly",
+      "fields",
+      "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink",
+      "formatjson"
+     ]
+    },
+    {
+     "key": "directory",
+     "title": "The directory, suspended accounts included",
+     "key_column": "primaryEmail",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "classroom_courses/directory",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "admin_tokens",
+   "title": "Admin token review",
+   "what": "Every admin's connected apps, suspended admins included, AI and broad access flagged.",
+   "steps": [
+    {
+     "key": "admins",
+     "title": "Every admin role, a group's members included",
+     "key_column": "roleAssignmentId",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "admin_tokens/admins",
+     "argv": [
+      "print",
+      "admins",
+      "recursive"
+     ]
+    },
+    {
+     "key": "directory",
+     "title": "The directory, suspended accounts included",
+     "key_column": "primaryEmail",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [],
+     "command": "admin_tokens/directory",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ]
+    },
+    {
+     "key": "admin_tokens",
+     "title": "Each admin's connected apps, suspended admins included",
+     "key_column": "user",
+     "ok_rcs": [
+      0
+     ],
+     "partial_rcs": [
+      56,
+      73
+     ],
+     "command": "admin_tokens/admin_tokens",
+     "argv": null
     }
    ]
   }
@@ -103,6 +299,96 @@
    "step": "licenses",
    "rows": 2,
    "why": ""
+  },
+  {
+   "step": "drives",
+   "rows": 0,
+   "why": ""
+  },
+  {
+   "step": "drives",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "drives",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "drive_acls",
+   "rows": 0,
+   "why": ""
+  },
+  {
+   "step": "drive_acls",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "drive_acls",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "domains",
+   "rows": 0,
+   "why": "GAM listed no domain at all, and a Workspace has at least one, so its domains are unknown."
+  },
+  {
+   "step": "domains",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "domains",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "courses",
+   "rows": 0,
+   "why": ""
+  },
+  {
+   "step": "courses",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "courses",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "admins",
+   "rows": 0,
+   "why": "GAM listed no admin role at all, and a Workspace always has a super admin, so its admins are unknown."
+  },
+  {
+   "step": "admins",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "admins",
+   "rows": 2,
+   "why": ""
+  },
+  {
+   "step": "admin_tokens",
+   "rows": 0,
+   "why": ""
+  },
+  {
+   "step": "admin_tokens",
+   "rows": 1,
+   "why": ""
+  },
+  {
+   "step": "admin_tokens",
+   "rows": 2,
+   "why": ""
   }
  ],
  "unknown_because": [
@@ -111,12 +397,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "needed": [
@@ -130,12 +418,14 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "needed": [
@@ -148,12 +438,14 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "not_run",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "needed": [
@@ -167,12 +459,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "not_run",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "needed": [
@@ -186,7 +480,8 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "needed": [
@@ -199,13 +494,28 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "  Why.  "
+     "why": "  Why.  ",
+     "unread": []
     }
    ],
    "needed": [
     "licenses"
    ],
    "why": "Not known: \u201cEvery license seat\u201d couldn't be read.   Why."
+  },
+  {
+   "reads": [
+    {
+     "step": "admin_tokens",
+     "state": "partial",
+     "why": "Some.",
+     "unread": []
+    }
+   ],
+   "needed": [
+    "admin_tokens"
+   ],
+   "why": ""
   },
   {
    "reads": [],
@@ -706,7 +1016,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -872,7 +1183,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1022,7 +1334,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1164,7 +1477,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1234,7 +1548,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1256,7 +1571,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1293,7 +1609,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   },
   {
@@ -1339,7 +1656,8 @@
     "known": true,
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
-    "links": true
+    "links": true,
+    "partial": false
    }
   }
  ],
@@ -1349,7 +1667,8 @@
     {
      "step": "directory",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     }
    ],
    "days": 60,
@@ -1370,7 +1689,8 @@
      "known": false,
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -1379,7 +1699,8 @@
     {
      "step": "directory",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     }
    ],
    "days": 60,
@@ -1400,7 +1721,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   }
@@ -3747,12 +4069,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": [
@@ -3900,7 +4224,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -3939,7 +4264,8 @@
      "known": true,
      "why": "",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -3962,7 +4288,8 @@
      "known": true,
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -3971,12 +4298,14 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": null,
@@ -3998,7 +4327,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4015,7 +4345,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4029,7 +4360,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4038,12 +4370,14 @@
     {
      "step": "licenses",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": null,
@@ -4065,7 +4399,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4082,7 +4417,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4096,7 +4432,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4105,12 +4442,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     }
    ],
    "seats": [
@@ -4258,7 +4597,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4275,7 +4615,8 @@
      "known": false,
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4289,7 +4630,8 @@
      "known": false,
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4298,12 +4640,14 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     }
    ],
    "seats": null,
@@ -4325,7 +4669,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4342,7 +4687,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4356,7 +4702,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4365,12 +4712,14 @@
     {
      "step": "licenses",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     }
    ],
    "seats": null,
@@ -4392,7 +4741,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4409,7 +4759,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4423,7 +4774,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4432,12 +4784,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     }
    ],
    "seats": [
@@ -4585,7 +4939,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4602,7 +4957,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4616,7 +4972,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4625,12 +4982,14 @@
     {
      "step": "licenses",
      "state": "unknown",
-     "why": "Refused."
+     "why": "Refused.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     }
    ],
    "seats": null,
@@ -4652,7 +5011,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4669,7 +5029,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4683,7 +5044,8 @@
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4692,12 +5054,14 @@
     {
      "step": "licenses",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "not_run",
-     "why": "The run was stopped before this step."
+     "why": "The run was stopped before this step.",
+     "unread": []
     }
    ],
    "seats": null,
@@ -4719,7 +5083,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4736,7 +5101,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4750,7 +5116,8 @@
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4759,12 +5126,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": [],
@@ -4786,7 +5155,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4803,7 +5173,8 @@
      "known": true,
      "why": "",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4817,7 +5188,8 @@
      "known": true,
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4826,12 +5198,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": [
@@ -4870,7 +5244,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4887,7 +5262,8 @@
      "known": true,
      "why": "",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4901,7 +5277,8 @@
      "known": true,
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
   },
@@ -4910,12 +5287,14 @@
     {
      "step": "licenses",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     },
     {
      "step": "directory",
      "state": "read",
-     "why": ""
+     "why": "",
+     "unread": []
     }
    ],
    "seats": [
@@ -4954,7 +5333,8 @@
      "known": true,
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
-     "links": false
+     "links": false,
+     "partial": false
     },
     {
      "key": "on_suspended",
@@ -4979,7 +5359,8 @@
      "known": true,
      "why": "",
      "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": true
+     "links": true,
+     "partial": false
     },
     {
      "key": "not_in_directory",
@@ -4993,23 +5374,4300 @@
      "known": true,
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
-     "links": false
+     "links": false,
+     "partial": false
     }
    ]
+  }
+ ],
+ "domains": {
+  "records": [
+   {
+    "domainName": "example.com",
+    "domainAliases": [
+     {
+      "domainAliasName": "alias.example.net",
+      "parentDomainName": "example.com"
+     }
+    ]
+   },
+   {
+    "domainName": " Example.NET "
+   },
+   {
+    "note": {
+     "domainName": "nested.example"
+    }
+   },
+   {
+    "domainName": 7
+   },
+   {
+    "secondaryDomain.domainName": "Dotted.Example"
+   }
+  ],
+  "found": [
+   "alias.example.net",
+   "dotted.example",
+   "example.com",
+   "example.net",
+   "nested.example"
+  ]
+ },
+ "drive_directory": [
+  {
+   "primaryEmail": "active@example.com",
+   "name": {
+    "givenName": "active",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "1"
+  },
+  {
+   "primaryEmail": "gone@example.com",
+   "name": {
+    "givenName": "gone",
+    "familyName": "Test"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "2"
+  },
+  {
+   "primaryEmail": "leaver@example.com",
+   "name": {
+    "givenName": "leaver",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "3"
+  },
+  {
+   "primaryEmail": "a@example.com",
+   "name": {
+    "givenName": "a",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "4"
+  },
+  {
+   "primaryEmail": "Mixed@Example.com",
+   "name": {
+    "givenName": "Mixed",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "5"
+  }
+ ],
+ "drive_list": [
+  {
+   "id": "A",
+   "name": "Fine"
+  },
+  {
+   "id": "Z",
+   "name": "Dropped"
+  },
+  {
+   "id": "G",
+   "name": "Empty"
+  },
+  {
+   "id": "Y",
+   "name": "another dropped"
+  },
+  {
+   "id": "",
+   "name": "No ID"
+  }
+ ],
+ "acl_rows": [
+  {
+   "id": "A",
+   "name": "Fine",
+   "permission": {
+    "emailAddress": "active@example.com",
+    "domain": "example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "A",
+   "name": "Fine",
+   "permission": {
+    "type": "user",
+    "emailAddress": "x@alias.example.net",
+    "domain": "alias.example.net",
+    "role": "writer"
+   }
+  },
+  {
+   "id": "A",
+   "name": "Fine",
+   "permission": {
+    "type": "group",
+    "emailAddress": "g@partner.org",
+    "domain": "partner.org",
+    "role": "reader"
+   }
+  },
+  {
+   "id": "B",
+   "name": "Suspended",
+   "permission": {
+    "emailAddress": "gone@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "C",
+   "name": "Leaving",
+   "permission": {
+    "emailAddress": "leaver@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "D",
+   "name": "deleted one",
+   "permission": {
+    "emailAddress": "ghost@example.com",
+    "deleted": true,
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "E",
+   "name": "Nobody",
+   "permission": {
+    "type": "user",
+    "emailAddress": "v@vendor.io",
+    "role": "contentManager"
+   }
+  },
+  {
+   "id": "F",
+   "name": "Group",
+   "permission": {
+    "type": "group",
+    "emailAddress": "team@example.com",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "G",
+   "name": "Empty"
+  },
+  {
+   "id": "H",
+   "name": "Mixed",
+   "permission": {
+    "emailAddress": "MIXED@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "I",
+   "name": "Two",
+   "permission": {
+    "emailAddress": "gone@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "I",
+   "name": "Two",
+   "permission": {
+    "emailAddress": "active@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "J",
+   "name": "Two gone",
+   "permission": {
+    "emailAddress": "gone@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "J",
+   "name": "Two gone",
+   "permission": {
+    "emailAddress": "leaver@example.com",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "K",
+   "name": "No address",
+   "permission": {
+    "type": "user",
+    "role": "organizer",
+    "displayName": "Someone"
+   }
+  },
+  {
+   "id": "L",
+   "name": "Outside organizer",
+   "permission": {
+    "emailAddress": "o@outside.example",
+    "domain": "outside.example",
+    "type": "user",
+    "role": "organizer"
+   }
+  },
+  {
+   "id": "M",
+   "name": "Domain-less",
+   "permission": {
+    "type": "user",
+    "emailAddress": "noat",
+    "role": "reader"
+   }
+  }
+ ],
+ "shared_drives": [
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [],
+   "tables": [
+    "directory",
+    "domains",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "6 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [
+    " Active@Example.com ",
+    "leaver@example.com"
+   ],
+   "tables": [
+    "directory",
+    "domains",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "10 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "active@example.com: being offboarded"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "leaver@example.com: being offboarded"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ],
+      [
+       "Two",
+       "gone@example.com, active@example.com",
+       "gone@example.com: suspended; active@example.com: being offboarded"
+      ],
+      [
+       "Two gone",
+       "gone@example.com, leaver@example.com",
+       "gone@example.com: suspended; leaver@example.com: being offboarded"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [],
+   "tables": [
+    "directory",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 15 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       "outside the domain"
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": false,
+     "why": "Not known: \u201cThe domain's own domains and aliases\u201d couldn't be read. Refused.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "6 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [
+    " Active@Example.com ",
+    "leaver@example.com"
+   ],
+   "tables": [
+    "directory",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 15 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       "outside the domain"
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": false,
+     "why": "Not known: \u201cThe domain's own domains and aliases\u201d couldn't be read. Refused.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "10 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "active@example.com: being offboarded"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "leaver@example.com: being offboarded"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ],
+      [
+       "Two",
+       "gone@example.com, active@example.com",
+       "gone@example.com: suspended; active@example.com: being offboarded"
+      ],
+      [
+       "Two gone",
+       "gone@example.com, leaver@example.com",
+       "gone@example.com: suspended; leaver@example.com: being offboarded"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step.",
+     "unread": []
+    }
+   ],
+   "leaving": [],
+   "tables": [
+    "domains",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "11 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "active@example.com: not in the directory read"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "leaver@example.com: not in the directory read"
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "mixed@example.com: not in the directory read"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: not in the directory read"
+      ],
+      [
+       "Two",
+       "gone@example.com, active@example.com",
+       "gone@example.com: not in the directory read; active@example.com: not in the directory read"
+      ],
+      [
+       "Two gone",
+       "gone@example.com, leaver@example.com",
+       "gone@example.com: not in the directory read; leaver@example.com: not in the directory read"
+      ]
+     ],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step.",
+     "unread": []
+    }
+   ],
+   "leaving": [
+    " Active@Example.com ",
+    "leaver@example.com"
+   ],
+   "tables": [
+    "domains",
+    "drive_acls",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "11 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "active@example.com: not in the directory read"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "leaver@example.com: not in the directory read"
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "mixed@example.com: not in the directory read"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: not in the directory read"
+      ],
+      [
+       "Two",
+       "gone@example.com, active@example.com",
+       "gone@example.com: not in the directory read; active@example.com: not in the directory read"
+      ],
+      [
+       "Two gone",
+       "gone@example.com, leaver@example.com",
+       "gone@example.com: not in the directory read; leaver@example.com: not in the directory read"
+      ]
+     ],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 3 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [],
+   "tables": [
+    "directory",
+    "domains",
+    "drive_acls"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "6 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM read every listed drive's members.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [
+    " Active@Example.com ",
+    "leaver@example.com"
+   ],
+   "tables": [
+    "directory",
+    "domains",
+    "drive_acls"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "16 members across 13 drives; 4 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "Domain-less",
+       "noat",
+       "user",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Fine",
+       "g@partner.org",
+       "group",
+       "reader",
+       "outside the domain"
+      ],
+      [
+       "Nobody",
+       "v@vendor.io",
+       "user",
+       "contentManager",
+       "outside the domain"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "user",
+       "organizer",
+       "outside the domain"
+      ],
+      [
+       "deleted one",
+       "ghost@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Fine",
+       "x@alias.example.net",
+       "user",
+       "writer",
+       ""
+      ],
+      [
+       "Group",
+       "team@example.com",
+       "group",
+       "organizer",
+       ""
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Mixed",
+       "MIXED@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "No address",
+       "Someone",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "active@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "gone@example.com",
+       "user",
+       "organizer",
+       ""
+      ],
+      [
+       "Two gone",
+       "leaver@example.com",
+       "user",
+       "organizer",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "10 drives have no organizer who is active here.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [
+      [
+       "deleted one",
+       "ghost@example.com",
+       "ghost@example.com: not in the directory read"
+      ],
+      [
+       "Domain-less",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Empty",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Fine",
+       "active@example.com",
+       "active@example.com: being offboarded"
+      ],
+      [
+       "Leaving",
+       "leaver@example.com",
+       "leaver@example.com: being offboarded"
+      ],
+      [
+       "Nobody",
+       "none",
+       "no organizer at all"
+      ],
+      [
+       "Outside organizer",
+       "o@outside.example",
+       "o@outside.example: not in the directory read"
+      ],
+      [
+       "Suspended",
+       "gone@example.com",
+       "gone@example.com: suspended"
+      ],
+      [
+       "Two",
+       "gone@example.com, active@example.com",
+       "gone@example.com: suspended; active@example.com: being offboarded"
+      ],
+      [
+       "Two gone",
+       "gone@example.com, leaver@example.com",
+       "gone@example.com: suspended; leaver@example.com: being offboarded"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM read every listed drive's members.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [],
+   "tables": [
+    "directory",
+    "domains",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "0 members across 0 drives; 0 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "Every drive read has an active organizer, or a group as one.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 5 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "Empty",
+       "G"
+      ],
+      [
+       "Fine",
+       "A"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "drives",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "drive_acls",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "domains",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "leaving": [
+    " Active@Example.com ",
+    "leaver@example.com"
+   ],
+   "tables": [
+    "directory",
+    "domains",
+    "drives"
+   ],
+   "findings": [
+    {
+     "key": "permissions",
+     "title": "Every drive's members",
+     "summary": "0 members across 0 drives; 0 are from outside the domain, listed first.",
+     "columns": [
+      "Drive",
+      "Member",
+      "Type",
+      "Role",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "orphaned",
+     "title": "Drives no active organizer looks after",
+     "summary": "Every drive read has an active organizer, or a group as one.",
+     "columns": [
+      "Drive",
+      "Organizers",
+      "Why"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "unread",
+     "title": "Drives whose members weren't read",
+     "summary": "GAM listed 5 drives but didn't read their members: unknown, not shared with no one.",
+     "columns": [
+      "Drive",
+      "Drive ID"
+     ],
+     "rows": [
+      [
+       "another dropped",
+       "Y"
+      ],
+      [
+       "Dropped",
+       "Z"
+      ],
+      [
+       "Empty",
+       "G"
+      ],
+      [
+       "Fine",
+       "A"
+      ],
+      [
+       "No ID",
+       ""
+      ]
+     ],
+     "known": false,
+     "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
+     "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
+     "links": false,
+     "partial": false
+    }
+   ]
+  }
+ ],
+ "course_directory": [
+  {
+   "primaryEmail": "t@example.com",
+   "name": {
+    "givenName": "t",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "1"
+  },
+  {
+   "primaryEmail": "gone@example.com",
+   "name": {
+    "givenName": "gone",
+    "familyName": "Test"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "2"
+  },
+  {
+   "primaryEmail": "Z@example.com",
+   "name": {
+    "givenName": "Z",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "3"
+  }
+ ],
+ "courses": [
+  {
+   "id": "c1",
+   "name": "Bio",
+   "section": "1",
+   "ownerId": "1",
+   "courseState": "ACTIVE",
+   "updateTime": "2026-10-01T00:00:00Z",
+   "teachers": 1,
+   "students": 0
+  },
+  {
+   "id": "c2",
+   "name": "Old",
+   "ownerId": "2",
+   "courseState": "ACTIVE",
+   "updateTime": "2024-01-01T00:00:00Z"
+  },
+  {
+   "id": "c3",
+   "name": "Kept",
+   "ownerId": "9",
+   "courseState": "ARCHIVED",
+   "updateTime": "2020-01-01T00:00:00Z"
+  },
+  {
+   "id": "c4",
+   "name": "Never",
+   "ownerId": "1",
+   "courseState": "PROVISIONED",
+   "updateTime": "2025-01-01T00:00:00Z"
+  },
+  {
+   "id": "c5",
+   "name": "bio",
+   "section": "0",
+   "ownerId": "3",
+   "courseState": "DECLINED",
+   "updateTime": "2019-01-01T00:00:00Z",
+   "teachers": "2",
+   "students": "30"
+  },
+  {
+   "id": "c6",
+   "name": "Edge",
+   "ownerId": "2",
+   "courseState": "ACTIVE",
+   "updateTime": "2025-11-19T00:00:00Z"
+  },
+  {
+   "id": "c7",
+   "name": "Just in",
+   "ownerId": "",
+   "courseState": "PROVISIONED",
+   "updateTime": "2025-11-18T23:59:59Z"
+  },
+  {
+   "id": "c8",
+   "name": "Garbled",
+   "ownerId": "1",
+   "courseState": "ACTIVE",
+   "updateTime": "not a time"
+  },
+  {
+   "id": "c9",
+   "name": "Never updated",
+   "courseState": "SUSPENDED"
+  },
+  {
+   "id": "c10",
+   "name": "Same day",
+   "ownerId": "1",
+   "courseState": "ACTIVE",
+   "updateTime": "2024-01-01T00:00:00Z"
+  }
+ ],
+ "classroom": [
+  {
+   "reads": [
+    {
+     "step": "courses",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "courses",
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "courses",
+     "title": "Every class",
+     "summary": "10 classes in every state.",
+     "columns": [
+      "Class",
+      "Section",
+      "Owner",
+      "State",
+      "Teachers",
+      "Students",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "bio",
+       "0",
+       "Z@example.com",
+       "DECLINED",
+       "2",
+       "30",
+       "2019-01-01"
+      ],
+      [
+       "Bio",
+       "1",
+       "t@example.com",
+       "ACTIVE",
+       "1",
+       "0",
+       "2026-10-01"
+      ],
+      [
+       "Edge",
+       "",
+       "gone@example.com",
+       "ACTIVE",
+       "",
+       "",
+       "2025-11-19"
+      ],
+      [
+       "Garbled",
+       "",
+       "t@example.com",
+       "ACTIVE",
+       "",
+       "",
+       "not a time"
+      ],
+      [
+       "Just in",
+       "",
+       "ID ",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-11-18"
+      ],
+      [
+       "Kept",
+       "",
+       "ID 9",
+       "ARCHIVED",
+       "",
+       "",
+       "2020-01-01"
+      ],
+      [
+       "Never",
+       "",
+       "t@example.com",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-01-01"
+      ],
+      [
+       "Never updated",
+       "",
+       "ID None",
+       "SUSPENDED",
+       "",
+       "",
+       ""
+      ],
+      [
+       "Old",
+       "",
+       "gone@example.com",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "",
+       "t@example.com",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "owned_by_suspended",
+     "title": "Classes owned by a suspended account",
+     "summary": "2 classes are owned by a suspended account.",
+     "columns": [
+      "Owner",
+      "Class",
+      "State",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "gone@example.com",
+       "Edge",
+       "ACTIVE",
+       "2025-11-19"
+      ],
+      [
+       "gone@example.com",
+       "Old",
+       "ACTIVE",
+       "2024-01-01"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
+     "links": true,
+     "partial": false
+    },
+    {
+     "key": "owner_not_in_directory",
+     "title": "Classes whose owner the directory read doesn't list",
+     "summary": "3 classes have an owner the directory read didn't list.",
+     "columns": [
+      "Class",
+      "Owner ID",
+      "State"
+     ],
+     "rows": [
+      [
+       "Just in",
+       "",
+       "PROVISIONED"
+      ],
+      [
+       "Kept",
+       "9",
+       "ARCHIVED"
+      ],
+      [
+       "Never updated",
+       "",
+       "SUSPENDED"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A deleted account, or one outside the domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "stale",
+     "title": "Active or provisioned classes not updated in 365 days",
+     "summary": "4 classes haven't changed in a year.",
+     "columns": [
+      "Class",
+      "Owner",
+      "State",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "Old",
+       "gone@example.com",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "t@example.com",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Never",
+       "t@example.com",
+       "PROVISIONED",
+       "2025-01-01"
+      ],
+      [
+       "Just in",
+       "ID ",
+       "PROVISIONED",
+       "2025-11-18"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "courses",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "courses"
+   ],
+   "findings": [
+    {
+     "key": "courses",
+     "title": "Every class",
+     "summary": "10 classes in every state.",
+     "columns": [
+      "Class",
+      "Section",
+      "Owner",
+      "State",
+      "Teachers",
+      "Students",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "bio",
+       "0",
+       "3",
+       "DECLINED",
+       "2",
+       "30",
+       "2019-01-01"
+      ],
+      [
+       "Bio",
+       "1",
+       "1",
+       "ACTIVE",
+       "1",
+       "0",
+       "2026-10-01"
+      ],
+      [
+       "Edge",
+       "",
+       "2",
+       "ACTIVE",
+       "",
+       "",
+       "2025-11-19"
+      ],
+      [
+       "Garbled",
+       "",
+       "1",
+       "ACTIVE",
+       "",
+       "",
+       "not a time"
+      ],
+      [
+       "Just in",
+       "",
+       "",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-11-18"
+      ],
+      [
+       "Kept",
+       "",
+       "9",
+       "ARCHIVED",
+       "",
+       "",
+       "2020-01-01"
+      ],
+      [
+       "Never",
+       "",
+       "1",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-01-01"
+      ],
+      [
+       "Never updated",
+       "",
+       "",
+       "SUSPENDED",
+       "",
+       "",
+       ""
+      ],
+      [
+       "Old",
+       "",
+       "2",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "",
+       "1",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "owned_by_suspended",
+     "title": "Classes owned by a suspended account",
+     "summary": "No class read is owned by a suspended account.",
+     "columns": [
+      "Owner",
+      "Class",
+      "State",
+      "Updated"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
+     "links": true,
+     "partial": false
+    },
+    {
+     "key": "owner_not_in_directory",
+     "title": "Classes whose owner the directory read doesn't list",
+     "summary": "Every class read has an owner the directory read listed.",
+     "columns": [
+      "Class",
+      "Owner ID",
+      "State"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
+     "note": "A deleted account, or one outside the domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "stale",
+     "title": "Active or provisioned classes not updated in 365 days",
+     "summary": "4 classes haven't changed in a year.",
+     "columns": [
+      "Class",
+      "Owner",
+      "State",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "Old",
+       "2",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "1",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Never",
+       "1",
+       "PROVISIONED",
+       "2025-01-01"
+      ],
+      [
+       "Just in",
+       "",
+       "PROVISIONED",
+       "2025-11-18"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "courses",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "not_run",
+     "why": "The run was stopped before this step.",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "courses"
+   ],
+   "findings": [
+    {
+     "key": "courses",
+     "title": "Every class",
+     "summary": "10 classes in every state.",
+     "columns": [
+      "Class",
+      "Section",
+      "Owner",
+      "State",
+      "Teachers",
+      "Students",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "bio",
+       "0",
+       "3",
+       "DECLINED",
+       "2",
+       "30",
+       "2019-01-01"
+      ],
+      [
+       "Bio",
+       "1",
+       "1",
+       "ACTIVE",
+       "1",
+       "0",
+       "2026-10-01"
+      ],
+      [
+       "Edge",
+       "",
+       "2",
+       "ACTIVE",
+       "",
+       "",
+       "2025-11-19"
+      ],
+      [
+       "Garbled",
+       "",
+       "1",
+       "ACTIVE",
+       "",
+       "",
+       "not a time"
+      ],
+      [
+       "Just in",
+       "",
+       "",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-11-18"
+      ],
+      [
+       "Kept",
+       "",
+       "9",
+       "ARCHIVED",
+       "",
+       "",
+       "2020-01-01"
+      ],
+      [
+       "Never",
+       "",
+       "1",
+       "PROVISIONED",
+       "",
+       "",
+       "2025-01-01"
+      ],
+      [
+       "Never updated",
+       "",
+       "",
+       "SUSPENDED",
+       "",
+       "",
+       ""
+      ],
+      [
+       "Old",
+       "",
+       "2",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "",
+       "1",
+       "ACTIVE",
+       "",
+       "",
+       "2024-01-01"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "owned_by_suspended",
+     "title": "Classes owned by a suspended account",
+     "summary": "No class read is owned by a suspended account.",
+     "columns": [
+      "Owner",
+      "Class",
+      "State",
+      "Updated"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
+     "links": true,
+     "partial": false
+    },
+    {
+     "key": "owner_not_in_directory",
+     "title": "Classes whose owner the directory read doesn't list",
+     "summary": "Every class read has an owner the directory read listed.",
+     "columns": [
+      "Class",
+      "Owner ID",
+      "State"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
+     "note": "A deleted account, or one outside the domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "stale",
+     "title": "Active or provisioned classes not updated in 365 days",
+     "summary": "4 classes haven't changed in a year.",
+     "columns": [
+      "Class",
+      "Owner",
+      "State",
+      "Updated"
+     ],
+     "rows": [
+      [
+       "Old",
+       "2",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Same day",
+       "1",
+       "ACTIVE",
+       "2024-01-01"
+      ],
+      [
+       "Never",
+       "1",
+       "PROVISIONED",
+       "2025-01-01"
+      ],
+      [
+       "Just in",
+       "",
+       "PROVISIONED",
+       "2025-11-18"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "",
+     "links": false,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "courses",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "courses",
+     "title": "Every class",
+     "summary": "0 classes in every state.",
+     "columns": [
+      "Class",
+      "Section",
+      "Owner",
+      "State",
+      "Teachers",
+      "Students",
+      "Updated"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
+     "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "owned_by_suspended",
+     "title": "Classes owned by a suspended account",
+     "summary": "No class read is owned by a suspended account.",
+     "columns": [
+      "Owner",
+      "Class",
+      "State",
+      "Updated"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
+     "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
+     "links": true,
+     "partial": false
+    },
+    {
+     "key": "owner_not_in_directory",
+     "title": "Classes whose owner the directory read doesn't list",
+     "summary": "Every class read has an owner the directory read listed.",
+     "columns": [
+      "Class",
+      "Owner ID",
+      "State"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
+     "note": "A deleted account, or one outside the domain.",
+     "links": false,
+     "partial": false
+    },
+    {
+     "key": "stale",
+     "title": "Active or provisioned classes not updated in 365 days",
+     "summary": "Every active or provisioned class read has changed within 365 days.",
+     "columns": [
+      "Class",
+      "Owner",
+      "State",
+      "Updated"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
+     "note": "",
+     "links": false,
+     "partial": false
+    }
+   ]
+  }
+ ],
+ "admin_directory": [
+  {
+   "primaryEmail": "alice@example.com",
+   "name": {
+    "givenName": "alice",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "1"
+  },
+  {
+   "primaryEmail": "bob@example.com",
+   "name": {
+    "givenName": "bob",
+    "familyName": "Test"
+   },
+   "suspended": true,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "2"
+  },
+  {
+   "primaryEmail": "carol@example.com",
+   "name": {
+    "givenName": "carol",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "3"
+  },
+  {
+   "primaryEmail": "dana@example.com",
+   "name": {
+    "givenName": "dana",
+    "familyName": "Test"
+   },
+   "suspended": false,
+   "orgUnitPath": "/Staff",
+   "isAdmin": false,
+   "isDelegatedAdmin": false,
+   "lastLoginTime": "2026-01-01T00:00:00Z",
+   "creationTime": "2024-01-01T00:00:00Z",
+   "id": "4"
+  }
+ ],
+ "token_rows": [
+  {
+   "user": "alice@example.com",
+   "clientId": "1",
+   "displayText": "Zoom",
+   "scopes": "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/userinfo.email"
+  },
+  {
+   "user": "bob@example.com",
+   "clientId": "2",
+   "displayText": "ChatGPT",
+   "scopes": "https://mail.google.com/"
+  },
+  {
+   "user": "bob@example.com",
+   "clientId": "3",
+   "displayText": "Only Bob Has This",
+   "scopes": "https://www.googleapis.com/auth/drive"
+  },
+  {
+   "user": "Carol@Example.com",
+   "clientId": "4",
+   "displayText": "Admin Helper",
+   "scopes": "https://www.googleapis.com/auth/admin.directory.user,https://www.googleapis.com/auth/drive.file"
+  },
+  {
+   "user": "alice@example.com",
+   "clientId": "",
+   "displayText": "No client"
+  },
+  {
+   "user": "alice@example.com",
+   "clientId": "5",
+   "displayText": "Inbox Agent",
+   "scopes": ""
+  }
+ ],
+ "admin_tokens": [
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "admin_tokens",
+    "admins",
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "5 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [
+      [
+       "ID 77",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "alice@example.com",
+       "9170009; _SEED_ADMIN_ROLE",
+       "no",
+       "2"
+      ],
+      [
+       "bob@example.com",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "yes",
+       "2"
+      ],
+      [
+       "carol@example.com",
+       "_USER_MANAGEMENT_ADMIN_ROLE",
+       "no",
+       "1"
+      ],
+      [
+       "dana@example.com",
+       "_SEED_ADMIN_ROLE",
+       "no",
+       "0"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "5 grants across the admins; 4 flagged, listed first.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "alice@example.com",
+       "Inbox Agent",
+       "",
+       "AI, by its name"
+      ],
+      [
+       "bob@example.com",
+       "ChatGPT",
+       "all of Gmail (read, send, delete)",
+       "suspended admin, AI, by its name, broad access"
+      ],
+      [
+       "bob@example.com",
+       "Only Bob Has This",
+       "all of Drive",
+       "suspended admin, broad access"
+      ],
+      [
+       "carol@example.com",
+       "Admin Helper",
+       "admin: directory.user, files it made or was given",
+       "broad access"
+      ],
+      [
+       "alice@example.com",
+       "Zoom",
+       "read calendars, sign in with Google",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "partial",
+     "why": "",
+     "unread": [
+      "bob@example.com"
+     ]
+    }
+   ],
+   "tables": [
+    "admin_tokens",
+    "admins",
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "5 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [
+      [
+       "ID 77",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "alice@example.com",
+       "9170009; _SEED_ADMIN_ROLE",
+       "no",
+       "2"
+      ],
+      [
+       "bob@example.com",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "yes",
+       "unknown"
+      ],
+      [
+       "carol@example.com",
+       "_USER_MANAGEMENT_ADMIN_ROLE",
+       "no",
+       "1"
+      ],
+      [
+       "dana@example.com",
+       "_SEED_ADMIN_ROLE",
+       "no",
+       "0"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't read the apps of bob@example.com: unknown, not none. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "5 grants across the admins; 4 flagged, listed first.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "alice@example.com",
+       "Inbox Agent",
+       "",
+       "AI, by its name"
+      ],
+      [
+       "bob@example.com",
+       "ChatGPT",
+       "all of Gmail (read, send, delete)",
+       "suspended admin, AI, by its name, broad access"
+      ],
+      [
+       "bob@example.com",
+       "Only Bob Has This",
+       "all of Drive",
+       "suspended admin, broad access"
+      ],
+      [
+       "carol@example.com",
+       "Admin Helper",
+       "admin: directory.user, files it made or was given",
+       "broad access"
+      ],
+      [
+       "alice@example.com",
+       "Zoom",
+       "read calendars, sign in with Google",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't read the apps of bob@example.com: unknown, not none. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "admins",
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "5 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [
+      [
+       "ID 77",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "alice@example.com",
+       "9170009; _SEED_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ],
+      [
+       "bob@example.com",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "yes",
+       "unknown"
+      ],
+      [
+       "carol@example.com",
+       "_USER_MANAGEMENT_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ],
+      [
+       "dana@example.com",
+       "_SEED_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "No admin read has given an app access.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEach admin's connected apps, suspended admins included\u201d couldn't be read. Refused.",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "read",
+     "why": "",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "admin_tokens",
+    "admins"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "5 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [
+      [
+       "ID  4 ",
+       "_SEED_ADMIN_ROLE",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "ID 3",
+       "_USER_MANAGEMENT_ADMIN_ROLE",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "ID 77",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "alice@example.com",
+       "9170009; _SEED_ADMIN_ROLE",
+       "unknown",
+       "2"
+      ],
+      [
+       "bob@example.com",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "2"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 3 role holders and the directory read has no account with those IDs ( 4 , 3, 77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "5 grants across the admins; 4 flagged, listed first.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [
+      [
+       "alice@example.com",
+       "Inbox Agent",
+       "",
+       "AI, by its name"
+      ],
+      [
+       "bob@example.com",
+       "ChatGPT",
+       "all of Gmail (read, send, delete)",
+       "AI, by its name, broad access"
+      ],
+      [
+       "bob@example.com",
+       "Only Bob Has This",
+       "all of Drive",
+       "broad access"
+      ],
+      [
+       "carol@example.com",
+       "Admin Helper",
+       "admin: directory.user, files it made or was given",
+       "broad access"
+      ],
+      [
+       "alice@example.com",
+       "Zoom",
+       "read calendars, sign in with Google",
+       ""
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 3 role holders and the directory read has no account with those IDs ( 4 , 3, 77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "unknown",
+     "why": "Refused.",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "0 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery admin role, a group's members included\u201d couldn't be read. Refused.",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed.",
+     "links": true,
+     "partial": false
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "No admin read has given an app access.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: \u201cEvery admin role, a group's members included\u201d couldn't be read. Refused.",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview.",
+     "links": true,
+     "partial": false
+    }
+   ]
+  },
+  {
+   "reads": [
+    {
+     "step": "admins",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "directory",
+     "state": "read",
+     "why": "",
+     "unread": []
+    },
+    {
+     "step": "admin_tokens",
+     "state": "not_run",
+     "why": "The run was stopped before this step.",
+     "unread": []
+    }
+   ],
+   "tables": [
+    "admins",
+    "directory"
+   ],
+   "findings": [
+    {
+     "key": "admins",
+     "title": "Every admin",
+     "summary": "5 role holders, suspended ones included.",
+     "columns": [
+      "Admin",
+      "Roles",
+      "Suspended",
+      "Apps"
+     ],
+     "rows": [
+      [
+       "ID 77",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "unknown",
+       "unknown"
+      ],
+      [
+       "alice@example.com",
+       "9170009; _SEED_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ],
+      [
+       "bob@example.com",
+       "_HELP_DESK_ADMIN_ROLE (through it-admins@example.com)",
+       "yes",
+       "unknown"
+      ],
+      [
+       "carol@example.com",
+       "_USER_MANAGEMENT_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ],
+      [
+       "dana@example.com",
+       "_SEED_ADMIN_ROLE",
+       "no",
+       "unknown"
+      ]
+     ],
+     "known": true,
+     "why": "",
+     "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    },
+    {
+     "key": "admin_apps",
+     "title": "Admins' connected apps",
+     "summary": "No admin read has given an app access.",
+     "columns": [
+      "Admin",
+      "App",
+      "What it may do",
+      "Flags"
+     ],
+     "rows": [],
+     "known": false,
+     "why": "Not known: the run was stopped before \u201cEach admin's connected apps, suspended admins included\u201d.",
+     "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
+     "links": true,
+     "partial": true
+    }
+   ]
+  }
+ ],
+ "holders": {
+  "rows": [
+   {
+    "roleAssignmentId": "1",
+    "role": "_SEED_ADMIN_ROLE",
+    "assignedTo": "1",
+    "assignedToUser": "Alice@Example.com",
+    "assignedToUnknown": "False"
+   },
+   {
+    "roleAssignmentId": "2",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "assignedTo": "2",
+    "assignedToUser": "bob@example.com",
+    "assignedToGroup": "it-admins@example.com",
+    "assignedToUnknown": "False"
+   },
+   {
+    "roleAssignmentId": "3",
+    "role": "_GROUPS_ADMIN_ROLE",
+    "assignedTo": "104455",
+    "assignedToServiceAccount": "bot@p.iam.gserviceaccount.com",
+    "assignedToUnknown": "False"
+   },
+   {
+    "roleAssignmentId": "4",
+    "role": "_X",
+    "assignedTo": "8",
+    "assignedToGroup": "empty@example.com",
+    "assignedToUnknown": "False"
+   },
+   {
+    "roleAssignmentId": "5",
+    "role": "_USER_MANAGEMENT_ADMIN_ROLE",
+    "assignedTo": "3",
+    "assignedToUnknown": "True"
+   },
+   {
+    "roleAssignmentId": "6",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "assignedTo": "77",
+    "assignedToUnknown": "True",
+    "assignedToGroup": "it-admins@example.com"
+   },
+   {
+    "roleAssignmentId": "7",
+    "role": "",
+    "roleId": "9170009",
+    "assignedTo": "1",
+    "assignedToUser": "alice@example.com",
+    "assignedToUnknown": "False"
+   },
+   {
+    "roleAssignmentId": "8",
+    "role": "_SEED_ADMIN_ROLE",
+    "assignedTo": " 4 ",
+    "assignedToUnknown": " TRUE "
+   },
+   {
+    "roleAssignmentId": "9",
+    "role": "_SEED_ADMIN_ROLE",
+    "assignedTo": "",
+    "assignedToUnknown": "True"
+   },
+   {
+    "roleAssignmentId": "10",
+    "role": "_SEED_ADMIN_ROLE",
+    "assignedTo": "5",
+    "assignedToUser": "not one",
+    "assignedToUnknown": "False"
+   }
+  ],
+  "holders": [
+   "alice@example.com",
+   "bob@example.com",
+   "",
+   "",
+   "carol@example.com",
+   "",
+   "alice@example.com",
+   "dana@example.com",
+   "",
+   ""
+  ],
+  "holders_without_directory": [
+   "alice@example.com",
+   "bob@example.com",
+   "",
+   "",
+   "",
+   "",
+   "alice@example.com",
+   "",
+   "",
+   ""
+  ],
+  "addresses": [
+   "alice@example.com",
+   "bob@example.com",
+   "carol@example.com",
+   "dana@example.com"
+  ],
+  "addresses_without_directory": [
+   "alice@example.com",
+   "bob@example.com"
+  ],
+  "unnamed": [
+   "77"
+  ],
+  "unnamed_without_directory": [
+   " 4 ",
+   "3",
+   "77"
+  ],
+  "token_argv": [
+   "print",
+   "tokens",
+   "users",
+   "alice@example.com,bob@example.com,carol@example.com,dana@example.com"
+  ],
+  "token_argv_without_admins": null
+ },
+ "complete": [
+  {
+   "states": [
+    "read",
+    "read",
+    "read"
+   ],
+   "partial": false,
+   "complete": true
+  },
+  {
+   "states": [
+    "read",
+    "read",
+    "read"
+   ],
+   "partial": true,
+   "complete": false
+  },
+  {
+   "states": [
+    "read",
+    "read",
+    "partial"
+   ],
+   "partial": false,
+   "complete": false
   }
  ],
  "reads": [
   {
    "name": "seats",
    "output": "userId,productId,productDisplay,skuId,skuDisplay\na@example.com,Google-Apps,Google Workspace,1010020028,x\nb@example.com,Google-Apps,Google Workspace,1010020028,x\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 2,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5040,14 +9698,21 @@
   {
    "name": "titles alone",
    "output": "userId,productId,productDisplay,skuId,skuDisplay\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 0,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5078,14 +9743,21 @@
   {
    "name": "crlf",
    "output": "userId,productId,productDisplay,skuId,skuDisplay\r\na@example.com,Google-Apps,G,1,x\r\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 1,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5116,14 +9788,21 @@
   {
    "name": "spaced titles",
    "output": " userId , productId \na@example.com,Google-Apps\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 1,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5154,14 +9833,21 @@
   {
    "name": "another table",
    "output": "userId,productId,productDisplay,skuId,skuDisplay\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "primaryEmail",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "Incomplete",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5192,14 +9878,21 @@
   {
    "name": "nothing",
    "output": "",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "Incomplete",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5230,14 +9923,21 @@
   {
    "name": "spaces",
    "output": "  \n\t ",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "Incomplete",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5268,14 +9968,21 @@
   {
    "name": "json",
    "output": "[{\"userId\": \"a@example.com\"}]",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "Incomplete",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5306,14 +10013,21 @@
   {
    "name": "line separator",
    "output": "userId\u2028x,productId\na@example.com,y\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 1,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5344,14 +10058,21 @@
   {
    "name": "a title holding it",
    "output": "userIdx,productId\na,b\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "Incomplete",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5382,6 +10103,8 @@
   {
    "name": "directory",
    "output": "primaryEmail,JSON\na@example.com,\"{\"\"primaryEmail\"\": \"\"a@example.com\"\"}\"\n",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5391,8 +10114,13 @@
     "formatjson"
    ],
    "key_column": "primaryEmail",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": null,
    "rows": 1,
+   "unread": [],
    "ran": [
     [
      "print",
@@ -5429,14 +10157,21 @@
   {
    "name": "failed",
    "output": null,
+   "stderr": "",
+   "exit": null,
    "error": "ERROR: There are no scopes authorized for the API(s): License Manager API",
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "RuntimeError",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5467,14 +10202,21 @@
   {
    "name": "cancelled",
    "output": null,
+   "stderr": "",
+   "exit": null,
    "error": null,
    "argv": [
     "print",
     "licenses"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "CancelledError",
    "rows": null,
+   "unread": null,
    "ran": [
     [
      "print",
@@ -5505,6 +10247,8 @@
   {
    "name": "not a print",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "update",
@@ -5514,14 +10258,21 @@
     "on"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "a person's read",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "user",
@@ -5530,14 +10281,21 @@
     "tokens"
    ],
    "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "todrive",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5545,14 +10303,21 @@
     "todrive"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "to_drive",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5560,14 +10325,21 @@
     "to_drive"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "ToDrive",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5575,14 +10347,21 @@
     "ToDrive"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "TODRIVE",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5590,14 +10369,21 @@
     "TODRIVE"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "T_o_Drive",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5605,14 +10391,21 @@
     "T_o_Drive"
    ],
    "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
   },
   {
    "name": "todrive inside",
    "output": "x",
+   "stderr": "",
+   "exit": 0,
    "error": null,
    "argv": [
     "print",
@@ -5621,10 +10414,663 @@
     "formatjson"
    ],
    "key_column": "primaryEmail",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
    "raised": "ValueError",
    "rows": null,
+   "unread": null,
    "ran": [],
    "records": []
+  },
+  {
+   "name": "a directory that stopped short",
+   "output": "primaryEmail,JSON\na@example.com,\"{}\"\n",
+   "stderr": "User: , Print Failed: x\n",
+   "exit": 50,
+   "error": null,
+   "argv": [
+    "print",
+    "users",
+    "fields",
+    "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+    "formatjson"
+   ],
+   "key_column": "primaryEmail",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "raised": "GAMError",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "users",
+     "fields",
+     "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "users",
+      "fields",
+      "primaryEmail,name,suspended,orgUnitPath,organizations,isAdmin,isDelegatedAdmin,isEnrolledIn2Sv,lastLoginTime,recoveryEmail,aliases,locations,phones,creationTime,id",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM failed (unknown, exit=50): User: , Print Failed: x",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "no shared drive",
+   "output": "User,id,name,JSON\n",
+   "stderr": "",
+   "exit": 60,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddrives",
+    "noorgunits",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "raised": null,
+   "rows": 0,
+   "unread": [],
+   "ran": [
+    [
+     "print",
+     "shareddrives",
+     "noorgunits",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "drives refused",
+   "output": "User,id,name,JSON\n",
+   "stderr": "User: admin@example.com, Shared Drive: , Print Failed: no\n",
+   "exit": 50,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddrives",
+    "noorgunits",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "raised": "GAMError",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "shareddrives",
+     "noorgunits",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM failed (unknown, exit=50): User: admin@example.com, Shared Drive: , Print Failed: no",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "no seat is no none",
+   "output": "userId,productId\n",
+   "stderr": "",
+   "exit": 60,
+   "error": null,
+   "argv": [
+    "print",
+    "licenses"
+   ],
+   "key_column": "userId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "raised": "GAMError",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "licenses"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "licenses"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM failed (unknown, exit=60)",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "acls",
+   "output": "User,id,name,createdTime,JSON\nadmin@example.com,0A1,Team,2024-01-01T00:00:00Z,{}\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddriveacls",
+    "oneitemperrow",
+    "shownopermissionsdrives",
+    "true",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "raised": null,
+   "rows": 1,
+   "unread": [],
+   "ran": [
+    [
+     "print",
+     "shareddriveacls",
+     "oneitemperrow",
+     "shownopermissionsdrives",
+     "true",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddriveacls",
+      "oneitemperrow",
+      "shownopermissionsdrives",
+      "true",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "one account unread",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\nalice@example.com,1.apps.googleusercontent.com,Zoom,False,False,1,https://www.googleapis.com/auth/calendar\n",
+   "stderr": "Getting Access Tokens for alice@example.com (1/2)\nUser: bob@example.com, Does not exist (2/2)\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": null,
+   "rows": 1,
+   "unread": [
+    "bob@example.com"
+   ],
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "partial": true,
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "outside the domain",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\nalice@example.com,1.apps.googleusercontent.com,Zoom,False,False,1,https://www.googleapis.com/auth/calendar\n",
+   "stderr": "User: Pat@Partner.org, Service not applicable/Does not exist (2/2)\nUser: pat@partner.org, Service not applicable (2/2)\n",
+   "exit": 73,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": null,
+   "rows": 1,
+   "unread": [
+    "pat@partner.org"
+   ],
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "partial": true,
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a warning naming nobody",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\nalice@example.com,1.apps.googleusercontent.com,Zoom,False,False,1,https://www.googleapis.com/auth/calendar\n",
+   "stderr": "",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": "Incomplete",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM exited 56 without naming the account it couldn't read",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a warning naming no address",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n",
+   "stderr": "User: bob, Does not exist\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": "Incomplete",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM exited 56 without naming the account it couldn't read",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "indented",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n",
+   "stderr": "  User: bob@example.com, Does not exist (2/2)\nnot User: c@example.com, Does not exist\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": null,
+   "rows": 0,
+   "unread": [
+    "bob@example.com"
+   ],
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "partial": true,
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "refused tokens",
+   "output": "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n",
+   "stderr": "ERROR: Not Authorized to access this resource/api\n",
+   "exit": 12,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": "GAMError",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM failed (scope_missing, exit=12): ERROR: Not Authorized to access this resource/api",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "partial without its table",
+   "output": "",
+   "stderr": "User: bob@example.com, Does not exist (1/1)\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "tokens",
+    "users",
+    "alice@example.com,bob@example.com"
+   ],
+   "key_column": "user",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "raised": "Incomplete",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "tokens",
+     "users",
+     "alice@example.com,bob@example.com"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "tokens",
+      "users",
+      "alice@example.com,bob@example.com"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM ended without writing the user table",
+      "domain": "example.com"
+     }
+    }
+   ]
   }
  ]
 }

@@ -107,7 +107,7 @@ public enum ConnectedApps {
     }
 
     /// A scope in words, with how much it reaches and, when that is broad, its kind.
-    static func describe(_ scope: String) -> (words: String, reach: Reach, area: Area?) {
+    package static func describe(_ scope: String) -> (words: String, reach: Reach, area: Area?) {
         let short = scope.replacingOccurrences(of: "https://www.googleapis.com/auth/", with: "")
         switch short {
         case "https://mail.google.com/", "https://mail.google.com": return ("all of Gmail (read, send, delete)", .broad, .mail)
@@ -143,7 +143,7 @@ public enum ConnectedApps {
                                "ai", "agent", "agents", "assistant", "bot", "gpts"]
 
     /// The name looks like an AI assistant's or agent's: a word of `aiWords`, "ChatGPT" in "ChatGPT for Gmail", "GPT" in "GPT-4o".
-    static func looksLikeAI(_ name: String) -> Bool {
+    package static func looksLikeAI(_ name: String) -> Bool {
         name.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).contains { aiWords.contains(String($0)) }
     }
 

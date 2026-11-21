@@ -276,6 +276,16 @@ public final class OffboardChanges {
 
     private var shown: (state: State, domain: Domain?, generation: Int)?
     private var ran: (run: Run, domain: Domain, generation: Int)?
+    /// Every leaver whose offboarding started here since launch, for the tenant it ran on.
+    private var started: (leavers: Set<String>, domain: Domain, generation: Int)?
+
+    /// Every leaver (lowercased) whose offboarding was started in this app since it opened, on the connected tenant: the audit
+    /// runs' shared drive organizers "being offboarded" (GamGUI's `offboard_jobs`, the one place the app knows of someone on
+    /// the way out).
+    public var leaversStarted: Set<String> {
+        guard let started, started.domain == setup.active, started.generation == setup.generation else { return [] }
+        return started.leavers
+    }
     /// Counts plans asked for: a slower, older one never replaces a newer one.
     private var asked = 0
     private let executor: Executor?
@@ -533,10 +543,15 @@ public final class OffboardChanges {
         let watcher = Task { @MainActor [weak self] in
             for await (index, result) in events { self?.record(result, at: index) }
         }
+        let leaver = PythonText.lower(PythonText.strip(plan.leaver.primaryEmail))
+        let before = started?.domain == domain && started?.generation == generation ? started!.leavers : []
+        started = (before.union([leaver]), domain, generation)
         let outcome = await executor.run(preview, confirmation: confirmation, progress: observer)
         observer.finish()
         await watcher.value
         if let refusal = outcome.refusal {
+            // Refused before any step: it didn't start.
+            if started?.domain == domain, started?.generation == generation { started = (before, domain, generation) }
             ran = nil
             problem = refusal
             return

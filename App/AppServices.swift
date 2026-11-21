@@ -147,9 +147,14 @@ struct AppServices {
         let directory = DirectoryStore(setup: setup, runner: runner)
         let userChanges = UserChanges(executor: executor, directory: directory)
         let onboardChanges = OnboardChanges(executor: executor, setup: setup, directory: directory)
-        // What a switch would stop or hide, named before Setup's check reads anything: the tray's runs, onboarding's wait
-        // for Google, and a temporary password not handed over yet.
+        // Its own reader: the leaver's delegates are read live, never from a page's lists.
+        let offboardChanges = OffboardChanges(executor: executor, setup: setup, directory: directory,
+                                              access: UserAccess(setup: setup, runner: runner))
+        // An offboarding started here is what the shared drive run calls "being offboarded".
         let auditRuns = AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit))
+        auditRuns.leaving = { [weak offboardChanges] in offboardChanges?.leaversStarted ?? [] }
+        // What a switch would stop or hide, named before Setup's check reads anything: the tray's runs, onboarding's wait
+        // for Google, a temporary password not handed over yet, and an audit run going.
         setup.runningRuns = { [weak jobs, weak onboardChanges, weak userChanges, weak auditRuns] in
             jobs.map { SwitchStops.running(jobs: $0, onboarding: onboardChanges, users: userChanges, audits: auditRuns) } ?? []
         }
@@ -175,9 +180,7 @@ struct AppServices {
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
-                           // Its own reader: the leaver's delegates are read live, never from a page's lists.
-                           offboardChanges: OffboardChanges(executor: executor, setup: setup, directory: directory,
-                                                            access: UserAccess(setup: setup, runner: runner)),
+                           offboardChanges: offboardChanges,
                            offboardTemplates: offboardTemplates,
                            // Its own reader too: every read is the check's, live, never a page's lists.
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,

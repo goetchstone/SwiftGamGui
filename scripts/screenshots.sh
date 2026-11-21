@@ -89,7 +89,8 @@ status=0
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list), then on a
 # named domain-wide read (`named.<key>`: Licenses, and Google's alerts in the smallest window), then an audit run
-# (`run.<key>`, run against the mock before the picture: Inactive users with its 90-day window, and License usage), and
+# (`run.<key>`, run against the mock before the picture: Inactive users with its 90-day window, License usage, Shared drive
+# permissions, Classroom and the admin token review), and
 # reports-run-suspend Inactive users' Suspend these… preview over it (tab `suspend`: the directory read again, held, never
 # run); Audit on a
 # demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
@@ -163,6 +164,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \
             reports-run-inactive:reports:run.inactive_users::1100x940 reports-run-licenses:reports:run.license_usage::1100x940 \
             reports-run-suspend:reports:run.inactive_users:suspend \
+            reports-run-drives:reports:run.shared_drive_permissions::1100x940 reports-run-classroom:reports:run.classroom_courses::1100x940 \
+            reports-run-admins:reports:run.admin_tokens::1100x940 narrow-reports-run-admins:reports:run.admin_tokens::smallest \
             narrow-reports-run-inactive:reports:run.inactive_users::smallest \
             narrow-reports-run-licenses:reports:run.license_usage::smallest \
             narrow-audit:audit:::smallest audit-domain:audit:example.org narrow-audit-domain:audit:example.org::smallest \

@@ -77,6 +77,10 @@ GamGUI's merge commit, GamGUI first. Status by item is the plan's table, in GamG
   named from the directory by ID). The mock models it: `$GAM_MOCK_STATE/ownergone/<owner id>`.
 - **Not found.** A teacher, student or class Classroom doesn't know is `<Entity>: <x>, Does not exist`, exit 56.
 - **Never the join code.** `courseFields` leaves out `enrollmentcode`.
+- **Counts (`printCourses(counts: true)`, `show all countsonly`, read at the 7.52.04 tag)** add `teachers` and `students` to
+  each class's JSON and a `JSON-teachers`/`JSON-students` column, one Classroom list call each per class. GAM counts a roster
+  Google won't return (notFound, serviceNotAvailable) as 0 without a word, so a 0 is never an empty class. Used by Reports'
+  Classroom audit run (runbook audit-reports.md, "Reports: audit runs"); the mock's `roster_gone/<id>` is that silent 0.
 - **`owneremail` costs a Directory read per owner.** The index leaves it off and names owners from the directory as cached,
   by ID, never a fetch; a teacher's classes and a class's card ask for it.
 

@@ -77,6 +77,83 @@ struct MockAuditRunTests {
         #expect(GamOutput.records(short.stdout).count == 1)
     }
 
+    /// Shared drives as the admin: every drive (`User,id,name,JSON`), and every drive's own permissions, one row each (users and
+    /// groups only), a drive with none one row of `{}`. No drive is GAM's none, exit 60; a refused list is the titles and 50; a
+    /// drive whose permissions Google refused is simply missing, exit 0.
+    @Test func sharedDrivesAndTheirMembers() async throws {
+        let drives = ["print", "shareddrives", "noorgunits", "formatjson"]
+        let acls = ["print", "shareddriveacls", "oneitemperrow", "shownopermissionsdrives", "true", "formatjson"]
+        let listed = try await run(drives)
+        #expect(listed.exitCode == 0 && listed.stdout.hasPrefix("User,id,name,JSON\n") && GamOutput.records(listed.stdout).count == 4)
+        let members = try await run(acls)
+        let rows = GamOutput.records(members.stdout)
+        #expect(members.exitCode == 0 && members.stdout.hasPrefix("User,id,name,createdTime,JSON\n"))
+        #expect(rows.count == 6, "five members and the drive with none")
+        let types = Set(rows.compactMap { $0["permission"]?.object?["type"]?.string })
+        #expect(types == ["user", "group"], "a shared drive's members are users and groups only")
+        #expect(rows.contains { $0["name"] == .string("Unused") && $0["permission"] == nil })
+        let none = try await run(drives, state: ["nodrives"])
+        #expect(none.exitCode == 60 && GamOutput.records(none.stdout).isEmpty && none.stdout.hasPrefix("User,id,name,JSON"))
+        let refused = try await run(acls, state: ["denied/drives"])
+        #expect(refused.exitCode == 50 && refused.stderr.contains("Print Failed") && GamOutput.records(refused.stdout).isEmpty)
+        let dropped = try await run(acls, state: ["acl_dropped/0ALEGALuk9PVA"])
+        #expect(dropped.exitCode == 0 && dropped.stderr.isEmpty && !dropped.stdout.contains("Legal hold"))
+        for argv in [["print", "shareddrives"], ["print", "shareddriveacls", "formatjson"]] {
+            let read = try await run(argv)
+            #expect(read.exitCode == 2 && read.stderr.contains("isn't modelled"), "\(argv)")
+        }
+    }
+
+    /// `print admins recursive`: every assignment, a group's expanded to its member (bob@, suspended) with both addresses, and a
+    /// service account's row naming no person; holders GAM couldn't name are `assignedToUnknown` True with the ID alone, exit 0;
+    /// a refusal is 12 before any row.
+    @Test func everyAdminRoleAGroupsMembersIncluded() async throws {
+        let argv = ["print", "admins", "recursive"]
+        let all = try await run(argv)
+        let rows = GamOutput.records(all.stdout)
+        #expect(all.exitCode == 0 && rows.count == 4)
+        #expect(rows.contains { $0["assignedToUser"] == .string("bob@example.com") && $0["assignedToGroup"] == .string("it-admins@example.com") })
+        #expect(rows.contains { $0["assignedToServiceAccount"]?.string?.isEmpty == false && $0["assignedToUser"] == .string("") })
+        let unnamed = try await run(argv, state: ["admin_unnamed"])
+        let found = GamOutput.records(unnamed.stdout).filter { $0["assignedToUnknown"] == .string("True") }
+        #expect(unnamed.exitCode == 0 && unnamed.stdout.split(separator: "\n").count == 7 && found.count == 2)
+        #expect(found.allSatisfy { $0["assignedToUser"] == .string("") && $0["assignedTo"]?.string?.isEmpty == false })
+        let refused = try await run(argv, state: ["denied/admins"])
+        #expect(refused.exitCode == 12 && GamOutput.records(refused.stdout).isEmpty)
+    }
+
+    /// `print tokens users a,b`: those accounts' grants, a suspended one's included; an account GAM couldn't read is named and
+    /// the rest read, 56 (73 outside the domain); a refusal is 12.
+    @Test func theNamedAccountsTokensSuspendedOnesIncluded() async throws {
+        let read = try await run(["print", "tokens", "users", "alice@example.com,bob@example.com"])
+        let users = Set(GamOutput.records(read.stdout).compactMap { $0["user"]?.string })
+        #expect(read.exitCode == 0 && users == ["alice@example.com", "bob@example.com"], "bob@ is suspended and still read")
+        let gone = try await run(["print", "tokens", "users", "alice@example.com,bob@example.com"], state: ["tokens_gone/bob@example.com"])
+        #expect(gone.exitCode == 56 && gone.stderr.contains("User: bob@example.com, Does not exist (2/2)"))
+        #expect(Set(GamOutput.records(gone.stdout).compactMap { $0["user"]?.string }) == ["alice@example.com"])
+        let outside = try await run(["print", "tokens", "users", "alice@example.com,pat@partner.org"])
+        #expect(outside.exitCode == 73 && outside.stderr.contains("User: pat@partner.org, Service not applicable"))
+        let refused = try await run(["print", "tokens", "users", "alice@example.com"], state: ["denied/tokens"])
+        #expect(refused.exitCode == 12)
+    }
+
+    /// `print courses … show all countsonly`: each class's counts in its JSON and two count columns; a roster GAM couldn't read
+    /// counts 0 without a word.
+    @Test func everyClassWithItsCounts() async throws {
+        let argv = ["print", "courses", "states", "active,archived,provisioned,declined,suspended", "show", "all", "countsonly",
+                    "fields", "id,name,section,room,coursestate,ownerid,creationtime,updatetime,alternatelink", "formatjson"]
+        let read = try await run(argv)
+        let rows = GamOutput.records(read.stdout)
+        #expect(read.exitCode == 0 && read.stdout.hasPrefix("id,JSON,JSON-teachers,JSON-students\n") && rows.count == 4)
+        let biology = try #require(rows.first { $0["name"] == .string("Biology") })
+        #expect(biology["teachers"]?.int == 1 && (biology["students"]?.int ?? 0) > 0)
+        let gone = try await run(argv, state: ["roster_gone/500000000001"])
+        let unread = try #require(GamOutput.records(gone.stdout).first { $0["name"] == .string("Biology") })
+        #expect(gone.exitCode == 0 && gone.stderr.isEmpty && unread["teachers"]?.int == 0 && unread["students"]?.int == 0)
+        let other = try await run(["print", "courses", "show", "teachers", "formatjson"])
+        #expect(other.exitCode == 2 && other.stderr.contains("isn't modelled"))
+    }
+
     /// The directory names when each account was made, as GAM prints a time (formatLocalTime): the inactive run's "new
     /// account" flag reads it, so the mock never leaves every account's creation unknown.
     @Test func everyAccountSaysWhenItWasMade() async throws {
