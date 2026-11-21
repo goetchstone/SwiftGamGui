@@ -13,9 +13,11 @@ import Vault
 /// One file per run, `<13-digit ms>-<8 hex>.jsonl`, in a `0700` folder of the app's data folder, made `0600` with
 /// `O_CREAT|O_EXCL|O_NOFOLLOW`: a header line (`run`, `when`, `what`, `domain`), then one line per person (`email`,
 /// `previous`, `set`), each flushed before that person's write, so a run cut off midway still holds every signature it
-/// replaced. Only the last `keptRuns` runs are kept: a new run removes the oldest beyond that, never one still being
-/// written (a long run would lose its copies to shorter ones started meanwhile), and a run that kept nobody is removed
-/// when it ends, so failed attempts can't push out the copies that matter.
+/// replaced. Only the last `keptRuns` runs are kept, made room for when a run that kept someone ends: never before (an
+/// attempt that keeps nobody, a sign-in expired or every read refused, pushes nothing out, and its own empty file is
+/// removed), never one still being written (a long run would lose its copies to shorter ones started meanwhile), and never
+/// the run that one put back (whoever it didn't put back, left out, changed since or stopped before, is still there to put
+/// back, until a later run that keeps someone pushes it out). GamGUI prunes when a run starts, which loses both.
 ///
 /// Native, where GamGUI's could lose a copy or read the wrong one: the header names the domain the run was on (a Put
 /// Back of another domain's run is refused); a keep that fails partway is cut back off the file, so the copies before it
@@ -88,16 +90,13 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
 
     // MARK: a run being written (the executor's, through SignatureKeeper)
 
-    /// A new run's file for `what` on `domain`, `0600` in the `0700` folder; the oldest runs beyond `keptRuns - 1` that
-    /// aren't being written go first. Throws when it can't be made: then the executor replaces nothing.
-    public func start(what: String, domain: Domain) throws -> any KeptSignatureRun {
+    /// A new run's file for `what` on `domain`, `0600` in the `0700` folder. Nothing is pruned here (`prune`, when a run
+    /// that kept someone ends). `restoring`: the runs it puts back, spared then. Throws when it can't be made: then the
+    /// executor replaces nothing.
+    public func start(what: String, domain: Domain, restoring: Set<String>) throws -> any KeptSignatureRun {
         let dir = try privateFolder()
         var handedOver = false
         defer { if !handedOver { Darwin.close(dir) } }
-        let stillWriting = writing.withLock { $0 }
-        for old in listed(in: dir).filter({ !stillWriting.contains($0) }).dropFirst(Self.keptRuns - 1) {
-            unlinkat(dir, old + Self.suffix, 0)
-        }
         let id = Self.newID(now(), after: listed(in: dir).first.flatMap(Self.milliseconds))
         let name = id + Self.suffix
         let fd = openat(dir, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
@@ -110,7 +109,7 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
             throw Problem("its file couldn't be made private (\(String(cString: strerror(code))))")
         }
         writing.withLock { _ = $0.insert(id) }
-        let run = KeptRun(id: id, name: name, fd: fd, dir: dir, cap: cap, store: self)
+        let run = KeptRun(id: id, name: name, fd: fd, dir: dir, cap: cap, restoring: restoring, store: self)
         handedOver = true
         let header: JSONObject = ["run": .string(id), "when": .number(String(now().timeIntervalSince1970)),
                                   "what": .string(what), "domain": .string(domain.name)]
@@ -125,6 +124,16 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
 
     fileprivate func finished(_ id: String) {
         writing.withLock { _ = $0.remove(id) }
+    }
+
+    /// Makes room as a run that kept someone ends: the newest `keptRuns` runs that aren't being written stay, and `sparing`
+    /// (that run, and the runs it put back) stays whatever its age; the rest are removed. A folder that can't be listed
+    /// prunes nothing.
+    fileprivate func prune(in dir: Int32, sparing: Set<String>) {
+        let stillWriting = writing.withLock { $0 }
+        for old in listed(in: dir).filter({ !stillWriting.contains($0) }).dropFirst(Self.keptRuns) where !sparing.contains(old) {
+            unlinkat(dir, old + Self.suffix, 0)
+        }
     }
 
     /// `<13-digit ms>-<8 hex>`, as GamGUI names a run, made to sort after `after` (the newest run's milliseconds): ids only
@@ -270,6 +279,8 @@ final class KeptRun: KeptSignatureRun {
     let id: String
     private let name: String
     private let cap: Int
+    /// The runs this one puts back: never pruned as it ends.
+    private let restoring: Set<String>
     private let store: SignatureBackupStore
     private let state: Mutex<State>
 
@@ -280,10 +291,11 @@ final class KeptRun: KeptSignatureRun {
         var bytes = 0
     }
 
-    fileprivate init(id: String, name: String, fd: Int32, dir: Int32, cap: Int, store: SignatureBackupStore) {
+    fileprivate init(id: String, name: String, fd: Int32, dir: Int32, cap: Int, restoring: Set<String>, store: SignatureBackupStore) {
         self.id = id
         self.name = name
         self.cap = cap
+        self.restoring = restoring
         self.store = store
         state = Mutex(State(fd: fd, dir: dir))
     }
@@ -317,17 +329,24 @@ final class KeptRun: KeptSignatureRun {
     }
 
     func close() {
-        let ended = state.withLock { (state: inout State) -> Bool in
-            guard state.fd >= 0 else { return false }
+        let ended = state.withLock { (state: inout State) -> (dir: Int32, kept: Int)? in
+            guard state.fd >= 0 else { return nil }
             Darwin.close(state.fd)
             state.fd = -1
-            // A run that kept nobody (stopped before anyone, or refused every read) leaves no file.
-            if state.kept == 0 { unlinkat(state.dir, name, 0) }
-            Darwin.close(state.dir)
+            let dir = state.dir
             state.dir = -1
-            return true
+            return (dir, state.kept)
         }
-        if ended { store.finished(id) }
+        guard let ended else { return }
+        store.finished(id)
+        // A run that kept nobody (stopped before anyone, or refused every read) leaves no file and pushes nothing out; one
+        // that kept someone makes room, sparing itself and what it put back.
+        if ended.kept == 0 {
+            unlinkat(ended.dir, name, 0)
+        } else {
+            store.prune(in: ended.dir, sparing: restoring.union([id]))
+        }
+        Darwin.close(ended.dir)
     }
 
     deinit { close() }

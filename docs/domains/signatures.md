@@ -227,8 +227,10 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
 - **The store** (`SignatureBackupStore`, GamGUI's `signature_backups.py`): `signature-backups` in the app's data folder,
   `0700`, opened without following a link; one `<13-digit ms>-<8 hex>.jsonl` per run, `0600`, `O_CREAT|O_EXCL|O_NOFOLLOW`;
   a header `{run, when, what, domain}` (`what` is the run's jobs-tray title), then `{email, previous, set}` lines, each
-  `F_FULLFSYNC`ed before that person's write. The last 5 runs are kept; one still open is never pruned; one that kept
-  nobody is removed on close. `runs()` lists every regular `<id>.jsonl`, newest first, whole or with its problem (never
+  `F_FULLFSYNC`ed before that person's write. Room is made only when a run that kept someone ends: the newest 5 runs not
+  being written stay, and so does the run it put back (KeepFirst's `restoring`, the Put Back's source, passed to `start`),
+  which then lives until a later run that keeps someone pushes it out. Nothing is pruned when a run starts, and a run that
+  kept nobody is removed on close without pruning anything. `runs()` lists every regular `<id>.jsonl`, newest first, whole or with its problem (never
   dropped); `load(id)` refuses an id with `/`, NUL or a leading `.`, picks only among the listed files, and gives the
   whole run or a problem, never part of one. At most 32 MB a file, read or written (invariant 9).
 - **Put Back** (`SignatureChanges.previewPutBack(id)`): loads the run now; refuses a run of another domain ("That run was
@@ -261,6 +263,10 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   - a keep that fails partway is cut back off the file, so the copies before it stay readable; a file never passes the
     cap a load reads (the run stops instead);
   - a read cut off by its timeout is "unread", not `.timeout` (which says a change may have been made);
+  - pruning happens when a run that kept someone ends, never when one starts, and never takes the run a Put Back is
+    restoring. GamGUI prunes as a run starts: putting back the oldest of five deleted it before the first step, so whoever
+    that Put Back didn't restore (left out, changed since, unread, stopped) lost their only copy; and an attempt that
+    kept nobody still pushed out the oldest real run (review of this branch, 2026-11-21);
   - run ids only go forward: a new id's milliseconds are the clock's or one past the newest run's, whichever is later, so a
     clock set back never makes the newest run sort, and be pruned, as the oldest (GamGUI's are the clock's alone).
 - **Not verified live** (none of it): the getting line, the titles and the CSV against real GAM; that Gmail stores and

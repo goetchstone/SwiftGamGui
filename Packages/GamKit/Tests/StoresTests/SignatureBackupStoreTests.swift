@@ -39,7 +39,7 @@ struct SignatureBackupStoreTests {
     /// One run that keeps `emails`' signatures, closed.
     @discardableResult
     func keptRun(_ store: SignatureBackupStore, _ what: String, keeping emails: [String] = []) throws -> String {
-        let run = try store.start(what: what, domain: example)
+        let run = try store.start(what: what, domain: example, restoring: [])
         for email in emails { try run.keep(email: email, previous: "old", setting: "new") }
         run.close()
         return run.id
@@ -47,7 +47,7 @@ struct SignatureBackupStoreTests {
 
     @Test func aRunKeepsEachSignatureByteForByteAndPrivately() throws {
         let store = SignatureBackupStore(folder: folder)
-        let run = try store.start(what: "Signature for sales@example.com \u{2014} 2 users", domain: example)
+        let run = try store.start(what: "Signature for sales@example.com \u{2014} 2 users", domain: example, restoring: [])
         try run.keep(email: Self.alice, previous: Self.tricky, setting: "<b>new</b>")
         // No signature before: kept as empty, put back as empty.
         try run.keep(email: Self.carol, previous: "", setting: "<b>new</b>")
@@ -69,7 +69,7 @@ struct SignatureBackupStoreTests {
     /// Each line is on disk before the write it's for: a new store reads a run still open.
     @Test func eachCopyIsOnDiskBeforeTheRunEnds() throws {
         let store = SignatureBackupStore(folder: folder)
-        let run = try store.start(what: "everyone", domain: example)
+        let run = try store.start(what: "everyone", domain: example, restoring: [])
         try run.keep(email: Self.alice, previous: "ORIGINAL", setting: "new")
         #expect(try SignatureBackupStore(folder: folder).load(run.id).entries == [.init(email: Self.alice, previous: "ORIGINAL", set: "new")])
         run.close()
@@ -114,7 +114,7 @@ struct SignatureBackupStoreTests {
     /// went to a deleted file without an error.
     @Test func aRunStillBeingWrittenIsNeverPruned() throws {
         let store = SignatureBackupStore(folder: folder)
-        let long = try store.start(what: "the whole company", domain: example)
+        let long = try store.start(what: "the whole company", domain: example, restoring: [])
         for index in 0...SignatureBackupStore.keptRuns {
             try keptRun(store, "one person \(index)", keeping: ["p\(index)@example.com"])
         }
@@ -122,6 +122,37 @@ struct SignatureBackupStoreTests {
         #expect(FileManager.default.fileExists(atPath: file(long.id).path))
         long.close()
         #expect(try store.load(long.id).entries == [.init(email: Self.alice, previous: "ORIGINAL", set: "new")])
+    }
+
+    /// Review of Phase A: pruning when a run started deleted the oldest of five kept runs as its own Put Back began, so whoever
+    /// that Put Back didn't restore lost their only copy. The run put back outlives it, until a later run that keeps someone
+    /// pushes it out.
+    @Test func aPutBackNeverPrunesTheRunItRestores() throws {
+        let store = SignatureBackupStore(folder: folder)
+        var ids: [String] = []
+        for index in 0..<SignatureBackupStore.keptRuns { ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"])) }
+        let oldest = ids[0]
+        let putBack = try store.start(what: "Put back of run 0", domain: example, restoring: [oldest])
+        #expect(try store.load(oldest).entries.count == 1, "still there as the Put Back starts")
+        try putBack.keep(email: "p0@example.com", previous: "new", setting: "old")
+        putBack.close()
+        #expect(try store.load(oldest).entries.count == 1, "and after it ends")
+        #expect(store.runs().count == SignatureBackupStore.keptRuns + 1)
+        // A later run that keeps someone makes room as usual: the newest five stay.
+        let later = try keptRun(store, "later", keeping: [Self.alice])
+        #expect(store.runs().map(\.id) == Array(([later, putBack.id] + ids.reversed()).prefix(SignatureBackupStore.keptRuns)))
+    }
+
+    /// Review of Phase A: with five kept runs, an attempt that kept nobody (a sign-in expired, every read refused) still
+    /// pruned the oldest as it started, then removed its own empty file. Only a run that keeps someone makes room.
+    @Test func aRunThatKeepsNobodyPrunesNothing() throws {
+        let store = SignatureBackupStore(folder: folder)
+        var ids: [String] = []
+        for index in 0..<SignatureBackupStore.keptRuns { ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"])) }
+        let attempt = try store.start(what: "an attempt", domain: example, restoring: [])
+        #expect(store.runs().count == SignatureBackupStore.keptRuns + 1, "nothing pruned as it starts")
+        attempt.close()
+        #expect(store.runs().map(\.id) == ids.reversed())
     }
 
     /// GamGUI's review of #163: five failed attempts (a sign-in expired, every read refused) used up the slots.
@@ -159,7 +190,7 @@ struct SignatureBackupStoreTests {
         let linkedFolder = base.appending(path: "linked")
         try FileManager.default.createSymbolicLink(at: linkedFolder, withDestinationURL: target)
         let throughLink = SignatureBackupStore(folder: linkedFolder)
-        #expect(throws: (any Error).self) { try throughLink.start(what: "x", domain: example) }
+        #expect(throws: (any Error).self) { try throughLink.start(what: "x", domain: example, restoring: []) }
         #expect(throughLink.runs().isEmpty)
         #expect(try FileManager.default.contentsOfDirectory(atPath: target.path).isEmpty)
     }
@@ -185,7 +216,7 @@ struct SignatureBackupStoreTests {
     /// stops rather than keep one nothing could give back.
     @Test func aCopyPastTheCapIsRefusedAndTheRestStayWhole() throws {
         let store = SignatureBackupStore(folder: folder, cap: 600)
-        let run = try store.start(what: "everyone", domain: example)
+        let run = try store.start(what: "everyone", domain: example, restoring: [])
         try run.keep(email: Self.alice, previous: "ORIGINAL", setting: "new")
         #expect(throws: SignatureBackupStore.Problem("it would be larger than this app reads")) {
             try run.keep(email: Self.carol, previous: String(repeating: "x", count: 600), setting: "new")
@@ -205,7 +236,7 @@ struct SignatureBackupStoreTests {
         let store = SignatureBackupStore(folder: folder)
         let id = try keptRun(store, "x", keeping: [Self.alice])
         chmod(folder.path, 0o755)
-        let run = try store.start(what: "y", domain: example)
+        let run = try store.start(what: "y", domain: example, restoring: [])
         #expect(mode(folder) == 0o700)
         run.close()
         #expect(throws: SignatureBackupStore.Problem("the run has ended")) { try run.keep(email: Self.carol, previous: "", setting: "x") }

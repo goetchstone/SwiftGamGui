@@ -409,6 +409,25 @@ final class SignatureChangesTests {
         #expect(writes().isEmpty)
     }
 
+    /// Review of Phase A: putting back the oldest of five kept runs deleted it as the Put Back began, and with it the old
+    /// signature of whoever the Put Back left out. The run put back outlives its Put Back.
+    @Test func aPutBackKeepsTheRunItRestores() async throws {
+        try await connect()
+        for index in 2...SignatureBackupStore.keptRuns {
+            try write(run: "000000000000\(index)-0000000\(index)", entries: [("dana@example.com", "run \(index)", "")])
+        }
+        let oldest = "0000000000001-00000001"
+        try write(run: oldest, entries: [("alice@example.com", "Old A", "Best,<br>Alice"), ("carol@example.com", "Carol\\nClark", "x")])
+        await changes.previewPutBack(oldest)
+        let putBack = try pending()
+        #expect(putBack.people.map(\.primaryEmail) == ["alice@example.com"] && putBack.putBack?.leftOut.count == 1)
+        await changes.confirm(putBack, confirmed)
+        guard case .done(let done) = changes.state, done.keptRun != nil else { Issue.record("\(changes.state)"); return }
+        #expect(writes() == [["user", "alice@example.com", "signature", "Old A", "html"]])
+        #expect(try backups.load(oldest).entries.map(\.email) == ["alice@example.com", "carol@example.com"],
+                "carol's old signature, left out, is still there to put back by hand")
+    }
+
     /// Many people's Put Back asks for the count typed, as any run of many signatures (D5).
     @Test func aPutBackOfManyWantsTheCountTyped() async throws {
         try await connect()

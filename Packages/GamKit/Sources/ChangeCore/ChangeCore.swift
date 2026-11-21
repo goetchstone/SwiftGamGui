@@ -64,8 +64,9 @@ public struct WriteStep: Sendable {
         /// Read `email`'s stored signature exactly (`Signature.exact`) and keep it, with `setting` (the body the step's own
         /// argv sets: the preview refuses any other), in the run's kept signatures (`SignatureKeeper`). With `expectedNow`
         /// (a Put Back: what the run being put back set, as GAM stored it), a signature that isn't byte for byte that is
-        /// left as it is: the step is skipped, "Changed since that run".
-        case signature(email: String, setting: String, expectedNow: String?)
+        /// left as it is: the step is skipped, "Changed since that run". `restoring` is the kept run a Put Back sets again:
+        /// the keeper never prunes it for this run, so whoever this run doesn't put back is still there to put back.
+        case signature(email: String, setting: String, expectedNow: String?, restoring: String? = nil)
     }
 
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
@@ -530,7 +531,7 @@ public actor Executor {
     static func keepHolds(_ step: WriteStep) -> Bool {
         guard let keep = step.keepFirst else { return true }
         switch keep {
-        case .signature(let email, let setting, _):
+        case .signature(let email, let setting, _, _):
             return step.action == .setSignature && step.newAccountFrom == nil && step.listedTask == nil
                 && same(GamCommands.setSignature(email: email, signature: setting, html: true).argv, step.write.argv)
         }
@@ -640,7 +641,11 @@ public actor Executor {
     private func startKept(for preview: HeldPreview) throws -> (any KeptSignatureRun)? {
         guard preview.steps.contains(where: { $0.keepFirst != nil }) else { return nil }
         guard let signatureKeeper else { throw NoSignatureKeeper() }
-        return try signatureKeeper.start(what: preview.title, domain: preview.domain)
+        let restoring = Set(preview.steps.compactMap { step -> String? in
+            guard case .signature(_, _, _, let source)? = step.keepFirst else { return nil }
+            return source
+        })
+        return try signatureKeeper.start(what: preview.title, domain: preview.domain, restoring: restoring)
     }
 
     private struct NoSignatureKeeper: Error {}
@@ -653,7 +658,7 @@ public actor Executor {
     private func keepFirst(_ keep: WriteStep.KeepFirst, of preview: HeldPreview, into kept: (any KeptSignatureRun)?) async
         -> (result: RunOutcome.Step, stop: String?)? {
         switch keep {
-        case .signature(let email, let setting, let expectedNow):
+        case .signature(let email, let setting, let expectedNow, _):
             guard let kept else { return (.skipped(reason: Self.notKept), Self.notKept) }
             let previous: String
             do {

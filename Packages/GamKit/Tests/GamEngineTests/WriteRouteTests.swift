@@ -214,7 +214,7 @@ struct WriteRouteTests {
         let built = lines.indices.filter { lines[$0].contains(setting) }
         #expect(built.count == 1, "one place builds Signatures' writes")
         #expect(built.allSatisfy { $0 + 1 < lines.count
-            && lines[$0 + 1].contains("keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow)") })
+            && lines[$0 + 1].contains("keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow, restoring: restoring)") })
         // Onboarding's sets are on the account its own run creates (`creates`), or a later run's retry of that step.
         let onboarding = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory")
             .first { $0.path.hasSuffix("/OnboardChanges.swift") }?.lines.joined(separator: "\n"))

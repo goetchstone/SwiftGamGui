@@ -233,9 +233,10 @@ public final class SignatureChanges {
     /// Every signature write this screen holds, and the only place it makes one: `email`'s signature set to `setting`, with
     /// the signature it replaces kept first (`WriteStep.KeepFirst`), and, for a Put Back, left alone unless it's still
     /// `expectedNow` (`WriteRouteTests`).
-    nonisolated static func step(_ email: String, setting: String, expectedNow: String? = nil, summary: String) -> WriteStep {
+    nonisolated static func step(_ email: String, setting: String, expectedNow: String? = nil, restoring: String? = nil,
+                                 summary: String) -> WriteStep {
         WriteStep(GamCommands.setSignature(email: email, signature: setting, html: true), target: email, summary: summary,
-                  keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow))
+                  keepFirst: .signature(email: email, setting: setting, expectedNow: expectedNow, restoring: restoring))
     }
 
     static let noGam = "This build has no GAM. Build the app again after running scripts/fetch_gam.sh."
@@ -441,7 +442,7 @@ public final class SignatureChanges {
             } else if !Signature.stored(entry.previous).utf8.elementsEqual(entry.previous.utf8) {
                 leftOut.append(LeftOut(email: entry.email, why: "GAM would change it on the way in, so it can't go back exactly"))
             } else {
-                steps.append(step(entry.email, setting: entry.previous, expectedNow: Signature.stored(entry.set),
+                steps.append(step(entry.email, setting: entry.previous, expectedNow: Signature.stored(entry.set), restoring: run.id,
                                   summary: "Put back \(entry.email)'s Gmail signature."))
             }
         }

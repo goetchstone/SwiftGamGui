@@ -141,6 +141,21 @@ final class SignatureKeepTests {
         #expect(writes.count == 4 && named == Array(repeating: run.id, count: 4))
     }
 
+    /// The keeper hears which kept runs a Put Back sets again, so it never prunes them for this run (review of Phase A: the
+    /// oldest of five was deleted as its own Put Back started).
+    @Test func aPutBackNamesTheRunItRestores() async throws {
+        let keeper = LoggingKeeper(log: log)
+        let executor = executor(try gam([Self.alice: .signature("new"), Self.bob: .signature("new")]), keeper: keeper)
+        func back(_ email: String, _ source: String?) -> WriteStep {
+            WriteStep(GamCommands.setSignature(email: email, signature: "old", html: true), target: email, summary: "Put back",
+                      keepFirst: .signature(email: email, setting: "old", expectedNow: "new", restoring: source))
+        }
+        #expect(try await run(executor, [back(Self.alice, "R1"), back(Self.bob, nil)]).succeeded)
+        #expect(keeper.started.map(\.restoring) == [["R1"]])
+        #expect(try await run(executor, [step(Self.alice, "x")]).succeeded)
+        #expect(keeper.started.last?.restoring == [])
+    }
+
     /// No signature column (Gmail leaves an empty one out) is no signature: kept as empty.
     @Test func noSignatureIsKeptAsEmpty() async throws {
         let keeper = LoggingKeeper(log: log)
@@ -264,12 +279,13 @@ final class LoggingKeeper: SignatureKeeper {
     struct Kept: Equatable { let email, previous, setting: String }
     final class Run: KeptSignatureRun {
         let id = "0000000000001-\(String(UInt32.random(in: .min ... .max), radix: 16))"
-        let what: String, domain: Domain
+        let what: String, domain: Domain, restoring: Set<String>
         let keeper: LoggingKeeper
         let state = Mutex((count: 0, closed: false))
-        init(what: String, domain: Domain, keeper: LoggingKeeper) {
+        init(what: String, domain: Domain, restoring: Set<String>, keeper: LoggingKeeper) {
             self.what = what
             self.domain = domain
+            self.restoring = restoring
             self.keeper = keeper
         }
         var keptCount: Int { state.withLock { $0.count } }
@@ -296,9 +312,9 @@ final class LoggingKeeper: SignatureKeeper {
     var started: [Run] { state.withLock { $0.started } }
     var kept: [Kept] { state.withLock { $0.kept } }
 
-    func start(what: String, domain: Domain) throws -> any KeptSignatureRun {
+    func start(what: String, domain: Domain, restoring: Set<String>) throws -> any KeptSignatureRun {
         if failStart { throw POSIXError(.EACCES) }
-        let run = Run(what: what, domain: domain, keeper: self)
+        let run = Run(what: what, domain: domain, restoring: restoring, keeper: self)
         state.withLock { $0.started.append(run) }
         return run
     }
