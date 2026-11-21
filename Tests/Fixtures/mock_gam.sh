@@ -189,6 +189,9 @@ print_formatjson() {  # <key column> <data file>: every record in the file
   while IFS= read -r record; do gam_row "$(json_text "$1" "$record")" "$record"; done < "$GAM_MOCK_FIXTURES/$2"
 }
 not_modelled() { echo "ERROR: mock: $1 isn't modelled" 1>&2; exit 2; }
+# A delegated scope the simulated tenant has NOT authorized for the service account: listed, one per line, in
+# GAM_MOCK_STATE/dwd_missing. Both `check serviceaccount` and a todrive upload read it, so they agree as on a tenant.
+dwd_missing() { [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/dwd_missing" ] && grep -qxF -- "$1" "$GAM_MOCK_STATE/dwd_missing"; }
 lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 # The tenant's groups, in the order GAM lists them (by address), and their members: mock_gam/groups.json
 # and group_members.json. One data set for every group read, held together by MockGroupsTests: each count
@@ -890,6 +893,12 @@ fi
 # reads it; refused rather than answered in a guessed shape.
 if [ "${1:-}" = "print" ] && { [ "${2:-}" = "orgs" ] || [ "${2:-}" = "ous" ]; }; then
   not_modelled "print orgs"
+fi
+
+# `gam print shareddrives|shareddriveacls ...` (GamGUI #172's audit runs, shared drives): not modelled. Those runs aren't
+# built here yet, so nothing reads them; refused rather than answered in a guessed shape.
+if [ "${1:-}" = "print" ] && { [ "${2:-}" = "shareddrives" ] || [ "${2:-}" = "shareddriveacls" ]; }; then
+  not_modelled "print ${2}"
 fi
 
 # `gam print domains formatjson` -> GAM's CSV, a `domainName` and a `JSON` column per domain (gam/__init__.py
@@ -2488,16 +2497,17 @@ fi
 # `  {scope:73} PASS (j/n)`. A scope asked for must be a SERVICE-ACCOUNT scope (lowercased, commas or
 # spaces between) or GAM exits with an invalid choice — admin.directory.* are client-access scopes (the
 # admin token, `gam oauth create`) and are refused here as GAM refuses them. The simulated tenant
-# authorized exactly the scopes GamGUI pre-fills (core/setup.py DWD_SCOPES). A bare check asks about
-# GAM's own larger default set, so its extra scopes FAIL and GAM exits SCOPES_NOT_AUTHORIZED_RC (10).
+# authorized exactly the scopes GamGUI pre-fills (core/setup.py DWD_SCOPES), and the Sheets one Setup's link offers for
+# a read's export to a Sheet (plan F4), less any listed in GAM_MOCK_STATE/dwd_missing, which a todrive upload reads too.
+# A bare check asks about GAM's own larger default set, so its extra scopes FAIL and GAM exits SCOPES_NOT_AUTHORIZED_RC (10).
 # A `*partialdwd*` admin's tenant authorized all of those but gmail.settings.sharing and tasks. On a FAIL,
 # checkServiceAccount appends userinfo.email to the scopes checked and prints SCOPE_AUTHORIZATION_FAILED
 # with the short link and the admin.google.com one (clientScopeToAdd = those scopes, sorted; authuser =
 # the admin) — all on STDOUT (printLine), nothing on stderr — then exits SCOPES_NOT_AUTHORIZED_RC (10).
 # The exit codes are the build's *_RC values; tests/test_gam_exit_codes.py holds them to it.
-SA_AUTHORIZED="https://mail.google.com/ https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.settings.basic https://www.googleapis.com/auth/gmail.settings.sharing https://www.googleapis.com/auth/tasks"
+SA_AUTHORIZED="https://mail.google.com/ https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.settings.basic https://www.googleapis.com/auth/gmail.settings.sharing https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/tasks"
 # A sample of GAM's other default-on service-account scopes (gamlib glapi _SVCACCT_SCOPES).
-SA_OTHER="https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.activity https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/keep https://www.googleapis.com/auth/spreadsheets"
+SA_OTHER="https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.activity https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/keep"
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "check" ] && [ "${4:-}" = "serviceaccount" ]; then
   sa_user="$2"; shift 4
   asked=""
@@ -2543,6 +2553,7 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "check" ] && [ "${4:-}" = "serviceaccou
   for s in $checked; do
     j=$((j + 1))
     case " $granted " in *" $s "*) st=PASS ;; *) st=FAIL; failed=1 ;; esac
+    if [ "$st" = PASS ] && dwd_missing "$s"; then st=FAIL; failed=1; fi
     printf '  %-73s %s (%d/%d)\n' "$s" "$st" "$j" "$n"
   done
   if [ "$failed" = 1 ]; then

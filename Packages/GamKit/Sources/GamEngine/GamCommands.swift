@@ -594,9 +594,12 @@ public enum GamCommands {
     /// given states. CSV `id,JSON`. `ownerEmail` has GAM look up each distinct owner's address, one Directory read per owner:
     /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`. `aliases` adds a
     /// `JSON-aliases` column after `JSON` (one Classroom call per class, in GAM's run), each item an object as the API gives
-    /// it, `{"alias": "d:…"}`.
+    /// it, `{"alias": "d:…"}`. `counts` (GamGUI #172's Classroom audit run, ported for parity: nothing here asks for it yet)
+    /// has GAM add each class's teacher and student counts to its JSON (`show all countsonly`), one Classroom list call each per
+    /// class; GAM counts a roster Google won't return as 0, without a word, so a 0 is never "an empty class".
     public static func printCourses(teacher: String = "", student: String = "", states: [CourseState] = [],
-                                    courseIDs: [String] = [], ownerEmail: Bool = true, aliases: Bool = false) throws -> GamRead {
+                                    courseIDs: [String] = [], ownerEmail: Bool = true, aliases: Bool = false,
+                                    counts: Bool = false) throws -> GamRead {
         var argv = ["print", "courses"]
         if !courseIDs.isEmpty {
             guard teacher.isEmpty, student.isEmpty, states.isEmpty else {
@@ -616,7 +619,7 @@ public enum GamCommands {
             argv += ["states", states.filter { seen.insert($0).inserted }.map(\.rawValue).joined(separator: ",")]
         }
         return GamRead(argv + (ownerEmail ? ["owneremail"] : []) + (aliases ? ["aliases"] : [])
-                       + ["fields", courseFields, "formatjson"])
+                       + (counts ? ["show", "all", "countsonly"] : []) + ["fields", courseFields, "formatjson"])
     }
 
     /// Every class's teachers and students in the given states, one GAM run (3343 `print course-participants states`): the
@@ -916,6 +919,20 @@ public enum GamCommands {
 
     public static func removeGroupMember(group: String, member: String) -> GamWrite {
         GamWrite(["update", "group", group, "remove", member], action: .removeGroupMember)
+    }
+
+    // MARK: a read's table to a new Google Sheet (plan F4)
+
+    /// Appended to a `print` or `report` read: GAM writes the read's CSV to a new Google Sheet instead of printing it (GamGUI's
+    /// `todrive_args`, held to `argv.json`). Grammar `todrive <ToDriveAttribute>*`, read from GAM's
+    /// `CSVPrintFile.GetTodriveParameters` at 7.52.04. No `tduser`: the Sheet goes in the connected admin's own Drive (GAM's
+    /// `_getAdminEmail`, the sign-in token's address). No `tdshare`, `tdalert` or `tdnotify`: it's shared with nobody.
+    /// `tdnobrowser true`: GAM would otherwise open the Sheet in this Mac's browser itself (`webbrowser.open`); `tdnoemail
+    /// true`: `todrive_noemail` follows `no_browser`, and GAM would email the link through the admin's Gmail. `title` names
+    /// the file, one element (GAM takes any string, even empty, so an empty one is left out and GAM names it
+    /// `<domain> - <list>`). Only `exportToSheet` appends it, and only the executor runs that.
+    public static func todriveArgs(title: String = "") -> [String] {
+        ["todrive"] + optional("tdtitle", title) + ["tdnobrowser", "true", "tdnoemail", "true"]
     }
 
     // MARK: the Builder's catalog reads (invariant 3's one door from the catalog)

@@ -38,7 +38,8 @@ final class GuidedSetupTests {
         // What the link offers (GamGUI #151): the verified scopes, then the optional ones, which Check access doesn't ask.
         #expect(document.offered_dwd_scopes == DelegationScopes.offered.map { [$0.scope, $0.purpose] })
         #expect(DelegationScopes.optional.map(\.scope) == ["https://www.googleapis.com/auth/cloud-identity.devices",
-                                                           "https://www.googleapis.com/auth/apps.alerts"])
+                                                           "https://www.googleapis.com/auth/apps.alerts",
+                                                           "https://www.googleapis.com/auth/spreadsheets"])
         #expect(Set(DelegationScopes.optional.map(\.scope)).isDisjoint(with: DelegationScopes.scopes), "never verified")
         #expect(Delegation.scopesText == DelegationScopes.offered.map(\.scope).joined(separator: ","))
         #expect(document.user_security_scope == CredentialFacts.userSecurityScope)

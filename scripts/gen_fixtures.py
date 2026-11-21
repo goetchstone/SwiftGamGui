@@ -669,9 +669,10 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
 
 
 # GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
-# the org-unit tree, GamGUI #169, is a feature not built here yet): the mock refuses them, and they have no case here.
-# No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units"}
+# the org-unit tree, GamGUI #169, and the second half of the audit runs, GamGUI #172 (admin tokens, shared drives), are
+# features not built here yet): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units",
+                "print_tokens_of", "print_all_admins", "print_shared_drives", "print_shared_drive_acls"}
 
 
 def _keyed(key: str, name: str):

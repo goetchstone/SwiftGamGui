@@ -60,6 +60,12 @@ struct CommandKindTests {
         "print_user_tokens": "printTokens(user:), as print_tokens without the user",
     ]
 
+    /// GamGUI builders that make no command, only words a command ends with: neither a read nor a write, so no builder in the
+    /// source returns one. Held by `GoldenArgvTests` as a list of words.
+    static let tails: [String: String] = [
+        "todrive_args": "the words a read ends with to go to a Sheet: exportToSheet appends them (plan F4)",
+    ]
+
     /// The first known verb in `argv`, GamGUI's way, or nil when none is known (uncertain).
     static func verb(_ argv: [String]) -> String? {
         argv.prefix(6).first { verbSets.read.contains($0) || verbSets.destructive.contains($0) || verbSets.low.contains($0) }
@@ -189,7 +195,9 @@ struct CommandKindTests {
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
         #expect(source.contains("public static func catalogRead(_ command: CommandCatalog.Command"))
-        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count - Self.appOnlyReads.count)
+        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count - Self.appOnlyReads.count + Self.tails.count)
+        #expect(try commands().filter { !($0.command is GamRead) && !($0.command is GamWrite) }.map(\.name).sorted()
+                == Self.tails.keys.sorted())
         #expect(Set(Self.sharedBuilders.keys).isSubset(of: GoldenArgvTests.implemented.keys))
     }
 }
