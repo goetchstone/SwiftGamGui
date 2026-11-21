@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
+  "gamgui_commit": "d03f5a6",
   "generator": "scripts/gen_fixtures.py"
  },
  "password": {
@@ -6891,7 +6891,7 @@
   },
   {
    "hex": "7bff7d",
-   "unreadable": true
+   "raises": "UnicodeDecodeError"
   }
  ],
  "store": {

@@ -132,6 +132,14 @@ struct GoldenArgvTests {
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
         "todrive_args": "Sheet export is dropped; CSV only (operator, 2026-10-08)",
+        "all_users_print_forward": "Reports' forwarding review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
+        "all_users_print_delegates": "Reports' delegates review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
+        "print_signature": "Kept signatures before a replace (GamGUI #163, #164): not built here yet; the mock refuses the read",
+        "print_org_units": "Org units (GamGUI #169): not built here yet; the mock refuses the read",
+        "move_user_to_org_unit": "Org units (GamGUI #169): not built here yet",
+        "create_org_unit": "Org units (GamGUI #169): not built here yet",
+        "rename_org_unit": "Org units (GamGUI #169): not built here yet",
+        "delete_org_unit": "Org units (GamGUI #169): not built here yet",
     ]
 
     /// Ported builders, by GamGUI's name.

@@ -856,6 +856,12 @@ if [ "${1:-}" = "user" ] && [ "${3:-}" = "show" ] && [ "${4:-}" = "signature" ];
   exit 0
 fi
 
+# `gam user <email> print signature` (GamGUI #163's keep-before-replace read): not modelled. Signature backups aren't
+# built here yet, so nothing reads it; refused rather than answered in a guessed shape.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "signature" ]; then
+  not_modelled "user print signature"
+fi
+
 # `gam print groups member <email>` -> CSV of THAT user's group emails: the groups listing them directly, in
 # GAM's order (alice: sales, staff; bob: staff; carol: it; dana: none, the header alone). For an address
 # that isn't a user the Directory API says "Invalid Input: memberKey" and GAM stops (invalidMember ->
@@ -871,6 +877,12 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "groups" ] && [ "${3:-}" = "member" ];
     if member_record "$group" "$user" | grep -qF '"type": "USER"'; then echo "$group"; fi
   done < "$GAM_MOCK_FIXTURES/groups.json"
   exit 0
+fi
+
+# `gam print orgs|ous ...` (GamGUI #169's org-unit tree): not modelled. Org units aren't built here yet, so nothing
+# reads it; refused rather than answered in a guessed shape.
+if [ "${1:-}" = "print" ] && { [ "${2:-}" = "orgs" ] || [ "${2:-}" = "ous" ]; }; then
+  not_modelled "print orgs"
 fi
 
 # `gam print domains formatjson` -> GAM's CSV, a `domainName` and a `JSON` column per domain (gam/__init__.py

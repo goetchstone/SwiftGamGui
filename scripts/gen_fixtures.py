@@ -666,9 +666,10 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
     return {"dialect": dialect, "cases": unique}
 
 
-# GamGUI's reads whose GAM shape the mock doesn't model (they printed NDJSON, which GAM never prints for
-# them): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars"}
+# GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
+# the org-unit tree, GamGUI #169, and the stored signature, #163, are features not built here yet): the mock refuses
+# them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "print_signature"}
 
 
 def _keyed(key: str, name: str):
@@ -1415,7 +1416,8 @@ def usage_fixture(mock: Path) -> dict:
 
 def setup_fixture() -> dict:
     """GamGUI's guided setup (core/setup.py): the delegation step's facts and link (dwd_details,
-    dwd_auth_url) and the fresh-setup Terminal commands (setup_commands), over chosen inputs."""
+    dwd_auth_url), the scopes it verifies (DWD_SCOPES) and the scopes its link offers, and the fresh-setup Terminal
+    commands (setup_commands), over chosen inputs."""
     import json as _json
     from types import SimpleNamespace
 
@@ -1427,11 +1429,19 @@ def setup_fixture() -> dict:
                    _json.dumps({"scopes": ["https://mail.google.com/"]}), _json.dumps({"scopes": []}),
                    _json.dumps({"scopes": setup.USER_SECURITY_SCOPE}), '{}', 'not json', '']
     facts = []
+    offered = None
     for service in service_jsons:
         client_id = str(setup._json_field(service, "client_id") or "")
         for domain in ("", "example.com"):
+            # The delegation step as GamGUI shows it (dwd_details over a stand-in vault holding only this service
+            # account): since #151 its link offers the optional scopes too (OPTIONAL_DWD_SCOPES), never verified.
+            vault = SimpleNamespace(get=lambda _domain, name, held=service: held if name == "oauth2service" else None)
+            details = setup.SetupService.dwd_details(SimpleNamespace(vault=vault), domain)
+            if str(details["client_id"]) != client_id:
+                raise SystemExit(f"dwd_details read another client ID from {service!r}")
+            offered = [list(pair) for pair in details["scopes"]]
             facts.append({"oauth2service": service, "domain": domain, "client_id": client_id,
-                          "auth_url": setup.dwd_auth_url(client_id, [s for s, _ in setup.DWD_SCOPES], domain)})
+                          "auth_url": details["auth_url"]})
     security = []
     for oauth in oauth_jsons:
         granted = setup._json_field(oauth, "scopes")
@@ -1470,6 +1480,7 @@ def setup_fixture() -> dict:
     emails += [f"{w}a@example.com{w}" for w in ws] + [f"a{w}b@example.com" for w in ws]
     checks = [{"value": e, "ok": looks_like_email(e)} for e in emails]
     return {"looks_like_email": checks, "dwd_scopes": [list(pair) for pair in setup.DWD_SCOPES],
+            "offered_dwd_scopes": offered,
             "user_security_scope": setup.USER_SECURITY_SCOPE,
             "admin_console_dwd_url": setup.ADMIN_CONSOLE_DWD_URL,
             "facts": facts, "user_security": security, "classroom_readable": classroom, "setup_commands": commands}
@@ -2071,19 +2082,28 @@ def onboarding_fixture(gam_error_cases: list) -> dict:
             path = root / "load.json"
             path.write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
             onboarding._DEFAULT = {**json.loads(json.dumps(seed)), "__seed__": True}
+            case = {"hex": text.hex()} if isinstance(text, bytes) else {"text": text}
             try:
                 loaded = onboarding.RunbookStore(path)
+            except ValueError as exc:
+                # Since GamGUI #142 its `read_text()` sits outside the catch, so a file that isn't UTF-8 raises
+                # (UnicodeDecodeError) rather than being set aside: recorded as GamGUI does it, never as "unreadable".
+                loaded, case["raises"] = None, type(exc).__name__
             finally:
                 onboarding._DEFAULT = seed
-            case = {"hex": text.hex()} if isinstance(text, bytes) else {"text": text}
-            if "__seed__" in loaded._data:
+            if loaded is None:
+                pass
+            elif "__seed__" in loaded._data:
                 case["unreadable"] = True
             else:
                 case["roles"] = [{"name": r.name, "steps": r.steps, "signature": r.signature, "org_unit": r.org_unit,
                                   "groups": r.groups, "calendars": r.calendars, "welcome": r.welcome} for r in loaded.roles()]
                 case["welcomes"] = [[name, w["subject"], w["body"]] for name, w in loaded._data["welcomes"].items()]
             out["load"].append(case)
-            path.unlink()
+            # Since GamGUI #142 an unreadable file is moved to `load.json.unreadable-<time>`, not left in place.
+            path.unlink(missing_ok=True)
+            for moved in root.glob("load.json.unreadable-*"):
+                moved.unlink()
 
         # The store's rules (RunbookStore over a temporary file, never GamGUI's own: failure-log 2026-09-25): its
         # seed, what set_role keeps and refuses, and the welcome emails' names and refusals. The native role store
