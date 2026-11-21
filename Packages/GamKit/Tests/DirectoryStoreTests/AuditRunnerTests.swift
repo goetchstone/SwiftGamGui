@@ -191,14 +191,18 @@ final class AuditRunnerTests {
     /// says unknown. A second Run while one goes is ignored.
     @Test func stopLeavesTheRestNotRun() async throws {
         try await connect()
-        #expect(runner.start(AuditRuns.licenseUsage) == nil)
-        // The first step is in flight once its title is shown.
-        while case .running(let progress)? = runner.state(of: AuditRuns.licenseUsage), progress.current.isEmpty, progress.done == 0 {
-            try await Task.sleep(for: .milliseconds(5))
+        // Stop pressed as the first step's read ends, before the next is decided: a known point, no timer (GamGUI's then_stop).
+        // A second Run then is ignored: the run going on is the one there is.
+        let runner = runner
+        var pressed: [Bool] = []
+        runner.afterEachStep = { index in
+            guard index == 0 else { return }
+            pressed.append(runner.start(AuditRuns.licenseUsage) == nil)
+            pressed.append(runner.stop(AuditRuns.licenseUsage))
         }
-        #expect(runner.start(AuditRuns.licenseUsage) == nil, "a second press joins the first")
-        #expect(runner.stop(AuditRuns.licenseUsage))
+        #expect(runner.start(AuditRuns.licenseUsage) == nil)
         await runner.finish(AuditRuns.licenseUsage)
+        #expect(pressed == [true, true])
         guard case .finished(let outcome)? = runner.state(of: AuditRuns.licenseUsage) else {
             Issue.record("\(String(describing: runner.state(of: AuditRuns.licenseUsage)))")
             return

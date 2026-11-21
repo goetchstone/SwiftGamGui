@@ -71,6 +71,9 @@ public final class AuditRunner {
     private let now: @Sendable () -> Date
     /// Tests only: the mock's state folder.
     var environment: [String: String] = [:]
+    /// Tests only: called as each step's line is added (its index), before the next step is decided: where a test presses Stop
+    /// at a known point, with no timer.
+    @ObservationIgnored var afterEachStep: (@MainActor (Int) -> Void)?
 
     public init(setup: SetupModel, runner: AuthenticatedRunner?, audit: ReadAudit?, now: @escaping @Sendable () -> Date = Date.init) {
         self.setup = setup
@@ -178,6 +181,7 @@ public final class AuditRunner {
                 $0.lines.append(Line(id: step.key, title: step.title, ok: read.state == .read, why: read.why))
                 $0.current = ""
             }
+            afterEachStep?(index)
         }
         guard !Task.isCancelled, setup.active == domain, setup.generation == generation, progress(run, serial: serial) != nil else { return }
         let at = now()
