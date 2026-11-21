@@ -512,21 +512,25 @@ public enum CommandFinder {
         case fault(String, String)
     }
 
-    /// `raw`, from the model, checked for `slot`: every value must be the request's own words, a choice one of its own too (a
-    /// role the request didn't say is left at the field's default: given "put alice in the sales group", the model picked
-    /// member, and the same pick could have been owner); a person or a group must be one the directory finds by them (an
-    /// address typed in full is kept, with a doubt when the directory doesn't hold it); an address must be one, or someone or
-    /// a group the directory finds.
+    /// `raw`, from the model, checked for `slot`: every value must be the request's own words, whole words, and is kept as the
+    /// request writes them; a choice must be one of its own too (a role the request didn't say is left at the field's default:
+    /// given "put alice in the sales group", the model picked member, and the same pick could have been owner); a person or a
+    /// group must be one the directory finds by them (an address typed in full is kept, with a doubt when the directory doesn't
+    /// hold it); an address must be one, or someone or a group the directory finds.
     static func check(_ raw: String, _ slot: Slot, request: String, directory: Directory) -> Checked {
         let said = raw.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'\u{201C}\u{201D}\u{2018}\u{2019}.,;:?!")))
         if said.isEmpty || said.lowercased() == unsaid { return .empty }
         if case .choice(let choices) = slot.kind {
             guard choices.contains(said) else { return .fault(said, "\u{201C}\(said)\u{201D} isn't one of " + choices.joined(separator: ", ")) }
-            return copied(said, from: request) ? .value(said, note: nil)
+            return span(said, in: request) != nil ? .value(said, note: nil)
                 : .fault(said, "\u{201C}\(said)\u{201D} isn't in the request, so \(slot.label) keeps its default")
         }
-        let words = possessive(said)
-        guard copied(words, from: request) else { return .fault(said, "\u{201C}\(said)\u{201D} isn't in the request") }
+        // Someone's or a group's name may close with a possessive ("carol's" is carol); any other words are kept whole
+        // ("Children's").
+        let named = if case .text = slot.kind { said } else { possessive(said) }
+        guard let words = span(named, in: request) ?? (named == said ? nil : span(said, in: request)) else {
+            return .fault(said, "\u{201C}\(said)\u{201D} isn't in the request")
+        }
         switch slot.kind {
         case .text, .choice: return .value(words, note: nil)
         case .owner, .person: return lookUp(words, in: directory.people, what: "anyone", read: "Users")
@@ -560,13 +564,42 @@ public enum CommandFinder {
         return plain.lowercased().hasSuffix("'s") && plain.count > 2 ? String(plain.dropLast(2)) : plain
     }
 
-    /// Whether `words` are the request's own: found in it, case, curly apostrophes and runs of spaces aside.
-    static func copied(_ words: String, from request: String) -> Bool {
-        func flat(_ text: String) -> String {
-            text.replacingOccurrences(of: "\u{2019}", with: "'").lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    /// Where `words` stand in `request` as whole words: the request's own text there, as it writes it, or nil. Case, curly
+    /// apostrophes and runs of white space aside. Part of a longer word or an address is no match: "Carol" isn't in "Reset
+    /// Caroline's password", "manager" isn't in "the managers group", "delete" isn't in "is deleted", "bob" isn't in
+    /// "bob@gmail.com" (review 2026-11-21: each was taken before). A possessive after the words is a boundary ("carol's").
+    static func span(_ words: String, in request: String) -> String? {
+        func plain(_ character: Character) -> Character {
+            if character == "\u{2019}" { return "'" }
+            let lower = String(character).lowercased()
+            return lower.count == 1 ? Character(lower) : character
         }
-        let needle = flat(words)
-        return !needle.isEmpty && flat(request).contains(needle)
+        // The request's characters, each with where it stands, a run of white space as one space.
+        var text: [(character: Character, at: String.Index)] = []
+        var index = request.startIndex
+        while index < request.endIndex {
+            let character = request[index]
+            if !character.isWhitespace { text.append((plain(character), index)) } else if text.last?.character != " " { text.append((" ", index)) }
+            index = request.index(after: index)
+        }
+        let needle = Array(words.split(whereSeparator: \.isWhitespace).joined(separator: " ").map(plain))
+        guard !needle.isEmpty, needle.count <= text.count else { return nil }
+        // Whether the character at `at` carries a word on past the match, `beyond` being the one after it, away from the match.
+        func continues(_ at: Int, beyond: Int) -> Bool {
+            guard text.indices.contains(at) else { return false }
+            let character = text[at].character
+            if character.isLetter || character.isNumber || character == "@" || character == "_" { return true }
+            guard character == "." || character == "-", text.indices.contains(beyond) else { return false }
+            return text[beyond].character.isLetter || text[beyond].character.isNumber
+        }
+        for start in 0...(text.count - needle.count) {
+            let end = start + needle.count
+            guard text[start..<end].map(\.character) == needle, !continues(start - 1, beyond: start - 2), !continues(end, beyond: end + 1) else {
+                continue
+            }
+            return String(request[text[start].at..<request.index(after: text[end - 1].at)])
+        }
+        return nil
     }
 
     /// One address: a name, an `@`, and a domain with a dot, nothing else.

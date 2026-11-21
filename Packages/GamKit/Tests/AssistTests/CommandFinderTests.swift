@@ -107,6 +107,25 @@ struct CommandFinderTests {
                 == .value("frank@example.com", note: "frank@example.com isn't in the directory as last read: check it before you run this."))
     }
 
+    /// Whole words only, kept as the request writes them (review 2026-11-21): a name inside a longer one, a role inside a
+    /// plural, an action inside another word, a name inside an address is no match; text keeps its own case, spacing and
+    /// possessive.
+    @Test func aValueIsWholeWordsAsTheRequestWritesThem() {
+        #expect(Self.check("Carol", .owner, "Reset Caroline's password") == .fault("Carol", "\u{201C}Carol\u{201D} isn't in the request"))
+        #expect(Self.check("manager", .choice(["member", "manager", "owner"]), "Add Bob to the managers group")
+                == .fault("manager", "\u{201C}manager\u{201D} isn't in the request, so User keeps its default"))
+        #expect(Self.check("delete", .choice(["keep", "archive", "markread", "trash", "delete"]),
+                           "Before Bob's account is deleted, forward his mail to carol")
+                == .fault("delete", "\u{201C}delete\u{201D} isn't in the request, so User keeps its default"))
+        #expect(Self.check("bob", .person, "forward carol's mail to bob@gmail.com") == .fault("bob", "\u{201C}bob\u{201D} isn't in the request"))
+        // Still found: a name its possessive closes, a whole address before a full stop.
+        #expect(Self.check("carol", .owner, "Show Carol's signature") == .value("carol@example.com", note: nil))
+        #expect(Self.check("bob@gmail.com", .address, "forward carol's mail to bob@gmail.com.") == .value("bob@gmail.com", note: nil))
+        // Text is the request's own words there.
+        #expect(Self.check("SENIOR\nENGINEER", .text, "set carol's title to Senior Engineer") == .value("Senior Engineer", note: nil))
+        #expect(Self.check("Children's", .text, "show the Children's Books drive") == .value("Children's", note: nil))
+    }
+
     /// What code can't settle is left empty for the operator, never asked of the model (the note names the directory's people,
     /// which the model never reads): two people a name fits, or a directory not read yet.
     @Test func whatCodeCantSettleIsLeftForTheOperator() {

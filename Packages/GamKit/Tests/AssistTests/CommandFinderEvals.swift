@@ -23,6 +23,17 @@ struct CommandFinderSampleTests {
         }
     }
 
+    /// The eval's no-invented-value check holds whole words, as the finder does (review 2026-11-21): a name inside a longer
+    /// one, or a role inside a plural, is invented.
+    @Test func anInventedValueIsCaught() {
+        let reset = FinderCase(id: "r", kind: "", category: "", input: "Reset Caroline's password", accept: [], values: [:])
+        #expect(reset.invented(["User": "carol@example.com"]) == ["carol@example.com"])
+        let managers = FinderCase(id: "m", kind: "", category: "", input: "Add Bob to the managers group", accept: [], values: [:])
+        #expect(managers.invented(["Role": "manager", "Member": "bob@example.com"]) == ["manager"])
+        let shown = FinderCase(id: "s", kind: "", category: "", input: "Show Carol's signature", accept: [], values: [:])
+        #expect(shown.invented(["User": "carol@example.com"]).isEmpty)
+    }
+
     /// The Builder's search, as typed: what the operator has today, given the same sentences. Printed for the plan; the model's
     /// eval prints the same numbers beside the finder's.
     @Test func theBuildersSearchOnTheSamples() {

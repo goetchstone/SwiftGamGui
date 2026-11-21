@@ -75,16 +75,16 @@ struct FinderCase: Codable, Sendable {
         return true
     }
 
-    /// The filled values no check could stand behind: neither the request's own words nor the address of someone or a group the
-    /// request names (by address, the address's name, or a name the directory knows them by).
+    /// The filled values no check could stand behind: neither the request's own whole words nor the address of someone or a
+    /// group the request names in whole words (by address, the address's name, or a name the directory knows them by). Whole
+    /// words, as the finder checks (`CommandFinder.span`): carol@example.com for "Reset Caroline's password" is invented.
     func invented(_ filled: [String: String], directory: CommandFinder.Directory = FinderMenu.directory) -> [String] {
-        let request = input.lowercased().replacingOccurrences(of: "\u{2019}", with: "'")
         let known = (directory.people ?? []) + (directory.groups ?? [])
         return filled.values.filter { value in
-            if request.contains(value.lowercased()) { return false }
+            if CommandFinder.span(value, in: input) != nil { return false }
             return !known.contains { entry in
                 entry.address == value.lowercased() && ([String(entry.address.split(separator: "@")[0])] + entry.names).contains {
-                    request.contains($0.lowercased())
+                    CommandFinder.span($0, in: input) != nil
                 }
             }
         }
