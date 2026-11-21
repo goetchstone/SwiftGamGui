@@ -231,7 +231,8 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
   being written stay, and so does the run it put back (KeepFirst's `restoring`, the Put Back's source, passed to `start`),
   which then lives until a later run that keeps someone pushes it out. Nothing is pruned when a run starts, and a run that
   kept nobody is removed on close without pruning anything. `runs()` lists every regular `<id>.jsonl`, newest first, whole or with its problem (never
-  dropped); `load(id)` refuses an id with `/`, NUL or a leading `.`, picks only among the listed files, and gives the
+  dropped; a last line without a line break is an append that never finished, whose person was never written, and is
+  left out, where GamGUI reads the run as not whole); `load(id)` refuses an id with `/`, NUL or a leading `.`, picks only among the listed files, and gives the
   whole run or a problem, never part of one. At most 32 MB a file, read or written (invariant 9).
 - **Put Back** (`SignatureChanges.previewPutBack(id)`): loads the run now; refuses a run of another domain ("That run was
   on example.org, so it's put back only there: connect example.org on Setup first.") or one that can't be read ("That run

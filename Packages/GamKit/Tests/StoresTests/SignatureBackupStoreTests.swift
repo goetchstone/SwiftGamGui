@@ -155,6 +155,27 @@ struct SignatureBackupStoreTests {
         #expect(store.runs().map(\.id) == ids.reversed())
     }
 
+    /// Review of Phase A: a torn last line (power lost while a copy was being appended) made the whole run unreadable, though
+    /// every copy before it was whole and that person's write never ran. It's left out; a broken line before a whole one
+    /// still isn't.
+    @Test func aTornLastLineIsAnAppendThatNeverFinished() throws {
+        let store = SignatureBackupStore(folder: folder)
+        let id = try keptRun(store, "x", keeping: [Self.alice])
+        let handle = try FileHandle(forWritingTo: file(id))
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(#"{"email": "carol@example.com", "previous": "Car"#.utf8) + Data([0xC3]))
+        try handle.close()
+        #expect(try store.load(id).entries == [.init(email: Self.alice, previous: "old", set: "new")])
+        let more = try FileHandle(forWritingTo: file(id))
+        try more.seekToEnd()
+        try more.write(contentsOf: Data("\n".utf8))
+        try more.close()
+        #expect(throws: SignatureBackupStore.Problem("it isn't whole")) { try store.load(id) }
+        // A header cut off is no run at all.
+        try Data(#"{"run": "\#(id)", "wh"#.utf8).write(to: file(id))
+        #expect(throws: SignatureBackupStore.Problem("it isn't whole")) { try store.load(id) }
+    }
+
     /// Review of Phase A: the open-run guard was one store's own, so another store on the folder (a second copy of the app)
     /// pruned a run still being written. An open run's file is locked, and every store's pruning skips a locked file.
     @Test func noStorePrunesARunAnotherIsWriting() throws {

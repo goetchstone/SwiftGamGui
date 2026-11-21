@@ -239,10 +239,12 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
     }
 
     /// A run's file, whole: a header naming this run, then each entry, every line JSON with every field. Anything else is a
-    /// problem, never part of a run.
+    /// problem, never part of a run. A last line with no line break is an append that never finished (power lost while a
+    /// copy was being written): that person's write never ran, since it waits for the keep, so the line is left out and
+    /// the copies before it are the run. GamGUI reads such a run as not whole.
     static func parse(_ bytes: [UInt8], id: String) throws(Problem) -> Run {
         let whole = Problem("it isn't whole")
-        guard let text = String(validating: bytes, as: UTF8.self) else { throw whole }
+        guard let end = bytes.lastIndex(of: 0x0A), let text = String(validating: bytes[...end], as: UTF8.self) else { throw whole }
         let lines = PythonText.splitLF(text)
         guard let first = lines.first, let head = JSONValue.parse(first)?.object, let run = head["run"]?.string,
               let when = head["when"]?.double, when.isFinite, let what = head["what"]?.string, let domain = head["domain"]?.string,
