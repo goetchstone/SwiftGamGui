@@ -7,14 +7,17 @@ import TestSupport
 /// The change list plans every case as GamGUI's `roster_plan.plan` plans it (invariant 11): `Tests/Fixtures/roster_plan.json`
 /// is every `plan` call GamGUI's `tests/test_roster_plan.py` makes, and the compare its web tests make through its mock,
 /// recorded by `scripts/gen_fixtures.py` with the ChangeList (changes in run order, counts, flags, notes, summary) and what
-/// `roster_handover` hands over for it. Then the planner's own cases, as GamGUI's tests say them.
+/// `roster_handover` hands over for it. Then the planner's own cases, as GamGUI's tests say them. The directory is every
+/// address to its account's primary (GamGUI #128), kept as [address, primary] pairs.
 @Suite("Roster change list")
 struct RosterPlanTests {
     struct Case: Sendable {
         let name: String
         let snapshot: RosterSnapshot
         let classroom: [Classroom.Managed]
-        let directory: [String]?
+        let directory: [String: String]?
+        /// The fixture's pairs, before they were made a dictionary: a `String` key would merge two spellings of one address.
+        let pairs: Int
         let unread: Int
         let limits: [(kind: RosterPlan.Kind, limit: RosterPlan.Limit)]
         let expect: JSONObject
@@ -52,15 +55,20 @@ struct RosterPlanTests {
             guard let pair = item["limits"]?[kind.rawValue]?.array, pair.count == 2 else { return nil }
             return (kind, RosterPlan.Limit(count: pair[0].int ?? 0, share: pair[1].double ?? 0))
         }
+        let pairs = (item["directory"]?.array ?? []).map { ($0.array ?? []).map { s($0) } }
+        let directory = item["directory"]?.array == nil ? nil
+            : Dictionary(pairs.map { ($0.first ?? "", $0.last ?? "") }, uniquingKeysWith: { first, _ in first })
         return Case(name: s(item["name"]), snapshot: snapshot, classroom: (item["classroom"]?.array ?? []).map(managed),
-                    directory: item["directory"]?.array.map { $0.map { s($0) } }, unread: item["unread"]?.int ?? 0,
-                    limits: limits, expect: item["expect"]?.object ?? [:])
+                    directory: directory, pairs: pairs.count, unread: item["unread"]?.int ?? 0, limits: limits,
+                    expect: item["expect"]?.object ?? [:])
     }
 
     @Test func theFixtureIsThere() {
-        #expect(Self.cases.count >= 27)
+        #expect(Self.cases.count >= 33)
         #expect(Self.cases.contains { $0.name == "test_roster_web compare" })
         #expect(Self.cases.allSatisfy { $0.limits.count == 3 }, "GamGUI's LIMITS: three kinds, in its order")
+        #expect(Self.cases.contains { $0.directory?.contains { $0.key != $0.value } == true }, "an alias read as its account")
+        #expect(Self.cases.allSatisfy { ($0.directory?.count ?? 0) == $0.pairs }, "no two addresses read as one key")
     }
 
     @Test func theDefaultLimitsAreGamGUIs() throws {
@@ -112,7 +120,7 @@ struct RosterPlanTests {
         return [
             "changes": .array(out.changes.map(Self.row)),
             "counts": .object(counts), "flags": .object(flags), "notes": .array(out.notes.map(JSONValue.string)),
-            "summary": .string(out.summary), "managed": n(out.managed), "enrolled": n(out.enrolled),
+            "summary": .string(out.summary), "managed": n(out.managed), "teachers": n(out.teachers), "enrolled": n(out.enrolled),
             "unmanaged_ignored": n(out.unmanagedIgnored), "incomplete": .bool(out.incomplete),
             "kept": indexes(RosterHandover.kept(out)), "kept_with_flagged": indexes(RosterHandover.kept(out, including: all)),
             "handover": handed([]), "handover_with_flagged": handed(all),
@@ -147,6 +155,12 @@ struct RosterPlanTests {
 
     static func kinds(_ out: RosterPlan.ChangeList) -> [String] { out.changes.map { "\($0.kind.rawValue) \($0.person)" } }
 
+    /// A directory in which every address the case uses is an account's primary, with no aliases (GamGUI's `_everyone`).
+    static func everyone(_ snap: RosterSnapshot, _ classroom: [Classroom.Managed] = []) -> [String: String] {
+        let found = snap.people.map(\.email) + classroom.flatMap { $0.teachers + $0.students + [$0.course.ownerEmail] }
+        return Dictionary(found.filter { !$0.isEmpty }.map { ($0, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
     @Test func anAliasIsTheSISIDWhenPlainAndAHashOtherwise() {
         #expect(RosterPlan.alias(for: "C-101.a_b") == "d:gg-C-101.a_b")
         let weird = RosterPlan.alias(for: "class #1 / ünï")
@@ -163,8 +177,9 @@ struct RosterPlanTests {
 
     @Test func anExistingClassIsRenamedFilledEmptiedAndItsOwnerChangedInOrder() {
         let snap = Self.snap([("C1", "Biology II")], [("C1", "U2", "teacher", true), ("C1", "U3", "student", false)])
-        let out = RosterPlan.plan(snap, classroom: [Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "ann@x.com",
-                                                                 teachers: ["ann@x.com"], students: ["di@x.com"])])
+        let current = [Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "ann@x.com", teachers: ["ann@x.com"],
+                                    students: ["di@x.com"])]
+        let out = RosterPlan.plan(snap, classroom: current, directory: Self.everyone(snap, current))
         #expect(Self.kinds(out) == ["rename ", "add_teacher ben@x.com", "add_student cy@x.com", "owner ben@x.com",
                                     "remove_teacher ann@x.com", "remove_student di@x.com"])
         #expect(out.changes.allSatisfy { $0.courseID == "500" })
@@ -174,7 +189,7 @@ struct RosterPlanTests {
         let snap = Self.snap([("C1", "Biology")], people: Self.people + [("U9", "student", "ann@x.com")],
                              [("C1", "U2", "teacher", true), ("C1", "U9", "student", false)])
         let out = RosterPlan.plan(snap, classroom: [Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "ann@x.com",
-                                                                 teachers: ["ann@x.com"])])
+                                                                 teachers: ["ann@x.com"])], directory: Self.everyone(snap))
         #expect(Self.kinds(out) == ["add_teacher ben@x.com", "owner ben@x.com", "remove_teacher ann@x.com", "add_student ann@x.com"])
         #expect(!out.changes[2].swap && out.changes[3].late)
     }
@@ -186,7 +201,7 @@ struct RosterPlanTests {
             Self.current(RosterPlan.alias(for: "OLDER"), "800", "Older", owner: "ann@x.com", state: "ARCHIVED"),
         ])
         #expect(Self.kinds(out) == ["archive "] && out.changes[0].courseID == "700")
-        #expect(out.unmanagedIgnored == 1 && out.managed == 2)
+        #expect(out.unmanagedIgnored == 1 && out.managed == 1, "an archived class isn't one the app can act on")
         let lookalike = RosterPlan.plan(Self.snap([("C1", "Biology")], [("C1", "U1", "teacher", true)]),
                                         classroom: [Self.current(nil, "600", "Biology", owner: "ann@x.com")])
         #expect(lookalike.changes.isEmpty && lookalike.notes[0].contains("1 SIS class matches a Classroom class by name and section"))
@@ -196,8 +211,43 @@ struct RosterPlanTests {
         let snap = Self.snap([("C1", "Biology")], [("C1", "U1", "teacher", true), ("C1", "U3", "student", false)])
         let out = RosterPlan.plan(snap, classroom: [Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "ann@x.com",
                                                                  teachers: ["ann@x.com"], students: ["cy@x.com"])],
-                                  directory: ["ann@x.com"])
+                                  directory: ["ann@x.com": "ann@x.com"])      // a stale directory that doesn't know cy
         #expect(out.changes.isEmpty && out.notes[0].contains("nor removed"))
+    }
+
+    // A SIS address that is another address of an account (GamGUI #128, found by this port's review): a renamed teacher's
+    // old address once read as "no account", and she was handed off as owner and removed from the class she owned.
+    static let aliased = ["jane.smith@x.com": "jane.smith@x.com", "jdoe@x.com": "jane.smith@x.com", "ben@x.com": "ben@x.com",
+                          "cy@x.com": "cy@x.com", "cy@alias.x.com": "cy@x.com"]
+
+    static func aliasedClass() -> (RosterSnapshot, Classroom.Managed) {
+        let snap = Self.snap([("C1", "Biology")], people: [("U1", "teacher", "jdoe@x.com"), ("U2", "teacher", "ben@x.com"),
+                                                           ("U3", "student", "cy@alias.x.com")],
+                             [("C1", "U1", "teacher", true), ("C1", "U2", "teacher", false), ("C1", "U3", "student", false)])
+        return (snap, Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "jane.smith@x.com",
+                                   teachers: ["ben@x.com", "jane.smith@x.com"], students: ["cy@x.com"]))
+    }
+
+    @Test func aTeacherListedByAnAliasKeepsTheClassSheOwns() {
+        let (snap, current) = Self.aliasedClass()
+        let out = RosterPlan.plan(snap, classroom: [current], directory: Self.aliased)
+        #expect(out.changes.isEmpty, "no owner change, no removal, no add: \(Self.kinds(out))")
+        #expect(out.notes.contains { $0.hasPrefix("2 addresses in the roster are another address") })
+        #expect(!out.notes.contains { $0.contains("no Google Workspace account") })
+        let created = RosterPlan.plan(snap, classroom: [], directory: Self.aliased)
+        #expect(Self.kinds(created) == ["create jane.smith@x.com", "add_teacher ben@x.com", "add_student cy@x.com"])
+    }
+
+    @Test func withoutTheDirectoryAClassWithAnUnmatchedAddressKeepsItsPeopleAndOwner() {
+        let (snap, current) = Self.aliasedClass()
+        let out = RosterPlan.plan(snap, classroom: [current])
+        #expect(!out.changes.contains { [RosterPlan.Kind.owner, .removeTeacher, .removeStudent].contains($0.kind) }, "\(Self.kinds(out))")
+        #expect(out.notes.contains { $0.hasPrefix("1 class lists roster addresses") })
+        let matched = Self.snap([("C1", "Biology")], [("C1", "U1", "teacher", true), ("C1", "U3", "student", false)])
+        let planned = RosterPlan.plan(matched, classroom: [Self.current(RosterPlan.alias(for: "C1"), "500", "Biology", owner: "ann@x.com",
+                                                                        teachers: ["ann@x.com", "ben@x.com"],
+                                                                        students: ["cy@x.com", "di@x.com"])])
+        #expect(Self.kinds(planned) == ["remove_teacher ben@x.com", "remove_student di@x.com"], "every address matches: planned")
     }
 
     @Test func massRemovalsAreFlaggedPastBothLimitsAndTheHeadlineNeverSaysItMatchesWhenItCouldntTell() throws {

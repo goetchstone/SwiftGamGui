@@ -3,7 +3,7 @@ import Foundation
 import GamEngine
 
 /// Compare a kept SIS roster with Classroom into one change list (plan 2026-11-11 C3; GamGUI's `core/roster_plan.py` at
-/// 07c505d, held to `Tests/Fixtures/roster_plan.json`).
+/// d03f5a6, held to `Tests/Fixtures/roster_plan.json`).
 ///
 /// Pure: a snapshot (what the SIS says) and the Classroom classes as read (`Classroom.Managed`) go in, a `ChangeList` comes
 /// out. No GAM call, nothing written. The app never applies it: the change list is handed over as files GAM runs outside the
@@ -13,8 +13,16 @@ import GamEngine
 /// (`alias(for:)`): the SIS's own ID when it's plain, a hash of it otherwise. Only classes carrying one of these aliases are
 /// compared, updated or archived; a class someone made by hand in Classroom is never touched, only counted.
 ///
+/// **Who is who.** Classroom names people by their primary address; a SIS may list an alias (a renamed teacher's old
+/// address). Every SIS address is read as its account's primary through the directory (`GamUser.primaryOfEveryAddress`)
+/// before anything is compared, so an alias never plans its own account's removal (GamGUI #128; failure log 2026-11-21,
+/// the roster alias). Without the directory, a class whose roster names someone Classroom doesn't list there has no
+/// removal and no owner change planned: that may be someone already in it.
+///
 /// **Risk.** Removals and archives past a built-in count *and* share are flagged with the reason in a sentence; a flagged
 /// kind is left out of the hand-over unless ticked (C4). Thresholds are fixed defaults, not a settings table (C3.3).
+/// Each share is of what that kind can act on: active classes for archives, their teachers for teacher removals, everyone
+/// in them for student removals. Archived classes never count: nothing is archived or removed from them.
 ///
 /// Text is compared, hashed and sorted by its exact code points, as Python's `str` is (`ExactKey`): a Swift `String` would
 /// take "é" and "e" + U+0301 for one address.
@@ -51,8 +59,8 @@ public enum RosterPlan {
         var order: Double { Double(Self.allCases.firstIndex(of: self) ?? 0) }
     }
 
-    /// A destructive kind is flagged past both: a count, and a share of what's there now (people enrolled in the classes
-    /// the app manages, or those classes).
+    /// A destructive kind is flagged past both: a count, and a share of what's there now in the active classes the app
+    /// manages (their teachers, everyone in them, or the classes themselves).
     public struct Limit: Sendable, Equatable {
         public let count: Int
         public let share: Double
@@ -127,8 +135,10 @@ public enum RosterPlan {
         public var flags: [Flag] = []
         /// What can't be planned, said once each kind.
         public var notes: [String] = []
-        /// Classroom classes the app manages.
+        /// Active Classroom classes the app manages (not archived).
         public var managed = 0
+        /// Teachers in them now.
+        public var teachers = 0
         /// People in them now.
         public var enrolled = 0
         /// Classroom classes without the app's alias: left alone.
@@ -192,12 +202,14 @@ public enum RosterPlan {
 
     // MARK: the plan
 
-    /// The change list that would make Classroom match `snapshot`. `directory` is the domain's addresses (lowercased), read
-    /// fresh, when known: a SIS person who isn't a Workspace account can't be *added*, and is noted instead. It never causes
-    /// a removal: someone the SIS lists is never removed from a class because the directory didn't name them. `unread` is
-    /// how many Classroom classes couldn't be read whole: any makes the list incomplete.
-    public static func plan(_ snapshot: RosterSnapshot, classroom: [Classroom.Managed], directory: [String]? = nil, unread: Int = 0,
-                            limits: [(kind: Kind, limit: Limit)] = RosterPlan.limits) -> ChangeList {
+    /// The change list that would make Classroom match `snapshot`. `directory` is every address of the domain's accounts to
+    /// its account's primary (`GamUser.primaryOfEveryAddress`), read fresh, when known: a SIS address is planned as its
+    /// account's primary, and a SIS person who isn't a Workspace account can't be *added*, and is noted instead. It never
+    /// causes a removal: someone the SIS lists is never removed from a class because the directory didn't name them.
+    /// Unknown (nil), a class whose roster names an address Classroom doesn't list in it gets no removal and no owner
+    /// change. `unread` is how many Classroom classes couldn't be read whole: any makes the list incomplete.
+    public static func plan(_ snapshot: RosterSnapshot, classroom: [Classroom.Managed], directory: [String: String]? = nil,
+                            unread: Int = 0, limits: [(kind: Kind, limit: Limit)] = RosterPlan.limits) -> ChangeList {
         var out = ChangeList()
         var byAlias: [ExactKey: Classroom.Managed] = [:]
         var unmanaged: [[ExactKey]: Int] = [:]
@@ -209,8 +221,11 @@ public enum RosterPlan {
             }
             if byAlias[ExactKey(alias)] == nil { byAlias[ExactKey(alias)] = managed }
         }
-        out.managed = byAlias.count
-        out.enrolled = byAlias.values.reduce(0) { $0 + $1.teachers.count + $1.students.count }
+        // Archived classes are nothing the plan can act on: they never count in a risk base.
+        let active = byAlias.values.filter { $0.course.state != "ARCHIVED" }
+        out.managed = active.count
+        out.teachers = active.reduce(0) { $0 + $1.teachers.count }
+        out.enrolled = active.reduce(0) { $0 + $1.teachers.count + $1.students.count }
 
         var people: [ExactKey: RosterSnapshot.Person] = [:]
         for person in snapshot.people where people[ExactKey(person.id)] == nil { people[ExactKey(person.id)] = person }
@@ -229,11 +244,28 @@ public enum RosterPlan {
             }
             roster[key] = members
         }
-        let known = directory.map { Set($0.map(ExactKey.init)) }
-        func addable(_ email: ExactKey) -> Bool { known?.contains(email) ?? true }
+        // Each address the directory knows, looked up by its exact code points, to its account's primary.
+        let accountOf = directory.map { Dictionary(uniqueKeysWithValues: $0.map { (ExactKey($0.key), $0.value) }) }
 
         var noTeacher = 0, noAccountTeacher = 0, archivedWanted = 0, maybeExisting = 0, ownerUnread = 0, staysTeacher = 0
+        var unmatched = 0
         var notAccounts: Set<ExactKey> = []
+        var aliased: Set<ExactKey> = []
+        /// The rows as their accounts' primary addresses, and the addresses that are no account (kept as the SIS has them:
+        /// still never removed). Without the directory, every address is taken as it is.
+        func accounts(_ rows: [(String, Bool)]) -> (found: [(String, Bool)], missing: Set<ExactKey>) {
+            var found: [(String, Bool)] = [], missing: Set<ExactKey> = []
+            for (email, primary) in rows {
+                let account: String? = if let accountOf { accountOf[ExactKey(email)] } else { email }
+                guard let account else {
+                    missing.insert(ExactKey(email))
+                    continue
+                }
+                if ExactKey(account) != ExactKey(email) { aliased.insert(ExactKey(email)) }
+                found.append((account, primary))
+            }
+            return (found, missing)
+        }
         var wanted: Set<ExactKey> = []
         var classes: [ExactKey: RosterSnapshot.Class] = [:]
         for item in snapshot.classes where classes[ExactKey(item.id)] == nil { classes[ExactKey(item.id)] = item }
@@ -243,14 +275,17 @@ public enum RosterPlan {
             let alias = Self.alias(for: classID)
             wanted.insert(ExactKey(alias))
             let members = roster[classKey] ?? ([], [])
+            // Who can be added: a Workspace account, by its primary address, when the directory is known.
+            let (teacherRows, noAccountTeachers) = accounts(members.teachers)
+            let (studentRows, noAccountStudents) = accounts(members.students)
+            let teacherSet = Set(teacherRows.map { ExactKey($0.0) })
+            let teachers = teacherSet.sorted()
+            let students = Set(studentRows.map { ExactKey($0.0) }).subtracting(teacherSet).sorted()
+            let studentSet = Set(students)
             // Who the SIS has: what a removal is measured against, whatever the directory says.
-            let sisTeachers = Set(members.teachers.map { ExactKey($0.0) })
-            let sisStudents = Set(members.students.map { ExactKey($0.0) }).subtracting(sisTeachers)
-            // Who can be added: a Workspace account, when the directory is known.
-            notAccounts.formUnion(sisTeachers.union(sisStudents).filter { !addable($0) })
-            let teacherRows = members.teachers.filter { addable(ExactKey($0.0)) }
-            let teachers = Set(teacherRows.map { ExactKey($0.0) }).sorted()
-            let students = sisStudents.filter(addable).sorted()
+            let sisTeachers = teacherSet.union(noAccountTeachers)
+            let sisStudents = studentSet.union(noAccountStudents).subtracting(sisTeachers)
+            notAccounts.formUnion(noAccountTeachers.union(noAccountStudents))
             let owner = ownerOf(teacherRows)
             let section = item.termIDs.first.flatMap { terms[ExactKey($0)] } ?? ""
             let title = item.title.isEmpty ? classID : item.title
@@ -284,7 +319,11 @@ public enum RosterPlan {
             let haveTeachers = Set(current.teachers.map(ExactKey.init)), haveStudents = Set(current.students.map(ExactKey.init))
             let courseOwner = ExactKey(course.ownerEmail)
             var goneTeachers: Set<ExactKey> = []
-            if course.ownerEmail.isEmpty {
+            // Without the directory, an address Classroom doesn't list in this class may be someone in it by another name.
+            let hold = directory == nil && !sisTeachers.union(sisStudents).subtracting(haveTeachers).subtracting(haveStudents).isEmpty
+            if hold {
+                unmatched += 1
+            } else if course.ownerEmail.isEmpty {
                 // The owner's address wasn't read: an owner change can't be planned, and a teacher removal might be the owner.
                 ownerUnread += 1
             } else {
@@ -297,7 +336,6 @@ public enum RosterPlan {
                 let keep: ExactKey = handedOn ? ExactKey(owner!) : courseOwner
                 goneTeachers = haveTeachers.subtracting(sisTeachers).subtracting([keep])
             }
-            let studentSet = Set(students), teacherSet = Set(teachers)
             // A teacher who becomes a student is removed before the adds (a swap), except the outgoing owner: Classroom won't
             // remove an owner, so that removal waits for the owner change and their student add waits for it (`late`).
             out.changes += goneTeachers.sorted().map {
@@ -314,8 +352,10 @@ public enum RosterPlan {
                 out.changes.append(Change(.addStudent, alias, title, person: student.text, courseID: course.id,
                                           late: student == courseOwner))
             }
-            out.changes += haveStudents.subtracting(sisStudents).sorted().map {
-                Change(.removeStudent, alias, title, person: $0.text, courseID: course.id, swap: teacherSet.contains($0))
+            if !hold {
+                out.changes += haveStudents.subtracting(sisStudents).sorted().map {
+                    Change(.removeStudent, alias, title, person: $0.text, courseID: course.id, swap: teacherSet.contains($0))
+                }
             }
         }
         for alias in byAlias.keys.sorted() where !wanted.contains(alias) {
@@ -355,6 +395,18 @@ public enum RosterPlan {
             out.notes.append("\(plural(n, "person", "people")) in the roster \(n == 1 ? "has" : "have") no Google Workspace "
                 + "account here, so they aren't added (nor removed). Check their addresses in users.csv, or create their accounts.")
         }
+        if !aliased.isEmpty {
+            let n = aliased.count
+            out.notes.append("\(plural(n, "address", "addresses")) in the roster \(n == 1 ? "is" : "are") another address "
+                + "(an alias) of a Google Workspace account, so GamGUI reads \(n == 1 ? "it" : "them") as that account's "
+                + "primary address. Update them in users.csv.")
+        }
+        if unmatched > 0 {
+            let it = unmatched == 1 ? "it" : "them"
+            out.notes.append("\(plural(unmatched, "class lists", "classes list")) roster addresses Classroom doesn't have in "
+                + "\(it), and without the directory GamGUI can't tell whether one is another address (an alias) of someone "
+                + "who is, so no one is removed from \(it) and no owner change is planned. Compare again.")
+        }
         if maybeExisting > 0 {
             out.notes.append("\(plural(maybeExisting, "SIS class matches", "SIS classes match")) a Classroom class by name "
                 + "and section that doesn't carry GamGUI's alias (or whose aliases couldn't be read), so nothing is "
@@ -363,8 +415,8 @@ public enum RosterPlan {
         if staysTeacher > 0 {
             out.notes.append("\(plural(staysTeacher, "person is a student", "people are students")) in the SIS but still "
                 + "\(staysTeacher == 1 ? "a teacher" : "teachers") in Classroom (the class's owner, or in a class "
-                + "whose owner couldn't be read), so they aren't added as students there. Change the owner in the "
-                + "SIS or in Classroom first.")
+                + "where no teacher removal could be planned), so they aren't added as students there. Change the "
+                + "owner in the SIS or in Classroom first.")
         }
         if ownerUnread > 0 {
             out.notes.append("\(plural(ownerUnread, "class", "classes"))' owner couldn't be read, so no teacher is removed from "
@@ -388,15 +440,20 @@ public enum RosterPlan {
     /// The note the compare adds when the directory couldn't be read (GamGUI's route).
     public static let directoryUnread = "The directory couldn't be read, so addresses weren't checked against Workspace accounts."
 
-    /// Each destructive kind past both its count and its share of what's there now, with why, in a sentence.
+    /// Each destructive kind past both its count and its share of what that kind acts on in the active classes, with why,
+    /// in a sentence.
     static func flags(_ out: ChangeList, _ limits: [(kind: Kind, limit: Limit)]) -> [Flag] {
         limits.compactMap { kind, limit in
             let n = out.count(kind)
-            let base = kind == .archive ? out.managed : out.enrolled
+            let base: Int, noun: String, whole: String
+            switch kind {
+            case .archive: (base, noun, whole) = (out.managed, "classes", "of the active classes GamGUI manages")
+            case .removeTeacher: (base, noun, whole) = (out.teachers, "teachers", "of the teachers in them")
+            case .removeStudent: (base, noun, whole) = (out.enrolled, "students", "of the people in them")
+            default: return nil
+            }
             guard n > limit.count, base > 0, Double(n) / Double(base) > limit.share else { return nil }
             let what = kind == .archive ? "archive" : "remove"
-            let noun = kind == .archive ? "classes" : kind == .removeTeacher ? "teachers" : "students"
-            let whole = kind == .archive ? "of the classes GamGUI manages" : "of the people in them"
             let share = String(format: "%.1f%%", Double(n) / Double(base) * 100)
             let held = String(format: "%.0f%%", limit.share * 100)
             return Flag(kind: kind, why: "Would \(what) \(grouped(n)) \(noun), \(share) \(whole) (held back past "

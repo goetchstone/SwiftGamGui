@@ -153,7 +153,8 @@ public final class RosterCompare {
         case .success(let state):
             classroom = state
         }
-        // Fresh: it decides who is added. Without it addresses aren't checked, and the list says so.
+        // Fresh, with every account's aliases: it decides who is added, and which account a SIS address names (GamGUI #128).
+        // Without it addresses aren't checked, and the list says so.
         let directory = await access.directoryAddresses(in: pinned).flatMap { $0.isEmpty ? nil : $0 }
         guard current() else { return .dropped }
         let (plan, haystack) = await Task.detached {

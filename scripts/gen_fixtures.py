@@ -868,6 +868,10 @@ def models_fixture(mock: Path) -> dict:
         ' "recoveryEmail": 0}',
         '{"primaryEmail": "n5@example.com", "name": {"givenName": 0, "familyName": false},'
         ' "givenName": "Flat", "Last Name": "Name", "orgUnitPath": 5, "lastLoginTime": 1.5}',
+        # GamGUI #128: the alias-domain addresses GAM's `fields aliases` also returns, read as the aliases are.
+        '{"primaryEmail": "n6@example.com", "nonEditableAliases": "n6@alias.example.com, x@alias.example.com"}',
+        '{"primaryEmail": "n7@example.com", "nonEditableAliases": "",'
+        ' "NonEditableAliases": ["n7@alias.example.com", null, 7, " pad@alias.example.com "]}',
     ]
     raw_groups = ['{"email": "g@example.com", "directMembersCount": ' + count + '}' for count in
                   ['"' + chr(92) + 'u001c5"', '"5' + chr(92) + 'u001f"', "-3.7", "1e2", '"1__0"', '"_1"', '"1_"',
@@ -2749,7 +2753,8 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     from gamgui.core import roster as roster_mod
     from gamgui.core import roster_handover as handover
     from gamgui.core import roster_plan
-    from gamgui.core.gam.commands import GAMCommands
+    from gamgui.core.gam.commands import CACHE_FIELDS, GAMCommands
+    from gamgui.core.gam.models import GAMUser
     from gamgui.core.gam.runner import strip_cfgdir_noise
     from tests import test_roster as tr
     from tests import test_roster_plan as tp
@@ -2778,7 +2783,8 @@ def roster_plan_fixture(gamgui: Path) -> dict:
         kept = handover.kept_changes(out)
         everything = handover.kept_changes(out, list(out.flags))
         return {"changes": [change_row(c) for c in out.changes], "counts": dict(out.counts), "flags": dict(out.flags),
-                "notes": list(out.notes), "summary": out.summary(), "managed": out.managed, "enrolled": out.enrolled,
+                "notes": list(out.notes), "summary": out.summary(), "managed": out.managed, "teachers": out.teachers,
+                "enrolled": out.enrolled,
                 "unmanaged_ignored": out.unmanaged_ignored, "incomplete": out.incomplete,
                 "kept": [out.changes.index(c) for c in kept],
                 "kept_with_flagged": [out.changes.index(c) for c in everything],
@@ -2787,11 +2793,17 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     cases: list = []
     real_plan = roster_plan.plan
 
+    def pairs(directory) -> list:
+        """The directory as [address, its account's primary] pairs, by address: a list, not a JSON object, so no reader
+        can merge two spellings of one address into one key."""
+        return sorted([address, primary] for address, primary in directory.items())
+
     def record(name: str, snap, classroom, directory=None, unread=0):
-        entry = {"name": name, "snapshot": snapshot(snap), "classroom": [managed(m) for m in classroom],
-                 "directory": None if directory is None else sorted(directory), "unread": unread,
-                 "limits": {k: list(v) for k, v in roster_plan.LIMITS.items()}}
+        # Planned first: since GamGUI #128 `plan` refuses a set as the directory (TypeError), which its test expects.
         out = real_plan(snap, classroom, directory, unread)
+        entry = {"name": name, "snapshot": snapshot(snap), "classroom": [managed(m) for m in classroom],
+                 "directory": None if directory is None else pairs(directory), "unread": unread,
+                 "limits": {k: list(v) for k, v in roster_plan.LIMITS.items()}}
         entry["expect"] = result(out)
         cases.append(entry)
         return out
@@ -2834,7 +2846,9 @@ def roster_plan_fixture(gamgui: Path) -> dict:
     classroom, unread = roster_plan.managed_from(courses, people)
     if unread:
         raise SystemExit(f"GamGUI's mock left classes unread: {unread}")
-    directory = {str(r.get("primaryEmail") or "").lower() for r in parse_records(mock(GAMCommands.print_users()))}
+    # As the compare reads it since GamGUI #128: the users read now, with their aliases, as every address to its account.
+    directory = roster_plan.directory_from(GAMUser.from_json(r)
+                                           for r in parse_records(mock(GAMCommands.print_users(fields=CACHE_FIELDS))))
     web = tr._files(**{"classes.csv": tw.SIS_CLASSES, "users.csv": tw.SIS_USERS, "enrollments.csv": tw.SIS_ENROLL})
     snap = roster_mod.read_upload(list(web.items()))
     flagged = {"remove_student": (0, 0.0), "remove_teacher": (99, 1.0), "archive": (99, 1.0)}
@@ -2865,7 +2879,7 @@ def roster_plan_fixture(gamgui: Path) -> dict:
             got, unread_ids = roster_plan.managed_from([rec], participants)
             managed_cases.append({"courses": [rec], "participants": participants,
                                   "managed": [managed(m) for m in got], "unread": unread_ids})
-    return {"cases": cases, "web_reads": {"courses": courses, "participants": people, "directory": sorted(directory)},
+    return {"cases": cases, "web_reads": {"courses": courses, "participants": people, "directory": pairs(directory)},
             "alias_for": aliases, "managed_from": managed_cases}
 
 
