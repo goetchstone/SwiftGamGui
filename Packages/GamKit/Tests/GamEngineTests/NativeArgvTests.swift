@@ -56,6 +56,12 @@ struct NativeArgvTests {
                 == ["calendars", "c_x y@group.calendar.google.com", "print", "settings", "fields", "id,dataowner", "formatjson"])
     }
 
+    /// The exact signature read (GamGUI's `print_signature`, from #163; held here until the fixtures are generated from a
+    /// GamGUI that has it): the address one element.
+    @Test func aSignatureIsReadExactlyByItsAddress() {
+        #expect(GamCommands.printSignature(email: "a b@example.com").argv == ["user", "a b@example.com", "print", "signature"])
+    }
+
     /// The list is one element GAM splits on commas: an ID that would split, or isn't a calendar ID, is refused.
     @Test func eachCalendarHandedOverIsOneID() throws {
         // The last four split in Python but not by Swift's Character (review 2026-10-14); then a user's address, which

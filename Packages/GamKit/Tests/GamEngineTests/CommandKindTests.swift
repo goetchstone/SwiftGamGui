@@ -54,6 +54,9 @@ struct CommandKindTests {
     static let appOnlyReads: [String: GamRead] = [
         // docs/domains/calendars.md: the calendar delete acts as the data owner this reads (GamGUI's first owner rule).
         "print_calendar_settings": GamCommands.printCalendarSettings(calendarID: "<calendar_id>"),
+        // docs/domains/signatures.md: the exact read ChangeCore keeps before a signature is replaced. GamGUI's `print_signature`
+        // (#163), after the fixtures' pin: it moves to GoldenArgvTests.implemented when they're generated from a GamGUI that has it.
+        "print_signature": GamCommands.printSignature(email: "<email>"),
     ]
 
     /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
@@ -186,7 +189,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 44 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 45 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

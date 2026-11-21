@@ -131,6 +131,55 @@ public enum Signature {
         return signature.unicodeScalars.elementsEqual("None".unicodeScalars) ? "" : signature
     }
 
+    /// Why `exact` couldn't tell what someone's stored signature is: never read as "no signature".
+    public struct Unread: Error, Sendable, Equatable {
+        public let reason: String
+        public init(_ reason: String) { self.reason = reason }
+    }
+
+    /// What GAM writes on stderr once it has Gmail for the person and is about to read (printGettingEntityItemForWhom with
+    /// `Ent.SIGNATURE`, whose plural is "Signatures"; `show_gettings` is on by default and never turned off here).
+    public static let gettingLine = "Getting Signatures for "
+
+    /// `email`'s stored Gmail signature, byte for byte ("" for none), from `print signature`'s result
+    /// (`GamCommands.printSignature`): what ChangeCore keeps before a signature is replaced. GamGUI's `signature_exact`:
+    /// GAM's exit 0, its getting line on stderr (GAM skips a refused token without a word: the titles alone, exit 0, no
+    /// such line), and exactly one whole row for the person. A row cut short is unknown, never "". GAM's titles hold no
+    /// `signature` column of their own (printShowSignature's CSVPrintFile, read at the pin): it comes from Gmail's reply,
+    /// which leaves an empty one out, so with the person's whole row read, no column is no signature. Throws `GamError`
+    /// for a failed run and `Unread` for anything else.
+    ///
+    /// Two departures, each from GAM's source at the pin: the getting line is "Getting Signatures for" (GamGUI looks for
+    /// "Getting Signature for", which only its mock prints); and the CSV is read as GAM writes it (`CSVReader`, GAM's
+    /// dialect), never through `GamOutput.records`, which strips the whole text as GamGUI's `parse_records` does: the
+    /// signature is the last column of the last line, and an unquoted one (no comma, quote or line break in it) would
+    /// lose its trailing whitespace.
+    public static func exact(_ result: GamResult, for email: String) throws -> String {
+        guard result.exitCode == 0 else {
+            throw GamError(exitCode: result.exitCode, stderr: result.stderr,
+                           argv: GamCommands.printSignature(email: email).argv, stdout: result.stdout)
+        }
+        guard !result.stdoutTruncated else { throw Unread("GAM's answer was longer than one call can return.") }
+        guard result.stderr.contains(gettingLine) else {
+            throw Unread("GAM answered without reading it; its sign-in may have been refused.")
+        }
+        var table = CSVReader.records(result.stdout)
+        guard !table.isEmpty else { throw Unread("GAM printed nothing.") }
+        let header = table.removeFirst()
+        func columns(_ name: String) -> [Int] { header.indices.filter { header[$0].utf8.elementsEqual(name.utf8) } }
+        let users = columns("User"), signatures = columns("signature")
+        guard users.count == 1, signatures.count <= 1 else { throw Unread("GAM's answer isn't in the shape it prints.") }
+        let wanted = PythonText.lower(PythonText.strip(email))
+        let rows = table.filter { row in
+            users[0] < row.count && PythonText.lower(row[users[0]]).utf8.elementsEqual(wanted.utf8)
+        }
+        // The person's one row, whole: a cell missing from it (cut-off output) is unknown, never "".
+        guard rows.count == 1, rows[0].count == header.count else {
+            throw Unread("GAM's answer has no whole row for \(PythonText.strip(email)).")
+        }
+        return signatures.first.map { rows[0][$0] } ?? ""
+    }
+
     /// The signature as GAM stores it from `signature <body> html`: `_processSignature`
     /// (gam/__init__.py:78601-78608) removes every CR and turns each backslash-n pair into `<br/>`. So a
     /// preview of the argv alone would show the operator something else.

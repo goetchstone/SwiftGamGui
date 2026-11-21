@@ -785,6 +785,13 @@ public enum GamCommands {
         GamRead(["user", email, "show", "signature"])
     }
 
+    /// The stored signature verbatim, as CSV (GamGUI's `print_signature`; printShowSignature's print mode, where `compact`
+    /// would strip its line breaks): what ChangeCore reads and keeps before a signature is replaced (`Signature.exact`).
+    /// `show signature` is the display form, whose reader strips each line.
+    public static func printSignature(email: String) -> GamRead {
+        GamRead(["user", email, "print", "signature"])
+    }
+
     public static func addDelegate(email: String, delegate: String) -> GamWrite {
         GamWrite(["user", email, "add", "delegate", delegate], action: .addDelegate)
     }
