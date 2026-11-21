@@ -54,6 +54,14 @@ public final class AuditRunner {
     public nonisolated static let timedOut = "GAM didn't finish in the hour a read is allowed, so this step has no answer."
     public nonisolated static let stoppedBefore = "The run was stopped before this step."
     public nonisolated static let interrupted = "Stopped before GAM finished, so nothing was read."
+    public nonisolated static let needsEarlier = "It reads for the people an earlier step found, and that step has no answer, so "
+        + "nothing was read."
+    public nonisolated static let unnamedWarning = "GAM said it couldn't read an account but not which, so none of this step stands."
+
+    /// GamGUI's words for a step whose rows stand without the accounts GAM named.
+    public nonisolated static func someUnread(_ accounts: [String]) -> String {
+        "GAM couldn't read \(accounts.joined(separator: ", ")), and read the rest: what it couldn't read is unknown, not none."
+    }
 
     private struct Kept {
         var state: State
@@ -71,6 +79,9 @@ public final class AuditRunner {
     private let now: @Sendable () -> Date
     /// Tests only: the mock's state folder.
     var environment: [String: String] = [:]
+    /// Who has an offboarding started in this app (lowercased): the shared drives' "being offboarded" organizers, asked once the
+    /// run's reads are done (GamGUI's `offboard_jobs`).
+    @ObservationIgnored public var leaving: @MainActor () -> Set<String> = { [] }
     /// Tests only: called as each step's line is added (its index), before the next step is decided: where a test presses Stop
     /// at a known point, with no timer.
     @ObservationIgnored var afterEachStep: (@MainActor (Int) -> Void)?
@@ -163,30 +174,36 @@ public final class AuditRunner {
                 break
             }
             update(run, serial: serial) { $0.current = step.title }
-            let found = await Self.read(step, command: run.command(step), as: domain, runner: runner, audit: audit,
-                                        environment: environment)
             let read: AuditRuns.StepRead
-            switch found {
-            case .read(let records, let users):
-                let empty = AuditRuns.implausiblyEmpty(step, rows: records.count)
-                read = AuditRuns.StepRead(step: step, state: empty.isEmpty ? .read : .unknown, why: empty, rows: records.count)
-                if empty.isEmpty {
-                    if step == AuditRuns.directory { tables.users = users } else { tables.rows[step.key] = records }
+            // A read for what an earlier step found (the admins' apps), when that step has no table: nothing to run.
+            if let gam = AuditRuns.read(step, tables: tables) {
+                switch await Self.read(gam, step: step, command: run.command(step), as: domain, runner: runner, audit: audit,
+                                       environment: environment) {
+                case .read(let records, let users, let unread):
+                    let empty = AuditRuns.implausiblyEmpty(step, rows: records.count)
+                    read = AuditRuns.StepRead(step: step, state: !empty.isEmpty ? .unknown : unread.isEmpty ? .read : .partial,
+                                              why: !empty.isEmpty ? empty : unread.isEmpty ? "" : Self.someUnread(unread),
+                                              rows: records.count, unread: unread)
+                    if empty.isEmpty {
+                        if step == AuditRuns.directory { tables.users = users } else { tables.rows[step.key] = records }
+                    }
+                case .unknown(let why, let detail):
+                    read = AuditRuns.StepRead(step: step, state: .unknown, why: why, detail: detail)
                 }
-            case .unknown(let why, let detail):
-                read = AuditRuns.StepRead(step: step, state: .unknown, why: why, detail: detail)
+            } else {
+                read = AuditRuns.StepRead(step: step, state: .unknown, why: Self.needsEarlier)
             }
             reads.append(read)
             update(run, serial: serial) {
-                $0.lines.append(Line(id: step.key, title: step.title, ok: read.state == .read, why: read.why))
+                $0.lines.append(Line(id: step.key, title: step.title, ok: read.state == .read || read.state == .partial, why: read.why))
                 $0.current = ""
             }
             afterEachStep?(index)
         }
         guard !Task.isCancelled, setup.active == domain, setup.generation == generation, progress(run, serial: serial) != nil else { return }
-        let at = now()
+        let at = now(), leaving = leaving()
         let findings = await Task.detached { [reads, tables] in
-            AuditRuns.findings(for: run, reads: reads, tables: tables, now: at, days: days)
+            AuditRuns.findings(for: run, reads: reads, tables: tables, now: at, days: days, leaving: leaving)
         }.value
         guard setup.active == domain, setup.generation == generation, progress(run, serial: serial) != nil else { return }
         kept[run.key] = Kept(state: .finished(AuditRuns.Outcome(run: run, reads: reads, findings: findings, tables: tables, when: at,
@@ -197,17 +214,16 @@ public final class AuditRunner {
 
     /// What one step's read gave.
     enum Found: Sendable {
-        /// Its records, and the directory's as users.
-        case read([GamOutput.Record], users: [GamUser]?)
+        /// Its records, the directory's as users, and the accounts GAM named as unread (its rows stand without them).
+        case read([GamOutput.Record], users: [GamUser]?, unread: [String])
         /// Why it has no answer, and GAM's own line.
         case unknown(why: String, detail: String)
     }
 
     /// One step's read as `domain`, recorded once it ended (GamGUI's `audit_read`), parsed off the main actor. Only a `print`
     /// read without `todrive` runs here. A read the log couldn't record isn't used: it says so instead.
-    nonisolated static func read(_ step: AuditRuns.Step, command: String, as domain: Domain, runner: AuthenticatedRunner,
+    nonisolated static func read(_ read: GamRead, step: AuditRuns.Step, command: String, as domain: Domain, runner: AuthenticatedRunner,
                                  audit: ReadAudit, environment: [String: String]) async -> Found {
-        let read = AuditRuns.read(step)
         guard AuditRuns.isAuditRead(read.argv) else {
             return .unknown(why: "An audit run reads with a print command, and never exports.", detail: "")
         }
@@ -233,23 +249,23 @@ public final class AuditRunner {
         return found
     }
 
-    /// A finished read as the step's answer, and as its record says it: any exit but 0 is GAM's failure, output cut at the
-    /// runner's cap is never whole, and output without the step's table isn't its answer.
+    /// A finished read as the step's answer, and as its record says it (`AuditRuns.answer`): an exit that is neither the step's
+    /// answer nor a partial one is GAM's failure, output cut at the runner's cap is never whole, output without the step's
+    /// table isn't its answer, and a warning exit that names nobody is unknown whole.
     nonisolated static func found(_ result: GamResult, step: AuditRuns.Step, argv: [String]) -> (Found, ReadAudit.Outcome) {
-        guard result.exitCode == 0 else {
-            let error = GamError(exitCode: result.exitCode, stderr: result.stderr, argv: argv, stdout: result.stdout)
-            return (.unknown(why: error.remediation, detail: error.message), .failed(error.message))
-        }
         guard !result.stdoutTruncated else {
             let why = "GAM printed more than \(GamRunner.outputCap / 1_048_576) MiB, so this wasn't all read."
             return (.unknown(why: why, detail: ""), .failed(why))
         }
-        switch AuditRuns.table(result.stdout, keyColumn: step.keyColumn) {
-        case .failure(let incomplete):
-            return (.unknown(why: noTable, detail: ""), .failed(incomplete.reason))
-        case .success(let records):
+        switch AuditRuns.answer(result, step: step, argv: argv) {
+        case .failure(.gam(let error)):
+            return (.unknown(why: error.remediation, detail: error.message), .failed(error.message))
+        case .failure(.incomplete(let incomplete)):
+            let why = incomplete.reason.hasPrefix("GAM ended without writing") ? noTable : unnamedWarning
+            return (.unknown(why: why, detail: ""), .failed(incomplete.reason))
+        case .success(let (records, unread)):
             let users = step == AuditRuns.directory ? records.map(GamUser.init(record:)) : nil
-            return (.read(records, users: users), .read(rows: records.count))
+            return (.read(records, users: users, unread: unread), .read(rows: records.count, partial: !unread.isEmpty))
         }
     }
 }

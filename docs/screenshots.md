@@ -108,6 +108,10 @@ steps and failures in words, and Stop.
 |---|---|---|
 | ![The Inactive users run: a 90-day window, every step read, the three inactive accounts with their flags in words, Suspend These… and Export](screenshots/reports-run-inactive.png) | ![The License usage run: seats per license and the seats held by suspended accounts](screenshots/reports-run-licenses.png) | ![Suspend these…: the accounts read again, the connected admin left out, the count to type](screenshots/reports-run-suspend.png) |
 
+| Audit run: shared drives | Audit run: Classroom | Audit run: admin tokens |
+|---|---|---|
+| ![The shared drive run: every drive's members, users and groups only, the outside member first and flagged in words](screenshots/reports-run-drives.png) | ![The Classroom run: each class with owner, state and counts; classes owned by suspended accounts and stale ones](screenshots/reports-run-classroom.png) | ![The admin token review: every admin, suspended ones included, and their connected apps with AI and broad access flagged](screenshots/reports-run-admins.png) |
+
 Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
 attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
 a switch, with what you tick undone, once you've typed the person's address.
