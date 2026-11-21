@@ -28,9 +28,11 @@ struct BuilderView: View {
     @State private var runnableOnly = true
     @State private var selected: String?
     /// Ask in Plain English (plan F5b): the sheet, and the command it found with its values, filled into that command's fields
-    /// when it opens (`requested`). Nothing runs from it.
+    /// as its page opens (`requested`), then let go, so reopening the page later never undoes the operator's own edits.
+    /// Nothing runs from it. `draftedPage` changes with each draft, so a page already open takes a new one.
     @State private var asking = false
     @State private var drafted: FinderDraft?
+    @State private var draftedPage = ""
 
     struct CatalogProblem: Error, Sendable { let why: String }
 
@@ -91,11 +93,12 @@ struct BuilderView: View {
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
                     CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
-                                  readAudit: readAudit, drafted: drafted(selected))
-                        .id(curated.id + (drafted(selected)?.id.uuidString ?? ""))
+                                  readAudit: readAudit, drafted: drafted(selected), taken: drafted(selected) == nil ? nil : { drafted = nil })
+                        .id(curated.id + draftedPage)
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
-                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, drafted: drafted(selected))
-                        .id(command.id + (drafted(selected)?.id.uuidString ?? ""))
+                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, drafted: drafted(selected),
+                                  taken: drafted(selected) == nil ? nil : { drafted = nil })
+                        .id(command.id + draftedPage)
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
                                            description: Text("Search GAM's commands on the left. One that only reads runs from here, "
@@ -123,6 +126,7 @@ struct BuilderView: View {
             if case .success(let loaded)? = catalog {
                 PlainEnglishSheet(catalog: loaded, directory: directory, groups: groups) { draft in
                     drafted = draft
+                    draftedPage = draft.id.uuidString
                     requested = draft.command
                 }
             }
@@ -307,11 +311,22 @@ private struct CommandDetail: View {
     let setup: SetupModel
     let access: UserAccess
     let readAudit: ReadAudit
-    /// The fields Ask in Plain English found, filled in as the page opens: shown, never run.
-    let drafted: FinderDraft?
-    @State private var values: [String: String] = [:]
+    /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
+    let taken: (() -> Void)?
+    @State private var values: [String: String]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
+
+    /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never run: Run is the operator's.
+    init(command: CommandCatalog.Command, setup: SetupModel, access: UserAccess, readAudit: ReadAudit, drafted: FinderDraft?,
+         taken: (() -> Void)?) {
+        self.command = command
+        self.setup = setup
+        self.access = access
+        self.readAudit = readAudit
+        self.taken = taken
+        _values = State(initialValue: drafted?.values ?? [:])
+    }
 
     /// Why a command doesn't run from here, short for the list and whole for its page.
     static func notRun(_ command: CommandCatalog.Command) -> (short: String, why: String) {
@@ -365,7 +380,7 @@ private struct CommandDetail: View {
                 ResultView(result: result, filter: $reading.filter, export: { reading.export(result, $0, announce: appearsActive) })
             }
         }
-        .onAppear { if let drafted { values = drafted.values } }
+        .onAppear { taken?() }
     }
 
     @ViewBuilder private var runSection: some View {
@@ -420,12 +435,27 @@ private struct CuratedDetail: View {
     let groups: GroupStore
     let changes: BuilderChanges
     let readAudit: ReadAudit
-    /// The fields Ask in Plain English found, filled in as the page opens: shown, never previewed or run until asked.
-    let drafted: FinderDraft?
-    @State private var values: [String: String] = [:]
+    /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
+    let taken: (() -> Void)?
+    @State private var values: [String: String]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
     @Environment(\.appearsActive) private var appearsActive
+
+    /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never previewed or run: Preview… and
+    /// Run are the operator's.
+    init(command: CuratedCommand, setup: SetupModel, access: UserAccess, directory: DirectoryStore, groups: GroupStore,
+         changes: BuilderChanges, readAudit: ReadAudit, drafted: FinderDraft?, taken: (() -> Void)?) {
+        self.command = command
+        self.setup = setup
+        self.access = access
+        self.directory = directory
+        self.groups = groups
+        self.changes = changes
+        self.readAudit = readAudit
+        self.taken = taken
+        _values = State(initialValue: drafted?.values ?? [:])
+    }
 
     /// What it does here, for the list.
     static func does(_ command: CuratedCommand) -> String {
@@ -489,7 +519,7 @@ private struct CuratedDetail: View {
             }
         }
         .onAppear {
-            if let drafted { values = drafted.values }
+            taken?()
             for field in command.fields where field.kind == .choice && values[field.key] == nil { values[field.key] = field.defaultValue }
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }

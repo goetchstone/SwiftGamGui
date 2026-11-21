@@ -227,6 +227,25 @@ struct WriteRouteTests {
         #expect(drafting.count >= 6, "the scan must see the Builder's draft lines: \(drafting)")
         let acting = ["run(", "preview(", "reading.", "changes.", "catalogRead", ".built(", "access."]
         #expect(drafting.filter { line in acting.contains { line.contains($0) } }.isEmpty, "\(drafting)")
+        // Each page takes a draft as its first values, in its init, and nothing else of it; what runs as the page appears, and
+        // what that calls, runs, reads and previews nothing (review 2026-11-21: `.onAppear { …; run() }` passed the line check).
+        for page in ["CommandDetail", "CuratedDetail"] {
+            let lines = Self.declaration(page, in: builder.lines)
+            #expect(lines.count > 20, "the scan must see \(page)")
+            let naming = lines.filter { $0.contains("drafted") }
+            #expect(naming.count == 2 && naming.contains { $0.contains("_values = State(initialValue: drafted?.values ?? [:])") }
+                    && naming.contains { $0.contains("init(") || $0.contains("drafted: FinderDraft?") }, "\(page): \(naming)")
+            let appearing = Self.blocks(in: lines, opening: [".onAppear", ".task"])
+            #expect(!appearing.isEmpty && appearing.contains { $0.contains { $0.contains("taken?()") } }, "\(page) lets the draft go")
+            let called = Set(appearing.joined().flatMap { line in line.matches(of: /([A-Za-z_][A-Za-z0-9_]*)\(/).map { String($0.output.1) } })
+            let reached = appearing.joined() + called.flatMap { name in Self.blocks(in: lines, opening: ["func \(name)("]).joined() }
+            let run = Self.release(Array(reached)).filter { line in ["run(", "preview(", "reading."].contains { line.contains($0) } }
+            #expect(run.isEmpty, "\(page): \(run)")
+        }
+        // The draft is let go once a page has taken it, and a page's identity doesn't hang on it: reopened, a command shows
+        // what the operator left, never the draft again (review 2026-11-21).
+        #expect(builder.lines.filter { $0.contains("{ drafted = nil }") }.count == 2)
+        #expect(builder.lines.filter { $0.contains(".id(") && $0.contains("draft") }.allSatisfy { $0.contains("draftedPage") && !$0.contains("drafted(") })
         // Cancel stops the model's work, and nothing it finds after opens (review 2026-11-21: the other command still opened).
         let cancel = Self.blocks(in: sheet.lines, opening: ["Button(\"Cancel\""]).joined()
         #expect(cancel.contains { $0.contains("work?.cancel()") })
@@ -239,6 +258,11 @@ struct WriteRouteTests {
             let acts = task.indices.filter { $0 > awaited && (task[$0].contains("open(") || task[$0].contains("phase = .found")) }
             #expect(!checked.isEmpty && !acts.isEmpty && acts.allSatisfy { $0 > checked[0] }, "\(task)")
         }
+    }
+
+    /// The lines of `name`'s declaration: from `struct name` to the first line that closes it at the left margin.
+    static func declaration(_ name: String, in lines: [String]) -> [String] {
+        Array(lines.drop { !$0.contains("struct \(name)") }.prefix { $0 != "}" })
     }
 
     /// Each block opened on a line whose code starts with one of `opening` (after spaces and a `private`), to where its braces
@@ -255,6 +279,17 @@ struct WriteRouteTests {
                 if depth <= 0, line.contains("{") || block.count > 1 { break }
             }
             return block
+        }
+    }
+
+    /// `lines` as a release build compiles them: what `#if DEBUG` … `#endif` holds left out.
+    static func release(_ lines: [String]) -> [String] {
+        var debug = false
+        return lines.filter { line in
+            let code = line.trimmingCharacters(in: .whitespaces)
+            if code.hasPrefix("#if DEBUG") { debug = true; return false }
+            if debug, code.hasPrefix("#endif") { debug = false; return false }
+            return !debug
         }
     }
 
