@@ -127,7 +127,10 @@ you switched to <new> — N not attempted." in the tray), drops every per-domain
 and result and the executor's held previews, withholds Retry from runs on the old domain, and makes the window's screen
 again. Listed deviations (runbook setup-credentials.md): reads aren't jobs here, so only write runs are warned of; the
 menu is disabled while Setup works rather than while any request runs; no unsaved incident export exists to drop.
-Not live yet: a switch between two real domains.
+An adversarial review the same day found nine holes (the wait for Google and an unhanded password not warned of, a
+stopped run parked, a preview held past the switch's drop, nil → B called a switch, Setup remade by its own check, a
+change through no domain not remaking the screen, a stale warning, no scan on the agreement to stop): each fixed, with
+a test where one can be written (runbook setup-credentials.md). Not live yet: a switch between two real domains.
 
 ### F7 — Schedules · *a: both apps; b: Swift only, gated*
 - **F7a — Due, attended.** A saved audit run (F3) or named report (F2) gets a cadence. When it's due, a notification
