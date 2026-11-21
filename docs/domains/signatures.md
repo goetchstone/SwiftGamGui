@@ -267,6 +267,9 @@ and Put Back sets a kept run's old signatures again, as a run of its own.
     restoring. GamGUI prunes as a run starts: putting back the oldest of five deleted it before the first step, so whoever
     that Put Back didn't restore (left out, changed since, unread, stopped) lost their only copy; and an attempt that
     kept nobody still pushed out the oldest real run (review of this branch, 2026-11-21);
+  - a run being written holds an exclusive `flock` on its file, and pruning skips any file it can't lock: no store, in
+    this process or another copy of the app, removes an open run (GamGUI's guard is one process's set); each keep then
+    checks its file is still linked (`fstat` `st_nlink`), so a copy is never "kept" into a removed file;
   - run ids only go forward: a new id's milliseconds are the clock's or one past the newest run's, whichever is later, so a
     clock set back never makes the newest run sort, and be pruned, as the oldest (GamGUI's are the clock's alone).
 - **Not verified live** (none of it): the getting line, the titles and the CSV against real GAM; that Gmail stores and

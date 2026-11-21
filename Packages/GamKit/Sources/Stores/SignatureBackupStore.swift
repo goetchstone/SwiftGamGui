@@ -15,7 +15,9 @@ import Vault
 /// `previous`, `set`), each flushed before that person's write, so a run cut off midway still holds every signature it
 /// replaced. Only the last `keptRuns` runs are kept, made room for when a run that kept someone ends: never before (an
 /// attempt that keeps nobody, a sign-in expired or every read refused, pushes nothing out, and its own empty file is
-/// removed), never one still being written (a long run would lose its copies to shorter ones started meanwhile), and never
+/// removed), never one still being written (a long run would lose its copies to shorter ones started meanwhile: each open
+/// run holds an exclusive `flock` on its file, which any store in any process tests before it removes one, and each keep
+/// checks its file is still there), and never
 /// the run that one put back (whoever it didn't put back, left out, changed since or stopped before, is still there to put
 /// back, until a later run that keeps someone pushes it out). GamGUI prunes when a run starts, which loses both.
 ///
@@ -39,8 +41,6 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
     /// `sizeCap`, but for tests.
     let cap: Int
     private let now: @Sendable () -> Date
-    /// Runs still being written: never pruned.
-    private let writing = Mutex<Set<String>>([])
 
     /// `now` and `cap` are for tests.
     public init(folder: URL, now: @escaping @Sendable () -> Date = { Date() }, cap: Int = sizeCap) {
@@ -101,14 +101,14 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         let name = id + Self.suffix
         let fd = openat(dir, name, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw Problem("its file couldn't be made (\(String(cString: strerror(errno))))") }
-        // Exactly 0600 whatever the umask: it can only have narrowed the mode `openat` was given.
-        guard fchmod(fd, 0o600) == 0 else {
+        // Exactly 0600 whatever the umask: it can only have narrowed the mode `openat` was given. Locked while it's open,
+        // so no store, in this process or another, prunes it.
+        guard fchmod(fd, 0o600) == 0, flock(fd, LOCK_EX | LOCK_NB) == 0 else {
             let code = errno
             Darwin.close(fd)
             unlinkat(dir, name, 0)
             throw Problem("its file couldn't be made private (\(String(cString: strerror(code))))")
         }
-        writing.withLock { _ = $0.insert(id) }
         let run = KeptRun(id: id, name: name, fd: fd, dir: dir, cap: cap, restoring: restoring, store: self)
         handedOver = true
         let header: JSONObject = ["run": .string(id), "when": .number(String(now().timeIntervalSince1970)),
@@ -122,17 +122,19 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
         return run
     }
 
-    fileprivate func finished(_ id: String) {
-        writing.withLock { _ = $0.remove(id) }
-    }
-
     /// Makes room as a run that kept someone ends: the newest `keptRuns` runs that aren't being written stay, and `sparing`
-    /// (that run, and the runs it put back) stays whatever its age; the rest are removed. A folder that can't be listed
-    /// prunes nothing.
+    /// (that run, and the runs it put back) stays whatever its age; the rest are removed. A run is being written while its
+    /// file is locked (`flock`, by whichever store or process holds it open): one that can't be locked now is neither
+    /// counted nor removed. Each removed is removed holding its lock. A folder that can't be listed prunes nothing.
     fileprivate func prune(in dir: Int32, sparing: Set<String>) {
-        let stillWriting = writing.withLock { $0 }
-        for old in listed(in: dir).filter({ !stillWriting.contains($0) }).dropFirst(Self.keptRuns) where !sparing.contains(old) {
-            unlinkat(dir, old + Self.suffix, 0)
+        var closed = 0
+        for old in listed(in: dir) {
+            let fd = openat(dir, old + Self.suffix, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+            guard fd >= 0 else { continue }
+            defer { Darwin.close(fd) }
+            guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { continue }
+            closed += 1
+            if closed > Self.keptRuns, !sparing.contains(old) { unlinkat(dir, old + Self.suffix, 0) }
         }
     }
 
@@ -324,6 +326,11 @@ final class KeptRun: KeptSignatureRun {
                 _ = lseek(state.fd, off_t(state.bytes), SEEK_SET)
                 throw SignatureBackupStore.Problem("a copy couldn't be written (\(error))")
             }
+            // Still a file in the folder: a copy flushed into a file someone removed is no copy, so the run stops instead.
+            var info = stat()
+            guard fstat(state.fd, &info) == 0, info.st_nlink > 0 else {
+                throw SignatureBackupStore.Problem("its file was removed while the run went on")
+            }
             state.bytes += line.count
         }
     }
@@ -331,6 +338,9 @@ final class KeptRun: KeptSignatureRun {
     func close() {
         let ended = state.withLock { (state: inout State) -> (dir: Int32, kept: Int)? in
             guard state.fd >= 0 else { return nil }
+            // A run that kept nobody (stopped before anyone, or refused every read) leaves no file, removed while it's still
+            // locked, and pushes nothing out.
+            if state.kept == 0 { unlinkat(state.dir, name, 0) }
             Darwin.close(state.fd)
             state.fd = -1
             let dir = state.dir
@@ -338,14 +348,8 @@ final class KeptRun: KeptSignatureRun {
             return (dir, state.kept)
         }
         guard let ended else { return }
-        store.finished(id)
-        // A run that kept nobody (stopped before anyone, or refused every read) leaves no file and pushes nothing out; one
-        // that kept someone makes room, sparing itself and what it put back.
-        if ended.kept == 0 {
-            unlinkat(ended.dir, name, 0)
-        } else {
-            store.prune(in: ended.dir, sparing: restoring.union([id]))
-        }
+        // One that kept someone makes room, sparing itself and what it put back.
+        if ended.kept > 0 { store.prune(in: ended.dir, sparing: restoring.union([id])) }
         Darwin.close(ended.dir)
     }
 

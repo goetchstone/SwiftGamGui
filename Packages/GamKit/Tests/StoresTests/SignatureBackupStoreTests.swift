@@ -155,6 +155,33 @@ struct SignatureBackupStoreTests {
         #expect(store.runs().map(\.id) == ids.reversed())
     }
 
+    /// Review of Phase A: the open-run guard was one store's own, so another store on the folder (a second copy of the app)
+    /// pruned a run still being written. An open run's file is locked, and every store's pruning skips a locked file.
+    @Test func noStorePrunesARunAnotherIsWriting() throws {
+        let writing = SignatureBackupStore(folder: folder), other = SignatureBackupStore(folder: folder)
+        let long = try writing.start(what: "the whole company", domain: example, restoring: [])
+        try long.keep(email: Self.alice, previous: "ORIGINAL A", setting: "new")
+        for index in 0...SignatureBackupStore.keptRuns { try keptRun(other, "one person \(index)", keeping: ["p\(index)@example.com"]) }
+        #expect(FileManager.default.fileExists(atPath: file(long.id).path))
+        try long.keep(email: Self.carol, previous: "ORIGINAL C", setting: "new")
+        long.close()
+        #expect(try other.load(long.id).entries.map(\.previous) == ["ORIGINAL A", "ORIGINAL C"])
+    }
+
+    /// Review of Phase A: a keep into a file someone removed flushed into nothing and said it was kept. It throws, so the
+    /// executor stops before that person's write.
+    @Test func aCopyIntoAFileThatsGoneIsNotKept() throws {
+        let store = SignatureBackupStore(folder: folder)
+        let run = try store.start(what: "everyone", domain: example, restoring: [])
+        try run.keep(email: Self.alice, previous: "ORIGINAL", setting: "new")
+        try FileManager.default.removeItem(at: file(run.id))
+        #expect(throws: SignatureBackupStore.Problem("its file was removed while the run went on")) {
+            try run.keep(email: Self.carol, previous: "ORIGINAL", setting: "new")
+        }
+        #expect(run.keptCount == 1)
+        run.close()
+    }
+
     /// GamGUI's review of #163: five failed attempts (a sign-in expired, every read refused) used up the slots.
     @Test func runsThatKeptNobodyDontPushOutRealCopies() throws {
         let store = SignatureBackupStore(folder: folder)
