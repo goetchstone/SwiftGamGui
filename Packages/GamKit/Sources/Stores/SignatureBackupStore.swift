@@ -141,10 +141,13 @@ public final class SignatureBackupStore: SignatureKeeper, Sendable {
     /// An exclusive lock on `fd`'s file, tried over up to 200 ms: a closed run's lock can outlive its close for a moment
     /// (seen in the full test suite, where processes start beside it), and a run still being written holds its lock for as
     /// long as it runs, so a short wait tells them apart without ever taking an open run.
-    static func lockedNow(_ fd: Int32, tries: Int = 10) -> Bool {
+    /// `afterRefused` (tests only) runs after each refused try, before the wait: a test releases the lock there, at a known
+    /// point, instead of racing a timer (failure log 2026-11-21).
+    static func lockedNow(_ fd: Int32, tries: Int = 10, afterRefused: (() -> Void)? = nil) -> Bool {
         for attempt in 0..<tries {
             if flock(fd, LOCK_EX | LOCK_NB) == 0 { return true }
             guard errno == EWOULDBLOCK || errno == EINTR, attempt + 1 < tries else { return false }
+            afterRefused?()
             usleep(20_000)
         }
         return false
