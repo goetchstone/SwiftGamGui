@@ -41,6 +41,8 @@ struct BuilderView: View {
         let runnable: Bool
         /// What it does here, in words, never by color alone.
         let does: String
+        /// What it does, in plain words: a catalog command's gloss, a curated one's description (plan F5a).
+        let gloss: String
     }
 
     /// The vendored catalog, copied beside GAM into the app (`scripts/embed_gam.sh`).
@@ -53,21 +55,21 @@ struct BuilderView: View {
         }
     }
 
-    /// GamGUI's curated commands and the catalog's that match the search and the area (and Runnable Only), by section, runnable
-    /// first in each (GamGUI's `_by_section`).
+    /// GamGUI's curated commands and the catalog's that match the search (`CommandCatalog.Search`: a curated command's
+    /// description read as a catalog command's gloss) and the area (and Runnable Only), by section, runnable first in each
+    /// (GamGUI's `_by_section`).
     private var rows: [Row] {
         guard case .success(let catalog)? = catalog else { return [] }
-        let wanted = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let search = CommandCatalog.Search(query)
         let curated = CuratedCommand.all.filter {
-            (area.isEmpty || $0.area == area)
-                && (wanted.isEmpty || $0.name.lowercased().contains(wanted) || $0.syntax.lowercased().contains(wanted))
+            (area.isEmpty || $0.area == area) && (search.isEmpty || search.finds(name: $0.name, syntax: $0.syntax, does: $0.description))
         }.map {
             Row(id: $0.id, category: $0.category, subcategory: $0.subcategory, name: $0.name, title: $0.name, runnable: true,
-                does: CuratedDetail.does($0))
+                does: CuratedDetail.does($0), gloss: $0.description)
         }
         let listed = catalog.search(query).filter { (!runnableOnly || $0.runnable) && (area.isEmpty || $0.area == area) }.map {
             Row(id: $0.id, category: $0.category, subcategory: $0.subcategory, name: $0.name, title: $0.name.isEmpty ? $0.syntax : $0.name,
-                runnable: $0.runnable, does: $0.runnable ? "Reads" : CommandDetail.notRun($0).short)
+                runnable: $0.runnable, does: $0.runnable ? "Reads" : CommandDetail.notRun($0).short, gloss: $0.gloss)
         }
         return (curated + listed).sorted {
             ($0.category.lowercased(), $0.subcategory.lowercased(), $0.runnable ? 0 : 1, $0.name.lowercased())
@@ -97,7 +99,7 @@ struct BuilderView: View {
             }
             .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .searchable(text: $query, prompt: "Command or its grammar")
+        .searchable(text: $query, prompt: "Command, or what it does")
         .toolbar {
             ToolbarItemGroup {
                 Picker("Area", selection: $area) {
@@ -176,16 +178,18 @@ struct BuilderView: View {
     }
 }
 
-/// A command in the list: its name, and what it does here in words.
+/// A command in the list: its name, what it does in plain words, and what it does here, in words (GamGUI's row: "Read · List
+/// users."). VoiceOver reads the three as one, without the dot.
 private struct CommandRow: View {
     let row: BuilderView.Row
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(row.title)
-            Text(row.does).font(.caption).foregroundStyle(.secondary)
+            Text(row.gloss.isEmpty ? row.does : "\(row.does) · \(row.gloss)").font(.caption).foregroundStyle(.secondary)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(row.gloss.isEmpty ? "\(row.title), \(row.does)" : "\(row.title), \(row.does). \(row.gloss)")
     }
 }
 
@@ -314,6 +318,7 @@ private struct CommandDetail: View {
         VStack(alignment: .leading, spacing: 0) {
             Form {
                 Section {
+                    Text(command.gloss)
                     LabeledContent("Area", value: command.subcategory.isEmpty ? "\(command.area) · \(command.category)"
                                    : "\(command.area) · \(command.category) – \(command.subcategory)")
                     VStack(alignment: .leading, spacing: 4) {

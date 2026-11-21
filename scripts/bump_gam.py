@@ -129,6 +129,8 @@ def main() -> int:
     _run([*py, str(ROOT / "scripts" / "gen_fixtures.py"), "--gamgui", args.gamgui], cwd=ROOT, stream=True)
     # The Builder's reads over the new catalog, by GamGUI's generic read builder (invariant 11).
     _run([*py, str(ROOT / "scripts" / "gen_catalog_reads.py"), "--gamgui", args.gamgui], cwd=ROOT, stream=True)
+    # Each command's words, by GamGUI's gloss() (plan F5a).
+    _run([*py, str(ROOT / "scripts" / "gen_catalog_glosses.py"), "--gamgui", args.gamgui], cwd=ROOT, stream=True)
 
     print(f"\n==> bumped to {version}. Now run:  swift test --package-path Packages/GamKit")
     print("    then skim Vendor/gam7/GamUpdate.txt and run the live acceptance pass with the operator.")

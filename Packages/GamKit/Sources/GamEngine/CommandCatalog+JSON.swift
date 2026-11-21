@@ -25,12 +25,36 @@ extension CommandCatalog {
         })
     }
 
-    /// Commands whose name or grammar line holds `text`, case aside, by section (GamGUI's `Catalog.search`); every command for none.
+    /// The commands `text` finds (`Search`), by section; every command for none.
     public func search(_ text: String) -> [Command] {
-        let wanted = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return Self.bySection(wanted.isEmpty ? commands : commands.filter {
-            $0.name.lowercased().contains(wanted) || $0.syntax.lowercased().contains(wanted)
-        })
+        let search = Search(text)
+        return Self.bySection(search.isEmpty ? commands : commands.filter { search.finds(name: $0.name, syntax: $0.syntax, does: $0.gloss) })
+    }
+
+    /// What the Builder's search looks for: the text as typed, trimmed and case aside, and its words. It finds what GamGUI's
+    /// `Catalog.search` finds (the text in the name or the grammar line), and a command whose words for what it does hold every
+    /// word of it (plan F5a): "backup codes" finds `print backupcodes` ("List a user's backup verification codes."). Each word
+    /// alone, never across the grammar line, so a grammar search stays as narrow as GamGUI's ("info user" isn't every `info`
+    /// that names a user).
+    public struct Search: Sendable {
+        let text: String
+        let words: [Substring]
+
+        public init(_ typed: String) {
+            text = typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            words = text.split(whereSeparator: \.isWhitespace)
+        }
+
+        /// Nothing to look for: every command is listed.
+        public var isEmpty: Bool { text.isEmpty }
+
+        /// A command with this name, grammar line and words for what it does (a catalog command's gloss, a curated one's
+        /// description) is found.
+        public func finds(name: String, syntax: String, does: String) -> Bool {
+            if name.lowercased().contains(text) || syntax.lowercased().contains(text) { return true }
+            let does = does.lowercased()
+            return words.allSatisfy { does.contains($0) }
+        }
     }
 
     /// Sorted so a category and subcategory are together, runnable first in each (GamGUI's `_by_section`).
