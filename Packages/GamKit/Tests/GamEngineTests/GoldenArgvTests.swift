@@ -169,6 +169,7 @@ struct GoldenArgvTests {
         "print_user_calendars": { try GamCommands.printUserCalendars(email: $0.string("email")) },
         "print_all_calendars": { _ in GamCommands.printAllCalendars() },
         "print_calendar_acls_cal": { try GamCommands.printCalendarACLs(calendarID: $0.string("calendar_id")) },
+        "print_calendar_data_owner": { try GamCommands.printCalendarSettings(calendarID: $0.string("calendar_id")) },
         "add_calendar_acl_cal": {
             try GamCommands.addCalendarACL(calendarID: $0.string("calendar_id"), scope: $0.string("scope"),
                                            role: .init(validating: $0.string("role")), sendNotifications: $0.flag("send_notifications"))

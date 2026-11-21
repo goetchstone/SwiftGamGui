@@ -664,7 +664,8 @@ public enum GamCommands {
     /// One calendar's data owner (Google's Calendars resource `dataOwner`, set only for a secondary calendar), read as the
     /// admin as the ACL read is: `calendars.get` with the fields asked (doCalendarsPrintShowSettings). `dataowner` is in GAM's
     /// CALENDAR_SETTINGS_FIELDS_CHOICE_MAP though the grammar's <CalendarSettingsField> (2010-2017) leaves it out; `id` comes
-    /// first anyway (`initialField`). Rows `calendarId,JSON`. Not GamGUI's: the calendar delete acts as this owner.
+    /// first anyway (`initialField`). Rows `calendarId,JSON`. The calendar delete acts as this owner. GamGUI's
+    /// `print_calendar_data_owner` since its #125.
     public static func printCalendarSettings(calendarID: String) -> GamRead {
         GamRead(["calendars", calendarID, "print", "settings", "fields", "id,dataowner", "formatjson"])
     }
