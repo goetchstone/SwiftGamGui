@@ -35,6 +35,8 @@ struct GamGUIApp: App {
         .restorationBehavior(.disabled)
         // Room for the list and a person's page side by side. A window the operator sized keeps its size.
         .defaultSize(width: 1200, height: 760)
+        // Switch Domain… (⇧⌘D) and each other domain, for the window in front (plan F6).
+        .commands { DomainCommands(setup: services.setup) }
     }
 }
 
@@ -106,8 +108,20 @@ enum ColumnWidths {
 struct ContentView: View {
     let services: AppServices
     @State private var screen: Screen? = Screen.initial
+    /// The toolbar's domain menu (plan F6): this window's panel, and what its last switch said.
+    @State private var switcher: DomainSwitcher
+    /// Tenant changes since this window first had a domain connected: the screen is made again for the tenant now, as GamGUI
+    /// reloads it, so nothing a screen held for the old one (a selection, a form, the Builder's last result) shows there.
+    /// Every change counts, a removal or re-import then a check included (plan F6's review), but not the window's first
+    /// connection (nothing was shown for a domain before it), and Setup is never made again: it holds no domain's data, and
+    /// its own Check Access is often what switched (its form, focus and scroll stay).
+    @State private var switches = 0
+    /// A domain has been connected while this window was open, or was when it opened.
+    @State private var everConnected: Bool
     #if DEBUG
     @State private var demoJobs = false
+    /// Snapshots (`SWIFTGAMGUI_TAB=domain` or `domain-warning`): the domain menu's panel over the screen.
+    @State private var demoDomain = false
 
     /// Three made-up runs for the tray's snapshot: a pull from every mailbox that ended with two mailboxes failed, an offboarding
     /// part done, and a suspend still checking before it runs. Events as the executor reports them; nothing runs.
@@ -123,7 +137,7 @@ struct ContentView: View {
                                detail: "Mail service not enabled for \(name)@example.com."))
         }
         board.handle(.finished(job: pull))
-        board.handle(.started(job: offboarding, preview: UUID(), title: "Offboarding carol@example.com", total: 12))
+        board.handle(.started(job: offboarding, preview: UUID(), title: "Offboarding carol@example.com", total: 12, routine: true))
         board.handle(.checked(job: offboarding))
         for step in ["Sign out", "Reset password", "Hide from directory", "Set vacation", "Remove group member"] {
             board.handle(.step(job: offboarding, item: "\(step): carol@example.com", outcome: .succeeded, detail: ""))
@@ -156,6 +170,12 @@ struct ContentView: View {
     @State private var gamVersion: String?
     @Environment(\.appearsActive) private var appearsActive
 
+    init(services: AppServices) {
+        self.services = services
+        _switcher = State(initialValue: DomainSwitcher(setup: services.setup))
+        _everConnected = State(initialValue: services.setup.active != nil)
+    }
+
     private var connection: String {
         let setup = services.setup, directory = services.directory
         if let domain = setup.active {
@@ -175,104 +195,126 @@ struct ContentView: View {
             .navigationSplitViewColumnWidth(min: ColumnWidths.sidebar.min, ideal: ColumnWidths.sidebar.ideal,
                                             max: ColumnWidths.sidebar.max)
         } detail: {
-            switch screen ?? .home {
-            case .home:
-                HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
-                         hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL, jobs: services.jobs,
-                         openFailures: {
-                             auditFailures = true
-                             screen = .audit
-                         }) { screen = .setup }
-                    .navigationTitle("Home")
-            case .users:
-                UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
-                          access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
-                          classroom: services.classroom,
-                          requested: $usersPerson,
-                          openSignatures: { email in
-                              signaturesPerson = email
-                              screen = .signatures
-                          }, openCalendars: { email in
-                              calendarsPerson = email
-                              screen = .calendars
-                          }, openCompromised: { email in
-                              compromisedPerson = email
-                              screen = .compromised
-                          }, openClass: { id in
-                              classroomCourse = id
-                              screen = .classroom
-                          })
-                .navigationTitle("Users")
-            case .groups:
-                GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
-                           members: services.groupMembers, changes: services.groupChanges, requested: $groupsGroup)
-                    .navigationTitle("Groups")
-            case .calendars:
-                CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
-                              changes: services.calendarChanges, requested: $calendarsPerson)
-                    .navigationTitle("Calendars")
-            case .classroom:
-                ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom,
-                              groups: services.groups, requested: $classroomCourse, roster: services.roster) { address in
-                    groupsGroup = address
-                    screen = .groups
+            Group {
+                switch screen ?? .home {
+                case .home:
+                    HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
+                             hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL, jobs: services.jobs,
+                             openFailures: {
+                                 auditFailures = true
+                                 screen = .audit
+                             }) { screen = .setup }
+                        .navigationTitle("Home")
+                case .users:
+                    UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
+                              access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
+                              classroom: services.classroom,
+                              requested: $usersPerson,
+                              openSignatures: { email in
+                                  signaturesPerson = email
+                                  screen = .signatures
+                              }, openCalendars: { email in
+                                  calendarsPerson = email
+                                  screen = .calendars
+                              }, openCompromised: { email in
+                                  compromisedPerson = email
+                                  screen = .compromised
+                              }, openClass: { id in
+                                  classroomCourse = id
+                                  screen = .classroom
+                              })
+                    .navigationTitle("Users")
+                case .groups:
+                    GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
+                               members: services.groupMembers, changes: services.groupChanges, requested: $groupsGroup)
+                        .navigationTitle("Groups")
+                case .calendars:
+                    CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,
+                                  changes: services.calendarChanges, requested: $calendarsPerson)
+                        .navigationTitle("Calendars")
+                case .classroom:
+                    ClassroomView(setup: services.setup, directory: services.directory, reads: services.classroom,
+                                  groups: services.groups, requested: $classroomCourse, roster: services.roster) { address in
+                        groupsGroup = address
+                        screen = .groups
+                    }
+                        .navigationTitle("Classroom")
+                case .signatures:
+                    SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
+                                   access: services.userAccess, templates: services.signatureTemplates, groups: services.groups,
+                                   roles: services.onboardRoles, requested: $signaturesPerson)
+                        .navigationTitle("Signatures")
+                case .onboard:
+                    OnboardView(setup: services.setup, directory: services.directory, changes: services.onboardChanges,
+                                roles: services.onboardRoles, templates: services.signatureTemplates, groups: services.groups,
+                                hasGam: services.executor != nil)
+                        .navigationTitle("Onboard")
+                case .offboard:
+                    OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
+                                 templates: services.offboardTemplates, hasGam: services.executor != nil)
+                        .navigationTitle("Offboard")
+                case .compromised:
+                    CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
+                                    logs: services.incidentLogs, groupsReached: services.groupsReached, known: services.knownSignIns,
+                                    nobodyHas: services.nobodyHas, incidents: services.incidents, readerMemory: incidentReading,
+                                    directoryIndex: directoryIndex, auditURL: services.auditURL, hasGam: services.executor != nil,
+                                    requested: $compromisedPerson) { id in
+                        // An empty ID only opens the screen: what the operator pasted there stays.
+                        if !id.isEmpty { phishingMessage = id }
+                        screen = .phishing
+                    }
+                        .navigationTitle("Incident")
+                case .phishing:
+                    PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil,
+                                 requested: $phishingMessage)
+                        .navigationTitle("Phishing")
+                case .builder:
+                    BuilderView(setup: services.setup, access: services.userAccess, directory: services.directory, groups: services.groups,
+                                changes: services.builderChanges, readAudit: services.readAudit, requested: $builderCommand)
+                        .navigationTitle("Builder")
+                case .reports:
+                    ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
+                                apps: services.connectedApps, runs: services.auditRuns, suspend: services.inactiveSuspend,
+                                openCommand: { id in
+                                    builderCommand = id
+                                    screen = .builder
+                                }) { email in
+                        usersPerson = email
+                        screen = .users
+                    }
+                    .navigationTitle("Reports")
+                case .audit:
+                    AuditView(auditURL: services.auditURL, showFailures: $auditFailures)
+                        .navigationTitle("Audit")
+                case .setup:
+                    SetupView(model: services.setup)
+                        .navigationTitle("Setup")
                 }
-                    .navigationTitle("Classroom")
-            case .signatures:
-                SignaturesView(setup: services.setup, directory: services.directory, changes: services.signatureChanges,
-                               access: services.userAccess, templates: services.signatureTemplates, groups: services.groups,
-                               roles: services.onboardRoles, requested: $signaturesPerson)
-                    .navigationTitle("Signatures")
-            case .onboard:
-                OnboardView(setup: services.setup, directory: services.directory, changes: services.onboardChanges,
-                            roles: services.onboardRoles, templates: services.signatureTemplates, groups: services.groups,
-                            hasGam: services.executor != nil)
-                    .navigationTitle("Onboard")
-            case .offboard:
-                OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
-                             templates: services.offboardTemplates, hasGam: services.executor != nil)
-                    .navigationTitle("Offboard")
-            case .compromised:
-                CompromisedView(setup: services.setup, directory: services.directory, changes: services.compromisedChanges,
-                                logs: services.incidentLogs, groupsReached: services.groupsReached, known: services.knownSignIns,
-                                nobodyHas: services.nobodyHas, incidents: services.incidents, readerMemory: incidentReading,
-                                directoryIndex: directoryIndex, auditURL: services.auditURL, hasGam: services.executor != nil,
-                                requested: $compromisedPerson) { id in
-                    // An empty ID only opens the screen: what the operator pasted there stays.
-                    if !id.isEmpty { phishingMessage = id }
-                    screen = .phishing
-                }
-                    .navigationTitle("Incident")
-            case .phishing:
-                PhishingView(setup: services.setup, changes: services.phishingChanges, hasGam: services.executor != nil,
-                             requested: $phishingMessage)
-                    .navigationTitle("Phishing")
-            case .builder:
-                BuilderView(setup: services.setup, access: services.userAccess, directory: services.directory, groups: services.groups,
-                            changes: services.builderChanges, readAudit: services.readAudit, requested: $builderCommand)
-                    .navigationTitle("Builder")
-            case .reports:
-                ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
-                            apps: services.connectedApps, runs: services.auditRuns, suspend: services.inactiveSuspend,
-                            openCommand: { id in
-                                builderCommand = id
-                                screen = .builder
-                            }) { email in
-                    usersPerson = email
-                    screen = .users
-                }
-                .navigationTitle("Reports")
-            case .audit:
-                AuditView(auditURL: services.auditURL, showFailures: $auditFailures)
-                    .navigationTitle("Audit")
-            case .setup:
-                SetupView(model: services.setup)
-                    .navigationTitle("Setup")
             }
+            // A tenant change makes the screen again, for the tenant now (plan F6); Setup stays as it is.
+            .id(screen == .setup ? -1 : switches)
         }
-        // The jobs tray, on every screen: each run the executor makes, and Stop.
+        // The domain menu (plan F6), then the jobs tray, on every screen: each run the executor makes, and Stop.
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                DomainButton(setup: services.setup, switcher: switcher, openSetup: { screen = .setup }, announce: announce)
+            }
             ToolbarItem(placement: .primaryAction) { JobsButton(board: services.jobs) }
+        }
+        // The menu bar's Domain menu acts on the window in front.
+        .focusedSceneValue(\.domainMenu, DomainMenuActions(open: { switcher.open() },
+                                                           choose: { switcher.choose($0, announce: announce) },
+                                                           openSetup: { screen = .setup }))
+        .onChange(of: services.setup.generation) {
+            // Incident's reading is the window's, kept across screens: another tenant's is dropped whichever screen shows.
+            incidentReading.clear()
+            if everConnected {
+                switches += 1
+                // What one screen asked another to open belongs to the old tenant.
+                (signaturesPerson, calendarsPerson, classroomCourse, groupsGroup, usersPerson) = (nil, nil, nil, nil, nil)
+                (compromisedPerson, phishingMessage, builderCommand) = (nil, nil, nil)
+            }
+            if services.setup.active != nil { everConnected = true }
         }
         #if DEBUG
         // Snapshots (`SWIFTGAMGUI_TAB=jobs`): the tray over the screen, with made-up runs: nothing runs.
@@ -281,6 +323,21 @@ struct ContentView: View {
             guard ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "jobs", Spikes.isRequested else { return }
             Self.showDemoJobs(services.jobs)
             demoJobs = true
+        }
+        // The domain menu's panel (`domain`), and its warning of what a switch would stop (`domain-warning`: the tray's
+        // made-up runs going, then example.org chosen, so nothing is checked).
+        .sheet(isPresented: $demoDomain) {
+            DomainPanel(setup: services.setup, switcher: switcher, openSetup: {}, announce: { _ in }).frame(width: 380)
+        }
+        .task(id: services.setup.active) {
+            let tab = ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]
+            guard tab == "domain" || tab == "domain-warning", Spikes.isRequested, services.setup.active != nil, !demoDomain
+            else { return }
+            if tab == "domain-warning", let other = DomainMenu.others(services.setup).first {
+                Self.showDemoJobs(services.jobs)
+                await services.setup.checkAccess(other)
+            }
+            demoDomain = true
         }
         #endif
         // Siri's request opens Users in the window in front, where it's drafted.

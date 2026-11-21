@@ -208,13 +208,14 @@ final class ReadRun {
     /// back after the domain changed is dropped (its record names the domain it ran on).
     func run(_ read: GamRead, command: String, target: String, audit: ReadAudit, access: UserAccess, setup: SetupModel, announce: Bool) {
         guard !running, let domain = setup.active else { return }
+        let generation = setup.generation
         running = true
         problem = nil
         notice = nil
         Task {
             let outcome = await access.catalogRead(read, command: command, target: target, in: domain, recordingTo: audit)
             running = false
-            guard setup.active == domain else {
+            guard setup.active == domain, setup.generation == generation else {
                 problem = "The domain changed while it ran: run it again."
                 return
             }

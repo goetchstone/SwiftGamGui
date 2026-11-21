@@ -538,6 +538,36 @@ final class ExecutorTests {
         #expect(outcome.steps[1] == .skipped(reason: "Stopped: the active domain changed during the run."))
     }
 
+    /// Plan F6: a switch to another domain mid-plan stops the rest in GamGUI's words, and the step in flight finished and is
+    /// recorded under the domain the preview was made on.
+    @Test func aSwitchMidPlanStopsTheRestSayingWhere() async throws {
+        let executor = executor()
+        let tenant = tenantState, other = other
+        let preview = try await held(executor, ["alice", "bob", "carol"].map { suspend("\($0)@example.com") })
+        let count = Shared(0)
+        await executor.setBeforeEachStep {
+            if count.value.withLock({ $0 += 1; return $0 }) == 1 { tenant.value.withLock { $0 = (other, 2) } }
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        #expect(wrote().count == 1)
+        #expect(Array(outcome.steps.dropFirst()) == Array(repeating: .skipped(reason: "Stopped: you switched to example.org."), count: 2))
+        // The step that ran, begun and ended, and nothing after it.
+        #expect(records.map { $0["extra"]?.object?[AuditLog.domainKey]?.string } == ["example.com", "example.com"])
+    }
+
+    /// Plan F6 (GamGUI's `previews.clear()` on a switch): previews held for another tenant are dropped, one held for the
+    /// connected tenant stays, and a dropped one's confirm is refused as expired.
+    @Test func aSwitchDropsThePreviewsHeldForTheOldTenant() async throws {
+        let executor = executor()
+        let old = try await held(executor, [suspend()])
+        tenantState.value.withLock { $0 = (other, 2) }
+        let current = try await held(executor, [suspend("bob@example.com")])
+        await executor.dropOtherTenants()
+        #expect(await executor.heldCount == 1)
+        #expect(await executor.run(old, confirmation: confirmed).refusal == "That preview has expired or was already run — preview again.")
+        #expect(await executor.run(current, confirmation: confirmed).succeeded)
+    }
+
     @Test func aRunCancelledBeforeGamStartsIsNotRecordedAsInterrupted() async throws {
         let executor = executor()
         // A write nobody's account is read for first, so the cancel meets the step itself.
@@ -951,6 +981,61 @@ final class ExecutorTests {
         #expect(Array(ran()[10...]) == [preview.steps[1].write.argv], "only the signature, still waiting")
         #expect(third.steps.allSatisfy { !$0.isWaiting })
         #expect(third.retry == nil, "nothing left to wait for")
+    }
+
+    /// Plan F6's review: a run a switch stopped parked its waiting steps, so its wait for Google began on the new domain and
+    /// the park, after the switch's drop, kept the old preview (the create's temporary password) held. It parks nothing now.
+    @Test func aRunASwitchStoppedParksNothing() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let tenant = tenantState, other = other
+        let steps = [create("new@example.com"), signature("new@example.com", waitsOn: 0), suspend()]
+        let preview = try await held(executor, steps)
+        let count = Shared(0)
+        await executor.setBeforeEachStep {
+            if count.value.withLock({ $0 += 1; return $0 }) == 2 { tenant.value.withLock { $0 = (other, 2) } }
+        }
+        let outcome = await executor.run(preview, confirmation: confirmed)
+        // The signature, begun before the switch, waits for Google; the step after it stops.
+        #expect(outcome.steps[0].isSucceeded && outcome.steps[1].isWaiting
+                && outcome.steps[2] == .skipped(reason: "Stopped: you switched to example.org."))
+        let (parked, held) = (await executor.parkedRuns, await executor.heldCount)
+        #expect(outcome.retry == nil && parked == 0 && held == 0)
+    }
+
+    /// A switch is another domain at the very next generation; a removal or re-import in between is not one, whatever is
+    /// connected after it (plan F6's review: nil → example.org read as a switch).
+    @Test func onlyTheNextGenerationOnAnotherDomainIsASwitch() {
+        #expect(Executor.stopReason(ranOn: (example, 1), now: (other, 2)) == "Stopped: you switched to example.org.")
+        for now in [(other, 3), (example, 2), (example, 3)] as [(Domain, Int)] {
+            #expect(Executor.stopReason(ranOn: (example, 1), now: now) == Executor.domainChanged)
+        }
+        #expect(Executor.stopReason(ranOn: (example, 1), now: nil) == Executor.domainChanged)
+    }
+
+    /// Plan F6's review: a preview that waits on the connected admin (a write that can cut an account off) let a switch land,
+    /// and was then held for the old tenant after the switch dropped what it held. It's refused instead.
+    @Test func aSwitchDuringThePreviewsAdminWaitHoldsNothing() async throws {
+        let tenant = tenantState, other = other
+        var environment = Fixtures.mockEnvironment
+        environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        let executor = Executor(runner: runner, audit: audit, actor: "admin@example.com", adminAccountID: {
+            tenant.value.withLock { $0 = (other, 2) }
+            return Self.adminID
+        }, tenant: { tenant.value.withLock { $0 } }, extraEnvironment: environment)
+        let result = await executor.preview([suspend()])
+        #expect(throws: Executor.PreviewRefusal.tenantChanged) { try result.get() }
+        #expect(await executor.heldCount == 0)
+    }
+
+    /// What one tenant held goes once another holds or parks something (plan F6's review), not only on the switch's drop.
+    @Test func holdingForOneTenantDropsWhatAnotherHeld() async throws {
+        let executor = executor(state: try mockState(lag: 100))
+        let old = try await held(executor, [clearRecovery()])
+        tenantState.value.withLock { $0 = (other, 2) }
+        let run = try await held(executor, [create("new@example.com"), signature("new@example.com", waitsOn: 0)])
+        #expect(await executor.heldCount == 1, "example.com's preview dropped when example.org's was held")
+        #expect(await executor.run(old, confirmation: confirmed).refusal == Executor.expired)
+        #expect(await executor.run(run, confirmation: confirmed).retry != nil, "the connected tenant's run parks as before")
     }
 
     @Test func aRetryHandleIsSingleUse() async throws {

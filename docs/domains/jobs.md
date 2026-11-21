@@ -42,6 +42,15 @@ Stop: GamGUI's jobs tray (plan U5). Plan §12 phase 3's Jobs, slice 1.
 - **Retry stays on the screen that ran it** (a deliberate difference from GamGUI's per-kind retry from the job): Offboard's
   Preview the Rest and Onboarding's retry already make a new preview of what's left, with the checks their screen wraps around
   it (the precondition, the typed address). A generic retry from the tray would run steps without those. The tray says where.
+- **A domain switch** (plan F6, `docs/domains/setup-credentials.md`): Setup's check names the running jobs before it reads
+  anything (`JobBoard.runningJobs`, a routine as left half done: `Job.routine`, from `JobEvent.started`'s `routine`, set for a
+  preview that goes on past a failure, i.e. Offboarding and Secure, GamGUI's `CONFIRM_STOP`). Once another domain is
+  active straight after (`SetupModel.onSwitch`, never a connect after a removal or re-import), `JobBoard.switched(to:)`
+  marks each running job stopping (one already stopping keeps what stopped it), the executor stops it at its next step
+  ("Stopped: you switched to example.org.", only for the very next generation on another domain), and its row ends
+  "Stopped: you switched to example.org — N not attempted." then its counts (GamGUI's `stop_why`). A run a switch stopped
+  parks nothing. Onboarding's wait between its rounds is named with these (`SwitchStops`), its round jobs not twice. A job still checking is refused instead ("Didn't run: The active domain changed after the
+  preview…"). Unlike GamGUI's tray, reads are never jobs here, so no read is listed as one that can't stop.
 - Ordered: the executor's events go through one stream to the main actor, never a Task each (which could land out of order).
 - A run's end is spoken from the window in front ("Finished: …") by the toolbar button, watching the board's counters
   (`running`, `finishedCount`, `lastFinished`): a step redraws only the tray, never the window (review 2026-10-28).

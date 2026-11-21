@@ -154,6 +154,7 @@ public final class CalendarChanges {
         self.reads = reads
         self.runner = runner
         events = CalendarEventSearch(setup: setup, runner: runner)
+        setup.onTenantChange { [weak self] in self?.dismiss() }
     }
 
     public var isBusy: Bool {
@@ -726,6 +727,11 @@ public final class CalendarChanges {
         }
         progress = nil
         if let refusal = outcome.refusal { return refuse(refusal) }
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        guard setup.isConnected(to: pending.preview) else {
+            state = .idle
+            return
+        }
         let note = outcome.auditProblem.map { " \($0)" } ?? ""
         let who = pending.who
         switch (pending.kind, outcome.steps.first, outcome.steps.dropFirst().first) {

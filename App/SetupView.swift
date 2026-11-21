@@ -38,6 +38,15 @@ struct SetupView: View {
                 }
             }
 
+            // Check Access on another domain while runs go says first what it would stop (plan F6), as the domain menu does.
+            if let warning = model.switchWarning {
+                Section("Switching domains") {
+                    SwitchWarningView(warning: warning, busy: busy, shortcuts: false, switchAnyway: {
+                        Task { await model.checkAccess(warning.domain, typedAdmin: warning.typedAdmin, agreedToStop: warning.runIDs) }
+                    }, cancel: { model.dismissSwitchWarning() })
+                }
+            }
+
             if let record = model.lastCheck {
                 Section("Check access: \(record.domain.name)") {
                     CheckResultView(record: record)

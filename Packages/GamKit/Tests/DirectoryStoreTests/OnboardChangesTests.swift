@@ -1,9 +1,11 @@
 @testable import ChangeCore
 import Foundation
+import Jobs
 @testable import Directory
 @testable import GamEngine
 import Setup
 import Stores
+import Synchronization
 import TestSupport
 import Testing
 import Vault
@@ -691,6 +693,92 @@ final class OnboardChangesTests {
         #expect(pending.plan.warnings.contains("The role's signature “Gone” isn't saved on Signatures, so no signature is set."))
         await changes.preview(hire: jordan, role: RoleTemplate(name: "Sales", steps: ["A"], signature: "Word"), signatureTemplate: "  file ")
         #expect(try self.pending(changes).plan.warnings.first?.contains("GAM reads as a file") == true)
+    }
+
+    // MARK: a domain switch (plan F6)
+
+    /// A switch while Google readies a new account: the wait stops as Stop stops it, saying why in GamGUI's words, and the
+    /// run's Retry is withdrawn (it would preview example.com's new hire on example.org); the run's panel stays, as its card.
+    @Test func aSwitchStopsTheWaitAndWithdrawsTheRetry() async throws {
+        try await connect()
+        try lag(100)
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", groups: ["missing@example.com"])
+        await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                              createAccount: true), role: role), confirmed)
+        #expect(changes.finishing?.isLive == true && changes.card != nil)
+        try await storeOther()
+        await setup.checkAccess(Domain("example.org")!)
+        #expect(setup.active == Domain("example.org")!)
+        await changes.waitForFinishing()
+        #expect(changes.finishing?.phase == .stopped)
+        let reasons = Set(try #require(changes.run).notDone.values.map(\.reason))
+        #expect(reasons == ["Stopped: you switched to example.org."])
+        #expect(changes.failedSteps.isEmpty, "no Retry on another domain")
+        await changes.previewRetry()
+        #expect(changes.pending == nil && changes.run != nil && changes.card != nil)
+    }
+
+    /// Review of plan F6: a switch during the run itself parked its waiting steps, so the wait for Google began on the new
+    /// domain, showing the old domain's hire there. Nothing waits now: those steps are said stopped, and no Retry is offered.
+    @Test func aSwitchDuringTheRunStartsNoWait() async throws {
+        try await connect()
+        try lag(100)
+        try await storeOther()
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic", groups: ["missing@example.com"])
+        let held = try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                   createAccount: true), role: role)
+        let setup = setup, steps = Mutex(0)
+        await executor.setBeforeEachStep {
+            if steps.withLock({ $0 += 1; return $0 }) == 3 { _ = await setup.checkAccess(Domain("example.org")!) }
+        }
+        await changes.confirm(held, confirmed)
+        #expect(setup.active == Domain("example.org")!)
+        let parked = await executor.parkedRuns
+        #expect(changes.finishing == nil && !changes.isBusy && parked == 0)
+        let run = try #require(changes.run)
+        #expect(run.results[1]?.isWaiting == true, "the signature, begun before the switch, waited")
+        #expect(Set(run.notDone.values.map(\.reason)) == ["Stopped: you switched to example.org."])
+        #expect(changes.failedSteps.isEmpty)
+    }
+
+    /// Review of plan F6: between its rounds the wait for Google is no job in the tray, so a switch was never warned of and
+    /// silently gave up the new hire's remaining steps. It's named, as GamGUI's FinishJob is, once (a round in the tray isn't
+    /// named twice), and Switch Anyway goes ahead for it.
+    @Test func theWaitForGoogleIsWarnedOfBeforeASwitch() async throws {
+        try await connect()
+        try lag(100)
+        try await storeOther()
+        let changes = model(waits: [.seconds(3600)])
+        let role = RoleTemplate(name: "Sales", steps: ["A"], signature: "Classic")
+        await changes.confirm(try await preview(changes, Hire(name: "Jordan Lee", email: "jordan@example.com", assignee: "alice@example.com",
+                                                              createAccount: true), role: role), confirmed)
+        let wait = try #require(changes.waitForGoogle)
+        let board = JobBoard()
+        board.handle(.started(job: UUID(), preview: wait.preview, title: "Onboarding jordan@example.com (waiting for Google, try 2)",
+                              total: 1))
+        board.handle(.started(job: UUID(), preview: UUID(), title: "Suspend user for dana@example.com", total: 1))
+        #expect(SwitchStops.running(jobs: board, onboarding: changes, users: nil).map(SetupModel.SwitchWarning.line) == [
+            "Suspend user for dana@example.com",
+            "Finishing setup for jordan@example.com — stopped part-way, it is left half done: the steps after it won't run"])
+        setup.runningRuns = { [changes] in SwitchStops.running(jobs: JobBoard(), onboarding: changes, users: nil) }
+        #expect(await setup.checkAccess(Domain("example.org")!) == .warned)
+        let warning = try #require(setup.switchWarning)
+        #expect(warning.runs.map(\.title) == ["Finishing setup for jordan@example.com"] && changes.finishing?.isLive == true)
+        #expect(await setup.checkAccess(Domain("example.org")!, agreedToStop: warning.runIDs) == .connected)
+        await changes.waitForFinishing()
+        #expect(changes.finishing?.phase == .stopped && changes.waitForGoogle == nil)
+    }
+
+    /// example.org's credentials, stored but not checked.
+    private func storeOther() async throws {
+        let folder = scratch.appending(path: "config-other")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2service.json"))
+        try Data(#"{"decoded_id_token": {"email": "admin@example.org"}}"#.utf8).write(to: folder.appending(path: "oauth2.txt"))
+        await setup.importFolder(folder, as: "example.org")
     }
 
     // MARK: retrying what failed (D8)
