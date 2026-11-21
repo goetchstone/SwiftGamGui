@@ -71,7 +71,8 @@ saved template (Hand-over by default), and every step's exact command before it 
 | ![Onboard: the new hire, their role, its checklist, org unit, signature and groups](screenshots/onboard.png) | ![The sign-in card after the account is made, made-up password, and each step's result](screenshots/onboard-result.png) | ![Offboard: the template, the leaver and manager, and the steps, the lock's three marked Always runs](screenshots/offboard.png) | ![The plan: each step, what it does and its exact gam command](screenshots/offboard-plan.png) |
 
 Reports: the people behind each of the directory's counts, the storage and mail usage, and every account's connected
-apps and AI agents. Audit: this app's audit log, searched, paged and exported to CSV.
+apps and AI agents. Audit: this app's audit log, searched, paged and exported to CSV: every change, and every read run from
+the Builder (never its output), each naming its domain.
 
 Builder: GAM's whole command catalog by area and section, searched by name or grammar; a command that only reads shows its
 fields and the exact command it runs. GamGUI's curated commands change the domain from a typed form: Preview… holds the
@@ -90,7 +91,11 @@ steps and failures in words, and Stop.
 
 | Reports | Usage | Audit |
 |---|---|---|
-| ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words, and a page at a time](screenshots/audit.png) |
+| ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words and its domain, a page at a time](screenshots/audit.png) |
+
+| Audit, one domain |
+|---|
+| ![Audit narrowed to example.org: its change and its two Builder reads, each read with its row count](screenshots/audit-domain.png) |
 
 Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
 attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step

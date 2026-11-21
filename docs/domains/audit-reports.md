@@ -1,7 +1,8 @@
 # Audit and Reports
 
-**One line:** two read-only screens ported from GamGUI. **Audit** shows this app's audit log on this Mac,
-25 records a page, searched and narrowed to failures, with GamGUI's CSV export; it runs no `gam`. **Reports**
+**One line:** two read-only screens ported from GamGUI. **Audit** shows this app's audit log on this Mac (every change, and
+every read run from the Builder, each naming its domain), 25 records a page, searched and narrowed to failures and to one
+domain, with GamGUI's CSV export; it runs no `gam`. **Reports**
 lists GamGUI's directory reports from the loaded directory, reads the storage and mail usage with one
 `gam report users` walk, and (new to this app) every account's connected apps and AI agents with `gam print tokens`,
 counted by code, worded on request by the on-device model.
@@ -12,7 +13,8 @@ held to fixtures), #4 by not widening it (the screen shows records as they were 
 #10 for the connected apps' wording (the model is given counts only and reaches no change), and the tenant
 generation for the usage report and the apps.
 
-**Enforcement home:** `Tests/ChangeCoreTests/AuditScreenTests.swift` (`audit_screen.json`),
+**Enforcement home:** `Tests/ChangeCoreTests/AuditScreenTests.swift` (`audit_screen.json`), `AuditLogTests` (`audit.json`: a
+record's domain, and `reads`, the read record), `BuilderReadTests` (a read recorded end to end), `WriteRouteTests.theReadRecordIsNoWritePath`,
 `Tests/DirectoryStoreTests/UsageReportTests.swift` (`usage_report.json` and the strict mock),
 `Tests/GamEngineTests/MockReportTests.swift` (the mock's `report users`), `Tests/GamEngineTests/ConnectedAppsTests.swift`
 and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summary, from the mock's `tokens.csv`),
@@ -43,9 +45,12 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   nothing about Google.
 
 ## Files
-- `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`), `AuditEntry` (a
-  record in words), `AuditPage` (`_rows_context`), `AuditExport` (`_export_csv`).
-- `Packages/GamKit/Sources/ChangeCore/AuditLog.swift`: the reader, now streaming (`forEachRecord`).
+- `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`, `record_domain`), `AuditEntry` (a
+  record in words), `AuditPage` (`_rows_context`, `_domain_choices`), `AuditExport` (`_export_csv`).
+- `Packages/GamKit/Sources/ChangeCore/AuditLog.swift`: the reader, now streaming (`forEachRecord`); `record(domain:)`,
+  `domainKey`, `readActions` (GamGUI's `DOMAIN_KEY`, `READ_ACTIONS`).
+- `Packages/GamKit/Sources/ChangeCore/ReadAudit.swift`: the read record (GamGUI's `catalog_read`'s), written by
+  `UserAccess.catalogRead` (runbook catalog-builder.md).
 - `Packages/GamKit/Sources/GamEngine/PythonStr.swift`: Python's `str()` of a JSON value (`pythonText`).
 - `Packages/GamKit/Sources/Directory/UsageReport.swift`: `UsageReport` (`parse_usage`, `_csv_from`, the walk's
   dates) and `UsageStore` (GroupStore's shape: a snapshot, a load and a problem, each tagged with the tenant).
@@ -57,7 +62,8 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
 - `App/AuditView.swift`, `App/ReportsView.swift` (`NamedReportPanel`), `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
   Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
   Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
-- `scripts/gen_fixtures.py` (`audit_screen_fixture`, `usage_fixture`), `Tests/Fixtures/mock_gam.sh` (`report users`).
+- `scripts/gen_fixtures.py` (`audit_fixture` and `read_record_cases`, `audit_screen_fixture`, `usage_fixture`),
+  `Tests/Fixtures/mock_gam.sh` (`report users`).
 
 ## Audit: how it works
 - **The log** is `AppServices.auditURL`, this app's own (design doc §11: each app writes only its own). The
@@ -67,9 +73,20 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   materializes every record, up to about a million). The header's counts (records, failures) are the whole
   log's, from the same pass. The read runs detached and stops when a newer read replaces it.
 - **The filter** is GamGUI's and only GamGUI's: the search (stripped, Python's `str.lower()`, a scalar
-  substring of the action, the target, `extra.error`, `extra.detail` or the command, each read as
-  `str(field or "")`) and Failures Only (`ok` exactly `false`). There is no action or date filter: GamGUI has
-  none. A new search waits 300 ms for the typing to stop and starts at page 1, as GamGUI's form does.
+  substring of the action, the target, `extra.error`, `extra.detail`, the domain or the command, each read as
+  `str(field or "")`), Failures Only (`ok` exactly `false`) and the domain (the toolbar's Domain picker: All Domains, each
+  domain the log names, sorted, then "Unknown (older records)" when a record names none). There is no action or date filter:
+  GamGUI has none. A new search waits 300 ms for the typing to stop and starts at page 1, as GamGUI's form does.
+- **Every record names its domain** (plan F1, GamGUI #170): `extra.domain`, stripped and lowercased, added by
+  `AuditLog.record(domain:)`, which every caller must pass (nil only for the debug demo's older records and tests). The
+  executor's begin and end name the preview's domain; an acknowledgement names its begin's; the roster's local events theirs;
+  a read its own. A record written before F1 names none: Unknown, never filed under some domain (`AuditFilter.unknownDomain`,
+  `unknown`: no domain is spelled without a dot). Each row says its domain ("domain unknown" for none).
+- **A read record** (`read`, plan F1): one per catalog read the operator runs from the Builder, once it ended; its target,
+  argv (masked), `ok`, and `extra.command` (the catalog id), `extra.origin` (`builder`), `extra.rows` (only when GAM printed a
+  table: `CatalogResult.tableRows`, a header alone 0) or `extra.error`. Its row shows the count beside the command
+  ("· 2 rows", GamGUI's). GamGUI's `sensitive_read` reads the same; this app writes none (runbook catalog-builder.md).
+  Home's Recent failures and the incident report's changes pass over both (`AuditLog.readActions`): a read changed nothing.
 - **Records in words.** This app writes a begin and an end record per step (ChangeCore), GamGUI one record
   per write. Each record shows its outcome in words with a symbol: Succeeded, Failed, Started (a begin; its
   end is the record after it), **Outcome unknown — check** (a begin Home lists: `Executor.unfinished`, the
@@ -82,7 +99,8 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   target, exit code, command, error, detail, who ran it, connector, then `extra`'s other keys. A value is cut at
   4,000 characters. The row's summary is GamGUI's Detail column: the error, else the command, else the detail,
   cut at 160.
-- **Export** writes GamGUI's columns (`ts, action, target, ok, exit_code, error, argv, detail`), `csv_safe`'s
+- **Export** writes GamGUI's columns (`ts, action, target, ok, exit_code, error, argv, detail, domain, origin, rows`; the
+  domain `unknown` for a record naming none, the origin and rows as written, blank when absent), `csv_safe`'s
   `'` before a formula lead, in Python's `excel` dialect (CRLF, quoted only for a comma, quote, CR or LF), as
   UTF-8, every generation newest first. The file is the operator's, from a save panel (GamGUI's name
   `audit-export.csv` suggested): written to a hidden file beside it, 0600 (it says who was changed), and
@@ -149,6 +167,21 @@ this app; GamGUI has no such page. Reads only.
   neither app writes one there. An `int(float(v))` Python would overflow (an infinity, past `Int`) reads 0 where
   GamGUI's page would fail.
 - **Audit counts records**, not actions: this app records a begin and an end for each step.
+- **The domain list holds at most 100** (`AuditPage.domainsListed`, invariant 9), the first the log names newest first;
+  GamGUI lists every one. A domain past it is still found by the search. A log of the app's own names a handful.
+- **A read cut off** (a quit, a stopped task) is recorded in this app's words ("Interrupted before GAM finished: the app quit
+  or the read was stopped."), not GamGUI's `INTERRUPTED`; the record is otherwise GamGUI's.
+- **No `sequence` origin:** this app has no Builder sequences, so every read record's origin is `builder` (`ReadAudit.Origin`
+  has no other case; an origin GamGUI refuses can't be spelled at all).
+- **The acknowledgement names a domain** (the begin's): GamGUI has no Mark as Checked.
+
+## What F1 taught
+- **Make the rule a parameter, not a scan.** GamGUI holds "every record names its domain" with a source scan; here
+  `AuditLog.record`'s `domain:` has no default, so a new record can't leave it out without the compiler saying so.
+- **The generator records what's new, or the port guesses.** `audit.json` had no case for a domain or a read; the generator
+  now runs GamGUI's own `catalog_read` over chosen outputs (a header alone, JSON, text, nothing, a U+2028 in the first line, a
+  failure, a cancel, a refused origin), which found that `CatalogResult` split its first line on LF where GamGUI's
+  `splitlines()` splits on U+2028 too.
 
 ## Gotchas / mock-lies traps
 - **The mock's `report users`** took any words and answered every one (GamGUI's reports runbook names the
@@ -171,7 +204,10 @@ this app; GamGUI has no such page. Reads only.
 
 ## Testing / live-verification status
 - Package tests as above; every fixture case and the CSV bytes match GamGUI's. The screens are checked in CI's
-  screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, and their `narrow-` runs in the smallest window.
+  screenshots: `reports`, `reports-usage`, `reports-apps`, `audit`, `audit-domain` (narrowed to example.org), and their
+  `narrow-` runs in the smallest window.
+- **Not live yet:** a read record from a real tenant. Run any Builder read, then open Audit: one `read` record, the domain
+  connected, the command and its row count, nothing of the output.
 - **Audit needs no tenant.** **Live check of the usage report** (read-only): open Reports, choose Storage and
   mail; it should list up to 25 people with the day the counts are for, matching the Admin console's
   reports for that day.

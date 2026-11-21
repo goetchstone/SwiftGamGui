@@ -1,6 +1,6 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-20): F2 built (Swift); F1 built in GamGUI (#170), its port next; F3 being built in GamGUI.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-21): F1 and F2 built (Swift); F3 being built in GamGUI.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -36,6 +36,16 @@ D5). Model lessons are shared across projects in the user skill `apple-on-device
 Audit runs and schedules run many domain-wide reads, some sensitive; today reads leave no record (gaps slice 5). Add a
 read record (command, domain, origin, row count, no rows) and `extra.domain` on every write record
 (`ChangeCore.extra(for:)`). The Audit screen filters by domain. Prerequisite for F2–F7.
+
+*As built (2026-11-21, GamGUI #170 merged as `4eb8165`, fixtures regenerated from it):* every catalog read run from the Builder
+is recorded once it ends (`ReadAudit`, written by `UserAccess.catalogRead`: `read`, target, masked argv, `ok`, `extra.command`,
+`origin` `builder`, `rows` for a table, `error`, the domain; never the output), and every record names its domain
+(`AuditLog.record(domain:)`, no default). Audit filters by domain (Unknown for older records), searches it, and exports
+GamGUI's three new columns; Home's failures and the incident report pass reads over (`AuditLog.readActions`). The generator
+now records GamGUI's `catalog_read` over chosen outputs and a domain-named log (`audit.json` `reads`, `audit_screen.json`).
+Listed differences (runbooks audit-reports.md, catalog-builder.md): sensitive reads stay browse-only, the operator's choice, so
+`sensitive_read` is read but never written; no `sequence` origin (no Builder sequences here); a cut-off read in this app's
+words; the domain list bounded at 100. Not live yet: one Builder read on the operator's tenant, then its record in Audit.
 
 ### F2 — Named reports · *port GamGUI 3.1 (#151, merged as `2286631`)*
 Nine domain-wide reads by name, each opening its Builder read with CSV export: licenses, shared drives, shared drive

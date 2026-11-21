@@ -47,6 +47,10 @@ a write.
 - **Parity:** `AuditLogTests` holds the written lines byte for byte to `Tests/Fixtures/audit.json`,
   GamGUI's own `record` at fixed times (control characters, raw U+2028, overlapping secrets,
   microseconds left out when zero), and the reader to its `iter_records`. Eight mutants fail.
+- **The domain** (plan F1): `record(domain:)` has no default, so every record names one (`extra.domain`, stripped and
+  lowercased, GamGUI's `domain=`); nil or blank names none, as records written before F1. The executor passes its preview's.
+- **A second writer, never a write path** (plan F1): `ReadAudit` appends the Builder's read records (`read`) to the same log
+  and holds nothing else; `WriteRouteTests.theReadRecordIsNoWritePath` holds that (runbook catalog-builder.md).
 
 ## Failure history (GamGUI) the guard carries
 - Five routes ran a write on a bare POST because only their pages asked (2026-09-23): the executor,
