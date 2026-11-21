@@ -120,7 +120,11 @@ Runbooks catalog-builder.md, guard-audit.md, gam-runner.md, setup-credentials.md
 listed there: two records per export (begin, end), never `sensitive_export` (sensitive reads stay browse-only); Files also lists
 the last 50 CSVs saved through a save panel, and has a sidebar entry; a catalog command whose `todrive` is on a later grammar
 line isn't offered (this catalog holds first lines); the export also refuses a read that isn't a `print`/`report` read; a link
-is stricter (no empty port, `[`, `\`); GAM's error is shown, not behind a disclosure. The regeneration brings GamGUI #172's
+is stricter (no empty port, `[`, `\`); GAM's error is shown, not behind a disclosure. After its review (2026-11-21): "Nothing
+was made" only where GAM's source shows no file exists (Drive off, Create Failed and Not Created are unknown; Create Failed is
+GAM's own `Drive Folder: root` line only; the last line naming another account than the admin's primary address is unknown),
+each a deviation from GamGUI's `UPLOAD_LINES`, which have the same gaps; the runner refuses a read carrying `todrive`; Files reads
+only export end records through checked descriptors and lists every CSV save panel. The regeneration brings GamGUI #172's
 and #175's builders, listed as not ported (`print_courses` takes `counts` as GamGUI's does); `audit_runs.json` stays at
 `086d2f8`, #172's three new runs being F3b's to port. Not verified: no export has run on a real domain (the first waits on the
 operator's yes); the mock's upload lines are GAM's source, never seen live; screenshots come from CI.

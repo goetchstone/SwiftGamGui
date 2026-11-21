@@ -226,12 +226,14 @@ additions, each a test (`ExecutorTests`, `SheetExportsTests`):
   notes anything: `url`, the link GAM printed, else `upload`, which of the upload's own failure lines it printed about the
   admin. Never the output itself.
 - **`RunOutcome.began`**: the steps whose begin record was written, so GAM was started: any other changed nothing.
-- **The action is named as GamGUI's record names it**, `export_to_sheet` (`WriteAction.exportToSheet`'s raw value), so both
-  apps' logs read alike and Files finds either's; `displayName` reads an underscore as a word break ("Export to sheet").
+- **The action is named as GamGUI's record names it**, `export_to_sheet` (`WriteAction.exportToSheet`'s raw value), so the two
+  apps' logs read alike to someone comparing them; each app keeps its own log, and Files reads this app's only
+  (`AuditLog.defaultURL`). `displayName` reads an underscore as a word break ("Export to sheet").
 - **The export's records**: action `export_to_sheet`, target the connected admin (whose Drive), `extra.command` the catalog
   id, `extra.domain`, then `url` or `upload` (and `error`, `kind` on a failure) on the end record, beside the executor's
   `preview`, `digest`, `origin`, `step`, `phase`. Never the rows. GamGUI records one line per export; this app a begin and an
-  end, as every write. Sensitive reads stay browse-only here, so `sensitive_export` is never written (Files reads GamGUI's).
+  end, as every write; Files reads only the end (`MadeFiles`: never a begin, and never the end record Mark as Checked writes,
+  `acknowledged` with no `ok`). Sensitive reads stay browse-only here, so `sensitive_export` is never written.
 
 ## Not built yet
 The §8 voice ticket (today the executor takes only an operator's confirmation).

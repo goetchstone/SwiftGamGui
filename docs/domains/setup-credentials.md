@@ -36,7 +36,9 @@ Python GamGUI's Keychain items, and checking that delegation actually works ("Ch
     link, which offers them all (`offered`), as GamGUI's delegation step does (`setup.json`). `SetupModel.delegationLink(for:)`
     makes the same link for a screen that found a scope refused (the export's preview), never GAM's own, which names only the
     scopes it checked and overwrites the client's list. The mock's tenant authorizes Sheets too, less any scope listed in
-    `GAM_MOCK_STATE/dwd_missing`, which its todrive upload reads as well.
+    `GAM_MOCK_STATE/dwd_missing`, which its todrive upload reads as well. `SetupModel.connectedAdminPrimary` keeps the primary
+    address the confirming `info user` read gave (GAM's own name for the admin, which an alias in the token isn't): a Sheet
+    export reads its upload lines by it.
   - `GamExitCode` — 10 and 16, held to the build's table.
   - `AccessCheck.interpret` — GamGUI's `_check_result` / `_parse_check` / `_extract_auth_url`.
   - `AuthenticatedRunner.checkAccess(admin:as:)`.

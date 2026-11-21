@@ -100,27 +100,46 @@ it) and 11 (parity is a test).
   the filter), and each scope as Allowed, Not allowed or Not checked (words and a symbol, never color alone). Return exports,
   Escape cancels, said on the sheet. `SheetExports.confirm` runs that preview, once (`executor.run(preview, …)`, the only run;
   a second confirm is refused as spent). A switch drops a held export (`setup.onTenantChange`, and the executor's own tenant
-  check); Cancel discards it from the executor.
+  check), including one landing while the executor holds it: the tenant is checked again once the hold returns, and a
+  mismatch discards it and says so (review of F4); Cancel discards it from the executor. The admin is named as GAM names it:
+  `setup.connectedAdminPrimary` (the primary address Check access read), else the token's address.
 - **The export's outcome is read from the upload's own lines** (GamGUI's failure log 2026-11-21), never GAM's one-line error
   summary: the executor keeps what a write's own output says (`GamWrite.noted`, only an export notes anything) on the end
   record and in `RunOutcome.noted`, and which steps GAM was started for (`RunOutcome.began`). `SheetExport.noted`: the link
   (`Data uploaded to Drive File:` then the link on the next line, shown as a link only when it's https on docs.google.com or
   drive.google.com with no port, user info or control character), else which failure line GAM printed about the admin
-  (`uploadState`: `sheets_refused` and `finish_failed` made the file; `drive_refused`, `drive_off`, `not_permitted`,
-  `create_failed` made nothing; `probably_made` is unknown; a line naming another account is the read's). `SheetExport.outcome`
-  says made, not made or can't be told, word for word GamGUI's; exit 0 without a link is a failure (`GamWrite.notDone`,
-  "whether a Sheet was made can't be told"); a run GAM never started (`began` empty) made nothing. The result shows the link
-  with ⌘O, what to do, GAM's error shown (not behind a disclosure), and whether the audit log kept it. A result too large for a
-  Sheet is a plain CSV file (a drive.google.com link), said as such.
-- **Files** (plan F4, GamGUI's `/files`, a sidebar screen): read only, no `gam`. The Sheets exported, read back from the audit
-  log (`MadeFiles.sheets`: `export_to_sheet` and GamGUI's `sensitive_export` end records, this app's begin records passed over,
-  the newest 50 within the newest 50,000 records, a log that can't be opened or isn't a file said as unknown); each kept
-  incident's evidence folder with its saved reads counted by descriptor (`IncidentStore.savedReads`: the incident's folder and
-  its `evidence` opened `O_NOFOLLOW`, folders only, at most `countCap` entries read; at most the store's 200 incidents); and the
-  CSVs saved through a save panel (`SavedFilesStore`, the newest 50, `0600` in the app's folder: the Builder's table, Audit,
-  an audit run's table, an incident report's list, a leaver's classes). Return opens a Sheet or shows a folder or file in
-  Finder, ⌘R reads it all again, each said on the screen. It never lists a run folder or the setup folder
-  (`WriteRouteTests.filesRunsNoGamAndListsNoPrivateFolder`).
+  (`uploadState`, the last line). "Nothing was made" only where GAM's source shows no file exists at that point (review of F4,
+  2026-11-21, each a listed deviation from GamGUI's `UPLOAD_LINES`, which have the same gaps): `drive_refused` (the upload's
+  Drive token, before the create) and `not_permitted` (`files.create` refused, a line only the upload prints) made nothing;
+  `sheets_refused` and `finish_failed` made the file; `drive_off` and `not_created` (`userDriveServiceNotEnabledWarning`, which
+  `files.create` and the Sheets calls after it both reach), `create_failed` (a full Drive reads the same as Google's 500
+  UNKNOWN) and `probably_made` are unknown. `create_failed` is GAM's own line only, `Drive Folder: root, Create Failed:` at a
+  line's start (no `tdparent` is sent), so a read's `Drive Folder: <id>, Print Failed:` (print diskusage, print emptydrivefolders)
+  can't decide it. GAM names the admin by its Directory primary address (`GetTodriveParameters` → `checkUserExists`); when the
+  last line names any other account it's unknown, never an earlier line (GamGUI skips it). Residue: a read acting through the
+  admin's own Drive can print the upload's Drive-refused line itself, and it stands for the upload only if the upload then
+  stopped with no line at all. `SheetExport.outcome` says made, not made or can't be told, GamGUI's words where the rules agree;
+  exit 0 without a link is a failure (`GamWrite.notDone`, "whether a Sheet was made can't be told"); a run GAM never started
+  (`began` empty) made nothing and left no record, and the result says so rather than "kept in the audit log". The result shows
+  the link with ⌘O, what to do, GAM's error shown (not behind a disclosure) for a run GAM made, and whether the audit log kept
+  it. A result too large for a Sheet is a plain CSV file (a drive.google.com link), said as such. The one public door a read
+  takes to GAM (`AuthenticatedRunner.run(GamRead)`) refuses a read carrying `todrive` before the Vault, whichever builder made
+  it (`CommandKindTests.noReadCarriesTodrive` holds every read builder too).
+- **Files** (plan F4, GamGUI's `/files`, a sidebar screen): read only, no `gam`. The Sheets exported, read back from this
+  app's own audit log (`MadeFiles.sheets`: each `export_to_sheet` end record with an `ok` of its own; begins, other actions and
+  Mark as Checked's acknowledgement passed over; the newest 50 within the newest 50,000 records). The log and every rolled
+  generation are read through descriptors opened `O_NOFOLLOW | O_NONBLOCK` and read only when `fstat` says regular file
+  (`AuditLog.forEachRecord`, which Audit and Home read through too): a link, a FIFO or a folder in any generation's place is
+  said, never followed or waited on. Each Sheet's time is shown in this Mac's time zone, named, and its row says what its
+  result said (a Sheet made while the read reported a problem, a plain CSV file, unknown). Each kept incident's evidence folder
+  with its saved reads counted by descriptor (`IncidentStore.savedReads`: the incident's folder and its `evidence` opened
+  `O_NOFOLLOW`, folders only, at most `countCap` entries read; at most the store's 200 incidents). The CSVs saved through a save
+  panel (`SavedFilesStore`, the newest 50, `0600` in the app's folder): every screen with one lists it
+  (`WriteRouteTests.everyCSVSavePanelListsWhatItSaved`: the Builder's table, Audit, an audit run's table, an incident report's
+  list, a leaver's classes, Phishing's lists, an incident log, Who it reached, Everyone it got to, a roster's issues); an
+  incident report's folder and a roster hand-over ZIP aren't listed, said on the screen. A list that didn't open is said, never
+  "None saved yet", and ⌘R tries it again. Return opens a Sheet or shows a folder or file in Finder; one moved or deleted since
+  is said and spoken. It never lists a run folder or the setup folder (`WriteRouteTests.filesRunsNoGamAndListsNoPrivateFolder`).
 - **Optional `[...]` groups are dropped** (GamGUI's rule): a command runs on its required arguments, plus a person or a device on
   its own (`user <x>` when given) and a single optional placeholder. A fragment of an alternation or a paren group is passed
   over. GamGUI's quirk is kept: the sensitive rule looks for the catalog's `verb`, its first alternative, so an alternation
@@ -228,4 +247,4 @@ B4 in docs/live-verification.md).
 - The command finder (the on-device model over a catalog search) and its Siri intent.
 - Sensitive reads' export (`sensitive_export`): with the sensitive reads themselves, when the operator asks.
 - The first live Sheet export, on the operator's yes (plan F4): the mock's upload lines are read from GAM's source, never seen
-  live. Files doesn't yet list the roster's hand-over ZIP, a roster's issues CSV or an incident report's folder.
+  live. Files doesn't list an incident report's folder or a roster hand-over ZIP.

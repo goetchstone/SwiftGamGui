@@ -149,7 +149,9 @@ in `GoldenArgvTests.notPorted` with why (since the 38ea01b fixtures: #172's admi
   exit code kept (a warning exit uploads all the same); a scope in `GAM_MOCK_STATE/dwd_missing` refuses the upload in GAM's
   words (Drive: 73, nothing made; Sheets: 73, the file made, no link), `drive_full` is "Drive Folder: root, Create Failed: …"
   (50, nothing made), `sheets_fail` "ERROR: User: <admin>, Drive File ID: <id>, Not Created: …" (50, the file made); each file
-  made is a line in `GAM_MOCK_STATE/drive_files`. A refused token in a per-account print loop (print delegates, forward,
+  made is a line in `GAM_MOCK_STATE/drive_files`. The admin is named in every upload line as GAM names it, its Directory primary
+  address (an alias in the token is its account's primary; an address no account has is a usage error before anything runs,
+  `invalidTodriveUserExit`). A refused token in a per-account print loop (print delegates, forward,
   forwardingaddresses, sendas) writes its titles, as GAM's soft error does, so exporting a missing account's read uploads a
   Sheet of headers. Not modelled: a result too large for a Sheet, Google's internal error on the create, Drive turned off for
   the admin, `forbidden`.
