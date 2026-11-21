@@ -304,7 +304,9 @@ struct ReportsView: View {
             ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
         case .run(let key):
             if let run = AuditRuns.all.first(where: { $0.key == key }) {
+                // Its own state per run: one run's export line and picked table never show on another's.
                 AuditRunPanel(run: run, runs: runs, suspend: suspend, connected: setup.active != nil, days: $days, openPerson: openPerson)
+                    .id(run.key)
             }
         case .named(let key):
             if let report = NamedReport.all.first(where: { $0.key == key }) {

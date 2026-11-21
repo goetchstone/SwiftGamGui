@@ -220,6 +220,12 @@ public enum AuditRuns {
         public func finding(_ key: String) -> Finding? { findings.first { $0.key == key } }
     }
 
+    /// A table as its CSV holds it, whole: its columns, then every row. None for an unknown table: a sheet holding only its
+    /// titles would read as "none" (invariant 10); its screen says why instead.
+    public static func exportRows(_ finding: Finding) -> [[String]]? {
+        finding.known ? [finding.columns] + finding.rows : nil
+    }
+
     /// The run's tables, from its step reads and their kept tables. A table whose step is unknown says so.
     public static func findings(for run: Run, reads: [StepRead], tables: Tables, now: Date, days: Int) -> [Finding] {
         let users = unknownBecause(reads, directory).isEmpty ? tables.users : nil

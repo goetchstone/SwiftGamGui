@@ -1288,6 +1288,8 @@ struct InactiveSuspendSheet: View {
             Section {
                 Text("Suspends exactly this list, one account at a time, in the jobs tray with Stop. Preview again for a newer one.")
                     .font(.callout).foregroundStyle(.secondary)
+                Text("⌘Return suspends them once what's asked above is typed; Escape cancels. Return alone runs nothing.")
+                    .font(.callout).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -1296,7 +1298,10 @@ struct InactiveSuspendSheet: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { suspend.dismiss() } }
             // Not the confirmation action: Return in a field mustn't suspend anyone.
             ToolbarItem(placement: .primaryAction) {
+                // ⌘Return, never Return alone: Tab doesn't reach a button with the Mac's default keyboard settings, and with fewer
+                // than ten accounts the sheet has no field to type in (review of F3, 2026-11-21).
                 Button("Suspend \(accounts)", role: .destructive) { confirm() }
+                    .keyboardShortcut(.return, modifiers: .command)
                     .disabled(suspend.isBusy || !countMatches || !wordMatches)
                     .help(!wordMatches ? "Type confirm first" : !countMatches ? "Type \(count) first" : "Runs exactly these suspends, once")
             }
