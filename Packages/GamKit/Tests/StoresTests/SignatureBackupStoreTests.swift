@@ -95,7 +95,9 @@ struct SignatureBackupStoreTests {
         for index in 0..<(SignatureBackupStore.keptRuns + 2) {
             ids.append(try keptRun(store, "run \(index)", keeping: ["p\(index)@example.com"]))
         }
-        #expect(try store.runs().map(\.id) == Array(ids.sorted(by: >).prefix(SignatureBackupStore.keptRuns)))
+        // Listed outside the expectation: a listing that throws is reported with its reason, not "<not evaluated>".
+        let listed = try store.runs().map(\.id)
+        #expect(listed == Array(ids.sorted(by: >).prefix(SignatureBackupStore.keptRuns)))
     }
 
     @Test func aRunThatCantBeReadWholeIsListedNeverDropped() throws {
@@ -140,7 +142,8 @@ struct SignatureBackupStoreTests {
         #expect(try store.runs().count == SignatureBackupStore.keptRuns + 1)
         // A later run that keeps someone makes room as usual: the newest five stay.
         let later = try keptRun(store, "later", keeping: [Self.alice])
-        #expect(try store.runs().map(\.id) == Array(([later, putBack.id] + ids.reversed()).prefix(SignatureBackupStore.keptRuns)))
+        let listed = try store.runs().map(\.id)
+        #expect(listed == Array(([later, putBack.id] + ids.reversed()).prefix(SignatureBackupStore.keptRuns)))
     }
 
     /// Review of Phase A: with five kept runs, an attempt that kept nobody (a sign-in expired, every read refused) still
