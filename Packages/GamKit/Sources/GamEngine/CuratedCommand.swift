@@ -9,7 +9,7 @@
 /// list as someone else, and rewrites `uid:a@b` or `Name <a@b>` to `a@b`, so a refusal comparing addresses would miss it); an
 /// undeleted account may be named `uid:<digits>` instead, GAM's own remedy when deleted accounts share an address; an empty
 /// choice is its default (the form's picker starts there); a choice GamGUI doesn't list is refused; and a search doesn't show
-/// message bodies (`notYet`) until a read can be audited, as the Builder's other sensitive reads wait.
+/// message bodies (`notYet`), as the Builder's other sensitive reads aren't run: the operator's choice, until asked.
 public struct CuratedCommand: Sendable, Identifiable {
     /// One field of the command's form (GamGUI's `CommandSlot`).
     public struct Field: Sendable, Hashable, Identifiable {
@@ -126,7 +126,7 @@ extension CuratedCommand {
     /// Choices GamGUI's form offers that don't run here yet, by command and field, and why.
     public static let notYet: [String: [String: [String: String]]] = [
         "build.search_messages": ["detail": [GamCommands.MessageDetail.headersAndBody.rawValue:
-            "Showing message bodies waits until a read can be audited, as the Builder's other sensitive reads do: pick Headers or Summary"]],
+            "Message bodies aren't shown from here, as the Builder's other sensitive reads aren't run: pick Headers or Summary"]],
     ]
 
     /// GamGUI's curated commands, in its order, but for `elsewhere`.

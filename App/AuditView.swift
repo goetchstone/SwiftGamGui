@@ -3,8 +3,8 @@ import ChangeCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Audit: this app's audit log on this Mac, newest first, 25 records a page, searched and narrowed to failures as
-/// GamGUI's Audit screen is (`AuditPage`), each record's masked details behind a disclosure, and GamGUI's CSV
+/// Audit: this app's audit log on this Mac, newest first, 25 records a page, searched and narrowed to failures and to one
+/// domain as GamGUI's Audit screen is (`AuditPage`), each record's masked details behind a disclosure, and GamGUI's CSV
 /// export to a file the operator picks. It reads only the local file, off the main actor, a page at a time; it
 /// runs no `gam`. An outcome unknown (a write the app stopped in the middle of) can be marked as checked, as on Home.
 struct AuditView: View {
@@ -13,6 +13,8 @@ struct AuditView: View {
     @Binding var showFailures: Bool
     @State private var query = ""
     @State private var failuresOnly = false
+    /// One domain's records, `AuditFilter.unknownDomain` for those naming none, or "" for every record.
+    @State private var domain = ""
     @State private var page = 1
     @State private var shown: AuditPage?
     /// Bumped to read the log again (Refresh, after Mark as Checked).
@@ -28,7 +30,13 @@ struct AuditView: View {
     @State private var exporting = false
     @Environment(\.appearsActive) private var appearsActive
 
-    private var filter: AuditFilter { AuditFilter(text: query, failuresOnly: failuresOnly) }
+    private var filter: AuditFilter { AuditFilter(text: query, failuresOnly: failuresOnly, domain: domain) }
+
+    /// The domains the log names, and the one chosen when the log no longer does (a picker needs its selection listed).
+    private var domains: [String] {
+        let named = shown?.domains ?? []
+        return domain.isEmpty || named.contains(domain) ? named : named + [domain]
+    }
 
     private struct ReadKey: Hashable {
         let filter: AuditFilter
@@ -44,15 +52,27 @@ struct AuditView: View {
                 failuresOnly = true
                 showFailures = false
             }
+            #if DEBUG
+            // Snapshots: `SWIFTGAMGUI_SELECT` picks a domain (audit-domain).
+            .onAppear { if let wanted = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] { domain = wanted } }
+            #endif
             // A new search or filter starts on its first page, as GamGUI's form does.
             .onChange(of: filter) { page = 1 }
             .onChange(of: page) {
                 expanded = []
                 selected = nil
             }
-            .searchable(text: $query, prompt: "Action, target, error or command")
+            .searchable(text: $query, prompt: "Action, target, domain, error or command")
             .toolbar {
                 ToolbarItemGroup {
+                    // A record written before records named their domain is Unknown, never filed under a domain.
+                    Picker("Domain", selection: $domain) {
+                        Text("All Domains").tag("")
+                        ForEach(domains, id: \.self) { name in
+                            Text(name == AuditFilter.unknownDomain ? "Unknown (older records)" : name).tag(name)
+                        }
+                    }
+                    .help("Show one domain's records")
                     Toggle("Failures Only", systemImage: "exclamationmark.triangle", isOn: $failuresOnly)
                         .help("Show only the records of changes that failed")
                     Button(filter.isActive ? "Export Matches…" : "Export All…", systemImage: "square.and.arrow.up") { export() }
@@ -150,6 +170,7 @@ struct AuditView: View {
                             Button("Clear Filters") {
                                 query = ""
                                 failuresOnly = false
+                                domain = ""
                             }
                         } else {
                             Text("No audited actions yet.").foregroundStyle(.secondary)
@@ -189,7 +210,7 @@ struct AuditView: View {
                     .font(.headline)
             }
             Text("Read-only: this screen reads the audit log on this Mac and never runs GAM. Each change is "
-                 + "recorded when it starts and again when it ends.")
+                 + "recorded when it starts and again when it ends; each read run from the Builder once it ends, never its output.")
                 .font(.callout).foregroundStyle(.secondary)
             if let notice {
                 Label(notice.text, systemImage: notice.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
@@ -252,14 +273,17 @@ private struct AuditRow: View {
                 }
                 Text(line).font(.callout).foregroundStyle(.secondary)
                 if !entry.summary.isEmpty {
-                    Text(entry.summary).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
+                    // A read's row count beside its command (GamGUI's "· 2 rows").
+                    Text(entry.rows.map { "\(entry.summary) · \($0.formatted()) row\($0 == 1 ? "" : "s")" } ?? entry.summary)
+                        .font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
         }
         .accessibilityElement(children: .combine)
     }
 
-    /// "Succeeded · Oct 8, 2026 at 9:41:00 AM · by admin@example.com".
+    /// "Succeeded · Oct 8, 2026 at 9:41:00 AM · example.com · by admin@example.com"; "domain unknown" for a record written
+    /// before records named one.
     private var line: String {
         var parts = [entry.outcome.words]
         if let date = entry.date {
@@ -267,6 +291,7 @@ private struct AuditRow: View {
         } else if !entry.time.isEmpty {
             parts.append(entry.time)
         }
+        parts.append(entry.domain.isEmpty ? "domain unknown" : entry.domain)
         if !entry.actor.isEmpty { parts.append("by \(entry.actor)") }
         return parts.joined(separator: " · ")
     }

@@ -153,6 +153,20 @@ struct CommandCatalogTests {
         #expect(try GamCommands.catalogRead(user, values: ["a0": "\u{1F}bob@example.com\u{1C}"]).argv.contains("bob@example.com"))
     }
 
+    /// Whom a run is about, as its read record names it (plan F1): GamGUI's `_assemble`, the first person or group given, trimmed
+    /// as the door trims it, never a typed address or text; else "(command)".
+    @Test func aRunNamesWhomItsAbout() throws {
+        let user = try #require(Self.catalog.commands.first { $0.runnable && $0.slots.first?.kind == .targetUser && $0.slots.first?.required == true })
+        #expect(user.target(["a0": "\u{1F} bob@example.com \u{1C}"]) == "bob@example.com")
+        #expect(user.target(["a0": "  "]) == "(command)" && user.target([:]) == "(command)")
+        let bare = try #require(Self.catalog.commands.first { $0.runnable && $0.slots.isEmpty })
+        #expect(bare.target([:]) == "(command)")
+        let typed = try #require(Self.catalog.commands.first { command in
+            command.runnable && !command.slots.isEmpty && command.slots.allSatisfy { $0.kind == .text || $0.kind == .email }
+        })
+        #expect(typed.target(Dictionary(uniqueKeysWithValues: typed.slots.map { ($0.key, "x@example.com") })) == "(command)")
+    }
+
     /// The list: every command in an area, a category listed nowhere in Other (a Chrome one in Devices), and a search over name
     /// and grammar line, runnable first in each section.
     @Test func theListIsGroupedAndSearched() {

@@ -18,7 +18,9 @@ it) and 11 (parity is a test).
 - `Packages/GamKit/Sources/GamEngine/CatalogResult.swift`: a read's output as the screen shows it (GamGUI's `_render_read`,
   `cell`, `_columns_and_texts`, the CSV export).
 - `UserAccess.catalogRead` (Directory): the read run on the tenant it was started on, as long as a log read may take (10 min),
-  parsed off the main actor; GAM's words when it fails; a read cut off at the output cap is refused, never shown as whole.
+  parsed off the main actor; GAM's words when it fails; a read cut off at the output cap is refused, never shown as whole. Then
+  recorded (`ReadAudit`, below), or not shown.
+- `Packages/GamKit/Sources/ChangeCore/ReadAudit.swift`: the read record (plan F1, GamGUI #170's `catalog_read`).
 - `Packages/GamKit/Sources/GamEngine/CuratedCommand.swift`: GamGUI's curated commands (`catalog.py::_curated`), 24 of its 26,
   each with its fields and GamGUI's builder; `built(_:)` is GamGUI's `_assemble` plus this app's form rules; `target(_:)` whom
   it's for.
@@ -28,6 +30,7 @@ it) and 11 (parity is a test).
   `scripts/embed_gam.sh` copies the catalog into the app beside `gam7/` (never into the signed GAM folder).
 - Tests: `GamEngineTests/CommandCatalogTests.swift`, `CatalogResultTests.swift`, `CuratedCommandTests.swift`,
   `DirectoryStoreTests/BuilderReadTests.swift`, `BuilderChangesTests.swift`, `WriteRouteTests.theBuilderWritesOnlyThroughBuilderChanges`,
+  `WriteRouteTests.theReadRecordIsNoWritePath`, `ChangeCoreTests/AuditLogTests.everyReadIsRecordedAsGamGUIRecordsIt`,
   `CommandKindTests.everyBuilderInTheSourceIsChecked`.
 - Parity fixtures, both made by `scripts/gen_catalog_reads.py` from a GamGUI clone pinned at the fixtures' commit:
   `Tests/Fixtures/catalog_reads.json` (frozen GamGUI's own read builder and gate run over this repo's catalog, so the same code
@@ -43,8 +46,22 @@ it) and 11 (parity is a test).
   those are sensitive (GamGUI's `_is_sensitive`: every `get`, which saves a file, and `show`/`print backupcodes` and
   `browsertokens`; and here `info browsertoken` too, one enrollment token, new in GAM 7.49.00 and not named by GamGUI's
   frozen list: `CommandCatalogTests.sensitiveHereOnly`), so 501 run.
-- **Sensitive reads are browse-only here** (a deliberate difference): GamGUI runs them and audits each run as
-  `sensitive_read`, never the output. This app's audit log is the executor's, for writes; a read audit is its own slice.
+- **Sensitive reads are browse-only here** (a deliberate difference): GamGUI runs them and records each run as
+  `sensitive_read`, never the output. Every other read is recorded here too now (plan F1), so they wait only on the operator's
+  choice: browse-only until asked.
+- **Every read run here is recorded** (plan F1, GamGUI #170), once it ends, ok or failed, in the audit log the
+  executor writes: `read`, whom it was about (`target`: a catalog command's first person or group given, `Command.target`, as
+  GamGUI's `_assemble`; a curated read's `CuratedCommand.target`; else "(command)"), the masked argv, `ok`, and in `extra` the
+  catalog id (`command`), `origin` (`builder`: this app has no sequences, GamGUI's other origin), the domain, and `rows` when GAM
+  printed a table (`CatalogResult.tableRows`, GamGUI's `table_records`: a header alone is 0; words or nothing have none) or
+  `error` (GAM's words). Never the output. A read the log can't record isn't shown, as GamGUI's isn't. Audit shows them (runbook
+  audit-reports.md). **A read the app quits during leaves no record**: the app stops GAM and exits before the read resumes to
+  write one, and reads get no begin record (they change nothing). A cancelled read task is recorded as interrupted ("Stopped
+  before GAM finished, so nothing was read."), but the Builder has no Stop yet, so nothing cancels one today.
+- **The read record is no write path** (invariant 2, `WriteRouteTests.theReadRecordIsNoWritePath`): `ReadAudit` holds an audit
+  log and nothing else (no runner, ticket or executor), writes one action, `read`, and only `UserAccess.catalogRead` calls it;
+  the app makes one in its wiring (the executor's own `AuditLog`) and hands it only to the Builder. Reads the app makes for itself
+  (the directory and group caches, a person's tabs, Reports, a preview's checks) aren't recorded, as in GamGUI.
 - **A value is never `todrive` or `doit`** (`CommandCatalog.keywordsThatChange`, case and underscores aside, as GAM reads a keyword): a
   deliberate difference from GamGUI, which passes them along. Not `deleteduplicates` (GAM 7.49.03): despite its name and GAM's
   note, `doPrintCIDevices` only leaves a repeated device out of the output, warns, and exits 68; nothing is deleted. Some reads put a required value where GAM reads options
@@ -77,8 +94,9 @@ it) and 11 (parity is a test).
   someone else, a group's member is a `<UserTypeEntity>`, and GAM rewrites `uid:a@b`, `id:a@b` and `Name <a@b>` to `a@b`);
   Undelete account also takes `uid:<digits>`, GAM's own remedy when deleted accounts share an address; a choice is one GamGUI
   lists (an empty one its default, as the picker starts); Search a mailbox's "Headers + body" is listed but refused
-  (`CuratedCommand.notYet`) until a read can be audited, as the other sensitive reads wait (no screen here reads a body);
-  `target` falls back to the first address, so a new group or an undeleted account is named in the audit, not "(command)";
+  (`CuratedCommand.notYet`), as the other sensitive reads aren't run, by the operator's choice (no screen here reads a body);
+  `target` falls back to the first address, so a new group or an undeleted account is named in the audit, not "(command)" (a
+  curated read's record names it the same way);
   a delegate is checked as Users checks one (`UserChanges.checkDelegate`); suspend, the random password and a sign-out of the
   connected admin are refused by the executor, as on every screen (guard-audit: the connected-admin check); and Set title /
   department warns before GAM clears a field left empty (it sends both, as GamGUI's does).
@@ -128,6 +146,7 @@ B4 in docs/live-verification.md).
   `ROW_ACTIONS`); descriptions for each catalog command (GamGUI's `gloss()`, by rule).
 - The curated "List a shared drive's files" read (plan §8): new to both apps, its argv checked against the grammar and run once
   live before it's relied on.
-- Sensitive reads, once a read can be audited.
+- Sensitive reads (and message bodies), when the operator asks: reads are recorded now (plan F1), so `sensitive_read` is the
+  one action to add to `ReadAudit`, and the CSV download of one recorded as `sensitive_csv_export` (GamGUI's).
 - The command finder (the on-device model over a catalog search) and its Siri intent.
 - Sheet export: dropped by decision (plan §1).

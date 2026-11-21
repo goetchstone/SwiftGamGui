@@ -59,6 +59,12 @@ struct AuditScreenTests {
                                    line(1, "delete_user", ok: "false", error: "fourth")].joined(separator: "\n") + "\n").utf8).write(to: url)
         let three = AuditEntry.recentFailures(in: url, now: now)
         #expect(three.map(\.summary) == ["fourth", "third", "second"])
+        // A failed read changed nothing (plan F1): Audit lists it, Home's failed changes don't.
+        for action in AuditLog.readActions {
+            try AuditLog(url: url).record(action, target: "gone@example.com", argv: ["info", "user", "gone@example.com"], ok: false,
+                                          extra: ["error": .string("Does not exist")], domain: "example.com", now: now)
+        }
+        #expect(AuditEntry.recentFailures(in: url, now: now).map(\.summary) == ["fourth", "third", "second"])
         #expect(three[1].actionName == "POP off" && three[1].target == "dana@example.com" && three[1].outcome == .failed)
         #expect(AuditEntry.recentFailures(in: url, limit: 9, now: now).map(\.summary) == ["fourth", "third", "second", "first"], "never the one past 30 days")
         #expect(AuditEntry.recentFailures(in: url, limit: 9, days: 3, now: now).count == 2)
@@ -70,30 +76,63 @@ struct AuditScreenTests {
         #expect(AuditPage.size == fixture["constants"]!["PAGE_SIZE"]!.int)
         let header = fixture["header"]!
         for item in fixture["pages"]!.array! {
-            let query = item["q"]!.string!, failed = item["failed"]!.bool!, requested = item["page"]!.int!
-            let shown = try AuditPage.read(requested, at: url, filter: AuditFilter(text: query, failuresOnly: failed))
-            let label = "q=\(query.unicodeScalars.map { String($0.value, radix: 16) }) failed=\(failed) page=\(requested)"
+            let query = item["q"]!.string!, failed = item["failed"]!.bool!, requested = item["page"]!.int!, domain = item["domain"]!.string!
+            let shown = try AuditPage.read(requested, at: url, filter: AuditFilter(text: query, failuresOnly: failed, domain: domain))
+            let label = "q=\(query.unicodeScalars.map { String($0.value, radix: 16) }) failed=\(failed) page=\(requested) domain=\(domain)"
             #expect(shown.entries.map(\.id) == item["rows"]!.array!.map { $0.int! }, "\(label)")
             #expect(shown.page == item["shown_page"]!.int && shown.pages == item["pages"]!.int, "\(label)")
             #expect(shown.matches == item["total"]!.int, "\(label)")
             #expect(shown.logged == header["total"]!.int && shown.failures == header["failures"]!.int, "\(label)")
+            #expect(shown.domains == fixture["domains"]!.array!.map { $0.string! }, "\(label)")
         }
+        #expect(AuditFilter.unknownDomain == fixture["constants"]!["UNKNOWN_DOMAIN"]!.string)
+        #expect(fixture["pages"]!.array!.contains { $0["domain"]!.string! == "unknown" && $0["total"]!.int! > 0 })
+    }
+
+    /// The domain list is bounded (invariant 9): the first `domainsListed` the log names, newest first, then Unknown.
+    @Test func theDomainListIsBounded() throws {
+        let url = folder.appending(path: "audit.jsonl"), audit = AuditLog(url: url)
+        try audit.record("old", domain: nil)
+        for n in 0..<(AuditPage.domainsListed + 5) { try audit.record("n", domain: "d\(n).example") }
+        let domains = try AuditPage.read(1, at: url, filter: AuditFilter()).domains
+        #expect(domains.count == AuditPage.domainsListed + 1 && domains.last == AuditFilter.unknownDomain)
+        #expect(domains.contains("d\(AuditPage.domainsListed + 4).example") && !domains.contains("d0.example"), "the newest kept")
+        let found = try AuditPage.read(1, at: url, filter: AuditFilter(text: "d0.example"))
+        #expect(found.matches == 1, "one past the list is still found by the search")
+    }
+
+    /// A read's record in words: its domain, and its row count beside its command (GamGUI's "· 2 rows").
+    @Test func aReadRecordShowsItsDomainAndRows() throws {
+        let url = folder.appending(path: "audit.jsonl"), audit = AuditLog(url: url)
+        try audit.record("read", target: "alice@example.com", argv: ["user", "alice@example.com", "print", "delegates"], ok: true,
+                         extra: ["command": .string("raw.1440"), "origin": .string("builder"), "rows": .number("2")], domain: "Example.com")
+        try audit.record("read", target: "bob@example.com", argv: ["user", "bob@example.com", "print", "delegates"], ok: false,
+                         extra: ["command": .string("raw.1440"), "origin": .string("builder"), "rows": .number("0"),
+                                 "error": .string("Does not exist")], domain: "example.com")
+        try audit.record("old", target: "carol@example.com", argv: ["x"], domain: nil)
+        let entries = try AuditPage.read(1, at: url, filter: AuditFilter()).entries
+        #expect(entries.map(\.domain) == ["", "example.com", "example.com"])
+        #expect(entries.map(\.rows) == [nil, nil, 2], "only beside a command, never an error")
+        #expect(entries[2].actionName == "Read" && entries[2].outcome == .succeeded)
+        #expect(entries[1].outcome == .failed && entries[1].summary == "Does not exist")
     }
 
     @Test func theExportIsGamGUIsBytes() throws {
         let url = try log()
         for item in fixture["exports"]!.array! {
-            let query = item["q"]!.string!, failed = item["failed"]!.bool!
+            let query = item["q"]!.string!, failed = item["failed"]!.bool!, domain = item["domain"]!.string!
             let destination = folder.appending(path: "export-\(UUID().uuidString).csv")
-            let written = try AuditExport.write(from: url, filter: AuditFilter(text: query, failuresOnly: failed), to: destination)
+            let written = try AuditExport.write(from: url, filter: AuditFilter(text: query, failuresOnly: failed, domain: domain),
+                                                to: destination)
             let expected = Array(item["csv"]!.string!.utf8)
             let bytes = try [UInt8](Data(contentsOf: destination))
-            #expect(bytes == expected, "q=\(query) failed=\(failed)")
+            #expect(bytes == expected, "q=\(query) failed=\(failed) domain=\(domain)")
             let matches = fixture["pages"]!.array!.first {
-                $0["q"]!.string! == query && $0["failed"]!.bool! == failed && $0["page"]!.int! == 1
+                $0["q"]!.string! == query && $0["failed"]!.bool! == failed && $0["domain"]!.string! == domain && $0["page"]!.int! == 1
             }?["total"]?.int
-            #expect(written == matches, "q=\(query) failed=\(failed): the count of records written")
+            #expect(written == matches, "q=\(query) failed=\(failed) domain=\(domain): the count of records written")
         }
+        #expect(fixture["exports"]!.array!.first!["csv"]!.string!.hasPrefix(AuditExport.columns.joined(separator: ",") + "\r\n"))
     }
 
     /// The operator's chosen file is replaced whole, private, and nothing is left beside it.
@@ -103,7 +142,7 @@ struct AuditScreenTests {
         try Data("an older export, longer than nothing\n".utf8).write(to: destination)
         chmod(destination.path, 0o644)
         _ = try AuditExport.write(from: url, filter: AuditFilter(text: "nomatch"), to: destination)
-        #expect(try String(contentsOf: destination, encoding: .utf8) == "ts,action,target,ok,exit_code,error,argv,detail\r\n")
+        #expect(try String(contentsOf: destination, encoding: .utf8) == "ts,action,target,ok,exit_code,error,argv,detail,domain,origin,rows\r\n")
         var info = stat()
         #expect(lstat(destination.path, &info) == 0 && info.st_mode & 0o777 == 0o600)
         #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
@@ -126,7 +165,7 @@ struct AuditScreenTests {
             var extra: JSONObject = ["preview": .string(preview), "step": .number("0"), "phase": .string(phase)]
             if let error { extra["error"] = .string(error) }
             try audit.record("suspendUser", target: "\(preview)@example.com", argv: ["update", "user", "\(preview)@example.com", "suspended", "on"],
-                             exitCode: ok.map { $0 ? 0 : 50 }, ok: ok, actor: "admin@example.com", extra: extra)
+                             exitCode: ok.map { $0 ? 0 : 50 }, ok: ok, actor: "admin@example.com", extra: extra, domain: "example.com")
         }
         try step("done", "begin")
         try step("done", "end", ok: true)
@@ -135,7 +174,8 @@ struct AuditScreenTests {
         try step("lost", "begin")
         try step("checked", "begin")
         try Executor.acknowledge(Executor.unfinished(in: url).filter { $0.target == "checked@example.com" }, in: url)
-        try audit.record("remove_domain", connector: "keychain", target: "example.org", extra: ["detail": .string("Forgot it.")])
+        try audit.record("remove_domain", connector: "keychain", target: "example.org", extra: ["detail": .string("Forgot it.")],
+                         domain: "example.org")
 
         let unfinished = Executor.unfinished(in: url)
         #expect(unfinished.map(\.target) == ["lost@example.com"])
@@ -159,9 +199,9 @@ struct AuditScreenTests {
         let url = folder.appending(path: "audit.jsonl")
         let audit = AuditLog(url: url)
         let long = String(repeating: "é", count: 170)
-        try audit.record("a", extra: ["detail": .string(long)])
-        try audit.record("b", argv: [long])
-        try audit.record("c", extra: ["error": .string(long)])
+        try audit.record("a", extra: ["detail": .string(long)], domain: nil)
+        try audit.record("b", argv: [long], domain: nil)
+        try audit.record("c", extra: ["error": .string(long)], domain: nil)
         let entries = try AuditPage.read(1, at: url, filter: AuditFilter()).entries
         #expect(entries.map(\.summary) == [String(repeating: "é", count: 160) + "…", String(repeating: "é", count: 160) + "…",
                                            String(repeating: "é", count: 160)])
@@ -169,7 +209,7 @@ struct AuditScreenTests {
 
     @Test func theTimeIsReadForDisplay() throws {
         let url = folder.appending(path: "audit.jsonl")
-        try AuditLog(url: url).record("a", now: Date(timeIntervalSince1970: 1_791_460_800.25))
+        try AuditLog(url: url).record("a", domain: nil, now: Date(timeIntervalSince1970: 1_791_460_800.25))
         try Data(#"{"action": "b", "ts": "yesterday"}"#.utf8 + [0x0A]).write(to: folder.appending(path: "audit.jsonl.1"))
         let entries = try AuditPage.read(1, at: url, filter: AuditFilter()).entries
         #expect(entries.map(\.time) == ["2026-10-08T12:00:00.250000+00:00", "yesterday"])

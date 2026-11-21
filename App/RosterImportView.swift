@@ -338,7 +338,7 @@ final class RosterKeeper {
     /// One local event in the app's audit log; a sentence when it couldn't be written (the change itself stands).
     nonisolated static func audit(_ url: URL, _ action: String, domain: String, extra: JSONObject) -> String? {
         do {
-            try AuditLog(url: url).record(action, connector: "local", target: domain, ok: true, extra: extra)
+            try AuditLog(url: url).record(action, connector: "local", target: domain, ok: true, extra: extra, domain: domain)
             return nil
         } catch {
             return "Its audit record couldn't be written."

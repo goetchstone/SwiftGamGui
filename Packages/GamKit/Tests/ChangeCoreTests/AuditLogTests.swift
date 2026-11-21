@@ -4,6 +4,7 @@ import Foundation
 import GamEngine
 import TestSupport
 import Testing
+import Vault
 
 /// GamGUI parity for the audit log (invariant 11): `Tests/Fixtures/audit.json` holds the exact line
 /// GamGUI's `AuditLog.record` wrote for each call, and what its reader found across generations. The
@@ -31,13 +32,51 @@ struct AuditLogTests {
             try log.record(call["action"]!.string!, connector: call["connector"]?.string ?? "google_workspace",
                            target: call["target"]?.string, argv: call["argv"]?.array?.compactMap(\.string),
                            exitCode: call["exit_code"]?.int.map(Int32.init), ok: call["ok"]?.bool,
-                           actor: call["actor"]?.string, extra: call["extra"]?.object,
+                           actor: call["actor"]?.string, extra: call["extra"]?.object, domain: call["domain"]?.string,
                            secrets: call["secrets"]?.array?.compactMap(\.string) ?? [], now: at)
             let line = try lastLine(log.url)
             #expect(Array(line.utf8) == Array(item["line"]!.string!.utf8), "\(call["action"]!)")
         }
         var info = stat()
         #expect(lstat(log.url.path, &info) == 0 && info.st_mode & 0o777 == 0o600)
+    }
+
+    /// Plan F1: the record of a Builder read as GamGUI's `catalog_read` writes it over the same output (`reads`): the rows
+    /// counted only for a table (`CatalogResult.tableRows`, GamGUI's `table_records`), GAM's words when it failed, the domain
+    /// lowercased, never the output. A cancelled read is said in this app's words: GamGUI's `INTERRUPTED` is its own. GamGUI's
+    /// `sequence` origin has no Builder sequence here to come from, and the origin it refuses can't be spelled here at all.
+    @Test func everyReadIsRecordedAsGamGUIRecordsIt() throws {
+        let audit = ReadAudit(log: AuditLog(url: folder.appending(path: "reads.jsonl")))
+        let reads = try #require(fixture["reads"]?.array)
+        #expect(reads.count > 15)
+        for item in reads {
+            let name = item["name"]!.string!, argv = item["argv"]!.array!.map { $0.string! }
+            guard let origin = ReadAudit.Origin(rawValue: item["origin"]!.string!) else {
+                #expect(["sequence", "elsewhere"].contains(item["origin"]!.string!), "\(name)")
+                continue
+            }
+            let outcome: ReadAudit.Outcome = if let output = item["output"]?.string {
+                .read(rows: CatalogResult(argv: argv, stdout: output).tableRows)
+            } else if let error = item["error"]?.string {
+                .failed(error)
+            } else {
+                .interrupted
+            }
+            var written = try audit.record(command: "raw.1440", target: item["target"]!.string!, argv: argv,
+                                           domain: try #require(Domain(item["domain"]!.string!)), origin: origin, outcome: outcome)
+            written["ts"] = nil
+            var expected = try #require(item["records"]?.array?.first?.object)
+            if outcome == .interrupted, var extra = expected["extra"]?.object {
+                #expect(extra["error"]?.string?.hasPrefix("interrupted") == true, "\(name)")
+                extra["error"] = .string(ReadAudit.interrupted)
+                expected["extra"] = .object(extra)
+            }
+            #expect(written == expected, "\(name)")
+        }
+        #expect(AuditLog.readActions == Set(fixture["constants"]!["READ_ACTIONS"]!.array!.compactMap(\.string)))
+        #expect(AuditLog.domainKey == fixture["constants"]!["DOMAIN_KEY"]!.string)
+        #expect(ReadAudit.Origin.allCases.map(\.rawValue) == ["builder"])
+        #expect(ReadAudit.action == "read")
     }
 
     @Test func theReaderFindsWhatGamGUIsFinds() throws {
@@ -55,7 +94,7 @@ struct AuditLogTests {
         #expect(AuditLog.defaultMaxBytes == fixture["constants"]!["MAX_LOG_BYTES"]!.int)
         #expect(AuditLog.retainedGenerations == fixture["constants"]!["RETENTION_GENERATIONS"]!.int)
         let log = AuditLog(url: folder.appending(path: "audit.jsonl"), maxBytes: 1)
-        for number in 0..<13 { try log.record("n\(number)") }
+        for number in 0..<13 { try log.record("n\(number)", domain: nil) }
         let actions = AuditLog.records(at: log.url).compactMap { $0["action"]?.string }
         #expect(actions == (2..<13).reversed().map { "n\($0)" }, "the live file and ten generations, newest first")
         var info = stat()
@@ -67,7 +106,7 @@ struct AuditLogTests {
         try Data().write(to: elsewhere)
         let url = folder.appending(path: "audit.jsonl")
         try FileManager.default.createSymbolicLink(at: url, withDestinationURL: elsewhere)
-        #expect(throws: (any Error).self) { try AuditLog(url: url).record("x") }
+        #expect(throws: (any Error).self) { try AuditLog(url: url).record("x", domain: nil) }
         #expect(try Data(contentsOf: elsewhere).isEmpty)
     }
 

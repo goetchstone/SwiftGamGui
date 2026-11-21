@@ -139,6 +139,8 @@ final class SignatureKeepTests {
         let writes = records.filter { $0["action"]?.string == "setSignature" }
         let named = writes.compactMap { record -> String? in record["extra"]?.object?["kept"]?.string }
         #expect(writes.count == 4 && named == Array(repeating: run.id, count: 4))
+        // And its domain, as every record names one (plan F1).
+        #expect(writes.map { $0["extra"]?.object?[AuditLog.domainKey]?.string } == Array(repeating: example.name, count: 4))
     }
 
     /// The keeper hears which kept runs a Put Back sets again, so it never prunes them for this run (review of Phase A: the

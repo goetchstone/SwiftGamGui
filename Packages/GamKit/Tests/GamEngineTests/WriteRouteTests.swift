@@ -70,6 +70,24 @@ struct WriteRouteTests {
                 "\(reaching)")
     }
 
+    /// Plan F1: the read record is no write path (invariant 2). `ReadAudit` holds an audit log and nothing else, so it can run no
+    /// `gam` and reach no ticket, and it writes one action, `read`. Only the Builder's door (`UserAccess.catalogRead`) records a
+    /// read; in the app only the wiring makes the recorder and only the Builder hands it on (and the debug demo's log names one).
+    @Test func theReadRecordIsNoWritePath() throws {
+        let file = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/ChangeCore").first { $0.path.hasSuffix("/ReadAudit.swift") })
+        #expect(Set(file.lines.filter { $0.hasPrefix("import ") }) == ["import Foundation", "import GamEngine", "import Vault"])
+        let reaching = ["Runner", "runner", "WriteTicket", "ticket:", "Executor", "GamWrite", "GamRead", "WriteStep", "HeldPreview",
+                        ".run(", "Process", "Confirmation"]
+        #expect(file.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        let records = file.lines.filter { $0.contains(".record(") }
+        #expect(records.count == 1 && records.allSatisfy { $0.contains("log.record(Self.action,") }, "\(records)")
+        #expect(file.lines.contains { $0.contains(#"public static let action = "read""#) })
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["ReadAudit"])
+                == ["Packages/GamKit/Sources/ChangeCore/ReadAudit.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+        #expect(try Self.files(in: "App", matching: ["ReadAudit", "readAudit"])
+                == ["App/AppServices.swift", "App/BuilderView.swift", "App/DemoAudit.swift", "App/GamGUIApp.swift"])
+    }
+
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
     /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
     @Test func theJobsTrayReachesNoWrite() throws {

@@ -58,7 +58,9 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   the bundled `gam` are signed with the hardened runtime.
 - **Only read-only commands become runnable automatically**; every write is curated, and runs through
   one guarded, audited path: a preview it can't diverge from, a confirmation (a typed word for a
-  destructive one) and an audit record.
+  destructive one) and an audit record. Every read run from the Builder is recorded too (the command,
+  whom it was about, its row count; never its output), and every record names its domain. Reads whose
+  output is a secret or a file (backup codes, enrollment tokens, any `get`) are listed but not run.
 - **A model or Siri only drafts a preview**, except the operator's optional, off-by-default "Just do
   it" list of simple single-target actions, which never includes deletes, offboarding, passwords,
   sign-outs, delegation, forwarding, transfers, sharing or bulk changes.

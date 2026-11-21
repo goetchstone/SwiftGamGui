@@ -86,7 +86,8 @@ status=0
 # usage row (`usage`, the mock's report), then on every account's connected apps and agents (`apps`, read at once, with its
 # summary; CI has no on-device model, so Explain says why; in a window tall enough to show its row in the list), then on a
 # named domain-wide read (`named.<key>`: Licenses, and Google's alerts in the smallest window); Audit on a
-# demo log AppServices writes fresh in the temporary folder.
+# demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
+# then narrowed to one domain (the person is the domain: example.org).
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
@@ -153,7 +154,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \
-            narrow-audit:audit:::smallest \
+            narrow-audit:audit:::smallest audit-domain:audit:example.org narrow-audit-domain:audit:example.org::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \
             onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \

@@ -1,3 +1,4 @@
+import ChangeCore
 import Foundation
 import GamEngine
 import Observation
@@ -480,10 +481,33 @@ public final class UserAccess {
 
     /// A Builder read (`GamCommands.catalogRead`) run now as `domain`, the tenant it was started on: GAM's output, read off the
     /// main actor as the screen shows it, or GAM's own words. As long as a log read may take: a whole-tenant `print` is slow.
-    public func catalogRead(_ read: GamRead, in domain: Domain) async -> Result<CatalogResult, Problem> {
+    /// Recorded in `audit` once it has ended, ok or failed (plan F1, GamGUI's `catalog_read`): `command` (the catalog id),
+    /// `target` (whom it was about), the domain and the rows a table had, never the output. A cancelled task records it as
+    /// interrupted (no screen cancels one yet). A read the app quits during leaves no record: the app exits before this resumes.
+    /// A read the log couldn't record isn't shown, as GamGUI's isn't: it says so instead.
+    public func catalogRead(_ read: GamRead, command: String, target: String, in domain: Domain,
+                            recordingTo audit: ReadAudit) async -> Result<CatalogResult, Problem> {
         let output = await readNow(read, in: domain, timeout: ActivityLogs.timeout) { $0 }
-        return await Task.detached { output.map { CatalogResult(argv: read.argv, stdout: $0) } }.value
+        return await Task.detached {
+            let shown = output.map { CatalogResult(argv: read.argv, stdout: $0) }
+            let outcome: ReadAudit.Outcome = switch shown {
+            case .success(let result): .read(rows: result.tableRows)
+            case .failure(let problem) where problem == Self.interrupted: .interrupted
+            case .failure(let problem): .failed(problem.summary)
+            }
+            do {
+                try audit.record(command: command, target: target, argv: read.argv, domain: domain, outcome: outcome)
+            } catch {
+                return .failure(Problem(summary: "The read ended, but the audit log couldn't record it (\(error.localizedDescription)), "
+                    + "so its result isn't shown. Check the disk has room, then run it again."))
+            }
+            return shown
+        }.value
     }
+
+    /// A read stopped before GAM finished: its task was cancelled (`GamRunner` throws `CancellationError`). At a quit GAM is
+    /// stopped the same way, but the app exits before anyone reads this.
+    public nonisolated static let interrupted = Problem(summary: ReadAudit.interrupted)
 
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
     private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, timeout: Duration = GamRunner.defaultTimeout,
@@ -492,6 +516,8 @@ public final class UserAccess {
         do {
             return Self.outcome(try await runner.run(read, as: domain, timeout: timeout, extraEnvironment: environment),
                                 argv: read.argv, parse: parse)
+        } catch is CancellationError {
+            return .failure(Self.interrupted)
         } catch GamRunnerError.timedOut {
             return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
         } catch {

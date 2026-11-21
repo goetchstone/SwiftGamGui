@@ -320,7 +320,8 @@ struct LogReaderView: View {
     /// Every change this app ran to one of `involved` that ended on or after `since`, oldest first, from its audit log (newest
     /// first, so the read stops at the first older record), at most `PhishingAudit.scanLimit` records read and 5,000 kept
     /// (invariant 9; only the incident's count toward it, so others never push its first steps out). Phishing's trash steps
-    /// are left out: the report says each email pulled once. Off the main thread.
+    /// are left out: the report says each email pulled once. A Builder read (`AuditLog.readActions`) changed nothing, so it is
+    /// left out too. Off the main thread.
     nonisolated static func changes(in log: URL, since: Date?, to involved: Set<String>) -> (changes: [IncidentReport.Change], stopped: Date?) {
         guard let since else { return ([], nil) }
         var found: [IncidentReport.Change] = [], read = 0, oldest: Date?, reached = false
@@ -333,6 +334,7 @@ struct LogReaderView: View {
             }
             oldest = at
             guard case .bool(let ok)? = record["ok"], let action = record["action"]?.string, action != WriteAction.trashMessage.rawValue,
+                  !AuditLog.readActions.contains(action),
                   let target = record["target"]?.string, involved.contains(target.lowercased()) else { return read < PhishingAudit.scanLimit }
             found.append(IncidentReport.Change(at: at, what: WriteAction(rawValue: action)?.displayName ?? action.replacingOccurrences(of: "_", with: " "),
                                                target: target, by: record["actor"]?.string ?? "", ok: ok))
