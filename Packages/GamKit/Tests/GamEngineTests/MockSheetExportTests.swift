@@ -29,9 +29,9 @@ struct MockSheetExportTests {
 
     /// One call as the admin, with GAM's first-run banner dropped from stdout; `state` names the mock's state markers to make,
     /// and `missing` the delegated scopes the simulated tenant hasn't authorized (GAM_MOCK_STATE/dwd_missing).
-    private func run(_ argv: [String], state: [String] = [], missing: [String] = []) async throws -> Ran {
+    private func run(_ argv: [String], state: [String] = [], missing: [String] = [], admin: String = MockSheetExportTests.admin) async throws -> Ran {
         let config = try Fixtures.placeholderConfigDirectory()
-        try Fixtures.oauth2(admin: Self.admin).write(to: config.appending(path: "oauth2.txt"))
+        try Fixtures.oauth2(admin: admin).write(to: config.appending(path: "oauth2.txt"))
         let folder = FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-mock-state-\(UUID().uuidString)")
         defer {
             try? FileManager.default.removeItem(at: config)
@@ -139,6 +139,15 @@ struct MockSheetExportTests {
         // Only a print or report read takes it.
         let info = try await run(["info", "user", "alice@example.com"] + Self.tail)
         #expect(info.exitCode == 2 && info.stderr.contains("Invalid argument: todrive") && info.made.isEmpty)
+    }
+
+    /// GAM names the admin by checkUserExists' primaryEmail (GetTodriveParameters): a token naming an alias has its account's
+    /// primary address in every upload line, and one naming no account is a usage error before anything runs.
+    @Test func theUploadNamesTheAdminByItsPrimaryAddress() async throws {
+        let alias = try await run(Self.delegates + Self.tail, missing: [SheetExportScopes.sheets], admin: "a.anders@example.com")
+        #expect(alias.exitCode == 73 && alias.stderr.contains("User: alice@example.com, Sheets API Service/App not enabled"))
+        let nobody = try await run(Self.delegates + Self.tail, admin: "nobody@example.com")
+        #expect(nobody.exitCode == 2 && nobody.stderr.contains("Item: todrive_user, Value: nobody@example.com, Not Found") && nobody.made.isEmpty)
     }
 
     /// The scope check and the upload read the same tenant: a scope it hasn't authorized FAILs in the check and refuses the upload.

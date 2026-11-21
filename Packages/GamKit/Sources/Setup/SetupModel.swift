@@ -69,6 +69,11 @@ public final class SetupModel {
     /// confirm: then ChangeCore makes no change that could cut an account off, since it can't tell whether it's this one.
     public var connectedAdminID: String? { active == nil ? nil : activeAdminID }
     private var activeAdminID: String?
+    /// The connected admin's primary address as GAM read it at Check access (`info user … primaryEmail,id`, the read that
+    /// confirms its ID): GAM's own name for the admin, which an alias in the token isn't. A Sheet export's upload lines name it
+    /// (plan F4). Nil when the read wasn't made or didn't confirm the account.
+    public var connectedAdminPrimary: String? { active == nil ? nil : activeAdminPrimary }
+    private var activeAdminPrimary: String?
     /// Whether the connected domain's admin token holds the Classroom scopes GAM reads Classroom with (GamGUI's
     /// `classroom_readable`, C1.4): false on a token known to lack them (a domain that doesn't use Classroom), nil when its
     /// scopes can't be read. Only false skips a read: a person's page leaves its Classroom section off, offboarding reads
@@ -286,7 +291,7 @@ public final class SetupModel {
             if result.isAuthorized {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
                                                                 of: admin, in: domain, runner: runner)
-                activate(domain, admin: admin, accountID: account.id,
+                activate(domain, admin: admin, accountID: account.id, primary: account.primary,
                          classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) },
                          adminScopes: token.flatMap { CredentialFacts.grantedScopes(inOAuth2: $0.bytes) })
                 activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
@@ -367,30 +372,33 @@ public final class SetupModel {
     /// delegated admin whose role doesn't reach its own account, an admin outside this directory), or GAM reads another
     /// account. Only a cancellation is thrown: nobody waits for the check.
     private static func confirmedAccountID(_ id: String?, of admin: String, in domain: Domain,
-                                           runner: AuthenticatedRunner) async throws -> (id: String?, why: String?) {
-        guard let id else { return (nil, "oauth2.txt doesn't say which account it is") }
+                                           runner: AuthenticatedRunner) async throws -> (id: String?, why: String?, primary: String?) {
+        guard let id else { return (nil, "oauth2.txt doesn't say which account it is", nil) }
         let result: GamResult
         do {
             result = try await runner.run(GamCommands.infoUser(email: admin, fields: ["primaryEmail", "id"]), as: domain)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            return (nil, "GAM couldn't read \(admin)")
+            return (nil, "GAM couldn't read \(admin)", nil)
         }
         guard result.exitCode == 0 else {
-            return (nil, "GAM couldn't read \(admin): \(GamError(exitCode: result.exitCode, stderr: result.stderr).message)")
+            return (nil, "GAM couldn't read \(admin): \(GamError(exitCode: result.exitCode, stderr: result.stderr).message)", nil)
         }
-        guard GamUser(record: GamOutput.one(result.stdout)).accountID.map({ $0.utf8.elementsEqual(id.utf8) }) == true else {
-            return (nil, "GAM reads \(admin) as another account than oauth2.txt's")
+        let user = GamUser(record: GamOutput.one(result.stdout))
+        guard user.accountID.map({ $0.utf8.elementsEqual(id.utf8) }) == true else {
+            return (nil, "GAM reads \(admin) as another account than oauth2.txt's", nil)
         }
-        return (id, nil)
+        return (id, nil, user.primaryEmail.isEmpty ? nil : user.primaryEmail)
     }
 
-    private func activate(_ domain: Domain, admin: String, accountID: String?, classroomReadable: Bool?, adminScopes: [String]?) {
+    private func activate(_ domain: Domain, admin: String, accountID: String?, primary: String?, classroomReadable: Bool?,
+                          adminScopes: [String]?) {
         reconnectFailure = nil
         lastDomain.save(domain.name)
         activeAdmin = admin
         activeAdminID = accountID
+        activeAdminPrimary = primary
         activeClassroomReadable = classroomReadable
         activeAdminScopes = adminScopes
         guard active != domain else { return }
@@ -421,6 +429,7 @@ public final class SetupModel {
             active = nil
             activeAdmin = nil
             activeAdminID = nil
+            activeAdminPrimary = nil
             activeClassroomReadable = nil
             activeAdminScopes = nil
             generation += 1

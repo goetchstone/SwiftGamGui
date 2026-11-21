@@ -10,17 +10,24 @@ import Foundation
 /// the read then runs as it would without `todrive`, and instead of printing its CSV, GAM:
 ///
 /// 1. makes the file in the admin's Drive with `files.create` (the CSV, converted to a Sheet): the delegated Drive scope.
-///    Refused, it writes `User: <admin>, Drive API v3 Service/App not enabled` to stderr and exits 73
-///    (SERVICE_NOT_APPLICABLE_RC): nothing made. Drive turned off for the admin reads `User: <admin>, Drive Service/App not
-///    enabled` (73); `forbidden`/`insufficientPermissions` reads `WARNING: Insufficient permissions to perform this task` (67);
-///    a missing folder, a full Drive or Google's error reads `Drive Folder: root, Create Failed: <why>` (50:
-///    `entityActionFailedWarning` after `Act.Set(Act.CREATE)`, and `Act.Failed()` is `"<action> Failed"`), or, for Google's
-///    internal error on the create itself, `Drive File: <name>, Create Failed: Google reported "…" but the file was probably
-///    uploaded, check that it has N rows` (50).
+///    Its Drive token refused, it writes `User: <admin>, Drive API v3 Service/App not enabled` to stderr and exits 73
+///    (SERVICE_NOT_APPLICABLE_RC), returning before the create: nothing made. `files.create` refused as `forbidden` or
+///    `insufficientPermissions` reads `WARNING: Insufficient permissions to perform this task` (67; only the upload prints it,
+///    and no later call raises either to that handler): nothing made. `files.create` failing as `fileNotFound`, `unknownError`
+///    or `storageQuotaExceeded` reads `Drive Folder: root, Create Failed: <why>` (50: `entityActionFailedWarning` after
+///    `Act.Set(Act.CREATE)`, and `Act.Failed()` is `"<action> Failed"`; never another parent, since no `tdparent` is sent):
+///    an `unknownError` is Google's HTTP 500 with status UNKNOWN, which GAM's own source doesn't show left nothing behind (its
+///    INTERNAL twin is "the file was probably uploaded"), so this line is said as unknown. Google's internal error on the
+///    create itself reads `Drive File: <name>, Create Failed: Google reported "…" but the file was probably uploaded, check that
+///    it has N rows` (50): unknown.
 /// 2. finishes it as a Sheet through the Sheets API (`spreadsheets.get` and `batchUpdate`, naming the tab): the delegated
 ///    Sheets scope. Refused, the file is ALREADY made, but GAM returns before printing its link: `User: <admin>, Sheets API
 ///    Service/App not enabled`, exit 73. A Sheets call that fails once the token is had is `todriveCSVErrorExit`:
-///    `ERROR: User: <admin>, Drive File ID: <id>, Not Created: <why>` (50), the file made.
+///    `ERROR: User: <admin>, Drive File ID: <id>, Not Created: <why>` (50), the file made. But `serviceNotAvailable`,
+///    `authError` and `domainPolicy` (SHEETS_ACCESS_THROW_REASONS, glgapi.py:290) pass the inner handlers and reach the outer
+///    one (`userDriveServiceNotEnabledWarning`), which prints `User: <admin>, Drive Service/App not enabled` (a message naming
+///    "Drive apps" or "Active session is invalid") or `User: <admin>, Not Created: <why>` (51), the same lines `files.create`
+///    itself prints for those three reasons before anything is made: both are said as unknown.
 /// 3. prints `Data uploaded to Drive File:` and the file's `webViewLink` on the next line, on stdout. The exit is 0, or a
 ///    warning code the read itself set: GAM uploads the table it has all the same (`setSysExitRC` keeps the last code set). A
 ///    per-account read that couldn't get a token for an account (`handleOAuthTokenError`, a soft error: rc 50, `continue`)
@@ -32,7 +39,14 @@ import Foundation
 ///
 /// What became of the file is read from the upload's OWN lines (`uploadState`: the link, and the lines above, naming the
 /// admin or the file), never from GAM's one-line error summary, which can be a line the read printed about another account
-/// (GamGUI failure-log 2026-11-21, "the export's outcome read GAM's summary line").
+/// (GamGUI failure-log 2026-11-21, "the export's outcome read GAM's summary line"). "Nothing was made" is said only where
+/// GAM's source shows no file exists at that point: a line that can come before or after `files.create`, or from the read
+/// itself, is unknown (review of F4, 2026-11-21). Deviations from GamGUI's `UPLOAD_LINES`, which have the same gaps: Drive off,
+/// Create Failed and Not Created are unknown, Create Failed is GAM's own line only (`Drive Folder: root` at a line's start),
+/// and the last line naming another account than GAM's name for the admin is unknown, never skipped for an earlier one.
+/// One residue: a read acting through the admin's own Drive can print the upload's Drive-refused line itself; that line
+/// stands for the upload only if the upload then stopped with no line at all (a Sheets token refused without a word right
+/// after the Drive one worked), which GAM's source allows but nothing here can tell apart.
 public enum SheetExport {
     public static let driveScope = "https://www.googleapis.com/auth/drive"
     public static let sheetsScope = "https://www.googleapis.com/auth/spreadsheets"
@@ -104,16 +118,20 @@ public enum SheetExport {
         case probablyMade = "probably_made"
         case createFailed = "create_failed"
         case finishFailed = "finish_failed"
+        /// `User: <admin>, Not Created: <why>`: the outer handler's `entityActionNotPerformedWarning`, before or after the create.
+        case notCreated = "not_created"
     }
 
-    /// Which of the upload's own failure lines GAM printed (GamGUI's `UPLOAD_LINES`, each read as GamGUI's `re.I` reads it), the
-    /// last one if several (the upload runs after the read; on a tie the one listed first), or nil for none. A line naming an
-    /// account other than `owner` is the read's, not the upload's; with no owner known, any account's counts, as GamGUI's.
+    /// Which of the upload's own failure lines GAM printed (GamGUI's `UPLOAD_LINES`, each read as GamGUI's `re.I` reads it): the
+    /// last one (the upload runs after the read; on a tie the one listed first), or nil for none. `owner` is GAM's name for the
+    /// admin, the Directory's primary address (`GetTodriveParameters` replaces the token's address with `checkUserExists`'s
+    /// `primaryEmail`). When the last line names another account it can't place the file, whether it's the read's or the
+    /// admin's under another name: nil, unknown, never an earlier line instead (a deviation: GamGUI skips it). With no owner
+    /// known, any account's line counts, as GamGUI's.
     public static func uploadState(_ stderr: String, owner: String) -> Upload? {
-        var found: (at: String.Index, code: Upload)?
+        var found: (at: String.Index, code: Upload, who: Substring?)?
         func consider(_ code: Upload, _ at: String.Index, who: Substring? = nil) {
-            if let who, !owner.isEmpty, who.lowercased() != owner.lowercased() { return }
-            if found.map({ at > $0.at }) ?? true { found = (at, code) }
+            if found.map({ at > $0.at }) ?? true { found = (at, code, who) }
         }
         for match in stderr.matches(of: /User: ([^,\n]+), Sheets API[^,\n]*Service\/App not enabled/.ignoresCase()
             .matchingSemantics(.unicodeScalar)) { consider(.sheetsRefused, match.range.lowerBound, who: match.output.1) }
@@ -125,12 +143,18 @@ public enum SheetExport {
             .matchingSemantics(.unicodeScalar)) { consider(.notPermitted, match.range.lowerBound) }
         for match in stderr.matches(of: /Drive File: [^\n]*, \w+ Failed: Google reported [^\n]*the file was probably uploaded/
             .ignoresCase().matchingSemantics(.unicodeScalar)) { consider(.probablyMade, match.range.lowerBound) }
-        for match in stderr.matches(of: /Drive Folder: [^,\n]+, \w+ Failed:/.ignoresCase().matchingSemantics(.unicodeScalar)) {
-            consider(.createFailed, match.range.lowerBound)
-        }
+        // GAM's own line, at a line's start, its parent always `root` (no `tdparent` is sent): a read's `User: <x>, Drive Folder:
+        // <id>, Print Failed: …` (printDiskUsage, printEmptyDriveFolders) is no create.
+        for match in stderr.matches(of: /^\s*Drive Folder: root, Create Failed:/.anchorsMatchLineEndings().ignoresCase()
+            .matchingSemantics(.unicodeScalar)) { consider(.createFailed, match.range.lowerBound) }
         for match in stderr.matches(of: /User: ([^,\n]+), Drive File ID: [^,\n]+, Not \w+/.ignoresCase()
             .matchingSemantics(.unicodeScalar)) { consider(.finishFailed, match.range.lowerBound, who: match.output.1) }
-        return found?.code
+        for match in stderr.matches(of: /User: ([^,\n]+), Not Created:/.ignoresCase().matchingSemantics(.unicodeScalar)) {
+            consider(.notCreated, match.range.lowerBound, who: match.output.1)
+        }
+        guard let found else { return nil }
+        if let who = found.who, !owner.isEmpty, who.lowercased() != owner.lowercased() { return nil }
+        return found.code
     }
 
     /// What an export's record keeps from GAM's output: the file's link when GAM printed one (`url`), else which of the upload's
@@ -237,14 +261,22 @@ public enum SheetExport {
             return Outcome(url: "", made: .no, said: "Nothing was made: the service account isn't allowed Drive (\(driveScope)) for "
                            + "\(who).", todo: addScope)
         case .driveOff?:
-            return Outcome(url: "", made: .no, said: "Nothing was made: Google Drive is turned off for \(who).",
-                           todo: "Turn Drive on for the admin's organizational unit in the Admin console, then export again.")
+            // Printed for a refusal before the create or for the Sheets step after it (the outer handler): unknown.
+            return Outcome(url: "", made: .unknown, said: "Google said Drive is turned off for \(who). GAM may have stopped before "
+                           + "making the file or after, so whether a file was made can't be told.",
+                           todo: "Look in \(who)'s Drive before exporting again. If Drive is off for the admin, turn it on for its "
+                               + "organizational unit in the Admin console first.")
         case .notPermitted?:
             return Outcome(url: "", made: .no, said: "Nothing was made: Google refused to create a file in \(who)'s Drive.",
                            todo: "Check that the admin's Drive accepts new files, then export again.")
         case .createFailed?:
-            return Outcome(url: "", made: .no, said: "Nothing was made: Google refused to create the file in \(who)'s Drive (it may be "
-                           + "full).", todo: "See GAM's line below, then export again.")
+            // A full Drive or a missing folder made nothing, but Google's 500 UNKNOWN reads the same: unknown.
+            return Outcome(url: "", made: .unknown, said: "Google refused or failed the file's create in \(who)'s Drive (it may be "
+                           + "full), so whether a file was made can't be told.",
+                           todo: "Look in \(who)'s Drive before exporting again, and see GAM's line below.")
+        case .notCreated?:
+            return Outcome(url: "", made: .unknown, said: "Google stopped the export, before the file was made or after, so whether a "
+                           + "file was made can't be told.", todo: "Look in \(who)'s Drive before exporting again, and see GAM's line below.")
         case .probablyMade?:
             return Outcome(url: "", made: .unknown, said: "Google reported an error, but says the file was probably made.",
                            todo: "Look in \(who)'s Drive before exporting again.")

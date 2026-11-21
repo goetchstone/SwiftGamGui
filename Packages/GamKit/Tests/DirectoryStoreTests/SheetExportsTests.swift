@@ -50,12 +50,12 @@ final class SheetExportsTests {
         try? FileManager.default.removeItem(at: scratch)
     }
 
-    private func connect(_ domain: String = "example.com", admin: String = SheetExportsTests.admin) async throws {
+    private func connect(_ domain: String = "example.com", admin: String = SheetExportsTests.admin, token: Data? = nil) async throws {
         let folder = scratch.appending(path: "config-\(domain)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "123456789"}"#.utf8)
             .write(to: folder.appending(path: "oauth2service.json"))
-        try Fixtures.oauth2(admin: admin).write(to: folder.appending(path: "oauth2.txt"))
+        try (token ?? Fixtures.oauth2(admin: admin)).write(to: folder.appending(path: "oauth2.txt"))
         await setup.importFolder(folder, as: domain)
         await setup.checkAccess(Domain(domain)!)
         #expect(setup.active?.name == domain)
@@ -207,7 +207,9 @@ final class SheetExportsTests {
         try mark("drive_full")
         await exports.confirm(pending, OperatorConfirmation(confirmed: true))
         let done = try done()
-        #expect(done.outcome.made == .no && done.detail.contains("Drive Folder: root, Create Failed:") && made().isEmpty)
+        // GAM's line for a full Drive reads the same as Google's 500 UNKNOWN, which may leave a file: unknown, never "nothing".
+        #expect(done.outcome.made == .unknown && done.detail.contains("Drive Folder: root, Create Failed:") && made().isEmpty)
+        #expect(done.outcome.todo.hasPrefix("Look in \(Self.admin)'s Drive before exporting again"))
         #expect(records().last?["extra"]?.object?["upload"]?.string == "create_failed")
     }
 
@@ -222,6 +224,24 @@ final class SheetExportsTests {
         #expect(done.outcome.said.contains("invalid_grant") && made().count == 1)
         let end = try #require(records().last)
         #expect(end["ok"] == .bool(false) && end["extra"]?.object?["url"]?.string == done.outcome.url)
+    }
+
+    /// The review of F4: GAM names the admin by its Directory primary address, not the token's (an alias, after a rename).
+    /// Check access keeps the primary GAM read, the export names the admin by it, and the upload's own line is read as the
+    /// admin's: a file made with the Sheets step refused is said as made, not as unknown.
+    @Test func theAdminsLinesAreReadByItsPrimaryAddress() async throws {
+        let sub = try #require(Fixtures.mockAccountID("alice@example.com"))
+        let alias = Data(#"{"decoded_id_token": {"email": "a.anders@example.com", "sub": "\#(sub)"}, "refresh_token": "placeholder"}"#.utf8)
+        try await connect(admin: "a.anders@example.com", token: alias)
+        #expect(setup.connectedAdmin == "a.anders@example.com" && setup.connectedAdminPrimary == "alice@example.com")
+        await preview()
+        let pending = try pending()
+        #expect(pending.owner == "alice@example.com")
+        try refuse(SheetExport.sheetsScope)
+        await exports.confirm(pending, OperatorConfirmation(confirmed: true))
+        let done = try done()
+        #expect(done.outcome.made == .yes && done.outcome.said.contains("alice@example.com's Drive") && made().count == 1)
+        #expect(records().last?["extra"]?.object?["upload"]?.string == "sheets_refused")
     }
 
     /// A read carrying todrive in any spelling GAM reads is refused at the preview, before any read, and by the Builder's read

@@ -146,7 +146,8 @@ public final class SheetExports {
             return
         }
         let generation = setup.generation
-        let owner = PythonText.strip(setup.connectedAdmin ?? "")
+        // GAM's name for the admin (its primary address, read at Check access), else the token's: the upload's lines name it.
+        let owner = PythonText.strip(setup.connectedAdminPrimary ?? setup.connectedAdmin ?? "")
         let name = SheetExport.title(domain: domain.name, read: commandName)
         let write: GamWrite
         do {

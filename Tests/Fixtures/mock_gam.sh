@@ -374,8 +374,13 @@ if [ -n "$td_read" ]; then
   if [ "$td" -gt 0 ]; then
     [ "$td_read" = print ] || invalid_arg todrive
     ( shift "$td"; todrive_tail "$@" ) || exit $?
-    # Whose Drive: the admin the token names, read before the read runs (GetTodriveParameters runs as the arguments are read).
-    td_admin=$(sed -n 's/.*"email": *"\([^"]*\)".*/\1/p' "$GAMCFGDIR/oauth2.txt" | head -n 1)
+    # Whose Drive: the admin the token names, as GAM names it: GetTodriveParameters (run as the arguments are read, before the
+    # read) replaces it with checkUserExists' primaryEmail, so an alias in the token is its account's primary address in every
+    # upload line. An address no account has is invalidTodriveUserExit, a usage error before anything runs.
+    td_token=$(sed -n 's/.*"email": *"\([^"]*\)".*/\1/p' "$GAMCFGDIR/oauth2.txt" | head -n 1)
+    td_record=$(user_record "$(lower "$td_token")")
+    [ -n "$td_record" ] || usage_error "Invalid User: Config File: $GAMCFGDIR/gam.cfg, Item: todrive_user, Value: $td_token, Not Found"
+    td_admin=$(json_text primaryEmail "$td_record")
     i=0; td_title=""; prev=""
     for a in "$@"; do   # keep the words before `todrive` (the list was expanded before the loop)
       i=$((i + 1))

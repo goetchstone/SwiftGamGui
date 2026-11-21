@@ -99,9 +99,17 @@ struct SheetExportTests {
             ("User: \(Self.admin), Sheets API - write todrive data Service/App not enabled\n", .sheetsRefused, .yes),
             ("\nERROR: User: \(Self.admin), Drive File ID: 1abc, Not Created: Requested entity was not found.\n", .finishFailed, .yes),
             ("User: \(Self.admin), Drive API v3 Service/App not enabled\n", .driveRefused, .no),
-            ("User: \(Self.admin), Drive Service/App not enabled\n", .driveOff, .no),
+            // Printed before the create or by the outer handler after it (a Sheets call's domainPolicy): unknown.
+            ("User: \(Self.admin), Drive Service/App not enabled\n", .driveOff, .unknown),
             ("\nWARNING: Insufficient permissions to perform this task\n", .notPermitted, .no),
-            ("Drive Folder: root, Create Failed: The user's Drive storage quota has been exceeded.\n", .createFailed, .no),
+            // files.create refused, or Google's 500 UNKNOWN, which reads the same: unknown.
+            ("Drive Folder: root, Create Failed: The user's Drive storage quota has been exceeded.\n", .createFailed, .unknown),
+            ("  Drive Folder: root, Create Failed: Unknown Error\n", .createFailed, .unknown),
+            // userDriveServiceNotEnabledWarning's other branch, before or after the create.
+            ("User: \(Self.admin), Not Created: The service is currently unavailable.\n", .notCreated, .unknown),
+            // A read's own line about a folder (printDiskUsage, printEmptyDriveFolders) is no create.
+            ("User: bob@example.com, Drive Folder: 1abc, Print Failed: Not Found\n", nil, .unknown),
+            ("User: \(Self.admin), Drive Folder: 1abc, Print Failed: Not Found\n", nil, .unknown),
             ("Drive File: \(Self.title), Create Failed: Google reported \"Internal Error\" but the file was probably uploaded, check "
              + "that it has 3 rows\n", .probablyMade, .unknown),
             ("User: bob@example.com, Drive Service/App not enabled\n", nil, .unknown),       // the read's line, another account
@@ -129,12 +137,37 @@ struct SheetExportTests {
         #expect(SheetExport.uploadState(stderr, owner: Self.admin) == .finishFailed)
         let twice = "Drive Folder: root, Create Failed: quota\nUser: \(Self.admin), Sheets API Service/App not enabled\n"
         #expect(SheetExport.uploadState(twice, owner: Self.admin) == .sheetsRefused)
+        // The last line naming another account can't place the file: unknown, never an earlier line of the admin's instead.
+        let after = "User: \(Self.admin), Drive API v3 Service/App not enabled\nUser: bob@example.com, Drive Service/App not enabled\n"
+        #expect(SheetExport.uploadState(after, owner: Self.admin) == nil)
+    }
+
+    /// The review of F4: a read's own `Drive Folder: <id>, Print Failed` line, followed by an upload that made the file and then
+    /// stopped with a line nothing matches, once decided "Nothing was made" over a file that exists.
+    @Test func aReadsFolderLineNeverDecidesTheUpload() {
+        let stderr = "User: bob@example.com, Drive Folder: 1abc, Print Failed: Not Found\n"
+            + "User: \(Self.admin), Not Created: The service is currently unavailable.\n"
+        #expect(SheetExport.uploadState(stderr, owner: Self.admin) == .notCreated)
+        let silent = "User: bob@example.com, Drive Folder: 1abc, Print Failed: Not Found\n"
+        #expect(SheetExport.uploadState(silent, owner: Self.admin) == nil)
+        #expect(SheetExport.outcome(ok: false, url: "", upload: "", owner: Self.admin).made == .unknown)
+    }
+
+    /// GAM names the admin by the Directory's primary address (GetTodriveParameters, checkUserExists): its lines match that,
+    /// compared as GAM's re.I compares it, and a line naming the token's alias instead is another name, so unknown.
+    @Test func theAdminIsNamedByItsPrimaryAddress() {
+        let line = "User: alice@example.com, Sheets API Service/App not enabled\n"
+        #expect(SheetExport.uploadState(line, owner: "alice@example.com") == .sheetsRefused)
+        #expect(SheetExport.uploadState(line, owner: "a.anders@example.com") == nil)
     }
 
     /// `entityActionFailedWarning` after `Act.Set(Act.CREATE)`: "<entity>: <name>, Create Failed: <why>". Never ", Failed".
     @Test func theFailedLineIsTheOneGamPrints() {
         #expect(SheetExport.uploadState("Drive Folder: root, Failed: quota\n", owner: Self.admin) == nil)
         #expect(SheetExport.uploadState("Drive Folder: root, Create Failed: quota\n", owner: Self.admin) == .createFailed)
+        // GAM's own line only: at a line's start, its parent `root` (no tdparent is sent), never inside another line.
+        #expect(SheetExport.uploadState("Drive Folder: 1abc, Create Failed: quota\n", owner: Self.admin) == nil)
+        #expect(SheetExport.uploadState("x Drive Folder: root, Create Failed: quota\n", owner: Self.admin) == nil)
     }
 
     @Test func aPlainCSVFileAndAnOldRecordAreSaidAsTheyAre() {
