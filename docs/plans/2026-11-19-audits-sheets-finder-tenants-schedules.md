@@ -1,6 +1,6 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-21): F1 and F2 built (Swift); F3 being built in GamGUI.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-21): F1, F2 and F6 built (Swift); F3 built in GamGUI, not yet here.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -115,6 +115,19 @@ The model never writes GAM syntax. It narrows and fills; code checks and builds;
 A domain menu in the toolbar when more than one domain is connected; choosing one runs the same `checkAccess`
 (switches only on a pass, Touch ID if the Vault session ended), disabled while busy, warns that a run in progress stops
 after its step. VoiceOver: "Domain, <name>". Templates and roles stay shared across domains.
+
+*As built (2026-11-21, ported from GamGUI #173 merged as `c5230a1`; no fixture changed: #173 touched GamGUI's web routes,
+vault cache and job words, none of which `gen_fixtures.py` records):* a toolbar button named "Domain, <domain>" (signed in
+as its admin) while another domain is stored, its panel listing the others, and the menu bar's Domain menu (Switch
+Domain… ⇧⌘D, each domain, Setup…). A switch is `SetupModel.checkAccess`, the one Setup's Check Access runs: it says
+first what it would stop and reads nothing until Switch Anyway names those runs, asks again after a pass with no await
+before the activation, takes one check at a time, and answers a failed check, a refusing Keychain (Touch ID refused), a
+token naming no admin and a second check in GamGUI's words (`DomainMenu`). A switch stops each run after its step ("Stopped:
+you switched to <new> — N not attempted." in the tray), drops every per-domain store's state, every change model's preview
+and result and the executor's held previews, withholds Retry from runs on the old domain, and makes the window's screen
+again. Listed deviations (runbook setup-credentials.md): reads aren't jobs here, so only write runs are warned of; the
+menu is disabled while Setup works rather than while any request runs; no unsaved incident export exists to drop.
+Not live yet: a switch between two real domains.
 
 ### F7 — Schedules · *a: both apps; b: Swift only, gated*
 - **F7a — Due, attended.** A saved audit run (F3) or named report (F2) gets a cadence. When it's due, a notification
