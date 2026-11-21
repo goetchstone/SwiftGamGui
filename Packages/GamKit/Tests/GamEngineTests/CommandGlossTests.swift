@@ -69,4 +69,26 @@ struct CommandGlossTests {
     }
 
     static var catalog: CommandCatalog { CommandCatalogTests.catalog }
+
+    /// `PythonText.capitalize` and `split` held to Python's own answers (3.14, Unicode 16.0, run 2026-11-21). The gloss
+    /// fixture can't catch them: every catalog verb is ASCII, and `gloss` capitalizes its first scalar again (review
+    /// 2026-11-21: six broken versions of the two passed it).
+    @Test(arguments: [
+        ("\u{01C6}emal", "\u{01C5}emal"),  // a digraph: titlecase, not uppercase
+        ("\u{00DF}x", "Ssx"),               // ß expands
+        ("\u{FB01}x", "Fix"),               // the fi ligature expands
+        ("\u{0391}\u{03A3}", "\u{0391}\u{03C2}"),         // final sigma
+        ("\u{03A3}\u{0391}\u{03A3}", "\u{03A3}\u{03B1}\u{03C2}"),
+        ("hello WORLD", "Hello world"),     // the rest lowercased
+        ("", ""),
+    ])
+    func capitalizeIsPythons(_ text: String, _ python: String) {
+        #expect(Array(PythonText.capitalize(text).utf8) == Array(python.utf8))
+    }
+
+    @Test func splitIsPythons() {
+        #expect(PythonText.split("a\u{1C}b\u{3000}c  d") == ["a", "b", "c", "d"])
+        #expect(PythonText.split(" \u{85}x\u{2028}y\u{A0} ") == ["x", "y"])
+        #expect(PythonText.split("") == [] && PythonText.split("   ") == [])
+    }
 }
