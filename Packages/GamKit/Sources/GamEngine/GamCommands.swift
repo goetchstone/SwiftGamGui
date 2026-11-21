@@ -555,6 +555,15 @@ public enum GamCommands {
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])
     }
 
+    /// Every license seat (4498 `gam print licenses`; doPrintLicenses at the 7.52.04 tag), no product named: the audit runs'
+    /// license usage (plan F3). CSV `userId,productId,productDisplay,skuId,skuDisplay`, userId lowercased, the display names
+    /// from GAM's own table (the ID itself for one it doesn't know). With no product named GAM lists every product it knows
+    /// and passes over one Google refuses (invalid, forbidden, invalidArgument) without a word or a code, so a missing product
+    /// isn't "no seats". Without the License Manager scope it exits NO_SCOPES_FOR_API_RC (15).
+    public static func printLicenses() -> GamRead {
+        GamRead(["print", "licenses"])
+    }
+
     /// The admin role assignments `user` holds directly (1588-1591; doPrintShowAdmins), CSV with `role` and `scopeType`.
     /// Without `recursive`, a role held through a group isn't listed.
     public static func printAdmins(user: String) -> GamRead {

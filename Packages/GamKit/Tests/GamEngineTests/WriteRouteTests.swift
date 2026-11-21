@@ -71,8 +71,9 @@ struct WriteRouteTests {
     }
 
     /// Plan F1: the read record is no write path (invariant 2). `ReadAudit` holds an audit log and nothing else, so it can run no
-    /// `gam` and reach no ticket, and it writes one action, `read`. Only the Builder's door (`UserAccess.catalogRead`) records a
-    /// read; in the app only the wiring makes the recorder and only the Builder hands it on (and the debug demo's log names one).
+    /// `gam` and reach no ticket, and it writes one action, `read`. Only the Builder's door (`UserAccess.catalogRead`) and an audit
+    /// run's step (`AuditRunner`, plan F3) record a read; in the app only the wiring makes the recorder and only the Builder hands
+    /// it on (and the debug demo's log names one).
     @Test func theReadRecordIsNoWritePath() throws {
         let file = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/ChangeCore").first { $0.path.hasSuffix("/ReadAudit.swift") })
         #expect(Set(file.lines.filter { $0.hasPrefix("import ") }) == ["import Foundation", "import GamEngine", "import Vault"])
@@ -83,9 +84,32 @@ struct WriteRouteTests {
         #expect(records.count == 1 && records.allSatisfy { $0.contains("log.record(Self.action,") }, "\(records)")
         #expect(file.lines.contains { $0.contains(#"public static let action = "read""#) })
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["ReadAudit"])
-                == ["Packages/GamKit/Sources/ChangeCore/ReadAudit.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+                == ["Packages/GamKit/Sources/ChangeCore/ReadAudit.swift", "Packages/GamKit/Sources/Directory/AuditRunner.swift",
+                    "Packages/GamKit/Sources/Directory/UserAccess.swift"])
         #expect(try Self.files(in: "App", matching: ["ReadAudit", "readAudit"])
                 == ["App/AppServices.swift", "App/BuilderView.swift", "App/DemoAudit.swift", "App/GamGUIApp.swift"])
+    }
+
+    /// Plan F3: an audit run is no write path (invariant 2, GamGUI's `/reports/runs/start` in its LOCAL_ONLY list). Its runner and
+    /// its tables reach no executor, write or ticket; each step's read is its run's own builder (`AuditRuns.read`), and only a
+    /// `print` read without `todrive` runs (`AuditRuns.isAuditRead`, checked before GAM). The run's one write, Suspend these…, is
+    /// `InactiveSuspend`, through the executor like every other.
+    @Test func anAuditRunIsNoWritePath() throws {
+        let files = try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").filter {
+            $0.path.hasSuffix("/AuditRunner.swift") || $0.path.hasSuffix("/AuditRuns.swift")
+        }
+        #expect(files.count == 2)
+        let reaching = ["WriteTicket", "ticket:", "Executor", "executor", "GamWrite", "WriteStep", "HeldPreview", "Confirmation",
+                        "Process", "catalogRead"]
+        for file in files {
+            #expect(file.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty, "\(file.path)")
+        }
+        let runner = try #require(files.first { $0.path.hasSuffix("/AuditRunner.swift") })
+        let runs = runner.lines.filter { $0.contains("runner.run(") }
+        #expect(runs.count == 1 && runs.allSatisfy { $0.contains("runner.run(read, as: domain") }, "\(runs)")
+        #expect(runner.lines.contains { $0.contains("let read = AuditRuns.read(step)") })
+        #expect(runner.lines.contains { $0.contains("guard AuditRuns.isAuditRead(read.argv) else") })
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
     }
 
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and

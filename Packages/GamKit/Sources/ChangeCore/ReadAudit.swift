@@ -2,8 +2,9 @@ import Foundation
 import GamEngine
 import Vault
 
-/// The read record (plan F1, GamGUI #170's `catalog_read`): one per catalog read the operator runs from the Builder, appended
-/// to the audit log `Executor` writes once the read has ended, ok or failed. It says which command (`extra.command`),
+/// The read record (plan F1, GamGUI #170's `catalog_read`): one per catalog read the operator runs from the Builder, and one
+/// per step of an audit run (plan F3, GamGUI #171's `audit_read`), appended to the audit log `Executor` writes once the read
+/// has ended, ok or failed. It says which command (`extra.command`),
 /// whom it was about (`target`), where it was started (`extra.origin`), how many rows a table had (`extra.rows`) and the domain
 /// (`extra.domain`); never the output. Held to GamGUI's records by `Tests/Fixtures/audit.json` (`reads`).
 ///
@@ -15,10 +16,13 @@ import Vault
 /// `read` (`WriteRouteTests.theReadRecordIsNoWritePath`). Sensitive reads stay browse-only here, so `sensitive_read` is never
 /// written; the screens still read GamGUI's as a read (`AuditLog.readActions`).
 public struct ReadAudit: Sendable {
-    /// Where a recorded read was started (GamGUI's `READ_ORIGINS`). GamGUI also has `sequence`, a read step of a Builder
-    /// sequence; this app has no sequences, so only the Builder's Run. Any other origin can't be spelled: a case, never a string.
+    /// Where a recorded read was started (GamGUI's `READ_ORIGINS` and `READ_ORIGIN_AUDIT_RUN`): the Builder's Run, or a step of
+    /// an audit run, whose `command` is the run and the step (`license_usage/licenses`) and whose target is none. GamGUI also
+    /// has `sequence`, a read step of a Builder sequence; this app has no sequences. Any other origin can't be spelled: a case,
+    /// never a string.
     public enum Origin: String, Sendable, CaseIterable {
         case builder
+        case auditRun = "audit_run"
     }
 
     /// How the read ended.

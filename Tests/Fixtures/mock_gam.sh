@@ -360,6 +360,18 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "users" ]; then
   done
   [ -n "$fj" ] || not_modelled "print users without formatjson"
   [ -n "$named" ] || not_modelled "print users without fields"
+  # GAM_MOCK_STATE/directory_fails: Google refused a page part way through the list. doPrintUsers catches invalidInput
+  # (and invalidOrgunit, domainNotFound) around callGAPIpages, warns (entityActionFailedWarning: ACTION_FAILED_RC, 50) and
+  # carries on, and writeCSVfile writes the rows it had: a partial table and exit 50, never the directory (7.52.04
+  # :49575-49588). The stderr wording is approximate. GamGUI's handler at 086d2f8; here the first row keeps its `id`, which
+  # the app's directory read names.
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/directory_fails" ]; then
+    echo "primaryEmail,JSON"
+    pu_first=$(head -n 1 "$GAM_MOCK_FIXTURES/print_users.json")
+    gam_row "$(json_text primaryEmail "$pu_first")" "$pu_first"
+    printf 'User: , Print Failed: Invalid Input\n' 1>&2
+    exit 50
+  fi
   # The names as GAM's _getFieldsList reads them: lowercased, `_` dropped, split at commas and white space.
   case " $(lower "$named" | tr -d '_' | tr ',\t\n\r' '    ') " in
     *" id "*) print_formatjson primaryEmail print_users.json ;;
@@ -1731,6 +1743,33 @@ if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token"
     else case " $suspended " in *" $user "*) continue ;; esac; fi
     printf '%s\n' "$line"
   done
+  exit 0
+fi
+
+# `gam print licenses` (audit runs, plan F3) -> GAM's CSV `userId,productId,productDisplay,skuId,skuDisplay` (doPrintLicenses,
+# 7.52.04 :40620-40739): every seat, userId lowercased, the display names from GAM's own table (gamlib/glskus.py:
+# productIdToDisplayName, skuIdToDisplayName). Data: mock_gam/licenses.csv (left@example.com holds a seat and isn't in the
+# directory; bob@, suspended, holds two). Only the bare command is modelled: the app names no product or SKU, and gam.cfg's
+# license_skus is unset in the private config dir. With none named GAM lists every product it knows (getSortedProductList)
+# and passes over one Google refuses (invalid, forbidden, invalidArgument) WITHOUT a word or a code (`suppressErrorMsg`):
+# GAM_MOCK_STATE/licenses_silent is every product refused, the titles alone and exit 0; licenses_partial is Google Vault
+# refused, the other seats and exit 0, nothing to tell it from a whole read. GAM_MOCK_STATE/nolicensing is an admin token
+# without the License Manager scope (buildGAPIObject: NO_SCOPES_FOR_API_RC, 15, before any read). GamGUI's handler at 086d2f8.
+if [ "${1:-}" = "print" ] && [ "${2:-}" = "licenses" ]; then
+  [ $# -eq 2 ] || not_modelled "print licenses with $3"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nolicensing" ]; then
+    printf '\nERROR: There are no scopes authorized for the API(s): License Manager API\n' 1>&2
+    exit 15
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/licenses_silent" ]; then
+    head -n 1 "$GAM_MOCK_FIXTURES/licenses.csv"
+    exit 0
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/licenses_partial" ]; then
+    grep -v ',Google-Vault,' "$GAM_MOCK_FIXTURES/licenses.csv"
+    exit 0
+  fi
+  cat "$GAM_MOCK_FIXTURES/licenses.csv"
   exit 0
 fi
 
