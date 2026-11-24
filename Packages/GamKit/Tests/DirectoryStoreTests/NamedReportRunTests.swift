@@ -2,6 +2,7 @@ import ChangeCore
 import Foundation
 @testable import Directory
 import GamEngine
+import Jobs
 import Setup
 import Stores
 import TestSupport
@@ -108,6 +109,23 @@ final class NamedReportRunTests {
         #expect(AuditRuns.exportRows(table)?.first == table.columns, "the table's CSV is the whole read")
     }
 
+    /// A switch stops a named report's run as it stops an audit run's, so Setup's warning names it (review of #197: only the audit
+    /// runs were looked at), and none once it ended.
+    @Test func aNamedRunGoingIsNamedBeforeASwitch() async throws {
+        try await connect()
+        let run = try named("org_units"), runner = runner
+        var lines: [[String]] = []
+        runner.afterEachStep = { _ in
+            #expect(runner.running.map(\.key) == ["org_units"])
+            lines.append(SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: nil, audits: runner).map(\.title))
+        }
+        #expect(runner.start(run) == nil)
+        await runner.finish(run)
+        runner.afterEachStep = nil
+        #expect(lines == [[SwitchStops.auditLine(run)]] && SwitchStops.auditLine(run).contains("a named report run"))
+        #expect(runner.running.isEmpty && SwitchStops.running(jobs: JobBoard(), onboarding: nil, users: nil, audits: runner).isEmpty)
+    }
+
     /// A read that failed, or wrote nothing where something must be, is unknown, never "none": the table has no rows and says
     /// why; a table that came back but can't be an answer is recorded as it was (rows 0) while the step is unknown.
     @Test(arguments: [
@@ -209,6 +227,10 @@ final class NamedReportRunTests {
         await schedules.clear("old_report", deleteOnly: false)
         #expect(schedules.notices["old_report"]?.text == "Not scheduled. 1 kept run was deleted from this Mac.")
         #expect(try store.schedules(domain).isEmpty && schedules.stranded.isEmpty)
+        // Its pane stays up with the notice (review of #197: it went blank), saying nothing of it is left, and through a refresh.
+        #expect(schedules.strandedPane("old_report")?.cleared == true)
+        await schedules.refresh()
+        #expect(schedules.strandedPane("old_report")?.cleared == true && schedules.stranded.isEmpty)
 
         // Kept runs alone: listed, and deleted.
         try store.setSchedule(domain, run: "kept_only", cadence: .weekly, keep: 2, now: Self.now.timeIntervalSince1970)
@@ -221,6 +243,32 @@ final class NamedReportRunTests {
         #expect(schedules.stranded.map(\.key) == ["kept_only"] && schedules.stranded.first?.schedule == nil)
         await schedules.clear("kept_only", deleteOnly: true)
         #expect(schedules.notices["kept_only"]?.text == "Deleted 1 kept run from this Mac." && schedules.stranded.isEmpty)
+        #expect(schedules.strandedPane("kept_only")?.cleared == true)
+    }
+
+    /// One kept folder that can't be read never hides the schedules (only the schedules file unread is a problem): the stranded
+    /// key is still listed, with why its kept runs can't be told, and can still be unscheduled (review of #197).
+    @Test func aStrandedFolderThatCantBeReadHidesNothing() async throws {
+        try await connect()
+        let domain = try #require(setup.active), at = Self.now.timeIntervalSince1970
+        try store.setSchedule(domain, run: "license_usage", cadence: .weekly, keep: 2, now: at)
+        try store.setSchedule(domain, run: "old_report", cadence: .weekly, keep: 2, now: at)
+        let table = AuditSchedules.Table(key: "table", title: "Old", columns: ["a"], rows: [["1"]], known: true, partial: false)
+        _ = store.afterRun(domain, run: "old_report", tables: [table], days: 0, answered: true, when: at, clock: .init(timeZone: .gmt))
+        let kept = store.root.appending(path: "kept")
+        let top = try #require(try FileManager.default.contentsOfDirectory(atPath: kept.path).first)
+        let folder = kept.appending(path: "\(top)/old_report")
+        #expect(chmod(folder.path, 0) == 0)
+        defer { chmod(folder.path, 0o700) }
+        await schedules.refresh()
+        #expect(schedules.problem == nil && Set(schedules.schedules.keys) == ["license_usage", "old_report"])
+        #expect(schedules.scheduled().map(\.run.key) == ["license_usage"])
+        let stranded = try #require(schedules.stranded.first)
+        #expect(schedules.stranded.count == 1 && stranded.key == "old_report" && stranded.schedule != nil && stranded.keptProblem != nil)
+        await schedules.clear("old_report", deleteOnly: false)
+        #expect(schedules.notices["old_report"] == .init(text: "Not scheduled. Its kept runs couldn't all be deleted: try again.", problem: true))
+        #expect(try store.schedules(domain)["old_report"] == nil)
+        #expect(schedules.stranded.map(\.key) == ["old_report"] && schedules.stranded.first?.keptProblem != nil, "its runs are still there")
     }
 
     /// The catalog unread: no named report runs here, nothing is called stranded, and a named schedule says why it's unknown.

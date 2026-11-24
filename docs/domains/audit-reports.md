@@ -238,6 +238,12 @@ GamGUI #178 (`82290f0`): each F2 named report is also a one-step run of its cata
   it on Reports under **Can't run here any more** (`StrandedRunPanel`), where Stop Scheduling It (⌘S, deleting what it kept)
   or, for kept runs alone, Delete the Kept Runs… (⌘⌫) clears it. `RunSchedules.clear` acts only on a key listed there and never
   on one a run here has; it can't be given a cadence. The kept runs' keys come from the store's folders (`runKeys`).
+- **Review of #197.** A named run going is named in Setup's switch warning like an audit run (`AuditRunner.running`, which
+  `SwitchStops` reads: it once looked only at `AuditRuns.all`, while a switch still stopped the named run). A stranded entry
+  just cleared keeps its pane and notice (`RunSchedules.cleared`, "Not scheduled, and nothing of it is kept on this Mac.",
+  GamGUI's `now`) until a switch or until it is stranded again. Only the schedules file unread is a `problem`: the stranded
+  scan fails soft, and a key whose kept folder can't be read is still listed (`Stranded.keptProblem`), so one bad folder
+  never hides every schedule or the pane that could delete it.
 - **The catalog** is read once, off the main actor (`RunSchedules.catalog`, the Builder's `BuilderView.load`). If it can't be
   read, no named report runs, nothing is called stranded, and a schedule naming one says why its due is unknown
   (`namedUnknown`; Home never says "Nothing is due" then).
@@ -421,6 +427,14 @@ this app; GamGUI has no such page. Reads only.
   (`namedUnknown`), where GamGUI's page would fail.
 - **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and
   opens them; GamGUI's card has the same preview with its fixed 90 days.
+
+## Back-port gaps (for GamGUI)
+Found here, true of GamGUI too; to be fixed there from a GamGUI-rooted session, never from this repo.
+- **The mock's bare `print shareddriveacls` titles** (GamGUI's `tests/fixtures/mock_gam.sh` ~3088, review of #197): it writes
+  `permissions` among the titles even when no drive row is written, where GAM 7.52.04 writes only `User,id,name,createdTime`
+  (the list's length is a title only once WriteRowTitles writes a flattened row). Fixed in this mock; tripwire in
+  `MockAuditRunTests.eachNoneAndEachFailureIsGAMs`.
+- **A table known only in part exports without saying so** (`table_csv`), as under Deviations.
 
 ## What F1 taught
 - **Make the rule a parameter, not a scan.** GamGUI holds "every record names its domain" with a source scan; here

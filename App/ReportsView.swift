@@ -356,7 +356,7 @@ struct ReportsView: View {
                 AuditRunPanel(run: run, runs: runs, suspend: suspend, schedules: schedules, domain: setup.active?.name, days: $days,
                               openPerson: openPerson, openCommand: openCommand)
                     .id(run.key)
-            } else if let stranded = schedules.stranded.first(where: { $0.key == key }) {
+            } else if let stranded = schedules.strandedPane(key) {
                 StrandedRunPanel(stranded: stranded, schedules: schedules)
                     .id(stranded.key)
             } else if schedules.namedRuns == nil, NamedReport.all.contains(where: { $0.key == key }) {
@@ -684,8 +684,8 @@ struct StrandedRunPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(stranded.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
-                Label(words, systemImage: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.multicolor)
+                Label(words, systemImage: stranded.cleared ? "checkmark.circle" : "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(stranded.cleared ? .monochrome : .multicolor)
                     .fixedSize(horizontal: false, vertical: true)
                 if stranded.schedule != nil {
                     Button("Stop Scheduling It") { Task { await schedules.clear(stranded.key, deleteOnly: false) } }
@@ -694,7 +694,7 @@ struct StrandedRunPanel: View {
                         .accessibilityHint("Stops scheduling \(stranded.title) and deletes the runs it kept on this Mac. Command S does it too.")
                     Text("⌘S stops scheduling it. Not scheduled keeps none: this deletes the runs it kept too.")
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                } else if stranded.kept > 0 {
+                } else if stranded.kept > 0 || stranded.keptProblem != nil {
                     Button("Delete the Kept Runs…", role: .destructive) { confirmingDelete = true }
                         .keyboardShortcut(.delete, modifiers: .command)
                         .disabled(schedules.isBusy)
@@ -714,20 +714,23 @@ struct StrandedRunPanel: View {
         .onChange(of: schedules.notices[stranded.key]) { _, notice in
             if let notice { AccessibilityNotification.Announcement(notice.text).post() }
         }
-        .confirmationDialog("Delete the \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") of \(stranded.title) kept on this Mac?",
+        .confirmationDialog(stranded.keptProblem != nil ? "Delete the runs of \(stranded.title) kept on this Mac?"
+                                : "Delete the \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") of \(stranded.title) kept on this Mac?",
                             isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive) { Task { await schedules.clear(stranded.key, deleteOnly: true) } }
             Button("Cancel", role: .cancel) {}
         }
     }
 
-    /// GamGUI's words.
+    /// GamGUI's words; once cleared (`Stranded.cleared`), that nothing of it is left.
     private var words: String {
+        if stranded.cleared { return "Not scheduled, and nothing of it is kept on this Mac." }
         let head = "It can't run here any more: this GAM version has no plain read for it, so it isn't due and can't be run."
+        let kept = stranded.keptProblem.map { " Its kept runs couldn't be listed: \($0)" }
         if let schedule = stranded.schedule {
-            return head + " It is still scheduled \(schedule.cadence.word.lowercased())"
-                + (stranded.kept > 0 ? ", with \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") kept on this Mac." : ".")
+            return head + " It is still scheduled \(schedule.cadence.word.lowercased())" + (kept.map { "." + $0 }
+                ?? (stranded.kept > 0 ? ", with \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") kept on this Mac." : "."))
         }
-        return head + " \(stranded.kept) run\(stranded.kept == 1 ? " is" : "s are") still kept on this Mac."
+        return head + (kept ?? " \(stranded.kept) run\(stranded.kept == 1 ? " is" : "s are") still kept on this Mac.")
     }
 }

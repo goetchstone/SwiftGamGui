@@ -21,15 +21,16 @@ public enum SwitchStops {
             runs.append(SetupModel.RunningRun(id: signIn.id, title: passwordLine(signIn.email), leftHalfDone: false))
         }
         // F3 and F6 met here: a switch stops an audit run's GAM (its step recorded as interrupted), so it's named too.
-        for run in AuditRuns.all where audits?.isRunning(run) == true {
+        // A named report run on Reports (plan F7a) as well: every run the runner has going, oldest first.
+        for run in audits?.running ?? [] {
             runs.append(SetupModel.RunningRun(id: auditRunID(run), title: auditLine(run), leftHalfDone: false))
         }
         return runs
     }
 
-    /// An audit run's line in the warning: reads only, so stopping it changes nothing.
+    /// An audit run's line in the warning (a named report's, run on Reports, says so): reads only, so stopping it changes nothing.
     public static func auditLine(_ run: AuditRuns.Run) -> String {
-        "\(run.title), an audit run: reads only, it stops at once and changes nothing"
+        "\(run.title), \(run.named.isEmpty ? "an audit run" : "a named report run"): reads only, it stops at once and changes nothing"
     }
 
     /// The same id for a run of one kind in the warning and in the check after it: the agreement names it by this.

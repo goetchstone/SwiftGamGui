@@ -114,6 +114,16 @@ public final class AuditRunner {
         return kept.state
     }
 
+    /// Every run going on the connected tenant, audit runs and named reports alike, oldest first: what a switch would stop.
+    public var running: [AuditRuns.Run] {
+        kept.values.filter { kept in
+            guard kept.domain == setup.active, kept.generation == setup.generation, case .running = kept.state else { return false }
+            return true
+        }
+        .sorted { $0.serial < $1.serial }
+        .compactMap { kept in if case .running(let progress) = kept.state { progress.run } else { nil } }
+    }
+
     public func isRunning(_ run: AuditRuns.Run) -> Bool {
         if case .running? = state(of: run) { return true }
         return false

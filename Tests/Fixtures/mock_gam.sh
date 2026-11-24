@@ -1974,7 +1974,10 @@ if [ "${1:-}" = "print" ] && { [ "${2:-}" = "shareddriveacls" ] || [ "${2:-}" = 
     exit 0
   fi
   sd_max=$(printf '%s\n' "$sd_out" | awk -F'\t' '{ if (NF - 3 > m) m = NF - 3 } END { print m + 0 }')
-  sd_titles="User,id,name,createdTime,permissions"; k=0
+  # `permissions` (the list's length) is a title only once WriteRowTitles writes a flattened row: with no drive row, GAM writes
+  # the four it started with (review of #197; GamGUI's mock adds it always).
+  sd_titles="User,id,name,createdTime"; k=0
+  [ "$sd_max" -gt 0 ] && sd_titles="$sd_titles,permissions"
   while [ "$k" -lt "$sd_max" ]; do sd_titles="$sd_titles,permissions.$k.emailAddress,permissions.$k.role,permissions.$k.type"; k=$((k + 1)); done
   printf '%s\n' "$sd_titles"
   printf '%s\n' "$sd_out" | while IFS= read -r line; do

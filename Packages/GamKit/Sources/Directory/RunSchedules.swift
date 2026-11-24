@@ -61,13 +61,34 @@ public final class RunSchedules {
         /// What it was called: the audit run's or named report's title, else its key.
         public let title: String
         public let schedule: AuditSchedules.Schedule?
-        /// How many runs of it are kept on this Mac.
+        /// How many runs of it are kept on this Mac (0 when `keptProblem` says they couldn't be listed).
         public let kept: Int
+        /// Why its kept runs couldn't be listed, in words; nil when they were.
+        public var keptProblem: String?
         public var id: String { key }
+
+        public init(key: String, title: String, schedule: AuditSchedules.Schedule?, kept: Int, keptProblem: String? = nil) {
+            self.key = key
+            self.title = title
+            self.schedule = schedule
+            self.kept = kept
+            self.keptProblem = keptProblem
+        }
+
+        /// Nothing of it is scheduled or kept any more: its pane stays up with what clearing it did (GamGUI's `_unstrand`).
+        public var cleared: Bool { schedule == nil && kept == 0 && keptProblem == nil }
     }
 
     /// Each one, in key order, once the schedules were read and the catalog too.
     public private(set) var stranded: [Stranded] = []
+    /// Each one cleared since this domain was connected, nothing of it left (`Stranded.cleared`): its pane and notice stay up
+    /// until a switch, or until it is stranded again. Never listed on Home or among the stranded.
+    public private(set) var cleared: [Stranded] = []
+
+    /// The stranded entry `key` names, or the one just cleared: what its pane shows.
+    public func strandedPane(_ key: String) -> Stranded? {
+        stranded.first { $0.key == key } ?? cleared.first { $0.key == key }
+    }
 
     /// Why GAM's command catalog couldn't be read, in words.
     public struct CatalogUnread: Error, Sendable {
@@ -135,6 +156,7 @@ public final class RunSchedules {
         kept = [:]
         notices = [:]
         stranded = []
+        cleared = []
     }
 
     /// The named reports that run here, read from the catalog once (the vendored GAM's: it doesn't change while the app runs). A
@@ -166,14 +188,24 @@ public final class RunSchedules {
                                 uniquingKeysWith: { first, _ in first })
         let read = await Task.detached { () -> Result<([String: AuditSchedules.Schedule], [Stranded]), AuditSchedules.Problem> in
             do throws(AuditSchedules.Problem) {
+                // Only the schedules file unread is a problem: the stranded scan below fails soft (GamGUI's runs page falls
+                // back to none), so one kept folder that can't be read never hides every schedule, or the pane that could
+                // delete it (review of #197).
                 let mine = try store.schedules(domain)
                 guard let runnable else { return .success((mine, [])) }
                 var stranded: [Stranded] = []
-                let keys = Set(mine.keys).union(try store.runKeys(domain)).subtracting(runnable)
+                let folders = (try? store.runKeys(domain)) ?? []
+                let keys = Set(mine.keys).union(folders).subtracting(runnable)
                 for key in keys.sorted(by: { $0.unicodeScalars.lexicographicallyPrecedes($1.unicodeScalars) }) {
-                    let kept = try store.runs(domain, run: key).count
-                    if mine[key] != nil || kept > 0 {
-                        stranded.append(Stranded(key: key, title: titles[key] ?? key, schedule: mine[key], kept: kept))
+                    do throws(AuditSchedules.Problem) {
+                        let kept = try store.runs(domain, run: key).count
+                        if mine[key] != nil || kept > 0 {
+                            stranded.append(Stranded(key: key, title: titles[key] ?? key, schedule: mine[key], kept: kept))
+                        }
+                    } catch {
+                        // Its kept runs can't be listed: it is still listed, so it can be unscheduled or its runs deleted.
+                        stranded.append(Stranded(key: key, title: titles[key] ?? key, schedule: mine[key], kept: 0,
+                                                 keptProblem: error.reason))
                     }
                 }
                 return .success((mine, stranded))
@@ -183,7 +215,9 @@ public final class RunSchedules {
         }.value
         guard setup.active == domain, setup.generation == generation else { return }
         switch read {
-        case .success(let (found, left)): (schedules, stranded, problem) = (found, left, nil)
+        case .success(let (found, left)):
+            (schedules, stranded, problem) = (found, left, nil)
+            cleared.removeAll { entry in left.contains { $0.key == entry.key } }   // stranded again
         case .failure(let error): (schedules, stranded, problem) = ([:], [], error.reason)
         }
         loaded = true
@@ -280,7 +314,8 @@ public final class RunSchedules {
     /// (GamGUI #178's `_unstrand`). Only a key listed in `stranded` on the connected domain, and never one a run here has: it
     /// can't be given a cadence. Local: no GAM. The outcome is its notice.
     public func clear(_ key: String, deleteOnly: Bool) async {
-        guard let store, let domain = setup.active, !isBusy, run(key) == nil, stranded.contains(where: { $0.key == key }) else { return }
+        guard let store, let domain = setup.active, !isBusy, run(key) == nil,
+              let listed = stranded.first(where: { $0.key == key }) else { return }
         isBusy = true
         defer { isBusy = false }
         let generation = setup.generation, at = now().timeIntervalSince1970
@@ -305,6 +340,10 @@ public final class RunSchedules {
                                                             + "from this Mac." : ""), problem: false)
         }
         await refresh()
+        // Gone from the stranded list: its pane stays up, with what clearing it did, until a switch (GamGUI's `now`).
+        guard setup.active == domain, setup.generation == generation, !stranded.contains(where: { $0.key == key }) else { return }
+        cleared.removeAll { $0.key == key }
+        cleared.append(Stranded(key: key, title: listed.title, schedule: nil, kept: 0))
     }
 
     /// A domain Setup removed: its schedules and the runs they kept on this Mac (its data at rest) go with it. What went, in words

@@ -235,6 +235,11 @@ struct MockAuditRunTests {
             let dropped = try await run(argv, state: ["acl_dropped/0ALEGALuk9PVA"])
             #expect(dropped.exitCode == 0 && !dropped.stdout.contains("Legal hold"), "\(argv)")
         }
+        // No drive row written: GAM's titles are the four it started with; `permissions` comes only with a flattened row (review
+        // of #197).
+        let all = ["0AFINANCEuk9PVA", "0ALEGALuk9PVA", "0AOLDuk9PVA", "0AUNUSEDuk9PVA"].map { "acl_dropped/" + $0 }
+        let everyDropped = try await run(["print", "shareddriveacls"], state: all)
+        #expect(everyDropped.exitCode == 60 && PythonText.strip(everyDropped.stdout) == "User,id,name,createdTime")
     }
 
     /// Organizers: one per drive, the first user organizer in the primary domain; a drive with none is blank, never left out.
