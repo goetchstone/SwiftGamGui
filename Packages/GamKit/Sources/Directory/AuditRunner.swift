@@ -9,7 +9,8 @@ import Vault
 /// The audit runs (plan F3, GamGUI #171's `web/routes/audit_runs.py`): each run a fixed list of reads (`AuditRuns`), started by
 /// the operator, one step after another, with Stop between steps. Nothing here writes: each step is one `print` read without
 /// `todrive` (`AuditRuns.isAuditRead`, checked before GAM runs), and each leaves one read record (`ReadAudit`, origin
-/// `audit_run`, the command `<run>/<step>`, the domain and the rows, never the output).
+/// `audit_run`, the command `<run>/<step>`, the domain and the rows, never the output; a named report run here, plan F7a, is
+/// origin `named_report` and its command the report's key).
 ///
 /// - **Stop** is checked before each step: the step in flight finishes and is recorded, the rest are not run, and every table
 ///   that needs them says unknown.
@@ -113,6 +114,16 @@ public final class AuditRunner {
         return kept.state
     }
 
+    /// Every run going on the connected tenant, audit runs and named reports alike, oldest first: what a switch would stop.
+    public var running: [AuditRuns.Run] {
+        kept.values.filter { kept in
+            guard kept.domain == setup.active, kept.generation == setup.generation, case .running = kept.state else { return false }
+            return true
+        }
+        .sorted { $0.serial < $1.serial }
+        .compactMap { kept in if case .running(let progress) = kept.state { progress.run } else { nil } }
+    }
+
     public func isRunning(_ run: AuditRuns.Run) -> Bool {
         if case .running? = state(of: run) { return true }
         return false
@@ -199,7 +210,8 @@ public final class AuditRunner {
             let read: AuditRuns.StepRead
             // A read for what an earlier step found (the admins' apps), when that step has no table: nothing to run.
             if let gam = AuditRuns.read(step, tables: tables) {
-                switch await Self.read(gam, step: step, command: run.command(step), as: domain, runner: runner, audit: audit,
+                switch await Self.read(gam, step: step, command: run.command(step), origin: run.named.isEmpty ? .auditRun : .namedReport,
+                                       as: domain, runner: runner, audit: audit,
                                        environment: environment) {
                 case .read(let records, let users, let unread):
                     let empty = AuditRuns.implausiblyEmpty(step, rows: records.count)
@@ -255,7 +267,8 @@ public final class AuditRunner {
 
     /// One step's read as `domain`, recorded once it ended (GamGUI's `audit_read`), parsed off the main actor. Only a `print`
     /// read without `todrive` runs here. A read the log couldn't record isn't used: it says so instead.
-    nonisolated static func read(_ read: GamRead, step: AuditRuns.Step, command: String, as domain: Domain, runner: AuthenticatedRunner,
+    nonisolated static func read(_ read: GamRead, step: AuditRuns.Step, command: String, origin: ReadAudit.Origin, as domain: Domain,
+                                 runner: AuthenticatedRunner,
                                  audit: ReadAudit, environment: [String: String]) async -> Found {
         guard AuditRuns.isAuditRead(read.argv) else {
             return .unknown(why: "An audit run reads with a print command, and never exports.", detail: "")
@@ -274,7 +287,7 @@ public final class AuditRunner {
             (found, outcome) = (.unknown(why: why, detail: ""), .failed(why))
         }
         do {
-            try audit.record(command: command, target: "", argv: read.argv, domain: domain, origin: .auditRun, outcome: outcome)
+            try audit.record(command: command, target: "", argv: read.argv, domain: domain, origin: origin, outcome: outcome)
         } catch {
             return .unknown(why: "The read ended, but the audit log couldn't record it (\(error.localizedDescription)), so it isn't "
                             + "used. Check the disk has room, then run it again.", detail: "")

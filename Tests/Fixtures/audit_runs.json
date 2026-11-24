@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "73498c4",
+  "gamgui_commit": "82290f0",
   "generator": "scripts/gen_fixtures.py"
  },
  "now": "2026-11-19T00:00:00+00:00",
@@ -9786,6 +9786,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 2,
    "unread": [],
@@ -9832,6 +9834,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 0,
    "unread": [],
@@ -9878,6 +9882,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -9924,6 +9930,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -9970,6 +9978,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10016,6 +10026,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10062,6 +10074,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10108,6 +10122,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10154,6 +10170,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10200,6 +10218,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10249,6 +10269,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10301,6 +10323,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "RuntimeError",
    "rows": null,
    "unread": null,
@@ -10347,6 +10371,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "CancelledError",
    "rows": null,
    "unread": null,
@@ -10396,6 +10422,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10420,6 +10448,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10443,6 +10473,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10466,6 +10498,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10489,6 +10523,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10512,6 +10548,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10535,6 +10573,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10559,6 +10599,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10584,6 +10626,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10639,6 +10683,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 0,
    "unread": [],
@@ -10692,6 +10738,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10742,6 +10790,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10793,6 +10843,8 @@
    ],
    "partial_rcs": [],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10852,6 +10904,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [
@@ -10910,6 +10964,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [
@@ -10968,6 +11024,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -11023,6 +11081,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -11078,6 +11138,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 0,
    "unread": [
@@ -11136,6 +11198,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -11191,6 +11255,8 @@
     73
    ],
    "empty_rcs": null,
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -11246,6 +11312,8 @@
    "empty_rcs": [
     60
    ],
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "NoRowUnsaid",
    "rows": null,
    "unread": null,
@@ -11301,6 +11369,8 @@
    "empty_rcs": [
     60
    ],
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 0,
    "unread": [],
@@ -11356,6 +11426,8 @@
    "empty_rcs": [
     60
    ],
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -11413,6 +11485,8 @@
    "empty_rcs": [
     60
    ],
+   "command": "license_usage/licenses",
+   "origin": "audit_run",
    "raised": "NoRowUnsaid",
    "rows": null,
    "unread": null,
@@ -11450,6 +11524,1797 @@
      }
     }
    ]
+  },
+  {
+   "name": "a group's members refused",
+   "output": "group,type,role,id,status,email\nsales@example.com,USER,MEMBER,1,ACTIVE,alice@example.com\n",
+   "stderr": "Group: it@example.com, Does not exist (2/5)\nGroup: Partner@Partner.org, Service not applicable (4/5)\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "group-members"
+   ],
+   "key_column": "group",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "empty_rcs": null,
+   "command": "group_members",
+   "origin": "named_report",
+   "raised": null,
+   "rows": 1,
+   "unread": [
+    "it@example.com",
+    "partner@partner.org"
+   ],
+   "ran": [
+    [
+     "print",
+     "group-members"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "group-members"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "group_members",
+      "origin": "named_report",
+      "partial": true,
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a user and a group",
+   "output": "group,type,role,id,status,email\nsales@example.com,USER,MEMBER,1,ACTIVE,alice@example.com\n",
+   "stderr": "User: bob@example.com, Does not exist (1/2)\nGroup: it@example.com, Does not exist (2/2)\nGroups: x@example.com, Does not exist\n",
+   "exit": 56,
+   "error": null,
+   "argv": [
+    "print",
+    "group-members"
+   ],
+   "key_column": "group",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [
+    56,
+    73
+   ],
+   "empty_rcs": null,
+   "command": "group_members",
+   "origin": "named_report",
+   "raised": null,
+   "rows": 1,
+   "unread": [
+    "bob@example.com",
+    "it@example.com"
+   ],
+   "ran": [
+    [
+     "print",
+     "group-members"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "group-members"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "group_members",
+      "origin": "named_report",
+      "partial": true,
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "no unit below the root",
+   "output": "orgUnitPath,orgUnitId,name,parentOrgUnitId\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "orgs"
+   ],
+   "key_column": "orgUnitPath",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "empty_rcs": null,
+   "command": "org_units",
+   "origin": "named_report",
+   "raised": null,
+   "rows": 0,
+   "unread": [],
+   "ran": [
+    [
+     "print",
+     "orgs"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "orgs"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "org_units",
+      "origin": "named_report",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "org units failed",
+   "output": "",
+   "stderr": "Organizational Unit: /, Failed: Does not exist\n",
+   "exit": 50,
+   "error": null,
+   "argv": [
+    "print",
+    "orgs"
+   ],
+   "key_column": "orgUnitPath",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "empty_rcs": null,
+   "command": "org_units",
+   "origin": "named_report",
+   "raised": "GAMError",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "orgs"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "orgs"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "org_units",
+      "origin": "named_report",
+      "error": "GAM failed (not_found, exit=50): Organizational Unit: /, Failed: Does not exist",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "alerts' token refused silently",
+   "output": "",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "alerts"
+   ],
+   "key_column": "alertId",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "empty_rcs": null,
+   "command": "alerts",
+   "origin": "named_report",
+   "raised": "Incomplete",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "alerts"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "alerts"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "alerts",
+      "origin": "named_report",
+      "error": "GAM ended without writing the alertId table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "another origin",
+   "output": "orgUnitPath\n/A\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "orgs"
+   ],
+   "key_column": "orgUnitPath",
+   "ok_rcs": [
+    0
+   ],
+   "partial_rcs": [],
+   "empty_rcs": null,
+   "command": "org_units",
+   "origin": "elsewhere",
+   "raised": "ValueError",
+   "rows": null,
+   "unread": null,
+   "ran": [],
+   "records": []
   }
- ]
+ ],
+ "named": {
+  "origin": "named_report",
+  "table": "table",
+  "studied": [
+   "alerts",
+   "data_transfers",
+   "group_members",
+   "licenses",
+   "mobile_devices",
+   "org_units",
+   "shared_drive_acls",
+   "shared_drive_organizers",
+   "shared_drives"
+  ],
+  "titles": [
+   {
+    "key": "licenses",
+    "title": "Licenses"
+   },
+   {
+    "key": "shared_drives",
+    "title": "Shared drives"
+   },
+   {
+    "key": "shared_drive_acls",
+    "title": "Shared drive members"
+   },
+   {
+    "key": "shared_drive_organizers",
+    "title": "Shared drive organizers"
+   },
+   {
+    "key": "org_units",
+    "title": "Org units"
+   },
+   {
+    "key": "mobile_devices",
+    "title": "Mobile devices"
+   },
+   {
+    "key": "group_members",
+    "title": "Group memberships"
+   },
+   {
+    "key": "data_transfers",
+    "title": "Data transfers"
+   },
+   {
+    "key": "alerts",
+    "title": "Google's alerts"
+   }
+  ],
+  "runs": [
+   {
+    "key": "licenses",
+    "title": "Licenses",
+    "what": "Who holds which Google Workspace licence.",
+    "named": "licenses",
+    "cid": "raw.4497",
+    "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Licenses",
+      "key_column": "skuId",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [],
+      "empty_rcs": null,
+      "empty_why": "GAM listed no license seat at all. It passes over a product Google won't let it read without saying so, so the seats are unknown, not none.",
+      "argv": [
+       "print",
+       "licenses"
+      ],
+      "step_argv": [
+       "print",
+       "licenses"
+      ],
+      "command": "licenses"
+     }
+    ]
+   },
+   {
+    "key": "shared_drives",
+    "title": "Shared drives",
+    "what": "Every shared drive in the domain.",
+    "named": "shared_drives",
+    "cid": "raw.5117",
+    "change_note": "",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Shared drives",
+      "key_column": "id",
+      "ok_rcs": [
+       0,
+       60
+      ],
+      "partial_rcs": [],
+      "empty_rcs": [
+       60
+      ],
+      "empty_why": "",
+      "argv": [
+       "print",
+       "shareddrives"
+      ],
+      "step_argv": [
+       "print",
+       "shareddrives"
+      ],
+      "command": "shared_drives"
+     }
+    ]
+   },
+   {
+    "key": "shared_drive_acls",
+    "title": "Shared drive members",
+    "what": "Who has access to each shared drive, and how.",
+    "named": "shared_drive_acls",
+    "cid": "raw.5355",
+    "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Shared drive members",
+      "key_column": "createdTime",
+      "ok_rcs": [
+       0,
+       60
+      ],
+      "partial_rcs": [],
+      "empty_rcs": [
+       60
+      ],
+      "empty_why": "GAM listed no drive's members. It says that too when Google refused every drive's, so it is unknown, not none.",
+      "argv": [
+       "print",
+       "shareddriveacls"
+      ],
+      "step_argv": [
+       "print",
+       "shareddriveacls"
+      ],
+      "command": "shared_drive_acls"
+     }
+    ]
+   },
+   {
+    "key": "shared_drive_organizers",
+    "title": "Shared drive organizers",
+    "what": "Who can manage each shared drive.",
+    "named": "shared_drive_organizers",
+    "cid": "raw.5130",
+    "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+    "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member.",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Shared drive organizers",
+      "key_column": "organizers",
+      "ok_rcs": [
+       0,
+       60
+      ],
+      "partial_rcs": [],
+      "empty_rcs": [
+       60
+      ],
+      "empty_why": "GAM listed no drive. It says that too when Google refused every drive's members, so it is unknown, not none.",
+      "argv": [
+       "print",
+       "shareddriveorganizers"
+      ],
+      "step_argv": [
+       "print",
+       "shareddriveorganizers"
+      ],
+      "command": "shared_drive_organizers"
+     }
+    ]
+   },
+   {
+    "key": "org_units",
+    "title": "Org units",
+    "what": "The organizational units and their paths.",
+    "named": "org_units",
+    "cid": "raw.4612",
+    "change_note": "",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Org units",
+      "key_column": "orgUnitPath",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [],
+      "empty_rcs": null,
+      "empty_why": "",
+      "argv": [
+       "print",
+       "orgs"
+      ],
+      "step_argv": [
+       "print",
+       "orgs"
+      ],
+      "command": "org_units"
+     }
+    ]
+   },
+   {
+    "key": "mobile_devices",
+    "title": "Mobile devices",
+    "what": "Phones and tablets that sync with the domain.",
+    "named": "mobile_devices",
+    "cid": "raw.4568",
+    "change_note": "",
+    "note": "",
+    "compare_without": [
+     "lastSync"
+    ],
+    "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change.",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Mobile devices",
+      "key_column": "resourceId",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [],
+      "empty_rcs": null,
+      "empty_why": "",
+      "argv": [
+       "print",
+       "mobile"
+      ],
+      "step_argv": [
+       "print",
+       "mobile"
+      ],
+      "command": "mobile_devices"
+     }
+    ]
+   },
+   {
+    "key": "group_members",
+    "title": "Group memberships",
+    "what": "Every group's members and their roles.",
+    "named": "group_members",
+    "cid": "raw.4108",
+    "change_note": "",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Group memberships",
+      "key_column": "group",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [
+       56,
+       73
+      ],
+      "empty_rcs": null,
+      "empty_why": "",
+      "argv": [
+       "print",
+       "group-members"
+      ],
+      "step_argv": [
+       "print",
+       "group-members"
+      ],
+      "command": "group_members"
+     }
+    ]
+   },
+   {
+    "key": "data_transfers",
+    "title": "Data transfers",
+    "what": "Drive and Calendar ownership transfers and how far each got.",
+    "named": "data_transfers",
+    "cid": "raw.3616",
+    "change_note": "An owner GAM couldn't name shows as uid:<ID>, so a row can change only because a name couldn't be read this time.",
+    "note": "",
+    "compare_without": [],
+    "compare_note": "",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Data transfers",
+      "key_column": "id",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [],
+      "empty_rcs": null,
+      "empty_why": "",
+      "argv": [
+       "print",
+       "datatransfers"
+      ],
+      "step_argv": [
+       "print",
+       "datatransfers"
+      ],
+      "command": "data_transfers"
+     }
+    ]
+   },
+   {
+    "key": "alerts",
+    "title": "Google's alerts",
+    "what": "The Alert Center: suspicious sign-ins, phishing, device issues.",
+    "named": "alerts",
+    "cid": "raw.1607",
+    "change_note": "Google keeps alerts for a limited time, so an alert gone may have aged out.",
+    "note": "",
+    "compare_without": [
+     "updateTime",
+     "metadata.updateTime"
+    ],
+    "compare_note": "Compared without updateTime and metadata.updateTime: they move with any edit to an alert. A change to its status, assignee or severity still shows.",
+    "steps": [
+     {
+      "key": "read",
+      "title": "Google's alerts",
+      "key_column": "alertId",
+      "ok_rcs": [
+       0
+      ],
+      "partial_rcs": [],
+      "empty_rcs": null,
+      "empty_why": "",
+      "argv": [
+       "print",
+       "alerts"
+      ],
+      "step_argv": [
+       "print",
+       "alerts"
+      ],
+      "command": "alerts"
+     }
+    ]
+   }
+  ],
+  "implausibly_empty": [
+   {
+    "run": "licenses",
+    "rows": 0,
+    "why": "GAM listed no license seat at all. It passes over a product Google won't let it read without saying so, so the seats are unknown, not none."
+   },
+   {
+    "run": "licenses",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "shared_drives",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "shared_drives",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "shared_drive_acls",
+    "rows": 0,
+    "why": "GAM listed no drive's members. It says that too when Google refused every drive's, so it is unknown, not none."
+   },
+   {
+    "run": "shared_drive_acls",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "shared_drive_organizers",
+    "rows": 0,
+    "why": "GAM listed no drive. It says that too when Google refused every drive's members, so it is unknown, not none."
+   },
+   {
+    "run": "shared_drive_organizers",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "org_units",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "org_units",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "mobile_devices",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "mobile_devices",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "group_members",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "group_members",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "data_transfers",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "data_transfers",
+    "rows": 1,
+    "why": ""
+   },
+   {
+    "run": "alerts",
+    "rows": 0,
+    "why": ""
+   },
+   {
+    "run": "alerts",
+    "rows": 1,
+    "why": ""
+   }
+  ],
+  "findings": [
+   {
+    "run": "group_members",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Group memberships",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "group_members",
+    "reads": [
+     {
+      "step": "read",
+      "state": "partial",
+      "why": "",
+      "unread": [
+       "it@example.com",
+       "x@example.com"
+      ]
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Group memberships",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "GAM couldn't read it@example.com, x@example.com: unknown, not none.",
+      "links": false,
+      "partial": true,
+      "change_note": "",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "group_members",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Group memberships",
+      "summary": "0 rows.",
+      "columns": [],
+      "rows": [],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "group_members",
+    "reads": [
+     {
+      "step": "read",
+      "state": "unknown",
+      "why": "Refused.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Group memberships",
+      "summary": "Not known: \u201cGroup memberships\u201d couldn't be read. Refused.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: \u201cGroup memberships\u201d couldn't be read. Refused.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "group_members",
+    "reads": [
+     {
+      "step": "read",
+      "state": "not_run",
+      "why": "The run was stopped before this step.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Group memberships",
+      "summary": "Not known: the run was stopped before \u201cGroup memberships\u201d.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: the run was stopped before \u201cGroup memberships\u201d.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "mobile_devices",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Mobile devices",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [
+       "lastSync"
+      ],
+      "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change."
+     }
+    ]
+   },
+   {
+    "run": "mobile_devices",
+    "reads": [
+     {
+      "step": "read",
+      "state": "partial",
+      "why": "",
+      "unread": [
+       "it@example.com",
+       "x@example.com"
+      ]
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Mobile devices",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "GAM couldn't read it@example.com, x@example.com: unknown, not none.",
+      "links": false,
+      "partial": true,
+      "change_note": "",
+      "compare_without": [
+       "lastSync"
+      ],
+      "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change."
+     }
+    ]
+   },
+   {
+    "run": "mobile_devices",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Mobile devices",
+      "summary": "0 rows.",
+      "columns": [],
+      "rows": [],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [
+       "lastSync"
+      ],
+      "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change."
+     }
+    ]
+   },
+   {
+    "run": "mobile_devices",
+    "reads": [
+     {
+      "step": "read",
+      "state": "unknown",
+      "why": "Refused.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Mobile devices",
+      "summary": "Not known: \u201cMobile devices\u201d couldn't be read. Refused.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: \u201cMobile devices\u201d couldn't be read. Refused.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [
+       "lastSync"
+      ],
+      "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change."
+     }
+    ]
+   },
+   {
+    "run": "mobile_devices",
+    "reads": [
+     {
+      "step": "read",
+      "state": "not_run",
+      "why": "The run was stopped before this step.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Mobile devices",
+      "summary": "Not known: the run was stopped before \u201cMobile devices\u201d.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: the run was stopped before \u201cMobile devices\u201d.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "",
+      "compare_without": [
+       "lastSync"
+      ],
+      "compare_note": "Compared without lastSync: it moves each time a device syncs, so a device that only synced since then isn't a change."
+     }
+    ]
+   },
+   {
+    "run": "licenses",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Licenses",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "licenses",
+    "reads": [
+     {
+      "step": "read",
+      "state": "partial",
+      "why": "",
+      "unread": [
+       "it@example.com",
+       "x@example.com"
+      ]
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Licenses",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "GAM couldn't read it@example.com, x@example.com: unknown, not none.",
+      "links": false,
+      "partial": true,
+      "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "licenses",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Licenses",
+      "summary": "0 rows.",
+      "columns": [],
+      "rows": [],
+      "known": true,
+      "why": "",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "licenses",
+    "reads": [
+     {
+      "step": "read",
+      "state": "unknown",
+      "why": "Refused.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Licenses",
+      "summary": "Not known: \u201cLicenses\u201d couldn't be read. Refused.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: \u201cLicenses\u201d couldn't be read. Refused.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "licenses",
+    "reads": [
+     {
+      "step": "read",
+      "state": "not_run",
+      "why": "The run was stopped before this step.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Licenses",
+      "summary": "Not known: the run was stopped before \u201cLicenses\u201d.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: the run was stopped before \u201cLicenses\u201d.",
+      "note": "",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "shared_drive_organizers",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Shared drive organizers",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member.",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "shared_drive_organizers",
+    "reads": [
+     {
+      "step": "read",
+      "state": "partial",
+      "why": "",
+      "unread": [
+       "it@example.com",
+       "x@example.com"
+      ]
+     }
+    ],
+    "rows": [
+     {
+      "group": "sales@example.com",
+      "type": "USER",
+      "role": "MEMBER",
+      "email": "alice@example.com"
+     },
+     {
+      "group": "it@example.com",
+      "type": "GROUP",
+      "role": "OWNER",
+      "email": null,
+      "status": "ACTIVE"
+     },
+     {
+      "status": "SUSPENDED",
+      "group": "z\u00eb@example.com",
+      "id": 7,
+      "extra": true
+     }
+    ],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Shared drive organizers",
+      "summary": "3 rows.",
+      "columns": [
+       "group",
+       "type",
+       "role",
+       "email",
+       "status",
+       "id",
+       "extra"
+      ],
+      "rows": [
+       [
+        "sales@example.com",
+        "USER",
+        "MEMBER",
+        "alice@example.com",
+        "",
+        "",
+        ""
+       ],
+       [
+        "it@example.com",
+        "GROUP",
+        "OWNER",
+        "",
+        "ACTIVE",
+        "",
+        ""
+       ],
+       [
+        "z\u00eb@example.com",
+        "",
+        "",
+        "",
+        "SUSPENDED",
+        "7",
+        "True"
+       ]
+      ],
+      "known": true,
+      "why": "",
+      "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member. GAM couldn't read it@example.com, x@example.com: unknown, not none.",
+      "links": false,
+      "partial": true,
+      "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "shared_drive_organizers",
+    "reads": [
+     {
+      "step": "read",
+      "state": "read",
+      "why": "",
+      "unread": []
+     }
+    ],
+    "rows": [],
+    "findings": [
+     {
+      "key": "table",
+      "title": "Shared drive organizers",
+      "summary": "0 rows.",
+      "columns": [],
+      "rows": [],
+      "known": true,
+      "why": "",
+      "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member.",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "shared_drive_organizers",
+    "reads": [
+     {
+      "step": "read",
+      "state": "unknown",
+      "why": "Refused.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Shared drive organizers",
+      "summary": "Not known: \u201cShared drive organizers\u201d couldn't be read. Refused.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: \u201cShared drive organizers\u201d couldn't be read. Refused.",
+      "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member.",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   },
+   {
+    "run": "shared_drive_organizers",
+    "reads": [
+     {
+      "step": "read",
+      "state": "not_run",
+      "why": "The run was stopped before this step.",
+      "unread": []
+     }
+    ],
+    "rows": null,
+    "findings": [
+     {
+      "key": "table",
+      "title": "Shared drive organizers",
+      "summary": "Not known: the run was stopped before \u201cShared drive organizers\u201d.",
+      "columns": [],
+      "rows": [],
+      "known": false,
+      "why": "Not known: the run was stopped before \u201cShared drive organizers\u201d.",
+      "note": "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. The Shared drive permissions audit run, above, lists every member.",
+      "links": false,
+      "partial": false,
+      "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
+      "compare_without": [],
+      "compare_note": ""
+     }
+    ]
+   }
+  ]
+ }
 }

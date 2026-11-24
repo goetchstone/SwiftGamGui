@@ -237,6 +237,11 @@ struct AuditRunsTests {
         for item in fixture["reads"]!.array! {
             let name = item["name"]!.string!, argv = item["argv"]!.array!.map { $0.string! }
             let records = item["records"]!.array!
+            // An origin GamGUI refuses before GAM runs can't be spelled here: `ReadAudit.Origin` is a case.
+            guard let origin = ReadAudit.Origin(rawValue: item["origin"]!.string!) else {
+                #expect(item["raised"]?.string == "ValueError" && records.isEmpty && item["ran"]!.array!.isEmpty, "\(name)")
+                continue
+            }
             guard item["raised"]?.string != "ValueError" else {
                 #expect(!AuditRuns.isAuditRead(argv) && records.isEmpty && item["ran"]!.array!.isEmpty, "\(name)")
                 continue
@@ -269,8 +274,8 @@ struct AuditRunsTests {
             } else {
                 outcome = .interrupted
             }
-            var written = try audit.record(command: "license_usage/licenses", target: "", argv: argv, domain: domain,
-                                           origin: .auditRun, outcome: outcome)
+            var written = try audit.record(command: item["command"]!.string!, target: "", argv: argv, domain: domain,
+                                           origin: origin, outcome: outcome)
             written["ts"] = nil
             var expected = try #require(records.first?.object, "\(name)")
             if outcome == .interrupted, var extra = expected["extra"]?.object {
@@ -279,5 +284,87 @@ struct AuditRunsTests {
             }
             #expect(written == expected, "\(name)")
         }
+    }
+
+    // MARK: named reports run here (plan F7a, GamGUI #178)
+
+    static let catalog = try! CommandCatalog(json: Data(contentsOf: Fixtures.catalogJSON))
+
+    /// Each named report runs as its catalog read built bare, from the vendored catalog: the same reads, argv, exits and words
+    /// GamGUI's `named_run` makes from its own catalog at the pin, and only a report whose read GAM's source was studied for.
+    @Test func theNamedRunsAreGamGUIs() throws {
+        let named = fixture["named"]!
+        #expect(ReadAudit.Origin.namedReport.rawValue == named["origin"]!.string!)
+        #expect(AuditRuns.namedTable == named["table"]!.string!)
+        #expect(AuditRuns.namedReads.keys.sorted() == named["studied"]!.array!.map { $0.string! })
+        #expect(NamedReport.all.map { [$0.key, $0.title] } == named["titles"]!.array!.map { [$0["key"]!.string!, $0["title"]!.string!] })
+        let runs = AuditRuns.namedRuns(Self.catalog), want = named["runs"]!.array!
+        #expect(runs.map(\.key) == want.map { $0["key"]!.string! } && runs.count == NamedReport.all.count)
+        for (run, item) in zip(runs, want) {
+            let label = run.key
+            // GamGUI's "licence" is this app's "license", as everywhere here (a listed deviation).
+            let what = item["what"]!.string!.replacingOccurrences(of: "licence", with: "license")
+            #expect(run.title == item["title"]!.string! && run.what == what && run.named == item["named"]!.string!, "\(label)")
+            #expect(run.commandID == item["cid"]!.string!, "\(label)")
+            #expect(run.changeNote == item["change_note"]!.string! && run.note == item["note"]!.string!, "\(label)")
+            #expect(run.compareWithout == item["compare_without"]!.array!.map { $0.string! }, "\(label)")
+            #expect(run.compareNote == item["compare_note"]!.string!, "\(label)")
+            let steps = item["steps"]!.array!
+            #expect(run.steps.count == steps.count, "\(label)")
+            for (step, want) in zip(run.steps, steps) {
+                #expect(step.key == want["key"]!.string! && step.title == want["title"]!.string!, "\(label)")
+                #expect(step.keyColumn == want["key_column"]!.string! && step.emptyWhy == want["empty_why"]!.string!, "\(label)")
+                #expect(step.okCodes.map(Int.init) == want["ok_rcs"]!.array!.map { $0.int! }, "\(label)")
+                #expect(step.partialCodes.map(Int.init) == want["partial_rcs"]!.array!.map { $0.int! }, "\(label)")
+                #expect(step.emptyCodes?.map(Int.init) == want["empty_rcs"]!.array?.map { $0.int! }, "\(label)")
+                let argv = want["argv"]!.array!.map { $0.string! }
+                #expect(AuditRuns.read(step)?.argv == argv && argv == want["step_argv"]!.array!.map { $0.string! }, "\(label)")
+                #expect(AuditRuns.isAuditRead(argv) && run.command(step) == want["command"]!.string!, "\(label)")
+            }
+        }
+        for item in named["implausibly_empty"]!.array! {
+            let run = try #require(runs.first { $0.key == item["run"]!.string! })
+            #expect(AuditRuns.implausiblyEmpty(run.steps[0], rows: item["rows"]!.int!) == item["why"]!.string!, "\(run.key)")
+        }
+    }
+
+    /// A named report's one table: the read's rows as GAM wrote them, columns in the order they first appear, a missing cell "",
+    /// a group GAM couldn't read named and the table partial, an unknown read never "none".
+    @Test func theNamedTablesAreGamGUIs() throws {
+        let runs = AuditRuns.namedRuns(Self.catalog), cases = fixture["named"]!["findings"]!.array!
+        #expect(cases.count == 20)
+        for (n, item) in cases.enumerated() {
+            let run = try #require(runs.first { $0.key == item["run"]!.string! })
+            let step = run.steps[0]
+            let reads = item["reads"]!.array!.map { read in
+                AuditRuns.StepRead(step: step, state: AuditRuns.State(rawValue: read["state"]!.string!)!, why: read["why"]!.string!,
+                                   unread: read["unread"]!.array!.map { $0.string! })
+            }
+            let tables = AuditRuns.Tables(rows: item["rows"]!.array.map { [step.key: $0.map { $0.object! }] } ?? [:])
+            let found = AuditRuns.findings(for: run, reads: reads, tables: tables, now: now, days: 0)
+            let want = item["findings"]!.array!
+            #expect(found.count == want.count, "\(run.key) \(n)")
+            for (finding, expected) in zip(found, want) {
+                Self.expect(finding, expected, "\(run.key) \(n)")
+                #expect(finding.compareWithout == expected["compare_without"]!.array!.map { $0.string! }, "\(run.key) \(n)")
+                #expect(finding.compareNote == expected["compare_note"]!.string!, "\(run.key) \(n)")
+                #expect(finding.partial == !finding.unknownPart.isEmpty, "\(run.key) \(n): its CSV says what wasn't read")
+            }
+        }
+    }
+
+    /// GamGUI's `named_run` offers only a plain read: no command, or one GAM can't run bare, is never a run.
+    @Test func aReportWithoutAPlainReadIsNeverOffered() throws {
+        let licenses = try #require(NamedReport.all.first { $0.key == "licenses" })
+        #expect(AuditRuns.namedRun(licenses, command: nil) == nil)
+        let line = { (syntax: String, risk: Int) in
+            #"{"version": "0", "commands": [{"id": "a", "category": "Licenses", "subcategory": "", "name": "", "raw_syntax": "\#(syntax)", "verb": "print", "risk": \#(risk), "uncertain": false, "description": ""}]}"#
+        }
+        let needsValue = try CommandCatalog(json: Data(line("gam print licenses <SKUIDList>", 0).utf8))
+        #expect(AuditRuns.namedRun(licenses, command: needsValue.commands.first) == nil)
+        let bare = try CommandCatalog(json: Data(line("gam print licenses", 0).utf8))
+        #expect(AuditRuns.namedRun(licenses, command: bare.commands.first)?.steps.first.flatMap { AuditRuns.read($0)?.argv } == ["print", "licenses"])
+        let write = try CommandCatalog(json: Data(line("gam print licenses", 2).utf8))
+        #expect(AuditRuns.namedRun(licenses, command: write.commands.first) == nil)
     }
 }

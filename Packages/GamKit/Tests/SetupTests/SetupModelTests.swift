@@ -252,7 +252,7 @@ struct SetupModelTests {
         let example = Domain("example.com")!
         await model.importFolder(try gamFolder(), as: "example.com")
         let check = Task { await model.checkAccess(example) }
-        while !model.isBusy { await Task.yield() }
+        try await yieldWhile { !model.isBusy }
         await model.remove(example)
         await model.importFolder(try gamFolder(admin: "admin@other.org"), as: "example.com")
         await check.value
@@ -357,7 +357,7 @@ struct SetupModelTests {
         let failure = try #require(model.reconnectFailure)
         await model.importFolder(try gamFolder(), as: "example.com")
         let check = Task { await model.checkAccess(Domain("example.com")!) }
-        while !model.isBusy { await Task.yield() }
+        try await yieldWhile { !model.isBusy }
         await model.reconnect()
         #expect(model.reconnectFailure == failure, "the reason was cleared by a reconnect that checked nothing")
         #expect(model.reconnecting == nil)
@@ -385,7 +385,7 @@ struct SetupModelTests {
         await first.checkAccess(Domain("example.com")!)
         let relaunched = model()
         let reconnect = Task { await relaunched.reconnect() }
-        while !relaunched.isBusy { await Task.yield() }
+        try await yieldWhile { !relaunched.isBusy }
         reconnect.cancel()
         await reconnect.value
         #expect(relaunched.reconnectFailure == nil)
@@ -398,7 +398,7 @@ struct SetupModelTests {
         await first.checkAccess(Domain("example.com")!)
         let relaunched = model()
         relaunched.reconnectAtLaunch()
-        while relaunched.active == nil { await Task.yield() }
+        try await yieldWhile { relaunched.active == nil }
         await relaunched.remove(Domain("example.com")!)
         await relaunched.importFolder(try gamFolder(), as: "example.com")
         lastDomain.save("example.com")

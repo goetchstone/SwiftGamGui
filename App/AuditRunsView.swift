@@ -19,6 +19,9 @@ import SwiftUI
 /// A schedule (plan F7a, `RunSchedules`) adds when the run is due, at the top; its schedule and the runs it keeps on this Mac,
 /// under Run; and, once a scheduled run ended, what changed in each table since its last kept run. None of it is drawn while
 /// a run goes (GamGUI's poll reads no schedule), and none of it runs anything.
+///
+/// A named report run here (plan F7a, GamGUI #178) is a run of one step: its catalog read built bare, said as GAM's own line,
+/// with Open in the Builder (⌘O) to narrow it there.
 struct AuditRunPanel: View {
     let run: AuditRuns.Run
     let runs: AuditRunner
@@ -30,6 +33,8 @@ struct AuditRunPanel: View {
     /// Inactive users' window, which ⌘R runs with too.
     @Binding var days: Int
     let openPerson: (String) -> Void
+    /// Opens a catalog command in the Builder (a named report's read).
+    let openCommand: (String) -> Void
     /// What Export CSV… last did, and for which run (its read time): another run's line never shows here.
     @State private var exported: (text: String, failed: Bool, about: Date)?
     /// The table a row was last picked in: what ⌘E exports.
@@ -43,9 +48,13 @@ struct AuditRunPanel: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(run.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                     Text(run.what).foregroundStyle(.secondary)
-                    Text("Reads: " + run.steps.enumerated().map { $0.offset == 0 ? $0.element.title : $0.element.title.lowercasedFirst }
-                        .joined(separator: "; ") + ". A run changes nothing.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if run.named.isEmpty {
+                        Text("Reads: " + run.steps.enumerated().map { $0.offset == 0 ? $0.element.title : $0.element.title.lowercasedFirst }
+                            .joined(separator: "; ") + ". A run changes nothing.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        namedLine
+                    }
                 }
                 switch runs.state(of: run) {
                 case .running(let progress)?:
@@ -80,6 +89,20 @@ struct AuditRunPanel: View {
         // Suspend these… that ends without a sheet (nothing to suspend, or why not) is said, not only drawn.
         .onChange(of: suspendOutcome) { _, words in
             if let words { AccessibilityNotification.Announcement(words).post() }
+        }
+    }
+
+    /// A named report's read, as GAM's own line, and the Builder, where it can be narrowed.
+    @ViewBuilder private var namedLine: some View {
+        let line = "gam " + (run.steps.first.flatMap { AuditRuns.read($0)?.argv } ?? []).joined(separator: " ")
+        (Text("Runs ") + Text(line).monospaced() + Text(", the Builder's read with no options. A run changes nothing. It's recorded "
+                                                         + "in the Audit log as a named report."))
+            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        if !run.commandID.isEmpty {
+            Button("Open in the Builder") { openCommand(run.commandID) }
+                .keyboardShortcut("o")
+                .accessibilityHint("Opens \(line) in the Builder, to narrow it. Command O opens it too.")
+            Text("⌘O opens it in the Builder, to narrow it there.").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -451,6 +474,10 @@ private struct ChangeSinceView: View {
                 Text("A row counts by all its cells: one with any cell changed shows as gone and as new.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            if change.compared, !change.leftOut.isEmpty {
+                Text(finding.compareNote.isEmpty ? "Compared without \(change.leftOut.joined(separator: ", "))." : finding.compareNote)
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             if change.compared, !finding.changeNote.isEmpty {
                 Label(finding.changeNote, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
                     .font(.caption).fixedSize(horizontal: false, vertical: true)
@@ -464,7 +491,10 @@ private struct ChangeSinceView: View {
         if !rows.isEmpty {
             let shown = Array(rows.prefix(AuditRuns.rowsShown).enumerated())
             Text("\(label) since then (\(rows.count.formatted()))").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
-            List(shown, id: \.offset) { item in FindingRow(columns: finding.columns, row: item.element, opens: false) }
+            // In the columns both runs were compared on (their union, without any left out), when not the table's own.
+            List(shown, id: \.offset) { item in
+                FindingRow(columns: change.columns.isEmpty ? finding.columns : change.columns, row: item.element, opens: false)
+            }
                 .listStyle(.bordered(alternatesRowBackgrounds: true))
                 .frame(height: CGFloat(min(shown.count, 4)) * 46 + 8)
                 .accessibilityLabel("\(label) in \(finding.title) since \(when)"

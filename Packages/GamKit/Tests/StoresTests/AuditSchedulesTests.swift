@@ -27,7 +27,8 @@ struct AuditSchedulesParityTests {
     static func tables(_ value: JSONValue?) -> [AuditSchedules.Table] {
         value!.array!.map { item in
             .init(key: item["key"]!.string!, title: item["title"]!.string!, columns: item["columns"]!.array!.map { $0.string! },
-                  rows: rows(item["rows"]), known: item["known"]!.bool!, partial: item["partial"]!.bool!)
+                  rows: rows(item["rows"]), known: item["known"]!.bool!, partial: item["partial"]!.bool!,
+                  compareWithout: item["compare_without"]?.array?.map { $0.string! } ?? [])
         }
     }
 
@@ -39,6 +40,8 @@ struct AuditSchedulesParityTests {
             #expect(change?.since == item["since"]!.double!, "\(label) \(key)")
             #expect(change?.new == rows(item["new"]) && change?.gone == rows(item["gone"]), "\(label) \(key): \(String(describing: change))")
             #expect(change?.why.utf8.elementsEqual(item["why"]!.string!.utf8) == true, "\(label) \(key): \(change?.why ?? "")")
+            #expect(change?.columns == item["columns"]!.array!.map { $0.string! }, "\(label) \(key): \(change?.columns ?? [])")
+            #expect(change?.leftOut == item["left_out"]!.array!.map { $0.string! }, "\(label) \(key)")
         }
     }
 
@@ -53,6 +56,7 @@ struct AuditSchedulesParityTests {
         #expect(AuditSchedules.notKnownNow == constants["NOT_KNOWN_NOW"]!.string! && AuditSchedules.partUnknownNow == constants["PART_UNKNOWN_NOW"]!.string!)
         #expect(AuditSchedules.nothingBefore == constants["NOTHING_BEFORE"]!.string! && AuditSchedules.keptRunUnread == constants["KEPT_RUN_UNREAD"]!.string!)
         #expect(AuditSchedules.notAnswered == constants["NOT_ANSWERED"]!.string! && AuditSchedules.keptUnread == constants["KEPT_UNREAD"]!.string!)
+        #expect(AuditSchedules.keptVersion == constants["KEPT_VERSION"]!.int!)
     }
 
     /// A day, a week or a calendar month on; the 31st into a shorter month is its last day.
@@ -94,7 +98,7 @@ struct AuditSchedulesParityTests {
     @Test func whatChangedSinceIsGamGUIs() {
         let utc = AuditSchedules.Clock(timeZone: .gmt)
         let cases = fixture["changes"]!.array!
-        #expect(cases.count == 14)
+        #expect(cases.count == 21)
         for item in cases {
             let name = item["name"]!.string!
             let earlier: [(head: AuditSchedules.KeptRun, rows: JSONValue)] = item["earlier"]!.array!.map { run in
@@ -133,7 +137,7 @@ struct AuditSchedulesParityTests {
         let domain = try #require(Domain(keep["domain"]!.string!)), run = keep["run"]!.string!
         let utc = AuditSchedules.Clock(timeZone: .gmt)
         let steps = keep["steps"]!.array!
-        #expect(steps.count == 17)
+        #expect(steps.count == 18)
         for step in steps {
             let op = step["op"]!.string!
             if step["answered"] != nil {
@@ -300,6 +304,49 @@ struct AuditScheduleStoreTests {
         #expect(throws: AuditSchedules.Problem.self) { try store.schedules(example) }
     }
 
+    /// A kept run is version 2 (GamGUI #178): its first line holds no columns, so a wide flattened table can't push it past the
+    /// header's cap; each table's columns are kept with its rows. A version 1 run (columns in the header) still reads, and a row
+    /// not as long as its columns isn't whole.
+    @Test func aKeptRunHoldsItsColumnsWithItsRowsAndAVersion1RunStillReads() throws {
+        let store = AuditScheduleStore(root: root)
+        let wide = (0..<30_000).map { "permissions.\($0).emailAddress" }
+        let table = AuditSchedules.Table(key: "seats", title: "Seats", columns: wide, rows: [wide.map { _ in "x" }], known: true,
+                                         partial: false)
+        try keep(store, [[table]])
+        let file = try #require(keptFiles().first)
+        let lines = try String(contentsOf: file, encoding: .utf8).split(separator: "\n").map(String.init)
+        #expect(lines[0].utf8.count < 1_000 && lines[0].contains(#""version": 2"#) && !lines[0].contains("columns"))
+        #expect(lines[1].contains(#""columns": ["permissions.0.emailAddress""#))
+        let head = try #require(try store.runs(example, run: "license_usage").first)
+        #expect(head.problem.isEmpty && head.table("seats")?.columns == [])
+        let whole = try store.load(example, run: "license_usage", id: head.id)
+        #expect(whole.table("seats")?.columns == wide && whole.table("seats")?.rows?.count == 1)
+
+        let id = head.id, domain = example.name
+        let v1 = #"{"version": 1, "id": "\#(id)", "domain": "\#(domain)", "run": "license_usage", "when": \#(Self.t0), "days": 0, "#
+            + #""tables": [{"key": "seats", "title": "Seats", "columns": ["Email", "Name"], "known": true, "partial": false, "#
+            + #""count": 1, "kept": true}]}"# + "\n" + #"{"table": "seats", "rows": [["a", "A"]]}"# + "\n"
+        try v1.write(to: file, atomically: false, encoding: .utf8)
+        let old = try store.load(example, run: "license_usage", id: id)
+        #expect(old.problem.isEmpty && old.table("seats")?.columns == ["Email", "Name"] && old.table("seats")?.rows == [["a", "A"]])
+        try v1.replacingOccurrences(of: #"[["a", "A"]]"#, with: #"[["a"]]"#).write(to: file, atomically: false, encoding: .utf8)
+        #expect(try store.load(example, run: "license_usage", id: id).problem == "It isn't whole.")
+        let v2NoColumns = v1.replacingOccurrences(of: #""version": 1"#, with: #""version": 2"#)
+        try v2NoColumns.write(to: file, atomically: false, encoding: .utf8)
+        #expect(try store.load(example, run: "license_usage", id: id).problem == "It isn't whole.", "version 2 keeps them with the rows")
+    }
+
+    /// The runs a domain has kept runs for, whatever they hold, link folders passed over: a run nothing here runs any more still
+    /// lists its kept runs (GamGUI #178's `run_keys`).
+    @Test func theRunsADomainKeptForAreListed() throws {
+        let store = AuditScheduleStore(root: root)
+        #expect(try store.runKeys(example).isEmpty)
+        try keep(store, [[Self.table("seats", [["a", "A"]])]])
+        try store.setSchedule(example, run: "old_report", cadence: .weekly, keep: 2, now: Self.t0)
+        _ = store.afterRun(example, run: "old_report", tables: [Self.table("t", [["a", "A"]])], days: 0, answered: true, when: Self.t0, clock: utc)
+        #expect(try store.runKeys(example) == ["license_usage", "old_report"] && store.runKeys(other).isEmpty)
+    }
+
     @Test func aKeptRunIsWholePrivateAndListedNewestFirst() throws {
         let store = AuditScheduleStore(root: root)
         try keep(store, [[Self.table("seats", [["a@x.com", "A"]])],
@@ -436,21 +483,35 @@ struct AuditScheduleStoreTests {
         #expect(FileManager.default.fileExists(atPath: first.path))
     }
 
-    /// A table kept with other columns (an update added, moved or reworded one) is never compared: every row would read as gone
-    /// and new. It says why, and an older run with the same columns is still compared with. Not GamGUI's: a listed deviation.
-    @Test func aTableWhoseColumnsChangedIsNeverCompared() {
+    /// A table kept with other columns is compared on the union of both (GamGUI #178's `_aligned`): moved columns are no change,
+    /// and a column one run lacks is "" there. The newest kept run is the one compared with, whatever its columns.
+    @Test func aTableWhoseColumnsMovedOrGrewIsComparedOnTheirUnion() {
         let now = [AuditSchedules.Table(key: "t", title: "T", columns: ["Email", "Full name"], rows: [["a", "A"]], known: true,
                                         partial: false)]
-        func run(_ id: String, _ when: Double, _ columns: [String]) -> AuditSchedules.KeptRun {
-            .init(id: id, when: when, tables: [.init(key: "t", title: "T", columns: columns, known: true, partial: false, count: 1, kept: true,
-                                                    rows: [["a", "A"]])])
+        func run(_ id: String, _ when: Double, _ columns: [String], _ rows: [[String]]) -> AuditSchedules.KeptRun {
+            .init(id: id, when: when, tables: [.init(key: "t", title: "T", columns: columns, known: true, partial: false,
+                                                    count: rows.count, kept: true, rows: rows)])
         }
-        let moved = run("2", Self.t0 + Self.day, ["Full name", "Email"]), renamed = run("1", Self.t0, ["Email", "Name"])
-        var found = AuditSchedules.changesSince(now, days: 0, earlier: [moved, renamed], clock: utc) { id in id == "2" ? moved : renamed }
-        #expect(found["t"]?.why == AuditSchedules.columnsChanged)
-        let same = run("0", Self.t0 - Self.day, ["Email", "Full name"])
-        found = AuditSchedules.changesSince(now, days: 0, earlier: [moved, renamed, same], clock: utc) { _ in same }
-        #expect(found["t"]?.compared == true && found["t"]?.since == Self.t0 - Self.day && found["t"]?.new.isEmpty == true)
+        let moved = run("2", Self.t0 + Self.day, ["Full name", "Email"], [["A", "a"]])
+        var found = AuditSchedules.changesSince(now, days: 0, earlier: [moved], clock: utc) { _ in moved }
+        #expect(found["t"]?.compared == true && found["t"]?.new.isEmpty == true && found["t"]?.gone.isEmpty == true)
+        #expect(found["t"]?.columns == [], "the union is the table's own columns")
+        let grown = run("1", Self.t0, ["Email", "Full name", "Role"], [["a", "A", "admin"]])
+        found = AuditSchedules.changesSince(now, days: 0, earlier: [grown], clock: utc) { _ in grown }
+        #expect(found["t"]?.columns == ["Email", "Full name", "Role"])
+        #expect(found["t"]?.new == [["a", "A", ""]] && found["t"]?.gone == [["a", "A", "admin"]])
+    }
+
+    /// A column that moves on its own is left out of both sides before the compare, and named in `leftOut`.
+    @Test func aColumnThatMovesOnItsOwnIsLeftOut() {
+        let now = [AuditSchedules.Table(key: "t", title: "T", columns: ["id", "lastSync"], rows: [["d1", "2"]], known: true,
+                                        partial: false, compareWithout: ["lastSync"])]
+        let then = AuditSchedules.KeptRun(id: "1", when: Self.t0, tables: [.init(key: "t", title: "T", columns: ["id", "lastSync"],
+                                                                                  known: true, partial: false, count: 1, kept: true,
+                                                                                  rows: [["d1", "1"]])])
+        let found = AuditSchedules.changesSince(now, days: 0, earlier: [then], clock: utc) { _ in then }
+        #expect(found["t"]?.compared == true && found["t"]?.new.isEmpty == true && found["t"]?.gone.isEmpty == true)
+        #expect(found["t"]?.leftOut == ["lastSync"] && found["t"]?.columns == ["id"])
     }
 
     /// Cells compare as their bytes, as GamGUI's `Counter` does: a name in its composed and decomposed forms is a change.

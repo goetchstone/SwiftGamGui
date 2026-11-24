@@ -8,7 +8,7 @@ package protocol GamCommand: Sendable, Equatable {
 /// A command that only reads. `AuthenticatedRunner.run` takes these and nothing else, so code outside
 /// GamKit (views, App Intents, a model's tool) can read the tenant but has no argv it could write with.
 /// Every read builder is held to GamGUI's read-only rule by `CommandKindTests` (invariant 3).
-public struct GamRead: GamCommand {
+public struct GamRead: GamCommand, Hashable {
     public let argv: [String]
 
     /// `internal`: GamEngine's builders are the only source, the catalog's promoted reads included (`catalogRead`, for a

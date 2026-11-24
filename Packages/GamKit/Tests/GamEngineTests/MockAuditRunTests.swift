@@ -108,7 +108,7 @@ struct MockAuditRunTests {
             #expect(silent.exitCode == 0 && silent.stderr.isEmpty && GamOutput.records(silent.stdout).isEmpty
                     && silent.stdout.hasPrefix("User,id,name,"), "\(argv)")
         }
-        for argv in [["print", "shareddrives"], ["print", "shareddriveacls", "formatjson"]] {
+        for argv in [["print", "shareddrives", "formatjson"], ["print", "shareddriveacls", "formatjson"]] {
             let read = try await run(argv)
             #expect(read.exitCode == 2 && read.stderr.contains("isn't modelled"), "\(argv)")
         }
@@ -172,5 +172,89 @@ struct MockAuditRunTests {
             let made = try #require(user["creationTime"]?.string)
             #expect(made.count == 20 && made.hasSuffix("Z") && made.dropFirst(10).hasPrefix("T"), "\(made)")
         }
+    }
+
+    // MARK: the named reports' bare reads (plan F7a, GamGUI #178)
+
+    /// Each bare read the named reports run, as GAM 7.52.04 prints it: its titles (the key column the run reads among them) and
+    /// rows, exit 0.
+    @Test(arguments: [
+        (["print", "orgs"], "orgUnitPath,orgUnitId,name,parentOrgUnitId", 4),
+        (["print", "group-members"], "group,type,role,id,status,email", 20),
+        (["print", "mobile"], "resourceId,email,status,deviceCompromisedStatus,firstSync,lastSync,model,os,type", 5),
+        (["print", "shareddrives"], "User,id,name,createdTime,hidden,orgUnit,orgUnitId", 4),
+        (["print", "shareddriveacls"], "User,id,name,createdTime,permissions,permissions.0.emailAddress", 3),
+        (["print", "shareddriveorganizers"], "id,name,organizers,createdTime", 4),
+        (["print", "alerts"], "alertId,createTime,startTime,endTime,customerId,type,source,deleted,", 2),
+        (["print", "datatransfers"], "id,requestTime,oldOwnerUserEmail,newOwnerUserEmail,overallTransferStatusCode,application", 3),
+    ])
+    func eachBareReadIsGAMs(_ argv: [String], _ titles: String, _ rows: Int) async throws {
+        let read = try await run(argv)
+        #expect(read.exitCode == 0 && read.stdout.hasPrefix(titles), "\(argv): \(read.stdout.prefix(200))")
+        #expect(GamOutput.records(read.stdout).count == rows, "\(argv)")
+    }
+
+    /// A group whose members Google refused is named as GAM names an account it skips, "Group: <g>, Does not exist (i/N)", the
+    /// rest kept, exit 56.
+    @Test func aGroupWhoseMembersWereRefusedIsNamedAndSkipped() async throws {
+        let read = try await run(["print", "group-members"], state: ["members_gone/it@example.com"])
+        #expect(read.exitCode == 56 && read.stderr.contains("Group: it@example.com, Does not exist (3/6)"))
+        let groups = Set(GamOutput.records(read.stdout).compactMap { $0["group"]?.string })
+        #expect(!groups.contains("it@example.com") && groups.contains("sales@example.com"))
+    }
+
+    /// Each read's own "none", and each way it fails or skips without a word.
+    @Test func eachNoneAndEachFailureIsGAMs() async throws {
+        let orgs = try await run(["print", "orgs"], state: ["no_org_units"])
+        #expect(orgs.exitCode == 0 && GamOutput.records(orgs.stdout).isEmpty && orgs.stdout.hasPrefix("orgUnitPath,"))
+        let orgsFailed = try await run(["print", "orgs"], state: ["orgs_failed"])
+        #expect(orgsFailed.exitCode == 50 && PythonText.strip(orgsFailed.stdout).isEmpty)
+        let drivesNeedOrgs = try await run(["print", "shareddrives"], state: ["orgs_failed"])
+        #expect(drivesNeedOrgs.exitCode == 1 && drivesNeedOrgs.stderr.contains("Traceback") && PythonText.strip(drivesNeedOrgs.stdout).isEmpty)
+        let mobile = try await run(["print", "mobile"], state: ["no_mobile"])
+        #expect(mobile.exitCode == 0 && PythonText.strip(mobile.stdout) == "resourceId")
+        let mobileRefused = try await run(["print", "mobile"], state: ["denied/mobile"])
+        #expect(mobileRefused.exitCode == 12 && GamOutput.records(mobileRefused.stdout).isEmpty)
+        let alerts = try await run(["print", "alerts"], state: ["no_alerts"])
+        #expect(alerts.exitCode == 0 && PythonText.strip(alerts.stdout) == "alertId,createTime")
+        let alertsSilent = try await run(["print", "alerts"], state: ["alerts_token_silent"])
+        #expect(alertsSilent.exitCode == 0 && PythonText.strip(alertsSilent.stdout).isEmpty && alertsSilent.stderr.isEmpty)
+        let alertsRefused = try await run(["print", "alerts"], state: ["denied/alerts"])
+        #expect(alertsRefused.exitCode == 73 && PythonText.strip(alertsRefused.stdout).isEmpty)
+        let transfers = try await run(["print", "datatransfers"], state: ["no_transfers"])
+        #expect(transfers.exitCode == 0 && PythonText.strip(transfers.stdout) == "id")
+        let apps = try await run(["print", "datatransfers"], state: ["denied/transferapps"])
+        #expect(apps.exitCode == 61 && PythonText.strip(apps.stdout).isEmpty)
+        let list = try await run(["print", "datatransfers"], state: ["denied/datatransfers"])
+        #expect(list.exitCode == 50 && PythonText.strip(list.stdout).isEmpty)
+        for argv in [["print", "shareddriveacls"], ["print", "shareddriveorganizers"]] {
+            let none = try await run(argv, state: ["nodrives"])
+            #expect(none.exitCode == 60 && GamOutput.records(none.stdout).isEmpty, "\(argv)")
+            let silent = try await run(argv, state: ["drive_token_silent"])
+            #expect(silent.exitCode == 0 && GamOutput.records(silent.stdout).isEmpty && silent.stderr.isEmpty, "\(argv)")
+            let dropped = try await run(argv, state: ["acl_dropped/0ALEGALuk9PVA"])
+            #expect(dropped.exitCode == 0 && !dropped.stdout.contains("Legal hold"), "\(argv)")
+        }
+        // No drive row written: GAM's titles are the four it started with; `permissions` comes only with a flattened row (review
+        // of #197).
+        let all = ["0AFINANCEuk9PVA", "0ALEGALuk9PVA", "0AOLDuk9PVA", "0AUNUSEDuk9PVA"].map { "acl_dropped/" + $0 }
+        let everyDropped = try await run(["print", "shareddriveacls"], state: all)
+        #expect(everyDropped.exitCode == 60 && PythonText.strip(everyDropped.stdout) == "User,id,name,createdTime")
+    }
+
+    /// Organizers: one per drive, the first user organizer in the primary domain; a drive with none is blank, never left out.
+    @Test func eachDriveListsItsFirstUserOrganizer() async throws {
+        let read = try await run(["print", "shareddriveorganizers"])
+        let rows = GamOutput.records(read.stdout)
+        #expect(rows.count == 4 && rows.allSatisfy { $0["organizers"]?.string?.contains(",") != true })
+    }
+
+    /// An alert edited moves only its times; one closed changes its status too.
+    @Test func anAlertEditedMovesItsTimesAndOneClosedItsStatus() async throws {
+        let before = GamOutput.records(try await run(["print", "alerts"]).stdout)
+        let edited = GamOutput.records(try await run(["print", "alerts"], state: ["alerts_edited"]).stdout)
+        let closed = GamOutput.records(try await run(["print", "alerts"], state: ["alerts_closed"]).stdout)
+        #expect(before[0]["updateTime"] != edited[0]["updateTime"] && before[0]["metadata.status"] == edited[0]["metadata.status"])
+        #expect(closed[0]["metadata.status"] == .string("CLOSED"))
     }
 }

@@ -678,7 +678,7 @@ final class OffboardChangesTests {
         try await connect()
         let plan = try await plan(form())
         let running = Task { await changes.confirm(plan, typed("carol@example.com")) }
-        while !changes.isRunning { await Task.yield() }
+        try await yieldWhile { !changes.isRunning }
         await changes.plan(form(days: 9))
         #expect(changes.problem == "An offboarding is running: wait for it to finish, then preview again.")
         await running.value

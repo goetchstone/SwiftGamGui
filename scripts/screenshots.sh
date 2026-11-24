@@ -97,7 +97,10 @@ status=0
 # run); reports-run-scheduled License usage scheduled weekly and run twice against the mock (tab `scheduled`, plan F7a): its
 # due line, its schedule and the two runs kept in a fresh temporary folder, and "No change since" under each table;
 # home-scheduled Home with Classroom scheduled monthly and never run (due) and License usage weekly, run once (not due yet);
-# both also in the smallest window. Audit on a
+# both also in the smallest window. reports-run-named Google's alerts, a named report run on Reports (plan F7a, GamGUI #178), scheduled
+# weekly and run twice against the mock: its GAM line, Open in the Builder, and "No change since" with the columns left out of
+# the comparison said (also in the smallest window); reports-stranded a schedule for a report this GAM version can't run
+# (`old_report`, saved before the picture), with Stop Scheduling It. Audit on a
 # demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
 # then narrowed to one domain (the person is the domain: example.org). Files (plan F4) on a demo log with two exports to a
 # Sheet (one made, its link the mock's; one Drive refused), a demo incident with one saved read, and one CSV listed as saved:
@@ -181,6 +184,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-reports-run-licenses:reports:run.license_usage::smallest \
             reports-run-scheduled:reports:run.license_usage:scheduled:1100x940 \
             narrow-reports-run-scheduled:reports:run.license_usage:scheduled:smallest \
+            reports-run-named:reports:run.alerts:scheduled:1100x940 narrow-reports-run-named:reports:run.alerts:scheduled:smallest \
+            reports-stranded:reports:run.old_report:stranded \
             narrow-audit:audit:::smallest audit-domain:audit:example.org narrow-audit-domain:audit:example.org::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \

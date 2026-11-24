@@ -12,7 +12,7 @@ import Vault
 /// <app data>/schedules/                      0700, held by a descriptor, never followed through a link
 ///     schedules.json                         0600: every domain's schedules
 ///     kept/<sha256(domain)[:24]>/<run>/      0700 each, opened one from the other by descriptor
-///         <13-digit sequence>-<8 hex>.jsonl  0600: a header line, then one line of rows per kept table
+///         <13-digit sequence>-<8 hex>.jsonl  0600: a header line, then one line per kept table: its columns and rows
 /// ```
 ///
 /// - **Every folder by descriptor.** The store's folder is opened `O_DIRECTORY | O_NOFOLLOW` and each one under it `openat` the
@@ -431,30 +431,47 @@ public final class AuditScheduleStore: Sendable {
         }
     }
 
-    /// A kept run's file: its header naming this run, domain and id, then (`whole`) every kept table's rows, each table's count
-    /// matched. Nil for anything else.
+    /// A list of text, every item text; nil for anything else.
+    private static func texts(_ value: JSONValue?) -> [String]? {
+        guard let items = value?.array else { return nil }
+        let found = items.compactMap(\.string)
+        return found.count == items.count ? found : nil
+    }
+
+    /// A kept run's file: its header naming this run, domain and id, then (`whole`) every kept table's columns and rows, each
+    /// table's count matched and each row as long as its columns. Version 2 (GamGUI #178's `KEPT_VERSION`) keeps a table's columns
+    /// with its rows; version 1 kept them in the header, and is still read. Nil for anything else.
     static func parseKept(_ bytes: [UInt8], id: String, domain: Domain, run: String, whole: Bool) -> AuditSchedules.KeptRun? {
         guard let text = String(validating: bytes, as: UTF8.self) else { return nil }
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        guard let first = lines.first, let head = JSONValue.parse(String(first))?.object, head["version"]?.int == AuditSchedules.fileVersion,
+        guard let first = lines.first, let head = JSONValue.parse(String(first))?.object, let version = head["version"]?.int,
+              version == 1 || version == AuditSchedules.keptVersion,
               head["id"]?.string.map({ $0.utf8.elementsEqual(id.utf8) }) == true, head["domain"]?.string == domain.name,
               head["run"]?.string == run, let when = head["when"]?.double, AuditSchedules.isTime(when),
               let days = head["days"]?.int, (0...AuditSchedules.maxDays).contains(days), let raw = head["tables"]?.array
         else { return nil }
         var tables: [AuditSchedules.KeptTable] = []
         for item in raw {
-            guard let key = item["key"]?.string, let title = item["title"]?.string,
-                  let columns = item["columns"]?.array?.compactMap(\.string), columns.count == item["columns"]?.array?.count,
+            // Version 1 kept the columns here; 2 keeps them with the rows.
+            let columns = version == 1 ? texts(item["columns"]) : []
+            guard let key = item["key"]?.string, let title = item["title"]?.string, let columns,
                   let known = item["known"]?.bool, let partial = item["partial"]?.bool, let count = item["count"]?.int, count >= 0,
                   let kept = item["kept"]?.bool
             else { return nil }
             tables.append(.init(key: key, title: title, columns: columns, known: known, partial: partial, count: count, kept: kept))
         }
         if whole {
-            var rows: [String: [[String]]] = [:]
+            var rows: [String: (columns: [String]?, rows: [[String]])] = [:]
             for line in lines.dropFirst() where !line.isEmpty {
                 guard let body = JSONValue.parse(String(line)), let key = body["table"]?.string, let found = body["rows"]?.array
                 else { return nil }
+                let columns: [String]?
+                if body["columns"] == nil {
+                    columns = nil
+                } else {
+                    guard let listed = texts(body["columns"]) else { return nil }
+                    columns = listed
+                }
                 var table: [[String]] = []
                 for row in found {
                     guard let cells = row.array else { return nil }
@@ -464,11 +481,18 @@ public final class AuditScheduleStore: Sendable {
                     }
                     table.append(out)
                 }
-                rows[key] = table
+                rows[key] = (columns, table)
             }
             for index in tables.indices where tables[index].kept {
-                guard let found = rows[tables[index].key], found.count == tables[index].count else { return nil }
-                tables[index].rows = found
+                guard let found = rows[tables[index].key], found.rows.count == tables[index].count else { return nil }
+                if let columns = found.columns {
+                    tables[index].columns = columns
+                } else if version != 1 {
+                    return nil   // version 2 keeps a table's columns with its rows
+                }
+                let width = tables[index].columns.count
+                guard found.rows.allSatisfy({ $0.count == width }) else { return nil }
+                tables[index].rows = found.rows
             }
         }
         return .init(id: id, when: when, days: days, tables: tables)
@@ -492,17 +516,21 @@ public final class AuditScheduleStore: Sendable {
             AuditSchedules.KeptTable(key: table.key, title: table.title, columns: table.columns, known: table.known,
                                      partial: table.partial, count: table.rows.count, kept: table.known && table.rows.count <= rowsCap)
         }
+        // The first line, which a listing reads alone, holds no columns (version 2, GamGUI #178): a read GAM flattens has as many
+        // as its widest record needs (13 a member for every member of the largest shared drive), which would make it too long to
+        // read back under `headerCap`.
         let header: JSONObject = [
-            "version": .number(String(AuditSchedules.fileVersion)), "id": .string(id), "domain": .string(domain.name),
+            "version": .number(String(AuditSchedules.keptVersion)), "id": .string(id), "domain": .string(domain.name),
             "run": .string(run), "when": .number(String(when)), "days": .number(String(days)),
             "tables": .array(heads.map { t in
-                .object(["key": .string(t.key), "title": .string(t.title), "columns": .array(t.columns.map(JSONValue.string)),
-                         "known": .bool(t.known), "partial": .bool(t.partial), "count": .number(String(t.count)), "kept": .bool(t.kept)])
+                .object(["key": .string(t.key), "title": .string(t.title), "known": .bool(t.known), "partial": .bool(t.partial),
+                         "count": .number(String(t.count)), "kept": .bool(t.kept)])
             }),
         ]
         var bytes = Array((JSONValue.dumps(.object(header)) + "\n").utf8)
         for (table, head) in zip(tables, heads) where head.kept {
-            let line: JSONObject = ["table": .string(table.key), "rows": .array(table.rows.map { .array($0.map(JSONValue.string)) })]
+            let line: JSONObject = ["table": .string(table.key), "columns": .array(table.columns.map(JSONValue.string)),
+                                    "rows": .array(table.rows.map { .array($0.map(JSONValue.string)) })]
             bytes += Array((JSONValue.dumps(.object(line)) + "\n").utf8)
             guard bytes.count <= cap else {
                 throw Problem("It holds more than this app keeps of a run (\(cap >> 20) MB), so the next run can't say what changed "
@@ -686,6 +714,27 @@ public final class AuditScheduleStore: Sendable {
         }
     }
 
+    /// The runs `domain` has a kept-runs folder for in the held store folder, whatever they hold, sorted; nil when the domain has
+    /// no folder. A link among them is passed over: nothing to follow.
+    private func runFolders(_ dir: Int32, domain: Domain) throws(Problem) -> [String]? {
+        guard let domainDir = try openKept(dir, domain: domain, run: nil, make: false) else { return nil }
+        defer { close(domainDir) }
+        return try Self.names(in: domainDir).filter { name in
+            var info = stat()
+            return AuditSchedules.isRunKey(name) && fstatat(domainDir, name, &info, AT_SYMLINK_NOFOLLOW) == 0
+                && info.st_mode & S_IFMT == S_IFDIR
+        }.sorted { $0.unicodeScalars.lexicographicallyPrecedes($1.unicodeScalars) }
+    }
+
+    /// The runs `domain` has kept runs folders for, whatever they hold (GamGUI #178's `run_keys`): a run nothing here runs any
+    /// more still has its kept runs listed, so they can be deleted. A problem when that can't be told.
+    public func runKeys(_ domain: Domain) throws(Problem) -> [String] {
+        try locked(make: false) { (dir: Int32?) throws(Problem) in
+            guard let dir else { return [] }
+            return try runFolders(dir, domain: domain) ?? []
+        }
+    }
+
     /// Every schedule of `domain` and every run they kept (Setup removed it): how many of each went. The schedules go first, so
     /// a run finishing meanwhile finds itself unscheduled and keeps nothing.
     public func forget(_ domain: Domain) throws(Problem) -> (schedules: Int, kept: Int) {
@@ -694,16 +743,7 @@ public final class AuditScheduleStore: Sendable {
             var every = try load(dir)
             let schedules = every.removeValue(forKey: domain.name)?.count ?? 0
             if schedules > 0 { try save(every, in: dir) }
-            guard let domainDir = try openKept(dir, domain: domain, run: nil, make: false) else { return (schedules, 0) }
-            let runs = try { () throws(Problem) -> [String] in
-                defer { close(domainDir) }
-                // A link among them is passed over: nothing to follow.
-                return try Self.names(in: domainDir).filter { name in
-                    var info = stat()
-                    return AuditSchedules.isRunKey(name) && fstatat(domainDir, name, &info, AT_SYMLINK_NOFOLLOW) == 0
-                        && info.st_mode & S_IFMT == S_IFDIR
-                }
-            }()
+            guard let runs = try runFolders(dir, domain: domain) else { return (schedules, 0) }
             var kept = 0, problem: Problem?
             for run in runs {   // every run tried, the first problem thrown once all were
                 do throws(Problem) { kept += try deleteAll(dir, domain: domain, run: run) } catch { problem = problem ?? error }

@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "73498c4",
+  "gamgui_commit": "82290f0",
   "gam_version": "7.52.04",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -41,6 +41,7 @@
   "get_event",
   "hide_from_directory",
   "imap_off",
+  "info_group_settings",
   "info_user",
   "list_drafts",
   "move_user_to_org_unit",
@@ -111,6 +112,7 @@
   "trash_message",
   "trash_messages",
   "undelete_user",
+  "update_group_settings",
   "update_organization",
   "update_phones",
   "vacation_off",
@@ -440,6 +442,11 @@
   "imap_off": [
    {
     "name": "email"
+   }
+  ],
+  "info_group_settings": [
+   {
+    "name": "group"
    }
   ],
   "info_user": [
@@ -983,6 +990,14 @@
   "undelete_user": [
    {
     "name": "email"
+   }
+  ],
+  "update_group_settings": [
+   {
+    "name": "group"
+   },
+   {
+    "name": "changes"
    }
   ],
   "update_organization": [
@@ -12810,6 +12825,51 @@
     "日本語のテキスト",
     "imap",
     "off"
+   ]
+  },
+  {
+   "builder": "info_group_settings",
+   "kwargs": {
+    "group": "carol@example.com"
+   },
+   "argv": [
+    "info",
+    "group",
+    "carol@example.com",
+    "quick",
+    "fields",
+    "email,whocanpostmessage,whocanjoin,whocanviewmembership,allowexternalmembers,messagemoderationlevel,allowwebposting,isarchived",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "info_group_settings",
+   "kwargs": {
+    "group": "person@example.com"
+   },
+   "argv": [
+    "info",
+    "group",
+    "person@example.com",
+    "quick",
+    "fields",
+    "email,whocanpostmessage,whocanjoin,whocanviewmembership,allowexternalmembers,messagemoderationlevel,allowwebposting,isarchived",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "info_group_settings",
+   "kwargs": {
+    "group": "sales@example.com"
+   },
+   "argv": [
+    "info",
+    "group",
+    "sales@example.com",
+    "quick",
+    "fields",
+    "email,whocanpostmessage,whocanjoin,whocanviewmembership,allowexternalmembers,messagemoderationlevel,allowwebposting,isarchived",
+    "formatjson"
    ]
   },
   {
@@ -95273,6 +95333,456 @@
     "undelete",
     "user",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "allowexternalmembers": "false"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "allowexternalmembers",
+    "false"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "sales@example.com",
+    "changes": {
+     "whocanpostmessage": "anyone_can_post",
+     "whocanjoin": "anyone_can_join",
+     "whocanviewmembership": "all_in_domain_can_view",
+     "allowexternalmembers": "true",
+     "messagemoderationlevel": "moderate_none",
+     "allowwebposting": "true",
+     "isarchived": "true"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "sales@example.com",
+    "whocanpostmessage",
+    "anyone_can_post",
+    "whocanjoin",
+    "anyone_can_join",
+    "whocanviewmembership",
+    "all_in_domain_can_view",
+    "allowexternalmembers",
+    "true",
+    "messagemoderationlevel",
+    "moderate_none",
+    "allowwebposting",
+    "true",
+    "isarchived",
+    "true"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "carol@example.com",
+    "changes": {
+     "allowexternalmembers": "true"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "carol@example.com",
+    "allowexternalmembers",
+    "true"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "allowexternalmembers": "true"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "allowexternalmembers",
+    "true"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "allowwebposting": "false"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "allowwebposting",
+    "false"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "allowwebposting": "true"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "allowwebposting",
+    "true"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "isarchived": "false"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "isarchived",
+    "false"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "isarchived": "true"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "isarchived",
+    "true"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "messagemoderationlevel": "moderate_all_messages"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "messagemoderationlevel",
+    "moderate_all_messages"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "messagemoderationlevel": "moderate_new_members"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "messagemoderationlevel",
+    "moderate_new_members"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "messagemoderationlevel": "moderate_non_members"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "messagemoderationlevel",
+    "moderate_non_members"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "messagemoderationlevel": "moderate_none"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "messagemoderationlevel",
+    "moderate_none"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanjoin": "all_in_domain_can_join"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanjoin",
+    "all_in_domain_can_join"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanjoin": "anyone_can_join"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanjoin",
+    "anyone_can_join"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanjoin": "can_request_to_join"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanjoin",
+    "can_request_to_join"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanjoin": "invited_can_join"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanjoin",
+    "invited_can_join"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "sales@example.com",
+    "changes": {
+     "whocanjoin": "invited_can_join"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "sales@example.com",
+    "whocanjoin",
+    "invited_can_join"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "all_in_domain_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "all_in_domain_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "all_managers_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "all_managers_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "all_members_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "all_members_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "all_owners_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "all_owners_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "anyone_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "anyone_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanpostmessage": "none_can_post"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanpostmessage",
+    "none_can_post"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanviewmembership": "all_in_domain_can_view"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanviewmembership",
+    "all_in_domain_can_view"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanviewmembership": "all_managers_can_view"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanviewmembership",
+    "all_managers_can_view"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanviewmembership": "all_members_can_view"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanviewmembership",
+    "all_members_can_view"
+   ]
+  },
+  {
+   "builder": "update_group_settings",
+   "kwargs": {
+    "group": "person@example.com",
+    "changes": {
+     "whocanviewmembership": "all_owners_can_view"
+    }
+   },
+   "argv": [
+    "update",
+    "group",
+    "person@example.com",
+    "whocanviewmembership",
+    "all_owners_can_view"
    ]
   },
   {

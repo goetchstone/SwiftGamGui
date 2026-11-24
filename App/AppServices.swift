@@ -167,6 +167,8 @@ struct AppServices {
         // A save or delete drops what the run's pane said of its keep; Setup's Remove deletes a removed domain's.
         auditRuns.schedules = scheduleStore
         let runSchedules = RunSchedules(setup: setup, store: scheduleStore)
+        // The named reports that run on Reports (plan F7a): from GAM's command catalog, the Builder's.
+        runSchedules.catalog = { BuilderView.load().mapError { RunSchedules.CatalogUnread($0.why) } }
         auditRuns.ended = { [weak runSchedules] run in await runSchedules?.runEnded(run) }
         runSchedules.keepChanged = { [weak auditRuns] run in auditRuns?.keepChanged(run) }
         setup.removing = { [weak runSchedules] domain in await runSchedules?.forget(domain) ?? "" }

@@ -439,7 +439,7 @@ final class PhishingChangesTests {
         try await connect()
         let ids = (1...8).map { "<n\($0)@mail.example.com>" }.joined(separator: "\n")
         let switched = Task { await changes.find(ids) }
-        while !changes.isFinding { await Task.yield() }
+        try await yieldWhile { !changes.isFinding }
         await setup.importFolder(scratch.appending(path: "gamcfg"), as: "example.com")
         let atSwitch = trashCalls().count
         await switched.value
@@ -448,7 +448,7 @@ final class PhishingChangesTests {
         try await connect()
         let before = trashCalls().count
         let stopped = Task { await changes.find(ids) }
-        while !changes.isFinding { await Task.yield() }
+        try await yieldWhile { !changes.isFinding }
         changes.stopFinding()
         await stopped.value
         #expect(trashCalls().count - before <= PhishingChanges.searchedAtOnce && !changes.isFinding)

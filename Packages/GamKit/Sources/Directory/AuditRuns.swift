@@ -52,16 +52,22 @@ public enum AuditRuns {
         public let partialCodes: [Int32]
         /// The exits at which no row at all is an answer (GAM's own "none"); nil: any of `okCodes`. GamGUI #176's `empty_rcs`.
         public let emptyCodes: [Int32]?
+        /// A named report's read (plan F7a, GamGUI #178's `Step.argv`): its catalog read built bare (`NamedReport.bareRead`).
+        public let named: GamRead?
+        /// A named report's read that can't honestly be empty: why no row at all is unknown (`empty_why`).
+        public let emptyWhy: String
         public var id: String { key }
 
         init(key: String, title: String, keyColumn: String, okCodes: [Int32] = [0], partialCodes: [Int32] = [],
-             emptyCodes: [Int32]? = nil) {
+             emptyCodes: [Int32]? = nil, named: GamRead? = nil, emptyWhy: String = "") {
             self.key = key
             self.title = title
             self.keyColumn = keyColumn
             self.okCodes = okCodes
             self.partialCodes = partialCodes
             self.emptyCodes = emptyCodes
+            self.named = named
+            self.emptyWhy = emptyWhy
         }
     }
 
@@ -76,10 +82,30 @@ public enum AuditRuns {
         public let title: String
         public let what: String
         public let steps: [Step]
+        /// A named report (F2) run as a one-step read here, so it can be scheduled (plan F7a): its key; "" for an audit run.
+        public internal(set) var named = ""
+        /// A named report's: what a change since an earlier run can't tell (`Finding.changeNote`).
+        public internal(set) var changeNote = ""
+        /// A named report's catalog command, which the Builder opens.
+        public internal(set) var commandID = ""
+        /// A named report's: what its table can't show (`Finding.note`).
+        public internal(set) var note = ""
+        /// A named report's columns that move on their own, left out of a comparison (`Finding.compareWithout`).
+        public internal(set) var compareWithout: [String] = []
+        /// And the words that say so beside a comparison.
+        public internal(set) var compareNote = ""
         public var id: String { key }
 
-        /// What a step's read record names as its `command`: the run and the step, e.g. `license_usage/licenses`.
-        public func command(_ step: Step) -> String { "\(key)/\(step.key)" }
+        init(key: String, title: String, what: String, steps: [Step]) {
+            self.key = key
+            self.title = title
+            self.what = what
+            self.steps = steps
+        }
+
+        /// What a step's read record names as its `command`: the run and the step, e.g. `license_usage/licenses`; a named
+        /// report's one read, the report's key (`licenses`, origin `named_report`).
+        public func command(_ step: Step) -> String { named.isEmpty ? "\(key)/\(step.key)" : named }
     }
 
     public static let directory = Step(key: "directory", title: "The directory, suspended accounts included", keyColumn: "primaryEmail")
@@ -123,6 +149,7 @@ public enum AuditRuns {
     /// included); the seats are `print licenses` with no product named. The admins' apps are read for the people the admins
     /// step found, so nil when that step has no table: the step can't run, and is unknown.
     public static func read(_ step: Step, tables: Tables = Tables()) -> GamRead? {
+        if let named = step.named { return named }
         switch step.key {
         case licenses.key: return GamCommands.printLicenses()
         case drives.key: return GamCommands.printSharedDrives()
@@ -228,14 +255,20 @@ public enum AuditRuns {
     public static let noRowUnsaid = "GAM wrote no row and exited"
 
     /// The accounts GAM couldn't read and carried on past (entityUnknownWarning: "User: <u>, Does not exist (i/N)", or "…,
-    /// Service not applicable" outside the domain), lowercased, each once in order: GamGUI's `_UNREAD_ACCOUNT`,
-    /// `^\s*User: ([^,\s]+@[^,\s]+), (?:Does not exist|Service not applicable)` over each line.
+    /// Service not applicable" outside the domain; a group whose members it couldn't read the same way, "Group: <g>, …"),
+    /// lowercased, each once in order: GamGUI's `_UNREAD_ACCOUNT`,
+    /// `^\s*(?:User|Group): ([^,\s]+@[^,\s]+), (?:Does not exist|Service not applicable)` over each line.
     static func unreadAccounts(_ stderr: String) -> [String] {
         var found: [String] = [], seen: Set<String> = []
         for line in PythonText.splitLF(stderr) {
             var rest = Substring(line).unicodeScalars.drop { PythonText.isSpace($0) }
-            guard rest.starts(with: "User: ".unicodeScalars) else { continue }
-            rest = rest.dropFirst(6)
+            if rest.starts(with: "User: ".unicodeScalars) {
+                rest = rest.dropFirst(6)
+            } else if rest.starts(with: "Group: ".unicodeScalars) {
+                rest = rest.dropFirst(7)
+            } else {
+                continue
+            }
             let account = rest.prefix { $0 != "," && !PythonText.isSpace($0) }
             let after = rest.dropFirst(account.count)
             // `[^,\s]+@[^,\s]+`: an `@` with something on each side of it.
@@ -258,6 +291,8 @@ public enum AuditRuns {
     /// holds a seat; GAM also passes over a product it can't read without a word, so no seat at all is unknown.
     public static func implausiblyEmpty(_ step: Step, rows: Int) -> String {
         guard rows == 0 else { return "" }
+        if !step.emptyWhy.isEmpty { return step.emptyWhy }
+        if step.named != nil { return "" }   // a named report's step is never one of the audit runs' below, whatever its key
         switch step.key {
         case directory.key: return "GAM listed no account at all, and a domain always has one, so the directory is unknown."
         case licenses.key:
@@ -308,11 +343,17 @@ public enum AuditRuns {
         /// What a change since an earlier run can't tell, said beside it (plan F7a): a read GAM can cut short without a word makes
         /// a row that's gone, or a count that fell, look the same as one it couldn't read this time.
         public let changeNote: String
+        /// Columns that move on their own (a device's last sync), left out when it's compared with an earlier run, so a row that
+        /// differs only there isn't a change (GamGUI #178); `compareNote` says which, beside the comparison.
+        public let compareWithout: [String]
+        public let compareNote: String
         public var id: String { key }
 
         init(_ key: String, _ title: String, _ summary: String, _ columns: [String], _ rows: [[String]] = [], known: Bool = true,
              why: String = "", note: String = "", links: Bool = false, partial: Bool = false, unknownPart: String = "",
-             changeNote: String = "") {
+             changeNote: String = "", compareWithout: [String] = [], compareNote: String = "") {
+            self.compareWithout = compareWithout
+            self.compareNote = compareNote
             self.partial = partial
             self.unknownPart = unknownPart
             self.changeNote = changeNote
@@ -371,7 +412,8 @@ public enum AuditRuns {
 
         /// Its tables as a schedule keeps and compares them.
         public var scheduledTables: [AuditSchedules.Table] {
-            findings.map { .init(key: $0.key, title: $0.title, columns: $0.columns, rows: $0.rows, known: $0.known, partial: $0.partial) }
+            findings.map { .init(key: $0.key, title: $0.title, columns: $0.columns, rows: $0.rows, known: $0.known, partial: $0.partial,
+                                 compareWithout: $0.compareWithout) }
         }
 
         public func finding(_ key: String) -> Finding? { findings.first { $0.key == key } }
@@ -391,6 +433,7 @@ public enum AuditRuns {
     /// has an offboarding started in this app (the shared drives' organizers).
     public static func findings(for run: Run, reads: [StepRead], tables: Tables, now: Date, days: Int,
                                 leaving: Set<String> = []) -> [Finding] {
+        if !run.named.isEmpty { return [namedFinding(run, reads: reads, tables: tables)] }
         let users = unknownBecause(reads, directory).isEmpty ? tables.users : nil
         switch run.key {
         case inactiveUsers.key:
@@ -874,6 +917,138 @@ public enum AuditRuns {
                         + "taken away there, after a preview." + partial,
                     links: true, partial: someUnknown, unknownPart: PythonText.strip(partial)),
         ]
+    }
+
+    // MARK: named reports, run here (plan F7a, GamGUI #178)
+    // A named report (F2) opens its read in the Builder. To be given a schedule it also runs here, as a one-step run of the same
+    // catalog read built bare (`NamedReport.bareRead`), recorded as a `read` of origin `named_report` whose `command` is the
+    // report's key. Its one table is the read's own rows. What each read does when it fails or comes up short was read from GAM's
+    // source at the pin; a report with no entry in `namedReads` isn't offered here.
+
+    /// A named report's one table, by its key.
+    public static let namedTable = "table"
+
+    /// What GAM's source says of one bare read (GamGUI's `NamedRead`).
+    public struct NamedRead: Sendable {
+        /// A title GAM always writes for this read: without it, no table came back.
+        let keyColumn: String
+        /// Exits that are the whole answer (GAM's own "none" included where it writes titles).
+        var okCodes: [Int32] = [0]
+        /// Exits whose rows stand, with the accounts GAM named as unread.
+        var partialCodes: [Int32] = []
+        /// Exits at which no row is an answer (`Step.emptyCodes`).
+        var emptyCodes: [Int32]?
+        /// Set when no row at all can't be an honest answer.
+        var emptyWhy = ""
+        /// What a change since an earlier run can't tell (a silent skip).
+        var changeNote = ""
+        /// What the table itself can't show, said under it.
+        var note = ""
+        /// Columns that move on their own, left out of changed-since.
+        var compareWithout: [String] = []
+        /// What the comparison says of them.
+        var compareNote = ""
+    }
+
+    static let drivesDropped = "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since "
+        + "then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members "
+        + "it couldn't read."
+
+    /// Read from GAM's source at the 7.52.04 tag (doPrintLicenses, printShowSharedDrives, printShowSharedDriveACLs,
+    /// doPrintSharedDriveOrganizers, doPrintOrgs, doPrintMobileDevices, doPrintGroupMembers, doPrintShowDataTransfers,
+    /// doPrintShowAlerts), GamGUI's `NAMED_READS` word for word. Every one writes its titles even with no row; a failure that writes
+    /// no titles is unknown already.
+    public static let namedReads: [String: NamedRead] = [
+        // Titles before any query; 60 never set; with no product named, a product Google refuses is passed over silently.
+        "licenses": NamedRead(keyColumn: "skuId",
+                              emptyWhy: "GAM listed no license seat at all. It passes over a product Google won't let it read without "
+                                + "saying so, so the seats are unknown, not none.",
+                              changeNote: "GAM passes over a product it can't read without saying so, so a seat gone since then may be "
+                                + "one it couldn't read this time."),
+        // None is 60; a service-account token refused silently writes the titles alone at exit 0.
+        "shared_drives": NamedRead(keyColumn: "id", okCodes: [0, noEntitiesFound], emptyCodes: [noEntitiesFound]),
+        // A drive whose permissions.list fails, and one with no permission, are dropped silently; with none left GAM sets 60, so
+        // no row can't be told from every drive refused.
+        "shared_drive_acls": NamedRead(keyColumn: "createdTime", okCodes: [0, noEntitiesFound], emptyCodes: [noEntitiesFound],
+                                       emptyWhy: "GAM listed no drive's members. It says that too when Google refused every drive's, "
+                                         + "so it is unknown, not none.",
+                                       changeNote: drivesDropped),
+        // oneOrganizer defaults True: `organizers` is a drive's first user organizer in the primary domain with an address.
+        "shared_drive_organizers": NamedRead(
+            keyColumn: "organizers", okCodes: [0, noEntitiesFound], emptyCodes: [noEntitiesFound],
+            emptyWhy: "GAM listed no drive. It says that too when Google refused every drive's members, so it is unknown, not none.",
+            changeNote: drivesDropped,
+            note: "GAM lists one organizer per drive: the first that is a user in the primary domain. A second organizer isn't "
+                + "shown, so adding or removing one changes nothing here, and a drive run by a group or an outside account shows none. "
+                + "The Shared drive permissions audit run, above, lists every member."),
+        // The root isn't a row; a domain with no unit below it is no row at exit 0.
+        "org_units": NamedRead(keyColumn: "orgUnitPath"),
+        // lastSync moves each time a device syncs (MOBILE_TIME_OBJECTS), many times a day: every device would read as changed. No
+        // apps are listed bare (appsLimit -1), and GAM drops etag; firstSync stays put, so it is still compared.
+        "mobile_devices": NamedRead(keyColumn: "resourceId", compareWithout: ["lastSync"],
+                                    compareNote: "Compared without lastSync: it moves each time a device syncs, so a device that only "
+                                      + "synced since then isn't a change."),
+        // A group whose members Google refused: "Group: <g>, Does not exist (i/N)", skipped, exit 56 (73 outside the domain).
+        "group_members": NamedRead(keyColumn: "group", partialCodes: accountWarnings),
+        "data_transfers": NamedRead(keyColumn: "id", changeNote: "An owner GAM couldn't name shows as uid:<ID>, so a row can change "
+                                      + "only because a name couldn't be read this time."),
+        // A token refused silently writes nothing at all (unknown already); Google keeps alerts only for a time. flattenJSON writes
+        // updateTime and metadata.updateTime, which move with any edit to an alert (etag is dropped); the edit itself shows in the
+        // columns it changed (metadata.status, metadata.assignee, metadata.severity, data.*).
+        "alerts": NamedRead(keyColumn: "alertId", changeNote: "Google keeps alerts for a limited time, so an alert gone may have aged out.",
+                            compareWithout: ["updateTime", "metadata.updateTime"],
+                            compareNote: "Compared without updateTime and metadata.updateTime: they move with any edit to an alert. A "
+                              + "change to its status, assignee or severity still shows."),
+    ]
+
+    /// `report` as a run of `command`, its catalog read built bare; nil when it can't be one: no single command in this GAM
+    /// version, not a plain read, sensitive, needing a value, or not studied (`namedReads`). GamGUI's `named_run`.
+    public static func namedRun(_ report: NamedReport, command: CommandCatalog.Command?) -> Run? {
+        guard let facts = namedReads[report.key], let command, let read = NamedReport.bareRead(command) else { return nil }
+        let step = Step(key: "read", title: report.title, keyColumn: facts.keyColumn, okCodes: facts.okCodes,
+                        partialCodes: facts.partialCodes, emptyCodes: facts.emptyCodes, named: read, emptyWhy: facts.emptyWhy)
+        var run = Run(key: report.key, title: report.title, what: report.what, steps: [step])
+        run.named = report.key
+        run.changeNote = facts.changeNote
+        run.commandID = command.id
+        run.note = facts.note
+        run.compareWithout = facts.compareWithout
+        run.compareNote = facts.compareNote
+        return run
+    }
+
+    /// Every named report that runs here, in Reports' order (GamGUI's `named_runs`).
+    public static func namedRuns(_ catalog: CommandCatalog) -> [Run] {
+        NamedReport.all.compactMap { namedRun($0, command: $0.command(in: catalog)) }
+    }
+
+    /// A named report's one table: the read's rows as GAM wrote them, columns in the order they first appear (GamGUI's
+    /// `named_finding`).
+    public static func namedFinding(_ run: Run, reads: [StepRead], tables: Tables) -> Finding {
+        let step = run.steps[0]
+        let why = unknownBecause(reads, step)
+        let records = tables.rows[step.key] ?? []
+        var columns: [String] = [], seen: Set<[UInt8]> = []
+        for record in records {
+            for key in record.keys where seen.insert(Array(key.utf8)).inserted { columns.append(key) }
+        }
+        guard why.isEmpty else {
+            return Finding(namedTable, run.title, why, columns, known: false, why: why, note: run.note, changeNote: run.changeNote,
+                           compareWithout: run.compareWithout, compareNote: run.compareNote)
+        }
+        let unread = reads.first { $0.step == step }?.unread ?? []
+        let rows = records.map { record in
+            columns.map { column -> String in
+                guard let value = record[column], value != .null else { return "" }
+                return value.pythonText
+            }
+        }
+        let n = rows.count
+        let unreadNote = unread.isEmpty ? "" : "GAM couldn't read \(unread.joined(separator: ", ")): unknown, not none."
+        return Finding(namedTable, run.title, "\(n) row\(n == 1 ? "" : "s").", columns, rows,
+                       note: [run.note, unreadNote].filter { !$0.isEmpty }.joined(separator: " "), partial: !unread.isEmpty,
+                       unknownPart: unreadNote,
+                       changeNote: run.changeNote, compareWithout: run.compareWithout, compareNote: run.compareNote)
     }
 
     // MARK: Python's ways

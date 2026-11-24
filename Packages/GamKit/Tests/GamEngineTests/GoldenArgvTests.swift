@@ -141,6 +141,8 @@ struct GoldenArgvTests {
         "add_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "swap_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
+        "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
+        "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
     ]
 
     /// GamGUI's `todrive_args` makes no command, only the words a read ends with to go to a Sheet (`exportToSheet` appends them):
