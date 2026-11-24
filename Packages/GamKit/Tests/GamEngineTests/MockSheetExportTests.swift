@@ -150,6 +150,17 @@ struct MockSheetExportTests {
         #expect(nobody.exitCode == 2 && nobody.stderr.contains("Item: todrive_user, Value: nobody@example.com, Not Found") && nobody.made.isEmpty)
     }
 
+    /// An entity's list takes todrive right after `list` (_doList, 7.52.04) and uploads its `Entity` table; the top-level
+    /// `gam list` takes it only before its entity list, so one at the end is GAM's extraneous argument.
+    @Test func anEntitysListUploadsAndTheTopLevelListRefusesTodriveAtItsEnd() async throws {
+        let plain = try await run(["user", "Alice@example.com", "list"])
+        #expect(plain.exitCode == 0 && plain.stdout.trimmingCharacters(in: .newlines) == "Entity\nalice@example.com")
+        let export = try await run(["user", "alice@example.com", "list"] + Self.tail)
+        #expect(export.exitCode == 0 && Self.isLink(export.stdout) && export.made.map(\.rows) == [1])
+        let top = try await run(["list", "user", "alice@example.com"] + Self.tail)
+        #expect(top.exitCode == 2 && top.stderr.contains("Invalid argument: todrive") && top.made.isEmpty)
+    }
+
     /// The scope check and the upload read the same tenant: a scope it hasn't authorized FAILs in the check and refuses the upload.
     @Test func theScopeCheckAndTheUploadAgree() async throws {
         let read = try GamCommands.checkServiceAccount(admin: Self.admin, scopes: [SheetExportScopes.drive, SheetExportScopes.sheets])

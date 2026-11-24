@@ -37,13 +37,21 @@ struct SheetExportTests {
 
     /// GAM reads a keyword lowercased with every `_` dropped (getArgument, 7.52.04): each spelling is todrive to it. A read
     /// carrying one would make a Sheet with no preview, so the export refuses it, as every read path does.
-    @Test func aReadThatAlreadyExportsOrDoesntPrintIsRefused() {
+    @Test func aReadThatAlreadyExportsOrDoesntPrintIsRefused() throws {
         for spelling in ["todrive", "ToDrive", "to_drive", "TODRIVE", " t_o_d_r_i_v_e "] {
             #expect(GamCommands.carriesToDrive(Self.read.argv + [spelling]), "\(spelling)")
             #expect(throws: GamCommands.Invalid.self) { try GamCommands.exportToSheet(GamRead(Self.read.argv + [spelling]), title: "T") }
         }
         #expect(!GamCommands.carriesToDrive(["print", "users", "query", "orgUnitPath='/Sales' todrive"]), "one element, a query")
         #expect(GamCommands.asKeyword(" To_Drive ") == "todrive")
+        // An entity's bare list takes todrive at its end (`_doList` reads it right after `list`); the top-level list only before
+        // its entity list, never at the end (review of #199).
+        #expect(GamCommands.takesToDrive(["user", "alice@example.com", "list"]))
+        #expect(!GamCommands.takesToDrive(["list", "user", "alice@example.com"]))
+        #expect(!GamCommands.takesToDrive(["user", "alice@example.com", "list", "data", "x"]))
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.exportToSheet(GamRead(["list", "user", "alice@example.com"]), title: "T") }
+        #expect(try GamCommands.exportToSheet(GamRead(["user", "alice@example.com", "list"]), title: "T").argv
+                == ["user", "alice@example.com", "list"] + GamCommands.todriveArgs(title: "T"))
         // Only a print or report read takes todrive.
         #expect(throws: GamCommands.Invalid.self) { try GamCommands.exportToSheet(GamCommands.infoUser(email: "a@example.com"), title: "T") }
         #expect(throws: Never.self) { try GamCommands.exportToSheet(GamCommands.printUsers(), title: "T") }

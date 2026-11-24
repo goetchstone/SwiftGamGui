@@ -409,7 +409,8 @@ private struct CommandDetail: View {
             if let result = reading.result {
                 ResultView(result: result, filter: $reading.filter,
                            export: { reading.export(result, $0, announce: appearsActive, savedFiles: savedFiles) },
-                           toSheet: SheetExports.offered(syntax: command.syntax, curated: false) && reading.readOn == setup.active
+                           toSheet: SheetExports.offered(syntax: command.syntax, curated: false)
+                               && reading.read.map { GamCommands.takesToDrive($0.argv) } == true && reading.readOn == setup.active
                                && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
                            sheetBusy: exports.isBusy)
@@ -565,6 +566,7 @@ private struct CuratedDetail: View {
                 ResultView(result: result, filter: $reading.filter,
                            export: { reading.export(result, $0, announce: appearsActive, savedFiles: savedFiles) },
                            toSheet: command.reads && SheetExports.offered(syntax: command.syntax, curated: true)
+                               && reading.read.map { GamCommands.takesToDrive($0.argv) } == true
                                && reading.readOn == setup.active && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,
                            sheetBusy: exports.isBusy)

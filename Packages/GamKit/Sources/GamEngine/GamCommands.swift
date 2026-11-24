@@ -987,10 +987,14 @@ public enum GamCommands {
         argv.contains { asKeyword($0) == "todrive" }
     }
 
-    /// Whether `argv` is a read GAM takes `todrive` on: a `print` or `report` command, its verb first (`print users`) or after an
-    /// entity (`user <x> print delegates`, `all users print …`), as the mock reads it. Only those print a CSV (CSVPrintFile).
-    static func printsATable(_ argv: [String]) -> Bool {
+    /// Whether `argv` is a read GAM takes `todrive` on at its end: a `print` or `report` command, its verb first (`print users`)
+    /// or after an entity (`user <x> print delegates`, `all users print …`), as the mock reads it; or an entity's `list` with
+    /// nothing after it (`user <x> list`): GAM's `_doList` (7.52.04) reads `todrive` only right after `list`, before `data`, so
+    /// appended to a bare entity list it's there. Never the top-level `gam list <EntityList>`, which takes `todrive` only before
+    /// its entity list, never at the end (review of #199). Only these print a CSV (CSVPrintFile).
+    public static func takesToDrive(_ argv: [String]) -> Bool {
         argv.first == "print" || argv.first == "report" || (argv.count > 2 && argv[2] == "print")
+            || (argv.count == 3 && argv[2] == "list")
     }
 
     /// A read's table to a new Google Sheet (plan F4, GamGUI's `export_to_sheet`): `read`'s exact argv, then `todriveArgs(title:)`.
@@ -998,7 +1002,7 @@ public enum GamCommands {
     /// Refuses a read that isn't a `print` or `report` read and one that already carries `todrive` in any spelling GAM reads
     /// (`carriesToDrive`): a second file, made under GAM's own defaults (its browser, its email).
     public static func exportToSheet(_ read: GamRead, title: String) throws(Invalid) -> GamWrite {
-        guard printsATable(read.argv) else { throw .argument("Only a print or report read can go to a Google Sheet") }
+        guard takesToDrive(read.argv) else { throw .argument("Only a print or report read, or an entity's list, can go to a Google Sheet") }
         guard !carriesToDrive(read.argv) else {
             throw .argument("This read already says todrive, so it can't be exported again: build it without that word")
         }

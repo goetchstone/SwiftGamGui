@@ -367,7 +367,10 @@ esac
 # (todrive_upload): the CSV is uploaded, never printed. A read that stopped before writing its table (nothing on stdout)
 # uploads nothing and exits as it did. A write is left to its strict handler.
 case "${1:-}:${3:-}" in
-  print:*|report:*|*:print) td_read=print ;;
+  # An entity's `list` (_doList, 7.52.04) takes todrive right after `list` and writes its CSV as a print does; the top-level
+  # `gam list [todrive …] <EntityList>` takes it only before its entity list, so one after it is GAM's extraneous argument.
+  print:*|report:*|*:print|*:list) td_read=print ;;
+  list:*) td_read=other ;;
   info:*|*:show|*:check) td_read=other ;;
   *) td_read="" ;;
 esac
@@ -400,6 +403,14 @@ if [ -n "$td_read" ]; then
     [ -n "$td_csv" ] || exit "$td_rc"
     todrive_upload "$td_rc" "$td_admin" "$td_title" "$td_csv"
   fi
+fi
+
+# `gam user <email> list` (_doList, 7.52.04: CSVPrintFile('Entity'), a row per entity, normalizeEmailAddressOrUID's address):
+# `Entity` and the user's address, lowercased. Only the bare form the app can export: `data`/`delimiter` aren't modelled.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "list" ]; then
+  [ $# -eq 3 ] || not_modelled "user list with $4"
+  printf 'Entity\n%s\n' "$(lower "$2")"
+  exit 0
 fi
 
 # Read commands -> the matching fixture, as GAM prints it.
