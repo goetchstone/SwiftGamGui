@@ -208,6 +208,105 @@ struct WriteRouteTests {
             .contains("App/LogReaderView.swift"), "the scan must see the reader")
     }
 
+    /// Plan F5b: what Ask in Plain English finds never reaches a run or a ticket (invariant 10). The finder, `CommandFinder`, is
+    /// in Assist, which depends on nothing (`theLogReaderCanRunNothing`); `FinderCatalog` hands it the catalog's commands and
+    /// joins Assist and GamEngine only. Its one screen names no command builder, runner, write, preview or confirmation, and
+    /// hands the Builder a `FinderDraft` alone: a command's id and its fields' words, made only there. The Builder fills a
+    /// command's fields from it and selects the command; no line naming a draft runs, reads or previews anything: a read runs
+    /// on the operator's Run, a change after their Preview… and confirm.
+    @Test func theFinderReachesNoRunOrTicket() throws {
+        let catalogFile = "Packages/GamKit/Sources/FinderCatalog/FinderCatalog.swift"
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["CommandFinder"])
+                == ["Packages/GamKit/Sources/Assist/CommandFinder.swift", catalogFile])
+        #expect(try Self.files(in: "App", matching: ["CommandFinder"]) == ["App/PlainEnglishFinder.swift"])
+        let manifest = try String(contentsOf: Self.root.appending(path: "Packages/GamKit/Package.swift"), encoding: .utf8)
+        #expect(manifest.contains(#".target(name: "FinderCatalog", dependencies: ["Assist", "GamEngine"]),"#))
+        let reaching = ["WriteTicket", "ticket:", "Executor", "executor", "GamWrite", "GamRead", "WriteStep", "HeldPreview", "Confirmation",
+                        "Process", "catalogRead", ".built(", ".run(", "Runner", "runner", "BuilderChanges", "changes.", ".preview(", "UserAccess",
+                        "ReadAudit", "AppServices"]
+        let catalog = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources").first { $0.path == catalogFile })
+        #expect(Set(catalog.lines.filter { $0.hasPrefix("import ") }) == ["import Assist", "import GamEngine"])
+        #expect(catalog.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        let app = try Self.swiftFiles(in: "App")
+        let sheet = try #require(app.first { $0.path == "App/PlainEnglishFinder.swift" })
+        #expect(sheet.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        // The draft holds words only, and only the sheet makes one.
+        let draft = sheet.lines.drop { !$0.contains("struct FinderDraft") }.prefix { $0 != "}" }
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("let ") || $0.hasPrefix("var ") }
+        #expect(draft == ["let id = UUID()", "let command: String", "let values: [String: String]"], "\(draft)")
+        #expect(try Self.files(in: "App", matching: ["FinderDraft("]) == ["App/PlainEnglishFinder.swift"])
+        // The Builder: every line naming a draft selects it, fills fields from it, lets it go, or passes it on.
+        let builder = try #require(app.first { $0.path == "App/BuilderView.swift" })
+        let drafting = builder.lines.filter { $0.contains("drafted") || $0.contains("draft.") || $0.contains("draft in") }
+        #expect(drafting.count >= 6, "the scan must see the Builder's draft lines: \(drafting)")
+        let acting = ["run(", "preview(", "reading.", "changes.", "catalogRead", ".built(", "access."]
+        #expect(drafting.filter { line in acting.contains { line.contains($0) } }.isEmpty, "\(drafting)")
+        // Each page takes a draft as its first values, in its init, and nothing else of it; what runs as the page appears, and
+        // what that calls, runs, reads and previews nothing (review 2026-11-21: `.onAppear { …; run() }` passed the line check).
+        for page in ["CommandDetail", "CuratedDetail"] {
+            let lines = Self.declaration(page, in: builder.lines)
+            #expect(lines.count > 20, "the scan must see \(page)")
+            let naming = lines.filter { $0.contains("drafted") }
+            #expect(naming.count == 2 && naming.contains { $0.contains("_values = State(initialValue: drafted?.values ?? [:])") }
+                    && naming.contains { $0.contains("init(") || $0.contains("drafted: FinderDraft?") }, "\(page): \(naming)")
+            let appearing = Self.blocks(in: lines, opening: [".onAppear", ".task"])
+            #expect(!appearing.isEmpty && appearing.contains { $0.contains { $0.contains("taken?()") } }, "\(page) lets the draft go")
+            let called = Set(appearing.joined().flatMap { line in line.matches(of: /([A-Za-z_][A-Za-z0-9_]*)\(/).map { String($0.output.1) } })
+            let reached = appearing.joined() + called.flatMap { name in Self.blocks(in: lines, opening: ["func \(name)("]).joined() }
+            let run = Self.release(Array(reached)).filter { line in ["run(", "preview(", "reading."].contains { line.contains($0) } }
+            #expect(run.isEmpty, "\(page): \(run)")
+        }
+        // The draft is let go once a page has taken it, and a page's identity doesn't hang on it: reopened, a command shows
+        // what the operator left, never the draft again (review 2026-11-21).
+        #expect(builder.lines.filter { $0.contains("{ drafted = nil }") }.count == 2)
+        #expect(builder.lines.filter { $0.contains(".id(") && $0.contains("draft") }.allSatisfy { $0.contains("draftedPage") && !$0.contains("drafted(") })
+        // Cancel stops the model's work, and nothing it finds after opens (review 2026-11-21: the other command still opened).
+        let cancel = Self.blocks(in: sheet.lines, opening: ["Button(\"Cancel\""]).joined()
+        #expect(cancel.contains { $0.contains("work?.cancel()") })
+        #expect(sheet.lines.contains { $0.contains(".onDisappear { work?.cancel() }") })
+        let tasks = Self.blocks(in: sheet.lines, opening: ["work = Task {"])
+        #expect(tasks.count == 2, "finding and filling the other command each keep their task: \(tasks.count)")
+        for task in tasks {
+            let awaited = try #require(task.firstIndex { $0.contains("try await") })
+            let checked = task.indices.filter { $0 > awaited && task[$0].contains("guard !Task.isCancelled else { return }") }
+            let acts = task.indices.filter { $0 > awaited && (task[$0].contains("open(") || task[$0].contains("phase = .found")) }
+            #expect(!checked.isEmpty && !acts.isEmpty && acts.allSatisfy { $0 > checked[0] }, "\(task)")
+        }
+    }
+
+    /// The lines of `name`'s declaration: from `struct name` to the first line that closes it at the left margin.
+    static func declaration(_ name: String, in lines: [String]) -> [String] {
+        Array(lines.drop { !$0.contains("struct \(name)") }.prefix { $0 != "}" })
+    }
+
+    /// Each block opened on a line whose code starts with one of `opening` (after spaces and a `private`), to where its braces
+    /// close.
+    static func blocks(in lines: [String], opening: [String]) -> [[String]] {
+        lines.indices.filter { index in
+            let code = lines[index].trimmingCharacters(in: .whitespaces)
+            return opening.contains { code.hasPrefix($0) || code.hasPrefix("private " + $0) }
+        }.map { first in
+            var depth = 0, block: [String] = []
+            for line in lines[first...] {
+                block.append(line)
+                depth += line.count { $0 == "{" } - line.count { $0 == "}" }
+                if depth <= 0, line.contains("{") || block.count > 1 { break }
+            }
+            return block
+        }
+    }
+
+    /// `lines` as a release build compiles them: what `#if DEBUG` … `#endif` holds left out.
+    static func release(_ lines: [String]) -> [String] {
+        var debug = false
+        return lines.filter { line in
+            let code = line.trimmingCharacters(in: .whitespaces)
+            if code.hasPrefix("#if DEBUG") { debug = true; return false }
+            if debug, code.hasPrefix("#endif") { debug = false; return false }
+            return !debug
+        }
+    }
+
     /// The connected apps' summary is code's own sentences: its model was retired (plan 2026-11-18, R1), and the panel
     /// talks to no model again unless someone means it to.
     @Test func theConnectedAppsPanelTalksToNoModel() throws {

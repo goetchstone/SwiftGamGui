@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "Jobs", targets: ["Jobs"]),
         .library(name: "Stores", targets: ["Stores"]),
         .library(name: "Assist", targets: ["Assist"]),
+        .library(name: "FinderCatalog", targets: ["FinderCatalog"]),
         .library(name: "Setup", targets: ["Setup"]),
         .library(name: "Directory", targets: ["Directory"]),
     ],
@@ -26,6 +27,8 @@ let package = Package(
         // ChangeCore for the protocol its signature backups implement (`SignatureKeeper`): only the executor keeps into them.
         .target(name: "Stores", dependencies: ["GamEngine", "ChangeCore", "Vault"]),
         .target(name: "Assist"),
+        // Ask in Plain English's commands, from the catalog: joins Assist and GamEngine, and nothing else.
+        .target(name: "FinderCatalog", dependencies: ["Assist", "GamEngine"]),
         .target(name: "Setup", dependencies: ["GamEngine", "Vault"]),
         // Jobs for what a domain switch would stop (`SwitchStops`): the tray's runs, read only.
         .target(name: "Directory", dependencies: ["Setup", "GamEngine", "Vault", "ChangeCore", "Stores", "Jobs"]),
@@ -36,7 +39,7 @@ let package = Package(
         .testTarget(name: "SetupTests", dependencies: ["Setup", "GamEngine", "Vault", "TestSupport"]),
         .testTarget(name: "DirectoryStoreTests", dependencies: ["Directory", "Setup", "GamEngine", "Vault", "ChangeCore", "Stores", "Jobs", "TestSupport"]),
         .testTarget(name: "StoresTests", dependencies: ["Stores", "GamEngine", "ChangeCore", "Vault", "TestSupport"]),
-        .testTarget(name: "AssistTests", dependencies: ["Assist", "GamEngine", "TestSupport"]),
+        .testTarget(name: "AssistTests", dependencies: ["Assist", "FinderCatalog", "GamEngine", "TestSupport"]),
         .testTarget(name: "SpikeTests"),
     ]
 )
