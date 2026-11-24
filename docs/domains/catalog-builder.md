@@ -93,14 +93,19 @@ it) and 11 (parity is a test).
   CSV…, shown for a read GAM's `todrive` takes (`SheetExport.takesToDrive`: a catalog line naming `todrive`, or a curated `print`
   or `report` read; this catalog holds each command's first grammar line only, so a command whose `todrive` is on a later line
   isn't offered: the narrower side), ⇧⌘E said under it. It previews (`SheetExports.preview`): the read the table came from
-  (`ReadRun.read`, the exact `GamRead`) through `GamCommands.exportToSheet` (refuses a read that isn't a `print`/`report` read or
-  that carries `todrive`) is the read's argv then `todrive tdtitle "<domain> - <command name>" tdnobrowser true tdnoemail true`
+  (`ReadRun.read`, the exact `GamRead`) through `GamCommands.exportToSheet` (refuses a read GAM doesn't take `todrive` on at its
+  end, `GamCommands.takesToDrive`: a `print`/`report` read, or an entity's bare `list`, which `_doList` reads `todrive` right
+  after, never the top-level `gam list <EntityList>`, which takes it only before its list, and the button isn't offered there
+  either; review of #199, a listed deviation: GamGUI offers every line naming `todrive`), or one that carries `todrive`) is the
+  read's argv then `todrive tdtitle "<domain> - <command name>" tdnobrowser true tdnoemail true`
   (`todriveArgs`, GamGUI's `todrive_args`, held to `argv.json`): no `tduser`, `tdshare`, `tdalert` or `tdnotify`. First the
   scope check, a read (`UserAccess.sheetExportScopes`: `check serviceaccount scopes <drive>,<spreadsheets>` as the connected
   admin; exit 0 or 10 is an answer, anything else or a row missing is unknown, `SheetExport.checked`). A scope known refused
   holds nothing and offers no Export, with Setup's delegation link (`SetupModel.delegationLink`: every scope this app asks for,
   never GAM's few). Unknown is said, and Export still offered. Otherwise the executor holds one `WriteStep` (`.exportToSheet`,
-  target the admin, `about.command` the catalog id, a read's ten-minute timeout, a click to confirm) for the tenant the table
+  target the admin, `about.command` the catalog id, the domain-wide hour (`GamRunner.domainWideTimeout`, GamGUI's
+  `DOMAIN_WIDE_TIMEOUT`: the read runs again, and a cut-off leaves a file nobody can name), a click to confirm) for the tenant
+  the table
   was read on (`expecting:`). The sheet shows the exact `gam …` line, a new Sheet in the admin's own Drive shared with nobody
   with no browser and no email, that it holds a **fresh read** (its rows can differ from the N on screen, every row whatever
   the filter), and each scope as Allowed, Not allowed or Not checked (words and a symbol, never color alone). Return exports,
@@ -111,7 +116,10 @@ it) and 11 (parity is a test).
   `setup.connectedAdminPrimary` (the primary address Check access read), else the token's address.
 - **The export's outcome is read from the upload's own lines** (GamGUI's failure log 2026-11-21), never GAM's one-line error
   summary: the executor keeps what a write's own output says (`GamWrite.noted`, only an export notes anything) on the end
-  record and in `RunOutcome.noted`, and which steps GAM was started for (`RunOutcome.began`). `SheetExport.noted`: the link
+  record and in `RunOutcome.noted`, and which steps GAM was launched for (`RunOutcome.began`: after the Vault read and the
+  spawn, never on the begin record alone; a step GAM never launched has `started: false` on its end record, and its export says
+  "Nothing was made: GAM didn't run", on its result and on Files). A switch landing while an export runs leaves its result off
+  the screen (F6's `isConnected(to:)`, as every changes store); the jobs tray, Audit and Files keep it. `SheetExport.noted`: the link
   (`Data uploaded to Drive File:` then the link on the next line, shown as a link only when it's https on docs.google.com or
   drive.google.com with no port, user info or control character), else which failure line GAM printed about the admin
   (`uploadState`, the last line). "Nothing was made" only where GAM's source shows no file exists at that point (review of F4,

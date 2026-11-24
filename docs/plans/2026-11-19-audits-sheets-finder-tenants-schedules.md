@@ -134,7 +134,9 @@ is stricter (no empty port, `[`, `\`); GAM's error is shown, not behind a disclo
 was made" only where GAM's source shows no file exists (Drive off, Create Failed and Not Created are unknown; Create Failed is
 GAM's own `Drive Folder: root` line only; the last line naming another account than the admin's primary address is unknown),
 each a deviation from GamGUI's `UPLOAD_LINES`, which have the same gaps; the runner refuses a read carrying `todrive`; Files reads
-only export end records through checked descriptors and lists every CSV save panel. The regeneration brings GamGUI #172's
+only export end records through checked descriptors and lists every CSV save panel. After the review of #199: the export
+holds the domain-wide hour, as GamGUI's; a switch while it runs leaves its result off the screen (F6); a step counts as begun
+only once GAM launched; an entity's bare `list` exports, the top-level `gam list` isn't offered (a deviation: GamGUI offers it). The regeneration brings GamGUI #172's
 and #175's builders, listed as not ported (`print_courses` takes `counts` as GamGUI's does); `audit_runs.json` stays at
 `086d2f8`, #172's three new runs being F3b's to port. Not verified: no export has run on a real domain (the first waits on the
 operator's yes); the mock's upload lines are GAM's source, never seen live; screenshots come from CI.
