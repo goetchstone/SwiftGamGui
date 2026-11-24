@@ -84,6 +84,17 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   **Purge**; a half-written copy is swept, and one a quit or crash left is swept at the next launch. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it
   at rest. GAM GUI never sends it anywhere and never writes to Classroom; the import and the purge are audited as local
   events, never with a row.
+- **A scheduled audit run keeps its last runs' tables on this Mac.** An audit run given a schedule (plan F7a) keeps the
+  tables of its last runs, so the next run can say what changed: a count the operator picks per run (5 unless changed, at
+  most 12), no table over 50,000 rows, no run past 64 MB. Those tables are the domain's own data: names and addresses,
+  licences, shared drive members, classes, admins and the apps they granted. `AuditScheduleStore` keeps them per domain, each
+  run one `0600` file in `0700` folders under the app's data folder (`schedules/`), each folder opened from the one above
+  without following a link, never the steps' raw reads, and deletes them when the count is lowered, the run is no longer
+  scheduled, on **Delete the Kept Runs…**, or when Setup removes the domain. The run's pane says this beside the schedule,
+  and Setup's Remove says it before it deletes. A schedule only says a run is due: nothing runs unattended, writes, reads
+  something sensitive or exports to a Sheet. The `schedules/` folder is excluded from Time Machine (`isExcludedFromBackup`),
+  so a backup doesn't keep rows deleted here; a backup made by another tool, or one taken before this build, may still hold
+  them. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it at rest.
 - **The Classroom hand-over runs outside GAM GUI, and the screen says so before the button.** Compare with Classroom only
   reads; the change list is held in memory for that tenant and roster. Download the Hand-over saves a ZIP (README, a
   formula-safe review sheet, and a numbered CSV per kind with the `gam csv` line that runs it) as a `0600` file, never

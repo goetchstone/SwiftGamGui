@@ -92,13 +92,17 @@ status=0
 # (`run.<key>`, run against the mock before the picture: Inactive users with its 90-day window, License usage, Shared drive
 # permissions, Classroom and the admin token review), and
 # reports-run-suspend Inactive users' Suspend these… preview over it (tab `suspend`: the directory read again, held, never
-# run); Audit on a
+# run); reports-run-scheduled License usage scheduled weekly and run twice against the mock (tab `scheduled`, plan F7a): its
+# due line, its schedule and the two runs kept in a fresh temporary folder, and "No change since" under each table;
+# home-scheduled Home with Classroom scheduled monthly and never run (due) and License usage weekly, run once (not due yet);
+# both also in the smallest window. Audit on a
 # demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
 # then narrowed to one domain (the person is the domain: example.org).
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
 for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
+            home-scheduled:home::scheduled narrow-home-scheduled:home::scheduled:smallest \
             domain:home::domain domain-warning:home::domain-warning narrow-domain:home:::smallest \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
@@ -168,6 +172,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             reports-run-admins:reports:run.admin_tokens::1100x940 narrow-reports-run-admins:reports:run.admin_tokens::smallest \
             narrow-reports-run-inactive:reports:run.inactive_users::smallest \
             narrow-reports-run-licenses:reports:run.license_usage::smallest \
+            reports-run-scheduled:reports:run.license_usage:scheduled:1100x940 \
+            narrow-reports-run-scheduled:reports:run.license_usage:scheduled:smallest \
             narrow-audit:audit:::smallest audit-domain:audit:example.org narrow-audit-domain:audit:example.org::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
             narrow-onboard:onboard:Salesperson:create:smallest \

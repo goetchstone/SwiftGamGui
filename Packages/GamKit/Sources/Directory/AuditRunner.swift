@@ -3,6 +3,7 @@ import Foundation
 import GamEngine
 import Observation
 import Setup
+import Stores
 import Vault
 
 /// The audit runs (plan F3, GamGUI #171's `web/routes/audit_runs.py`): each run a fixed list of reads (`AuditRuns`), started by
@@ -19,6 +20,9 @@ import Vault
 ///   while it goes is ignored.
 /// - **Bounded** (invariant 9): while a run goes only its steps are shown, at most one line each; a finished table shows its
 ///   first `AuditRuns.rowsShown` rows, and its CSV is the whole of it.
+/// - **A scheduled run** (plan F7a, `RunSchedules`): once it ended on the domain it read, its tables are compared with its last
+///   kept run's and it is kept on this Mac (`AuditScheduleStore.afterRun`, off the main actor); a run that ends after a switch
+///   isn't kept. A schedule never starts a run: only `start`, from a screen, does.
 @MainActor
 @Observable
 public final class AuditRunner {
@@ -51,6 +55,8 @@ public final class AuditRunner {
 
     /// Fixed words, never an error's own text: GamGUI's.
     public nonisolated static let noTable = "GAM ended without writing the table, so this step has no answer."
+    public nonisolated static let noRowUnsaid = "GAM wrote no row and didn't say there were none, which it does when there are. A "
+        + "service-account token Google refuses ends this way, so this step has no answer: check the domain's access on Setup."
     public nonisolated static let timedOut = "GAM didn't finish in the hour a read is allowed, so this step has no answer."
     public nonisolated static let stoppedBefore = "The run was stopped before this step."
     public nonisolated static let interrupted = "Stopped before GAM finished, so nothing was read."
@@ -82,6 +88,13 @@ public final class AuditRunner {
     /// Who has an offboarding started in this app (lowercased): the shared drives' "being offboarded" organizers, asked once the
     /// run's reads are done (GamGUI's `offboard_jobs`).
     @ObservationIgnored public var leaving: @MainActor () -> Set<String> = { [] }
+    /// The schedules (plan F7a): a scheduled run's tables are compared with its last kept run's and kept here. None: nothing is
+    /// kept or compared.
+    @ObservationIgnored public var schedules: AuditScheduleStore?
+    /// The time zone a comparison's words say a kept run's time in.
+    @ObservationIgnored public var clock = AuditSchedules.Clock()
+    /// Told once a run of the connected tenant ended and its keep is done: its schedule and kept runs are read again.
+    @ObservationIgnored public var ended: @MainActor (AuditRuns.Run) async -> Void = { _ in }
     /// Tests only: called as each step's line is added (its index), before the next step is decided: where a test presses Stop
     /// at a known point, with no timer.
     @ObservationIgnored var afterEachStep: (@MainActor (Int) -> Void)?
@@ -139,6 +152,15 @@ public final class AuditRunner {
         current.state = .running(progress)
         kept[run.key] = current
         return true
+    }
+
+    /// What the run's pane said of its keep no longer holds once its schedule or kept runs change: dropped.
+    public func keepChanged(_ run: AuditRuns.Run) {
+        guard var current = kept[run.key], case .finished(var outcome) = current.state else { return }
+        outcome.keptNote = ""
+        outcome.keptProblem = false
+        current.state = .finished(outcome)
+        kept[run.key] = current
     }
 
     /// Waits for the run's task (tests, and a caller that wants the result).
@@ -206,10 +228,21 @@ public final class AuditRunner {
             AuditRuns.findings(for: run, reads: reads, tables: tables, now: at, days: days, leaving: leaving)
         }.value
         guard setup.active == domain, setup.generation == generation, progress(run, serial: serial) != nil else { return }
-        kept[run.key] = Kept(state: .finished(AuditRuns.Outcome(run: run, reads: reads, findings: findings, tables: tables, when: at,
-                                                                days: days)),
-                             domain: domain, generation: generation, serial: serial)
+        var outcome = AuditRuns.Outcome(run: run, reads: reads, findings: findings, tables: tables, when: at, days: days)
+        if let schedules {
+            // A scheduled run: compared with its last kept run, then kept, on the domain it read. Off the main actor: a domain's
+            // tables can be tens of thousands of rows.
+            let scheduled = outcome.scheduledTables, answered = outcome.answered, clock = clock
+            let after = await Task.detached {
+                schedules.afterRun(domain, run: run.key, tables: scheduled, days: days, answered: answered,
+                                   when: at.timeIntervalSince1970, clock: clock)
+            }.value
+            (outcome.changes, outcome.keptNote, outcome.keptProblem) = (after.changes, after.note, after.problem)
+            guard setup.active == domain, setup.generation == generation, progress(run, serial: serial) != nil else { return }
+        }
+        kept[run.key] = Kept(state: .finished(outcome), domain: domain, generation: generation, serial: serial)
         tasks[run.key] = nil
+        await ended(run)
     }
 
     /// What one step's read gave.
@@ -261,7 +294,8 @@ public final class AuditRunner {
         case .failure(.gam(let error)):
             return (.unknown(why: error.remediation, detail: error.message), .failed(error.message))
         case .failure(.incomplete(let incomplete)):
-            let why = incomplete.reason.hasPrefix("GAM ended without writing") ? noTable : unnamedWarning
+            let why = incomplete.reason.hasPrefix("GAM ended without writing") ? noTable
+                : incomplete.reason.hasPrefix(AuditRuns.noRowUnsaid) ? noRowUnsaid : unnamedWarning
             return (.unknown(why: why, detail: ""), .failed(incomplete.reason))
         case .success(let (records, unread)):
             let users = step == AuditRuns.directory ? records.map(GamUser.init(record:)) : nil

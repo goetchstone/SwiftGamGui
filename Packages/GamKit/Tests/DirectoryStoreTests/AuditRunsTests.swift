@@ -32,11 +32,16 @@ struct AuditRunsTests {
     static func users(_ value: JSONValue?) -> [GamUser] { value!.array!.map { GamUser(record: $0.object!) } }
     static func records(_ value: JSONValue?) -> [GamOutput.Record] { value!.array!.map { $0.object! } }
 
+    /// GamGUI #177's Remove these licenses… (a job that removes suspended accounts' seats) isn't built here yet, so the seats
+    /// table doesn't offer it: the one sentence of GamGUI's words this app leaves out.
+    static let notBuiltYet = "Remove these licenses\u{2026} reads the seats and the directory again before anything is removed. "
+
     /// A finding as the fixture writes it, field for field, the text compared as bytes. GamGUI names itself in two notes; this
     /// app's name is GAM GUI (its only listed difference in a table's words).
     static func expect(_ found: AuditRuns.Finding, _ want: JSONValue, _ label: String) {
         func same(_ a: String, _ b: JSONValue?) -> Bool {
-            a.utf8.elementsEqual((b?.string ?? "\u{0}").replacingOccurrences(of: "GamGUI", with: "GAM GUI").utf8)
+            a.utf8.elementsEqual((b?.string ?? "\u{0}").replacingOccurrences(of: "GamGUI", with: "GAM GUI")
+                .replacingOccurrences(of: notBuiltYet, with: "").utf8)
         }
         #expect(same(found.key, want["key"]) && same(found.title, want["title"]), "\(label): \(found.title)")
         #expect(same(found.summary, want["summary"]), "\(label): \(found.summary)")
@@ -46,6 +51,7 @@ struct AuditRunsTests {
                 "\(label): \(found.rows)")
         #expect(found.known == want["known"]!.bool! && found.links == want["links"]!.bool!, "\(label)")
         #expect(found.partial == (want["partial"]?.bool ?? false), "\(label)")
+        #expect(same(found.changeNote, want["change_note"] ?? .string("")), "\(label): \(found.changeNote)")
     }
 
     /// Each finding of a run over one case's reads and tables.
@@ -75,6 +81,7 @@ struct AuditRunsTests {
                 #expect(step.keyColumn == item["key_column"]!.string!, "\(run.key)/\(step.key)")
                 #expect(step.okCodes.map(Int.init) == item["ok_rcs"]!.array!.map { $0.int! }, "\(run.key)/\(step.key)")
                 #expect(step.partialCodes.map(Int.init) == item["partial_rcs"]!.array!.map { $0.int! }, "\(run.key)/\(step.key)")
+                #expect(step.emptyCodes?.map(Int.init) == item["empty_rcs"]!.array?.map { $0.int! }, "\(run.key)/\(step.key)")
                 #expect(run.command(step) == item["command"]!.string!, "\(run.key)/\(step.key)")
                 #expect(AuditRuns.read(step)?.argv == item["argv"]!.array?.map { $0.string! }, "\(run.key)/\(step.key)")
             }
@@ -239,7 +246,8 @@ struct AuditRunsTests {
             if let output = item["output"]?.string, let exit = item["exit"]?.int {
                 let step = AuditRuns.Step(key: "x", title: "x", keyColumn: item["key_column"]!.string!,
                                           okCodes: item["ok_rcs"]!.array!.map { Int32($0.int!) },
-                                          partialCodes: item["partial_rcs"]!.array!.map { Int32($0.int!) })
+                                          partialCodes: item["partial_rcs"]!.array!.map { Int32($0.int!) },
+                                          emptyCodes: item["empty_rcs"]!.array?.map { Int32($0.int!) })
                 let result = GamResult(exitCode: Int32(exit), stdout: output, stderr: item["stderr"]!.string!, stdoutTruncated: false,
                                        stderrTruncated: false)
                 switch AuditRuns.answer(result, step: step, argv: argv) {
@@ -247,7 +255,9 @@ struct AuditRunsTests {
                     #expect(rows.count == item["rows"]?.int && unread == item["unread"]!.array!.map { $0.string! }, "\(name)")
                     outcome = .read(rows: rows.count, partial: !unread.isEmpty)
                 case .failure(.incomplete(let incomplete)):
-                    #expect(item["raised"]?.string == "Incomplete", "\(name)")
+                    // GamGUI's NoRowUnsaid is an Incomplete: no row at an exit that isn't the step's "none" (#176).
+                    #expect(item["raised"]?.string == (incomplete.reason.hasPrefix(AuditRuns.noRowUnsaid) ? "NoRowUnsaid" : "Incomplete"),
+                            "\(name)")
                     outcome = .failed(incomplete.reason)
                 case .failure(.gam(let error)):
                     // GamGUI's `str(GAMError)` is its message, held to this app's by gam_errors.json.

@@ -18,6 +18,10 @@ struct ReportsView: View {
     /// The audit runs, and Inactive users' Suspend these….
     let runs: AuditRunner
     let suspend: InactiveSuspend
+    /// The audit runs' schedules on the connected domain (plan F7a): when each is due, and what it keeps.
+    let schedules: RunSchedules
+    /// An audit run another screen asked to open (Home's due runs), by its key.
+    @Binding var requestedRun: String?
     /// Opens a catalog command in the Builder.
     let openCommand: (String) -> Void
     /// Opens a person's page on Users.
@@ -80,6 +84,14 @@ struct ReportsView: View {
                 catalog = await Task.detached(priority: .userInitiated) { BuilderView.load() }.value
             }
             .task { selectForSnapshot() }
+            // The schedules of the domain connected now: read when Reports opens and after each switch, never by a timer.
+            .task(id: setup.generation) { await schedules.refresh() }
+            // Home's due run opens here, on its pane, where ⌘R runs it.
+            .onChange(of: requestedRun, initial: true) { _, key in
+                guard let key else { return }
+                item = .run(key)
+                requestedRun = nil
+            }
             .toolbar {
                 ToolbarItem {
                     Button(refreshTitle, systemImage: "arrow.clockwise") {
@@ -272,13 +284,14 @@ struct ReportsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// A run in the list, in words: not run yet, running, or how its last run ended.
+    /// A run in the list, in words: not run yet, running, or how its last run ended; and due, when its schedule says so.
     private func runStatus(_ run: AuditRuns.Run) -> String {
-        switch runs.state(of: run) {
+        let status = switch runs.state(of: run) {
         case nil: "Not run yet"
         case .running(let progress)?: progress.stopping ? "Stopping" : "Running: step \(min(progress.done + 1, progress.total)) of \(progress.total)"
         case .finished(let outcome)?: outcome.complete ? "Read, every step" : "Read, part unknown"
         }
+        return schedules.due(run)?.due == true ? status + " · due" : status
     }
 
     /// "Across 1,204 accounts · directory as of 9:41 AM".
@@ -305,7 +318,8 @@ struct ReportsView: View {
         case .run(let key):
             if let run = AuditRuns.all.first(where: { $0.key == key }) {
                 // Its own state per run: one run's export line and picked table never show on another's.
-                AuditRunPanel(run: run, runs: runs, suspend: suspend, connected: setup.active != nil, days: $days, openPerson: openPerson)
+                AuditRunPanel(run: run, runs: runs, suspend: suspend, schedules: schedules, domain: setup.active?.name, days: $days,
+                              openPerson: openPerson)
                     .id(run.key)
             }
         case .named(let key):

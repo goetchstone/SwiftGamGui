@@ -139,6 +139,9 @@ struct GoldenArgvTests {
         "create_org_unit": "Org units (GamGUI #169): not built here yet",
         "rename_org_unit": "Org units (GamGUI #169): not built here yet",
         "delete_org_unit": "Org units (GamGUI #169): not built here yet",
+        "add_license": "A person's licenses from their page (GamGUI #175): not built here yet",
+        "swap_license": "A person's licenses from their page (GamGUI #175): not built here yet",
+        "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
     ]
 
     /// Ported builders, by GamGUI's name.

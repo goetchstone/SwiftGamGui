@@ -22,6 +22,8 @@ GamGUI (the Python app) is the parity reference (invariant 11), read at a pinned
   Tests/Fixtures/reports.json     GamGUI's directory reports over the mock's users and seeded variants.
   Tests/Fixtures/audit_runs.json  GamGUI's audit runs (plan F3): each run's steps and argv, its tables and flags over edge
                                   cases, the suspend preview's targets, and the read record each step's read writes.
+  Tests/Fixtures/schedules.json   GamGUI's audit-run schedules (plan F7a): next due days and the words, in two time zones; what
+                                  changed since a kept run; and a run of keeps, unschedules and deletes on a scratch store.
   Tests/Fixtures/audit_screen.json  GamGUI's Audit screen over a log of odd records: the filter and the
                                   page each query shows, the header's counts, and the CSV export's bytes.
   Tests/Fixtures/usage_report.json  GamGUI's storage and mail usage: the progress lines dropped before the
@@ -1241,6 +1243,8 @@ def audit_runs_fixture() -> dict:
                "rows": [list(r) for r in f.rows], "known": f.known, "why": f.why, "note": f.note, "links": f.links}
         if hasattr(f, "partial"):
             out["partial"] = f.partial
+        if hasattr(f, "change_note"):   # plan F7a (#176): said beside a change since an earlier run
+            out["change_note"] = f.change_note
         return out
 
     def user(email, last="2026-01-01T00:00:00Z", made="2024-01-01T00:00:00Z", **fields) -> dict:
@@ -1522,7 +1526,7 @@ def audit_runs_fixture() -> dict:
         ("T_o_Drive", "x", licenses_argv + ["T_o_Drive"], "userId"),
         ("todrive inside", "x", ["print", "users", "todrive", "formatjson"], "primaryEmail"),
     ]
-    read_cases = [(*case, (0,), ()) for case in read_cases]
+    read_cases = [(*case, (0,), (), None) for case in read_cases]
     drives_argv, acls_argv = runs.step_argv(runs.DRIVES), runs.step_argv(runs.DRIVE_ACLS)
     tokens_argv = ["print", "tokens", "users", "alice@example.com,bob@example.com"]
     token_titles = "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n"
@@ -1530,40 +1534,47 @@ def audit_runs_fixture() -> dict:
     warning = (56, 73)
     read_cases += [
         ("a directory that stopped short", RunResult('primaryEmail,JSON\na@example.com,"{}"\n', "User: , Print Failed: x\n", 50),
-         directory_argv, "primaryEmail", (0,), ()),
-        ("no shared drive", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), ()),
+         directory_argv, "primaryEmail", (0,), (), None),
+        ("no shared drive", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), (), None),
         ("drives refused", RunResult("User,id,name,JSON\n", "User: admin@example.com, Shared Drive: , Print Failed: no\n", 50),
-         drives_argv, "id", (0, 60), ()),
-        ("no seat is no none", RunResult("userId,productId\n", "", 60), licenses_argv, "userId", (0,), ()),
+         drives_argv, "id", (0, 60), (), None),
+        ("no seat is no none", RunResult("userId,productId\n", "", 60), licenses_argv, "userId", (0,), (), None),
         ("acls", RunResult('User,id,name,createdTime,JSON\nadmin@example.com,0A1,Team,2024-01-01T00:00:00Z,{}\n', "", 0),
-         acls_argv, "id", (0, 60), ()),
+         acls_argv, "id", (0, 60), (), None),
         ("one account unread", RunResult(token_titles + token_row,
                                          "Getting Access Tokens for alice@example.com (1/2)\n"
-                                         "User: bob@example.com, Does not exist (2/2)\n", 56), tokens_argv, "user", (0,), warning),
+                                         "User: bob@example.com, Does not exist (2/2)\n", 56), tokens_argv, "user", (0,), warning, None),
         ("outside the domain", RunResult(token_titles + token_row,
                                          "User: Pat@Partner.org, Service not applicable/Does not exist (2/2)\n"
                                          "User: pat@partner.org, Service not applicable (2/2)\n", 73), tokens_argv, "user", (0,),
-         warning),
-        ("a warning naming nobody", RunResult(token_titles + token_row, "", 56), tokens_argv, "user", (0,), warning),
+         warning, None),
+        ("a warning naming nobody", RunResult(token_titles + token_row, "", 56), tokens_argv, "user", (0,), warning, None),
         ("a warning naming no address", RunResult(token_titles, "User: bob, Does not exist\n", 56), tokens_argv, "user", (0,),
-         warning),
+         warning, None),
         ("indented", RunResult(token_titles, "  User: bob@example.com, Does not exist (2/2)\nnot User: c@example.com, Does not exist\n",
-                               56), tokens_argv, "user", (0,), warning),
+                               56), tokens_argv, "user", (0,), warning, None),
         ("refused tokens", RunResult(token_titles, "ERROR: Not Authorized to access this resource/api\n", 12), tokens_argv, "user",
-         (0,), warning),
+         (0,), warning, None),
         ("partial without its table", RunResult("", "User: bob@example.com, Does not exist (1/1)\n", 56), tokens_argv, "user",
-         (0,), warning),
+         (0,), warning, None),
+        # GamGUI #176: a shared drive read takes no row as an answer only at GAM's own none (60); the titles alone at 0 are a
+        # service-account token Google refused without a word (`empty_rcs`, NoRowUnsaid).
+        ("titles alone at 0, its none 60", RunResult("User,id,name,JSON\n", "", 0), drives_argv, "id", (0, 60), (), (60,)),
+        ("no drive, its none", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), (), (60,)),
+        ("a drive at 0, its none 60", RunResult('User,id,name,JSON\nadmin@example.com,0A1,Team,"{}"\n', "", 0), drives_argv, "id",
+         (0, 60), (), (60,)),
+        ("members' titles alone at 0", RunResult("User,id,name,createdTime,JSON\n", "", 0), acls_argv, "id", (0, 60), (), (60,)),
     ]
     reads_found = []
     scratch = tempfile.TemporaryDirectory()
     folder = Path(scratch.name)
-    for n, (name, answer, argv, key, ok_rcs, partial_rcs) in enumerate(read_cases):
+    for n, (name, answer, argv, key, ok_rcs, partial_rcs, empty_rcs) in enumerate(read_cases):
         connector = object.__new__(gam_connector.GAMConnector)
         connector.runner, connector.domain = Runner(answer), " Example.COM "
         connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
         try:
             got, unread = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key, ok_rcs=ok_rcs,
-                                                           partial_rcs=partial_rcs))
+                                                           partial_rcs=partial_rcs, empty_rcs=empty_rcs))
             raised, rows, unread = None, len(got), list(unread)
         except BaseException as exc:    # noqa: BLE001: the refusals, the failure and the cancel are the cases
             raised, rows, unread = type(exc).__name__, None, None
@@ -1573,6 +1584,7 @@ def audit_runs_fixture() -> dict:
                             "stderr": answer.stderr if ran else "", "exit": answer.returncode if ran else (0 if isinstance(answer, str) else None),
                             "error": str(answer) if isinstance(answer, Exception) else None, "argv": argv,
                             "key_column": key, "ok_rcs": list(ok_rcs), "partial_rcs": list(partial_rcs),
+                            "empty_rcs": None if empty_rcs is None else list(empty_rcs),
                             "raised": raised, "rows": rows, "unread": unread, "ran": connector.runner.calls,
                             "records": records})
     scratch.cleanup()
@@ -1585,7 +1597,8 @@ def audit_runs_fixture() -> dict:
                       "FLAGS": [runs.NEW, runs.ADMIN, runs.EXTERNAL, runs.AI_NAME, runs.BROAD, runs.SUSPENDED_ADMIN]},
         "runs": [{"key": r.key, "title": r.title, "what": r.what,
                   "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "ok_rcs": list(s.ok_rcs),
-                             "partial_rcs": list(s.partial_rcs), "command": runs.step_command(r, s),
+                             "partial_rcs": list(s.partial_rcs),
+                             "empty_rcs": None if s.empty_rcs is None else list(s.empty_rcs), "command": runs.step_command(r, s),
                              "argv": runs.step_argv(s)} for s in r.steps]} for r in runs.RUNS],
         "implausibly_empty": [{"step": s.key, "rows": n, "why": runs.implausibly_empty(s, n)}
                               for s in (runs.DIRECTORY, runs.LICENSES, runs.DRIVES, runs.DRIVE_ACLS, runs.DOMAINS, runs.COURSES,
@@ -1622,6 +1635,194 @@ def audit_runs_fixture() -> dict:
         "holders": holders,
         "complete": complete,
         "reads": reads_found,
+    }
+
+
+def schedules_fixture() -> dict:
+    """Plan F7a (GamGUI #176, `core/schedules.py`): a run's cadence, when it's due and its words, in two time zones (month ends,
+    a leap day, the year's end, a change to summer time, a clock set back); what changed in each table since the last kept run
+    that read it whole, over every way an earlier run can't be compared; and the keep itself, a run at a time on a store in a
+    scratch folder: what each run says of its keep, which kept runs stay (by their sequence, newest first) and how many a
+    lowered count, unscheduling, Delete and Setup's Remove take. Nothing here touches the operator's own stores."""
+    import tempfile
+    from datetime import date, datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    from gamgui.core import audit_runs as runs
+    from gamgui.core import schedules as sched
+
+    day = 86_400.0
+    t0 = datetime(2026, 11, 18, 9, 0, tzinfo=timezone.utc).timestamp()     # a Wednesday
+    zones = {"UTC": timezone.utc, "America/New_York": ZoneInfo("America/New_York")}
+    saved_tz = sched.TZ
+    try:
+        lasts = [date(2026, 1, 28), date(2026, 1, 29), date(2026, 1, 30), date(2026, 1, 31), date(2026, 2, 28), date(2028, 1, 31),
+                 date(2028, 2, 29), date(2026, 3, 31), date(2026, 5, 31), date(2026, 8, 31), date(2026, 10, 31),
+                 date(2026, 11, 18), date(2026, 12, 31), date(2027, 1, 31), date(2026, 3, 7)]
+        next_days = [{"last": d.isoformat(), "cadence": c, "next": sched.next_day(d, c).isoformat()}
+                     for d in lasts for c in sched.CADENCES]
+
+        dones = [0.0, t0, t0 + 14 * 3600 + 59 * 60,                                            # Wed 09:00, Wed 23:59 UTC
+                 datetime(2026, 1, 31, 12, 0, tzinfo=timezone.utc).timestamp(),               # the 31st into February
+                 datetime(2026, 3, 7, 12, 0, tzinfo=timezone.utc).timestamp(),                # the day before New York's summer time
+                 datetime(2026, 12, 31, 23, 30, tzinfo=timezone.utc).timestamp(),             # the year's end (New York's 18:30)
+                 datetime(2028, 2, 29, 4, 0, tzinfo=timezone.utc).timestamp()]                # a leap day (New York's 28th)
+        offsets = [-day, -60.0, 0.0, 3600.0, 14 * 3600.0, 15 * 3600.0, day - 1, day, 2 * day, 6 * day, 7 * day - 9 * 3600,
+                   7 * day, 27 * day, 28 * day, 29 * day, 30 * day, 31 * day, 32 * day, 400 * day]
+        due = []
+        for zone, tz in zones.items():
+            sched.TZ = tz
+            for cadence in sched.CADENCES:
+                for done in dones:
+                    schedule = sched.Schedule("license_usage", cadence, 5, since=t0 - 30 * day, done=done)
+                    for offset in offsets:
+                        now = (done or t0) + offset
+                        words = sched.due_words("License usage", schedule, now)
+                        next_due = sched.due_day(schedule)
+                        due.append({"zone": zone, "cadence": cadence, "done": done, "now": now, "due": words.due,
+                                    "headline": words.headline, "detail": words.detail, "line": words.line,
+                                    "is_due": sched.is_due(schedule, now),
+                                    "due_day": next_due.isoformat() if next_due else None})
+        when_words = []
+        for zone, tz in zones.items():
+            sched.TZ = tz
+            for when in dones[1:] + [t0 + 0.999, 0.0, 1e10]:
+                when_words.append({"zone": zone, "when": when, "words": sched.when_words(when),
+                                   "day": sched.day_words(sched.local_day(when))})
+        sched.TZ = timezone.utc
+
+        # Changed since: each table against the newest earlier kept run that read it whole, with the same window.
+        def finding(key, rows, known=True, partial=False, columns=("Email", "Name")):
+            return runs.Finding(key, key.title(), "", columns, [tuple(r) for r in rows], known=known, partial=partial)
+
+        def table(key, count, known=True, partial=False, kept=True):
+            return sched.KeptTable(key, key.title(), ("Email", "Name"), known, partial, count, kept)
+
+        a, b, c, d = ("a@example.com", "A"), ("b@example.com", "B"), ("c@example.com", "C"), ("d@example.com", "D")
+        b2 = ("b@example.com", "B2")
+        change_cases = [
+            ("new and gone, whole rows, a multiset", [finding("t", [a, b2, c, c, d])], 0,
+             [(sched.KeptRun("1", t0, 0, [table("t", 4)]), {"t": [a, b, c, a]})]),
+            ("no change", [finding("t", [a, b])], 0, [(sched.KeptRun("1", t0, 0, [table("t", 2)]), {"t": [b, a]})]),
+            ("both empty", [finding("t", [])], 0, [(sched.KeptRun("1", t0, 0, [table("t", 0)]), {"t": []})]),
+            ("unknown now", [finding("t", [], known=False)], 0, [(sched.KeptRun("1", t0, 0, [table("t", 0)]), {"t": []})]),
+            ("partly unknown now", [finding("t", [a], partial=True)], 0, [(sched.KeptRun("1", t0, 0, [table("t", 1)]), {"t": [a]})]),
+            ("nothing before", [finding("t", [a])], 0, []),
+            ("another window passed over", [finding("t", [a, b])], 90,
+             [(sched.KeptRun("2", t0 + day, 30, [table("t", 1)]), {"t": [a]}),
+              (sched.KeptRun("1", t0, 90, [table("t", 1)]), {"t": [b]})]),
+            ("only another window", [finding("t", [a])], 90, [(sched.KeptRun("1", t0, 30, [table("t", 1)]), {"t": [a]})]),
+            ("unknown, partial or unkept then passed over", [finding("t", [a, c])], 0,
+             [(sched.KeptRun("4", t0 + 3 * day, 0, [table("t", 0, known=False)]), {}),
+              (sched.KeptRun("3", t0 + 2 * day, 0, [table("t", 1, partial=True)]), {"t": [a]}),
+              (sched.KeptRun("2", t0 + day, 0, [table("t", 60_000, kept=False)]), {}),
+              (sched.KeptRun("1", t0, 0, [table("t", 1)]), {"t": [c]})]),
+            ("a run with no such table passed over", [finding("t", [a])], 0,
+             [(sched.KeptRun("2", t0 + day, 0, [table("u", 1)]), {"u": [a]}),
+              (sched.KeptRun("1", t0, 0, [table("t", 1)]), {"t": [b]})]),
+            ("a kept run that can't be read stops it", [finding("t", [a])], 0,
+             [(sched.KeptRun("2", problem="It isn't whole."), None), (sched.KeptRun("1", t0, 0, [table("t", 1)]), {"t": [b]})]),
+            ("its rows can't be read whole", [finding("t", [a])], 0,
+             [(sched.KeptRun("1", t0, 0, [table("t", 1)]), "It isn't whole.")]),
+            ("two tables, one run read once", [finding("t", [a]), finding("u", [b, c]), finding("v", [], known=False)], 0,
+             [(sched.KeptRun("1", t0 + 61, 0, [table("t", 1), table("u", 1)]), {"t": [b], "u": [b]})]),
+            ("cells in order", [finding("t", [("x", "1", ""), ("x", "", "1")], columns=("A", "B", "C"))], 0,
+             [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("A", "B", "C"), True, False, 1, True)]),
+               {"t": [("x", "1", "")]})]),
+        ]
+        changes = []
+        for name, now_findings, days, earlier in change_cases:
+            loads: dict = {}
+
+            def load(kept_id, earlier=earlier):
+                loads[kept_id] = loads.get(kept_id, 0) + 1
+                head, rows = next((h, r) for h, r in earlier if h.id == kept_id)
+                if isinstance(rows, str):
+                    return sched.KeptRun(kept_id, problem=rows)
+                whole = sched.KeptRun(head.id, head.when, head.days,
+                                      [sched.KeptTable(t.key, t.title, t.columns, t.known, t.partial, t.count, t.kept,
+                                                       [tuple(r) for r in rows[t.key]] if t.kept and t.key in rows else None)
+                                       for t in head.tables])
+                return whole
+
+            found = sched.changes_since(now_findings, days, [h for h, _ in earlier], load)
+            changes.append({
+                "name": name, "days": days,
+                "findings": [{"key": f.key, "title": f.title, "columns": list(f.columns), "rows": [list(r) for r in f.rows],
+                              "known": f.known, "partial": f.partial} for f in now_findings],
+                "earlier": [{"id": h.id, "when": h.when, "days": h.days, "problem": h.problem,
+                             "tables": [{"key": t.key, "title": t.title, "columns": list(t.columns), "known": t.known,
+                                         "partial": t.partial, "count": t.count, "kept": t.kept} for t in h.tables],
+                             "rows": rows if isinstance(rows, str) or rows is None
+                             else {k: [list(r) for r in v] for k, v in rows.items()}} for h, rows in earlier],
+                "loads": loads,
+                "changes": {k: {"since": ch.since, "new": [list(r) for r in ch.new], "gone": [list(r) for r in ch.gone],
+                                "why": ch.why, "compared": ch.compared} for k, ch in found.items()},
+            })
+
+        # The keep, a run at a time, on a store in a scratch folder: what each says, and which kept runs stay.
+        scratch = tempfile.TemporaryDirectory()
+        root = Path(scratch.name) / "schedules"
+        store, kept = sched.ScheduleStore(root), sched.KeptRuns(root / "kept")
+        domain, run = "Example.COM", "license_usage"
+        seat = lambda *rows: [finding("per_sku", rows, columns=("Product", "Seats"))]   # noqa: E731
+        steps = []
+
+        def look(op, **got):
+            mine = store.schedules(domain).get(run)
+            steps.append({"op": op, **got,
+                          "schedule": None if mine is None else {"cadence": mine.cadence, "keep": mine.keep, "since": mine.since,
+                                                                 "done": mine.done},
+                          "kept": [k.id[:13] for k in kept.runs(domain, run)],
+                          "kept_days": [k.days for k in kept.runs(domain, run)]})
+
+        def after(op, findings, answered, when, days=0):
+            got = sched.after_run(store, kept, domain, run, findings, days, answered, when)
+            look(op, when=when, answered=answered, days=days,
+                 findings=[{"key": f.key, "title": f.title, "columns": list(f.columns), "rows": [list(r) for r in f.rows],
+                            "known": f.known, "partial": f.partial} for f in findings],
+                 note=got.note, problem=got.problem,
+                 changes={k: {"since": ch.since, "new": [list(r) for r in ch.new], "gone": [list(r) for r in ch.gone],
+                              "why": ch.why} for k, ch in got.changes.items()})
+
+        def setting(op, cadence, keep, when):
+            saved, gone = sched.set_schedule(store, kept, domain, run, cadence, keep, when)
+            look(op, cadence=cadence, keep_asked=keep, when=when, saved=saved is not None, gone=gone)
+
+        after("not scheduled", seat(("Workspace", "3")), True, t0)
+        setting("weekly, keeping 2", "weekly", 2, t0 + 60)
+        after("a step unanswered", seat(("Workspace", "3")), False, t0 + 120)
+        after("the first that counts", seat(("Workspace", "3")), True, t0 + 180)
+        after("a seat more", seat(("Workspace", "4")), True, t0 + 7 * day)
+        after("the clock set back", seat(("Workspace", "4"), ("Vault", "1")), True, t0 - 400 * day)
+        after("unknown now", [finding("per_sku", [], known=False, columns=("Product", "Seats"))], True, t0 + 15 * day)
+        setting("monthly, keeping 1", "monthly", 1, t0 + 16 * day)
+        after("after the count lowered", seat(("Workspace", "5")), True, t0 + 40 * day)
+        setting("keeping 3 again", "monthly", 3, t0 + 41 * day)
+        gone = sched.delete_kept(kept, domain, run)
+        look("delete the kept runs", gone=gone)
+        after("after a delete", seat(("Workspace", "5")), True, t0 + 70 * day)
+        after("again", seat(("Workspace", "6")), True, t0 + 100 * day)
+        setting("not scheduled", "", 5, t0 + 101 * day)
+        setting("daily, keeping 12", "daily", 12, t0 + 102 * day)
+        after("daily", seat(("Workspace", "6")), True, t0 + 103 * day)
+        forgot = sched.forget_domain(store, kept, domain)
+        look("Setup removes the domain", forgot=list(forgot))
+        scratch.cleanup()
+    finally:
+        sched.TZ = saved_tz
+
+    return {
+        "constants": {"CADENCES": list(sched.CADENCES), "CADENCE_WORDS": sched.CADENCE_WORDS, "KEEP_DEFAULT": sched.KEEP_DEFAULT,
+                      "KEEP_CAP": sched.KEEP_CAP, "KEEP_ROWS_CAP": sched.KEEP_ROWS_CAP, "FILE_VERSION": sched.FILE_VERSION,
+                      "NOT_KNOWN_NOW": sched.NOT_KNOWN_NOW, "PART_UNKNOWN_NOW": sched.PART_UNKNOWN_NOW,
+                      "NOTHING_BEFORE": sched.NOTHING_BEFORE, "KEPT_RUN_UNREAD": sched.KEPT_RUN_UNREAD,
+                      "NOT_ANSWERED": sched.NOT_ANSWERED, "KEPT_UNREAD": sched.KEPT_UNREAD},
+        "next_day": next_days,
+        "due": due,
+        "when_words": when_words,
+        "changes": changes,
+        "keep": {"domain": domain, "run": run, "steps": steps},
     }
 
 
@@ -3710,6 +3911,12 @@ def main() -> int:
         | audit_runs_fixture()
     emit("audit_runs.json", json.dumps(runs_doc, indent=1, ensure_ascii=True) + "\n")
     print(f"audit_runs.json: {len(runs_doc['runs'])} runs, {len(runs_doc['reads'])} read records")
+
+    # Schedules (plan F7a): when a run is due, what changed since its last kept run, and what its keep says and keeps.
+    schedules_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} | schedules_fixture()
+    emit("schedules.json", json.dumps(schedules_doc, indent=1, ensure_ascii=True) + "\n")
+    print(f"schedules.json: {len(schedules_doc['due'])} due cases, {len(schedules_doc['changes'])} comparisons, "
+          f"{len(schedules_doc['keep']['steps'])} keep steps")
 
     # The directory's reports over those users, as GamGUI's Home and Reports count them.
     reports_doc = {"source": {"gamgui_commit": commit, "generator": "scripts/gen_fixtures.py"}} \

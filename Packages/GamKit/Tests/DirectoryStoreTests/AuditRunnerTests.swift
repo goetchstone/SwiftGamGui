@@ -266,6 +266,30 @@ final class AuditRunnerTests {
         #expect(outcome.finding("orphaned")?.rows.first?[2] == "alice@example.com: being offboarded")
     }
 
+    /// GamGUI #176: the titles alone at exit 0 are a service-account token Google refused without a word, never "no drive": both
+    /// steps are unknown, said, and recorded as failed.
+    @Test func titlesAloneAtExit0AreATokenGoogleRefusedSilentlyNeverNoDrive() async throws {
+        try await connect()
+        try mark("drive_token_silent")
+        let outcome = try await run(AuditRuns.sharedDrives)
+        #expect(!outcome.answered && Array(outcome.reads.prefix(2).map(\.state)) == [.unknown, .unknown])
+        #expect(outcome.reads[0].why == AuditRunner.noRowUnsaid)
+        #expect(!outcome.findings.contains { $0.known })
+    }
+
+    /// GamGUI #176: every drive's permissions dropped is GAM's 60, as for none, so the drive list, read first, names each one
+    /// unread, and the two tables built on the members are partial: never compared, and their CSV says what wasn't read.
+    @Test func everyDriveDroppedIsGams60AndEveryDriveIsNamedUnread() async throws {
+        try await connect()
+        for drive in ["0AFINANCEuk9PVA", "0ALEGALuk9PVA", "0AOLDuk9PVA", "0AUNUSEDuk9PVA"] { try mark("acl_dropped/" + drive) }
+        let outcome = try await run(AuditRuns.sharedDrives)
+        let unread = try #require(outcome.finding("unread"))
+        #expect(outcome.reads[1].state == .read && unread.known && unread.rows.count == 4)
+        #expect(outcome.finding("permissions")?.partial == true && outcome.finding("orphaned")?.partial == true)
+        #expect(AuditRuns.exportRows(try #require(outcome.finding("permissions")))?.first
+                == ["It leaves out the 4 drives whose members weren't read, listed below."].map { "Part of this table is unknown. " + $0 })
+    }
+
     /// No shared drive is GAM's own none (exit 60 with the titles); a refused list is unknown, and so is every table.
     @Test func noSharedDriveIsGamsNoneAndARefusedListIsUnknown() async throws {
         try await connect()

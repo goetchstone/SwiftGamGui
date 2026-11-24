@@ -6,11 +6,16 @@ import Setup
 import SwiftUI
 import Vault
 
-/// Home: the connection, the bundled GAM, the directory's counts, the newest runs and the last few failed changes. It makes no
-/// Google call of its own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's Home, plan U4).
+/// Home: the connection, the bundled GAM, the directory's counts, the scheduled audit runs that are due, the newest runs and the
+/// last few failed changes. It makes no Google call of its own: the counts come from `DirectoryStore`, loaded on a click (GamGUI's
+/// Home, plan U4), and what's due from the schedules file (plan F7a), read when Home shows: nothing runs from here.
 struct HomeView: View {
     let setup: SetupModel
     let directory: DirectoryStore
+    /// The audit runs' schedules on the connected domain.
+    let schedules: RunSchedules
+    /// Opens an audit run's pane on Reports.
+    let openRun: (String) -> Void
     let gamVersion: String?
     let hasGam: Bool
     let executor: Executor?
@@ -67,6 +72,11 @@ struct HomeView: View {
             Section("Directory") {
                 directorySection
             }
+            if setup.active != nil, HomeScheduledRuns.shows(schedules) {
+                Section("Scheduled audit runs") {
+                    HomeScheduledRuns(schedules: schedules, openRun: openRun)
+                }
+            }
             Section("Jobs") {
                 // Its own view: a step of a run redraws the list, not all of Home.
                 HomeJobs(board: jobs)
@@ -77,6 +87,8 @@ struct HomeView: View {
         }
         .formStyle(.grouped)
         .task { await loadUnfinished() }
+        // What's due on the domain connected now: read when Home shows and after a switch.
+        .task(id: setup.generation) { await schedules.refresh() }
         // Read again when a run ends: by the board's counter, so a step reads nothing.
         .task(id: jobs.finishedCount) { await loadFailures() }
     }

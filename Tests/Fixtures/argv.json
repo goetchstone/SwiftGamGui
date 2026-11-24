@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "db579c7",
+  "gamgui_commit": "73498c4",
   "gam_version": "7.52.04",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -11,6 +11,7 @@
   "add_delegate",
   "add_forwarding_address",
   "add_group_member",
+  "add_license",
   "all_users_print_delegates",
   "all_users_print_forward",
   "block_device_user",
@@ -87,6 +88,7 @@
   "remove_calendar",
   "remove_delegate",
   "remove_group_member",
+  "remove_license",
   "rename_org_unit",
   "report_activity",
   "report_users",
@@ -103,6 +105,7 @@
   "show_vacation",
   "signout_user",
   "subscribe_calendar",
+  "swap_license",
   "todrive_args",
   "transfer_calendar_ownership",
   "trash_message",
@@ -194,6 +197,17 @@
    {
     "name": "role",
     "default": "member"
+   }
+  ],
+  "add_license": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "product_id"
+   },
+   {
+    "name": "sku_id"
    }
   ],
   "all_users_print_delegates": [],
@@ -712,6 +726,17 @@
     "name": "member"
    }
   ],
+  "remove_license": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "product_id"
+   },
+   {
+    "name": "sku_id"
+   }
+  ],
   "rename_org_unit": [
    {
     "name": "org_unit"
@@ -908,11 +933,21 @@
     "default": true
    }
   ],
-  "todrive_args": [
+  "swap_license": [
    {
-    "name": "user",
-    "default": ""
+    "name": "email"
    },
+   {
+    "name": "product_id"
+   },
+   {
+    "name": "old_sku_id"
+   },
+   {
+    "name": "new_sku_id"
+   }
+  ],
+  "todrive_args": [
    {
     "name": "title",
     "default": ""
@@ -5772,6 +5807,201 @@
     "add",
     "member",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "  padded  ",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "  padded  ",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "--double-dash",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "--double-dash",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "-leading-dash",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "-leading-dash",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "<email>",
+    "product_id": "<product_id>",
+    "sku_id": "<sku_id>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "add",
+    "license",
+    "nv:<product_id>:<sku_id>"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "Zoë Ångström",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "Zoë Ångström",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "alice@example.com",
+    "product_id": "Google-Vault",
+    "sku_id": "Google-Vault-Former-Employee"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "add",
+    "license",
+    "nv:Google-Vault:Google-Vault-Former-Employee"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "line\nbreak",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "line\nbreak",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "quote\"and'apos",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "quote\"and'apos",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "{token}",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "{token}",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "add_license",
+   "kwargs": {
+    "email": "日本語のテキスト",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "日本語のテキスト",
+    "add",
+    "license",
+    "nv:Google-Apps:1010020028"
    ]
   },
   {
@@ -29428,6 +29658,201 @@
     "日本語のテキスト",
     "remove",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "  padded  ",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "  padded  ",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "--double-dash",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "--double-dash",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "-leading-dash",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "-leading-dash",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "<email>",
+    "product_id": "<product_id>",
+    "sku_id": "<sku_id>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "delete",
+    "license",
+    "nv:<product_id>:<sku_id>"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "Zoë Ångström",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "Zoë Ångström",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "bob@example.com",
+    "product_id": "Google-Vault",
+    "sku_id": "Google-Vault-Former-Employee"
+   },
+   "argv": [
+    "user",
+    "bob@example.com",
+    "delete",
+    "license",
+    "nv:Google-Vault:Google-Vault-Former-Employee"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "line\nbreak",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "line\nbreak",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "quote\"and'apos",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "quote\"and'apos",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "{token}",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "{token}",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "remove_license",
+   "kwargs": {
+    "email": "日本語のテキスト",
+    "product_id": "Google-Apps",
+    "sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "日本語のテキスト",
+    "delete",
+    "license",
+    "nv:Google-Apps:1010020028"
    ]
   },
   {
@@ -93309,229 +93734,445 @@
    ]
   },
   {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "  padded  ",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "  padded  ",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "--double-dash",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "--double-dash",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "-leading-dash",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "-leading-dash",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "<email>",
+    "product_id": "<product_id>",
+    "old_sku_id": "<old_sku_id>",
+    "new_sku_id": "<new_sku_id>"
+   },
+   "argv": [
+    "user",
+    "<email>",
+    "update",
+    "license",
+    "nv:<product_id>:<new_sku_id>",
+    "from",
+    "nv:<product_id>:<old_sku_id>"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "Zoë Ångström",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "Zoë Ångström",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "alice@example.com",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020025"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020025",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "line\nbreak",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "line\nbreak",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "quote\"and'apos",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "quote\"and'apos",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "{token}",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "{token}",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
+   "builder": "swap_license",
+   "kwargs": {
+    "email": "日本語のテキスト",
+    "product_id": "Google-Apps",
+    "old_sku_id": "1010020028",
+    "new_sku_id": "1010020028"
+   },
+   "argv": [
+    "user",
+    "日本語のテキスト",
+    "update",
+    "license",
+    "nv:Google-Apps:1010020028",
+    "from",
+    "nv:Google-Apps:1010020028"
+   ]
+  },
+  {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "  padded  ",
     "title": "  padded  "
    },
    "argv": [
     "todrive",
-    "tduser",
-    "  padded  ",
     "tdtitle",
-    "  padded  "
+    "  padded  ",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "",
-    "title": ""
-   },
-   "argv": [
-    "todrive"
-   ]
-  },
-  {
-   "builder": "todrive_args",
-   "kwargs": {
-    "user": "<user>",
     "title": ""
    },
    "argv": [
     "todrive",
-    "tduser",
-    "<user>"
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "boss@example.com",
-    "title": ""
-   },
-   "argv": [
-    "todrive",
-    "tduser",
-    "boss@example.com"
-   ]
-  },
-  {
-   "builder": "todrive_args",
-   "kwargs": {
-    "user": "--double-dash",
     "title": "--double-dash"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "--double-dash",
     "tdtitle",
-    "--double-dash"
+    "--double-dash",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "-leading-dash",
     "title": "-leading-dash"
    },
    "argv": [
     "todrive",
-    "tduser",
+    "tdtitle",
     "-leading-dash",
-    "tdtitle",
-    "-leading-dash"
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "",
     "title": "<title>"
    },
    "argv": [
     "todrive",
     "tdtitle",
-    "<title>"
+    "<title>",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "<user>",
-    "title": "<title>"
-   },
-   "argv": [
-    "todrive",
-    "tduser",
-    "<user>",
-    "tdtitle",
-    "<title>"
-   ]
-  },
-  {
-   "builder": "todrive_args",
-   "kwargs": {
-    "user": "boss@example.com",
-    "title": "D"
-   },
-   "argv": [
-    "todrive",
-    "tduser",
-    "boss@example.com",
-    "tdtitle",
-    "D"
-   ]
-  },
-  {
-   "builder": "todrive_args",
-   "kwargs": {
-    "user": "",
-    "title": "Delegates"
+    "title": "T"
    },
    "argv": [
     "todrive",
     "tdtitle",
-    "Delegates"
+    "T",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "Zoë Ångström",
     "title": "Zoë Ångström"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "Zoë Ångström",
     "tdtitle",
-    "Zoë Ångström"
+    "Zoë Ångström",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "line\nbreak",
+    "title": "example.com - Delegates"
+   },
+   "argv": [
+    "todrive",
+    "tdtitle",
+    "example.com - Delegates",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
+   ]
+  },
+  {
+   "builder": "todrive_args",
+   "kwargs": {
     "title": "line\nbreak"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "line\nbreak",
     "tdtitle",
-    "line\nbreak"
+    "line\nbreak",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "quote\"and'apos",
     "title": "quote\"and'apos"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "quote\"and'apos",
     "tdtitle",
-    "quote\"and'apos"
+    "quote\"and'apos",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "semi;colon|pipe & $(cmd) `tick`",
     "title": "semi;colon|pipe & $(cmd) `tick`"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "semi;colon|pipe & $(cmd) `tick`",
     "tdtitle",
-    "semi;colon|pipe & $(cmd) `tick`"
+    "semi;colon|pipe & $(cmd) `tick`",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "tdtitle",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "{token}",
     "title": "{token}"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "{token}",
     "tdtitle",
-    "{token}"
+    "{token}",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
    "builder": "todrive_args",
    "kwargs": {
-    "user": "日本語のテキスト",
     "title": "日本語のテキスト"
    },
    "argv": [
     "todrive",
-    "tduser",
-    "日本語のテキスト",
     "tdtitle",
-    "日本語のテキスト"
+    "日本語のテキスト",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   {
@@ -95946,7 +96587,11 @@
   "todrive_args": {
    "kwargs": {},
    "argv": [
-    "todrive"
+    "todrive",
+    "tdnobrowser",
+    "true",
+    "tdnoemail",
+    "true"
    ]
   },
   "update_organization": {
