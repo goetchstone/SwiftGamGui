@@ -225,7 +225,10 @@ additions, each a test (`ExecutorTests`, `SheetExportsTests`):
   `noted`), read whether GAM exited 0 or not and written on the end record's `extra` (masked as every field). Only the export
   notes anything: `url`, the link GAM printed, else `upload`, which of the upload's own failure lines it printed about the
   admin. Never the output itself.
-- **`RunOutcome.began`**: the steps whose begin record was written, so GAM was started: any other changed nothing.
+- **`RunOutcome.began`**: the steps GAM was launched for. The begin record still comes first (a crash mid-call leaves "outcome
+  unknown"), but a step counts as begun only once the runner says GAM itself started (`AuthenticatedRunner.run(_:…launched:)`,
+  told by `GamRunner.runRaw` right after the spawn): a Vault read that throws, a cancelled Keychain prompt or a failed launch
+  changed nothing, and its end record says `started: false` (review of #199, `ExecutorTests.aStepGamNeverLaunchedIsNotBegun`).
 - **The action is named as GamGUI's record names it**, `export_to_sheet` (`WriteAction.exportToSheet`'s raw value), so the two
   apps' logs read alike to someone comparing them; each app keeps its own log, and Files reads this app's only
   (`AuditLog.defaultURL`). `displayName` reads an underscore as a word break ("Export to sheet").

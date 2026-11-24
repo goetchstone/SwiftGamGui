@@ -70,6 +70,15 @@ struct MadeFilesTests {
         #expect(sheets.made.isEmpty && sheets.problem.isEmpty, "\(sheets.made.map(\.outcome.said))")
     }
 
+    /// An export GAM never launched (its Vault read or its launch failed after the begin record: `started: false`) made
+    /// nothing, and is said so, never as "can't be told" (review of #199).
+    @Test func anExportGamNeverLaunchedMadeNothing() throws {
+        let audit = AuditLog(url: log)
+        try record(audit, ok: false, extra: ["started": .bool(false), "error": .string("The Keychain refused.")], at: 1)
+        let made = try #require(MadeFiles.sheets(in: log).made.first)
+        #expect(made.outcome.made == .no && made.outcome.said.hasPrefix("Nothing was made: GAM didn't run."))
+    }
+
     /// What became of a failed export is the upload's own line its record kept, never the error summary.
     @Test func aFailedExportIsSaidFromItsUploadLine() throws {
         let audit = AuditLog(url: log)

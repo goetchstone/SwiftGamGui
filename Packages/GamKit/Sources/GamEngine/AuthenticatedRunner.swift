@@ -38,16 +38,18 @@ public struct AuthenticatedRunner: Sendable {
                              extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
     }
 
-    /// A write, for ChangeCore's executor only: it takes a `WriteTicket`, which nothing else can make.
+    /// A write, for ChangeCore's executor only: it takes a `WriteTicket`, which nothing else can make. `launched` is told once
+    /// GAM itself has started, after the Vault read and the launch: a failure before then changed nothing.
     package func run(
         _ write: GamWrite,
         as domain: Domain,
         ticket: WriteTicket,
         timeout: Duration = GamRunner.defaultTimeout,
-        extraEnvironment: [String: String] = [:]
+        extraEnvironment: [String: String] = [:],
+        launched: (@Sendable () -> Void)? = nil
     ) async throws -> GamResult {
         try await run(argv: write.argv, as: domain, timeout: timeout,
-                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
+                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) }, launched: launched)
     }
 
     /// Any argv, with the domain's credentials. `private`: a write must not reach it except through the
@@ -56,7 +58,8 @@ public struct AuthenticatedRunner: Sendable {
         argv: [String],
         as domain: Domain,
         timeout: Duration,
-        extraEnvironment: [String: String]
+        extraEnvironment: [String: String],
+        launched: (@Sendable () -> Void)? = nil
     ) async throws -> GamResult {
         let secrets = try await vault.credentials(for: domain)
         let files = Dictionary(uniqueKeysWithValues: secrets.map { ($0.key.fileName, $0.value.bytes) })
@@ -65,7 +68,7 @@ public struct AuthenticatedRunner: Sendable {
         let outcome: Result<GamResult, any Error>
         do {
             outcome = .success(try await runner.runRaw(argv, configDirectory: config.url, timeout: timeout,
-                                                    extraEnvironment: extraEnvironment))
+                                                    extraEnvironment: extraEnvironment, launched: launched))
         } catch {
             outcome = .failure(error)
         }

@@ -287,7 +287,8 @@ public struct RunOutcome: Sendable {
     /// upload's own failure lines GAM printed), by step, read whether or not GAM exited 0. Never the output itself.
     public let noted: [Int: [String: String]]
 
-    /// The steps whose begin record was written, so GAM was started for them: any other changed nothing.
+    /// The steps GAM was launched for: after the begin record, the Vault read and the launch (review of #199). Any other
+    /// changed nothing; its end record says `started: false`.
     public let began: Set<Int>
 
     public var succeeded: Bool { refusal == nil && steps.allSatisfy { if case .succeeded = $0 { true } else { false } } }
@@ -1092,10 +1093,10 @@ public actor Executor {
                                        kind: nil))
                 continue
             }
-            began.insert(index)
             // GamGUI's `fresh`: only an account this run created waits for Google.
             let mayWait = planned.newAccountFrom.map { results[$0].isSucceeded } ?? false
             let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets, mayWait: mayWait)
+            if ran.started { began.insert(index) }
             results.append(ran.result)
             if !ran.noted.isEmpty { noted[index] = ran.noted }
             if step.action == .createTaskList, case .succeeded = ran.result { listOutputs[index] = ran.stdout }
@@ -1158,14 +1159,16 @@ public actor Executor {
     /// hasn't finished setting up becomes `.waiting` rather than a failure.
     private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
                      secrets: [String], mayWait: Bool) async
-        -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?, noted: [String: String]) {
+        -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?, noted: [String: String], started: Bool) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
         var stdout: String?
         var noted: [String: String] = [:]
+        // Set once GAM itself is launched (after the Vault read and the spawn): a failure before then changed nothing.
+        let launch = OSAllocatedUnfairLock(initialState: false)
         do {
             let ran = try await runner.run(step.write, as: preview.domain, ticket: WriteTicket(), timeout: step.timeout,
-                                           extraEnvironment: extraEnvironment)
+                                           extraEnvironment: extraEnvironment, launched: { launch.withLock { $0 = true } })
             exitCode = ran.exitCode
             stdout = ran.stdout
             // What the write's own output says to keep (a Sheet export's link), whatever the exit: a warning exit can follow it.
@@ -1235,13 +1238,15 @@ public actor Executor {
             stop = "Stopped: \(message)"
         }
         let ok: Bool = if case .succeeded = result { true } else { false }
+        let started = launch.withLock { $0 }
+        if !started { extra["started"] = .bool(false) }
         do {
             try record(step, phase: "end", extra: extra, on: preview.domain, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
-            return (result, stop, nil, stdout, noted)
+            return (result, stop, nil, stdout, noted, started)
         } catch {
             AuditFailure.report(error)
             return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).",
-                    stdout, noted)
+                    stdout, noted, started)
         }
     }
 

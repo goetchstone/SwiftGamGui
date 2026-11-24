@@ -271,6 +271,13 @@ public enum SheetExport {
         }
     }
 
+    /// What became of an export GAM never launched (the begin record failed, the run stopped first, or the Vault or the launch
+    /// failed: the end record says `started: false`): nothing was made.
+    public static func notRun(_ detail: String) -> Outcome {
+        Outcome(url: "", made: .no, said: "Nothing was made: GAM didn't run." + (detail.isEmpty ? "" : " \(detail)"),
+                todo: "Export again once that's put right.")
+    }
+
     /// Whether a catalog read can go to a Sheet: GAM's command takes `todrive` (GamGUI's `supports_export`). A catalog command's
     /// grammar line names `todrive` when GAM's command takes it; GamGUI's curated reads each point at a `print` or `report`
     /// command that does. This app's catalog holds each command's first grammar line only (GamGUI's joins the rest, #132), so a

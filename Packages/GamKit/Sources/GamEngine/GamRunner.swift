@@ -80,7 +80,8 @@ public struct GamRunner: Sendable {
         _ argv: [String],
         configDirectory: URL? = nil,
         timeout: Duration = GamRunner.defaultTimeout,
-        extraEnvironment: [String: String] = [:]
+        extraEnvironment: [String: String] = [:],
+        launched: (@Sendable () -> Void)? = nil
     ) async throws -> GamResult {
         guard FileManager.default.isExecutableFile(atPath: binary.path) else {
             throw GamRunnerError.binaryNotExecutable(binary.path)
@@ -88,6 +89,8 @@ public struct GamRunner: Sendable {
         let environment = GamEnvironment.build(from: ProcessInfo.processInfo.environment,
                                                configDirectory: configDirectory, extra: extraEnvironment)
         let (pid, outRead, errRead) = try Self.spawn(binary.path, argv, environment)
+        // GAM is running from here: whatever happens next, it may have done its work.
+        launched?()
         Self.children.withLock { $0[pid] = binary.path }
 
         let exit = ExitSignal()

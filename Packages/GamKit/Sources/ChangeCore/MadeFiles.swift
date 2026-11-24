@@ -96,13 +96,16 @@ public enum MadeFiles {
         let owner = record["target"]?.string ?? ""
         let argv = record["argv"]?.array?.compactMap(\.string) ?? []
         let when = record["ts"]?.string ?? ""
+        // GAM never launched for it (the Vault or the launch failed after the begin record): nothing was made.
+        let notRun = extra["started"]?.bool == false
         return SheetMade(
             id: index, when: when, at: AuditEntry.instant(when), domain: PythonText.lower(extra[AuditLog.domainKey]?.string ?? ""),
             command: extra["command"]?.string ?? "", argv: argv.count == record["argv"]?.array?.count ? argv : [],
             owner: owner, ok: ok,
             // What became of the file is what the record kept from the upload's own lines, never its error summary.
-            outcome: SheetExport.outcome(ok: ok, url: SheetExport.isGoogleLink(url) ? url : "",
-                                         upload: SheetExport.Upload(rawValue: upload) == nil ? "" : upload,
-                                         owner: owner == "(admin Drive)" ? "" : owner, error: ok ? "" : extra["error"]?.string ?? ""))
+            outcome: notRun ? SheetExport.notRun(extra["error"]?.string ?? "")
+                : SheetExport.outcome(ok: ok, url: SheetExport.isGoogleLink(url) ? url : "",
+                                      upload: SheetExport.Upload(rawValue: upload) == nil ? "" : upload,
+                                      owner: owner == "(admin Drive)" ? "" : owner, error: ok ? "" : extra["error"]?.string ?? ""))
     }
 }

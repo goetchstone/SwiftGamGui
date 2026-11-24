@@ -25,13 +25,14 @@ final class ExecutorTests {
     let argvLog: URL
     let audit: AuditLog
     let vault: Vault
+    let store = MemoryStore()
     let runner: AuthenticatedRunner
     let tenantState: Shared<(domain: Domain, generation: Int)?>
     let offset = Shared(Duration.zero)
     let start = ContinuousClock.now
 
     init() throws {
-        let store = MemoryStore()
+        let store = store
         for domain in [example, other] {
             try store.write(Data(#"{"client_email": "gam@p.iam.gserviceaccount.com"}"#.utf8), as: .oauth2Service, for: domain)
             try store.write(Data(#"{"decoded_id_token": {"email": "admin@example.com"}}"#.utf8), as: .oauth2, for: domain)
@@ -471,6 +472,22 @@ final class ExecutorTests {
         #expect(wrote().isEmpty)
         // GAM was never started for it: the outcome says so (`began`), and noted nothing (plan F4's export reads both).
         #expect(outcome.began.isEmpty && outcome.noted.isEmpty)
+    }
+
+    /// The review of #199: a step whose Vault read fails never launches GAM. Its begin record stays first (a crash mid-call still
+    /// leaves "outcome unknown"), its end record says `started: false`, and the outcome doesn't count it as begun: nothing ran.
+    @Test func aStepGamNeverLaunchedIsNotBegun() async throws {
+        let executor = executor()
+        let step = WriteStep(GamCommands.addGroupMember(group: "sales@example.com", member: "carol@example.com"),
+                             target: "sales@example.com", summary: "Add carol")
+        let held = try await held(executor, [step])
+        store.failNext(.read, with: errSecAuthFailed)
+        let outcome = await executor.run(held, confirmation: confirmed)
+        guard case .failed = outcome.steps.first else { Issue.record("\(outcome.steps)"); return }
+        #expect(outcome.began.isEmpty && wrote().isEmpty)
+        let records = AuditLog.records(at: auditURL).reversed().map { $0["extra"]?.object ?? [:] }
+        #expect(records.map { $0["phase"]?.string } == ["begin", "end"])
+        #expect(records.first?["started"] == nil && records.last?["started"] == .bool(false))
     }
 
     /// Which steps GAM was started for, and what a write's own output says to keep: a write that isn't a Sheet export notes
