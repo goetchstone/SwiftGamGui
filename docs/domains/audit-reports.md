@@ -142,6 +142,66 @@ tables:)` nil). `AuditRuns.answer` is GamGUI's `audit_read` after GAM ended, hel
   users` (bob@ has a broad-access grant; unknown or `tokens_gone/<u>` 56, outside the domain 73, `denied/tokens` 12); `print
   courses … show all countsonly` (counts from course_participants.tsv; `roster_gone/<id>` the silent 0).
 - **Not run on a real domain yet**, none of them; the Classroom run can't be until an Education domain is there.
+- **No row is "no drive" only at 60** (GamGUI #176, `Step.emptyCodes`): a service-account token Google refuses silently
+  (`REFRESH_PERM_ERRORS`) makes both drive reads write the titles alone at exit 0, so `AuditRuns.answer` is `Incomplete` there
+  ("GAM wrote no row and exited 0, …") and the step says `AuditRunner.noRowUnsaid` (failure-log 2026-11-24, a refused token
+  read as no shared drive). Every drive's permissions dropped is GAM's 60, as for none: the drive list, read first, names
+  each one unread. With any drive unread, or the drive list unknown, both member tables are `partial` (their note and CSV
+  say so) and never compared by a schedule. The license tables and Classroom's class list carry `Finding.changeNote`, said
+  beside every change since a kept run: GAM's silent skips make a gone seat or a count fallen to 0 look like a change.
+  The mock: `drive_token_silent` (titles alone, 0, both reads); every `acl_dropped` drive exits 60.
+
+## Reports: audit-run schedules (plan F7a)
+GamGUI #176 (`73498c4`, its part A): a run can be given a cadence per domain, and then says when it's due, on Home and on its
+own pane. **Nothing runs on its own**: no background runner, timer or notification; the run is the operator's Run (⌘R) on its
+pane, recorded as ever (`read`, origin `audit_run`). No write, no sensitive read, no Sheet export. Part B (named reports'
+schedules, GamGUI #178) isn't here yet.
+- **Files.** `Packages/GamKit/Sources/Stores/AuditSchedules.swift` (cadence, `Clock` and its due words, `changesSince`),
+  `AuditScheduleStore.swift` (the schedules file, kept runs, `afterRun`, `setSchedule`, `deleteKept`, `forget`),
+  `Directory/RunSchedules.swift` (what the screens read: the connected domain's schedules and kept runs, save, delete, a
+  removed domain's), `AuditRunner` (`schedules`, `ended`, `keepChanged`), `App/ScheduledRunsView.swift` (Home's card, the due
+  line, the pane's schedule section), `ChangeSinceView` in `App/AuditRunsView.swift`; tests `StoresTests/AuditSchedulesTests`
+  (`schedules.json` and the store's rules), `DirectoryStoreTests/ScheduledRunTests` (end to end on the mock),
+  `WriteRouteTests.aScheduleRunsNothing`.
+- **Cadence and due.** Daily, weekly, monthly. A run *counts* when every step has an answer, `partial` included
+  (`Outcome.answered`); stopped, or a step unknown, doesn't. Due now when none has counted since the cadence was set; else
+  due from the local day (the Mac's time zone, `Clock`) 1 day, 7 days or one calendar month after the day it last counted
+  (clamped to the month's last day). Changing the cadence keeps when it last counted. Counting records this run's time,
+  never a later one kept: a time still to come (the clock was ahead) is due and says to check the Mac's clock. Words: GamGUI's
+  (`<Title> is due` + `<Cadence>; no run of it has read every step since it was scheduled.` / `…its last run that read every
+  step was on Wed 18 Nov 2026.`; not due: `<Cadence>, next due <day>`), held in two time zones by `schedules.json`.
+- **Kept runs: tenant data at rest.** Only a scheduled run that counts is kept: its findings (what the pane shows, never the
+  steps' raw reads) in `<app data>/schedules/kept/<sha256(domain)[:24]>/<run>/<seq>-<hex>.jsonl` (`AuditScheduleStore.defaultRoot`),
+  a header line then one line of rows per kept table. Named by a sequence, so the newest is the last kept whatever the clock
+  said. `keep` per run: default 5, 1 to 12; a table over 50,000 rows isn't kept (its header says so), and a run's file past
+  64 MB isn't kept at all (said; it still counts). The oldest beyond `keep` go after each kept run and when the count is
+  lowered; all go when the run is unscheduled, on Delete the Kept Runs…, or when Setup removes the domain (its confirmation
+  says so). The pane says this beside the schedule; SECURITY.md lists it.
+- **Changed since.** Each table against the newest earlier kept run that holds it whole (known, not partial, kept) with the
+  same window (`days`; 0 for every run but Inactive users). A kept run that can't be read, met before that one, stops the
+  walk and says so. A run with any step unanswered compares nothing. Rows compared whole, as a multiset; a row with any cell
+  changed is gone and new. Unknown or partial now, or nothing to compare with, says why and is never "no change". Each list
+  draws 100 rows.
+- **Store rules** (each by descriptor, `AuditScheduleStore`'s header): the store's folder is opened `O_DIRECTORY |
+  O_NOFOLLOW`, and `kept`, the domain's and the run's folders each `openat` the same way from the one above, so a link
+  anywhere is refused and said, never followed; each folder ours and `0700`. Files `openat` `O_NOFOLLOW | O_NONBLOCK`, `fstat`
+  a regular file, read from that descriptor under a cap (1 MB the schedules file, 1 MB a kept run's header, 64 MB a kept run);
+  written `0600` under a temporary name (`O_CREAT | O_EXCL | O_NOFOLLOW`), `F_FULLFSYNC`, then renamed in the held folder
+  (a kept run never over another, `RENAME_EXCL`). No file is the empty store; a read the disk failed is unknown, said (Home
+  never says "Nothing is due" then) and never saved over; a file that isn't a store is moved to
+  `schedules.json.unreadable-<time>-<hex>` before an empty one starts, said on Home. A kept run that can't be read is listed
+  as such ("It isn't whole.", "It isn't a file.", "It couldn't be read just now.", "It's larger than this app reads."), never
+  dropped. One `flock` on the store's folder spans every change and a finished run's "still scheduled? keep, prune, count":
+  a run finishing as it's unscheduled, or its domain removed, keeps nothing.
+- **Per domain.** Everything is keyed by the connected domain (`Domain.name`, already lowercased): a switch drops what
+  `RunSchedules` held, and the screens read the new domain's. A run that ends after a switch isn't kept. Nothing compares
+  across domains.
+- **The keyboard, with the Mac's default settings**, each said in visible words beside its control: on Home ⌥⌘1 to ⌥⌘5 open
+  the runs listed (due first); on a run's pane ⌃⌘1 to ⌃⌘3 pick daily, weekly or monthly and ⌃⌘0 not scheduled, Tab reaches
+  the count and Return saves, ⌘S saves, ⌘⌫ asks to delete the kept runs, ⌘R runs. "New since then" and "Gone since then" are
+  lists Tab reaches. A save's or delete's notice is announced to VoiceOver. Screens: `home-scheduled`,
+  `reports-run-scheduled` and their `narrow-` pair (`scripts/screenshots.sh`).
+- **Not run on a real domain yet**, and the screens not looked at but in CI's pictures.
 
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`, `record_domain`), `AuditEntry` (a
@@ -293,6 +353,13 @@ this app; GamGUI has no such page. Reads only.
   rows alone for a `partial` table, the same gap; the fix there is the same leading line.
 - **A warning exit that names nobody** says so in its own words ("GAM said it couldn't read an account but not which"), where
   GamGUI's panel says its "no table" sentence; the read record's error is GamGUI's.
+- **Schedules** (plan F7a): the store is held by descriptor all the way down (GamGUI checks the kept folders by path with
+  `lstat`), its lock is an `flock` any process honours (GamGUI's two are per process), and a kept run is read under a cap
+  (GamGUI reads one whole). A count is typed as ASCII digits only (GamGUI's `int()` also takes a sign, underscores and other
+  scripts' digits). Fields are typed strictly in a kept run's header (GamGUI coerces with `str()` and `int()`): only this
+  app writes them. Kept runs aren't shared with GamGUI's (each app has its own data folder). **No notification**: GamGUI, a
+  web app, says due only on Home and the run's page, and so does this app (a local notification while the app runs is a
+  follow-up, plan F7a As built).
 - **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and
   opens them; GamGUI's card has the same preview with its fixed 90 days.
 
@@ -312,6 +379,13 @@ this app; GamGUI has no such page. Reads only.
   error, and the fixture holds this app's `GamError.message` to it, over GAM's own failure lines.
 - **The mock's directory had no `creationTime`**, though the app's read names it and GAM returns it: every inactive account
   would have read as "new account". A field a flag reads must be in the mock as GAM prints it.
+
+## What F7a taught
+- **Record the scenario, not just the functions.** The generator runs GamGUI's own store over a scratch folder, a run at a
+  time (keeps, a clock set back, a lowered count, a delete, a removal), and records what each says and which kept runs stay:
+  the port is held to the order and the words, not to a reading of `prune`.
+- **A time zone is part of a day.** The due fixture runs in UTC and in New York across a change to summer time; `Day`
+  arithmetic is on day numbers, never on seconds, so a 23-hour day can't move a due date.
 
 ## Gotchas / mock-lies traps
 - **The mock's `report users`** took any words and answered every one (GamGUI's reports runbook names the
