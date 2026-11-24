@@ -215,6 +215,8 @@ struct AuditScheduleStoreTests {
         #expect(saved == .init(run: "license_usage", cadence: .weekly, keep: 3, since: Self.t0) && gone == 0)
         #expect(try store.schedules(example) == ["license_usage": saved!] && store.schedules(other).isEmpty)
         #expect(mode(root) == 0o700 && mode(root.appending(path: AuditScheduleStore.fileName)) == 0o600)
+        // Out of Time Machine: a backup would keep the domain's rows after they're deleted here.
+        #expect(try root.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
         let file = try #require(JSONValue.parse(String(contentsOf: root.appending(path: AuditScheduleStore.fileName), encoding: .utf8)))
         #expect(file["domains"]?.object?.keys == ["example.com"])
     }

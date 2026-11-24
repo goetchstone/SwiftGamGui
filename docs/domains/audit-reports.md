@@ -176,7 +176,8 @@ schedules, GamGUI #178) isn't here yet.
   said. `keep` per run: default 5, 1 to 12; a table over 50,000 rows isn't kept (its header says so), and a run's file past
   64 MB isn't kept at all (said; it still counts). The oldest beyond `keep` go after each kept run and when the count is
   lowered; all go when the run is unscheduled, on Delete the Kept Runs…, or when Setup removes the domain (its confirmation
-  says so). The pane says this beside the schedule; SECURITY.md lists it.
+  says so). The store's folder is excluded from Time Machine when it's made or written (`isExcludedFromBackup`), so a backup
+  never keeps rows deleted here (review of F7a). The pane says this beside the schedule; SECURITY.md lists it.
 - **Changed since.** Each table against the newest earlier kept run that holds it whole (known, not partial, kept) with the
   same window (`days`; 0 for every run but Inactive users). A kept run that can't be read, met before that one, stops the
   walk and says so. A run with any step unanswered compares nothing. Rows compared whole, as a multiset; a row with any cell

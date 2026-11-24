@@ -92,8 +92,9 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   without following a link, never the steps' raw reads, and deletes them when the count is lowered, the run is no longer
   scheduled, on **Delete the Kept Runs…**, or when Setup removes the domain. The run's pane says this beside the schedule,
   and Setup's Remove says it before it deletes. A schedule only says a run is due: nothing runs unattended, writes, reads
-  something sensitive or exports to a Sheet. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it at
-  rest.
+  something sensitive or exports to a Sheet. The `schedules/` folder is excluded from Time Machine (`isExcludedFromBackup`),
+  so a backup doesn't keep rows deleted here; a backup made by another tool, or one taken before this build, may still hold
+  them. Deleting a file on an SSD doesn't overwrite it; FileVault is what protects it at rest.
 - **The Classroom hand-over runs outside GAM GUI, and the screen says so before the button.** Compare with Classroom only
   reads; the change list is held in memory for that tenant and roster. Download the Hand-over saves a ZIP (README, a
   formula-safe review sheet, and a numbered CSV per kind with the `gam csv` line that runs it) as a `0600` file, never

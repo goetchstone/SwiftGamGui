@@ -110,7 +110,19 @@ public final class AuditScheduleStore: Sendable {
             close(fd)
             throw error
         }
+        if make { excludeFromBackup() }
         return fd
+    }
+
+    /// The store's folder kept out of Time Machine (`isExcludedFromBackup`): the kept tables are the domain's data, and a backup
+    /// would keep rows the operator deleted here. Only once the folder was opened as ours, never through a link; best effort (a
+    /// volume that can't hold the flag still keeps the store).
+    private func excludeFromBackup() {
+        var url = root
+        guard (try? url.resourceValues(forKeys: [.isExcludedFromBackupKey]))?.isExcludedFromBackup != true else { return }
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? url.setResourceValues(values)
     }
 
     /// The folder `name` in the open folder `dir`, as a descriptor: made `0700` with `make`, never through a link. Nil when it
