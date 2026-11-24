@@ -331,14 +331,16 @@ public enum AuditSchedules {
         + "it had a value."
     public static let keptUnread = "The runs kept before couldn't be read just now, so this table isn't compared."
 
-    /// `rows` not in `minus`, as a multiset, in `rows`' order.
+    /// `rows` not in `minus`, as a multiset, in `rows`' order. Cells compare as their bytes, as Python's `Counter` compares code
+    /// points: a Swift `String` would take a name's composed and decomposed forms (NFC, NFD) as the same.
     static func difference(_ rows: [[String]], _ minus: [[String]]) -> [[String]] {
-        var left: [[String]: Int] = [:]
-        for row in minus { left[row, default: 0] += 1 }
+        func key(_ row: [String]) -> [[UInt8]] { row.map { Array($0.utf8) } }
+        var left: [[[UInt8]]: Int] = [:]
+        for row in minus { left[key(row), default: 0] += 1 }
         var out: [[String]] = []
         for row in rows {
-            if let count = left[row], count > 0 {
-                left[row] = count - 1
+            if let count = left[key(row)], count > 0 {
+                left[key(row)] = count - 1
             } else {
                 out.append(row)
             }

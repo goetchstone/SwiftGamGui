@@ -434,6 +434,14 @@ struct AuditScheduleStoreTests {
         #expect(FileManager.default.fileExists(atPath: first.path))
     }
 
+    /// Cells compare as their bytes, as GamGUI's `Counter` does: a name in its composed and decomposed forms is a change.
+    @Test func cellsCompareAsTheirBytes() {
+        let composed = "Zo\u{EB}", decomposed = "Zoe\u{308}"
+        #expect(composed == decomposed, "Swift's String calls them equal")
+        #expect(AuditSchedules.difference([[composed]], [[decomposed]]) == [[composed]])
+        #expect(AuditSchedules.difference([[composed], [composed]], [[composed]]).count == 1)
+    }
+
     /// A table over the row cap isn't kept, says so, and is never compared with later.
     @Test func aTableOverTheRowCapIsntKeptAndSaysSo() throws {
         let store = AuditScheduleStore(root: root, rowsCap: 2)
