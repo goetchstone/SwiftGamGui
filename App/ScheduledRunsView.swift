@@ -10,8 +10,9 @@ import SwiftUI
 /// said in visible words beside its control: on Home ⌥⌘1 to ⌥⌘5 open the runs listed; on a run's pane ⌃⌘1 to ⌃⌘3 pick daily,
 /// weekly or monthly and ⌃⌘0 not scheduled, Tab reaches the count (Return saves), ⌘S saves, and ⌘⌫ asks to delete the kept runs.
 
-/// Home's card: the scheduled runs on the connected domain, due ones first, each opening its pane. Unreadable schedules are
-/// said, never "Nothing is due".
+/// Home's card: the scheduled runs on the connected domain (the audit runs, then the named reports run on Reports), due ones
+/// first, each opening its pane. Unreadable schedules are said, never "Nothing is due"; so is a schedule for a report this GAM
+/// version can't run any more (GamGUI #178), which is never due and opens where it can be stopped.
 struct HomeScheduledRuns: View {
     let schedules: RunSchedules
     let openRun: (String) -> Void
@@ -21,6 +22,9 @@ struct HomeScheduledRuns: View {
         let all = schedules.scheduled()
         return all.filter(\.due.due) + all.filter { !$0.due.due }
     }
+
+    /// A schedule for a key nothing here runs any more (kept runs alone are said on Reports).
+    private var stranded: [RunSchedules.Stranded] { schedules.stranded.filter { $0.schedule != nil } }
 
     /// Shown once there is something to say: a schedule, or why they can't be told.
     static func shows(_ schedules: RunSchedules) -> Bool {
@@ -36,7 +40,10 @@ struct HomeScheduledRuns: View {
                   systemImage: "exclamationmark.triangle.fill")
                 .symbolRenderingMode(.multicolor).textSelection(.enabled)
         }
-        if !listed.contains(where: \.due.due), schedules.problem == nil {
+        if let unknown = schedules.namedUnknown {
+            Label(unknown, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor).textSelection(.enabled)
+        }
+        if !listed.contains(where: \.due.due), schedules.problem == nil, schedules.namedUnknown == nil {
             Text("Nothing is due.").foregroundStyle(.secondary)
         }
         ForEach(Array(listed.enumerated()), id: \.element.run.key) { index, item in
@@ -57,6 +64,20 @@ struct HomeScheduledRuns: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(item.due.due ? item.due.line : "\(item.run.title): not due. \(item.due.headline).")
             .accessibilityHint("Opens the run on Reports, where Command R runs it.\(index < 5 ? " Option Command \(index + 1) opens it too." : "")")
+        }
+        ForEach(stranded) { item in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Button("\(item.title) can't run here any more") { openRun(item.key) }
+                        .buttonStyle(.link)
+                    Text("This GAM version has no plain read for it, so it isn't due. Stop scheduling it on Reports.")
+                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(item.title) can't run here any more: this GAM version has no plain read for it, so it isn't due.")
+            .accessibilityHint("Opens it on Reports, where its schedule can be stopped.")
         }
         Text(listed.isEmpty ? "Nothing runs on its own."
              : "Nothing runs on its own: open one (\(listed.count == 1 ? "⌥⌘1" : "⌥⌘1 to ⌥⌘\(min(listed.count, 5))")) and press Run (⌘R).")

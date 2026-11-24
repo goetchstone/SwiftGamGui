@@ -19,7 +19,9 @@ import GamEngine
 /// - **Changed since.** Each table of a finished scheduled run is compared with the same table in the newest earlier kept run
 ///   that read it whole, with the same window (Inactive users). A row is its cells: one with any cell changed is gone and new.
 ///   A table unknown or partly unknown, now or then, is never compared (invariant 10): no change is said only of two whole
-///   tables. A kept run that can't be read, met first, stops the walk: it may be the run to compare with.
+///   tables. A kept run that can't be read, met first, stops the walk: it may be the run to compare with. Both tables are
+///   compared on the union of their columns, a cell one lacks being "" (a flattened read grows or sheds columns between runs),
+///   and a column that moves on its own (`Table.compareWithout`, a device's last sync) is left out of both (GamGUI #178).
 public enum AuditSchedules {
     public enum Cadence: String, CaseIterable, Sendable, Identifiable {
         case daily, weekly, monthly
@@ -40,7 +42,11 @@ public enum AuditSchedules {
     public static let keepCap = 12
     /// Rows a kept table may hold; a larger one isn't kept, and can't be compared with later (`KEEP_ROWS_CAP`).
     public static let keepRowsCap = 50_000
+    /// The schedules file's version (`FILE_VERSION`).
     public static let fileVersion = 1
+    /// A kept run's (GamGUI #178's `KEPT_VERSION`): 2 holds each table's columns with its rows, never in its first line, which a
+    /// flattened read's columns could push past `AuditScheduleStore.headerCap`; 1 did, and is still read.
+    public static let keptVersion = 2
     /// Seconds since 1970 a stored time may be (the year 5138): past it, the file isn't a store (`_MAX_TIME`).
     static let maxTime = 1e11
     /// A kept run's window, in days (`_MAX_DAYS`).
@@ -241,22 +247,27 @@ public enum AuditSchedules {
         public let rows: [[String]]
         public let known: Bool
         public let partial: Bool
+        /// Columns that move on their own (a device's last sync), left out of a comparison (GamGUI #178's `compare_without`).
+        public let compareWithout: [String]
 
-        public init(key: String, title: String, columns: [String], rows: [[String]], known: Bool, partial: Bool) {
+        public init(key: String, title: String, columns: [String], rows: [[String]], known: Bool, partial: Bool,
+                    compareWithout: [String] = []) {
             self.key = key
             self.title = title
             self.columns = columns
             self.rows = rows
             self.known = known
             self.partial = partial
+            self.compareWithout = compareWithout
         }
     }
 
-    /// One table of a kept run: its header, and (loaded whole) its rows.
+    /// One table of a kept run: its header, and (loaded whole) its columns and rows. A version 1 file kept the columns in its
+    /// header; version 2 keeps them with the rows, so a listing (the header alone) has none.
     public struct KeptTable: Sendable, Equatable {
         public let key: String
         public let title: String
-        public let columns: [String]
+        public var columns: [String]
         public let known: Bool
         public let partial: Bool
         /// Rows it had.
@@ -310,13 +321,20 @@ public enum AuditSchedules {
         public let new: [[String]]
         public let gone: [[String]]
         public let why: String
+        /// The columns `new` and `gone` are in, when not the table's own (GamGUI #178's `_aligned`): the union of both runs' columns.
+        public let columns: [String]
+        /// Columns that move on their own, left out of the comparison (`Finding.compareWithout`).
+        public let leftOut: [String]
 
-        public init(key: String, since: Double = 0, new: [[String]] = [], gone: [[String]] = [], why: String = "") {
+        public init(key: String, since: Double = 0, new: [[String]] = [], gone: [[String]] = [], why: String = "",
+                    columns: [String] = [], leftOut: [String] = []) {
             self.key = key
             self.since = since
             self.new = new
             self.gone = gone
             self.why = why
+            self.columns = columns
+            self.leftOut = leftOut
         }
 
         public var compared: Bool { why.isEmpty }
@@ -330,13 +348,29 @@ public enum AuditSchedules {
     public static let notAnswered = "A step of this run has no answer, so its tables aren't compared: one may hold \"unknown\" where "
         + "it had a value."
     public static let keptUnread = "The runs kept before couldn't be read just now, so this table isn't compared."
-    /// Not GamGUI's (a listed deviation): a table whose columns aren't the ones kept, after an update added, moved or reworded
-    /// one, would read every row as gone and new.
-    public static let columnsChanged = "Its columns changed since the runs kept before, so it isn't compared."
 
     /// The same columns, in the same order, compared as bytes.
     static func sameColumns(_ a: [String], _ b: [String]) -> Bool {
         a.count == b.count && zip(a, b).allSatisfy { $0.utf8.elementsEqual($1.utf8) }
+    }
+
+    /// Both tables in one set of columns: now's, then any only the earlier one had, a cell a table lacks being "" (GamGUI #178's
+    /// `_aligned`). A read whose JSON GAM flattens gets as many columns as its widest record needs (`permissions.5.role` once a
+    /// drive has a sixth member), so its columns can differ from run to run while the rows they share don't. Columns compared as
+    /// bytes, as Python compares them; a column named twice takes its last cell, as Python's `dict(zip(...))`.
+    static func aligned(_ nowColumns: [String], _ nowRows: [[String]], _ thenColumns: [String],
+                        _ thenRows: [[String]]) -> (columns: [String], now: [[String]], then: [[String]]) {
+        guard !sameColumns(nowColumns, thenColumns) else { return (nowColumns, nowRows, thenRows) }
+        let nowKeys = Set(nowColumns.map { Array($0.utf8) })
+        let union = nowColumns + thenColumns.filter { !nowKeys.contains(Array($0.utf8)) }
+        func project(_ columns: [String], _ rows: [[String]]) -> [[String]] {
+            rows.map { row in
+                var cells: [[UInt8]: String] = [:]
+                for (column, cell) in zip(columns, row) { cells[Array(column.utf8)] = cell }
+                return union.map { cells[Array($0.utf8)] ?? "" }
+            }
+        }
+        return (union, project(nowColumns, nowRows), project(thenColumns, thenRows))
     }
 
     /// `rows` not in `minus`, as a multiset, in `rows`' order. Cells compare as their bytes, as Python's `Counter` compares code
@@ -373,29 +407,35 @@ public enum AuditSchedules {
                 continue
             }
             var change = Change(key: table.key, why: nothingBefore)
-            var otherColumns = false
             for head in earlier {
                 if !head.problem.isEmpty {   // what it held can't be told: it may be the run to compare with
                     change = Change(key: table.key, why: keptRunUnread)
                     break
                 }
                 guard head.days == days, let then = head.table(table.key), then.known, !then.partial, then.kept else { continue }
-                // Kept with other columns (an update added, moved or reworded one): passed over, and said if nothing else is found.
-                guard sameColumns(then.columns, table.columns) else {
-                    otherColumns = true
-                    continue
-                }
                 if loaded[head.id] == nil { loaded[head.id] = load(head.id) }
                 let whole = loaded[head.id]!
-                guard whole.problem.isEmpty, let rows = whole.table(table.key)?.rows else {
+                guard whole.problem.isEmpty, let kept = whole.table(table.key), let rows = kept.rows else {
                     change = Change(key: table.key, why: "The run kept on \(clock.words(at: head.when)) couldn't be read whole, so "
                                     + "this table isn't compared.")
                     break
                 }
-                change = Change(key: table.key, since: head.when, new: difference(table.rows, rows), gone: difference(rows, table.rows))
+                // On the union of both runs' columns: a flattened read grows or sheds columns between runs (GamGUI #178).
+                var (columns, nowRows, thenRows) = aligned(table.columns, table.rows, kept.columns, rows)
+                // A column that moves on its own (a device's last sync) would make every row look changed: left out of both.
+                let skip = Set(table.compareWithout.map { Array($0.utf8) })
+                let leftOut = columns.filter { skip.contains(Array($0.utf8)) }
+                if !leftOut.isEmpty {
+                    let keep = columns.indices.filter { !skip.contains(Array(columns[$0].utf8)) }
+                    columns = keep.map { columns[$0] }
+                    // A kept row is as long as its columns (`AuditScheduleStore.parseKept`); never read past one that isn't.
+                    nowRows = nowRows.map { row in keep.map { $0 < row.count ? row[$0] : "" } }
+                    thenRows = thenRows.map { row in keep.map { $0 < row.count ? row[$0] : "" } }
+                }
+                change = Change(key: table.key, since: head.when, new: difference(nowRows, thenRows), gone: difference(thenRows, nowRows),
+                                columns: sameColumns(columns, table.columns) ? [] : columns, leftOut: leftOut)
                 break
             }
-            if otherColumns, change.why == nothingBefore { change = Change(key: table.key, why: columnsChanged) }
             out[table.key] = change
         }
         return out

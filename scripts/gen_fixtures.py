@@ -245,6 +245,17 @@ def strategy_values(strategy) -> list:
         if inner.start is None or inner.end is None:
             raise SystemExit("unbounded st.integers in a Spec: give it bounds, or name the values here")
         return sorted({inner.start, inner.end})
+    if kind == "FlatMapStrategy":
+        # Each value the base gives, expanded (GamGUI #182's group settings: a list of settings, then a value for each).
+        out = []
+        for base in strategy_values(inner.base):
+            out += [v for v in strategy_values(inner.expand(base)) if v not in out]
+        return out
+    if kind in ("UniqueSampledListStrategy", "ListStrategy"):
+        # The shortest list it allows (one at least), of the elements' first values in order.
+        return [strategy_values(inner.element_strategy)[:max(1, inner.min_size)]]
+    if kind == "FixedDictStrategy":
+        return [{k: strategy_values(v)[0] for k, v in inner.mapping.items()}]
     if hasattr(inner, "value"):
         return [inner.value]
     if hasattr(inner, "elements"):
@@ -673,7 +684,7 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
 # GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
 # the org-unit tree, GamGUI #169, is a feature not built here yet): the mock refuses them, and they have no case here.
 # No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units"}
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "info_group_settings"}
 
 
 def _keyed(key: str, name: str):
@@ -1565,16 +1576,48 @@ def audit_runs_fixture() -> dict:
          (0, 60), (), (60,)),
         ("members' titles alone at 0", RunResult("User,id,name,createdTime,JSON\n", "", 0), acls_argv, "id", (0, 60), (), (60,)),
     ]
+    read_cases = [(*case, "license_usage/licenses", gam_connector.READ_ORIGIN_AUDIT_RUN) for case in read_cases]
+
+    # GamGUI #178 (plan F7a): each named report run here as a one-step run of its catalog read built bare (`named_run`), from
+    # GamGUI's own catalog at the pin; what each read's exits say (`NAMED_READS`); its one table over rows whose columns differ
+    # (`named_finding`); and its read record, origin `named_report`, the report's key as `command`. A group whose members Google
+    # refused is named like an account ("Group: <g>, Does not exist", 56).
+    from gamgui.core.catalog.catalog import load_catalog
+    catalog = load_catalog()
+    named_runs = runs.named_runs(catalog)
+    named = {r.key: r for r in named_runs}
+    members_argv, orgs_argv = list(named["group_members"].steps[0].argv), list(named["org_units"].steps[0].argv)
+    alerts_argv = list(named["alerts"].steps[0].argv)
+    member_titles = "group,type,role,id,status,email\n"
+    member_row = "sales@example.com,USER,MEMBER,1,ACTIVE,alice@example.com\n"
+    read_cases += [
+        ("a group's members refused", RunResult(member_titles + member_row,
+                                                "Group: it@example.com, Does not exist (2/5)\n"
+                                                "Group: Partner@Partner.org, Service not applicable (4/5)\n", 56),
+         members_argv, "group", (0,), (56, 73), None, "group_members", gam_connector.READ_ORIGIN_NAMED_REPORT),
+        ("a user and a group", RunResult(member_titles + member_row,
+                                         "User: bob@example.com, Does not exist (1/2)\nGroup: it@example.com, Does not exist (2/2)\n"
+                                         "Groups: x@example.com, Does not exist\n", 56),
+         members_argv, "group", (0,), (56, 73), None, "group_members", gam_connector.READ_ORIGIN_NAMED_REPORT),
+        ("no unit below the root", RunResult("orgUnitPath,orgUnitId,name,parentOrgUnitId\n", "", 0), orgs_argv, "orgUnitPath",
+         (0,), (), None, "org_units", gam_connector.READ_ORIGIN_NAMED_REPORT),
+        ("org units failed", RunResult("", "Organizational Unit: /, Failed: Does not exist\n", 50), orgs_argv, "orgUnitPath",
+         (0,), (), None, "org_units", gam_connector.READ_ORIGIN_NAMED_REPORT),
+        ("alerts' token refused silently", RunResult("", "", 0), alerts_argv, "alertId", (0,), (), None, "alerts",
+         gam_connector.READ_ORIGIN_NAMED_REPORT),
+        ("another origin", RunResult("orgUnitPath\n/A\n", "", 0), orgs_argv, "orgUnitPath", (0,), (), None, "org_units",
+         "elsewhere"),
+    ]
     reads_found = []
     scratch = tempfile.TemporaryDirectory()
     folder = Path(scratch.name)
-    for n, (name, answer, argv, key, ok_rcs, partial_rcs, empty_rcs) in enumerate(read_cases):
+    for n, (name, answer, argv, key, ok_rcs, partial_rcs, empty_rcs, command, origin) in enumerate(read_cases):
         connector = object.__new__(gam_connector.GAMConnector)
         connector.runner, connector.domain = Runner(answer), " Example.COM "
         connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
         try:
-            got, unread = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key, ok_rcs=ok_rcs,
-                                                           partial_rcs=partial_rcs, empty_rcs=empty_rcs))
+            got, unread = asyncio.run(connector.audit_read(command, list(argv), key, ok_rcs=ok_rcs,
+                                                           partial_rcs=partial_rcs, empty_rcs=empty_rcs, origin=origin))
             raised, rows, unread = None, len(got), list(unread)
         except BaseException as exc:    # noqa: BLE001: the refusals, the failure and the cancel are the cases
             raised, rows, unread = type(exc).__name__, None, None
@@ -1584,10 +1627,36 @@ def audit_runs_fixture() -> dict:
                             "stderr": answer.stderr if ran else "", "exit": answer.returncode if ran else (0 if isinstance(answer, str) else None),
                             "error": str(answer) if isinstance(answer, Exception) else None, "argv": argv,
                             "key_column": key, "ok_rcs": list(ok_rcs), "partial_rcs": list(partial_rcs),
-                            "empty_rcs": None if empty_rcs is None else list(empty_rcs),
+                            "empty_rcs": None if empty_rcs is None else list(empty_rcs), "command": command, "origin": origin,
                             "raised": raised, "rows": rows, "unread": unread, "ran": connector.runner.calls,
                             "records": records})
     scratch.cleanup()
+
+    def named_json(r) -> dict:
+        return {"key": r.key, "title": r.title, "what": r.what, "named": r.named, "cid": r.cid, "change_note": r.change_note,
+                "note": r.note, "compare_without": list(r.compare_without), "compare_note": r.compare_note,
+                "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "ok_rcs": list(s.ok_rcs),
+                           "partial_rcs": list(s.partial_rcs), "empty_rcs": None if s.empty_rcs is None else list(s.empty_rcs),
+                           "empty_why": s.empty_why, "argv": list(s.argv), "step_argv": runs.step_argv(s),
+                           "command": runs.step_command(r, s)} for s in r.steps]}
+
+    # Rows as GAM's CSV gives them, a record each, with columns the first lacks, a cell None and a number (str() of each).
+    named_rows = [{"group": "sales@example.com", "type": "USER", "role": "MEMBER", "email": "alice@example.com"},
+                  {"group": "it@example.com", "type": "GROUP", "role": "OWNER", "email": None, "status": "ACTIVE"},
+                  {"status": "SUSPENDED", "group": "zë@example.com", "id": 7, "extra": True}]
+    named_findings = []
+    for key in ("group_members", "mobile_devices", "licenses", "shared_drive_organizers"):
+        run = named[key]
+        [step] = run.steps
+        for state, unread, rows in ((runs.READ, (), named_rows), (runs.PARTIAL, ("it@example.com", "x@example.com"), named_rows),
+                                    (runs.READ, (), []), (runs.UNKNOWN, (), None), (runs.NOT_RUN, (), None)):
+            reads = [runs.StepRead(step, state, "Refused." if state == runs.UNKNOWN else
+                                   "The run was stopped before this step." if state == runs.NOT_RUN else "", unread=unread)]
+            tables = {step.key: rows} if rows is not None else {}
+            named_findings.append({"run": key, "reads": [read_json(r) for r in reads], "rows": rows,
+                                   "findings": [finding(f) | {"compare_without": list(f.compare_without),
+                                                              "compare_note": f.compare_note}
+                                                for f in runs.findings_for(run, reads, tables, now=now)]})
 
     return {
         "now": now.isoformat(),
@@ -1635,6 +1704,13 @@ def audit_runs_fixture() -> dict:
         "holders": holders,
         "complete": complete,
         "reads": reads_found,
+        "named": {"origin": gam_connector.READ_ORIGIN_NAMED_REPORT, "table": runs.NAMED_TABLE,
+                  "studied": sorted(runs.NAMED_READS),
+                  "titles": [{"key": r.key, "title": r.title} for r in reports_mod.NAMED_REPORTS],
+                  "runs": [named_json(r) for r in named_runs],
+                  "implausibly_empty": [{"run": r.key, "rows": n, "why": runs.implausibly_empty(r.steps[0], n)}
+                                        for r in named_runs for n in (0, 1)],
+                  "findings": named_findings},
     }
 
 
@@ -1692,8 +1768,9 @@ def schedules_fixture() -> dict:
         sched.TZ = timezone.utc
 
         # Changed since: each table against the newest earlier kept run that read it whole, with the same window.
-        def finding(key, rows, known=True, partial=False, columns=("Email", "Name")):
-            return runs.Finding(key, key.title(), "", columns, [tuple(r) for r in rows], known=known, partial=partial)
+        def finding(key, rows, known=True, partial=False, columns=("Email", "Name"), without=()):
+            return runs.Finding(key, key.title(), "", columns, [tuple(r) for r in rows], known=known, partial=partial,
+                                compare_without=tuple(without))
 
         def table(key, count, known=True, partial=False, kept=True):
             return sched.KeptTable(key, key.title(), ("Email", "Name"), known, partial, count, kept)
@@ -1729,6 +1806,27 @@ def schedules_fixture() -> dict:
             ("cells in order", [finding("t", [("x", "1", ""), ("x", "", "1")], columns=("A", "B", "C"))], 0,
              [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("A", "B", "C"), True, False, 1, True)]),
                {"t": [("x", "1", "")]})]),
+            # GamGUI #178: a flattened read grows or sheds columns between runs, so both are compared on their union, a cell a
+            # table lacks being ""; a column that moves on its own (`compare_without`) is left out of both.
+            ("a column more now, on the union", [finding("t", [("a", "A", "r1"), ("b", "B", "")], columns=("Email", "Name", "Role"))],
+             0, [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("Email", "Name"), True, False, 2, True)]),
+                  {"t": [a, b]})]),
+            ("columns moved", [finding("t", [("A", "a"), ("B", "b")], columns=("Name", "Email"))], 0,
+             [(sched.KeptRun("1", t0, 0, [table("t", 2)]), {"t": [a, b]})]),
+            ("a column only then", [finding("t", [("a",), ("c",)], columns=("Email",))], 0,
+             [(sched.KeptRun("1", t0, 0, [table("t", 2)]), {"t": [a, ("c", "")]})]),
+            ("a column named twice then", [finding("t", [("a", "2")], columns=("Email", "N"))], 0,
+             [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("Email", "N", "N"), True, False, 1, True)]),
+               {"t": [("a", "1", "2")]})]),
+            ("compared without a column that moves", [finding("t", [("d1", "t2", "x"), ("d2", "t2", "y")],
+                                                                columns=("id", "lastSync", "os"), without=("lastSync",))], 0,
+             [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("id", "lastSync", "os"), True, False, 2, True)]),
+               {"t": [("d1", "t1", "x"), ("d2", "t1", "z")]})]),
+            ("without a column only then had", [finding("t", [("d1", "x")], columns=("id", "os"), without=("updateTime", "os2"))],
+             0, [(sched.KeptRun("1", t0, 0, [sched.KeptTable("t", "T", ("id", "updateTime", "os"), True, False, 1, True)]),
+                  {"t": [("d1", "t1", "x")]})]),
+            ("without a column neither has", [finding("t", [a], without=("lastSync",))], 0,
+             [(sched.KeptRun("1", t0, 0, [table("t", 1)]), {"t": [b]})]),
         ]
         changes = []
         for name, now_findings, days, earlier in change_cases:
@@ -1749,7 +1847,8 @@ def schedules_fixture() -> dict:
             changes.append({
                 "name": name, "days": days,
                 "findings": [{"key": f.key, "title": f.title, "columns": list(f.columns), "rows": [list(r) for r in f.rows],
-                              "known": f.known, "partial": f.partial} for f in now_findings],
+                              "known": f.known, "partial": f.partial, "compare_without": list(f.compare_without)}
+                             for f in now_findings],
                 "earlier": [{"id": h.id, "when": h.when, "days": h.days, "problem": h.problem,
                              "tables": [{"key": t.key, "title": t.title, "columns": list(t.columns), "known": t.known,
                                          "partial": t.partial, "count": t.count, "kept": t.kept} for t in h.tables],
@@ -1757,7 +1856,8 @@ def schedules_fixture() -> dict:
                              else {k: [list(r) for r in v] for k, v in rows.items()}} for h, rows in earlier],
                 "loads": loads,
                 "changes": {k: {"since": ch.since, "new": [list(r) for r in ch.new], "gone": [list(r) for r in ch.gone],
-                                "why": ch.why, "compared": ch.compared} for k, ch in found.items()},
+                                "why": ch.why, "compared": ch.compared, "columns": list(ch.columns),
+                                "left_out": list(ch.left_out)} for k, ch in found.items()},
             })
 
         # The keep, a run at a time, on a store in a scratch folder: what each says, and which kept runs stay.
@@ -1780,10 +1880,12 @@ def schedules_fixture() -> dict:
             got = sched.after_run(store, kept, domain, run, findings, days, answered, when)
             look(op, when=when, answered=answered, days=days,
                  findings=[{"key": f.key, "title": f.title, "columns": list(f.columns), "rows": [list(r) for r in f.rows],
-                            "known": f.known, "partial": f.partial} for f in findings],
+                            "known": f.known, "partial": f.partial, "compare_without": list(f.compare_without)}
+                           for f in findings],
                  note=got.note, problem=got.problem,
                  changes={k: {"since": ch.since, "new": [list(r) for r in ch.new], "gone": [list(r) for r in ch.gone],
-                              "why": ch.why} for k, ch in got.changes.items()})
+                              "why": ch.why, "columns": list(ch.columns), "left_out": list(ch.left_out)}
+                          for k, ch in got.changes.items()})
 
         def setting(op, cadence, keep, when):
             saved, gone = sched.set_schedule(store, kept, domain, run, cadence, keep, when)
@@ -1806,6 +1908,9 @@ def schedules_fixture() -> dict:
         setting("not scheduled", "", 5, t0 + 101 * day)
         setting("daily, keeping 12", "daily", 12, t0 + 102 * day)
         after("daily", seat(("Workspace", "6")), True, t0 + 103 * day)
+        # GamGUI #178: a column more since (a flattened read grew one), compared on the union through kept files of version 2.
+        after("a column more", [finding("per_sku", [("Workspace", "6", "x")], columns=("Product", "Seats", "Note"))], True,
+              t0 + 104 * day)
         forgot = sched.forget_domain(store, kept, domain)
         look("Setup removes the domain", forgot=list(forgot))
         scratch.cleanup()
@@ -1817,7 +1922,8 @@ def schedules_fixture() -> dict:
                       "KEEP_CAP": sched.KEEP_CAP, "KEEP_ROWS_CAP": sched.KEEP_ROWS_CAP, "FILE_VERSION": sched.FILE_VERSION,
                       "NOT_KNOWN_NOW": sched.NOT_KNOWN_NOW, "PART_UNKNOWN_NOW": sched.PART_UNKNOWN_NOW,
                       "NOTHING_BEFORE": sched.NOTHING_BEFORE, "KEPT_RUN_UNREAD": sched.KEPT_RUN_UNREAD,
-                      "NOT_ANSWERED": sched.NOT_ANSWERED, "KEPT_UNREAD": sched.KEPT_UNREAD},
+                      "NOT_ANSWERED": sched.NOT_ANSWERED, "KEPT_UNREAD": sched.KEPT_UNREAD,
+                      "KEPT_VERSION": sched.KEPT_VERSION},
         "next_day": next_days,
         "due": due,
         "when_words": when_words,

@@ -54,8 +54,15 @@ enum Spikes {
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "apps" { await services.connectedApps.read() }
                     // …and an audit run (`run.<key>`): run against the mock before the picture; `suspend` holds Suspend these…'s
                     // preview over it (the directory read again, nothing run).
+                    // A named report's run (`run.<report key>`, plan F7a) too, once the catalog is read; `stranded` is a
+                    // schedule for a key nothing here runs any more (`run.old_report`), saved before the picture.
+                    if Screen.initial == .reports, environment["SWIFTGAMGUI_TAB"] == "stranded", let store = services.runSchedules.store,
+                       let domain = setup.active {
+                        _ = try? store.setSchedule(domain, run: "old_report", cadence: .weekly, keep: 5, now: Date().timeIntervalSince1970)
+                    }
+                    if Screen.initial == .reports { await services.runSchedules.refresh() }
                     if Screen.initial == .reports, let key = environment["SWIFTGAMGUI_SELECT"], key.hasPrefix("run."),
-                       let run = AuditRuns.all.first(where: { $0.key == key.dropFirst(4) }) {
+                       let run = services.runSchedules.run(String(key.dropFirst(4))) {
                         // `scheduled` (plan F7a): scheduled weekly first, then run twice, so it's kept, counted and compared.
                         let scheduled = environment["SWIFTGAMGUI_TAB"] == "scheduled"
                         if scheduled { await services.runSchedules.save(run, cadence: .weekly, keep: "") }

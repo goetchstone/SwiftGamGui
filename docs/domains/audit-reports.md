@@ -21,7 +21,8 @@ record's domain, and `reads`, the read record), `BuilderReadTests` (a read recor
 and `CompromisedChangesTests.everyAccountsConnectedAppsAreRead` (the apps' summary, from the mock's `tokens.csv`),
 `WriteRouteTests.theConnectedAppsPanelTalksToNoModel`; for the audit runs `Tests/DirectoryStoreTests/AuditRunsTests.swift`
 (`audit_runs.json`), `AuditRunnerTests`, `InactiveSuspendTests`, `Tests/GamEngineTests/MockAuditRunTests.swift` and
-`WriteRouteTests.anAuditRunIsNoWritePath`.
+`WriteRouteTests.anAuditRunIsNoWritePath`; for the named reports run on Reports `AuditRunsTests` (`audit_runs.json`'s `named`),
+`Tests/DirectoryStoreTests/NamedReportRunTests.swift` (end to end on the mock) and the bare reads in `MockAuditRunTests`.
 
 ## Reports: domain-wide reads (named reports)
 GamGUI #151 (roadmap 3.1, merged as `2286631`), ported in F2 (plan 2026-11-19). Nine reads the Builder already runs, named on
@@ -43,9 +44,11 @@ group memberships, data transfers and Google's alerts (`NamedReport.all`, GamGUI
   only that read is refused. A failed Check Access shows Setup's own link, never GAM's: GAM's names only the checked scopes
   with `overwriteClientId=true` and would drop the offered ones (`AccessCheck.linkingEveryOfferedScope`, GamGUI's
   `_with_every_scope`).
-- **Not run on a real domain yet.** The mock answers only a bare `print datatransfers` (the form the Builder emits: an empty
-  table, or a person's transfers from its state); the other eight it refuses as not modelled. A green run of those proves
-  nothing about Google.
+- **Run on Reports too, so it can be scheduled** (plan F7a, GamGUI #178): see "Named reports run on Reports" below. The pane's
+  Run or Schedule It Here (⌘⇧R) opens that run. The named `shared_drive_acls` is "Shared drive members", never the audit run's
+  "Shared drive permissions": the notes that point to that run name it.
+- **Not run on a real domain yet.** The mock models each bare read as GAM 7.52.04 prints it (below); check each by eye on its
+  first live run. A green run proves nothing about Google.
 
 ## Reports: audit runs (plan F3)
 GamGUI #171 (`086d2f8`) and #172 (`db579c7`): ready-made lists of reads, each run when the operator asks, listed under
@@ -152,10 +155,10 @@ tables:)` nil). `AuditRuns.answer` is GamGUI's `audit_read` after GAM ended, hel
   The mock: `drive_token_silent` (titles alone, 0, both reads); every `acl_dropped` drive exits 60.
 
 ## Reports: audit-run schedules (plan F7a)
-GamGUI #176 (`73498c4`, its part A): a run can be given a cadence per domain, and then says when it's due, on Home and on its
-own pane. **Nothing runs on its own**: no background runner, timer or notification; the run is the operator's Run (⌘R) on its
-pane, recorded as ever (`read`, origin `audit_run`). No write, no sensitive read, no Sheet export. Part B (named reports'
-schedules, GamGUI #178) isn't here yet.
+GamGUI #176 (`73498c4`, its part A) and #178 (`82290f0`, part B: the named reports): a run, or a named report run on
+Reports, can be given a cadence per domain, and then says when it's due, on Home and on its own pane. **Nothing runs on its
+own**: no background runner, timer or notification; the run is the operator's Run (⌘R) on its pane, recorded as ever (`read`,
+origin `audit_run`, or `named_report` for a named report). No write, no sensitive read, no Sheet export.
 - **Files.** `Packages/GamKit/Sources/Stores/AuditSchedules.swift` (cadence, `Clock` and its due words, `changesSince`),
   `AuditScheduleStore.swift` (the schedules file, kept runs, `afterRun`, `setSchedule`, `deleteKept`, `forget`),
   `Directory/RunSchedules.swift` (what the screens read: the connected domain's schedules and kept runs, save, delete, a
@@ -172,8 +175,10 @@ schedules, GamGUI #178) isn't here yet.
   step was on Wed 18 Nov 2026.`; not due: `<Cadence>, next due <day>`), held in two time zones by `schedules.json`.
 - **Kept runs: tenant data at rest.** Only a scheduled run that counts is kept: its findings (what the pane shows, never the
   steps' raw reads) in `<app data>/schedules/kept/<sha256(domain)[:24]>/<run>/<seq>-<hex>.jsonl` (`AuditScheduleStore.defaultRoot`),
-  a header line then one line of rows per kept table. Named by a sequence, so the newest is the last kept whatever the clock
-  said. `keep` per run: default 5, 1 to 12; a table over 50,000 rows isn't kept (its header says so), and a run's file past
+  a header line (each table's key, title, known, partial, count, kept: never its columns) then one line per kept table of its
+  columns and rows. Version 2 (GamGUI #178): version 1 kept the columns in the header, which a flattened read (13 columns a
+  member of the largest shared drive) could push past the 1 MB a header may take; a version 1 run is still read. A build from before this one reads a version 2 run as "It isn't whole.", which stops its comparisons until the kept runs are deleted (as in GamGUI): only a downgrade meets it. Named by a
+  sequence, so the newest is the last kept whatever the clock said. `keep` per run: default 5, 1 to 12; a table over 50,000 rows isn't kept (its header says so), and a run's file past
   64 MB isn't kept at all (said; it still counts). The oldest beyond `keep` go after each kept run and when the count is
   lowered; all go when the run is unscheduled, on Delete the Kept Runs…, or when Setup removes the domain (its confirmation
   says so). The store's folder is excluded from Time Machine when it's made or written (`isExcludedFromBackup`), so a backup
@@ -182,9 +187,12 @@ schedules, GamGUI #178) isn't here yet.
   same window (`days`; 0 for every run but Inactive users). A kept run that can't be read, met before that one, stops the
   walk and says so. A run with any step unanswered compares nothing. Rows compared whole, as a multiset; a row with any cell
   changed is gone and new, cells compared as their bytes (as Python's `Counter`; a Swift `String` calls NFC and NFD equal).
-  A kept table with other columns (an update added, moved or reworded one) is passed over, and said ("Its columns changed
-  since the runs kept before") when nothing else is found. Unknown or partial now, or nothing to compare with, says why and
-  is never "no change". Each list draws 100 rows.
+  Both tables are compared on the union of their columns, a cell a table lacks being "" (GamGUI #178's `_aligned`): a read
+  whose JSON GAM flattens grows or sheds columns between runs (`permissions.1.*` once a drive has a second member), and moved
+  columns are no change. A column in `Finding.compareWithout` (mobile's `lastSync`, alerts' `updateTime` and
+  `metadata.updateTime`) is left out of both sides first (`Change.leftOut`), and the pane says so (`compareNote`); every phone
+  that synced read as gone and new (review of #178). The lists draw rows in the union's columns (`Change.columns`). Unknown or
+  partial now, or nothing to compare with, says why and is never "no change". Each list draws 100 rows.
 - **Store rules** (each by descriptor, `AuditScheduleStore`'s header): the store's folder is opened `O_DIRECTORY |
   O_NOFOLLOW`, and `kept`, the domain's and the run's folders each `openat` the same way from the one above, so a link
   anywhere is refused and said, never followed; each folder ours and `0700`. Files `openat` `O_NOFOLLOW | O_NONBLOCK`, `fstat`
@@ -208,6 +216,44 @@ schedules, GamGUI #178) isn't here yet.
   `reports-run-scheduled` and their `narrow-` pair (`scripts/screenshots.sh`).
 - **Not run on a real domain yet**, and the screens not looked at but in CI's pictures.
 
+## Reports: named reports run on Reports (plan F7a, part B)
+GamGUI #178 (`82290f0`): each F2 named report is also a one-step run of its catalog read built bare, listed on Reports under
+**Named reports, run here**, so it can be scheduled, kept and compared like an audit run.
+- **The run** (`AuditRuns.namedRun`, GamGUI's `named_run`): the report's catalog command (`NamedReport.command(in:)`) built with
+  no value (`NamedReport.bareRead`: a runnable read, risk read, certain, no required slot, built by `GamCommands.catalogRead`,
+  its argv starting `print`), one step `read` whose key column and exits are GamGUI's `NAMED_READS` (`AuditRuns.namedReads`,
+  read from GAM's source at 7.52.04). A report with no entry there, or whose read this GAM version doesn't have in that form,
+  isn't offered. `AuditRunner` runs it as any run (one at a time, Stop, a switch stops it), recorded as `read` of origin
+  `named_report` whose `command` is the report's key (`licenses`); never the output.
+- **Its one table** (`AuditRuns.namedFinding`, key `table`): the read's rows as GAM wrote them, columns in the order they first
+  appear, a missing cell "". Its CSV is the whole read (`<report>-table.csv`).
+- **Unknown, never none.** No row is an answer only where GAM says none its own way (`emptyCodes`: 60 for the drive reads, since
+  a service-account token Google refuses silently writes the titles alone at 0); never for licences, drive members or
+  organizers (`emptyWhy`: GAM says the same when every product or drive was refused). A group whose members Google refused is
+  "Group: <g>, Does not exist (i/N)", exit 56 (73 outside the domain): named like an account (`AuditRuns.unreadAccounts`), the
+  table `partial`, its CSV's first line says so, never compared. `changeNote` says what a change can't tell (a product, a drive,
+  an owner's name or an aged-out alert passed over silently); `note` (organizers) that GAM lists one organizer per drive.
+- **A schedule that can't run any more** (`RunSchedules.stranded`): a schedule, or kept runs, under a key nothing here runs (a GAM
+  bump renamed a report's read, or a report was dropped) is never due: Home says "<Title> can't run here any more" and opens
+  it on Reports under **Can't run here any more** (`StrandedRunPanel`), where Stop Scheduling It (⌘S, deleting what it kept)
+  or, for kept runs alone, Delete the Kept Runs… (⌘⌫) clears it. `RunSchedules.clear` acts only on a key listed there and never
+  on one a run here has; it can't be given a cadence. The kept runs' keys come from the store's folders (`runKeys`).
+- **The catalog** is read once, off the main actor (`RunSchedules.catalog`, the Builder's `BuilderView.load`). If it can't be
+  read, no named report runs, nothing is called stranded, and a schedule naming one says why its due is unknown
+  (`namedUnknown`; Home never says "Nothing is due" then).
+- **The mock** models each bare read as GAM prints it (GamGUI #178's handlers, on this mock's data): `print orgs` (four
+  titles, the root never a row; `no_org_units`, `orgs_failed` 50 with no CSV, `org_units_refused` 12), `print group-members`
+  (six titles; `members_gone/<group>` 56), `print mobile` (`email` the first owner; `no_mobile`, `denied/mobile` 12), `print
+  alerts` (`no_alerts`, `denied/alerts` 73 with no CSV, `alerts_token_silent` nothing at all, `alerts_edited` the times alone,
+  `alerts_closed` the status too), `print shareddrives` (with `orgUnit`; `orgs_failed` a traceback, no CSV), `print
+  shareddriveacls` (flattened: `permissions`, then each member's three columns; a drive with no member left out), `print
+  shareddriveorganizers` (the FIRST user organizer in the primary domain), all three with `drive_token_silent`, `nodrives`,
+  `acl_dropped`; `print datatransfers` bare lists `datatransfers_all.csv`, `no_transfers` the `id` title alone,
+  `denied/transferapps` 61 and `denied/datatransfers` 50 with no CSV (the apps are read before any option).
+- **Screens**: `reports-run-named` (Google's alerts scheduled and run twice: its GAM line, Open in the Builder, and the columns
+  left out said) and its `narrow-` pair, and `reports-stranded` (`scripts/screenshots.sh`).
+- **Not run on a real domain yet.** Check each table by eye on its first live run.
+
 ## Files
 - `Packages/GamKit/Sources/ChangeCore/AuditScreen.swift`: `AuditFilter` (GamGUI's `_keep`, `record_domain`), `AuditEntry` (a
   record in words), `AuditPage` (`_rows_context`, `_domain_choices`), `AuditExport` (`_export_csv`).
@@ -223,9 +269,10 @@ schedules, GamGUI #178) isn't here yet.
   for the tenant).
 - `Packages/GamKit/Sources/GamEngine/NamedReports.swift`: `NamedReport` (GamGUI's `NAMED_REPORTS`, `named_report_command`,
   `admin_scope_held`).
-- `Packages/GamKit/Sources/Directory/AuditRuns.swift` (the runs, their tables, `inactiveToSuspend`), `AuditRunner.swift` (the
-  runner), `InactiveSuspend.swift` (Suspend these…); `App/AuditRunsView.swift` (`AuditRunPanel`), `InactiveSuspendSheet` in
-  `App/ChangePreviewSheet.swift`.
+- `Packages/GamKit/Sources/Directory/AuditRuns.swift` (the runs, their tables, `inactiveToSuspend`; the named reports' runs,
+  `namedReads`, `namedFinding`), `AuditRunner.swift` (the runner), `InactiveSuspend.swift` (Suspend these…);
+  `App/AuditRunsView.swift` (`AuditRunPanel`), `InactiveSuspendSheet` in `App/ChangePreviewSheet.swift`, `StrandedRunPanel` in
+  `App/ReportsView.swift`.
 - `App/AuditView.swift`, `App/ReportsView.swift` (`NamedReportPanel`), `App/ConnectedAppsView.swift` (the apps' panel and `AppRow`, which Incident's
   Check Account also uses), `App/DemoAudit.swift` (the Audit screenshot's log, debug only), `App/UsersView.swift` (`requested`:
   Reports' Show in Users), `App/GamGUIApp.swift` (the sidebar).
@@ -361,12 +408,17 @@ this app; GamGUI has no such page. Reads only.
 - **Schedules** (plan F7a): the store is held by descriptor all the way down (GamGUI checks the kept folders by path with
   `lstat`), its lock is an `flock` any process honours (GamGUI's two are per process), and a kept run is read under a cap
   (GamGUI reads one whole). A count is typed as ASCII digits only (GamGUI's `int()` also takes a sign, underscores and other
-  scripts' digits). **Columns are compared**: a kept table whose columns differ from this run's is never compared (GamGUI
-  compares rows alone, so an update that changes a table's columns reads every row as gone and new there: for GamGUI, the same
-  check in `changes_since`, a back-port). Fields are typed strictly in a kept run's header (GamGUI coerces with `str()` and `int()`): only this
-  app writes them. Kept runs aren't shared with GamGUI's (each app has its own data folder). **No notification**: GamGUI, a
+  scripts' digits). Columns are compared on their union, as GamGUI #178 does (part A here passed over a table whose columns
+  changed; GamGUI's union replaced that, so the deviation is gone: a reworded column still reads every row as gone and new, as
+  in GamGUI). Fields are typed strictly in a kept run's header (GamGUI coerces with `str()` and `int()`): only this
+  app writes them, and a kept row not as long as its columns isn't whole. Kept runs aren't shared with GamGUI's (each app has its own data folder). **No notification**: GamGUI, a
   web app, says due only on Home and the run's page, and so does this app (a local notification while the app runs is a
   follow-up, plan F7a As built).
+- **Named reports run on Reports** (GamGUI #178): listed in Reports' own list under "Named reports, run here" (GamGUI's Audit
+  runs page has a "Named reports" heading), and a named report's pane says Run or Schedule It Here (GamGUI's "Run or schedule
+  it" link). Its GAM line names no Sheet export: this app has none. GamGUI's "licence" in the licences report's description is
+  "license" here, as everywhere in this app (`AuditRunsTests` reads one as the other). A catalog that can't be read is said
+  (`namedUnknown`), where GamGUI's page would fail.
 - **Suspend these… is reached from the Inactive users run only**: Reports' Inactive (90+ days) report here lists people and
   opens them; GamGUI's card has the same preview with its fixed 90 days.
 
@@ -386,6 +438,15 @@ this app; GamGUI has no such page. Reads only.
   error, and the fixture holds this app's `GamError.message` to it, over GAM's own failure lines.
 - **The mock's directory had no `creationTime`**, though the app's read names it and GAM returns it: every inactive account
   would have read as "new account". A field a flag reads must be in the mock as GAM prints it.
+
+## What F7a part B taught
+- **A fixture generator meets the GamGUI it is pointed at, not the one it was written for.** Regenerating from #178's merge
+  also brought #182 (group settings): a hypothesis `flatmap` the generator couldn't enumerate, and a read the mock didn't model.
+  The generator now walks `flatmap`, list and fixed-dict strategies, and an unported builder is listed (`notPorted`,
+  `NOT_MODELLED`) rather than worked around.
+- **A strict check that a port added can be the wrong strictness.** Part A refused to compare tables whose columns changed;
+  GamGUI's flattened named reads change columns every time a drive gains a member, so the union is the right rule, and the
+  part A deviation went.
 
 ## What F7a taught
 - **Record the scenario, not just the functions.** The generator runs GamGUI's own store over a scratch folder, a run at a

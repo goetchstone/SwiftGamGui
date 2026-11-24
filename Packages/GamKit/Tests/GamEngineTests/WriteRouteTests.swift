@@ -110,6 +110,14 @@ struct WriteRouteTests {
         #expect(runner.lines.contains { $0.contains("if let gam = AuditRuns.read(step, tables: tables)") })
         #expect(runner.lines.contains { $0.contains("guard AuditRuns.isAuditRead(read.argv) else") })
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
+        // A named report run here (plan F7a, GamGUI #178) reads only its catalog read built bare, through the catalog's one door
+        // (`GamCommands.catalogRead`, which refuses anything that isn't a runnable read) and never anything but a `print`.
+        let runsFile = try #require(files.first { $0.path.hasSuffix("/AuditRuns.swift") })
+        #expect(runsFile.lines.filter { $0.contains("bareRead(") } == ["        guard let facts = namedReads[report.key], let command, let read = NamedReport.bareRead(command) else { return nil }"])
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["bareRead("])
+                == ["Packages/GamKit/Sources/Directory/AuditRuns.swift", "Packages/GamKit/Sources/GamEngine/NamedReports.swift"])
+        let named = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/GamEngine").first { $0.path.hasSuffix("/NamedReports.swift") })
+        #expect(named.lines.contains { $0.contains("let read = try? GamCommands.catalogRead(command, values: [:]), read.argv.first == \"print\"") })
     }
 
     /// A schedule runs nothing (plan F7a, invariants 3 and 10): the schedule code (the cadence and its words, the store, the

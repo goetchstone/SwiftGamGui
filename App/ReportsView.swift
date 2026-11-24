@@ -8,7 +8,9 @@ import SwiftUI
 /// its own; GamGUI's storage and mail usage, read with `gam report users` when its row is first shown for a
 /// tenant; every account's connected apps and agents, read with `gam print tokens` when asked
 /// (`ConnectedAppsPanel`); GamGUI's audit runs (plan F3, `AuditRunPanel`), fixed lists of reads run when asked, with Stop
-/// between steps; and GamGUI's named domain-wide reads (`NamedReport`), each opening its Builder read. A person opens on Users.
+/// between steps; GamGUI's named domain-wide reads (`NamedReport`), each opening its Builder read, and each also run here as a
+/// one-step run so it can be scheduled (plan F7a, GamGUI #178); and a schedule or kept runs for a report this GAM version can't
+/// run any more (`StrandedRunPanel`). A person opens on Users.
 struct ReportsView: View {
     let setup: SetupModel
     let directory: DirectoryStore
@@ -70,7 +72,7 @@ struct ReportsView: View {
             }
             // A run that ends is said, whichever screen of Reports is shown: it may have taken minutes.
             .onChange(of: runsEnded) { old, new in
-                for run in AuditRuns.all where new[run.key] != nil && new[run.key] != old[run.key] {
+                for run in schedules.runs where new[run.key] != nil && new[run.key] != old[run.key] {
                     guard case .finished(let outcome)? = runs.state(of: run) else { continue }
                     announce("\(run.title) read. " + (outcome.complete ? "Every step was read." : "Part of it is unknown: each table that needs it says so."))
                 }
@@ -100,7 +102,7 @@ struct ReportsView: View {
                             case .usage: await usage.load()
                             case .apps: await apps.read()
                             case .run(let key):
-                                if let run = AuditRuns.all.first(where: { $0.key == key }), let refusal = runs.start(run, days: days) {
+                                if let run = schedules.run(key), let refusal = runs.start(run, days: days) {
                                     announce(refusal)
                                 }
                             default: await directory.load()
@@ -108,8 +110,9 @@ struct ReportsView: View {
                         }
                     }
                     .keyboardShortcut("r")
-                    // A named report reads nothing here: it runs in the Builder.
-                    .disabled(setup.active == nil || refreshing || isNamed)
+                    // A named report's pane reads nothing: it runs in the Builder, or as a run below. A run nothing here runs
+                    // any more has nothing to run.
+                    .disabled(setup.active == nil || refreshing || isNamed || isStranded)
                     .accessibilityIdentifier("reports.refresh")
                 }
             }
@@ -128,6 +131,11 @@ struct ReportsView: View {
         if case .named? = item { true } else { false }
     }
 
+    /// A run's key nothing here runs any more (a schedule or kept runs left from another GAM version).
+    private var isStranded: Bool {
+        if case .run(let key)? = item { schedules.run(key) == nil } else { false }
+    }
+
     private var refreshing: Bool {
         switch item {
         case .usage: usage.isLoading
@@ -138,13 +146,13 @@ struct ReportsView: View {
     }
 
     private func run(_ key: String) -> AuditRuns.Run {
-        AuditRuns.all.first { $0.key == key } ?? AuditRuns.inactiveUsers
+        schedules.run(key) ?? AuditRuns.inactiveUsers
     }
 
     /// When each run last ended, for the tenant shown: what the announcement watches.
     private var runsEnded: [String: Date] {
         var ended: [String: Date] = [:]
-        for run in AuditRuns.all {
+        for run in schedules.runs {
             if case .finished(let outcome)? = runs.state(of: run) { ended[run.key] = outcome.when }
         }
         return ended
@@ -194,16 +202,30 @@ struct ReportsView: View {
                             .accessibilityHint("Every account's apps and AI agents, read from Google when you ask.")
                     }
                     Section("Audit runs") {
-                        ForEach(AuditRuns.all) { run in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(run.title)
-                                Text(runStatus(run)).font(.caption).foregroundStyle(.secondary)
+                        ForEach(AuditRuns.all) { run in runRow(run, kind: "audit run") }
+                    }
+                    // Plan F7a (GamGUI #178): each named report run here as the Builder runs it with no options, so it can be
+                    // scheduled and say what changed.
+                    if let named = schedules.namedRuns, !named.isEmpty {
+                        Section("Named reports, run here") {
+                            ForEach(named) { run in runRow(run, kind: "named report run here") }
+                        }
+                    }
+                    if !schedules.stranded.isEmpty {
+                        Section("Can't run here any more") {
+                            ForEach(schedules.stranded) { stranded in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(stranded.title)
+                                    Text(stranded.schedule != nil ? "Still scheduled" : "Runs still kept")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 2)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(stranded.title), can't run here any more, "
+                                                    + (stranded.schedule != nil ? "still scheduled" : "runs still kept"))
+                                .accessibilityHint("Stop scheduling it, or delete what it kept.")
+                                .tag(Item.run(stranded.key))
                             }
-                            .padding(.vertical, 2)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("\(run.title), audit run, \(runStatus(run))")
-                            .accessibilityHint(run.what)
-                            .tag(Item.run(run.key))
                         }
                     }
                     Section("Domain-wide reads") {
@@ -284,6 +306,19 @@ struct ReportsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// One run in the list: its title and status, one element for VoiceOver.
+    private func runRow(_ run: AuditRuns.Run, kind: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(run.title)
+            Text(runStatus(run)).font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(run.title), \(kind), \(runStatus(run))")
+        .accessibilityHint(run.what)
+        .tag(Item.run(run.key))
+    }
+
     /// A run in the list, in words: not run yet, running, or how its last run ended; and due, when its schedule says so.
     private func runStatus(_ run: AuditRuns.Run) -> String {
         let status = switch runs.state(of: run) {
@@ -316,16 +351,23 @@ struct ReportsView: View {
         case .apps:
             ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
         case .run(let key):
-            if let run = AuditRuns.all.first(where: { $0.key == key }) {
+            if let run = schedules.run(key) {
                 // Its own state per run: one run's export line and picked table never show on another's.
                 AuditRunPanel(run: run, runs: runs, suspend: suspend, schedules: schedules, domain: setup.active?.name, days: $days,
-                              openPerson: openPerson)
+                              openPerson: openPerson, openCommand: openCommand)
                     .id(run.key)
+            } else if let stranded = schedules.stranded.first(where: { $0.key == key }) {
+                StrandedRunPanel(stranded: stranded, schedules: schedules)
+                    .id(stranded.key)
+            } else if schedules.namedRuns == nil, NamedReport.all.contains(where: { $0.key == key }) {
+                // Home's due named report, before the catalog is read.
+                ProgressView("Reading GAM's command catalog…").padding()
             }
         case .named(let key):
             if let report = NamedReport.all.first(where: { $0.key == key }) {
                 NamedReportPanel(report: report, catalog: catalog, granted: setup.connectedAdminScopes,
-                                 connected: setup.active != nil, open: openCommand)
+                                 connected: setup.active != nil, open: openCommand,
+                                 runHere: schedules.run(key) != nil ? { item = .run(key) } : nil)
             }
         case nil:
             Text("Choose a report.").foregroundStyle(.secondary).padding()
@@ -334,7 +376,8 @@ struct ReportsView: View {
 }
 
 /// A named domain-wide read (GamGUI #151): what it reads, the access it needs in words, and the Builder read it opens, where it
-/// runs, filters and exports. Nothing runs here.
+/// runs, filters and exports; and (plan F7a, GamGUI #178's "Run or schedule it") its run on Reports, where it can be scheduled.
+/// Nothing runs here.
 private struct NamedReportPanel: View {
     let report: NamedReport
     let catalog: Result<CommandCatalog, BuilderView.CatalogProblem>?
@@ -342,6 +385,8 @@ private struct NamedReportPanel: View {
     let granted: [String]?
     let connected: Bool
     let open: (String) -> Void
+    /// Opens its run on Reports; nil when it doesn't run here (this GAM version has no plain read for it).
+    let runHere: (() -> Void)?
 
     var body: some View {
         ScrollView {
@@ -379,6 +424,15 @@ private struct NamedReportPanel: View {
                         .accessibilityIdentifier("reports.named.open")
                     Text("⌘O opens it too. It runs in the Builder, where its table filters and exports as a CSV.")
                         .font(.caption).foregroundStyle(.secondary)
+                    if let runHere {
+                        // ⌘⇧R: the toolbar's ⌘R is off on this pane, which runs nothing.
+                        Button("Run or Schedule It Here", action: runHere)
+                            .keyboardShortcut("r", modifiers: [.command, .shift])
+                            .accessibilityHint("Opens its run under Named reports, where it runs as the Builder runs it with no "
+                                               + "options, can be scheduled, and says what changed. Command Shift R opens it too.")
+                        Text("⌘⇧R opens its run under Named reports: run there, it can be scheduled and say what changed since.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             } else {
                 Label("GAM \(catalog.version) has no single command for this read.", systemImage: "exclamationmark.triangle.fill")
@@ -615,5 +669,65 @@ private struct UsagePanel: View {
         var style = Date.FormatStyle(date: .abbreviated, time: .omitted)
         style.timeZone = calendar.timeZone
         return date.formatted(style)
+    }
+}
+
+/// A schedule, or runs kept on this Mac, for a run nothing here runs any more (plan F7a, GamGUI #178's
+/// `_audit_run_stranded.html`): a GAM version whose read for a named report changed, or a report dropped. It isn't due and can't
+/// be run; it can be unscheduled (which deletes what it kept), or what it kept deleted. Local: nothing reaches Google.
+struct StrandedRunPanel: View {
+    let stranded: RunSchedules.Stranded
+    let schedules: RunSchedules
+    @State private var confirmingDelete = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(stranded.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                Label(words, systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .fixedSize(horizontal: false, vertical: true)
+                if stranded.schedule != nil {
+                    Button("Stop Scheduling It") { Task { await schedules.clear(stranded.key, deleteOnly: false) } }
+                        .keyboardShortcut("s")
+                        .disabled(schedules.isBusy)
+                        .accessibilityHint("Stops scheduling \(stranded.title) and deletes the runs it kept on this Mac. Command S does it too.")
+                    Text("⌘S stops scheduling it. Not scheduled keeps none: this deletes the runs it kept too.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                } else if stranded.kept > 0 {
+                    Button("Delete the Kept Runs…", role: .destructive) { confirmingDelete = true }
+                        .keyboardShortcut(.delete, modifiers: .command)
+                        .disabled(schedules.isBusy)
+                        .accessibilityHint("Asks first. Deletes the runs of \(stranded.title) kept on this Mac. Command Delete asks too.")
+                    Text("⌘⌫ asks to delete them.").font(.caption).foregroundStyle(.secondary)
+                }
+                if let notice = schedules.notices[stranded.key] {
+                    Label(notice.text, systemImage: notice.problem ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                        .symbolRenderingMode(notice.problem ? .multicolor : .monochrome)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onChange(of: schedules.notices[stranded.key]) { _, notice in
+            if let notice { AccessibilityNotification.Announcement(notice.text).post() }
+        }
+        .confirmationDialog("Delete the \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") of \(stranded.title) kept on this Mac?",
+                            isPresented: $confirmingDelete) {
+            Button("Delete", role: .destructive) { Task { await schedules.clear(stranded.key, deleteOnly: true) } }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    /// GamGUI's words.
+    private var words: String {
+        let head = "It can't run here any more: this GAM version has no plain read for it, so it isn't due and can't be run."
+        if let schedule = stranded.schedule {
+            return head + " It is still scheduled \(schedule.cadence.word.lowercased())"
+                + (stranded.kept > 0 ? ", with \(stranded.kept) run\(stranded.kept == 1 ? "" : "s") kept on this Mac." : ".")
+        }
+        return head + " \(stranded.kept) run\(stranded.kept == 1 ? " is" : "s are") still kept on this Mac."
     }
 }
