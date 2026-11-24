@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "73498c4",
+  "gamgui_commit": "82290f0",
   "generator": "scripts/gen_fixtures.py"
  },
  "constants": {
@@ -23,7 +23,8 @@
   "NOTHING_BEFORE": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
   "KEPT_RUN_UNREAD": "A run kept before couldn't be read, so this table isn't compared. Delete the kept runs if it stays that way.",
   "NOT_ANSWERED": "A step of this run has no answer, so its tables aren't compared: one may hold \"unknown\" where it had a value.",
-  "KEPT_UNREAD": "The runs kept before couldn't be read just now, so this table isn't compared."
+  "KEPT_UNREAD": "The runs kept before couldn't be read just now, so this table isn't compared.",
+  "KEPT_VERSION": 2
  },
  "next_day": [
   {
@@ -9975,7 +9976,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10051,7 +10053,9 @@
       ]
      ],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10077,7 +10081,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10123,7 +10128,9 @@
      "new": [],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10140,7 +10147,8 @@
      ],
      "rows": [],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10177,7 +10185,9 @@
      "new": [],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10194,7 +10204,8 @@
      ],
      "rows": [],
      "known": false,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10229,7 +10240,9 @@
      "new": [],
      "gone": [],
      "why": "Unknown this time, so it isn't compared.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10251,7 +10264,8 @@
       ]
      ],
      "known": true,
-     "partial": true
+     "partial": true,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10291,7 +10305,9 @@
      "new": [],
      "gone": [],
      "why": "Part of this table is unknown this time, so what's new or gone can't be told.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10313,7 +10329,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [],
@@ -10324,7 +10341,9 @@
      "new": [],
      "gone": [],
      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10350,7 +10369,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10425,7 +10445,9 @@
      ],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10447,7 +10469,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10487,7 +10510,9 @@
      "new": [],
      "gone": [],
      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10513,7 +10538,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10630,7 +10656,9 @@
      ],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10652,7 +10680,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10732,7 +10761,9 @@
       ]
      ],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10754,7 +10785,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10802,7 +10834,9 @@
      "new": [],
      "gone": [],
      "why": "A run kept before couldn't be read, so this table isn't compared. Delete the kept runs if it stays that way.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10824,7 +10858,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10859,7 +10894,9 @@
      "new": [],
      "gone": [],
      "why": "The run kept on Wed 18 Nov 2026, 09:00 couldn't be read whole, so this table isn't compared.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -10881,7 +10918,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     },
     {
      "key": "u",
@@ -10901,7 +10939,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     },
     {
      "key": "v",
@@ -10912,7 +10951,8 @@
      ],
      "rows": [],
      "known": false,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -10982,7 +11022,9 @@
       ]
      ],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     },
     "u": {
      "since": 1794992461.0,
@@ -10994,14 +11036,18 @@
      ],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
     },
     "v": {
      "since": 0.0,
      "new": [],
      "gone": [],
      "why": "Unknown this time, so it isn't compared.",
-     "compared": false
+     "compared": false,
+     "columns": [],
+     "left_out": []
     }
    }
   },
@@ -11030,7 +11076,8 @@
       ]
      ],
      "known": true,
-     "partial": false
+     "partial": false,
+     "compare_without": []
     }
    ],
    "earlier": [
@@ -11080,7 +11127,607 @@
      ],
      "gone": [],
      "why": "",
-     "compared": true
+     "compared": true,
+     "columns": [],
+     "left_out": []
+    }
+   }
+  },
+  {
+   "name": "a column more now, on the union",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "Email",
+      "Name",
+      "Role"
+     ],
+     "rows": [
+      [
+       "a",
+       "A",
+       "r1"
+      ],
+      [
+       "b",
+       "B",
+       ""
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": []
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "Email",
+        "Name"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 2,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "a@example.com",
+        "A"
+       ],
+       [
+        "b@example.com",
+        "B"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [
+      [
+       "a",
+       "A",
+       "r1"
+      ],
+      [
+       "b",
+       "B",
+       ""
+      ]
+     ],
+     "gone": [
+      [
+       "a@example.com",
+       "A",
+       ""
+      ],
+      [
+       "b@example.com",
+       "B",
+       ""
+      ]
+     ],
+     "why": "",
+     "compared": true,
+     "columns": [],
+     "left_out": []
+    }
+   }
+  },
+  {
+   "name": "columns moved",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "Name",
+      "Email"
+     ],
+     "rows": [
+      [
+       "A",
+       "a"
+      ],
+      [
+       "B",
+       "b"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": []
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "Email",
+        "Name"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 2,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "a@example.com",
+        "A"
+       ],
+       [
+        "b@example.com",
+        "B"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [
+      [
+       "A",
+       "a"
+      ],
+      [
+       "B",
+       "b"
+      ]
+     ],
+     "gone": [
+      [
+       "A",
+       "a@example.com"
+      ],
+      [
+       "B",
+       "b@example.com"
+      ]
+     ],
+     "why": "",
+     "compared": true,
+     "columns": [],
+     "left_out": []
+    }
+   }
+  },
+  {
+   "name": "a column only then",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "Email"
+     ],
+     "rows": [
+      [
+       "a"
+      ],
+      [
+       "c"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": []
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "Email",
+        "Name"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 2,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "a@example.com",
+        "A"
+       ],
+       [
+        "c",
+        ""
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [
+      [
+       "a",
+       ""
+      ]
+     ],
+     "gone": [
+      [
+       "a@example.com",
+       "A"
+      ]
+     ],
+     "why": "",
+     "compared": true,
+     "columns": [
+      "Email",
+      "Name"
+     ],
+     "left_out": []
+    }
+   }
+  },
+  {
+   "name": "a column named twice then",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "Email",
+      "N"
+     ],
+     "rows": [
+      [
+       "a",
+       "2"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": []
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "Email",
+        "N",
+        "N"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 1,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "a",
+        "1",
+        "2"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [],
+     "gone": [],
+     "why": "",
+     "compared": true,
+     "columns": [],
+     "left_out": []
+    }
+   }
+  },
+  {
+   "name": "compared without a column that moves",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "id",
+      "lastSync",
+      "os"
+     ],
+     "rows": [
+      [
+       "d1",
+       "t2",
+       "x"
+      ],
+      [
+       "d2",
+       "t2",
+       "y"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": [
+      "lastSync"
+     ]
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "id",
+        "lastSync",
+        "os"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 2,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "d1",
+        "t1",
+        "x"
+       ],
+       [
+        "d2",
+        "t1",
+        "z"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [
+      [
+       "d2",
+       "y"
+      ]
+     ],
+     "gone": [
+      [
+       "d2",
+       "z"
+      ]
+     ],
+     "why": "",
+     "compared": true,
+     "columns": [
+      "id",
+      "os"
+     ],
+     "left_out": [
+      "lastSync"
+     ]
+    }
+   }
+  },
+  {
+   "name": "without a column only then had",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "id",
+      "os"
+     ],
+     "rows": [
+      [
+       "d1",
+       "x"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": [
+      "updateTime",
+      "os2"
+     ]
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "id",
+        "updateTime",
+        "os"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 1,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "d1",
+        "t1",
+        "x"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [],
+     "gone": [],
+     "why": "",
+     "compared": true,
+     "columns": [],
+     "left_out": [
+      "updateTime"
+     ]
+    }
+   }
+  },
+  {
+   "name": "without a column neither has",
+   "days": 0,
+   "findings": [
+    {
+     "key": "t",
+     "title": "T",
+     "columns": [
+      "Email",
+      "Name"
+     ],
+     "rows": [
+      [
+       "a@example.com",
+       "A"
+      ]
+     ],
+     "known": true,
+     "partial": false,
+     "compare_without": [
+      "lastSync"
+     ]
+    }
+   ],
+   "earlier": [
+    {
+     "id": "1",
+     "when": 1794992400.0,
+     "days": 0,
+     "problem": "",
+     "tables": [
+      {
+       "key": "t",
+       "title": "T",
+       "columns": [
+        "Email",
+        "Name"
+       ],
+       "known": true,
+       "partial": false,
+       "count": 1,
+       "kept": true
+      }
+     ],
+     "rows": {
+      "t": [
+       [
+        "b@example.com",
+        "B"
+       ]
+      ]
+     }
+    }
+   ],
+   "loads": {
+    "1": 1
+   },
+   "changes": {
+    "t": {
+     "since": 1794992400.0,
+     "new": [
+      [
+       "a@example.com",
+       "A"
+      ]
+     ],
+     "gone": [
+      [
+       "b@example.com",
+       "B"
+      ]
+     ],
+     "why": "",
+     "compared": true,
+     "columns": [],
+     "left_out": []
     }
    }
   }
@@ -11109,7 +11756,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "",
@@ -11155,7 +11803,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Not kept, and it doesn't count as its scheduled run: a step has no answer.",
@@ -11165,7 +11814,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "A step of this run has no answer, so its tables aren't compared: one may hold \"unknown\" where it had a value."
+      "why": "A step of this run has no answer, so its tables aren't compared: one may hold \"unknown\" where it had a value.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11197,7 +11848,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 2 runs it keeps.",
@@ -11207,7 +11859,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet."
+      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11243,7 +11897,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 2 runs it keeps.",
@@ -11263,7 +11918,9 @@
         "3"
        ]
       ],
-      "why": ""
+      "why": "",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11305,7 +11962,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 2 runs it keeps.",
@@ -11320,7 +11978,9 @@
        ]
       ],
       "gone": [],
-      "why": ""
+      "why": "",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11353,7 +12013,8 @@
       ],
       "rows": [],
       "known": false,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 2 runs it keeps.",
@@ -11363,7 +12024,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "Unknown this time, so it isn't compared."
+      "why": "Unknown this time, so it isn't compared.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11421,7 +12084,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 1 run it keeps.",
@@ -11431,7 +12095,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet."
+      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11499,7 +12165,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 3 runs it keeps.",
@@ -11509,7 +12176,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet."
+      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11545,7 +12214,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 3 runs it keeps.",
@@ -11565,7 +12235,9 @@
         "5"
        ]
       ],
-      "why": ""
+      "why": "",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11630,7 +12302,8 @@
        ]
       ],
       "known": true,
-      "partial": false
+      "partial": false,
+      "compare_without": []
      }
     ],
     "note": "Kept on this Mac, as one of the last 12 runs it keeps.",
@@ -11640,7 +12313,9 @@
       "since": 0.0,
       "new": [],
       "gone": [],
-      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet."
+      "why": "No earlier run that read this table whole is kept, so there's nothing to compare it with yet.",
+      "columns": [],
+      "left_out": []
      }
     },
     "schedule": {
@@ -11657,10 +12332,75 @@
     ]
    },
    {
+    "op": "a column more",
+    "when": 1803978000.0,
+    "answered": true,
+    "days": 0,
+    "findings": [
+     {
+      "key": "per_sku",
+      "title": "Per_Sku",
+      "columns": [
+       "Product",
+       "Seats",
+       "Note"
+      ],
+      "rows": [
+       [
+        "Workspace",
+        "6",
+        "x"
+       ]
+      ],
+      "known": true,
+      "partial": false,
+      "compare_without": []
+     }
+    ],
+    "note": "Kept on this Mac, as one of the last 12 runs it keeps.",
+    "problem": false,
+    "changes": {
+     "per_sku": {
+      "since": 1803891600.0,
+      "new": [
+       [
+        "Workspace",
+        "6",
+        "x"
+       ]
+      ],
+      "gone": [
+       [
+        "Workspace",
+        "6",
+        ""
+       ]
+      ],
+      "why": "",
+      "columns": [],
+      "left_out": []
+     }
+    },
+    "schedule": {
+     "cadence": "daily",
+     "keep": 12,
+     "since": 1803805200.0,
+     "done": 1803978000.0
+    },
+    "kept": [
+     "0000000000002",
+     "0000000000001"
+    ],
+    "kept_days": [
+     0,
+     0
+    ]
+   },
+   {
     "op": "Setup removes the domain",
     "forgot": [
      1,
-     1
+     2
     ],
     "schedule": null,
     "kept": [],

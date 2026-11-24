@@ -75,7 +75,7 @@ struct AuditLogTests {
         }
         #expect(AuditLog.readActions == Set(fixture["constants"]!["READ_ACTIONS"]!.array!.compactMap(\.string)))
         #expect(AuditLog.domainKey == fixture["constants"]!["DOMAIN_KEY"]!.string)
-        #expect(ReadAudit.Origin.allCases.map(\.rawValue) == ["builder", "audit_run"])
+        #expect(ReadAudit.Origin.allCases.map(\.rawValue) == ["builder", "audit_run", "named_report"])
         #expect(ReadAudit.action == "read")
     }
 

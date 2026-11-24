@@ -17,12 +17,14 @@ import Vault
 /// written; the screens still read GamGUI's as a read (`AuditLog.readActions`).
 public struct ReadAudit: Sendable {
     /// Where a recorded read was started (GamGUI's `READ_ORIGINS` and `READ_ORIGIN_AUDIT_RUN`): the Builder's Run, or a step of
-    /// an audit run, whose `command` is the run and the step (`license_usage/licenses`) and whose target is none. GamGUI also
-    /// has `sequence`, a read step of a Builder sequence; this app has no sequences. Any other origin can't be spelled: a case,
-    /// never a string.
+    /// an audit run, whose `command` is the run and the step (`license_usage/licenses`) and whose target is none, or a named
+    /// report run there (plan F7a, GamGUI #178's `READ_ORIGIN_NAMED_REPORT`), whose `command` is the report's key (`licenses`).
+    /// GamGUI also has `sequence`, a read step of a Builder sequence; this app has no sequences. Any other origin can't be
+    /// spelled: a case, never a string.
     public enum Origin: String, Sendable, CaseIterable {
         case builder
         case auditRun = "audit_run"
+        case namedReport = "named_report"
     }
 
     /// How the read ended.
