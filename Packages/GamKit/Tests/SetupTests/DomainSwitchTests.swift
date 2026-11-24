@@ -140,7 +140,7 @@ struct DomainSwitchTests {
     @Test func aSecondSwitchIsRefusedWhileACheckRuns() async throws {
         let model = try await connected()
         let first = Task { await model.checkAccess(other) }
-        while model.checking == nil { await Task.yield() }
+        try await yieldWhile { model.checking == nil }
         let second = await model.checkAccess(example)
         #expect(second == .busy(checking: other))
         #expect(DomainMenu.answer(second, switchingTo: example, from: model.active)?.text

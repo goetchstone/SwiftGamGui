@@ -207,7 +207,7 @@ struct CalendarReadsTests {
         await app.reads.load(.calendars(of: "alice@example.com"))
         let reads = app.reads
         let running = Task { await reads.load(.access(calendar: Self.team)) }
-        while !reads.isReading(.access(calendar: Self.team)) { await Task.yield() }
+        try await yieldWhile { !reads.isReading(.access(calendar: Self.team)) }
         try await connect("example.org", in: app.setup)
         #expect(!reads.isReading(.access(calendar: Self.team)), "an old tenant's read shown as this one's")
         #expect(reads.calendars(of: "alice@example.com") == nil, "example.com's calendars, shown as example.org's")
@@ -259,7 +259,7 @@ struct CalendarReadsTests {
         try await connect("example.com", in: app.setup)
         let reads = app.reads
         let older = Task { await reads.load(.rooms) }
-        while !FileManager.default.fileExists(atPath: marker.path) { await Task.yield() }
+        try await yieldWhile { !FileManager.default.fileExists(atPath: marker.path) }
         await reads.load(.rooms)
         let newer = try #require(reads.revision(of: .rooms))
         await older.value
@@ -273,7 +273,7 @@ struct CalendarReadsTests {
         try await connect("example.com", in: app.setup)
         let reads = app.reads
         let read = Task { await reads.load(.access(calendar: Self.team), after: .seconds(30)) }
-        while !reads.isReading(.access(calendar: Self.team)) { await Task.yield() }
+        try await yieldWhile { !reads.isReading(.access(calendar: Self.team)) }
         read.cancel()
         await read.value
         #expect(!reads.isReading(.access(calendar: Self.team)))

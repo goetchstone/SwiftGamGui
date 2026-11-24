@@ -167,7 +167,7 @@ final class RosterCompareTests {
         let snapshot = try Self.webCase().snapshot
         let first = try keep(snapshot, sha256: "a1")
         let reading = Task { await compare.compare() }
-        while !compare.isRunning { await Task.yield() }
+        try await yieldWhile { !compare.isRunning }
         compare.drop()
         #expect(!compare.isRunning, "the dropped compare is no longer this screen's")
         let second = try keep(snapshot, sha256: "b2")
@@ -183,7 +183,7 @@ final class RosterCompareTests {
         try await connect()
         _ = try keep(try Self.webCase().snapshot)
         let reading = Task { await compare.compare() }
-        while !compare.isRunning { await Task.yield() }
+        try await yieldWhile { !compare.isRunning }
         guard case .busy = await compare.compare() else { Issue.record("said, not silently ignored"); return }
         guard case .compared = await reading.value else { Issue.record("the first one finishes"); return }
     }
@@ -216,7 +216,7 @@ final class RosterCompareTests {
         _ = try keep(try Self.webCase().snapshot)
         FileManager.default.createFile(atPath: state.appending(path: "noclassroom").path, contents: Data())
         let reading = Task { await compare.compare() }
-        while !compare.isRunning { await Task.yield() }
+        try await yieldWhile { !compare.isRunning }
         compare.drop()
         guard case .dropped = await reading.value else { Issue.record("dropped, not failed"); return }
         #expect(compare.problem == nil, "the dropped compare's failure isn't the new roster's")
