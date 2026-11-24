@@ -158,7 +158,9 @@ struct MockSheetExportTests {
         let export = try await run(["user", "alice@example.com", "list"] + Self.tail)
         #expect(export.exitCode == 0 && Self.isLink(export.stdout) && export.made.map(\.rows) == [1])
         let top = try await run(["list", "user", "alice@example.com"] + Self.tail)
-        #expect(top.exitCode == 2 && top.stderr.contains("Invalid argument: todrive") && top.made.isEmpty)
+        #expect(top.exitCode == 2 && top.stderr.contains("ERROR: Extra arguments\n") && top.made.isEmpty)
+        let last = try await run(["list", "user", "alice@example.com", "todrive"])
+        #expect(last.exitCode == 2 && last.stderr.contains("ERROR: Extra argument\n") && last.made.isEmpty)
     }
 
     /// The scope check and the upload read the same tenant: a scope it hasn't authorized FAILs in the check and refuses the upload.

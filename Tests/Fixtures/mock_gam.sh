@@ -370,7 +370,7 @@ case "${1:-}:${3:-}" in
   # An entity's `list` (_doList, 7.52.04) takes todrive right after `list` and writes its CSV as a print does; the top-level
   # `gam list [todrive …] <EntityList>` takes it only before its entity list, so one after it is GAM's extraneous argument.
   print:*|report:*|*:print|*:list) td_read=print ;;
-  list:*) td_read=other ;;
+  list:*) [ "${2:-}" = todrive ] && not_modelled "list todrive before its entity list"; td_read=extra ;;
   info:*|*:show|*:check) td_read=other ;;
   *) td_read="" ;;
 esac
@@ -378,7 +378,13 @@ if [ -n "$td_read" ]; then
   td=0; i=0
   for a in "$@"; do i=$((i + 1)); if [ "$a" = "todrive" ]; then td=$i; break; fi; done
   if [ "$td" -gt 0 ]; then
-    [ "$td_read" = print ] || invalid_arg todrive
+    case "$td_read" in
+      print) ;;
+      # checkForExtraneousArguments: ARGUMENT_ERROR_NAMES[ARGUMENT_EXTRANEOUS], plural while more than `todrive` is left
+      # (MultipleArgumentsRemaining; glclargs.py, 7.52.04).
+      extra) if [ $(( $# - td )) -ge 1 ]; then usage_error "Extra arguments"; else usage_error "Extra argument"; fi ;;
+      *) invalid_arg todrive ;;
+    esac
     ( shift "$td"; todrive_tail "$@" ) || exit $?
     # Whose Drive: the admin the token names, as GAM names it: GetTodriveParameters (run as the arguments are read, before the
     # read) replaces it with checkUserExists' primaryEmail, so an alias in the token is its account's primary address in every
