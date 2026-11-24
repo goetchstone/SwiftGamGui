@@ -117,6 +117,9 @@ public final class SetupModel {
     public private(set) var checking: Domain?
     /// A switch to another domain waiting for Switch Anyway, because it would stop runs going now (plan F6).
     public private(set) var switchWarning: SwitchWarning?
+    /// What else goes when a domain's credentials are removed, in words added to Setup's notice: its audit-run schedules and the
+    /// runs they kept on this Mac (plan F7a, `RunSchedules.forget`). Nothing by default: the app sets it once.
+    @ObservationIgnored public var removing: @MainActor (Domain) async -> String = { _ in "" }
     /// The runs going now (the jobs tray's), asked before a check that would make another domain active and again after it
     /// passes, with no await before the activation (plan F6). None by default: the app sets it once, to the jobs board.
     @ObservationIgnored public var runningRuns: @MainActor () -> [RunningRun] = { [] }
@@ -448,7 +451,8 @@ public final class SetupModel {
             if lastDomain.load() == domain.name { lastDomain.save(nil) }
             forget(domain)
             await refresh()
-            activity = .done("Removed \(domain)'s credentials from this Mac.")
+            let more = await removing(domain)
+            activity = .done("Removed \(domain)'s credentials from this Mac." + more)
         } catch {
             await refresh()
             activity = .problem(Self.message(for: error))

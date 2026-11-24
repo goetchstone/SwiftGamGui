@@ -1,5 +1,6 @@
 import Foundation
 import GamEngine
+import Stores
 
 /// Audit runs (plan F3, GamGUI #171's and #172's `core/audit_runs.py`): ready-made lists of reads, started by the operator, with Stop
 /// between steps. Pure: what each run reads and what its tables say. `AuditRunner` runs each step's read and leaves its read
@@ -348,6 +349,12 @@ public enum AuditRuns {
         public let tables: Tables
         public let when: Date
         public let days: Int
+        /// A scheduled run (plan F7a): each table against the last kept run that read it, by finding key.
+        public internal(set) var changes: [String: AuditSchedules.Change] = [:]
+        /// What happened to this run's keep, in words; "" when it isn't scheduled, or its schedule or kept runs changed since.
+        public internal(set) var keptNote = ""
+        /// The note says something went wrong.
+        public internal(set) var keptProblem = false
 
         public init(run: Run, reads: [StepRead], findings: [Finding], tables: Tables, when: Date, days: Int) {
             self.run = run
@@ -363,6 +370,11 @@ public enum AuditRuns {
 
         /// Every step has an answer, at most with accounts GAM named as unread: the run counts for its schedule (plan F7a).
         public var answered: Bool { reads.allSatisfy { $0.state == .read || $0.state == .partial } }
+
+        /// Its tables as a schedule keeps and compares them.
+        public var scheduledTables: [AuditSchedules.Table] {
+            findings.map { .init(key: $0.key, title: $0.title, columns: $0.columns, rows: $0.rows, known: $0.known, partial: $0.partial) }
+        }
 
         public func finding(_ key: String) -> Finding? { findings.first { $0.key == key } }
     }
