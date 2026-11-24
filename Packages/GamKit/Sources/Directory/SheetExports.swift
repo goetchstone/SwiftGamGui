@@ -172,7 +172,7 @@ public final class SheetExports {
             return
         }
         let step = WriteStep(write, target: owner.isEmpty ? "(admin Drive)" : owner, summary: "Export \(commandName) to a Google Sheet",
-                             risk: .low, about: ["command": command], timeout: ActivityLogs.timeout)
+                             risk: .low, about: ["command": command], timeout: GamRunner.domainWideTimeout)
         let scopes = SheetExport.scopes.map { Scope(scope: $0.scope, purpose: $0.purpose, allowed: checked?[$0.scope]) }
         func pending(_ preview: HeldPreview?) -> Pending {
             Pending(preview: preview, id: preview?.id ?? UUID(), command: command, commandName: commandName, name: name, owner: owner,
@@ -183,7 +183,8 @@ public final class SheetExports {
             state = .previewing(pending(nil))
             return
         }
-        // A domain-wide read plus its upload: a cut-off would leave a file nobody can name, so it gets a read's long timeout.
+        // A domain-wide read run again plus its upload: a cut-off part way leaves a file nobody can name, so it gets the
+        // domain-wide hour (GamGUI's DOMAIN_WIDE_TIMEOUT, `export_to_sheet`), never a read's ten minutes.
         let held = await executor.preview([step], confirmStep: true, expecting: (domain, generation),
                                           title: "Export \(commandName) to a Google Sheet")
         guard request == asked else {
@@ -213,6 +214,11 @@ public final class SheetExports {
         else { return }
         state = .running(pending)
         let outcome = await executor.run(preview, confirmation: confirmation)
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray, Audit and Files, not shown here.
+        guard setup.isConnected(to: preview) else {
+            state = .idle
+            return
+        }
         if let refusal = outcome.refusal {
             state = .problem(refusal + " Nothing ran.")
             return
@@ -230,11 +236,12 @@ public final class SheetExports {
             SheetExport.outcome(ok: ok, url: noted["url"] ?? "", upload: noted["upload"] ?? "",
                                 owner: owner == "(admin Drive)" ? "" : owner, error: ok ? "" : detail)
         } else {
-            // GAM never started (no begin record, or the run stopped first): nothing was made, and nothing was recorded.
-            SheetExport.Outcome(url: "", made: .no, said: "Nothing was made: GAM didn't run. \(detail)",
-                                todo: "Export again once that's put right.")
+            // GAM never started (no begin record, the run stopped first, or the Vault or the launch failed): nothing was made.
+            SheetExport.notRun(detail)
         }
         // The app's own reason is in `said` already when GAM never ran: GAM's error is shown only for a run it made.
+        // Recorded when GAM ran and the end was written. A run GAM never launched has its end record (`started: false`), but
+        // Files says of it only that nothing was made.
         state = .done(Done(outcome: shown, name: pending.name, commandLine: pending.commandLine, detail: ok || !began ? "" : detail,
                            unrecorded: outcome.auditProblem ?? "", recorded: began && outcome.auditProblem == nil))
     }

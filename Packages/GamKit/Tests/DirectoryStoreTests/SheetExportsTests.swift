@@ -119,6 +119,8 @@ final class SheetExportsTests {
         let held = try #require(pending.preview)
         #expect(held.steps.map(\.shownArgv) == [Self.read.argv + GamCommands.todriveArgs(title: Self.title)])
         #expect(held.steps.first?.action == .exportToSheet && held.steps.first?.target == Self.admin && held.needsConfirmClick)
+        // The domain-wide hour, as GamGUI's export_to_sheet: the read runs again and a cut-off leaves a file nobody can name.
+        #expect(held.steps.first?.timeout == GamRunner.domainWideTimeout)
         #expect(exportCalls().isEmpty && made().isEmpty, "the check is a read: nothing made yet")
         #expect(calls().contains { $0.contains("serviceaccount") })
     }
@@ -283,6 +285,41 @@ final class SheetExportsTests {
         guard case .problem(let words) = switching.state else { Issue.record("\(switching.state)"); return }
         #expect(words.contains("changed while the export was held"))
         #expect(exportCalls().isEmpty && made().isEmpty)
+    }
+
+    /// The review of #199 (plan F6): a switch landing while the export runs leaves the old domain's result off this screen (the
+    /// jobs tray, Audit and Files keep it). GAM ran on the domain it was previewed on, and its end record names that domain.
+    @Test func aSwitchDuringTheExportShowsNothingOfIt() async throws {
+        try await connect("example.org", admin: "admin@example.org")
+        try await connect()
+        final class Arm: @unchecked Sendable {
+            var armed = false
+            var seen: (Domain, Int)?
+        }
+        let arm = Arm(), setup = setup
+        let base = try RuntimeDirectory.prepare(scratch.appending(path: "run-during"))
+        let gam = AuthenticatedRunner(runner: GamRunner(binary: Fixtures.mockGam), vault: vault, runtimeDirectory: base)
+        // Once armed, the switch lands as the run starts, but the executor goes on seeing the domain it checked: as a switch
+        // landing mid-step would, after its last check.
+        let executor = Executor(runner: gam, audit: AuditLog(url: writeAuditURL), tenant: { @MainActor in
+            if arm.armed {
+                arm.armed = false
+                arm.seen = setup.active.map { ($0, setup.generation) }
+                await setup.checkAccess(Domain("example.org")!)
+            }
+            return arm.seen ?? setup.active.map { ($0, setup.generation) }
+        }, extraEnvironment: ["GAM_MOCK_ARGV_LOG": argvLog.path, "GAM_MOCK_STATE": state.path,
+                              "GAM_MOCK_FIXTURES": Fixtures.mockGamData.path])
+        let during = SheetExports(executor: executor, setup: setup, access: access)
+        await during.preview(read: Self.read, command: "build.print_delegates", commandName: "List mailbox delegates", rows: 2)
+        guard case .previewing(let pending) = during.state else { Issue.record("\(during.state)"); return }
+        arm.armed = true
+        await during.confirm(pending, OperatorConfirmation(confirmed: true))
+        #expect(setup.active?.name == "example.org")
+        guard case .idle = during.state else { Issue.record("the old domain's result shows: \(during.state)"); return }
+        #expect(exportCalls().count == 1 && made().count == 1)
+        let end = try #require(records().last)
+        #expect(end["action"]?.string == "export_to_sheet" && end["extra"]?.object?["domain"]?.string == "example.com")
     }
 
     /// A read carrying todrive in any spelling GAM reads is refused at the preview, before any read, and by the Builder's read
