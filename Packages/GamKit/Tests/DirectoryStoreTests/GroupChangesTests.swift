@@ -287,15 +287,18 @@ final class GroupChangesTests {
 
     // MARK: the tenant
 
-    /// GamGUI failure-log 2026-09-25: a preview held on one tenant never runs on another.
+    /// GamGUI failure-log 2026-09-25: a preview held on one tenant never runs on another. Since plan F6 the switch also
+    /// drops it from the sheet, so its confirm runs nothing; the executor refuses it whatever a screen does.
     @Test func aTenantSwitchRefuses() async throws {
         try await connect()
         await changes.previewAdd("carol@example.com", to: try group("sales@example.com"), role: .member)
         let held = try pending()
         try await connect("example.org")
         #expect(setup.active == Domain("example.org"))
+        guard case .idle = changes.state else { Issue.record("\(changes.state)"); return }
         await changes.confirm(held, confirmed)
-        #expect(try problem().summary == "The active domain changed after the preview — preview again, so it runs on this one.")
+        #expect(await executor.run(held.preview, confirmation: confirmed).refusal
+                == "The active domain changed after the preview — preview again, so it runs on this one.")
         #expect(writes().isEmpty)
     }
 

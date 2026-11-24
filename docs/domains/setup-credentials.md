@@ -138,6 +138,74 @@ GamGUI's two steps for an admin with no GAM yet, and the delegation step after a
   from the credentials just imported or copied, so no extra Keychain read; it goes when the domain does.
 - `FolderSafety.grantsByACL` is shared by this folder and the per-call run folder.
 
+## Switching domains from anywhere (plan F6, GamGUI's #173 at `c5230a1`)
+With another domain on this Mac, the toolbar names the active one and switches from any screen. **There is no second
+switch path**: the menu calls `SetupModel.checkAccess`, the one Setup's Check Access calls, so a switch is a
+`check serviceaccount` read and the domain changes only on a pass (Touch ID first, if the Vault's session ended).
+- **The check** (`Setup/SetupModel.swift`, `checkAccess`): it returns how it ended (`CheckOutcome`) besides setting
+  `activity` and `lastCheck` as before. While a run goes (`runningRuns`, set by `AppServices` from
+  `Directory/SwitchStops.swift`: the jobs tray's runs, Onboarding's wait for Google between its rounds as "Finishing setup
+  for <hire>", once and left half done, as GamGUI's FinishJob, a temporary password not handed over yet, and an audit
+  run going: reads only, a switch stops its GAM at once and changes nothing), making
+  another domain active is refused **before any Keychain read**: `switchWarning` names every run going ("Switching to
+  example.org stops what's running on example.com after its current step:", an offboarding or Secure "— stopped part-way,
+  it is left half done"), and Switch Anyway passes `agreedToStop`, exactly those runs' IDs. After a pass the runs are asked
+  again with no await before `activate`, so a run started during the check is warned of rather than stopped. A re-check
+  of the active domain stops nothing; connecting with none active stops nothing either (a run's tenant went with it).
+  `checking` names the domain being checked: one action at a time (`isBusy`, as before), now answered in words.
+  `onSwitch` tells of a switch alone: another domain straight after the active one, never a connect after a removal or
+  re-import (the tray's "you switched" is said only then; `Executor.stopReason` likewise: the very next generation on
+  another domain).
+- **The menu's words** (`Setup/DomainMenu.swift`): `others` (every stored domain but the active one: `Domain` is one
+  spelling, so case twins count once; none while nothing is active) and `answer`, GamGUI's words for each outcome: a
+  failed check ("example.org didn't pass the access check, so example.com stays active.", the summary, the delegation
+  link from `AccessCheck.linkingEveryOfferedScope`, and Setup for each scope); a refusing Keychain, here Touch ID refused
+  or a locked Mac ("The Keychain didn't hand over example.org's credentials: it may be locked, or its password prompt was
+  cancelled. Nothing changed. Try again."); a token naming no admin (to Setup, where one is typed); a check that couldn't
+  run; a second check while one runs ("example.org's access is being checked. Wait for its answer, then try again.
+  Nothing changed.").
+- **The screen** (`App/DomainMenuView.swift`): `DomainButton`, a toolbar item shown while another domain is stored, named
+  "Domain, <domain>" with "Signed in as <admin>" as its hint, disabled while Setup works; its popover, `DomainPanel`: the
+  active domain and admin, a button per other domain, the check in progress, the warning (`SwitchWarningView`, also on
+  Setup for its own Check Access) and the answer; closing it any way answers its warning as Cancel. `DomainCommands`: the
+  menu bar's Domain menu (Switch Domain… ⇧⌘D, each other domain, Setup…) for the window in front, so the keyboard reaches
+  it without Full Keyboard Access. Every tenant change after the window's first connection, through no domain too, makes
+  the window's screen again (`ContentView`'s `.id(switches)`, GamGUI's reload of the screen), except Setup, which holds no
+  domain's data and keeps its form, focus and scroll; it drops what one screen asked another to open.
+- **What a switch drops** (each on the generation bump; `DomainSwitchStoresTests` reads them all on example.com, switches,
+  and finds none): the directory, groups, usage, a person's lists, a group's members, connected apps, Classroom's reads,
+  calendars, Chrome profiles, devices, mailbox searches, Incident's check, plan, logs and who it reached, Phishing's
+  finds, Offboard's plan (keyed to the tenant before F6); every change model's preview, result or problem (User, Group,
+  Signature, Builder, Calendar and Onboard changes, on `onTenantChange`), and a run's result a switch lands in isn't shown
+  there (`SetupModel.isConnected(to:)`); the previews and waiting retries the executor held (`dropOtherTenants`, and
+  again whenever it holds or parks for the connected tenant; a run a switch stopped parks nothing, so no wait for Google
+  begins on the new domain; a preview re-reads the tenant after the admin's wait, and the user page's after the preview); the
+  Builder's last read (the screen is made again, and a read that ends after a switch is dropped); Incident's reading,
+  the window's. A run's Retry is offered only on its domain (Signatures' with its result; Onboarding's held to its run's
+  tenant). Every running job stops after its step in hand, recorded under the old domain (`docs/domains/jobs.md`).
+- **Kept, shared by every domain**: roles, signature and offboarding templates, the catalog, known sign-ins, Phishing's
+  "nobody has" checks, kept incidents and kept signatures (each names its domain, and Put Back refuses another's), and
+  Onboarding's sign-in card (on screen across a switch). The user page's temporary-password details are held too, but
+  their sheet is the old domain's person page, so a switch warns of them first.
+- **Found on the way**: the switch's agreement can't be spelled `confirmed:` in `App/` (invariant 10's scan,
+  `WriteRouteTests.onlyAScreenMakesTheOperatorsConfirmation`, keeps that word to the confirm sheet), hence `agreedToStop`;
+  and Onboarding's retry was held for whichever domain was connected (onboarding.md). The adversarial review (2026-11-21)
+  found the wait for Google and an unhanded password unwarned, a run the switch stopped parked (its wait began on the new
+  domain), the executor reentrant past a switch's drop, nil → B called a switch, Setup remade by its own check, a change
+  through no domain not remaking the screen, a stale warning after the panel closed, and no scan on `agreedToStop`
+  (`WriteRouteTests.onlyAScreenAgreesToStopRuns` now). Each has a test where one can be written.
+- **Deviations from GamGUI**, each deliberate: a failed check's way to Setup is "See Each Scope the Check Read on Setup"
+  (Setup here shows the check just made; GamGUI's line asks to switch there to see it); the wait for Google is said "left
+  half done" (GamGUI names its FinishJob only: here a stop leaves the new hire half set up); a temporary password not
+  handed over is warned of (GamGUI's stays reachable from its job's panel); reads are never jobs here, so the warning lists only write runs (a read in
+  flight is dropped by its store; nothing to say it can't stop); a one-step change still running is listed (a switch can
+  refuse one still waiting its turn); the menu is disabled while Setup works, not while any request is in flight (there
+  is no request loop here); no unsaved incident export exists to drop (an export is written straight to the folder
+  picked); Setup's own Check Access warns, as GamGUI's switcher and import verify do, but an import here doesn't check
+  access, so it has no warning of its own; the menu reads Setup's own list of domains (read at launch's reconnect and
+  on each Setup action), so nothing like GamGUI's per-page Keychain read needed a cache.
+
 ## Not live yet
 The first real import, GamGUI copy (Allow prompts) and Check access on the operator's tenant — with
-the operator present (Touch ID, Allow, and their go for a live read).
+the operator present (Touch ID, Allow, and their go for a live read). A switch between two real domains from the
+toolbar hasn't been made yet (as in GamGUI).

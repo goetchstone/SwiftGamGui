@@ -104,6 +104,13 @@ steps and failures in words, and Stop.
 |---|
 | ![The jobs tray: an offboarding running with its progress and Stop, and a pull from every mailbox ended with two failed](screenshots/jobs.png) |
 
+The domain menu, in the toolbar when another domain is on this Mac: switching runs Setup's own access check first, and
+says what a switch would stop.
+
+| Domain menu | What a switch stops |
+|---|---|
+| ![The domain menu's panel: example.com active, signed in as its admin, and example.org to switch to](screenshots/domain.png) | ![Switching to example.org while runs go: the offboarding it would leave half done and the suspend, with Switch Anyway and Cancel](screenshots/domain-warning.png) |
+
 | Reports | Usage | Audit |
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words and its domain, a page at a time](screenshots/audit.png) |

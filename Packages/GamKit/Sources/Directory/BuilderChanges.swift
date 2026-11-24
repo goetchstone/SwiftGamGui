@@ -50,6 +50,7 @@ public final class BuilderChanges {
         self.executor = executor
         self.setup = setup
         self.directory = directory
+        setup.onTenantChange { [weak self] in self?.dismiss() }
     }
 
     public var isBusy: Bool {
@@ -148,6 +149,11 @@ public final class BuilderChanges {
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
         if let refusal = outcome.refusal {
             state = .problem(refusal)
+            return
+        }
+        // A switch while it ran (plan F6): the result is the old domain's, kept in the jobs tray and Audit, not shown here.
+        guard setup.isConnected(to: pending.preview) else {
+            state = .idle
             return
         }
         let note = outcome.auditProblem.map { " \($0)" } ?? ""

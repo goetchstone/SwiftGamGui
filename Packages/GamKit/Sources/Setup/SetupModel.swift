@@ -29,6 +29,64 @@ public final class SetupModel {
         public let problem: String
     }
 
+    /// How a check ended, for a caller that says it in its own place (the domain menu, plan F6). Setup's screen reads
+    /// `activity`, `lastCheck` and `switchWarning`, as before.
+    public enum CheckOutcome: Equatable, Sendable {
+        /// It passed: the domain is active.
+        case connected
+        /// It ran and didn't pass (`lastCheck` holds it): the active domain stays.
+        case failed(AccessCheck)
+        /// Making it active would stop runs nobody was told of: `switchWarning` names them. Nothing changed.
+        case warned
+        /// Another action runs, a check of `checking` when it's one: nothing started.
+        case busy(checking: Domain?)
+        /// The Keychain didn't hand the credentials over: locked, or its prompt (Touch ID) refused.
+        case keychainRefused
+        /// Its oauth2.txt names no admin, and none was typed.
+        case noAdmin
+        /// It couldn't run, for `reason` (Setup's words).
+        case notRun(String)
+        /// Nobody waits for it any more.
+        case cancelled
+    }
+
+    /// A run going now (the jobs tray's), as a switch to another domain would stop it (plan F6). The app gives them through
+    /// `runningRuns`; Setup only names them.
+    public struct RunningRun: Equatable, Sendable, Identifiable {
+        public let id: UUID
+        public let title: String
+        /// An offboarding or a Secure: stopped part-way, it's left half done.
+        public let leftHalfDone: Bool
+
+        public init(id: UUID, title: String, leftHalfDone: Bool) {
+            self.id = id
+            self.title = title
+            self.leftHalfDone = leftHalfDone
+        }
+    }
+
+    /// A switch to another domain that would stop the runs going now, waiting for Switch Anyway (plan F6, GamGUI's
+    /// `_switch_warning.html`): nothing was checked yet, or the check passed and a run started during it.
+    public struct SwitchWarning: Equatable, Sendable {
+        /// The domain asked for.
+        public let domain: Domain
+        /// The domain whose runs would stop.
+        public let active: Domain
+        /// Every run going when it was asked, oldest first: Switch Anyway goes ahead for exactly these.
+        public let runs: [RunningRun]
+        /// The admin typed on Setup, which Switch Anyway checks with.
+        public let typedAdmin: String
+
+        public var headline: String { "Switching to \(domain) stops what's running on \(active) after its current step:" }
+        /// A run's line under the headline: its title, and for a routine, what a stop leaves.
+        public static func line(_ run: RunningRun) -> String {
+            run.leftHalfDone ? "\(run.title) — stopped part-way, it is left half done: the steps after it won't run" : run.title
+        }
+        public static let footer = "What already ran stays done. The steps after it won't run."
+        /// What Switch Anyway agrees to stop: exactly the runs named.
+        public var runIDs: Set<UUID> { Set(runs.map(\.id)) }
+    }
+
     public enum Status: Equatable, Sendable {
         case notConnected
         case connected
@@ -49,8 +107,19 @@ public final class SetupModel {
     /// the order added: with one slot, the store made last took it, and the directory silently stopped
     /// loading on connect.
     @ObservationIgnored private var tenantObservers: [@MainActor () -> Void] = []
+    /// Told when another domain is made active straight after the active one (plan F6): a switch, with the domain switched
+    /// to. A change through no active domain (a removal or re-import, then a check) isn't one: what stops then stops because
+    /// the domain changed, not because of a switch.
+    @ObservationIgnored private var switchObservers: [@MainActor (Domain) -> Void] = []
     public private(set) var activity: Activity = .idle
     public private(set) var lastCheck: CheckRecord?
+    /// The domain whose access check runs now: one at a time (plan F6), and a second is refused naming this one.
+    public private(set) var checking: Domain?
+    /// A switch to another domain waiting for Switch Anyway, because it would stop runs going now (plan F6).
+    public private(set) var switchWarning: SwitchWarning?
+    /// The runs going now (the jobs tray's), asked before a check that would make another domain active and again after it
+    /// passes, with no await before the activation (plan F6). None by default: the app sets it once, to the jobs board.
+    @ObservationIgnored public var runningRuns: @MainActor () -> [RunningRun] = { [] }
     /// The domain being connected again at launch (Touch ID, then its check), so every screen can say so
     /// rather than look disconnected (operator, 2026-10-10).
     public private(set) var reconnecting: Domain?
@@ -266,13 +335,27 @@ public final class SetupModel {
 
     /// Runs Check access as the admin in the domain's `oauth2.txt` (or `typedAdmin` when it names
     /// none). Only a pass makes the domain active; a failed check leaves the active one as it was.
-    public func checkAccess(_ domain: Domain, typedAdmin: String = "") async {
-        guard !isBusy else { return }
+    /// The one switch path: Setup's Check Access and the domain menu (plan F6) both come here. Making another domain active
+    /// stops every run going now after its step in hand, so while one runs that `agreedToStop` doesn't name, nothing is checked:
+    /// `switchWarning` says what would stop (GamGUI's `_switch_warning.html`). After a pass the runs are asked again, with no
+    /// await before the activation, so a run started during the check is warned of rather than stopped.
+    @discardableResult
+    public func checkAccess(_ domain: Domain, typedAdmin: String = "", agreedToStop: Set<UUID> = []) async -> CheckOutcome {
+        guard !isBusy else { return .busy(checking: checking) }
         guard let runner else {
-            activity = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
-            return
+            let reason = "This build has no GAM. Build the app again after running scripts/fetch_gam.sh."
+            activity = .problem(reason)
+            return .notRun(reason)
         }
+        // Before any Keychain read: what it would stop is said first.
+        if let warning = warning(switchingTo: domain, typedAdmin: typedAdmin, agreedToStop: agreedToStop) {
+            switchWarning = warning
+            return .warned
+        }
+        switchWarning = nil
         activity = .working("Checking access to \(domain)…")
+        checking = domain
+        defer { checking = nil }
         do {
             let credentials = try await vault.credentials(for: domain)
             let token = credentials[.oauth2]
@@ -281,7 +364,7 @@ public final class SetupModel {
                 ?? (typed.contains("@") ? typed : nil)
             else {
                 activity = .problem("This domain's oauth2.txt names no admin. Enter the admin address GAM signs in as.")
-                return
+                return .noAdmin
             }
             // GAM's link would drop the optional scopes Setup's link asked for: Setup's own stands in (GamGUI's verify).
             let clientID = credentials[.oauth2Service].map { CredentialFacts.clientID(inServiceAccount: $0.bytes) } ?? ""
@@ -291,21 +374,48 @@ public final class SetupModel {
             if result.isAuthorized {
                 let account = try await Self.confirmedAccountID(token.flatMap { CredentialFacts.adminAccountID(inOAuth2: $0.bytes) },
                                                                 of: admin, in: domain, runner: runner)
+                // A run started while the check ran was never warned of: said now instead. No await from here to `activate`.
+                if let warning = warning(switchingTo: domain, typedAdmin: typedAdmin, agreedToStop: agreedToStop) {
+                    switchWarning = warning
+                    activity = .idle
+                    return .warned
+                }
                 activate(domain, admin: admin, accountID: account.id, primary: account.primary,
                          classroomReadable: token.flatMap { Self.classroomReadable(inOAuth2: $0.bytes) },
                          adminScopes: token.flatMap { CredentialFacts.grantedScopes(inOAuth2: $0.bytes) })
                 activity = .done("Connected to \(domain) as \(admin)." + (account.why.map {
                     " Which account that is isn't confirmed (\($0)), so a change that could sign it out isn't made here."
                 } ?? ""))
+                return .connected
             } else {
                 activity = .problem(Self.summary(of: result))
+                return .failed(result)
             }
         } catch is CancellationError {
             // Nobody waits for this check any more (its window closed): it has no outcome to report.
             activity = .idle
+            return .cancelled
         } catch {
-            activity = .problem(Self.message(for: error))
+            let reason = Self.message(for: error)
+            activity = .problem(reason)
+            if let refused = error as? VaultError, case .keychain = refused { return .keychainRefused }
+            return .notRun(reason)
         }
+    }
+
+    /// Cancel on a switch's warning: nothing is checked, and the active domain stays.
+    public func dismissSwitchWarning() {
+        switchWarning = nil
+    }
+
+    /// What making `domain` active would stop unwarned: every run going now, when any isn't among `agreedToStop` (one started
+    /// since the warning, or during the check), else nil. A re-check of the active domain stops nothing, nor does connecting
+    /// with none active: a run's tenant went with it.
+    private func warning(switchingTo domain: Domain, typedAdmin: String, agreedToStop: Set<UUID>) -> SwitchWarning? {
+        guard let active, active != domain else { return nil }
+        let running = runningRuns()
+        guard !Set(running.map(\.id)).subtracting(agreedToStop).isEmpty else { return nil }
+        return SwitchWarning(domain: domain, active: active, runs: running, typedAdmin: typedAdmin)
     }
 
     /// At launch: checks the domain that was connected last time, so the app reconnects (and the
@@ -367,6 +477,11 @@ public final class SetupModel {
         for observer in tenantObservers { observer() }
     }
 
+    /// Adds an observer of switches from one domain straight to another (`switchObservers`). Kept as long as the model.
+    public func onSwitch(_ observer: @escaping @MainActor (Domain) -> Void) {
+        switchObservers.append(observer)
+    }
+
     /// The token's account ID when GAM reads the same `id` for `admin` now (an alias reads as its account); otherwise none,
     /// and why, in words Setup shows: the token has none (an admin typed in has none either), GAM can't read the admin (a
     /// delegated admin whose role doesn't reach its own account, an admin outside this directory), or GAM reads another
@@ -402,9 +517,11 @@ public final class SetupModel {
         activeClassroomReadable = classroomReadable
         activeAdminScopes = adminScopes
         guard active != domain else { return }
+        let from = active
         active = domain
         generation += 1
         tenantChanged()
+        if from != nil { for observer in switchObservers { observer(domain) } }
     }
 
     /// Makes `found` the domain's whole set. New credentials haven't been checked, so a domain that
@@ -437,6 +554,7 @@ public final class SetupModel {
         }
         if lastCheck?.domain == domain { lastCheck = nil }
         if delegation?.domain == domain { delegation = nil }
+        if switchWarning?.domain == domain || switchWarning?.active == domain { switchWarning = nil }
         if reconnectFailure?.domain == domain { reconnectFailure = nil }
     }
 
