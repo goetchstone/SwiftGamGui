@@ -26,8 +26,14 @@ struct SheetExportTests {
         #expect(GamCommands.todriveArgs() == ["todrive", "tdnobrowser", "true", "tdnoemail", "true"])
     }
 
-    @Test func theGrammarTakesEachOptionTheTailSends() throws {
-        let grammar = try String(contentsOf: Fixtures.repoRoot.appending(path: "Vendor/gam7/GamCommands.txt"), encoding: .utf8)
+    static let grammarFile = Fixtures.repoRoot.appending(path: "Vendor/gam7/GamCommands.txt")
+
+    /// A tripwire for a GAM bump: the vendored grammar still takes each todrive option the export sends. The grammar is
+    /// gitignored and CI's package tests run before GAM is vendored (so no test can reach the real binary there); a bump vendors
+    /// it with `bump_gam.py` and then runs this suite, which is where a changed `<ToDriveAttribute>` shows.
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: grammarFile.path), "needs the vendored GAM (scripts/fetch_gam.sh)"))
+    func theGrammarTakesEachOptionTheTailSends() throws {
+        let grammar = try String(contentsOf: Self.grammarFile, encoding: .utf8)
         let block = try #require(grammar.components(separatedBy: "<ToDriveAttribute> ::=").dropFirst().first?
             .components(separatedBy: "\n<").first)
         for option in ["(tdtitle <String>)", "(tdnobrowser [<Boolean>])", "(tdnoemail [<Boolean>])"] {
