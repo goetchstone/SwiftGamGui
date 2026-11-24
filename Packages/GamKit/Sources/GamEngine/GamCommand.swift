@@ -46,9 +46,20 @@ public struct GamWrite: GamCommand {
             let wanted = argv.last?.split(separator: ",").count ?? 0
             let deleted = output.split(whereSeparator: \.isNewline).count { $0.contains(", Deleted") }
             return deleted >= wanted ? nil : "GAM deleted \(deleted) of \(wanted) messages and said nothing about the rest. Check the account again."
+        case .exportToSheet:
+            // An exit 0 that printed no link is no answer: whether a Sheet was made can't be told (plan F4, GamGUI's `verify`).
+            return SheetExport.sheetURL(output).isEmpty ? SheetExport.noLink : nil
         default:
             return nil
         }
+    }
+
+    /// What this write's own output says that its audit record keeps too, read whether GAM exited 0 or not (a warning exit can
+    /// follow the write itself); empty for every write but a Sheet export, whose link, else which of the upload's own failure
+    /// lines GAM printed about `owner`, the admin whose Drive it is (`SheetExport.noted`, GamGUI's `_run_write` `noted`). Never
+    /// the output itself.
+    public func noted(stdout: String, stderr: String, owner: String) -> [String: String] {
+        action == .exportToSheet ? SheetExport.noted(stdout: stdout, stderr: stderr, owner: owner) : [:]
     }
 
     static let saidNothing = "GAM exited without saying it did this, so it may not have happened. Check the account again."
@@ -87,6 +98,9 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
+    /// apps' logs read alike and Files finds either's.
+    case exportToSheet = "export_to_sheet"
 }
 
 /// Permission to run one `GamWrite`, minted only by ChangeCore's executor once a held preview has passed

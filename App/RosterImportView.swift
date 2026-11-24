@@ -314,11 +314,12 @@ final class RosterKeeper {
         await reload(domain)
     }
 
-    /// The Issues CSV, private (0600) and formula-safe, through the app's one private CSV writer.
-    func exportIssues(to destination: URL) async -> String {
+    /// The Issues CSV, private (0600) and formula-safe, through the app's one private CSV writer; listed on Files once written.
+    func exportIssues(to destination: URL, savedFiles: SavedFiles?) async -> String {
         let rows = RosterImport.issuesCSV(issues)
         do {
             try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+            savedFiles?.record(destination, what: "Roster issues")
             return "Saved \(rows.count - 1) row\(rows.count == 2 ? "" : "s") to \(destination.lastPathComponent)."
         } catch {
             return "Couldn't save \(destination.lastPathComponent)."
@@ -370,6 +371,8 @@ extension RosterStore.Failure {
 /// Plan an Import (GamGUI's `classroom_import.html` and `_roster_kept.html`): the picker and what to export beside the
 /// kept roster's counts, its problems for the SIS team, and Compare with Classroom with its hand-over (`RosterCompareView`).
 struct RosterImportView: View {
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
     let setup: SetupModel
     let roster: RosterKeeper
     @State private var choosing = false
@@ -549,7 +552,7 @@ struct RosterImportView: View {
         let finish: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let destination = panel.url else { return }
             Task {
-                let said = await roster.exportIssues(to: destination)
+                let said = await roster.exportIssues(to: destination, savedFiles: savedFiles)
                 saved = said
                 AccessibilityNotification.Announcement(said).post()
             }

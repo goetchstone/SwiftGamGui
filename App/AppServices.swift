@@ -77,6 +77,8 @@ struct AppServices {
     let builderChanges: BuilderChanges
     /// The Builder's reads, each recorded in the audit log the executor writes once it ends (plan F1): never a write path.
     let readAudit: ReadAudit
+    /// A Builder table's export to a new Google Sheet (plan F4): a curated write, held and run through the executor.
+    let sheetExports: SheetExports
     /// Reports' audit runs (plan F3): fixed lists of reads, each step recorded in the same log; never a write path.
     let auditRuns: AuditRunner
     /// The audit runs' schedules (plan F7a): when each is due on the connected domain, and the runs each keeps on this Mac.
@@ -86,6 +88,8 @@ struct AppServices {
     let inactiveSuspend: InactiveSuspend
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
+    /// The files saved through a save panel, newest first, for Files (plan F4).
+    let savedFiles: SavedFiles
     /// Siri's requests, waiting for the screens to draft them.
     let siriDrafts = SiriDrafts()
     /// Ends the Vault's session, so the next read asks for Touch ID again: all the app's lifetime needs of the Vault
@@ -116,6 +120,7 @@ struct AppServices {
                         knownSignIns: KnownSignIns(root: SignatureStore.defaultRoot),
                         nobodyHas: NobodyHasChecks(root: SignatureStore.defaultRoot),
                         incidents: Incidents(root: SignatureStore.defaultRoot.appending(path: "incidents")),
+                        savedFiles: SavedFiles(root: SignatureStore.defaultRoot),
                         roster: roster,
                         // Column names and role words only, beside the offboarding templates.
                         rosterMaps: RosterMaps(root: SignatureStore.defaultRoot),
@@ -126,8 +131,8 @@ struct AppServices {
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  signatureBackups: SignatureBackupStore, offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
-                                 nobodyHas: NobodyHasChecks, incidents: Incidents, roster: RosterStore, rosterMaps: RosterMaps,
-                                 scheduleStore: AuditScheduleStore?, lastDomain: LastDomain = .userDefaults,
+                                 nobodyHas: NobodyHasChecks, incidents: Incidents, savedFiles: SavedFiles, roster: RosterStore,
+                                 rosterMaps: RosterMaps, scheduleStore: AuditScheduleStore?, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -217,10 +222,12 @@ struct AppServices {
                            usage: UsageStore(setup: setup, runner: runner),
                            builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
                            readAudit: ReadAudit(log: audit),
+                           // Its own reader: the scope check is the export's, live.
+                           sheetExports: SheetExports(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            auditRuns: auditRuns,
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
-                           auditURL: auditURL, lockVault: { await vault.lock() })
+                           auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })
     }
 
     #if DEBUG
@@ -242,6 +249,8 @@ struct AppServices {
         // never the real log. Empty for every other screen, so no picture shows what an earlier launch left.
         DemoAudit.reset(auditURL)
         if Screen.initial == .audit { DemoAudit.write(to: auditURL) }
+        // Files' picture: two exports to a Sheet, one made and one Drive refused, as the executor records them.
+        if Screen.initial == .files { DemoAudit.writeExports(to: auditURL) }
         if Screen.initial == .compromised, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "todo" { DemoAudit.writePulled(to: auditURL) }
         let mock = mockGam()
         if let mock {
@@ -270,18 +279,34 @@ struct AppServices {
                         incidents: Incidents(
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-incidents-\(UUID().uuidString)"),
                             defaults: nil),
+                        savedFiles: SavedFiles(
+                            root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-saved-\(UUID().uuidString)")),
                         roster: demoRoster(beside: mock),
                         rosterMaps: demoRosterMaps(beside: mock),
                         // A fresh folder each launch, never the operator's kept runs.
                         scheduleStore: AuditScheduleStore(root: FileManager.default.temporaryDirectory
                             .appending(path: "swiftgamgui-demo-schedules-\(UUID().uuidString)/schedules")),
                         lastDomain: .memory())
+        if Screen.initial == .files { seedFiles(services) }
         // Plan an Import's map step (`SWIFTGAMGUI_TAB=map`): the demo spreadsheet picked, held for its map, never kept.
         if Screen.initial == .classroom, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "map",
            let sheet = mock?.deletingLastPathComponent().appending(path: "demo/schedule.csv") {
             services.roster.demoPick = [sheet]
         }
         return services
+    }
+
+    /// Files' picture: an incident with one saved read in its evidence, and a CSV listed as saved, in the demo's fresh temporary
+    /// folders. Made-up names and paths; nothing is read from or written to the real ones.
+    private static func seedFiles(_ services: AppServices) {
+        let opened = Date(timeIntervalSince1970: 1_795_651_200)   // 2026-11-20
+        if case .success(let record) = services.incidents.create(domain: "example.com", title: "Carol's mailbox taken over",
+                                                                  opened: opened, openedBy: "admin@example.com", reported: "An alert"),
+           let store = services.incidents.store, let evidence = try? store.evidenceFolder(of: record.id) {
+            try? FileManager.default.createDirectory(at: evidence.appending(path: "2026-11-20 1200 Gmail"), withIntermediateDirectories: false,
+                                                     attributes: [.posixPermissions: 0o700])
+        }
+        services.savedFiles.record(URL(filePath: "/Users/Shared/Exports/gam-results.csv"), what: "Builder table")
     }
 
     /// The demo's kept signatures: a fresh temporary folder each launch, never the operator's, holding

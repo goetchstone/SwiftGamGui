@@ -55,8 +55,9 @@ struct WriteRouteTests {
     }
 
     /// The Builder (invariants 2 and 3): only its screen runs a catalog read (a `GamRead` from `GamCommands.catalogRead`, which
-    /// refuses any command that isn't runnable), and its changes reach ChangeCore through `BuilderChanges` alone: the screen names
-    /// no other changes model, no executor or write, and confirms nothing (its sheet does, `onlyAScreenMakesTheOperatorsConfirmation`).
+    /// refuses any command that isn't runnable), and its changes reach ChangeCore through `BuilderChanges` alone, its tables' export
+    /// to a Sheet through `SheetExports` (`theSheetExportRunsOnlyFromItsHeldPreview`): the screen names no other changes model, no
+    /// executor or write, and confirms nothing (its sheets do, `onlyAScreenMakesTheOperatorsConfirmation`).
     @Test func theBuilderWritesOnlyThroughBuilderChanges() throws {
         #expect(try Self.files(in: "App", matching: ["catalogRead"]) == ["App/BuilderView.swift"])
         let writing = try Self.files(in: "App", matching: ["UserChanges", "GroupChanges", "groupChanges", "CalendarChanges",
@@ -118,6 +119,68 @@ struct WriteRouteTests {
                 == ["Packages/GamKit/Sources/Directory/AuditRuns.swift", "Packages/GamKit/Sources/GamEngine/NamedReports.swift"])
         let named = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/GamEngine").first { $0.path.hasSuffix("/NamedReports.swift") })
         #expect(named.lines.contains { $0.contains("let read = try? GamCommands.catalogRead(command, values: [:]), read.argv.first == \"print\"") })
+    }
+
+    /// Plan F4: a read's export to a Google Sheet is a write (GAM makes a file in the admin's Drive), run only from its held
+    /// preview. Its builder (`GamCommands.exportToSheet`, the only place `todriveArgs` is appended) is called by its model alone;
+    /// the model reaches the executor only to hold one preview and to run the one its sheet shows, never a runner or a ticket.
+    /// Every read path refuses a read GAM would read as carrying `todrive` (`carriesToDrive`): the Builder's door, before GAM
+    /// runs, and the audit runs' steps.
+    @Test func theSheetExportRunsOnlyFromItsHeldPreview() throws {
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["exportToSheet("])
+                == ["Packages/GamKit/Sources/Directory/SheetExports.swift", "Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["todriveArgs("]) == ["Packages/GamKit/Sources/GamEngine/GamCommands.swift"])
+        // The debug demo's log names one, to show Files; it runs nothing (no executor).
+        #expect(try Self.files(in: "App", matching: ["exportToSheet(", "todriveArgs(", "\"todrive\""]) == ["App/DemoAudit.swift"])
+        let model = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/SheetExports.swift") })
+        let reaching = ["WriteTicket", "ticket:", "runner.run(", "runRaw(", "Process", "OperatorConfirmation(", "catalogRead("]
+        #expect(model.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty)
+        let runs = model.lines.filter { $0.contains("executor.run(") }
+        #expect(runs.count == 1 && runs.allSatisfy { $0.contains("executor.run(preview, confirmation: confirmation)") }, "\(runs)")
+        // What it runs is the preview its sheet shows, unchanged: the one held, by its id.
+        #expect(model.lines.contains { $0.contains("case .previewing(let held) = state, held.id == pending.id, let preview = pending.preview") })
+        #expect(model.lines.filter { $0.contains("executor.preview(") }.count == 1)
+        // In the app: the Builder's table asks for the preview, its sheet confirms it (`onlyAScreenMakesTheOperatorsConfirmation`),
+        // the wiring makes the model; nothing else reaches it.
+        #expect(try Self.files(in: "App", matching: ["SheetExports", "sheetExports"])
+                == ["App/AppServices.swift", "App/BuilderView.swift", "App/ChangePreviewSheet.swift", "App/GamGUIApp.swift"])
+        let builder = try #require(try Self.swiftFiles(in: "App").first { $0.path == "App/BuilderView.swift" })
+        #expect(!builder.lines.contains { $0.contains("exports.confirm") || $0.contains(".confirm(") }, "the Builder confirms nothing")
+        let door = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/Directory").first { $0.path.hasSuffix("/UserAccess.swift") })
+        let start = try #require(door.lines.firstIndex { $0.contains("public func catalogRead(_ read: GamRead") })
+        let refused = try #require(door.lines[start...].firstIndex { $0.contains("guard !GamCommands.carriesToDrive(read.argv) else") })
+        let ran = try #require(door.lines[start...].firstIndex { $0.contains("readNow(read") })
+        #expect(refused < ran, "refused before GAM runs")
+        #expect(try Self.files(in: "Packages/GamKit/Sources/Directory", matching: ["GamCommands.carriesToDrive("])
+                == ["Packages/GamKit/Sources/Directory/AuditRuns.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+    }
+
+    /// Files (plan F4) is read only: it runs no `gam` and reaches no write, and the only folders it lists are incidents' evidence,
+    /// through the incident store (by descriptor): never a run folder (each call's credentials) or the setup folder.
+    @Test func filesRunsNoGamAndListsNoPrivateFolder() throws {
+        let screens = try Self.swiftFiles(in: "App").filter { ["App/FilesView.swift", "App/SavedFiles.swift"].contains($0.path) }
+        #expect(screens.count == 2)
+        let reaching = ["Runner", "runner", "Executor", "executor", "GamWrite", "WriteStep", "HeldPreview", ".confirm(", "Confirmation",
+                        "catalogRead", "Process", "RuntimeDirectory", "EphemeralConfig", "setupFolder", "SetupFolder", "GAMCFGDIR",
+                        "contentsOfDirectory", "enumerator(", "readdir", "opendir"]
+        for file in screens {
+            #expect(file.lines.filter { line in reaching.contains { line.contains($0) } }.isEmpty, "\(file.path)")
+        }
+        let made = try #require(try Self.swiftFiles(in: "Packages/GamKit/Sources/ChangeCore").first { $0.path.hasSuffix("/MadeFiles.swift") })
+        #expect(made.lines.filter { line in ["Runner", "Executor", "record(", "write(", "Process"].contains { line.contains($0) } }.isEmpty)
+    }
+
+    /// Files lists the CSVs saved through a save panel (plan F4): every screen that saves one lists it (`savedFiles?.record(`),
+    /// at least once per CSV panel, so Files' "CSV files you saved" is every one (review of F4, 2026-11-21).
+    @Test func everyCSVSavePanelListsWhatItSaved() throws {
+        var panels = 0
+        for file in try Self.swiftFiles(in: "App") {
+            let csv = file.lines.count { $0.contains("allowedContentTypes = [.commaSeparatedText]") }
+            guard csv > 0 else { continue }
+            panels += csv
+            #expect(file.lines.count { $0.contains("savedFiles?.record(") } >= csv, "\(file.path)")
+        }
+        #expect(panels >= 10, "the scan must see the panels")
     }
 
     /// A schedule runs nothing (plan F7a, invariants 3 and 10): the schedule code (the cadence and its words, the store, the

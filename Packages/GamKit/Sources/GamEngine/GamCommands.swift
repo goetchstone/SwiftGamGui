@@ -960,6 +960,55 @@ public enum GamCommands {
         GamWrite(["update", "group", group, "remove", member], action: .removeGroupMember)
     }
 
+    // MARK: a read's table to a new Google Sheet (plan F4)
+
+    /// Appended to a `print` or `report` read: GAM writes the read's CSV to a new Google Sheet instead of printing it (GamGUI's
+    /// `todrive_args`, held to `argv.json`). Grammar `todrive <ToDriveAttribute>*`, read from GAM's
+    /// `CSVPrintFile.GetTodriveParameters` at 7.52.04. No `tduser`: the Sheet goes in the connected admin's own Drive (GAM's
+    /// `_getAdminEmail`, the sign-in token's address). No `tdshare`, `tdalert` or `tdnotify`: it's shared with nobody.
+    /// `tdnobrowser true`: GAM would otherwise open the Sheet in this Mac's browser itself (`webbrowser.open`); `tdnoemail
+    /// true`: `todrive_noemail` follows `no_browser`, and GAM would email the link through the admin's Gmail. `title` names
+    /// the file, one element (GAM takes any string, even empty, so an empty one is left out and GAM names it
+    /// `<domain> - <list>`). Only `exportToSheet` appends it, and only the executor runs that.
+    public static func todriveArgs(title: String = "") -> [String] {
+        ["todrive"] + optional("tdtitle", title) + ["tdnobrowser", "true", "tdnoemail", "true"]
+    }
+
+    /// `token` as GAM reads a keyword (`getArgument`, 7.52.04: lowercased, every `_` dropped), stripped first as GamGUI's
+    /// `as_keyword` strips (GAM doesn't: the stricter side). `to_drive` and `ToDrive` are `todrive` to GAM: compare this, never
+    /// the raw spelling.
+    public static func asKeyword(_ token: String) -> String {
+        String(String.UnicodeScalarView(PythonText.lower(PythonText.strip(token)).unicodeScalars.filter { $0 != "_" }))
+    }
+
+    /// Whether GAM would read any element of `argv` as `todrive`: a read that writes a Sheet (GamGUI's `carries_todrive`). Every
+    /// read path refuses one (`UserAccess.catalogRead`, `AuditRuns.isAuditRead`); only `exportToSheet` adds the word, as a write.
+    public static func carriesToDrive(_ argv: [String]) -> Bool {
+        argv.contains { asKeyword($0) == "todrive" }
+    }
+
+    /// Whether `argv` is a read GAM takes `todrive` on at its end: a `print` or `report` command, its verb first (`print users`)
+    /// or after an entity (`user <x> print delegates`, `all users print …`), as the mock reads it; or an entity's `list` with
+    /// nothing after it (`user <x> list`): GAM's `_doList` (7.52.04) reads `todrive` only right after `list`, before `data`, so
+    /// appended to a bare entity list it's there. Never the top-level `gam list <EntityList>`, which takes `todrive` only before
+    /// its entity list, never at the end (review of #199). Only these print a CSV (CSVPrintFile).
+    public static func takesToDrive(_ argv: [String]) -> Bool {
+        argv.first == "print" || argv.first == "report" || (argv.count > 2 && argv[2] == "print")
+            || (argv.count == 3 && argv[2] == "list")
+    }
+
+    /// A read's table to a new Google Sheet (plan F4, GamGUI's `export_to_sheet`): `read`'s exact argv, then `todriveArgs(title:)`.
+    /// GAM runs the read again and uploads what it gets then, so it's a write: only ChangeCore runs it, from its held preview.
+    /// Refuses a read that isn't a `print` or `report` read and one that already carries `todrive` in any spelling GAM reads
+    /// (`carriesToDrive`): a second file, made under GAM's own defaults (its browser, its email).
+    public static func exportToSheet(_ read: GamRead, title: String) throws(Invalid) -> GamWrite {
+        guard takesToDrive(read.argv) else { throw .argument("Only a print or report read, or an entity's list, can go to a Google Sheet") }
+        guard !carriesToDrive(read.argv) else {
+            throw .argument("This read already says todrive, so it can't be exported again: build it without that word")
+        }
+        return GamWrite(read.argv + todriveArgs(title: title), action: .exportToSheet)
+    }
+
     // MARK: the Builder's catalog reads (invariant 3's one door from the catalog)
 
     /// A catalog command's read with `values` (by slot key), as GamGUI's generic read builder puts it together: each value trimmed

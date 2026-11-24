@@ -22,10 +22,13 @@ public enum DelegationScopes {
 
     /// Delegated with the others but never verified (GamGUI's `OPTIONAL_DWD_SCOPES`, #151): an install without one stays
     /// connected, and only the read that needs it is refused. The Security tab's computers read Cloud Identity devices;
-    /// Reports' alerts read the Alert Center (gamlib glapi `_SVCACCT_SCOPES`).
+    /// Reports' alerts read the Alert Center (gamlib glapi `_SVCACCT_SCOPES`). A read's export to a Google Sheet (plan F4,
+    /// GamGUI #174) has GAM make the file with Drive, then finish it as a Sheet through the Sheets API as the service account:
+    /// in the link so following it (it overwrites the client's list) keeps the export working; its preview checks it.
     public static let optional: [(scope: String, purpose: String)] = [
         ("https://www.googleapis.com/auth/cloud-identity.devices", "The computers signed in with an account"),
         ("https://www.googleapis.com/auth/apps.alerts", "Google's alerts (Reports)"),
+        ("https://www.googleapis.com/auth/spreadsheets", "Export a read to a Google Sheet (Builder)"),
     ]
 
     /// What Setup offers to authorize, in its order: the verified scopes, then the optional ones (GamGUI's `dwd_details`).

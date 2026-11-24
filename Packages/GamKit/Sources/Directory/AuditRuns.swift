@@ -284,9 +284,7 @@ public enum AuditRuns {
     /// Whether `argv` is a read an audit run may run: a `print` read that never exports. GAM reads an argument lowercased with
     /// its underscores dropped (getArgument), so `to_drive` and `ToDrive` are `todrive`.
     public static func isAuditRead(_ argv: [String]) -> Bool {
-        argv.first == "print" && !argv.contains { argument in
-            PythonText.lower(argument).replacingOccurrences(of: "_", with: "").utf8.elementsEqual("todrive".utf8)
-        }
+        argv.first == "print" && !GamCommands.carriesToDrive(argv)
     }
 
     /// Why a step that read no row at all can't be an answer, else "". A domain has at least one account, and that account

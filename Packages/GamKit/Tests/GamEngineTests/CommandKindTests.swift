@@ -60,6 +60,18 @@ struct CommandKindTests {
         "print_user_tokens": "printTokens(user:), as print_tokens without the user",
     ]
 
+    /// GamGUI builders that make no command, only words a command ends with: neither a read nor a write, so no builder in the
+    /// source returns one. Held by `GoldenArgvTests` as a list of words.
+    static let tails: [String: String] = [
+        "todrive_args": "the words a read ends with to go to a Sheet: exportToSheet appends them (plan F4)",
+    ]
+
+    /// Writes made from a read and a tail rather than from operator values, so no GamGUI builder of their own: each held where
+    /// named. Its own `-> GamWrite` in the source, and no case in `argv.json`.
+    static let composedWrites: [String: String] = [
+        "exportToSheet": "a read's argv, then todrive_args (GamGUI's export_to_sheet): SheetExportTests",
+    ]
+
     /// The first known verb in `argv`, GamGUI's way, or nil when none is known (uncertain).
     static func verb(_ argv: [String]) -> String? {
         argv.prefix(6).first { verbSets.read.contains($0) || verbSets.destructive.contains($0) || verbSets.low.contains($0) }
@@ -124,6 +136,16 @@ struct CommandKindTests {
         #expect(Self.isDoit("DO_IT") && Self.isDoit("doit") && !Self.isDoit("doit:") && !Self.isDoit("rfc822msgid:doit"))
     }
 
+    /// A read that carried `todrive` in any spelling GAM reads would make a Sheet, under GAM's own defaults, with no preview or
+    /// record (plan F4's review): no read builder may emit one, an app-only read included. The runner refuses one too.
+    @Test func noReadCarriesTodrive() throws {
+        for (name, command) in try commands() where command is GamRead {
+            #expect(!GamCommands.carriesToDrive(command.argv), "\(name) carries todrive")
+        }
+        for (name, read) in Self.appOnlyReads { #expect(!GamCommands.carriesToDrive(read.argv), "\(name) carries todrive") }
+        #expect(GamCommands.carriesToDrive(["print", "users", "TO_DRIVE"]) && !GamCommands.carriesToDrive(["print", "users", "todrive:"]))
+    }
+
     @Test func noWriteHasAReadVerb() throws {
         var writes = 0
         for (name, command) in try commands() where command is GamWrite {
@@ -174,7 +196,8 @@ struct CommandKindTests {
         // Suspend and unsuspend are one GamGUI builder but different writes.
         #expect(GamCommands.setSuspended(email: "a@example.com", suspended: true).action == .suspendUser)
         #expect(GamCommands.setSuspended(email: "a@example.com", suspended: false).action == .unsuspendUser)
-        #expect(named.union([.suspendUser, .unsuspendUser]) == Set(WriteAction.allCases))
+        // The export to a Sheet is a read's argv and todrive_args (`composedWrites`), held by SheetExportTests.
+        #expect(named.union([.suspendUser, .unsuspendUser, .exportToSheet]) == Set(WriteAction.allCases))
     }
 
     /// Every builder in the source is one this suite (and the golden test) checks: a Swift-only builder
@@ -184,12 +207,16 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 50 && writes == 48, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 50 && writes == 49, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
         #expect(source.contains("public static func catalogRead(_ command: CommandCatalog.Command"))
-        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count - Self.appOnlyReads.count)
+        #expect(try commands().count == reads + writes - 1 + Self.sharedBuilders.count - Self.appOnlyReads.count + Self.tails.count
+                - Self.composedWrites.count)
+        for name in Self.composedWrites.keys { #expect(source.contains("public static func \(name)(")) }
+        #expect(try commands().filter { !($0.command is GamRead) && !($0.command is GamWrite) }.map(\.name).sorted()
+                == Self.tails.keys.sorted())
         #expect(Set(Self.sharedBuilders.keys).isSubset(of: GoldenArgvTests.implemented.keys))
     }
 }

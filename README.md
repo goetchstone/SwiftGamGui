@@ -43,7 +43,9 @@ containment, eradication, recovery, lessons learned).
 - **Reports and audit**: the people behind the directory's counts, storage and mail usage, every connected app and AI
   agent, and this app's own audit log.
 - **Builder**: GAM's whole command catalog to browse and search, and any of its 500 commands that only read, run with
-  the exact command shown first, plus 18 common changes from a typed form, each previewed. Every change from any screen is listed in the jobs tray, with Stop.
+  the exact command shown first, plus 18 common changes from a typed form, each previewed. A table goes to a CSV, or to a
+  new Google Sheet in your own Drive, previewed first. Files lists what the app made. Every change from any screen is listed
+  in the jobs tray, with Stop.
 
 | | |
 |---|---|

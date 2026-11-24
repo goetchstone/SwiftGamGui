@@ -33,6 +33,8 @@ Act on the items your diff touches.
    mock, a fixture or a test's own event. A green mock is not a live proof. A mock change that changes any answer
    re-runs `scripts/gen_fixtures.py` from the pinned GamGUI clone in its own PR: the fixtures are generated from the mock
    only then, and a stale one stops the next bump (gam-runner.md, 7.48.34 and 7.51.00).
+- **A test that reads the vendored GAM** (`Vendor/gam7/GamCommands.txt`, anything gitignored there) is `.enabled(if:)` the file
+  exists: CI's package tests run before GAM is vendored, so no test reaches the real binary (#199's tripwire failed CI).
 7. **The pin (#7)**: bump only with `scripts/bump_gam.py`; `FixtureTests` must stay green.
 
 ## If your diff touches secrets, models, Siri or anything streamed

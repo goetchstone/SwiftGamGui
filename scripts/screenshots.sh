@@ -80,7 +80,9 @@ status=0
 # Builder opens on `gam print users` (`SWIFTGAMGUI_SELECT`, its words with `+` between them): the catalog listed, the command's
 # grammar, its fields and the exact command it runs; nothing is run. builder-change is GamGUI's curated Add member to group
 # (`SWIFTGAMGUI_SELECT` its id) with carol@example.com and the Sales group filled in (`fill`), and builder-confirm its confirm
-# sheet (`preview`): held, never run.
+# sheet (`preview`): held, never run. builder-sheet is List mailbox delegates read for carol@example.com (against the mock),
+# then its Export to a Google Sheet… preview (`sheet`: the scope check, a read; held, never run), in the smallest window too;
+# builder-sheet-result a made-up export's result over it (`sheet-result`: made, with the mock's link; nothing is written).
 # The jobs tray (`jobs`, tab `jobs`) is drawn over Home as a sheet, with three made-up runs (`ContentView.showDemoJobs`): nothing runs.
 # The toolbar's domain menu (plan F6) has its panel drawn over Home as a sheet: example.com active and example.org offered
 # (`domain`), then example.org chosen while the tray's made-up runs go (`domain-warning`): what a switch would stop, the
@@ -100,7 +102,9 @@ status=0
 # the comparison said (also in the smallest window); reports-stranded a schedule for a report this GAM version can't run
 # (`old_report`, saved before the picture), with Stop Scheduling It. Audit on a
 # demo log AppServices writes fresh in the temporary folder (two domains, Builder reads, and older records naming none),
-# then narrowed to one domain (the person is the domain: example.org).
+# then narrowed to one domain (the person is the domain: example.org). Files (plan F4) on a demo log with two exports to a
+# Sheet (one made, its link the mock's; one Drive refused), a demo incident with one saved read, and one CSV listed as saved:
+# all written fresh in the temporary folder; nothing runs. narrow-files in the smallest window.
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
@@ -166,7 +170,10 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
             builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \
+            builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
+            narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \
             reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
+            files:files narrow-files:files:::smallest \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \
             reports-run-inactive:reports:run.inactive_users::1100x940 reports-run-licenses:reports:run.license_usage::1100x940 \

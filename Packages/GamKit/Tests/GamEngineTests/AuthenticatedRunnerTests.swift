@@ -35,6 +35,20 @@ struct AuthenticatedRunnerTests {
         #expect(try leftovers().isEmpty)
     }
 
+    /// Plan F4's review: the one public door a read takes to GAM refuses a read GAM would read as carrying `todrive`, in any
+    /// spelling, whichever builder made it, before the Vault is read: no Sheet is made with no preview, record or confirm.
+    @Test func aReadCarryingTodriveNeverReachesGam() async throws {
+        let log = base.appending(path: "argv.log")
+        for spelling in ["todrive", "To_Drive", " TODRIVE "] {
+            await #expect(throws: GamRunnerError.self) {
+                _ = try await runner().run(GamRead(["user", "alice@example.com", "print", "delegates", spelling]), as: example,
+                                           extraEnvironment: Fixtures.mockEnvironment.merging(["GAM_MOCK_ARGV_LOG": log.path]) { $1 })
+            }
+        }
+        #expect(!FileManager.default.fileExists(atPath: log.path), "GAM never ran")
+        #expect(try leftovers().isEmpty, "no credentials materialized")
+    }
+
     @Test func aRefreshedTokenIsWrittenBack() async throws {
         _ = try await runner().run(GamRead(["info", "user", "alice@example.com"]), as: example,
                                    extraEnvironment: Fixtures.mockEnvironment.merging(["GAM_MOCK_REFRESH": "1"]) { $1 })

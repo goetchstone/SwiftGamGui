@@ -131,7 +131,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "todrive_args": "Sheet export is dropped; CSV only (operator, 2026-10-08)",
         "all_users_print_forward": "Reports' forwarding review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
         "all_users_print_delegates": "Reports' delegates review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
         "print_org_units": "Org units (GamGUI #169): not built here yet; the mock refuses the read",
@@ -145,6 +144,12 @@ struct GoldenArgvTests {
         "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
         "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
     ]
+
+    /// GamGUI's `todrive_args` makes no command, only the words a read ends with to go to a Sheet (`exportToSheet` appends them):
+    /// held here as a list of words.
+    struct Tail: GamCommand {
+        let argv: [String]
+    }
 
     /// Ported builders, by GamGUI's name.
     static let implemented: [String: @Sendable (Args) throws -> any GamCommand] = [
@@ -297,6 +302,7 @@ struct GoldenArgvTests {
                 courseIDs: args.strings("course_ids"), ownerEmail: args.flag("owner_email"), aliases: args.flag("aliases"),
                 counts: args.flag("counts"))
         },
+        "todrive_args": { Tail(argv: GamCommands.todriveArgs(title: try $0.string("title"))) },
         "print_all_course_participants": { args in
             try GamCommands.printAllCourseParticipants(states: args.strings("states").map { name in
                 guard let state = GamCommands.CourseState(rawValue: name) else { throw Missing.argument("states") }
@@ -345,6 +351,7 @@ struct GoldenArgvTests {
         "set_signature": { GamCommands.setSignature(email: "<email>", signature: "<signature>") },
         "set_vacation": { GamCommands.setVacation(email: "<email>", subject: "<subject>", message: "<message>") },
         "subscribe_calendar": { GamCommands.subscribeCalendar(email: "<email>", calendarID: "<calendar_id>") },
+        "todrive_args": { Tail(argv: GamCommands.todriveArgs()) },
         "update_organization": { GamCommands.updateOrganization(email: "<email>") },
     ]
 

@@ -164,6 +164,11 @@ extension WriteAction {
     public var displayName: String {
         var words: [String] = []
         for character in rawValue {
+            // An action named as GamGUI's record names it (`export_to_sheet`): an underscore is a word break.
+            if character == "_" {
+                words.append("")
+                continue
+            }
             if words.isEmpty || character.isUppercase && words[words.count - 1].last?.isLowercase == true {
                 words.append(String(character))
             } else {
@@ -278,14 +283,25 @@ public struct RunOutcome: Sendable {
     /// The kept run holding the signatures this run replaced (`WriteStep.KeepFirst`), for its Put Back; nil when it kept none.
     public let kept: String?
 
+    /// What each step's own output said that its end record keeps too (`GamWrite.noted`: a Sheet export's link, or which of the
+    /// upload's own failure lines GAM printed), by step, read whether or not GAM exited 0. Never the output itself.
+    public let noted: [Int: [String: String]]
+
+    /// The steps GAM was launched for: after the begin record, the Vault read and the launch (review of #199). Any other
+    /// changed nothing; its end record says `started: false`.
+    public let began: Set<Int>
+
     public var succeeded: Bool { refusal == nil && steps.allSatisfy { if case .succeeded = $0 { true } else { false } } }
 
-    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil, kept: String? = nil) {
+    init(refusal: String?, steps: [Step], auditProblem: String?, retry: PendingRetry? = nil, kept: String? = nil,
+         noted: [Int: [String: String]] = [:], began: Set<Int> = []) {
         self.refusal = refusal
         self.steps = steps
         self.auditProblem = auditProblem
         self.retry = retry
         self.kept = kept
+        self.noted = noted
+        self.began = began
     }
 
     static func refused(_ why: String) -> RunOutcome { RunOutcome(refusal: why, steps: [], auditProblem: nil) }
@@ -666,7 +682,7 @@ public actor Executor {
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(taken.id) || !stillHere ? nil
                               : park(taken, ran.steps, ran.listOutputs, round: 0, ranAt: now()),
-                          kept: kept.flatMap { $0.keptCount > 0 ? $0.id : nil })
+                          kept: kept.flatMap { $0.keptCount > 0 ? $0.id : nil }, noted: ran.noted, began: ran.began)
     }
 
     // MARK: keeping each signature first (GamGUI's signature backups, #163 and #164)
@@ -859,7 +875,8 @@ public actor Executor {
         if stillHere { dropOtherThan(current) }
         return RunOutcome(refusal: nil, steps: ran.steps, auditProblem: ran.auditProblem,
                           retry: Task.isCancelled || stopRequests.contains(state.preview.id) || !stillHere ? nil
-                              : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt))
+                              : park(state.preview, ran.steps, ran.listOutputs, round: round, ranAt: state.ranAt),
+                          noted: ran.noted, began: ran.began)
     }
 
     /// What `retry` checks holding the write lock, just before its steps: why none may run, or nil.
@@ -989,13 +1006,15 @@ public actor Executor {
     private func execute(_ preview: HeldPreview, job: UUID, kept: (any KeptSignatureRun)?, resuming prior: [RunOutcome.Step]? = nil,
                          listOutputs priorOutputs: [Int: String] = [:], attempt: Int? = nil,
                          progress: AsyncStream<(Int, RunOutcome.Step)>.Continuation?) async
-        -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?) {
+        -> (steps: [RunOutcome.Step], listOutputs: [Int: String], auditProblem: String?, noted: [Int: [String: String]],
+            began: Set<Int>) {
         let who = await currentActor?() ?? actor
         // `job`, reported to the jobs tray as its checks began: each step as it's decided, and its end.
         defer { jobs?(.finished(job: job)) }
         var results: [RunOutcome.Step] = []
         var stoppedBy: String?
         var auditProblem: String?
+        var noted: [Int: [String: String]] = [:], began: Set<Int> = []
         /// What each list step that succeeded printed: its tasks' id (D3c).
         var listOutputs = priorOutputs
         for (index, planned) in preview.steps.enumerated() {
@@ -1077,12 +1096,14 @@ public actor Executor {
             // GamGUI's `fresh`: only an account this run created waits for Google.
             let mayWait = planned.newAccountFrom.map { results[$0].isSucceeded } ?? false
             let ran = await run(step, index: index, of: preview, base: base, actor: who, secrets: secrets, mayWait: mayWait)
+            if ran.started { began.insert(index) }
             results.append(ran.result)
+            if !ran.noted.isEmpty { noted[index] = ran.noted }
             if step.action == .createTaskList, case .succeeded = ran.result { listOutputs[index] = ran.stdout }
             if let stop = ran.stop { stoppedBy = stop }
             if let problem = ran.auditProblem { auditProblem = problem }
         }
-        return (results, listOutputs, auditProblem)
+        return (results, listOutputs, auditProblem, noted, began)
     }
 
     /// GamGUI's words when a list's `returnidonly` gave no id (`onboarding.py` `_why(None)`).
@@ -1137,15 +1158,24 @@ public actor Executor {
     /// One step through the runner, with its end record. `mayWait`: a refusal Google gives an account it
     /// hasn't finished setting up becomes `.waiting` rather than a failure.
     private func run(_ step: WriteStep, index: Int, of preview: HeldPreview, base: JSONObject, actor who: String?,
-                     secrets: [String], mayWait: Bool) async -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?) {
+                     secrets: [String], mayWait: Bool) async
+        -> (result: RunOutcome.Step, stop: String?, auditProblem: String?, stdout: String?, noted: [String: String], started: Bool) {
         var extra = base
         let result: RunOutcome.Step, stop: String?, exitCode: Int32?
         var stdout: String?
+        var noted: [String: String] = [:]
+        // Set once GAM itself is launched (after the Vault read and the spawn): a failure before then changed nothing.
+        let launch = OSAllocatedUnfairLock(initialState: false)
         do {
             let ran = try await runner.run(step.write, as: preview.domain, ticket: WriteTicket(), timeout: step.timeout,
-                                           extraEnvironment: extraEnvironment)
+                                           extraEnvironment: extraEnvironment, launched: { launch.withLock { $0 = true } })
             exitCode = ran.exitCode
             stdout = ran.stdout
+            // What the write's own output says to keep (a Sheet export's link), whatever the exit: a warning exit can follow it.
+            for (key, value) in step.write.noted(stdout: ran.stdout, stderr: ran.stderr, owner: step.target) {
+                noted[key] = Self.masked(value, secrets: secrets)
+                extra[key] = .string(noted[key]!)
+            }
             if ran.exitCode == 0, let notDone = step.write.notDone(output: ran.stdout) {
                 // GAM exited 0 and didn't do it (`GamWrite.notDone`): this step's failure, on the record, never a false "done".
                 extra["error"] = .string(notDone)
@@ -1208,13 +1238,15 @@ public actor Executor {
             stop = "Stopped: \(message)"
         }
         let ok: Bool = if case .succeeded = result { true } else { false }
+        let started = launch.withLock { $0 }
+        if !started { extra["started"] = .bool(false) }
         do {
             try record(step, phase: "end", extra: extra, on: preview.domain, exitCode: exitCode, ok: ok, actor: who, secrets: secrets)
-            return (result, stop, nil, stdout)
+            return (result, stop, nil, stdout, noted, started)
         } catch {
             AuditFailure.report(error)
             return (result, stop, "Step \(index + 1) ran, but its result couldn't be written to the audit log (\(GamEngineMessage.of(error))).",
-                    stdout)
+                    stdout, noted, started)
         }
     }
 

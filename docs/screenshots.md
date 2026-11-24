@@ -89,6 +89,14 @@ exact command, and it runs once you click Run.
 |---|---|---|
 | ![Builder: GAM's commands by area, and print users with its grammar, its fields and the exact command it runs](screenshots/builder.png) | ![Add member to group: the group, the member and the role, and the exact command](screenshots/builder-change.png) | ![The confirm sheet: the change, its exact command, and that it changes the domain once you click Run](screenshots/builder-confirm.png) |
 
+A read's table can go to a new Google Sheet in the connected admin's own Drive, shared with nobody: its preview shows the
+exact command, that the Sheet holds a fresh read, and whether the service account may use Drive and Sheets; the result says
+whether a Sheet was made, with its link.
+
+| Export to a Google Sheet | Its result |
+|---|---|
+| ![The export's preview: the read's exact command with GAM's todrive options, a new Sheet in admin@example.com's own Drive shared with nobody, that it holds a fresh read of every row, and Drive and Sheets each Allowed](screenshots/builder-sheet.png) | ![The export's result: exported to a new Google Sheet in admin@example.com's Drive, shared with nobody, the Sheet Made, Open with its link, and that it's kept in the audit log and listed on Files](screenshots/builder-sheet-result.png) |
+
 The jobs tray, in every window's toolbar: each change run since launch, running first, with where it stands, its newest
 steps and failures in words, and Stop.
 
@@ -106,6 +114,13 @@ says what a switch would stop.
 | Reports | Usage | Audit |
 |---|---|---|
 | ![Reports: each directory report with its count, and the people without 2-step verification](screenshots/reports.png) | ![The storage and mail usage: the top people by storage, with the day the counts are for](screenshots/reports-usage.png) | ![Audit: the log's records, each with its outcome in words and its domain, a page at a time](screenshots/audit.png) |
+
+Files: what the app made, read only. The Google Sheets exported, read back from the audit log with their links, each kept
+incident's evidence folder, and the CSV files saved from the app; Return opens a Sheet or shows a folder or file in Finder.
+
+| Files |
+|---|
+| ![Files: two exports to a Google Sheet, one made with its link and one GAM refused because the service account isn't allowed Drive, an incident's evidence folder with one saved read, and a CSV saved from the Builder](screenshots/files.png) |
 
 | Audit, one domain |
 |---|

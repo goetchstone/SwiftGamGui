@@ -24,6 +24,8 @@ struct PhishingView: View {
     @State private var notice: (text: String, failed: Bool)?
     @State private var debugApplied = false
     @Environment(\.appearsActive) private var appearsActive
+    /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     private var canFind: Bool {
         hasGam && setup.active != nil && !changes.isFinding && !changes.isRunning
@@ -249,6 +251,7 @@ struct PhishingView: View {
             try await Task.detached(priority: .userInitiated) {
                 try AuditExport.writePrivately(AuditExport.csv([header] + rows), to: destination)
             }.value
+            savedFiles?.record(destination, what: "Phishing list")
             say("Saved \(rows.count) row\(rows.count == 1 ? "" : "s") to \(destination.lastPathComponent).", failed: false)
         } catch {
             say("Couldn't save \(destination.lastPathComponent): \(error.localizedDescription)", failed: true)

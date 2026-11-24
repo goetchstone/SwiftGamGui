@@ -61,6 +61,11 @@ Each is an invariant in [CLAUDE.md](CLAUDE.md); a change that breaks one is a bu
   destructive one) and an audit record. Every read run from the Builder is recorded too (the command,
   whom it was about, its row count; never its output), and every record names its domain. Reads whose
   output is a secret or a file (backup codes, enrollment tokens, any `get`) are listed but not run.
+  A read's table goes to a Google Sheet only as such a write: its preview holds the read's exact command
+  with GAM's `todrive` options (a new Sheet in the connected admin's own Drive, shared with nobody, no
+  browser opened, no email sent), it runs once from that preview, and its record keeps the link GAM
+  printed or the line it failed on. Every read path, and the runner's one door for reads, refuses a read
+  carrying `todrive` in any spelling GAM reads, so no read makes a Sheet on its own.
 - **A model or Siri only drafts a preview**, except the operator's optional, off-by-default "Just do
   it" list of simple single-target actions, which never includes deletes, offboarding, passwords,
   sign-outs, delegation, forwarding, transfers, sharing or bulk changes.

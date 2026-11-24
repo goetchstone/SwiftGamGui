@@ -27,6 +27,13 @@ it) and 11 (parity is a test).
 - `Packages/GamKit/Sources/Directory/BuilderChanges.swift`: a curated change previewed (held by the executor), confirmed, run
   once and audited (`about.command` is GamGUI's `meta.cid`), with the checks below.
 - `App/BuilderView.swift`: the screen. `BuilderPreviewSheet` (in `App/ChangePreviewSheet.swift`) is a change's confirm step.
+- Export to a Google Sheet (plan F4, GamGUI #174): `Packages/GamKit/Sources/GamEngine/SheetExport.swift` (GamGUI's
+  `core/sheet_export.py`: the scopes, the link, the upload's own lines, the outcome in words), `GamCommands.todriveArgs` and
+  `exportToSheet`, `Packages/GamKit/Sources/Directory/SheetExports.swift` (the preview, the scope check, the run), its sheet
+  `SheetExportSheet` (in `App/ChangePreviewSheet.swift`). Files: `App/FilesView.swift`, `ChangeCore/MadeFiles.swift`,
+  `Stores/SavedFilesStore.swift`. Tests: `GamEngineTests/SheetExportTests.swift`, `MockSheetExportTests.swift`,
+  `DirectoryStoreTests/SheetExportsTests.swift`, `ChangeCoreTests/MadeFilesTests.swift`,
+  `WriteRouteTests.theSheetExportRunsOnlyFromItsHeldPreview`, `WriteRouteTests.filesRunsNoGamAndListsNoPrivateFolder`.
   `scripts/embed_gam.sh` copies the catalog into the app beside `gam7/` (never into the signed GAM folder).
 - Tests: `GamEngineTests/CommandCatalogTests.swift`, `CatalogResultTests.swift`, `CuratedCommandTests.swift`,
   `DirectoryStoreTests/BuilderReadTests.swift`, `BuilderChangesTests.swift`, `WriteRouteTests.theBuilderWritesOnlyThroughBuilderChanges`,
@@ -73,11 +80,80 @@ it) and 11 (parity is a test).
   the app makes one in its wiring (the executor's own `AuditLog`) and hands it only to the Builder. Reads the app makes for itself
   (the directory and group caches, a person's tabs, Reports, a preview's checks) aren't recorded, as in GamGUI.
 - **A value is never `todrive` or `doit`** (`CommandCatalog.keywordsThatChange`, case and underscores aside, as GAM reads a keyword): a
-  deliberate difference from GamGUI, which passes them along. Not `deleteduplicates` (GAM 7.49.03): despite its name and GAM's
+  deliberate difference from GamGUI, which refused only a value's raw spelling until #174 (now `as_keyword`, as here) and still
+  passes `doit` along. Not `deleteduplicates` (GAM 7.49.03): despite its name and GAM's
   note, `doPrintCIDevices` only leaves a repeated device out of the output, warns, and exits 68; nothing is deleted. Some reads put a required value where GAM reads options
   (`print events [<EventEntity>] <EventDisplayProperty>*`, `print contacts <ContactSelection>`), and `todrive` there uploads the
-  result as a Sheet to the admin's Drive: a write with no preview or audit (review 2026-10-28). GamGUI's Builder has the same
-  hole; it's frozen, so it's noted here, not fixed there.
+  result as a Sheet to the admin's Drive: a write with no preview or audit (review 2026-10-28). A second line since plan F4:
+  the Builder's read door (`UserAccess.catalogRead`) refuses any read GAM would read as carrying `todrive` in any element
+  (`GamCommands.carriesToDrive`: stripped, lowercased, `_` dropped, GamGUI's `carries_todrive`) before GAM runs, unrecorded
+  (it ran nothing), and so do the audit runs (`AuditRuns.isAuditRead`) and the export itself. A curated search whose value is
+  `todrive` is refused too, though GAM reads it as a query: the stricter side, as GamGUI's.
+- **Export to a Google Sheet… is a curated write, run only from its preview** (plan F4, GamGUI #174). Beside a table's Export
+  CSV…, shown for a read GAM's `todrive` takes (`SheetExport.takesToDrive`: a catalog line naming `todrive`, or a curated `print`
+  or `report` read; this catalog holds each command's first grammar line only, so a command whose `todrive` is on a later line
+  isn't offered: the narrower side), ⇧⌘E said under it. It previews (`SheetExports.preview`): the read the table came from
+  (`ReadRun.read`, the exact `GamRead`) through `GamCommands.exportToSheet` (refuses a read GAM doesn't take `todrive` on at its
+  end, `GamCommands.takesToDrive`: a `print`/`report` read, or an entity's bare `list`, which `_doList` reads `todrive` right
+  after, never the top-level `gam list <EntityList>`, which takes it only before its list, and the button isn't offered there
+  either; review of #199, a listed deviation: GamGUI offers every line naming `todrive`), or one that carries `todrive`) is the
+  read's argv then `todrive tdtitle "<domain> - <command name>" tdnobrowser true tdnoemail true`
+  (`todriveArgs`, GamGUI's `todrive_args`, held to `argv.json`): no `tduser`, `tdshare`, `tdalert` or `tdnotify`. First the
+  scope check, a read (`UserAccess.sheetExportScopes`: `check serviceaccount scopes <drive>,<spreadsheets>` as the connected
+  admin; exit 0 or 10 is an answer, anything else or a row missing is unknown, `SheetExport.checked`). A scope known refused
+  holds nothing and offers no Export, with Setup's delegation link (`SetupModel.delegationLink`: every scope this app asks for,
+  never GAM's few). Unknown is said, and Export still offered. Otherwise the executor holds one `WriteStep` (`.exportToSheet`,
+  target the admin, `about.command` the catalog id, the domain-wide hour (`GamRunner.domainWideTimeout`, GamGUI's
+  `DOMAIN_WIDE_TIMEOUT`: the read runs again, and a cut-off leaves a file nobody can name), a click to confirm) for the tenant
+  the table
+  was read on (`expecting:`). The sheet shows the exact `gam …` line, a new Sheet in the admin's own Drive shared with nobody
+  with no browser and no email, that it holds a **fresh read** (its rows can differ from the N on screen, every row whatever
+  the filter), and each scope as Allowed, Not allowed or Not checked (words and a symbol, never color alone). Return exports,
+  Escape cancels, said on the sheet. `SheetExports.confirm` runs that preview, once (`executor.run(preview, …)`, the only run;
+  a second confirm is refused as spent). A switch drops a held export (`setup.onTenantChange`, and the executor's own tenant
+  check), including one landing while the executor holds it: the tenant is checked again once the hold returns, and a
+  mismatch discards it and says so (review of F4); Cancel discards it from the executor. The admin is named as GAM names it:
+  `setup.connectedAdminPrimary` (the primary address Check access read), else the token's address.
+- **The export's outcome is read from the upload's own lines** (GamGUI's failure log 2026-11-21), never GAM's one-line error
+  summary: the executor keeps what a write's own output says (`GamWrite.noted`, only an export notes anything) on the end
+  record and in `RunOutcome.noted`, and which steps GAM was launched for (`RunOutcome.began`: after the Vault read and the
+  spawn, never on the begin record alone; a step GAM never launched has `started: false` on its end record, and its export says
+  "Nothing was made: GAM didn't run", on its result and on Files). A switch landing while an export runs leaves its result off
+  the screen (F6's `isConnected(to:)`, as every changes store); the jobs tray, Audit and Files keep it. `SheetExport.noted`: the link
+  (`Data uploaded to Drive File:` then the link on the next line, shown as a link only when it's https on docs.google.com or
+  drive.google.com with no port, user info or control character), else which failure line GAM printed about the admin
+  (`uploadState`, the last line). "Nothing was made" only where GAM's source shows no file exists at that point (review of F4,
+  2026-11-21, each a listed deviation from GamGUI's `UPLOAD_LINES`, which have the same gaps): `drive_refused` (the upload's
+  Drive token, before the create) and `not_permitted` (`files.create` refused, a line only the upload prints) made nothing;
+  `sheets_refused` and `finish_failed` made the file; `drive_off` and `not_created` (`userDriveServiceNotEnabledWarning`, which
+  `files.create` and the Sheets calls after it both reach), `create_failed` (a full Drive reads the same as Google's 500
+  UNKNOWN) and `probably_made` are unknown. `create_failed` is GAM's own line only, `Drive Folder: root, Create Failed:` at a
+  line's start (no `tdparent` is sent), so a read's `Drive Folder: <id>, Print Failed:` (print diskusage, print emptydrivefolders)
+  can't decide it. GAM names the admin by its Directory primary address (`GetTodriveParameters` → `checkUserExists`); when the
+  last line names any other account it's unknown, never an earlier line (GamGUI skips it). Residue: a read acting through the
+  admin's own Drive can print the upload's Drive-refused line itself, and it stands for the upload only if the upload then
+  stopped with no line at all. `SheetExport.outcome` says made, not made or can't be told, GamGUI's words where the rules agree;
+  exit 0 without a link is a failure (`GamWrite.notDone`, "whether a Sheet was made can't be told"); a run GAM never started
+  (`began` empty) made nothing and left no record, and the result says so rather than "kept in the audit log". The result shows
+  the link with ⌘O, what to do, GAM's error shown (not behind a disclosure) for a run GAM made, and whether the audit log kept
+  it. A result too large for a Sheet is a plain CSV file (a drive.google.com link), said as such. The one public door a read
+  takes to GAM (`AuthenticatedRunner.run(GamRead)`) refuses a read carrying `todrive` before the Vault, whichever builder made
+  it (`CommandKindTests.noReadCarriesTodrive` holds every read builder too).
+- **Files** (plan F4, GamGUI's `/files`, a sidebar screen): read only, no `gam`. The Sheets exported, read back from this
+  app's own audit log (`MadeFiles.sheets`: each `export_to_sheet` end record with an `ok` of its own; begins, other actions and
+  Mark as Checked's acknowledgement passed over; the newest 50 within the newest 50,000 records). The log and every rolled
+  generation are read through descriptors opened `O_NOFOLLOW | O_NONBLOCK` and read only when `fstat` says regular file
+  (`AuditLog.forEachRecord`, which Audit and Home read through too): a link, a FIFO or a folder in any generation's place is
+  said, never followed or waited on. Each Sheet's time is shown in this Mac's time zone, named, and its row says what its
+  result said (a Sheet made while the read reported a problem, a plain CSV file, unknown). Each kept incident's evidence folder
+  with its saved reads counted by descriptor (`IncidentStore.savedReads`: the incident's folder and its `evidence` opened
+  `O_NOFOLLOW`, folders only, at most `countCap` entries read; at most the store's 200 incidents). The CSVs saved through a save
+  panel (`SavedFilesStore`, the newest 50, `0600` in the app's folder): every screen with one lists it
+  (`WriteRouteTests.everyCSVSavePanelListsWhatItSaved`: the Builder's table, Audit, an audit run's table, an incident report's
+  list, a leaver's classes, Phishing's lists, an incident log, Who it reached, Everyone it got to, a roster's issues); an
+  incident report's folder and a roster hand-over ZIP aren't listed, said on the screen. A list that didn't open is said, never
+  "None saved yet", and ⌘R tries it again. Return opens a Sheet or shows a folder or file in Finder; one moved or deleted since
+  is said and spoken. It never lists a run folder or the setup folder (`WriteRouteTests.filesRunsNoGamAndListsNoPrivateFolder`).
 - **Optional `[...]` groups are dropped** (GamGUI's rule): a command runs on its required arguments, plus a person or a device on
   its own (`user <x>` when given) and a single optional placeholder. A fragment of an alternation or a paren group is passed
   over. GamGUI's quirk is kept: the sensitive rule looks for the catalog's `verb`, its first alternative, so an alternation
@@ -205,4 +281,6 @@ B4 in docs/live-verification.md).
 - Sensitive reads (and message bodies), when the operator asks: reads are recorded now (plan F1), so `sensitive_read` is the
   one action to add to `ReadAudit`, and the CSV download of one recorded as `sensitive_csv_export` (GamGUI's).
 - The command finder's Siri intent (voice is parked).
-- Sheet export: dropped by decision (plan §1).
+- Sensitive reads' export (`sensitive_export`): with the sensitive reads themselves, when the operator asks.
+- The first live Sheet export, on the operator's yes (plan F4): the mock's upload lines are read from GAM's source, never seen
+  live. Files doesn't list an incident report's folder or a roster hand-over ZIP.

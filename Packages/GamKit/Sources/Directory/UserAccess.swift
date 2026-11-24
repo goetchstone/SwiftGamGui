@@ -487,6 +487,9 @@ public final class UserAccess {
     /// A read the log couldn't record isn't shown, as GamGUI's isn't: it says so instead.
     public func catalogRead(_ read: GamRead, command: String, target: String, in domain: Domain,
                             recordingTo audit: ReadAudit) async -> Result<CatalogResult, Problem> {
+        // A read GAM would read as carrying `todrive`, in any spelling, would make a Sheet with no preview (plan F4): refused before
+        // it runs, unrecorded (it ran nothing), as GamGUI's `catalog_read`. Its table goes to a Sheet from its own preview.
+        guard !GamCommands.carriesToDrive(read.argv) else { return .failure(Self.carriesToDrive) }
         let output = await readNow(read, in: domain, timeout: ActivityLogs.timeout) { $0 }
         return await Task.detached {
             let shown = output.map { CatalogResult(argv: read.argv, stdout: $0) }
@@ -505,9 +508,28 @@ public final class UserAccess {
         }.value
     }
 
+    /// Plan F4's scope check, a read (GamGUI's `sheet_export_scopes`): may the service account act for `admin` in Drive and in
+    /// Sheets? Setup's own `check serviceaccount`, narrowed to those two (`SheetExport.checked`): each scope and whether it's
+    /// allowed, or nil when it couldn't be told (no admin, another exit, a row missing), which is never "allowed" (invariant 10).
+    /// The app's own read, as Setup's check is: not recorded.
+    public func sheetExportScopes(admin: String, in domain: Domain) async -> [String: Bool]? {
+        guard !PythonText.strip(admin).isEmpty, let runner,
+              let read = try? GamCommands.checkServiceAccount(admin: admin, scopes: SheetExport.scopes.map(\.scope))
+        else { return nil }
+        do {
+            return SheetExport.checked(try await runner.run(read, as: domain, extraEnvironment: environment))
+        } catch {
+            return nil
+        }
+    }
+
     /// A read stopped before GAM finished: its task was cancelled (`GamRunner` throws `CancellationError`). At a quit GAM is
     /// stopped the same way, but the app exits before anyone reads this.
     public nonisolated static let interrupted = Problem(summary: ReadAudit.interrupted)
+
+    /// GamGUI's words for a read carrying `todrive`: it isn't run.
+    public nonisolated static let carriesToDrive = Problem(summary: "That read carries todrive, which would make a Google Sheet: "
+        + "use Export to a Google Sheet on its table instead.")
 
     /// `read` run now as `pinned`, or the connected domain, parsed; GAM's own words (`GamError.message`) when it fails.
     private func readNow<T>(_ read: GamRead, in pinned: Domain? = nil, timeout: Duration = GamRunner.defaultTimeout,
