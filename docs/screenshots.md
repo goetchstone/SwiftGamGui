@@ -119,6 +119,13 @@ says what a switch would stop.
 |---|---|---|
 | ![The shared drive run: every drive's members, users and groups only, the outside member first and flagged in words](screenshots/reports-run-drives.png) | ![The Classroom run: each class with owner, state and counts; classes owned by suspended accounts and stale ones](screenshots/reports-run-classroom.png) | ![The admin token review: every admin, suspended ones included, and their connected apps with AI and broad access flagged](screenshots/reports-run-admins.png) |
 
+A run, or a named report run on Reports, can be scheduled daily, weekly or monthly: it's then due on Home and on its pane,
+and still runs only when you click Run. A scheduled run keeps its tables on this Mac, so the next can say what changed.
+
+| A scheduled run | A named report, scheduled | Can't run here any more |
+|---|---|---|
+| ![License usage scheduled weekly: when it's next due, Run Again, its schedule and how many runs to keep, and the two runs kept on this Mac](screenshots/reports-run-scheduled.png) | ![Google's alerts run on Reports as a named report: its exact read, Open in the Builder, scheduled weekly, and its kept runs](screenshots/reports-run-named.png) | ![A schedule for a report this GAM version has no plain read for: it isn't due and can't be run, with Stop Scheduling It](screenshots/reports-stranded.png) |
+
 Incident: an account taken over, in the order it's worked. Pull Incident Logs reads the logs by account or by the
 attacker's address; Read the logs says what they show and drafts each fix; Secure an account runs the lock, every step
 a switch, with what you tick undone, once you've typed the person's address.
