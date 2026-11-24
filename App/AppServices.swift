@@ -146,6 +146,12 @@ struct AppServices {
         }
         if let executor { jobs.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) } }
         let directory = DirectoryStore(setup: setup, runner: runner)
+        // Its own reader: the leaver's delegates are read live, never from a page's lists.
+        let offboardChanges = OffboardChanges(executor: executor, setup: setup, directory: directory,
+                                              access: UserAccess(setup: setup, runner: runner))
+        // An offboarding started here is what the shared drive run calls "being offboarded".
+        let auditRuns = AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit))
+        auditRuns.leaving = { [weak offboardChanges] in offboardChanges?.leaversStarted ?? [] }
         let groupMembers = GroupMembers(setup: setup, runner: runner)
         let groups = GroupStore(setup: setup, runner: runner)
         let calendarReads = CalendarReads(setup: setup, runner: runner)
@@ -168,9 +174,7 @@ struct AppServices {
                            calendarReads: calendarReads,
                            calendarChanges: CalendarChanges(executor: executor, setup: setup, directory: directory, groups: groups,
                                                             reads: calendarReads, runner: runner),
-                           // Its own reader: the leaver's delegates are read live, never from a page's lists.
-                           offboardChanges: OffboardChanges(executor: executor, setup: setup, directory: directory,
-                                                            access: UserAccess(setup: setup, runner: runner)),
+                           offboardChanges: offboardChanges,
                            offboardTemplates: offboardTemplates,
                            // Its own reader too: every read is the check's, live, never a page's lists.
                            compromisedChanges: CompromisedChanges(executor: executor, setup: setup,
@@ -195,7 +199,7 @@ struct AppServices {
                            readAudit: ReadAudit(log: audit),
                            // Its own reader: the scope check is the export's, live.
                            sheetExports: SheetExports(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
-                           auditRuns: AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit)),
+                           auditRuns: auditRuns,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })
     }

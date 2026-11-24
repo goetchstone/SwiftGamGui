@@ -108,7 +108,7 @@ struct WriteRouteTests {
         let runner = try #require(files.first { $0.path.hasSuffix("/AuditRunner.swift") })
         let runs = runner.lines.filter { $0.contains("runner.run(") }
         #expect(runs.count == 1 && runs.allSatisfy { $0.contains("runner.run(read, as: domain") }, "\(runs)")
-        #expect(runner.lines.contains { $0.contains("let read = AuditRuns.read(step)") })
+        #expect(runner.lines.contains { $0.contains("if let gam = AuditRuns.read(step, tables: tables)") })
         #expect(runner.lines.contains { $0.contains("guard AuditRuns.isAuditRead(read.argv) else") })
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
     }

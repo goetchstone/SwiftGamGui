@@ -369,7 +369,7 @@ public enum GamCommands {
     /// `@` (so never a list selector), nothing around it to strip, and no form GAM rewrites to another address
     /// (normalizeEmailAddressOrUID takes `Name <a@b>` as `a@b`; convertUIDtoEmailAddress reads `id:` and `uid:`, matched
     /// ignoring case as Python does, so `ıd:` too: no `:` at all).
-    static func isOneAddress(_ address: String) -> Bool {
+    package static func isOneAddress(_ address: String) -> Bool {
         Address.looksLikeEmail(address) && PythonText.strip(address) == address
             && !address.unicodeScalars.contains { $0 == "<" || $0 == ">" || $0 == ":" }
     }
@@ -564,6 +564,44 @@ public enum GamCommands {
         GamRead(["print", "licenses"])
     }
 
+    /// These accounts' grants, suspended ones included (9119-9128 `gam print tokens ... [<UserTypeEntity>]`; `users <list>` is
+    /// convertEntityToList, no suspension filter; _printShowTokens at the 7.52.04 tag): the audit runs' admin token review (plan
+    /// F3). The list is one argv element, comma-joined, each one address, lowercased, repeats dropped. CSV as `printTokens`. An
+    /// account Google doesn't know is entityUnknownWarning (56 in the domain, 73 outside it) and the rest are read; a refused
+    /// token is 12.
+    public static func printTokens(users: [String]) throws -> GamRead {
+        guard !users.isEmpty else { throw Invalid.argument("a list of accounts is needed") }
+        if let bad = users.first(where: { !isOneAddress($0) }) { throw Invalid.argument("Not one address: “\(bad)”") }
+        var seen: Set<String> = [], listed: [String] = []
+        for address in users.map({ PythonText.lower(PythonText.strip($0)) }) where seen.insert(address).inserted { listed.append(address) }
+        return GamRead(["print", "tokens", "users", listed.joined(separator: ",")])
+    }
+
+    /// Every admin role assignment, a group's expanded to its member users (1588-1591 `gam print admins ... [recursive]`;
+    /// doPrintShowAdmins at the 7.52.04 tag): the admin token review (plan F3). Not `types user`: with `recursive` it drops a
+    /// group's row, members and all, before expanding it. CSV PRINT_ADMIN_TITLES; an expanded row has assignedToUser and
+    /// assignedToGroup both set; a holder GAM couldn't name has assignedToUnknown True and assignedTo alone, exit 0.
+    public static func printAllAdmins() -> GamRead {
+        GamRead(["print", "admins", "recursive"])
+    }
+
+    /// Every shared drive in the domain, as the admin (doPrintShowSharedDrives: domain admin access): the audit runs' shared
+    /// drive members (plan F3). `noorgunits`: no org-unit path lookup, one Directory read fewer. CSV `User,id,name,JSON`. No
+    /// drive at all is exit 60 (NO_ENTITIES_FOUND_RC) with the titles: GAM's none.
+    public static func printSharedDrives() -> GamRead {
+        GamRead(["print", "shareddrives", "noorgunits", "formatjson"])
+    }
+
+    /// Every shared drive's own permissions, one row each (doPrintShowSharedDriveACLs, domain admin access): CSV
+    /// `User,id,name,createdTime,JSON`, the JSON `{"permission": {...}}`; a drive with none is one row with JSON `{}`
+    /// (`shownopermissionsdrives true`). GAM drops a drive whose permissions it can't read without a word or a code
+    /// (printShowSharedDriveACLs passes fileNotFound, forbidden and the rest), so the run reads `printSharedDrives` too. The
+    /// grammar's `gam print shareddriveacls` line omits shownopermissionsdrives (its `<UserTypeEntity>` form has it);
+    /// printShowSharedDriveACLs, which both forms run, takes it.
+    public static func printSharedDriveACLs() -> GamRead {
+        GamRead(["print", "shareddriveacls", "oneitemperrow", "shownopermissionsdrives", "true", "formatjson"])
+    }
+
     /// The admin role assignments `user` holds directly (1588-1591; doPrintShowAdmins), CSV with `role` and `scopeType`.
     /// Without `recursive`, a role held through a group isn't listed.
     public static func printAdmins(user: String) -> GamRead {
@@ -594,9 +632,10 @@ public enum GamCommands {
     /// given states. CSV `id,JSON`. `ownerEmail` has GAM look up each distinct owner's address, one Directory read per owner:
     /// off for a domain-wide read, whose owners the directory cache already names by `ownerId`. `aliases` adds a
     /// `JSON-aliases` column after `JSON` (one Classroom call per class, in GAM's run), each item an object as the API gives
-    /// it, `{"alias": "d:…"}`. `counts` (GamGUI #172's Classroom audit run, ported for parity: nothing here asks for it yet)
-    /// has GAM add each class's teacher and student counts to its JSON (`show all countsonly`), one Classroom list call each per
-    /// class; GAM counts a roster Google won't return as 0, without a word, so a 0 is never "an empty class".
+    /// it, `{"alias": "d:…"}`. `counts` (the audit runs' Classroom, plan F3): `show all countsonly` adds each class's teacher
+    /// and student counts to its JSON (`teachers`, `students`), one Classroom list call each per class. GAM counts a roster
+    /// Google won't return as 0, without a word (_getCourseAliasesMembers passes notFound and serviceNotAvailable), so a 0 is
+    /// never "an empty class".
     public static func printCourses(teacher: String = "", student: String = "", states: [CourseState] = [],
                                     courseIDs: [String] = [], ownerEmail: Bool = true, aliases: Bool = false,
                                     counts: Bool = false) throws -> GamRead {
