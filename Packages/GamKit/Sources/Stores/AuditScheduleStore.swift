@@ -500,13 +500,30 @@ public final class AuditScheduleStore: Sendable {
         try Self.writeWhole(bytes, named: id + Self.keptSuffix, in: dir, temporary: Self.tempPrefix, replacing: false)
     }
 
-    /// Deletes all but the newest `keep` kept runs (and a crash's half-written leftovers); how many went.
+    /// Removes `name` (a folder with `AT_REMOVEDIR`) from the open folder: true when it went, false when it was already gone.
+    /// Any other failure (a file locked in Finder, EPERM) is counted in `failed`, so a delete that left data is never said done
+    /// (GamGUI's `_unlink`, which raises all but FileNotFoundError).
+    private static func remove(_ name: String, in dir: Int32, flags: Int32 = 0, failed: inout [Int32]) -> Bool {
+        if unlinkat(dir, name, flags) == 0 { return true }
+        if errno != ENOENT { failed.append(errno) }
+        return false
+    }
+
+    /// A problem for the removals that failed, or nil when none did.
+    private static func notDeleted(_ failed: [Int32]) -> Problem? {
+        guard let code = failed.first else { return nil }
+        return Problem("\(failed.count) of its files couldn't be deleted (\(String(cString: strerror(code)))): check they aren't "
+                       + "locked in Finder, then try again.")
+    }
+
+    /// Deletes all but the newest `keep` kept runs (and a crash's half-written leftovers, best effort); how many went. Throws
+    /// when one couldn't be deleted, after trying every one.
     private func prune(_ root: Int32, domain: Domain, run: String, keep: Int) throws(Problem) -> Int {
         guard let dir = try openKept(root, domain: domain, run: run, make: false) else { return 0 }
         defer { close(dir) }
-        var gone = 0
-        for id in try Self.keptIDs(in: dir).dropFirst(max(keep, 0)) {
-            if unlinkat(dir, id + Self.keptSuffix, 0) == 0 { gone += 1 }
+        var gone = 0, failed: [Int32] = []
+        for id in try Self.keptIDs(in: dir).dropFirst(max(keep, 0)) where Self.remove(id + Self.keptSuffix, in: dir, failed: &failed) {
+            gone += 1
         }
         for name in try Self.names(in: dir) where name.hasPrefix(Self.tempPrefix) {
             var info = stat()
@@ -514,27 +531,30 @@ public final class AuditScheduleStore: Sendable {
                 unlinkat(dir, name, 0)
             }
         }
+        if let problem = Self.notDeleted(failed) { throw problem }
         return gone
     }
 
-    /// Every kept run of `run` on `domain`, and its folder; how many runs went.
+    /// Every kept run of `run` on `domain`, its half-written leftovers and its folder; how many runs went. Throws when anything
+    /// there couldn't be deleted, after trying every one: a file locked in Finder, or something else left in its folder.
     private func deleteAll(_ root: Int32, domain: Domain, run: String) throws(Problem) -> Int {
         guard let dir = try openKept(root, domain: domain, run: run, make: false) else { return 0 }
-        var gone = 0
+        var gone = 0, failed: [Int32] = []
         do {
             defer { close(dir) }
             for name in try Self.names(in: dir) {
                 if name.hasSuffix(Self.keptSuffix), Self.isKeptID(String(name.dropLast(Self.keptSuffix.count))) {
-                    if unlinkat(dir, name, 0) == 0 { gone += 1 }
+                    if Self.remove(name, in: dir, failed: &failed) { gone += 1 }
                 } else if name.hasPrefix(Self.tempPrefix) {
-                    unlinkat(dir, name, 0)
+                    _ = Self.remove(name, in: dir, failed: &failed)
                 }
             }
         }
         if let domainDir = try openKept(root, domain: domain, run: nil, make: false) {
-            unlinkat(domainDir, run, AT_REMOVEDIR)
+            _ = Self.remove(run, in: domainDir, flags: AT_REMOVEDIR, failed: &failed)
             close(domainDir)
         }
+        if let problem = Self.notDeleted(failed) { throw problem }
         return gone
     }
 
@@ -591,7 +611,12 @@ public final class AuditScheduleStore: Sendable {
                                                     note: "Kept on this Mac, as one of the last \(now.keep) run\(now.keep != 1 ? "s" : "") it keeps.")
                 do throws(Problem) {
                     try keep(dir, domain: domain, run: run, when: when, days: days, tables: tables)
-                    _ = try prune(dir, domain: domain, run: run, keep: now.keep)
+                    do throws(Problem) {
+                        _ = try prune(dir, domain: domain, run: run, keep: now.keep)
+                    } catch {
+                        after.note = "Kept on this Mac, but its older runs beyond the last \(now.keep) couldn't all be deleted: \(error.reason)"
+                        after.problem = true
+                    }
                 } catch {
                     after.note = "It couldn't be kept on this Mac: \(error.reason)"
                     after.problem = true
@@ -667,12 +692,18 @@ public final class AuditScheduleStore: Sendable {
                         && info.st_mode & S_IFMT == S_IFDIR
                 }
             }()
-            var kept = 0
-            for run in runs { kept += try deleteAll(dir, domain: domain, run: run) }
-            if let keptDir = try Self.openFolder("kept", in: dir, shown: root.appending(path: "kept").path, make: false) {
-                unlinkat(keptDir, Self.domainFolder(domain), AT_REMOVEDIR)
-                close(keptDir)
+            var kept = 0, problem: Problem?
+            for run in runs {   // every run tried, the first problem thrown once all were
+                do throws(Problem) { kept += try deleteAll(dir, domain: domain, run: run) } catch { problem = problem ?? error }
             }
+            if let keptDir = try Self.openFolder("kept", in: dir, shown: root.appending(path: "kept").path, make: false) {
+                var failed: [Int32] = []
+                // Something left in the domain's folder (a link a run's listing passed over) is data left: said.
+                _ = Self.remove(Self.domainFolder(domain), in: keptDir, flags: AT_REMOVEDIR, failed: &failed)
+                close(keptDir)
+                problem = problem ?? Self.notDeleted(failed)
+            }
+            if let problem { throw problem }
             return (schedules, kept)
         }
     }

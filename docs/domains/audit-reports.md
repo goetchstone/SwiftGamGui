@@ -191,7 +191,9 @@ schedules, GamGUI #178) isn't here yet.
   never says "Nothing is due" then) and never saved over; a file that isn't a store is moved to
   `schedules.json.unreadable-<time>-<hex>` before an empty one starts, said on Home. A kept run that can't be read is listed
   as such ("It isn't whole.", "It isn't a file.", "It couldn't be read just now.", "It's larger than this app reads."), never
-  dropped. One `flock` on the store's folder spans every change and a finished run's "still scheduled? keep, prune, count":
+  dropped. A file or folder that can't be deleted (locked in Finder: EPERM; anything but already gone) is never said
+  deleted: prune keeps the run and says its older runs couldn't all be deleted, Delete and Setup's Remove say so, and
+  unscheduling says its kept runs couldn't all be deleted (review of F7a, 2026-11-24). One `flock` on the store's folder spans every change and a finished run's "still scheduled? keep, prune, count":
   a run finishing as it's unscheduled, or its domain removed, keeps nothing.
 - **Per domain.** Everything is keyed by the connected domain (`Domain.name`, already lowercased): a switch drops what
   `RunSchedules` held, and the screens read the new domain's. A run that ends after a switch isn't kept. Nothing compares

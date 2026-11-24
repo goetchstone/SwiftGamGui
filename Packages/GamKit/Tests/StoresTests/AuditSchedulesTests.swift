@@ -378,11 +378,8 @@ struct AuditScheduleStoreTests {
             let after = probe.afterRun(example, run: "license_usage", tables: [Self.table("t", [])], days: 0, answered: true,
                                        when: Self.t0, clock: utc)
             #expect(after.problem && after.note.contains("isn't a folder (it may be a link)"), "\(linked): \(after.note)")
-            if linked == "run" {   // Remove lists the domain's run folders and passes a link over: nothing to follow
-                #expect(try probe.forget(example).kept == 0)
-            } else {
-                #expect(throws: AuditSchedules.Problem.self, "\(linked)") { try probe.forget(example) }
-            }
+            // Remove never follows a link: one as a run's folder is passed over, and left, so it says not all was deleted.
+            #expect(throws: AuditSchedules.Problem.self, "\(linked)") { try probe.forget(example) }
             #expect(FileManager.default.fileExists(atPath: victim.path), "\(linked)")
         }
         #expect(try real.runs(example, run: "license_usage").count == 1)
@@ -415,6 +412,26 @@ struct AuditScheduleStoreTests {
         clock.withLock { $0 = made.timeIntervalSince1970 + 3601 }
         try store.setSchedule(example, run: "license_usage", cadence: .weekly, keep: 3, now: Self.t0)
         #expect(!FileManager.default.fileExists(atPath: leftover.path))
+    }
+
+    /// A kept file that can't be deleted (locked in Finder: EPERM) is never said deleted: prune says the older runs stay, Delete
+    /// and Setup's Remove throw, and unscheduling says its kept runs couldn't all be deleted. The rest are still deleted.
+    @Test func aKeptFileThatCantBeDeletedIsNeverSaidDeleted() throws {
+        let store = AuditScheduleStore(root: root)
+        try keep(store, [[Self.table("t", [["a", "A"]])]], keeping: 1)
+        let first = try #require(keptFiles().first)
+        #expect(chflags(first.path, UInt32(UF_IMMUTABLE)) == 0)
+        defer { chflags(first.path, 0) }
+        let after = store.afterRun(example, run: "license_usage", tables: [Self.table("t", [["b", "B"]])], days: 0, answered: true,
+                                   when: Self.t0 + Self.day, clock: utc)
+        #expect(after.problem && after.note.hasPrefix("Kept on this Mac, but its older runs beyond the last 1 couldn't all be deleted"))
+        #expect(keptFiles().count == 2)
+        #expect(throws: AuditSchedules.Problem.self) { try store.deleteKept(example, run: "license_usage") }
+        #expect(keptFiles().map(\.lastPathComponent) == [first.lastPathComponent], "the one it could delete went")
+        let (saved, gone) = try store.setSchedule(example, run: "license_usage", cadence: nil, keep: 5, now: Self.t0)
+        #expect(saved == nil && gone == nil)
+        #expect(throws: AuditSchedules.Problem.self) { try store.forget(example) }
+        #expect(FileManager.default.fileExists(atPath: first.path))
     }
 
     /// A table over the row cap isn't kept, says so, and is never compared with later.
