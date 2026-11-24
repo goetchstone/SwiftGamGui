@@ -155,7 +155,7 @@ struct GroupStoreTests {
         let clock = SuspendingClock(), started = clock.now
         let groups = app.groups
         let old = Task { await groups.load() }
-        while !groups.isLoading { await Task.yield() }
+        try await yieldWhile { !groups.isLoading }
         try await connect("example.org", in: app.setup)
         #expect(!groups.isLoading, "a switch starts no group load")
         await old.value
@@ -305,7 +305,7 @@ struct GroupStoreTests {
         try await connect("example.com", in: app.setup)
         let members = app.members
         let read = Task { await members.load("sales@example.com") }
-        while !members.isReading("sales@example.com") { await Task.yield() }
+        try await yieldWhile { !members.isReading("sales@example.com") }
         try await connect("example.org", in: app.setup)
         #expect(!members.isReading("sales@example.com"))
         await read.value
@@ -331,7 +331,7 @@ struct GroupStoreTests {
         try await connect("example.com", in: app.setup)
         let members = app.members
         let first = Task { await members.load("sales@example.com") }
-        while !members.isReading("sales@example.com") { await Task.yield() }
+        try await yieldWhile { !members.isReading("sales@example.com") }
         let second = Task { await members.load("sales@example.com", after: .seconds(30)) }
         await Task.yield()
         second.cancel()
@@ -355,7 +355,7 @@ struct GroupStoreTests {
         try await connect("example.com", in: app.setup)
         let members = app.members
         let older = Task { await members.load("sales@example.com") }
-        while !FileManager.default.fileExists(atPath: marker.path) { await Task.yield() }
+        try await yieldWhile { !FileManager.default.fileExists(atPath: marker.path) }
         await members.load("sales@example.com")
         let newer = try #require(members.rows("sales@example.com", query: ""))
         await older.value
@@ -370,7 +370,7 @@ struct GroupStoreTests {
         try await connect("example.com", in: app.setup)
         let members = app.members
         let read = Task { await members.load("sales@example.com", after: .seconds(30)) }
-        while !members.isReading("sales@example.com") { await Task.yield() }
+        try await yieldWhile { !members.isReading("sales@example.com") }
         read.cancel()
         await read.value
         #expect(!members.isReading("sales@example.com"))

@@ -110,7 +110,7 @@ struct DirectoryStoreTests {
     @Test func aLoadRunningWhenTheTenantChangesIsDropped() async throws {
         try await connect("example.com", admin: "admin@example.com")
         let load = Task { await store.load() }
-        while !store.isLoading { await Task.yield() }
+        try await yieldWhile { !store.isLoading }
         await setup.remove(example)
         await load.value
         try await connect("example.com", admin: "admin@example.com")
@@ -143,7 +143,7 @@ struct DirectoryStoreTests {
         try await connect("example.com", admin: "admin@example.com", in: setup)
         let clock = SuspendingClock(), started = clock.now
         let old = Task { await store.load() }
-        while !store.isLoading { await Task.yield() }
+        try await yieldWhile { !store.isLoading }
         try await connect("example.org", admin: "admin@example.org", in: setup)
         #expect(store.isLoading, "connecting example.org starts its own load (example.com's was stopped)")
         await old.value
@@ -163,7 +163,7 @@ struct DirectoryStoreTests {
         try await connect("example.com", admin: "admin@example.com", in: setup)
         let clock = SuspendingClock(), started = clock.now
         let old = Task { await first.load() }
-        while !first.isLoading { await Task.yield() }
+        try await yieldWhile { !first.isLoading }
         try await connect("example.org", admin: "admin@example.org", in: setup)
         #expect(first.isLoading && second.isLoading, "each store loads example.org")
         await old.value
@@ -180,7 +180,7 @@ struct DirectoryStoreTests {
         let store = DirectoryStore(setup: setup, runner: slow)
         try await connect("example.com", admin: "admin@example.com", in: setup)
         async let first: Void = store.load()
-        while !store.isLoading { await Task.yield() }
+        try await yieldWhile { !store.isLoading }
         await store.load()
         await first
         let runs = try String(contentsOf: log, encoding: .utf8).split(separator: "\n").filter { $0.hasPrefix("print users") }

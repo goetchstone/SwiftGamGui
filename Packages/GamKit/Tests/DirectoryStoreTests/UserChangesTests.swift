@@ -445,7 +445,7 @@ final class UserChangesTests {
         let bob = try user("bob@example.com"), before = setup.generation
         let running = Task { await changes.previewDeleteAccount(bob, access: access) }
         // The checks have begun, and the Vault read waits for the file to go: the switch comes during them however slow the runner.
-        while !changes.isBusy { await Task.yield() }
+        try await yieldWhile { !changes.isBusy }
         await setup.importFolder(scratch.appending(path: "gamcfg"), as: "example.com")
         await setup.checkAccess(Domain("example.com")!)
         #expect(setup.generation != before)
@@ -551,7 +551,7 @@ final class UserChangesTests {
         try await connect()
         let access = access
         let first = Task { await access.load("alice@example.com") }
-        while !access.isReading("alice@example.com") { await Task.yield() }
+        try await yieldWhile { !access.isReading("alice@example.com") }
         await access.load("bob@example.com")
         await first.value
         #expect(access.lists(for: "bob@example.com")?.groups == ["staff@example.com"])
@@ -575,7 +575,7 @@ final class UserChangesTests {
         try await connect()
         let access = access
         let read = Task { await access.load("alice@example.com", after: .seconds(30)) }
-        while !access.isReading("alice@example.com") { await Task.yield() }
+        try await yieldWhile { !access.isReading("alice@example.com") }
         read.cancel()
         await read.value
         #expect(!access.isReading("alice@example.com"))
