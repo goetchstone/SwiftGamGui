@@ -434,6 +434,23 @@ struct AuditScheduleStoreTests {
         #expect(FileManager.default.fileExists(atPath: first.path))
     }
 
+    /// A table kept with other columns (an update added, moved or reworded one) is never compared: every row would read as gone
+    /// and new. It says why, and an older run with the same columns is still compared with. Not GamGUI's: a listed deviation.
+    @Test func aTableWhoseColumnsChangedIsNeverCompared() {
+        let now = [AuditSchedules.Table(key: "t", title: "T", columns: ["Email", "Full name"], rows: [["a", "A"]], known: true,
+                                        partial: false)]
+        func run(_ id: String, _ when: Double, _ columns: [String]) -> AuditSchedules.KeptRun {
+            .init(id: id, when: when, tables: [.init(key: "t", title: "T", columns: columns, known: true, partial: false, count: 1, kept: true,
+                                                    rows: [["a", "A"]])])
+        }
+        let moved = run("2", Self.t0 + Self.day, ["Full name", "Email"]), renamed = run("1", Self.t0, ["Email", "Name"])
+        var found = AuditSchedules.changesSince(now, days: 0, earlier: [moved, renamed], clock: utc) { id in id == "2" ? moved : renamed }
+        #expect(found["t"]?.why == AuditSchedules.columnsChanged)
+        let same = run("0", Self.t0 - Self.day, ["Email", "Full name"])
+        found = AuditSchedules.changesSince(now, days: 0, earlier: [moved, renamed, same], clock: utc) { _ in same }
+        #expect(found["t"]?.compared == true && found["t"]?.since == Self.t0 - Self.day && found["t"]?.new.isEmpty == true)
+    }
+
     /// Cells compare as their bytes, as GamGUI's `Counter` does: a name in its composed and decomposed forms is a change.
     @Test func cellsCompareAsTheirBytes() {
         let composed = "Zo\u{EB}", decomposed = "Zoe\u{308}"

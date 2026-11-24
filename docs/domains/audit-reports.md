@@ -180,8 +180,10 @@ schedules, GamGUI #178) isn't here yet.
 - **Changed since.** Each table against the newest earlier kept run that holds it whole (known, not partial, kept) with the
   same window (`days`; 0 for every run but Inactive users). A kept run that can't be read, met before that one, stops the
   walk and says so. A run with any step unanswered compares nothing. Rows compared whole, as a multiset; a row with any cell
-  changed is gone and new. Unknown or partial now, or nothing to compare with, says why and is never "no change". Each list
-  draws 100 rows.
+  changed is gone and new, cells compared as their bytes (as Python's `Counter`; a Swift `String` calls NFC and NFD equal).
+  A kept table with other columns (an update added, moved or reworded one) is passed over, and said ("Its columns changed
+  since the runs kept before") when nothing else is found. Unknown or partial now, or nothing to compare with, says why and
+  is never "no change". Each list draws 100 rows.
 - **Store rules** (each by descriptor, `AuditScheduleStore`'s header): the store's folder is opened `O_DIRECTORY |
   O_NOFOLLOW`, and `kept`, the domain's and the run's folders each `openat` the same way from the one above, so a link
   anywhere is refused and said, never followed; each folder ours and `0700`. Files `openat` `O_NOFOLLOW | O_NONBLOCK`, `fstat`
@@ -358,7 +360,9 @@ this app; GamGUI has no such page. Reads only.
 - **Schedules** (plan F7a): the store is held by descriptor all the way down (GamGUI checks the kept folders by path with
   `lstat`), its lock is an `flock` any process honours (GamGUI's two are per process), and a kept run is read under a cap
   (GamGUI reads one whole). A count is typed as ASCII digits only (GamGUI's `int()` also takes a sign, underscores and other
-  scripts' digits). Fields are typed strictly in a kept run's header (GamGUI coerces with `str()` and `int()`): only this
+  scripts' digits). **Columns are compared**: a kept table whose columns differ from this run's is never compared (GamGUI
+  compares rows alone, so an update that changes a table's columns reads every row as gone and new there: for GamGUI, the same
+  check in `changes_since`, a back-port). Fields are typed strictly in a kept run's header (GamGUI coerces with `str()` and `int()`): only this
   app writes them. Kept runs aren't shared with GamGUI's (each app has its own data folder). **No notification**: GamGUI, a
   web app, says due only on Home and the run's page, and so does this app (a local notification while the app runs is a
   follow-up, plan F7a As built).

@@ -330,6 +330,14 @@ public enum AuditSchedules {
     public static let notAnswered = "A step of this run has no answer, so its tables aren't compared: one may hold \"unknown\" where "
         + "it had a value."
     public static let keptUnread = "The runs kept before couldn't be read just now, so this table isn't compared."
+    /// Not GamGUI's (a listed deviation): a table whose columns aren't the ones kept, after an update added, moved or reworded
+    /// one, would read every row as gone and new.
+    public static let columnsChanged = "Its columns changed since the runs kept before, so it isn't compared."
+
+    /// The same columns, in the same order, compared as bytes.
+    static func sameColumns(_ a: [String], _ b: [String]) -> Bool {
+        a.count == b.count && zip(a, b).allSatisfy { $0.utf8.elementsEqual($1.utf8) }
+    }
 
     /// `rows` not in `minus`, as a multiset, in `rows`' order. Cells compare as their bytes, as Python's `Counter` compares code
     /// points: a Swift `String` would take a name's composed and decomposed forms (NFC, NFD) as the same.
@@ -365,12 +373,18 @@ public enum AuditSchedules {
                 continue
             }
             var change = Change(key: table.key, why: nothingBefore)
+            var otherColumns = false
             for head in earlier {
                 if !head.problem.isEmpty {   // what it held can't be told: it may be the run to compare with
                     change = Change(key: table.key, why: keptRunUnread)
                     break
                 }
                 guard head.days == days, let then = head.table(table.key), then.known, !then.partial, then.kept else { continue }
+                // Kept with other columns (an update added, moved or reworded one): passed over, and said if nothing else is found.
+                guard sameColumns(then.columns, table.columns) else {
+                    otherColumns = true
+                    continue
+                }
                 if loaded[head.id] == nil { loaded[head.id] = load(head.id) }
                 let whole = loaded[head.id]!
                 guard whole.problem.isEmpty, let rows = whole.table(table.key)?.rows else {
@@ -381,6 +395,7 @@ public enum AuditSchedules {
                 change = Change(key: table.key, since: head.when, new: difference(table.rows, rows), gone: difference(rows, table.rows))
                 break
             }
+            if otherColumns, change.why == nothingBefore { change = Change(key: table.key, why: columnsChanged) }
             out[table.key] = change
         }
         return out
