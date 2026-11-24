@@ -1,7 +1,8 @@
 # Plan: audit runs, Sheets export, a plain-English finder, tenant switching, schedules
 
-**Status (2026-11-21): F1, F2, F3, F5a and F6 built (Swift); F4 and F5b in review; F7a in GamGUI; signature backups
-first (operator, 2026-11-21), built.** Asked for by the operator ("we should be"): ready-made audit runs,
+**Status (2026-11-24): done. F1 to F6 and F7a built in both apps (Swift #183 to #199; F5 is Swift only); F7b not
+planned unless asked; signature backups first (operator, 2026-11-21), built. Not run on a real domain: the first Sheet
+export waits for the operator's yes.** Asked for by the operator ("we should be"): ready-made audit runs,
 direct Google Sheets export with a place to browse outputs, the on-device model turning plain English into checked GAM,
 switching across Workspace tenants, and scheduled runs. That ask lifts the "not planned unless asked" entries for Sheet
 export, scheduled runs and a plain-language finder (filling-the-gaps, and GamGUI's finish-the-roadmap D1), and design
@@ -273,8 +274,17 @@ a test where one can be written (runbook setup-credentials.md). Not live yet: a 
   `schedules.json` (due days and words in two time zones, changed-since, a run of keeps, prunes and deletes); deviations
   listed in the runbook. **No notification** (follow-up): GamGUI says due only on Home and the run's page, and so does this
   app; a local notification, posted only while the app runs, running nothing and opening only the run's pane, is the
-  follow-up if the operator wants one. Not here: part B (named reports' schedules, GamGUI #178, not merged). Not run on a real
-  domain; the screens are seen only in CI's pictures.
+  follow-up if the operator wants one. Part B follows. Not run on a real domain; the screens are seen only in CI's pictures.
+
+  *As built, F7a part B (2026-11-24, #197; ported from GamGUI #178 merged as `82290f0`, fixtures regenerated from it):* each
+  named report is also a one-step run of its catalog read built bare (`NamedReport.bareRead`), run, scheduled and kept like
+  the audit runs, its read recorded with origin `named_report`. What GAM does with each read (key column, exits, which
+  no-row answers are none and which unknown) is GamGUI's, word for word. Changed-since compares on both runs' columns and
+  leaves out the ones that change every run, and says which (GamGUI's rule, replacing part A's "columns changed, not
+  compared"); kept files are version 2, version 1 still read. A schedule this GAM version can't run is never due: Home names
+  it, and its pane stops it or deletes its kept runs. Its review fixed a running named report missing from the switch
+  warning, a pane that went blank after clearing, and one unreadable kept folder hiding every schedule
+  (`docs/domains/audit-reports.md`, with GamGUI's back-port gaps).
 - **F7b — Unattended, read-only, only on the operator's yes to an invariant change.** Truly unattended runs can't keep
   invariant 4 (user presence on every secret). swiftabapit's answer: an optional **read-only** credential stored without
   user presence, accepted only after every write probe is refused, and usable only by a type with no route to a write.
