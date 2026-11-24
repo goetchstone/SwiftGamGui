@@ -56,9 +56,22 @@ enum Spikes {
                     // preview over it (the directory read again, nothing run).
                     if Screen.initial == .reports, let key = environment["SWIFTGAMGUI_SELECT"], key.hasPrefix("run."),
                        let run = AuditRuns.all.first(where: { $0.key == key.dropFirst(4) }) {
-                        services.auditRuns.start(run, days: DirectoryReport.inactiveDays)
-                        await services.auditRuns.finish(run)
+                        // `scheduled` (plan F7a): scheduled weekly first, then run twice, so it's kept, counted and compared.
+                        let scheduled = environment["SWIFTGAMGUI_TAB"] == "scheduled"
+                        if scheduled { await services.runSchedules.save(run, cadence: .weekly, keep: "") }
+                        for _ in 0..<(scheduled ? 2 : 1) {
+                            services.auditRuns.start(run, days: DirectoryReport.inactiveDays)
+                            await services.auditRuns.finish(run)
+                        }
                         if environment["SWIFTGAMGUI_TAB"] == "suspend" { await services.inactiveSuspend.preview(days: DirectoryReport.inactiveDays) }
+                    }
+                    // Home's scheduled audit runs (`SWIFTGAMGUI_TAB=scheduled`, plan F7a): Classroom monthly, never run, so due;
+                    // License usage weekly and run once against the mock, so not due yet.
+                    if Screen.initial == .home, environment["SWIFTGAMGUI_TAB"] == "scheduled" {
+                        await services.runSchedules.save(AuditRuns.classroom, cadence: .monthly, keep: "")
+                        await services.runSchedules.save(AuditRuns.licenseUsage, cadence: .weekly, keep: "")
+                        services.auditRuns.start(AuditRuns.licenseUsage)
+                        await services.auditRuns.finish(AuditRuns.licenseUsage)
                     }
                     // Plan an Import compared with the mock's Classroom (`SWIFTGAMGUI_TAB=compare`): the demo roster's change list.
                     if Screen.initial == .classroom, environment["SWIFTGAMGUI_TAB"] == "compare" { await services.roster.compare.compare() }

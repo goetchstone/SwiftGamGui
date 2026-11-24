@@ -144,7 +144,8 @@ struct SetupView: View {
             Button("Remove \(domain.name)", role: .destructive) { Task { await model.remove(domain) } }
                 .disabled(busy)
         } message: { _ in
-            Text("GamGUI and your Google tenant aren't changed. You can import the credentials again later.")
+            Text("GamGUI and your Google tenant aren't changed. You can import the credentials again later. Its audit-run schedules "
+                 + "and the runs they kept on this Mac are deleted too.")
         }
         .task {
             await model.refresh()

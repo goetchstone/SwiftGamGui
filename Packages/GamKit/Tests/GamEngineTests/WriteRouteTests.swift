@@ -112,6 +112,28 @@ struct WriteRouteTests {
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["InactiveSuspend"]) == ["Packages/GamKit/Sources/Directory/InactiveSuspend.swift"])
     }
 
+    /// A schedule runs nothing (plan F7a, invariants 3 and 10): the schedule code (the cadence and its words, the store, the
+    /// model the screens read, the screens' own views) reaches no runner, no GAM command, no write, and has no timer, no
+    /// notification and no background task that could start a read by itself. An audit run starts only from a screen: its
+    /// pane, Reports' toolbar, and the debug snapshot's fill.
+    @Test func aScheduleRunsNothing() throws {
+        let paths = ["Packages/GamKit/Sources/Stores/AuditSchedules.swift", "Packages/GamKit/Sources/Stores/AuditScheduleStore.swift",
+                     "Packages/GamKit/Sources/Directory/RunSchedules.swift", "App/ScheduledRunsView.swift"]
+        let files = try ["Packages/GamKit/Sources", "App"].flatMap { try Self.swiftFiles(in: $0) }.filter { paths.contains($0.path) }
+        #expect(Set(files.map(\.path)) == Set(paths))
+        let reaching = ["Runner", "runner", "GamRead", "GamCommands", "GamWrite", "Executor", "executor", "WriteTicket", "ticket:",
+                        "Timer", "asyncAfter", "Task.sleep", "TimelineView", "DispatchSource", "UNUserNotification", "UNNotification",
+                        "NSUserNotification", "NSBackgroundActivityScheduler", "BGTask", "LaunchAgent", "SMAppService", ".start(",
+                        "posix_spawn", "repeatForever"]
+        for file in files {
+            let found = file.lines.filter { line in reaching.contains { line.contains($0) } || line.contains(try! Regex("\\bProcess\\b")) }
+            #expect(found.isEmpty, "\(file.path): \(found)")
+        }
+        #expect(try Self.files(in: "App", matching: ["runs.start(", "auditRuns.start("])
+                == ["App/AuditRunsView.swift", "App/ReportsView.swift", "App/Spikes.swift"])
+        #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["runs.start(", "auditRuns.start(", "AuditRunner("]).isEmpty)
+    }
+
     /// The jobs tray reaches no write: the Jobs module depends on nothing in GamKit, its screen imports only it and SwiftUI, and
     /// only the app's wiring gives it a Stop (the executor's `stopAfterCurrentStep`, which never runs anything).
     @Test func theJobsTrayReachesNoWrite() throws {

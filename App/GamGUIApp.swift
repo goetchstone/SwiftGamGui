@@ -155,6 +155,8 @@ struct ContentView: View {
     @State private var groupsGroup: String?
     /// The person Users opens on when another screen sends it one (Reports' Show in Users).
     @State private var usersPerson: String?
+    /// The audit run Reports opens on when Home sends it one (a scheduled run that's due).
+    @State private var reportsRun: String?
     /// Home's All Failures in Audit: Audit opens narrowed to failures, and takes it.
     @State private var auditFailures = false
     /// The person Incident checks when Users sends it one (Actions → Secure Account…).
@@ -198,7 +200,11 @@ struct ContentView: View {
             Group {
                 switch screen ?? .home {
                 case .home:
-                    HomeView(setup: services.setup, directory: services.directory, gamVersion: gamVersion,
+                    HomeView(setup: services.setup, directory: services.directory, schedules: services.runSchedules,
+                             openRun: { key in
+                                 reportsRun = key
+                                 screen = .reports
+                             }, gamVersion: gamVersion,
                              hasGam: services.gam != nil, executor: services.executor, auditURL: services.auditURL, jobs: services.jobs,
                              openFailures: {
                                  auditFailures = true
@@ -275,6 +281,7 @@ struct ContentView: View {
                 case .reports:
                     ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
                                 apps: services.connectedApps, runs: services.auditRuns, suspend: services.inactiveSuspend,
+                                schedules: services.runSchedules, requestedRun: $reportsRun,
                                 openCommand: { id in
                                     builderCommand = id
                                     screen = .builder
@@ -312,7 +319,7 @@ struct ContentView: View {
                 switches += 1
                 // What one screen asked another to open belongs to the old tenant.
                 (signaturesPerson, calendarsPerson, classroomCourse, groupsGroup, usersPerson) = (nil, nil, nil, nil, nil)
-                (compromisedPerson, phishingMessage, builderCommand) = (nil, nil, nil)
+                (compromisedPerson, phishingMessage, builderCommand, reportsRun) = (nil, nil, nil, nil)
             }
             if services.setup.active != nil { everConnected = true }
         }
