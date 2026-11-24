@@ -51,6 +51,8 @@ public final class AuditRunner {
 
     /// Fixed words, never an error's own text: GamGUI's.
     public nonisolated static let noTable = "GAM ended without writing the table, so this step has no answer."
+    public nonisolated static let noRowUnsaid = "GAM wrote no row and didn't say there were none, which it does when there are. A "
+        + "service-account token Google refuses ends this way, so this step has no answer: check the domain's access on Setup."
     public nonisolated static let timedOut = "GAM didn't finish in the hour a read is allowed, so this step has no answer."
     public nonisolated static let stoppedBefore = "The run was stopped before this step."
     public nonisolated static let interrupted = "Stopped before GAM finished, so nothing was read."
@@ -261,7 +263,8 @@ public final class AuditRunner {
         case .failure(.gam(let error)):
             return (.unknown(why: error.remediation, detail: error.message), .failed(error.message))
         case .failure(.incomplete(let incomplete)):
-            let why = incomplete.reason.hasPrefix("GAM ended without writing") ? noTable : unnamedWarning
+            let why = incomplete.reason.hasPrefix("GAM ended without writing") ? noTable
+                : incomplete.reason.hasPrefix(AuditRuns.noRowUnsaid) ? noRowUnsaid : unnamedWarning
             return (.unknown(why: why, detail: ""), .failed(incomplete.reason))
         case .success(let (records, unread)):
             let users = step == AuditRuns.directory ? records.map(GamUser.init(record:)) : nil

@@ -49,14 +49,18 @@ public enum AuditRuns {
         public let okCodes: [Int32]
         /// The exits whose rows stand, with accounts GAM named as unread (entityUnknownWarning).
         public let partialCodes: [Int32]
+        /// The exits at which no row at all is an answer (GAM's own "none"); nil: any of `okCodes`. GamGUI #176's `empty_rcs`.
+        public let emptyCodes: [Int32]?
         public var id: String { key }
 
-        init(key: String, title: String, keyColumn: String, okCodes: [Int32] = [0], partialCodes: [Int32] = []) {
+        init(key: String, title: String, keyColumn: String, okCodes: [Int32] = [0], partialCodes: [Int32] = [],
+             emptyCodes: [Int32]? = nil) {
             self.key = key
             self.title = title
             self.keyColumn = keyColumn
             self.okCodes = okCodes
             self.partialCodes = partialCodes
+            self.emptyCodes = emptyCodes
         }
     }
 
@@ -79,9 +83,13 @@ public enum AuditRuns {
 
     public static let directory = Step(key: "directory", title: "The directory, suspended accounts included", keyColumn: "primaryEmail")
     public static let licenses = Step(key: "licenses", title: "Every license seat", keyColumn: "userId")
-    public static let drives = Step(key: "drives", title: "Every shared drive", keyColumn: "id", okCodes: [0, noEntitiesFound])
+    // No row is "no drive" only with GAM's 60: a service-account token Google refuses silently (REFRESH_PERM_ERRORS) makes both
+    // reads skip the admin, titles alone, exit 0 (buildGAPIServiceObject -> handleOAuthTokenError, then `continue` before the
+    // none check, printShowSharedDrives / printShowSharedDriveACLs at the 7.52.04 tag; GamGUI #176).
+    public static let drives = Step(key: "drives", title: "Every shared drive", keyColumn: "id", okCodes: [0, noEntitiesFound],
+                                    emptyCodes: [noEntitiesFound])
     public static let driveACLs = Step(key: "drive_acls", title: "Every shared drive's members", keyColumn: "id",
-                                       okCodes: [0, noEntitiesFound])
+                                       okCodes: [0, noEntitiesFound], emptyCodes: [noEntitiesFound])
     public static let domains = Step(key: "domains", title: "The domain's own domains and aliases", keyColumn: "domainName")
     public static let courses = Step(key: "courses", title: "Every Classroom class, with its counts", keyColumn: "id")
     public static let admins = Step(key: "admins", title: "Every admin role, a group's members included", keyColumn: "roleAssignmentId")
@@ -192,7 +200,8 @@ public enum AuditRuns {
 
     /// GamGUI's `audit_read` once GAM ended: an exit in `okCodes` is the whole answer, one in `partialCodes` keeps the rows and
     /// names who wasn't read (and one that names nobody is unknown whole: who wasn't read can't be told), any other is GAM's
-    /// failure; and output whose titles don't name the step's key column is never "none".
+    /// failure; and output whose titles don't name the step's key column is never "none". With `emptyCodes`, no row at all is
+    /// an answer only at one of those exits (GAM's own "none"): a read that skipped silently writes the same titles alone.
     public static func answer(_ result: GamResult, step: Step, argv: [String]) -> Result<(records: [GamOutput.Record], unread: [String]), Failure> {
         let code = result.exitCode
         guard step.okCodes.contains(code) || step.partialCodes.contains(code) else {
@@ -203,6 +212,9 @@ public enum AuditRuns {
         case .failure(let incomplete): return .failure(.incomplete(incomplete))
         case .success(let found): records = found
         }
+        if records.isEmpty, let empty = step.emptyCodes, !empty.contains(code) {
+            return .failure(.incomplete(Incomplete(reason: "\(noRowUnsaid) \(code), which isn't how it says there are none")))
+        }
         guard step.partialCodes.contains(code) else { return .success((records, [])) }
         let unread = unreadAccounts(result.stderr)
         guard !unread.isEmpty else {
@@ -210,6 +222,9 @@ public enum AuditRuns {
         }
         return .success((records, unread))
     }
+
+    /// The start of an `Incomplete`'s reason when GAM wrote no row at an exit that isn't its "none" (GamGUI's `NoRowUnsaid`).
+    public static let noRowUnsaid = "GAM wrote no row and exited"
 
     /// The accounts GAM couldn't read and carried on past (entityUnknownWarning: "User: <u>, Does not exist (i/N)", or "…,
     /// Service not applicable" outside the domain), lowercased, each once in order: GamGUI's `_UNREAD_ACCOUNT`,
@@ -291,12 +306,17 @@ public enum AuditRuns {
         public let partial: Bool
         /// What no read could tell, in words, when `partial`: its CSV's first line says it.
         public let unknownPart: String
+        /// What a change since an earlier run can't tell, said beside it (plan F7a): a read GAM can cut short without a word makes
+        /// a row that's gone, or a count that fell, look the same as one it couldn't read this time.
+        public let changeNote: String
         public var id: String { key }
 
         init(_ key: String, _ title: String, _ summary: String, _ columns: [String], _ rows: [[String]] = [], known: Bool = true,
-             why: String = "", note: String = "", links: Bool = false, partial: Bool = false, unknownPart: String = "") {
+             why: String = "", note: String = "", links: Bool = false, partial: Bool = false, unknownPart: String = "",
+             changeNote: String = "") {
             self.partial = partial
             self.unknownPart = unknownPart
+            self.changeNote = changeNote
             self.key = key
             self.title = title
             self.summary = summary
@@ -340,6 +360,9 @@ public enum AuditRuns {
 
         /// Every step was read, and no table holds something no read could tell.
         public var complete: Bool { reads.allSatisfy { $0.state == .read } && !findings.contains(where: \.partial) }
+
+        /// Every step has an answer, at most with accounts GAM named as unread: the run counts for its schedule (plan F7a).
+        public var answered: Bool { reads.allSatisfy { $0.state == .read || $0.state == .partial } }
 
         public func finding(_ key: String) -> Finding? { findings.first { $0.key == key } }
     }
@@ -517,23 +540,27 @@ public enum AuditRuns {
         let gamNote = "GAM passes over a product Google won't let it read without saying so: a product missing here may be one "
             + "it couldn't read. Check the counts against the Admin console (Billing → Licenses)."
         let seatsWord = "\(total) seat\(total == 1 ? "" : "s")"
+        let unsure = "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't "
+            + "read this time."
         return [
             Finding("per_sku", "Seats per license",
                     "\(seatsWord) across \(perSKU.count) license\(perSKU.count == 1 ? "" : "s").",
                     perSKUColumns, skuRows, known: seatsWhy.isEmpty, why: seatsWhy,
-                    note: gamNote + (joined ? "" : " The directory couldn't be read, so the last two columns are unknown.")),
+                    note: gamNote + (joined ? "" : " The directory couldn't be read, so the last two columns are unknown."),
+                    changeNote: unsure),
             Finding("on_suspended", "Seats on suspended accounts",
                     nSuspended > 0
                         ? "\(nSuspended) seat\(nSuspended == 1 ? "" : "s") \(nSuspended == 1 ? "is" : "are") held by a suspended account."
                         : "No suspended account holds any of the \(seatsWord) read.",
                     suspendedSeatColumns, suspendedRows, known: joinWhy.isEmpty, why: joinWhy,
-                    note: "A suspended account keeps its seat until the license is removed. " + skipped, links: true),
+                    note: "A suspended account keeps its seat until the license is removed. " + skipped, links: true,
+                    changeNote: unsure),
             Finding("not_in_directory", "Seats on an address the directory read doesn't list",
                     nStray > 0
                         ? "\(nStray) seat\(nStray == 1 ? "" : "s") \(nStray == 1 ? "is" : "are") on an address the directory read didn't list."
                         : "Every seat read is on an account the directory read listed.",
                     straySeatColumns, strayRows, known: joinWhy.isEmpty, why: joinWhy,
-                    note: "An account made, renamed or deleted between the two reads shows here too. " + skipped),
+                    note: "An account made, renamed or deleted between the two reads shows here too. " + skipped, changeNote: unsure),
         ]
     }
 
@@ -635,6 +662,12 @@ public enum AuditRuns {
             [PythonText.lower($0[0])]
         }
         let n = rows.count, nDrives = byDrive.count, nOrphans = orphans.count, nUnread = unread.count
+        // A drive whose members weren't read (or whose listing is unknown) is missing from both tables below: each holds something
+        // no read could tell, so neither is whole, and neither is compared with an earlier run as if it were (GamGUI #176).
+        let leftOut = !unread.isEmpty || !unreadWhy.isEmpty
+        let leftOutNote = !unread.isEmpty
+            ? " It leaves out the \(nUnread) drive\(nUnread == 1 ? "" : "s") whose members weren't read, listed below."
+            : !unreadWhy.isEmpty ? " Whether GAM passed over a drive can't be told: the list of drives wasn't read." : ""
         return [
             Finding("permissions", "Every drive's members",
                     "\(n) member\(n == 1 ? "" : "s") across \(nDrives) drive\(nDrives == 1 ? "" : "s"); \(outside) "
@@ -642,13 +675,15 @@ public enum AuditRuns {
                     permissionColumns, rows, known: permsWhy.isEmpty, why: permsWhy,
                     note: "A shared drive's members are users and groups only. Outside the domain means an address not in one of "
                         + "the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the "
-                        + "link, say): this run reads each drive's members, not its files' sharing."),
+                        + "link, say): this run reads each drive's members, not its files' sharing." + leftOutNote,
+                    partial: leftOut, unknownPart: PythonText.strip(leftOutNote)),
             Finding("orphaned", "Drives no active organizer looks after",
                     nOrphans > 0 ? "\(nOrphans) drive\(nOrphans == 1 ? "" : "s") \(nOrphans == 1 ? "has" : "have") no organizer who is "
                         + "active here." : "Every drive read has an active organizer, or a group as one.",
                     orphanColumns, orphans, known: orphanWhy.isEmpty, why: orphanWhy,
                     note: "Being offboarded means an offboarding started in GAM GUI since it opened. A group organizer isn't "
-                        + "flagged: its members can't be told from here."),
+                        + "flagged: its members can't be told from here." + leftOutNote,
+                    partial: leftOut, unknownPart: PythonText.strip(leftOutNote)),
             Finding("unread", "Drives whose members weren't read",
                     nUnread > 0 ? "GAM listed \(nUnread) drive\(nUnread == 1 ? "" : "s") but didn't read \(nUnread == 1 ? "its" : "their") "
                         + "members: unknown, not shared with no one." : "GAM read every listed drive's members.",
@@ -700,7 +735,9 @@ public enum AuditRuns {
             Finding("courses", "Every class", "\(n) class\(n == 1 ? "" : "es") in every state.", courseColumns, every,
                     known: coursesWhy.isEmpty, why: coursesWhy,
                     note: "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a "
-                        + "0 isn't an empty class. Not yet checked on a school domain."),
+                        + "0 isn't an empty class. Not yet checked on a school domain.",
+                    changeNote: "GAM counts a roster Google won't return as 0 without a word, so a class whose count fell to 0 "
+                        + "since then may be one it couldn't read this time."),
             Finding("owned_by_suspended", "Classes owned by a suspended account",
                     nOwned > 0 ? "\(nOwned) class\(nOwned == 1 ? "" : "es") \(nOwned == 1 ? "is" : "are") owned by a suspended account."
                         : "No class read is owned by a suspended account.",

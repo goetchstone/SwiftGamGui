@@ -1241,6 +1241,8 @@ def audit_runs_fixture() -> dict:
                "rows": [list(r) for r in f.rows], "known": f.known, "why": f.why, "note": f.note, "links": f.links}
         if hasattr(f, "partial"):
             out["partial"] = f.partial
+        if hasattr(f, "change_note"):   # plan F7a (#176): said beside a change since an earlier run
+            out["change_note"] = f.change_note
         return out
 
     def user(email, last="2026-01-01T00:00:00Z", made="2024-01-01T00:00:00Z", **fields) -> dict:
@@ -1522,7 +1524,7 @@ def audit_runs_fixture() -> dict:
         ("T_o_Drive", "x", licenses_argv + ["T_o_Drive"], "userId"),
         ("todrive inside", "x", ["print", "users", "todrive", "formatjson"], "primaryEmail"),
     ]
-    read_cases = [(*case, (0,), ()) for case in read_cases]
+    read_cases = [(*case, (0,), (), None) for case in read_cases]
     drives_argv, acls_argv = runs.step_argv(runs.DRIVES), runs.step_argv(runs.DRIVE_ACLS)
     tokens_argv = ["print", "tokens", "users", "alice@example.com,bob@example.com"]
     token_titles = "user,clientId,displayText,anonymous,nativeApp,userKey,scopes\n"
@@ -1530,40 +1532,47 @@ def audit_runs_fixture() -> dict:
     warning = (56, 73)
     read_cases += [
         ("a directory that stopped short", RunResult('primaryEmail,JSON\na@example.com,"{}"\n', "User: , Print Failed: x\n", 50),
-         directory_argv, "primaryEmail", (0,), ()),
-        ("no shared drive", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), ()),
+         directory_argv, "primaryEmail", (0,), (), None),
+        ("no shared drive", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), (), None),
         ("drives refused", RunResult("User,id,name,JSON\n", "User: admin@example.com, Shared Drive: , Print Failed: no\n", 50),
-         drives_argv, "id", (0, 60), ()),
-        ("no seat is no none", RunResult("userId,productId\n", "", 60), licenses_argv, "userId", (0,), ()),
+         drives_argv, "id", (0, 60), (), None),
+        ("no seat is no none", RunResult("userId,productId\n", "", 60), licenses_argv, "userId", (0,), (), None),
         ("acls", RunResult('User,id,name,createdTime,JSON\nadmin@example.com,0A1,Team,2024-01-01T00:00:00Z,{}\n', "", 0),
-         acls_argv, "id", (0, 60), ()),
+         acls_argv, "id", (0, 60), (), None),
         ("one account unread", RunResult(token_titles + token_row,
                                          "Getting Access Tokens for alice@example.com (1/2)\n"
-                                         "User: bob@example.com, Does not exist (2/2)\n", 56), tokens_argv, "user", (0,), warning),
+                                         "User: bob@example.com, Does not exist (2/2)\n", 56), tokens_argv, "user", (0,), warning, None),
         ("outside the domain", RunResult(token_titles + token_row,
                                          "User: Pat@Partner.org, Service not applicable/Does not exist (2/2)\n"
                                          "User: pat@partner.org, Service not applicable (2/2)\n", 73), tokens_argv, "user", (0,),
-         warning),
-        ("a warning naming nobody", RunResult(token_titles + token_row, "", 56), tokens_argv, "user", (0,), warning),
+         warning, None),
+        ("a warning naming nobody", RunResult(token_titles + token_row, "", 56), tokens_argv, "user", (0,), warning, None),
         ("a warning naming no address", RunResult(token_titles, "User: bob, Does not exist\n", 56), tokens_argv, "user", (0,),
-         warning),
+         warning, None),
         ("indented", RunResult(token_titles, "  User: bob@example.com, Does not exist (2/2)\nnot User: c@example.com, Does not exist\n",
-                               56), tokens_argv, "user", (0,), warning),
+                               56), tokens_argv, "user", (0,), warning, None),
         ("refused tokens", RunResult(token_titles, "ERROR: Not Authorized to access this resource/api\n", 12), tokens_argv, "user",
-         (0,), warning),
+         (0,), warning, None),
         ("partial without its table", RunResult("", "User: bob@example.com, Does not exist (1/1)\n", 56), tokens_argv, "user",
-         (0,), warning),
+         (0,), warning, None),
+        # GamGUI #176: a shared drive read takes no row as an answer only at GAM's own none (60); the titles alone at 0 are a
+        # service-account token Google refused without a word (`empty_rcs`, NoRowUnsaid).
+        ("titles alone at 0, its none 60", RunResult("User,id,name,JSON\n", "", 0), drives_argv, "id", (0, 60), (), (60,)),
+        ("no drive, its none", RunResult("User,id,name,JSON\n", "", 60), drives_argv, "id", (0, 60), (), (60,)),
+        ("a drive at 0, its none 60", RunResult('User,id,name,JSON\nadmin@example.com,0A1,Team,"{}"\n', "", 0), drives_argv, "id",
+         (0, 60), (), (60,)),
+        ("members' titles alone at 0", RunResult("User,id,name,createdTime,JSON\n", "", 0), acls_argv, "id", (0, 60), (), (60,)),
     ]
     reads_found = []
     scratch = tempfile.TemporaryDirectory()
     folder = Path(scratch.name)
-    for n, (name, answer, argv, key, ok_rcs, partial_rcs) in enumerate(read_cases):
+    for n, (name, answer, argv, key, ok_rcs, partial_rcs, empty_rcs) in enumerate(read_cases):
         connector = object.__new__(gam_connector.GAMConnector)
         connector.runner, connector.domain = Runner(answer), " Example.COM "
         connector.audit = audit.AuditLog(folder / f"{n}.jsonl")
         try:
             got, unread = asyncio.run(connector.audit_read("license_usage/licenses", list(argv), key, ok_rcs=ok_rcs,
-                                                           partial_rcs=partial_rcs))
+                                                           partial_rcs=partial_rcs, empty_rcs=empty_rcs))
             raised, rows, unread = None, len(got), list(unread)
         except BaseException as exc:    # noqa: BLE001: the refusals, the failure and the cancel are the cases
             raised, rows, unread = type(exc).__name__, None, None
@@ -1573,6 +1582,7 @@ def audit_runs_fixture() -> dict:
                             "stderr": answer.stderr if ran else "", "exit": answer.returncode if ran else (0 if isinstance(answer, str) else None),
                             "error": str(answer) if isinstance(answer, Exception) else None, "argv": argv,
                             "key_column": key, "ok_rcs": list(ok_rcs), "partial_rcs": list(partial_rcs),
+                            "empty_rcs": None if empty_rcs is None else list(empty_rcs),
                             "raised": raised, "rows": rows, "unread": unread, "ran": connector.runner.calls,
                             "records": records})
     scratch.cleanup()
@@ -1585,7 +1595,8 @@ def audit_runs_fixture() -> dict:
                       "FLAGS": [runs.NEW, runs.ADMIN, runs.EXTERNAL, runs.AI_NAME, runs.BROAD, runs.SUSPENDED_ADMIN]},
         "runs": [{"key": r.key, "title": r.title, "what": r.what,
                   "steps": [{"key": s.key, "title": s.title, "key_column": s.key_column, "ok_rcs": list(s.ok_rcs),
-                             "partial_rcs": list(s.partial_rcs), "command": runs.step_command(r, s),
+                             "partial_rcs": list(s.partial_rcs),
+                             "empty_rcs": None if s.empty_rcs is None else list(s.empty_rcs), "command": runs.step_command(r, s),
                              "argv": runs.step_argv(s)} for s in r.steps]} for r in runs.RUNS],
         "implausibly_empty": [{"step": s.key, "rows": n, "why": runs.implausibly_empty(s, n)}
                               for s in (runs.DIRECTORY, runs.LICENSES, runs.DRIVES, runs.DRIVE_ACLS, runs.DOMAINS, runs.COURSES,

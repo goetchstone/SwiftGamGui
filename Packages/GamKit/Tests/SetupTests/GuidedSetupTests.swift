@@ -32,11 +32,19 @@ final class GuidedSetupTests {
 
     private func bytes(_ text: String) -> [UInt8] { Array(text.utf8) }
 
+    /// GamGUI's scopes for features not built here yet, left out of what this app's link offers: the Sheet export's (GamGUI
+    /// #174, plan F4, in review here).
+    static let notBuiltYet = ["https://www.googleapis.com/auth/spreadsheets"]
+    private var offered: [[String]] { document.offered_dwd_scopes.filter { !Self.notBuiltYet.contains($0[0]) } }
+    private func linked(_ url: String) -> String {
+        Self.notBuiltYet.reduce(url) { $0.replacingOccurrences(of: "," + $1, with: "") }
+    }
+
     @Test func theConstantsAreGamGUIs() {
         #expect(document.dwd_scopes.map { $0[0] } == DelegationScopes.scopes)
         #expect(document.dwd_scopes.map { $0[1] } == DelegationScopes.all.map(\.purpose))
         // What the link offers (GamGUI #151): the verified scopes, then the optional ones, which Check access doesn't ask.
-        #expect(document.offered_dwd_scopes == DelegationScopes.offered.map { [$0.scope, $0.purpose] })
+        #expect(offered == DelegationScopes.offered.map { [$0.scope, $0.purpose] })
         #expect(DelegationScopes.optional.map(\.scope) == ["https://www.googleapis.com/auth/cloud-identity.devices",
                                                            "https://www.googleapis.com/auth/apps.alerts"])
         #expect(Set(DelegationScopes.optional.map(\.scope)).isDisjoint(with: DelegationScopes.scopes), "never verified")
@@ -51,7 +59,7 @@ final class GuidedSetupTests {
             let clientID = CredentialFacts.clientID(inServiceAccount: Data(fact.oauth2service.utf8))
             #expect(bytes(clientID) == bytes(fact.client_id), "\(fact.oauth2service)")
             let url = DelegationScopes.authorizationURL(clientID: clientID, domain: Domain(fact.domain))
-            #expect(bytes(url?.absoluteString ?? "") == bytes(fact.auth_url), "\(fact.oauth2service) \(fact.domain)")
+            #expect(bytes(url?.absoluteString ?? "") == bytes(linked(fact.auth_url)), "\(fact.oauth2service) \(fact.domain)")
         }
     }
 

@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "db579c7",
+  "gamgui_commit": "73498c4",
   "generator": "scripts/gen_fixtures.py"
  },
  "show_vacation": [

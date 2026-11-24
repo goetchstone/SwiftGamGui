@@ -98,6 +98,16 @@ struct MockAuditRunTests {
         #expect(refused.exitCode == 50 && refused.stderr.contains("Print Failed") && GamOutput.records(refused.stdout).isEmpty)
         let dropped = try await run(acls, state: ["acl_dropped/0ALEGALuk9PVA"])
         #expect(dropped.exitCode == 0 && dropped.stderr.isEmpty && !dropped.stdout.contains("Legal hold"))
+        // GamGUI #176: every drive dropped is GAM's 60, as for none; a service-account token Google refused without a word is the
+        // titles alone at 0, from both reads.
+        let all = ["0AFINANCEuk9PVA", "0ALEGALuk9PVA", "0AOLDuk9PVA", "0AUNUSEDuk9PVA"].map { "acl_dropped/" + $0 }
+        let everyDropped = try await run(acls, state: all)
+        #expect(everyDropped.exitCode == 60 && GamOutput.records(everyDropped.stdout).isEmpty)
+        for argv in [drives, acls] {
+            let silent = try await run(argv, state: ["drive_token_silent"])
+            #expect(silent.exitCode == 0 && silent.stderr.isEmpty && GamOutput.records(silent.stdout).isEmpty
+                    && silent.stdout.hasPrefix("User,id,name,"), "\(argv)")
+        }
         for argv in [["print", "shareddrives"], ["print", "shareddriveacls", "formatjson"]] {
             let read = try await run(argv)
             #expect(read.exitCode == 2 && read.stderr.contains("isn't modelled"), "\(argv)")
