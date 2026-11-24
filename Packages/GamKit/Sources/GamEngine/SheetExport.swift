@@ -174,21 +174,6 @@ public enum SheetExport {
         domain.isEmpty ? read : "\(domain) - \(read)"
     }
 
-    /// The scope check's answer, from `check serviceaccount scopes <drive>,<spreadsheets>` (GamGUI's `sheet_export_scopes`):
-    /// each scope and whether the service account may use it for the admin, or nil when it couldn't be told (another exit than
-    /// 0 or a failed scope's 10, or a row missing), which is never "allowed" (invariant 10).
-    public static func checked(_ result: GamResult) -> [String: Bool]? {
-        guard result.exitCode == 0 || result.exitCode == GamExitCode.scopesNotAuthorized else { return nil }
-        var rows: [String: Bool] = [:]
-        for row in AccessCheck.rows(in: result.stdout) { rows[PythonText.lower(row.label)] = row.passed }
-        var checked: [String: Bool] = [:]
-        for (scope, _) in scopes {
-            guard let allowed = rows[scope] else { return nil }
-            checked[scope] = allowed
-        }
-        return checked
-    }
-
     /// The scope check, in words, for the preview: "" when both are allowed; what's missing otherwise; or that it couldn't be
     /// told (`checked` nil). An unknown is said as unknown, never read as allowed.
     public static func scopeState(_ checked: [String: Bool]?) -> String {
