@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "38ea01b",
+  "gamgui_commit": "73498c4",
   "generator": "scripts/gen_fixtures.py"
  },
  "cases": [

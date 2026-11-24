@@ -81,6 +81,9 @@ struct AppServices {
     let sheetExports: SheetExports
     /// Reports' audit runs (plan F3): fixed lists of reads, each step recorded in the same log; never a write path.
     let auditRuns: AuditRunner
+    /// The audit runs' schedules (plan F7a): when each is due on the connected domain, and the runs each keeps on this Mac.
+    /// Nothing runs from them.
+    let runSchedules: RunSchedules
     /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
     let inactiveSuspend: InactiveSuspend
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -120,15 +123,16 @@ struct AppServices {
                         savedFiles: SavedFiles(root: SignatureStore.defaultRoot),
                         roster: roster,
                         // Column names and role words only, beside the offboarding templates.
-                        rosterMaps: RosterMaps(root: SignatureStore.defaultRoot))
+                        rosterMaps: RosterMaps(root: SignatureStore.defaultRoot),
+                        // A scheduled audit run's last runs: tenant data at rest, in the app's data folder.
+                        scheduleStore: AuditScheduleStore(root: AuditScheduleStore.defaultRoot))
     }
 
     private static func assemble(vault: Vault, gam: (runner: GamRunner, runtimeDirectory: URL)?,
                                  gamgui: GamGUIKeychain, setupFolderURL: URL?, auditURL: URL, templates: SignatureTemplates,
                                  signatureBackups: SignatureBackupStore, offboardTemplates: OffboardTemplates, onboardRoles: OnboardRoles, knownSignIns: KnownSignIns,
                                  nobodyHas: NobodyHasChecks, incidents: Incidents, savedFiles: SavedFiles, roster: RosterStore,
-                                 rosterMaps: RosterMaps,
-                                 lastDomain: LastDomain = .userDefaults,
+                                 rosterMaps: RosterMaps, scheduleStore: AuditScheduleStore?, lastDomain: LastDomain = .userDefaults,
                                  extraEnvironment: [String: String] = [:]) -> AppServices {
         let runner = gam.map { AuthenticatedRunner(runner: $0.runner, vault: vault, runtimeDirectory: $0.runtimeDirectory) }
         let setup = SetupModel(vault: vault, runner: runner, gamgui: gamgui, setupFolderURL: setupFolderURL, lastDomain: lastDomain)
@@ -159,6 +163,13 @@ struct AppServices {
         // An offboarding started here is what the shared drive run calls "being offboarded".
         let auditRuns = AuditRunner(setup: setup, runner: runner, audit: ReadAudit(log: audit))
         auditRuns.leaving = { [weak offboardChanges] in offboardChanges?.leaversStarted ?? [] }
+        // A scheduled run is compared with its last kept run and kept as it ends; its schedule and kept runs are then read again.
+        // A save or delete drops what the run's pane said of its keep; Setup's Remove deletes a removed domain's.
+        auditRuns.schedules = scheduleStore
+        let runSchedules = RunSchedules(setup: setup, store: scheduleStore)
+        auditRuns.ended = { [weak runSchedules] run in await runSchedules?.runEnded(run) }
+        runSchedules.keepChanged = { [weak auditRuns] run in auditRuns?.keepChanged(run) }
+        setup.removing = { [weak runSchedules] domain in await runSchedules?.forget(domain) ?? "" }
         // What a switch would stop or hide, named before Setup's check reads anything: the tray's runs, onboarding's wait
         // for Google, a temporary password not handed over yet, and an audit run going.
         setup.runningRuns = { [weak jobs, weak onboardChanges, weak userChanges, weak auditRuns] in
@@ -212,6 +223,7 @@ struct AppServices {
                            // Its own reader: the scope check is the export's, live.
                            sheetExports: SheetExports(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            auditRuns: auditRuns,
+                           runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })
     }
@@ -269,6 +281,9 @@ struct AppServices {
                             root: FileManager.default.temporaryDirectory.appending(path: "swiftgamgui-demo-saved-\(UUID().uuidString)")),
                         roster: demoRoster(beside: mock),
                         rosterMaps: demoRosterMaps(beside: mock),
+                        // A fresh folder each launch, never the operator's kept runs.
+                        scheduleStore: AuditScheduleStore(root: FileManager.default.temporaryDirectory
+                            .appending(path: "swiftgamgui-demo-schedules-\(UUID().uuidString)/schedules")),
                         lastDomain: .memory())
         if Screen.initial == .files { seedFiles(services) }
         // Plan an Import's map step (`SWIFTGAMGUI_TAB=map`): the demo spreadsheet picked, held for its map, never kept.

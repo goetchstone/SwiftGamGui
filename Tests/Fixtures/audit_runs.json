@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "38ea01b",
+  "gamgui_commit": "73498c4",
   "generator": "scripts/gen_fixtures.py"
  },
  "now": "2026-11-19T00:00:00+00:00",
@@ -45,6 +45,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "inactive_users/directory",
      "argv": [
       "print",
@@ -70,6 +71,9 @@
       60
      ],
      "partial_rcs": [],
+     "empty_rcs": [
+      60
+     ],
      "command": "shared_drive_permissions/drives",
      "argv": [
       "print",
@@ -87,6 +91,9 @@
       60
      ],
      "partial_rcs": [],
+     "empty_rcs": [
+      60
+     ],
      "command": "shared_drive_permissions/drive_acls",
      "argv": [
       "print",
@@ -105,6 +112,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "shared_drive_permissions/domains",
      "argv": [
       "print",
@@ -120,6 +128,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "shared_drive_permissions/directory",
      "argv": [
       "print",
@@ -144,6 +153,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "license_usage/licenses",
      "argv": [
       "print",
@@ -158,6 +168,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "license_usage/directory",
      "argv": [
       "print",
@@ -182,6 +193,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "classroom_courses/courses",
      "argv": [
       "print",
@@ -204,6 +216,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "classroom_courses/directory",
      "argv": [
       "print",
@@ -228,6 +241,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "admin_tokens/admins",
      "argv": [
       "print",
@@ -243,6 +257,7 @@
       0
      ],
      "partial_rcs": [],
+     "empty_rcs": null,
      "command": "admin_tokens/directory",
      "argv": [
       "print",
@@ -263,6 +278,7 @@
       56,
       73
      ],
+     "empty_rcs": null,
      "command": "admin_tokens/admin_tokens",
      "argv": null
     }
@@ -1017,7 +1033,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1184,7 +1201,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1335,7 +1353,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1478,7 +1497,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1549,7 +1569,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1572,7 +1593,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1610,7 +1632,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   },
   {
@@ -1657,7 +1680,8 @@
     "why": "",
     "note": "Suspended accounts are left out. Suspend these\u2026 reads the directory again before anything is suspended.",
     "links": true,
-    "partial": false
+    "partial": false,
+    "change_note": ""
    }
   }
  ],
@@ -1690,7 +1714,8 @@
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -1722,7 +1747,8 @@
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   }
@@ -4225,7 +4251,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4263,9 +4290,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4289,7 +4317,8 @@
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4328,7 +4357,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4344,9 +4374,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4361,7 +4392,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4400,7 +4432,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4416,9 +4449,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4433,7 +4467,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4598,7 +4633,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4614,9 +4650,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4631,7 +4668,8 @@
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4670,7 +4708,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4686,9 +4725,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4703,7 +4743,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4742,7 +4783,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4758,9 +4800,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4775,7 +4818,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -4940,7 +4984,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -4956,9 +5001,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -4973,7 +5019,8 @@
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -5012,7 +5059,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -5028,9 +5076,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -5045,7 +5094,8 @@
      "why": "Not known: \u201cEvery license seat\u201d couldn't be read. Refused.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -5084,7 +5134,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses). The directory couldn't be read, so the last two columns are unknown.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -5100,9 +5151,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -5117,7 +5169,8 @@
      "why": "Not known: the run was stopped before \u201cEvery license seat\u201d.",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -5156,7 +5209,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -5172,9 +5226,10 @@
      "rows": [],
      "known": true,
      "why": "",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -5189,7 +5244,8 @@
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -5245,7 +5301,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -5261,9 +5318,10 @@
      "rows": [],
      "known": true,
      "why": "",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -5278,7 +5336,8 @@
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   },
@@ -5334,7 +5393,8 @@
      "why": "",
      "note": "GAM passes over a product Google won't let it read without saying so: a product missing here may be one it couldn't read. Check the counts against the Admin console (Billing \u2192 Licenses).",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "on_suspended",
@@ -5358,9 +5418,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A suspended account keeps its seat until the license is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
+     "note": "A suspended account keeps its seat until the license is removed. Remove these licenses\u2026 reads the seats and the directory again before anything is removed. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     },
     {
      "key": "not_in_directory",
@@ -5375,7 +5436,8 @@
      "why": "",
      "note": "An account made, renamed or deleted between the two reads shows here too. GAM passes over a product Google won't let it read without saying so, so this covers only the seats read.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM passes over a product it can't read without saying so, so a seat gone since then may be one it couldn't read this time."
     }
    ]
   }
@@ -5826,9 +5888,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -5873,9 +5936,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -5903,7 +5967,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -6072,9 +6137,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -6139,9 +6205,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -6169,7 +6236,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -6334,9 +6402,10 @@
      ],
      "known": false,
      "why": "Not known: \u201cThe domain's own domains and aliases\u201d couldn't be read. Refused.",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -6381,9 +6450,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -6411,7 +6481,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -6579,9 +6650,10 @@
      ],
      "known": false,
      "why": "Not known: \u201cThe domain's own domains and aliases\u201d couldn't be read. Refused.",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -6646,9 +6718,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -6676,7 +6749,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -6841,9 +6915,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -6913,9 +6988,10 @@
      ],
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -6943,7 +7019,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -7111,9 +7188,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -7183,9 +7261,10 @@
      ],
      "known": false,
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 3 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -7213,7 +7292,8 @@
      "why": "",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -7378,9 +7458,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. Whether GAM passed over a drive can't be told: the list of drives wasn't read.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -7425,9 +7506,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. Whether GAM passed over a drive can't be told: the list of drives wasn't read.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -7442,7 +7524,8 @@
      "why": "Not known: \u201cEvery shared drive\u201d couldn't be read. Refused.",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -7610,9 +7693,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. Whether GAM passed over a drive can't be told: the list of drives wasn't read.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -7677,9 +7761,10 @@
      ],
      "known": true,
      "why": "",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. Whether GAM passed over a drive can't be told: the list of drives wasn't read.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -7694,7 +7779,8 @@
      "why": "Not known: \u201cEvery shared drive\u201d couldn't be read. Refused.",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -7746,9 +7832,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 5 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -7762,9 +7849,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 5 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -7800,7 +7888,8 @@
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -7855,9 +7944,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
-     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing.",
+     "note": "A shared drive's members are users and groups only. Outside the domain means an address not in one of the domain's own domains or aliases. Files inside a drive can be shared further (with anyone with the link, say): this run reads each drive's members, not its files' sharing. It leaves out the 5 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "orphaned",
@@ -7871,9 +7961,10 @@
      "rows": [],
      "known": false,
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
-     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here.",
+     "note": "Being offboarded means an offboarding started in GamGUI since it opened. A group organizer isn't flagged: its members can't be told from here. It leaves out the 5 drives whose members weren't read, listed below.",
      "links": false,
-     "partial": false
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "unread",
@@ -7909,7 +8000,8 @@
      "why": "Not known: \u201cEvery shared drive's members\u201d couldn't be read. Refused.",
      "note": "GAM passes over a drive whose permissions Google won't return without a word or a code.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   }
@@ -8164,7 +8256,8 @@
      "why": "",
      "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM counts a roster Google won't return as 0 without a word, so a class whose count fell to 0 since then may be one it couldn't read this time."
     },
     {
      "key": "owned_by_suspended",
@@ -8194,7 +8287,8 @@
      "why": "",
      "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "owner_not_in_directory",
@@ -8226,7 +8320,8 @@
      "why": "",
      "note": "A deleted account, or one outside the domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "stale",
@@ -8268,7 +8363,8 @@
      "why": "",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -8400,7 +8496,8 @@
      "why": "",
      "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM counts a roster Google won't return as 0 without a word, so a class whose count fell to 0 since then may be one it couldn't read this time."
     },
     {
      "key": "owned_by_suspended",
@@ -8417,7 +8514,8 @@
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "owner_not_in_directory",
@@ -8433,7 +8531,8 @@
      "why": "Not known: \u201cThe directory, suspended accounts included\u201d couldn't be read. Refused.",
      "note": "A deleted account, or one outside the domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "stale",
@@ -8475,7 +8574,8 @@
      "why": "",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -8607,7 +8707,8 @@
      "why": "",
      "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM counts a roster Google won't return as 0 without a word, so a class whose count fell to 0 since then may be one it couldn't read this time."
     },
     {
      "key": "owned_by_suspended",
@@ -8624,7 +8725,8 @@
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "owner_not_in_directory",
@@ -8640,7 +8742,8 @@
      "why": "Not known: the run was stopped before \u201cThe directory, suspended accounts included\u201d.",
      "note": "A deleted account, or one outside the domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "stale",
@@ -8682,7 +8785,8 @@
      "why": "",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -8723,7 +8827,8 @@
      "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
      "note": "GAM counts a class whose roster Google won't return as 0 teachers and 0 students, without a word, so a 0 isn't an empty class. Not yet checked on a school domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": "GAM counts a roster Google won't return as 0 without a word, so a class whose count fell to 0 since then may be one it couldn't read this time."
     },
     {
      "key": "owned_by_suspended",
@@ -8740,7 +8845,8 @@
      "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
      "note": "GamGUI changes nothing in Classroom: hand a class over in Classroom itself.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "owner_not_in_directory",
@@ -8756,7 +8862,8 @@
      "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
      "note": "A deleted account, or one outside the domain.",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "stale",
@@ -8773,7 +8880,8 @@
      "why": "Not known: \u201cEvery Classroom class, with its counts\u201d couldn't be read. Refused.",
      "note": "",
      "links": false,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   }
@@ -8947,7 +9055,8 @@
      "why": "",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -8995,7 +9104,8 @@
      "why": "",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     }
    ]
   },
@@ -9074,7 +9184,8 @@
      "why": "",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't read the apps of bob@example.com: unknown, not none. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -9122,7 +9233,8 @@
      "why": "",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't read the apps of bob@example.com: unknown, not none. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     }
    ]
   },
@@ -9198,7 +9310,8 @@
      "why": "",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -9215,7 +9328,8 @@
      "why": "Not known: \u201cEach admin's connected apps, suspended admins included\u201d couldn't be read. Refused.",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     }
    ]
   },
@@ -9291,7 +9405,8 @@
      "why": "",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 3 role holders and the directory read has no account with those IDs ( 4 , 3, 77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -9339,7 +9454,8 @@
      "why": "",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 3 role holders and the directory read has no account with those IDs ( 4 , 3, 77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     }
    ]
   },
@@ -9383,7 +9499,8 @@
      "why": "Not known: \u201cEvery admin role, a group's members included\u201d couldn't be read. Refused.",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -9400,7 +9517,8 @@
      "why": "Not known: \u201cEvery admin role, a group's members included\u201d couldn't be read. Refused.",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview.",
      "links": true,
-     "partial": false
+     "partial": false,
+     "change_note": ""
     }
    ]
   },
@@ -9476,7 +9594,8 @@
      "why": "",
      "note": "A role held through a group counts each member. A holder GAM couldn't name is matched to the directory by ID. A service account's role names no person, so it isn't listed. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     },
     {
      "key": "admin_apps",
@@ -9493,7 +9612,8 @@
      "why": "Not known: the run was stopped before \u201cEach admin's connected apps, suspended admins included\u201d.",
      "note": "An app is called AI by its name alone. To revoke one, open Incident for that admin: its access is taken away there, after a preview. GAM couldn't name 1 role holder and the directory read has no account with that ID (77): who they are, and their apps, are unknown.",
      "links": true,
-     "partial": true
+     "partial": true,
+     "change_note": ""
     }
    ]
   }
@@ -9665,6 +9785,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 2,
    "unread": [],
@@ -9710,6 +9831,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 0,
    "unread": [],
@@ -9755,6 +9877,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -9800,6 +9923,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -9845,6 +9969,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -9890,6 +10015,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -9935,6 +10061,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -9980,6 +10107,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10025,6 +10153,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10070,6 +10199,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10118,6 +10248,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10169,6 +10300,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "RuntimeError",
    "rows": null,
    "unread": null,
@@ -10214,6 +10346,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "CancelledError",
    "rows": null,
    "unread": null,
@@ -10262,6 +10395,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10285,6 +10419,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10307,6 +10442,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10329,6 +10465,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10351,6 +10488,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10373,6 +10511,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10395,6 +10534,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10418,6 +10558,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "ValueError",
    "rows": null,
    "unread": null,
@@ -10442,6 +10583,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10496,6 +10638,7 @@
     60
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 0,
    "unread": [],
@@ -10548,6 +10691,7 @@
     60
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10597,6 +10741,7 @@
     0
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -10647,6 +10792,7 @@
     60
    ],
    "partial_rcs": [],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [],
@@ -10705,6 +10851,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [
@@ -10762,6 +10909,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": null,
    "rows": 1,
    "unread": [
@@ -10819,6 +10967,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10873,6 +11022,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -10927,6 +11077,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": null,
    "rows": 0,
    "unread": [
@@ -10984,6 +11135,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": "GAMError",
    "rows": null,
    "unread": null,
@@ -11038,6 +11190,7 @@
     56,
     73
    ],
+   "empty_rcs": null,
    "raised": "Incomplete",
    "rows": null,
    "unread": null,
@@ -11067,6 +11220,232 @@
       "command": "license_usage/licenses",
       "origin": "audit_run",
       "error": "GAM ended without writing the user table",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "titles alone at 0, its none 60",
+   "output": "User,id,name,JSON\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddrives",
+    "noorgunits",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "empty_rcs": [
+    60
+   ],
+   "raised": "NoRowUnsaid",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "shareddrives",
+     "noorgunits",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM wrote no row and exited 0, which isn't how it says there are none",
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "no drive, its none",
+   "output": "User,id,name,JSON\n",
+   "stderr": "",
+   "exit": 60,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddrives",
+    "noorgunits",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "empty_rcs": [
+    60
+   ],
+   "raised": null,
+   "rows": 0,
+   "unread": [],
+   "ran": [
+    [
+     "print",
+     "shareddrives",
+     "noorgunits",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 0,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "a drive at 0, its none 60",
+   "output": "User,id,name,JSON\nadmin@example.com,0A1,Team,\"{}\"\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddrives",
+    "noorgunits",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "empty_rcs": [
+    60
+   ],
+   "raised": null,
+   "rows": 1,
+   "unread": [],
+   "ran": [
+    [
+     "print",
+     "shareddrives",
+     "noorgunits",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddrives",
+      "noorgunits",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": true,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "rows": 1,
+      "domain": "example.com"
+     }
+    }
+   ]
+  },
+  {
+   "name": "members' titles alone at 0",
+   "output": "User,id,name,createdTime,JSON\n",
+   "stderr": "",
+   "exit": 0,
+   "error": null,
+   "argv": [
+    "print",
+    "shareddriveacls",
+    "oneitemperrow",
+    "shownopermissionsdrives",
+    "true",
+    "formatjson"
+   ],
+   "key_column": "id",
+   "ok_rcs": [
+    0,
+    60
+   ],
+   "partial_rcs": [],
+   "empty_rcs": [
+    60
+   ],
+   "raised": "NoRowUnsaid",
+   "rows": null,
+   "unread": null,
+   "ran": [
+    [
+     "print",
+     "shareddriveacls",
+     "oneitemperrow",
+     "shownopermissionsdrives",
+     "true",
+     "formatjson"
+    ]
+   ],
+   "records": [
+    {
+     "connector": "google_workspace",
+     "action": "read",
+     "target": "",
+     "argv": [
+      "print",
+      "shareddriveacls",
+      "oneitemperrow",
+      "shownopermissionsdrives",
+      "true",
+      "formatjson"
+     ],
+     "exit_code": null,
+     "ok": false,
+     "actor": null,
+     "extra": {
+      "command": "license_usage/licenses",
+      "origin": "audit_run",
+      "error": "GAM wrote no row and exited 0, which isn't how it says there are none",
       "domain": "example.com"
      }
     }

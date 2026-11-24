@@ -39,6 +39,12 @@ it) and 11 (parity is a test).
   `DirectoryStoreTests/BuilderReadTests.swift`, `BuilderChangesTests.swift`, `WriteRouteTests.theBuilderWritesOnlyThroughBuilderChanges`,
   `WriteRouteTests.theReadRecordIsNoWritePath`, `ChangeCoreTests/AuditLogTests.everyReadIsRecordedAsGamGUIRecordsIt`,
   `CommandKindTests.everyBuilderInTheSourceIsChecked`.
+- Ask in Plain English (plan F5b): `Packages/GamKit/Sources/Assist/CommandFinder.swift` (the on-device model's picks and code's
+  checks, given the commands as plain words), `Packages/GamKit/Sources/FinderCatalog/FinderCatalog.swift` (those commands,
+  from the catalog: `CommandFinder.Menu(catalog)`, for the app and the samples alike) and `App/PlainEnglishFinder.swift` (the
+  sheet, and the `FinderDraft` it gives the Builder). Tests: `AssistTests/CommandFinderTests.swift` (a scripted model),
+  `CommandFinderEvals.swift` (the real model, on demand) with `FinderSamples.swift` and `Tests/Fixtures/finder/`
+  (samples and saved results), `WriteRouteTests.theFinderReachesNoRunOrTicket`.
 - Parity fixtures, both made by `scripts/gen_catalog_reads.py` from a GamGUI clone pinned at the fixtures' commit:
   `Tests/Fixtures/catalog_reads.json` (frozen GamGUI's own read builder and gate run over this repo's catalog, so the same code
   on the same input) and `catalog_curated.json` (`_curated()`: each command's fields, and the argv its `build` makes with every
@@ -193,7 +199,19 @@ it) and 11 (parity is a test).
 
 - **Another screen can open a command** (Reports' named reports): it sets `ContentView.builderCommand` to a catalog id and
   switches to the Builder, which selects it once its catalog is read, with the search and area cleared so its row is listed
-  (`BuilderView.requested`, GamGUI's `/builder?cid=`); an id the catalog doesn't hold opens nothing.
+  (`BuilderView.requested`, GamGUI's `/builder?cid=`); an id neither the catalog nor the curated list holds opens nothing.
+- **Ask in Plain English…** (toolbar; plan F5b, Swift only): the operator types what to see or change; Apple's on-device model
+  picks, each from a list made at run time (`DynamicGenerationSchema` `anyOf`, greedy, a short `asks` field first, no example
+  sentences): see or change; a change among the curated changes alone, so a question never drafts one; a read by category
+  (largest first, with a line naming Users' subcategories), Users' subcategory, then the command (curated reads first, alike
+  glosses one choice). It copies the operator's words into the command's fields, and code checks each: the request's own
+  whole words, kept as the request writes them (`CommandFinder.span`), a choice too (else its default); a person or group
+  found in the cached directory (address or alias, the address's name, a name), never invented; one re-ask naming the fault,
+  then left empty with a note; two matches or a directory not read left for the operator. The model reads only the
+  sentence, never the directory. The command pick is sampled twice more; a split asks which of two. The sheet shows the
+  command and notes; Cancel stops the model's work. Open in Builder hands a `FinderDraft` (id and values) through
+  `requested`; the page sets its fields from it in its init, the Builder lets the draft go, and the page shows the exact
+  command: Run or Preview… as always.
 
 ## Gotchas / mock-lies traps
 - **The mock answers only `gam version`** of the 501. The strict mock models the exact forms this app's typed builders send
@@ -228,12 +246,22 @@ it) and 11 (parity is a test).
   (that `info` line reads "Show details for basic …"). The fixture is GamGUI's code run over this repo's first-line catalog,
   the input the app reads.
 
+- **Ask in Plain English's commands are made in one place**, `FinderCatalog`, for the app and the measured samples: two copies
+  would let the measurement measure another menu (review 2026-11-21). It joins Assist and GamEngine only; the finder scan
+  holds its imports.
+- **A value is the request's whole words** (review 2026-11-21): a substring match had taken "Carol" from "Caroline's",
+  "manager" from "managers", "delete" from "deleted" and "bob" from bob@gmail.com, and kept the model's spelling.
+- **Two people in one command can be swapped**: "give dana access to bob's mailbox" filled dana as the mailbox's owner and bob
+  as the delegate. Both are real people, so no check catches it; the Builder's exact command and a change's preview show it.
+
 ## Testing / live-verification status
 `swift test --package-path Packages/GamKit --filter "CommandCatalog|CommandGloss|CatalogResult|CuratedCommand|BuilderRead|BuilderChanges"`.
 Offline: the promotion boundary, every promoted command's slots and argv against GamGUI's, every command's gloss against
 GamGUI's, an edited catalog promoting no write, the door's refusals, the result's table, filter and CSV; every curated command's fields and argv against GamGUI's, the
 form's refusals, each change held, refused without the click, run as held and audited with its command, the risk floor, and
-the checks above. **Not proven offline:** that GAM accepts each read live (B1) and each curated command run from here (B2 to
+the checks above. Ask in Plain English: `--filter CommandFinder` (a scripted model; the samples and the Builder's search on
+them), and the real model on demand, `SWIFTGAMGUI_MODEL=1 swift test --package-path Packages/GamKit --filter CommandFinderEvals`
+(the dev split prints each case; the held-out split only its means). **Not proven offline:** that GAM accepts each read live (B1) and each curated command run from here (B2 to
 B4 in docs/live-verification.md).
 
 ## Not built yet (later slices)
@@ -244,7 +272,7 @@ B4 in docs/live-verification.md).
   live before it's relied on.
 - Sensitive reads (and message bodies), when the operator asks: reads are recorded now (plan F1), so `sensitive_read` is the
   one action to add to `ReadAudit`, and the CSV download of one recorded as `sensitive_csv_export` (GamGUI's).
-- The command finder (the on-device model over a catalog search) and its Siri intent.
+- The command finder's Siri intent (voice is parked).
 - Sensitive reads' export (`sensitive_export`): with the sensitive reads themselves, when the operator asks.
 - The first live Sheet export, on the operator's yes (plan F4): the mock's upload lines are read from GAM's source, never seen
   live. Files doesn't list an incident report's folder or a roster hand-over ZIP.

@@ -31,6 +31,12 @@ struct BuilderView: View {
     @State private var area = ""
     @State private var runnableOnly = true
     @State private var selected: String?
+    /// Ask in Plain English (plan F5b): the sheet, and the command it found with its values, filled into that command's fields
+    /// as its page opens (`requested`), then let go, so reopening the page later never undoes the operator's own edits.
+    /// Nothing runs from it. `draftedPage` changes with each draft, so a page already open takes a new one.
+    @State private var asking = false
+    @State private var drafted: FinderDraft?
+    @State private var draftedPage = ""
 
     struct CatalogProblem: Error, Sendable { let why: String }
 
@@ -91,10 +97,12 @@ struct BuilderView: View {
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
                     CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
-                                  readAudit: readAudit, exports: exports)
-                        .id(curated.id)
+                                  readAudit: readAudit, exports: exports, drafted: drafted(selected), taken: drafted(selected) == nil ? nil : { drafted = nil })
+                        .id(curated.id + draftedPage)
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
-                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, exports: exports).id(command.id)
+                    CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, exports: exports, drafted: drafted(selected),
+                                  taken: drafted(selected) == nil ? nil : { drafted = nil })
+                        .id(command.id + draftedPage)
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
                                            description: Text("Search GAM's commands on the left. One that only reads runs from here, "
@@ -113,6 +121,18 @@ struct BuilderView: View {
                 .help("Show one area's commands")
                 Toggle("Runnable Only", systemImage: "play.circle", isOn: $runnableOnly)
                     .help("Show only the commands that run from here")
+                Button("Ask in Plain English…", systemImage: "text.bubble") { asking = true }
+                    .disabled({ if case .success? = catalog { false } else { true } }())
+                    .help("Describe what to see or change; the on-device model picks a command and fills it in. Nothing runs.")
+            }
+        }
+        .sheet(isPresented: $asking) {
+            if case .success(let loaded)? = catalog {
+                PlainEnglishSheet(catalog: loaded, directory: directory, groups: groups) { draft in
+                    drafted = draft
+                    draftedPage = draft.id.uuidString
+                    requested = draft.command
+                }
             }
         }
         .task {
@@ -137,15 +157,19 @@ struct BuilderView: View {
         }
     }
 
-    /// Selects the requested command once the catalog is read; an id this catalog doesn't hold opens nothing.
+    /// Selects the requested command once the catalog is read (a curated one too, which Ask in Plain English opens); an id
+    /// neither holds opens nothing.
     private func openRequested() {
         guard let id = requested, case .success(let loaded)? = catalog else { return }
         requested = nil
-        guard loaded.commands.contains(where: { $0.id == id }) else { return }
+        guard loaded.commands.contains(where: { $0.id == id }) || CuratedCommand.all.contains(where: { $0.id == id }) else { return }
         query = ""
         area = ""
         selected = id
     }
+
+    /// The values Ask in Plain English found for `id`, when it's the command it found.
+    private func drafted(_ id: String) -> FinderDraft? { drafted?.command == id ? drafted : nil }
 
     @ViewBuilder private var list: some View {
         switch catalog {
@@ -314,11 +338,25 @@ private struct CommandDetail: View {
     let access: UserAccess
     let readAudit: ReadAudit
     let exports: SheetExports
-    @State private var values: [String: String] = [:]
+    /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
+    let taken: (() -> Void)?
+    @State private var values: [String: String]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
     /// The files saved through a save panel, for Files (plan F4): each CSV saved here is listed there.
     @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
+
+    /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never run: Run is the operator's.
+    init(command: CommandCatalog.Command, setup: SetupModel, access: UserAccess, readAudit: ReadAudit, exports: SheetExports,
+         drafted: FinderDraft?, taken: (() -> Void)?) {
+        self.command = command
+        self.setup = setup
+        self.access = access
+        self.readAudit = readAudit
+        self.exports = exports
+        self.taken = taken
+        _values = State(initialValue: drafted?.values ?? [:])
+    }
 
     /// Why a command doesn't run from here, short for the list and whole for its page.
     static func notRun(_ command: CommandCatalog.Command) -> (short: String, why: String) {
@@ -377,6 +415,7 @@ private struct CommandDetail: View {
                            sheetBusy: exports.isBusy)
             }
         }
+        .onAppear { taken?() }
     }
 
     /// What the new Sheet is named after: the command's name, or what it does for one the catalog doesn't name.
@@ -437,7 +476,9 @@ private struct CuratedDetail: View {
     let changes: BuilderChanges
     let readAudit: ReadAudit
     let exports: SheetExports
-    @State private var values: [String: String] = [:]
+    /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
+    let taken: (() -> Void)?
+    @State private var values: [String: String]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
     /// Debug builds' snapshots: the export previewed once the read's table is there.
@@ -446,6 +487,22 @@ private struct CuratedDetail: View {
     @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
 
     @Environment(\.appearsActive) private var appearsActive
+
+    /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never previewed or run: Preview… and
+    /// Run are the operator's.
+    init(command: CuratedCommand, setup: SetupModel, access: UserAccess, directory: DirectoryStore, groups: GroupStore,
+         changes: BuilderChanges, readAudit: ReadAudit, exports: SheetExports, drafted: FinderDraft?, taken: (() -> Void)?) {
+        self.command = command
+        self.setup = setup
+        self.access = access
+        self.directory = directory
+        self.groups = groups
+        self.changes = changes
+        self.readAudit = readAudit
+        self.exports = exports
+        self.taken = taken
+        _values = State(initialValue: drafted?.values ?? [:])
+    }
 
     /// What it does here, for the list.
     static func does(_ command: CuratedCommand) -> String {
@@ -515,6 +572,7 @@ private struct CuratedDetail: View {
         }
         .onChange(of: reading.result?.rows.count) { exportForSnapshot() }
         .onAppear {
+            taken?()
             for field in command.fields where field.kind == .choice && values[field.key] == nil { values[field.key] = field.defaultValue }
         }
         .task(id: directory.users?.count ?? -1) { fillForSnapshot() }

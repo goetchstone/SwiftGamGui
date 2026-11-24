@@ -14,6 +14,7 @@
 		5A6D00000000000000000105 /* ChangeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000205 /* ChangeCore */; };
 		5A6D00000000000000000106 /* Stores in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000206 /* Stores */; };
 		5A6D00000000000000000107 /* Assist in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000207 /* Assist */; };
+		5A6D00000000000000000108 /* FinderCatalog in Frameworks */ = {isa = PBXBuildFile; productRef = 5A6D00000000000000000208 /* FinderCatalog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 				5A6D00000000000000000105 /* ChangeCore in Frameworks */,
 				5A6D00000000000000000106 /* Stores in Frameworks */,
 				5A6D00000000000000000107 /* Assist in Frameworks */,
+				5A6D00000000000000000108 /* FinderCatalog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,6 +106,7 @@
 				5A6D00000000000000000205 /* ChangeCore */,
 				5A6D00000000000000000206 /* Stores */,
 				5A6D00000000000000000207 /* Assist */,
+				5A6D00000000000000000208 /* FinderCatalog */,
 			);
 			productName = GamGUI;
 			productReference = 5A6D00000000000000000001 /* GamGUI.app */;
@@ -344,6 +347,10 @@
 		5A6D00000000000000000207 /* Assist */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Assist;
+		};
+		5A6D00000000000000000208 /* FinderCatalog */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FinderCatalog;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

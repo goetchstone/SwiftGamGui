@@ -2,6 +2,7 @@ import AppKit
 import ChangeCore
 import Directory
 import GamEngine
+import Stores
 import SwiftUI
 
 /// One audit run on Reports (plan F3, GamGUI's `_audit_run.html`): what it reads, its Run button (Inactive users' window picker
@@ -14,11 +15,18 @@ import SwiftUI
 /// 2026-11-21, as Reports' ⌘O before it): ⌘R runs, ⌘. stops, ⌘1 to ⌘5 pick Inactive users' window, each table is a list Tab
 /// reaches (Return opens the person picked), ⌘E exports the table picked in, ⌘Return previews Suspend these…. Each is said in
 /// visible words beside its control.
+///
+/// A schedule (plan F7a, `RunSchedules`) adds when the run is due, at the top; its schedule and the runs it keeps on this Mac,
+/// under Run; and, once a scheduled run ended, what changed in each table since its last kept run. None of it is drawn while
+/// a run goes (GamGUI's poll reads no schedule), and none of it runs anything.
 struct AuditRunPanel: View {
     let run: AuditRuns.Run
     let runs: AuditRunner
     let suspend: InactiveSuspend
-    let connected: Bool
+    let schedules: RunSchedules
+    /// The connected domain, nil when none is.
+    let domain: String?
+    var connected: Bool { domain != nil }
     /// Inactive users' window, which ⌘R runs with too.
     @Binding var days: Int
     let openPerson: (String) -> Void
@@ -43,16 +51,29 @@ struct AuditRunPanel: View {
                 case .running(let progress)?:
                     running(progress)
                 case .finished(let outcome)?:
+                    due
                     controls
+                    schedule
                     finished(outcome)
                 case nil:
+                    due
                     controls
+                    schedule
                 }
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background { windowShortcuts }
+        // Its kept runs, read when the pane opens for the domain connected now (a run's end reads them again).
+        .task(id: domain) {
+            await schedules.refreshKept(run)
+            // Inactive users opens on the window its last kept run read: one click runs the same again.
+            if run == AuditRuns.inactiveUsers, runs.state(of: run) == nil,
+               let newest = schedules.kept[run.key]?.runs.first(where: { $0.problem.isEmpty }), AuditRuns.windows.contains(newest.days) {
+                days = newest.days
+            }
+        }
         .sheet(item: Binding(get: { sheetPending }, set: { if $0 == nil { suspend.dismiss() } })) { pending in
             InactiveSuspendSheet(pending: pending, suspend: suspend)
         }
@@ -100,6 +121,22 @@ struct AuditRunPanel: View {
     }
 
     // MARK: before and between runs
+
+    /// When it's due on the connected domain, or why that can't be told.
+    @ViewBuilder private var due: some View {
+        if let due = schedules.due(run) {
+            RunDueLine(due: due)
+        } else if connected, let problem = schedules.problem {
+            Label(problem, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor).font(.callout)
+        }
+    }
+
+    /// Its schedule and kept runs, when a domain is connected and this build keeps them.
+    @ViewBuilder private var schedule: some View {
+        if let domain, schedules.store != nil {
+            RunScheduleSection(run: run, schedules: schedules, domain: domain)
+        }
+    }
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -162,10 +199,17 @@ struct AuditRunPanel: View {
                  + (outcome.complete ? " Every step was read." : " Part of this run is unknown: each table that needs it says so."))
                 .font(.callout).foregroundStyle(.secondary)
             ForEach(outcome.reads, id: \.step.key) { read in StepReadLine(read: read) }
+            // A scheduled run: what happened to its keep.
+            if !outcome.keptNote.isEmpty {
+                Label(outcome.keptNote, systemImage: outcome.keptProblem ? "exclamationmark.triangle.fill" : "externaldrive")
+                    .symbolRenderingMode(outcome.keptProblem ? .multicolor : .monochrome)
+                    .font(.callout).foregroundStyle(outcome.keptProblem ? .primary : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         ForEach(outcome.findings) { finding in
-            FindingView(run: run, finding: finding, openPerson: openPerson, export: { export(finding, about: outcome.when) },
-                        picked: { picked = finding.key })
+            FindingView(run: run, finding: finding, change: outcome.changes[finding.key], clock: schedules.clock, openPerson: openPerson,
+                        export: { export(finding, about: outcome.when) }, picked: { picked = finding.key })
             if run == AuditRuns.inactiveUsers, finding.key == "inactive", finding.known, !finding.rows.isEmpty {
                 suspendControls(days: outcome.days, about: outcome.when)
             }
@@ -302,6 +346,9 @@ private struct StepLine: View {
 private struct FindingView: View {
     let run: AuditRuns.Run
     let finding: AuditRuns.Finding
+    /// What changed since the run's last kept run (a scheduled run), or why it wasn't compared.
+    let change: AuditSchedules.Change?
+    let clock: AuditSchedules.Clock
     let openPerson: (String) -> Void
     let export: () -> Void
     /// A row was picked in this table: ⌘E exports it.
@@ -316,6 +363,7 @@ private struct FindingView: View {
                 .font(.headline).accessibilityAddTraits(.isHeader)
             if finding.known {
                 Text(finding.summary)
+                if let change { ChangeSinceView(finding: finding, change: change, clock: clock) }
                 if finding.partial {
                     Label("Part of this table is unknown: what no read could tell is said beneath it.", systemImage: "questionmark.circle.fill")
                         .symbolRenderingMode(.multicolor)
@@ -373,6 +421,58 @@ private struct FindingView: View {
         guard finding.links, let id = ids.first, finding.rows.indices.contains(id), let first = finding.rows[id].first,
               first.contains("@") else { return nil }
         return first
+    }
+}
+
+/// What changed in one table since the run's last kept run that read it whole (plan F7a, GamGUI's `_audit_run_changes.html`):
+/// no change, or how many rows are new and gone, each list its first `AuditRuns.rowsShown` rows in a list Tab reaches. A row
+/// counts by all its cells, so one with any cell changed is gone and new. A table not compared says why: never "no change"
+/// (invariant 10). The table's change note (a skip GAM makes without a word) is said beside any comparison.
+private struct ChangeSinceView: View {
+    let finding: AuditRuns.Finding
+    let change: AuditSchedules.Change
+    let clock: AuditSchedules.Clock
+
+    private var when: String { clock.words(at: change.since) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if !change.compared {
+                Label(change.why, systemImage: "questionmark.circle").font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if change.new.isEmpty && change.gone.isEmpty {
+                Label("No change since \(when).", systemImage: "equal.circle").font(.callout)
+            } else {
+                Label("Since \(when): \(change.new.count.formatted()) new, \(change.gone.count.formatted()) gone.",
+                      systemImage: "arrow.left.arrow.right.circle")
+                    .font(.callout)
+                rows("New", change.new)
+                rows("Gone", change.gone)
+                Text("A row counts by all its cells: one with any cell changed shows as gone and as new.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            if change.compared, !finding.changeNote.isEmpty {
+                Label(finding.changeNote, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(8)
+        .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 8))
+    }
+
+    @ViewBuilder private func rows(_ label: String, _ rows: [[String]]) -> some View {
+        if !rows.isEmpty {
+            let shown = Array(rows.prefix(AuditRuns.rowsShown).enumerated())
+            Text("\(label) since then (\(rows.count.formatted()))").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+            List(shown, id: \.offset) { item in FindingRow(columns: finding.columns, row: item.element, opens: false) }
+                .listStyle(.bordered(alternatesRowBackgrounds: true))
+                .frame(height: CGFloat(min(shown.count, 4)) * 46 + 8)
+                .accessibilityLabel("\(label) in \(finding.title) since \(when)"
+                                    + (rows.count > AuditRuns.rowsShown ? ", the first \(AuditRuns.rowsShown) of \(rows.count.formatted())" : ""))
+            if rows.count > AuditRuns.rowsShown {
+                Text("Showing the first \(AuditRuns.rowsShown) of \(rows.count.formatted()).").font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
