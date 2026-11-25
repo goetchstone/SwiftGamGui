@@ -30,8 +30,10 @@ containment, eradication, recovery, lessons learned).
 ## Everyday admin
 
 - **People**: browse the directory; change a title, department, groups, mail delegates, auto-reply or signature;
-  suspend, sign out, or set a temporary password.
-- **Groups and calendars**: a group's members and roles; rooms, a person's calendars and who can see them.
+  suspend, sign out, set a temporary password, or delete the account. A signature can go to a group, an org unit or
+  everyone at once.
+- **Groups and calendars**: a group's members and roles; rooms, a person's calendars and who can see them; share a
+  calendar with a group, or delete a calendar or an event.
 - **Classroom**, read only: find a class by name or teacher, see who teaches it and who is in it, a person's classes, and
   the classes a leaver owns at offboarding. Plan an import from a SIS (OneRoster 1.1 or 1.2, Clever, or any spreadsheet
   with a saved column map): what to fix in the SIS, what would change in Classroom, and the GAM files to make those
@@ -82,9 +84,8 @@ Rendered by CI from a demo domain and a mock of GAM, so every name is made up. [
 ## Status
 
 In daily use on a real domain; what has run live is in [docs/live-verification.md](docs/live-verification.md). It's
-free, and built for its author's own use. Still only in GamGUI: the Builder's sequences, anything run for many people at
-once (onboarding from a CSV, a department or a signature for many), deleting a leaver's account, and finding a calendar
-by name, sharing one with a group, or deleting a calendar or an event. What's next is in
+free, and built for its author's own use. Still only in GamGUI: the Builder's sequences, changes for many people at once
+other than a signature (a department for many, hires from a CSV), and finding a calendar by name. What's next is in
 [docs/plans/2026-11-05-filling-the-gaps.md](docs/plans/2026-11-05-filling-the-gaps.md).
 
 ## Build from source
