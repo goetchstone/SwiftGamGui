@@ -464,7 +464,7 @@ final class GroupChangesTests {
         await changes.previewAdd("carol@example.com", to: try group("sales@example.com"), role: .member)
         guard case .previewing(let pending) = changes.state else { Issue.record("\(changes.state)"); return }
         let confirming = Task { await changes.confirm(pending, confirmed) }
-        while !FileManager.default.fileExists(atPath: started.path) { try await Task.sleep(for: .milliseconds(20)) }
+        try await yieldWhile(every: .milliseconds(20)) { !FileManager.default.fileExists(atPath: started.path) }
         try await connect("example.org")
         await confirming.value
         #expect(writes().count == 1, "the write ran on example.com")

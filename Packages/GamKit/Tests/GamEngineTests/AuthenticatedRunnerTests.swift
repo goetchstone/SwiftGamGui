@@ -76,10 +76,7 @@ struct AuthenticatedRunnerTests {
 
         /// Returns once gam is running, its credentials loaded.
         func waitUntilStarted() async throws {
-            for _ in 0..<600 where !FileManager.default.fileExists(atPath: started.path) {
-                try await Task.sleep(for: .milliseconds(50))
-            }
-            #expect(FileManager.default.fileExists(atPath: started.path), "gam started")
+            try await yieldWhile(every: .milliseconds(50)) { !FileManager.default.fileExists(atPath: started.path) }
         }
 
         func letItFinish() throws { try Data().write(to: go) }

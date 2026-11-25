@@ -17,8 +17,9 @@ Act on the items your diff touches.
 - **A time bound in a test**: pure code measures thread CPU time; a bound on a process sits far from both the time it
   should take and the failure it detects (failure log 2026-10-16, 10-20, 11-03). Something that must happen "a moment
   later" happens at a known point through a hook, never on a timer (2026-11-21).
-- **A test that waits for a state** uses `yieldWhile` (bounded); never `while … { await Task.yield() }` (failure log
-  2026-11-24: two such loops spun for days).
+- **A test that waits** uses `yieldWhile` (bounded; `every:` when it waits on another process or a file). `TestWaitsTests`
+  fails any other `Task.sleep` or `Task.yield` in a test unless its line says `// not a wait: <why>` (failure log 2026-11-24:
+  two loops spun for days, and the sweep missed eight spelled with `Task.sleep`).
 
 ## If your diff touches GAM
 4. **argv-only (#1)** and **byte-identical to GamGUI (#11)**: every builder is checked against

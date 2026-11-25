@@ -340,7 +340,7 @@ struct SetupModelTests {
         let relaunched = model()
         #expect(relaunched.reconnecting == nil)
         let reconnect = Task { await relaunched.reconnect() }
-        for _ in 0..<10_000 where relaunched.reconnecting == nil && relaunched.active == nil { await Task.yield() }
+        try await yieldWhile { relaunched.reconnecting == nil && relaunched.active == nil }
         #expect(relaunched.reconnecting == Domain("example.com")!, "connecting, and the screens can't say so")
         await reconnect.value
         #expect(relaunched.reconnecting == nil)
@@ -371,7 +371,7 @@ struct SetupModelTests {
         await first.checkAccess(Domain("example.com")!)
         let relaunched = model()
         let reconnect = Task { await relaunched.reconnect() }
-        for _ in 0..<10_000 where relaunched.reconnecting == nil { await Task.yield() }
+        try await yieldWhile { relaunched.reconnecting == nil }
         await relaunched.reconnect()
         #expect(relaunched.reconnecting == Domain("example.com")!, "the second call ended the first's \"Connecting\"")
         await reconnect.value
@@ -403,7 +403,7 @@ struct SetupModelTests {
         await relaunched.importFolder(try gamFolder(), as: "example.com")
         lastDomain.save("example.com")
         relaunched.reconnectAtLaunch()
-        for _ in 0..<1_000 { await Task.yield() }
+        for _ in 0..<1_000 { await Task.yield() }  // not a wait: turns for a second reconnect that must not happen
         #expect(relaunched.active == nil && relaunched.reconnecting == nil, "a second window reconnected again")
     }
 

@@ -11,5 +11,6 @@
   so the two "unrelated" failures seen beside it on the F5b branch were read as load flakes.
 - **Fix:** `TestSupport.yieldWhile` yields while its condition holds, for at most 60 s on `SuspendingClock`, then records the
   issue at the caller and throws. Every such wait uses it.
-- **Prevention:** a test that waits never waits unbounded; `yieldWhile` is the one way to wait for a state. A suite whose
+- **Prevention:** a test that waits never waits unbounded; `yieldWhile` is the one way to wait for a state, and since
+  2026-11-25 `TestWaitsTests` holds it (the sweep had missed eight loops that slept instead of yielding). A suite whose
   output doesn't come is a finding: `sample` the process before rerunning anything.

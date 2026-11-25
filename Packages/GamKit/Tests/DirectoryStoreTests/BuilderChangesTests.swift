@@ -203,7 +203,7 @@ final class BuilderChangesTests {
         try await connect()
         let first = Task { await changes.preview(try command("build.add_group_member"),
                                                  values: ["group": "sales@example.com", "member": "carol@example.com"]) }
-        await Task.yield()
+        await Task.yield()  // not a wait: on the main actor one yield runs the queued preview to its first suspension
         await changes.preview(try command("build.create_alias"), values: ["alias": "c@example.com"])
         try await first.value
         #expect(problem == "Fill in User.")

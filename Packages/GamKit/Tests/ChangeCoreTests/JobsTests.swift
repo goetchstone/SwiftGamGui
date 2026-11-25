@@ -89,7 +89,7 @@ final class JobsTests {
         let executor = try executor(report: { event in events.value.withLock { $0.append(event) }; board.report(event) })
         let seen = Shared<(events: [JobEvent], status: String?)>(([], nil))
         let preview = try await executor.preview([suspend("alice@example.com")], precondition: { @Sendable in
-            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            try? await yieldWhile(every: .milliseconds(10)) { await MainActor.run { board.jobs.isEmpty } }
             let status = await MainActor.run { board.jobs.first?.status }
             seen.value.withLock { $0 = (events.value.withLock { $0 }, status) }
             return true
@@ -99,7 +99,7 @@ final class JobsTests {
         guard case .started(let job, preview.id, _, 1, _)? = before.first, before.count == 1 else { Issue.record("\(before)"); return }
         #expect(status == "Checking before it runs (after any change running now)…")
         #expect(events.value.withLock { Array($0.dropFirst().prefix(1)) } == [.checked(job: job)])
-        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { board.jobs.first?.finished != true }
         #expect(board.jobs.first?.status == "Done: 1 of 1 succeeded.")
     }
 
@@ -112,7 +112,7 @@ final class JobsTests {
         let outcome = await executor.run(preview, confirmation: confirmed)
         let why = "What the preview showed has changed since — preview again."
         #expect(outcome.refusal == why && outcome.steps.isEmpty)
-        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { board.jobs.first?.finished != true }
         let job = try #require(board.jobs.first)
         #expect(job.finished && job.refusal == why && job.done == 0 && !job.checking)
         #expect(job.status == "Didn't run: " + why)
@@ -128,7 +128,7 @@ final class JobsTests {
         board.stopRun = { @Sendable id in await executor.stopAfterCurrentStep(id) }
         let status = Shared<String?>(nil)
         let preview = try await executor.preview([suspend("alice@example.com"), suspend("bob@example.com")], precondition: { @Sendable in
-            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            try? await yieldWhile(every: .milliseconds(10)) { await MainActor.run { board.jobs.isEmpty } }
             let job = await MainActor.run { board.jobs.first!.id }
             #expect(await board.stop(job))
             let now = await MainActor.run { board.jobs.first?.status }
@@ -138,7 +138,7 @@ final class JobsTests {
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(outcome.steps == [.skipped(reason: Executor.stopped), .skipped(reason: Executor.stopped)])
         #expect(status.value.withLock { $0 } == "Stopping: none of its steps will run.")
-        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { board.jobs.first?.finished != true }
         #expect(board.jobs.first?.status == "Ended: 0 of 2 succeeded, 2 not run.")
     }
 
@@ -153,13 +153,13 @@ final class JobsTests {
         await executor.setBeforeEachStep { @Sendable in
             guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
             // The tray's Stop, while step 2 is about to run: its job has been reported by now.
-            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            try? await yieldWhile(every: .milliseconds(10)) { await MainActor.run { board.jobs.isEmpty } }
             let job = await MainActor.run { board.jobs.first?.id }
             #expect(await board.stop(job!))
         }
         let outcome = await executor.run(preview, confirmation: confirmed)
         #expect(outcome.steps[2] == .skipped(reason: Executor.stopped))
-        for _ in 0..<100 where board.jobs.first?.finished != true { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { board.jobs.first?.finished != true }
         let job = try #require(board.jobs.first)
         #expect(job.finished && job.succeeded == 2 && job.notRun == 1 && job.done == 3 && !job.stopping)
         #expect(job.status == "Ended: 2 of 3 succeeded, 1 not run.")
@@ -184,7 +184,7 @@ final class JobsTests {
         let calls = Shared(0)
         await executor.setBeforeEachStep { @Sendable in
             guard calls.value.withLock({ $0 += 1; return $0 }) == 3 else { return }
-            for _ in 0..<100 where await MainActor.run(body: { board.jobs.isEmpty }) { try? await Task.sleep(for: .milliseconds(10)) }
+            try? await yieldWhile(every: .milliseconds(10)) { await MainActor.run { board.jobs.isEmpty } }
             let job = await MainActor.run { board.jobs.first?.id }
             #expect(await board.stop(job!))
         }

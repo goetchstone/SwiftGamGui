@@ -333,7 +333,7 @@ struct GroupStoreTests {
         let first = Task { await members.load("sales@example.com") }
         try await yieldWhile { !members.isReading("sales@example.com") }
         let second = Task { await members.load("sales@example.com", after: .seconds(30)) }
-        await Task.yield()
+        await Task.yield()  // not a wait: lets the second read start; the first must run on whether or not it has
         second.cancel()
         await second.value
         #expect(members.isReading("sales@example.com"), "the first window's read still runs")
