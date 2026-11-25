@@ -2,9 +2,11 @@
 
 What this app has really done on the operator's domain. Passing tests don't count, because the mock lies.
 
-- **Changes** come from the app's audit log, read on 2026-11-05: 158 runs from 2026-10-09 to 2026-11-03, none failed. A
-  change not under "Ran" has no record of this app running it.
-- **Reads** aren't logged, so they rest on the operator's word.
+- **Changes** come from the app's audit log, read on 2026-11-25: 166 runs from 2026-10-09 to 2026-11-13. One failed: a new
+  account's signature, before Gmail was ready, which the wait for Google then set (Onboard). A change not under "Ran" has
+  no record of this app running it.
+- **Reads** from Reports' named reports and the audit runs are logged too (first on 11-25). Other reads aren't, so they
+  rest on the operator's word.
 
 To update this: read the audit log or ask the operator, then move the line and change its date (the `live-verify` skill).
 Dates are 2026, and the last time the command ran from any screen.
@@ -19,7 +21,7 @@ Dates are 2026, and the last time the command ran from any screen.
   on a real leaver).
 
 ### Groups
-- **Ran:** add people as members (10-17), remove a member (10-13).
+- **Ran:** add people as members (11-13), remove a member (10-13).
 - **Not run:** add people as managers or owners.
 
 ### Calendars
@@ -36,14 +38,15 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Not run:** delete one event, with `doit` and no updates sent (new 2026-11-13; GamGUI's never ran).
 
 ### Signatures
-- **Ran:** set a signature (10-29).
+- **Ran:** set a signature (11-13).
 - **Not run:** set it for a group's members, an org unit or the whole company, as a job with Stop, and retry the ones that
   failed (new 2026-11-13; GamGUI's bulk apply never ran live either). Try it first on a small org unit.
 
 ### Onboard
-- **Not run:** anything in this app: create an account, the task checklist, subscribe to a calendar, the wait for a new
-  account, the welcome email. GamGUI has run the same create, checklist and subscribe commands, and the welcome email
-  (here its body keeps its line breaks, which is new). The wait hasn't run in either app.
+- **Ran:** one hire, end to end (11-13): create the account, its signature, two groups, the task checklist, the welcome
+  email, and the wait for a new account. Google refused the signature at first (exit 73, Gmail not ready); the wait's
+  first round, 20 s later, set it. The welcome email's line breaks haven't been looked at in the received mail yet.
+- **Not run:** subscribe to a calendar (GamGUI has run its command).
 
 ### Offboard
 - **Ran:** the whole 12-step routine, three times (last 11-03): reset the password, clear recovery, sign out, forwarding
@@ -70,6 +73,12 @@ Dates are 2026, and the last time the command ran from any screen.
     create a group, undelete an account. Prove each on a scratch object the operator owns.
 
 ## Reads
+
+### Ran, from the audit log
+- Reports (11-25): all nine named reports (licenses, shared drives, shared drive members and organizers, org units,
+  mobile devices, group memberships, data transfers, Google's alerts), none failed.
+- Audit runs (11-25): Inactive users, Admin token review, Shared drive permissions and License usage, every step
+  answered. Classroom can't run here (no Education domain).
 
 ### Ran, by the operator's word
 - Connect, Check access and load the directory (10-09); connected on GAM 7.49.02 (10-28).
