@@ -67,7 +67,7 @@ struct CommandFinderTests {
         #expect(option.commands.count > 1)
         let everyone = try await CommandFinder.fill("list our users", option, directory: Self.directory,
                                                     using: Self.model("Users", "Users", "List users.", fields: #""user": """#))
-        #expect(everyone.command == "raw.6078" && everyone.values.isEmpty)
+        #expect(everyone.command == "raw.6085" && everyone.values.isEmpty)
         let one = try await CommandFinder.fill("list carol in users", option, directory: Self.directory,
                                                using: Self.model("Users", "Users", "List users.", fields: #""user": "carol""#))
         let command = try #require(option.commands.first { $0.id == one.command })

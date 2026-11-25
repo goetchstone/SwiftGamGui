@@ -130,6 +130,14 @@ an allowlisted environment, a timeout, and capped output capture.
   GamGUI's roster code stamps each zip with the day it was written, so `roster.json` and `roster_mapped.json` change
   with each run; this bump's zips differ from 8f9e766's first generation only in their date fields (checked by
   blanking them).
+- **Bump to 7.52.05 (2026-11-25):** attested and pinned by `bump_gam.py`, every fixture from the GamGUI clone at `63ef104`
+  (GamGUI's own 7.52.05 bump is its #181). GAM's notes: `fields <DrivePermissionsFieldNameList>` on `create`, `update` and
+  `info drivefileacl`; nothing here builds those. The reviewed dry run holds: the last source hunk is `_showAsset`'s, ~3,700
+  lines before the Gmail functions. Catching up nine GamGUI merges brought: 17 builders and 11 curated commands not ported
+  yet (`notPorted`, each with its PR), the `alias_refused` error kind (#189), GamGUI #174's read-builder rules (below) and
+  three Spec shapes `gen_fixtures.py` now reads (`st.builds`, a filtered `sampled_from`, a `[class]{m,n}` `from_regex`).
+  `build_command_catalog.py` keeps each entry's first line whatever GamGUI's parser joins (#132, not ported), so the
+  catalog is the same from any GamGUI; until this bump it was built from an older clone for that reason.
 
 ## Failure history inherited from GamGUI
 - The whole parent environment once reached GAM (`DYLD_*`, `PYTHON*`, `_PYI_*`) — GamGUI failure-log

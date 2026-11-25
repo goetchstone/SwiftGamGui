@@ -1,7 +1,7 @@
 {
  "source": {
-  "gamgui_commit": "82290f0",
-  "gam_version": "7.52.04",
+  "gamgui_commit": "63ef104",
+  "gam_version": "7.52.05",
   "generator": "scripts/gen_fixtures.py"
  },
  "builders": [
@@ -9,6 +9,7 @@
   "add_calendar_acl_cal",
   "add_calendar_event",
   "add_delegate",
+  "add_drive_member",
   "add_forwarding_address",
   "add_group_member",
   "add_license",
@@ -17,19 +18,24 @@
   "block_device_user",
   "check_svcacct",
   "clear_recovery",
+  "copy_rest_of_folder_to_shared_drive",
+  "create_admin",
   "create_datatransfer",
   "create_group",
   "create_org_unit",
+  "create_shared_drive",
   "create_task",
   "create_tasklist",
   "create_user",
   "create_user_alias",
+  "delete_admin_role",
   "delete_alias",
   "delete_calendar_acl",
   "delete_calendar_acl_cal",
   "delete_device_user",
   "delete_event",
   "delete_filters",
+  "delete_group",
   "delete_messages",
   "delete_org_unit",
   "delete_send_as",
@@ -44,6 +50,8 @@
   "info_group_settings",
   "info_user",
   "list_drafts",
+  "move_alias",
+  "move_folder_to_shared_drive",
   "move_user_to_org_unit",
   "pop_off",
   "print_admins",
@@ -61,9 +69,11 @@
   "print_delegates",
   "print_devices",
   "print_domains",
+  "print_drive_members",
   "print_events",
   "print_filelist",
   "print_filters",
+  "print_folder_files",
   "print_forward",
   "print_forwarding_addresses",
   "print_group_members",
@@ -77,6 +87,7 @@
   "print_script_projects",
   "print_send_as",
   "print_shared_drive_acls",
+  "print_shared_drive_files",
   "print_shared_drives",
   "print_signature",
   "print_tokens",
@@ -88,15 +99,20 @@
   "remove_all_calendar_acls",
   "remove_calendar",
   "remove_delegate",
+  "remove_drive_member",
   "remove_group_member",
   "remove_license",
   "rename_org_unit",
+  "rename_shared_drive",
+  "rename_user",
   "report_activity",
   "report_users",
   "reset_password",
   "search_messages",
   "search_scheduled",
   "send_email",
+  "set_archived",
+  "set_drive_member_role",
   "set_forward",
   "set_password",
   "set_signature",
@@ -115,6 +131,7 @@
   "update_group_settings",
   "update_organization",
   "update_phones",
+  "update_profile",
   "vacation_off",
   "version"
  ],
@@ -181,6 +198,20 @@
     "name": "delegate"
    }
   ],
+  "add_drive_member": [
+   {
+    "name": "drive_id"
+   },
+   {
+    "name": "kind"
+   },
+   {
+    "name": "email"
+   },
+   {
+    "name": "role"
+   }
+  ],
   "add_forwarding_address": [
    {
     "name": "email"
@@ -232,6 +263,29 @@
     "name": "email"
    }
   ],
+  "copy_rest_of_folder_to_shared_drive": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "folder_id"
+   },
+   {
+    "name": "drive_id"
+   }
+  ],
+  "create_admin": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "role"
+   },
+   {
+    "name": "org_unit",
+    "default": ""
+   }
+  ],
   "create_datatransfer": [
    {
     "name": "old_owner"
@@ -271,6 +325,14 @@
    {
     "name": "description",
     "default": ""
+   }
+  ],
+  "create_shared_drive": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "name"
    }
   ],
   "create_task": [
@@ -330,6 +392,11 @@
     "name": "email"
    }
   ],
+  "delete_admin_role": [
+   {
+    "name": "assignment_id"
+   }
+  ],
   "delete_alias": [
    {
     "name": "alias"
@@ -378,6 +445,11 @@
    },
    {
     "name": "filter_ids"
+   }
+  ],
+  "delete_group": [
+   {
+    "name": "group"
    }
   ],
   "delete_messages": [
@@ -464,6 +536,25 @@
    },
    {
     "name": "most"
+   }
+  ],
+  "move_alias": [
+   {
+    "name": "alias"
+   },
+   {
+    "name": "to"
+   }
+  ],
+  "move_folder_to_shared_drive": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "folder_id"
+   },
+   {
+    "name": "drive_id"
    }
   ],
   "move_user_to_org_unit": [
@@ -577,6 +668,11 @@
    }
   ],
   "print_domains": [],
+  "print_drive_members": [
+   {
+    "name": "drive_id"
+   }
+  ],
   "print_events": [
    {
     "name": "calendar_id"
@@ -610,6 +706,14 @@
   "print_filters": [
    {
     "name": "email"
+   }
+  ],
+  "print_folder_files": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "folder_id"
    }
   ],
   "print_forward": [
@@ -667,6 +771,14 @@
    }
   ],
   "print_shared_drive_acls": [],
+  "print_shared_drive_files": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "drive_id"
+   }
+  ],
   "print_shared_drives": [],
   "print_signature": [
    {
@@ -725,6 +837,14 @@
     "name": "delegate"
    }
   ],
+  "remove_drive_member": [
+   {
+    "name": "drive_id"
+   },
+   {
+    "name": "permission_id"
+   }
+  ],
   "remove_group_member": [
    {
     "name": "group"
@@ -750,6 +870,22 @@
    },
    {
     "name": "name"
+   }
+  ],
+  "rename_shared_drive": [
+   {
+    "name": "drive_id"
+   },
+   {
+    "name": "name"
+   }
+  ],
+  "rename_user": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "new_email"
    }
   ],
   "report_activity": [
@@ -840,6 +976,22 @@
    {
     "name": "html",
     "default": true
+   }
+  ],
+  "set_archived": [
+   {
+    "name": "email"
+   }
+  ],
+  "set_drive_member_role": [
+   {
+    "name": "drive_id"
+   },
+   {
+    "name": "permission_id"
+   },
+   {
+    "name": "role"
    }
   ],
   "set_forward": [
@@ -1019,6 +1171,19 @@
    },
    {
     "name": "phones"
+   }
+  ],
+  "update_profile": [
+   {
+    "name": "email"
+   },
+   {
+    "name": "organizations",
+    "default": null
+   },
+   {
+    "name": "phones",
+    "default": null
    }
   ],
   "vacation_off": [
@@ -5037,6 +5202,405 @@
    ]
   },
   {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "carol@example.com",
+    "role": "commenter"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "carol@example.com",
+    "role",
+    "commenter"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "carol@example.com",
+    "role": "fileorganizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "carol@example.com",
+    "role",
+    "fileorganizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "carol@example.com",
+    "role": "organizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "carol@example.com",
+    "role",
+    "organizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "carol@example.com",
+    "role": "reader"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "carol@example.com",
+    "role",
+    "reader"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "carol@example.com",
+    "role": "writer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "carol@example.com",
+    "role",
+    "writer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "commenter"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "carol@example.com",
+    "role",
+    "commenter"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "fileorganizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "carol@example.com",
+    "role",
+    "fileorganizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "organizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "carol@example.com",
+    "role",
+    "organizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "reader"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "carol@example.com",
+    "role",
+    "reader"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "writer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "carol@example.com",
+    "role",
+    "writer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "person@example.com",
+    "role": "commenter"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "person@example.com",
+    "role",
+    "commenter"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "person@example.com",
+    "role": "fileorganizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "person@example.com",
+    "role",
+    "fileorganizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "person@example.com",
+    "role": "organizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "person@example.com",
+    "role",
+    "organizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "person@example.com",
+    "role": "reader"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "person@example.com",
+    "role",
+    "reader"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "group",
+    "email": "person@example.com",
+    "role": "writer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "group",
+    "person@example.com",
+    "role",
+    "writer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "person@example.com",
+    "role": "commenter"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "person@example.com",
+    "role",
+    "commenter"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "person@example.com",
+    "role": "fileorganizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "person@example.com",
+    "role",
+    "fileorganizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "person@example.com",
+    "role": "organizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "person@example.com",
+    "role",
+    "organizer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "person@example.com",
+    "role": "reader"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "person@example.com",
+    "role",
+    "reader"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "kind": "user",
+    "email": "person@example.com",
+    "role": "writer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "user",
+    "person@example.com",
+    "role",
+    "writer"
+   ]
+  },
+  {
+   "builder": "add_drive_member",
+   "kwargs": {
+    "drive_id": "A",
+    "kind": "user",
+    "email": "carol@example.com",
+    "role": "organizer"
+   },
+   "argv": [
+    "create",
+    "drivefileacl",
+    "shareddriveid",
+    "A",
+    "user",
+    "carol@example.com",
+    "role",
+    "organizer"
+   ]
+  },
+  {
    "builder": "add_forwarding_address",
    "kwargs": {
     "email": "  padded  ",
@@ -6511,6 +7075,161 @@
    ]
   },
   {
+   "builder": "copy_rest_of_folder_to_shared_drive",
+   "kwargs": {
+    "email": "alice@example.com",
+    "folder_id": "1FOLDERours",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "copy",
+    "drivefile",
+    "id:1FOLDERours",
+    "teamdriveparentid",
+    "0AFINANCEuk9PVA",
+    "recursive",
+    "copysubfilesownedby",
+    "others",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip",
+    "excludetrashed",
+    "suppressnotselectedmessages"
+   ]
+  },
+  {
+   "builder": "copy_rest_of_folder_to_shared_drive",
+   "kwargs": {
+    "email": "person@example.com",
+    "folder_id": "1FOLDERmixed",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "person@example.com",
+    "copy",
+    "drivefile",
+    "id:1FOLDERmixed",
+    "teamdriveparentid",
+    "0AFINANCEuk9PVA",
+    "recursive",
+    "copysubfilesownedby",
+    "others",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip",
+    "excludetrashed",
+    "suppressnotselectedmessages"
+   ]
+  },
+  {
+   "builder": "copy_rest_of_folder_to_shared_drive",
+   "kwargs": {
+    "email": "carol@example.com",
+    "folder_id": "A",
+    "drive_id": "A"
+   },
+   "argv": [
+    "user",
+    "carol@example.com",
+    "copy",
+    "drivefile",
+    "id:A",
+    "teamdriveparentid",
+    "A",
+    "recursive",
+    "copysubfilesownedby",
+    "others",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip",
+    "excludetrashed",
+    "suppressnotselectedmessages"
+   ]
+  },
+  {
+   "builder": "create_admin",
+   "kwargs": {
+    "email": "bob@example.com",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "org_unit": ""
+   },
+   "argv": [
+    "create",
+    "admin",
+    "bob@example.com",
+    "_HELP_DESK_ADMIN_ROLE",
+    "customer"
+   ]
+  },
+  {
+   "builder": "create_admin",
+   "kwargs": {
+    "email": "carol@example.com",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "org_unit": ""
+   },
+   "argv": [
+    "create",
+    "admin",
+    "carol@example.com",
+    "_HELP_DESK_ADMIN_ROLE",
+    "customer"
+   ]
+  },
+  {
+   "builder": "create_admin",
+   "kwargs": {
+    "email": "it@example.com",
+    "role": "_GROUPS_ADMIN_ROLE",
+    "org_unit": "/Sales"
+   },
+   "argv": [
+    "create",
+    "admin",
+    "it@example.com",
+    "_GROUPS_ADMIN_ROLE",
+    "org_unit",
+    "/Sales"
+   ]
+  },
+  {
+   "builder": "create_admin",
+   "kwargs": {
+    "email": "person@example.com",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "org_unit": ""
+   },
+   "argv": [
+    "create",
+    "admin",
+    "person@example.com",
+    "_HELP_DESK_ADMIN_ROLE",
+    "customer"
+   ]
+  },
+  {
+   "builder": "create_admin",
+   "kwargs": {
+    "email": "person@example.com",
+    "role": "_HELP_DESK_ADMIN_ROLE",
+    "org_unit": "/Sales/East"
+   },
+   "argv": [
+    "create",
+    "admin",
+    "person@example.com",
+    "_HELP_DESK_ADMIN_ROLE",
+    "org_unit",
+    "/Sales/East"
+   ]
+  },
+  {
    "builder": "create_datatransfer",
    "kwargs": {
     "old_owner": "  padded  ",
@@ -7664,6 +8383,48 @@
     "日本語のテキスト",
     "description",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "create_shared_drive",
+   "kwargs": {
+    "email": "alice@example.com",
+    "name": "Finance 2027"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "create",
+    "shareddrive",
+    "Finance 2027"
+   ]
+  },
+  {
+   "builder": "create_shared_drive",
+   "kwargs": {
+    "email": "carol@example.com",
+    "name": "a b"
+   },
+   "argv": [
+    "user",
+    "carol@example.com",
+    "create",
+    "shareddrive",
+    "a b"
+   ]
+  },
+  {
+   "builder": "create_shared_drive",
+   "kwargs": {
+    "email": "person@example.com",
+    "name": "Finance 2027"
+   },
+   "argv": [
+    "user",
+    "person@example.com",
+    "create",
+    "shareddrive",
+    "Finance 2027"
    ]
   },
   {
@@ -9873,6 +10634,28 @@
    ]
   },
   {
+   "builder": "delete_admin_role",
+   "kwargs": {
+    "assignment_id": "0"
+   },
+   "argv": [
+    "delete",
+    "admin",
+    "0"
+   ]
+  },
+  {
+   "builder": "delete_admin_role",
+   "kwargs": {
+    "assignment_id": "9170001"
+   },
+   "argv": [
+    "delete",
+    "admin",
+    "9170001"
+   ]
+  },
+  {
    "builder": "delete_alias",
    "kwargs": {
     "alias": "  padded  "
@@ -11126,6 +11909,42 @@
     "delete",
     "filters",
     "F1,F2"
+   ]
+  },
+  {
+   "builder": "delete_group",
+   "kwargs": {
+    "group": "carol@example.com"
+   },
+   "argv": [
+    "delete",
+    "group",
+    "carol@example.com",
+    "noactionifalias"
+   ]
+  },
+  {
+   "builder": "delete_group",
+   "kwargs": {
+    "group": "person@example.com"
+   },
+   "argv": [
+    "delete",
+    "group",
+    "person@example.com",
+    "noactionifalias"
+   ]
+  },
+  {
+   "builder": "delete_group",
+   "kwargs": {
+    "group": "sales@example.com"
+   },
+   "argv": [
+    "delete",
+    "group",
+    "sales@example.com",
+    "noactionifalias"
    ]
   },
   {
@@ -13370,6 +14189,114 @@
     "subject",
     "showlabels",
     "showdate"
+   ]
+  },
+  {
+   "builder": "move_alias",
+   "kwargs": {
+    "alias": "a.anders@example.com",
+    "to": "bob@example.com"
+   },
+   "argv": [
+    "update",
+    "alias",
+    "a.anders@example.com",
+    "user",
+    "bob@example.com"
+   ]
+  },
+  {
+   "builder": "move_alias",
+   "kwargs": {
+    "alias": "carol@example.com",
+    "to": "carol@example.com"
+   },
+   "argv": [
+    "update",
+    "alias",
+    "carol@example.com",
+    "user",
+    "carol@example.com"
+   ]
+  },
+  {
+   "builder": "move_alias",
+   "kwargs": {
+    "alias": "person@example.com",
+    "to": "person@example.com"
+   },
+   "argv": [
+    "update",
+    "alias",
+    "person@example.com",
+    "user",
+    "person@example.com"
+   ]
+  },
+  {
+   "builder": "move_folder_to_shared_drive",
+   "kwargs": {
+    "email": "alice@example.com",
+    "folder_id": "1FOLDERours",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "move",
+    "drivefile",
+    "id:1FOLDERours",
+    "teamdriveparentid",
+    "0AFINANCEuk9PVA",
+    "retainsourcefolders",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip"
+   ]
+  },
+  {
+   "builder": "move_folder_to_shared_drive",
+   "kwargs": {
+    "email": "person@example.com",
+    "folder_id": "1FOLDERmixed",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "person@example.com",
+    "move",
+    "drivefile",
+    "id:1FOLDERmixed",
+    "teamdriveparentid",
+    "0AFINANCEuk9PVA",
+    "retainsourcefolders",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip"
+   ]
+  },
+  {
+   "builder": "move_folder_to_shared_drive",
+   "kwargs": {
+    "email": "carol@example.com",
+    "folder_id": "A",
+    "drive_id": "A"
+   },
+   "argv": [
+    "user",
+    "carol@example.com",
+    "move",
+    "drivefile",
+    "id:A",
+    "teamdriveparentid",
+    "A",
+    "retainsourcefolders",
+    "duplicatefolders",
+    "merge",
+    "duplicatefiles",
+    "skip"
    ]
   },
   {
@@ -25872,6 +26799,32 @@
    ]
   },
   {
+   "builder": "print_drive_members",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "print",
+    "drivefileacls",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_drive_members",
+   "kwargs": {
+    "drive_id": "A"
+   },
+   "argv": [
+    "print",
+    "drivefileacls",
+    "shareddriveid",
+    "A",
+    "formatjson"
+   ]
+  },
+  {
    "builder": "print_events",
    "kwargs": {
     "calendar_id": "  padded  ",
@@ -26798,6 +27751,72 @@
     "print",
     "filters",
     "labelidsonly",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_folder_files",
+   "kwargs": {
+    "email": "alice@example.com",
+    "folder_id": "1FOLDERmixed"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "filelist",
+    "select",
+    "id:1FOLDERmixed",
+    "showparent",
+    "showownedby",
+    "any",
+    "excludetrashed",
+    "fields",
+    "id,name,mimeType,owners",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_folder_files",
+   "kwargs": {
+    "email": "carol@example.com",
+    "folder_id": "A"
+   },
+   "argv": [
+    "user",
+    "carol@example.com",
+    "print",
+    "filelist",
+    "select",
+    "id:A",
+    "showparent",
+    "showownedby",
+    "any",
+    "excludetrashed",
+    "fields",
+    "id,name,mimeType,owners",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_folder_files",
+   "kwargs": {
+    "email": "person@example.com",
+    "folder_id": "1FOLDERmixed"
+   },
+   "argv": [
+    "user",
+    "person@example.com",
+    "print",
+    "filelist",
+    "select",
+    "id:1FOLDERmixed",
+    "showparent",
+    "showownedby",
+    "any",
+    "excludetrashed",
+    "fields",
+    "id,name,mimeType,owners",
     "formatjson"
    ]
   },
@@ -28129,6 +29148,69 @@
     "oneitemperrow",
     "shownopermissionsdrives",
     "true",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_shared_drive_files",
+   "kwargs": {
+    "email": "alice@example.com",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "alice@example.com",
+    "print",
+    "filelist",
+    "select",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "showownedby",
+    "any",
+    "fields",
+    "id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_shared_drive_files",
+   "kwargs": {
+    "email": "person@example.com",
+    "drive_id": "0AFINANCEuk9PVA"
+   },
+   "argv": [
+    "user",
+    "person@example.com",
+    "print",
+    "filelist",
+    "select",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "showownedby",
+    "any",
+    "fields",
+    "id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink",
+    "formatjson"
+   ]
+  },
+  {
+   "builder": "print_shared_drive_files",
+   "kwargs": {
+    "email": "carol@example.com",
+    "drive_id": "A"
+   },
+   "argv": [
+    "user",
+    "carol@example.com",
+    "print",
+    "filelist",
+    "select",
+    "shareddriveid",
+    "A",
+    "showownedby",
+    "any",
+    "fields",
+    "id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink",
     "formatjson"
    ]
   },
@@ -29525,6 +30607,34 @@
    ]
   },
   {
+   "builder": "remove_drive_member",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001"
+   },
+   "argv": [
+    "delete",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001"
+   ]
+  },
+  {
+   "builder": "remove_drive_member",
+   "kwargs": {
+    "drive_id": "A",
+    "permission_id": "A"
+   },
+   "argv": [
+    "delete",
+    "drivefileacl",
+    "shareddriveid",
+    "A",
+    "id:A"
+   ]
+  },
+  {
    "builder": "remove_group_member",
    "kwargs": {
     "group": "  padded  ",
@@ -30095,6 +31205,96 @@
     "日本語のテキスト",
     "name",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "rename_shared_drive",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "name": "Finance (closed)"
+   },
+   "argv": [
+    "update",
+    "shareddrive",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "name",
+    "Finance (closed)"
+   ]
+  },
+  {
+   "builder": "rename_shared_drive",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "name": "Finance 2027"
+   },
+   "argv": [
+    "update",
+    "shareddrive",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "name",
+    "Finance 2027"
+   ]
+  },
+  {
+   "builder": "rename_shared_drive",
+   "kwargs": {
+    "drive_id": "A",
+    "name": "a b"
+   },
+   "argv": [
+    "update",
+    "shareddrive",
+    "shareddriveid",
+    "A",
+    "name",
+    "a b"
+   ]
+  },
+  {
+   "builder": "rename_user",
+   "kwargs": {
+    "email": "bob@example.com",
+    "new_email": "robert@example.com"
+   },
+   "argv": [
+    "update",
+    "user",
+    "bob@example.com",
+    "primaryemail",
+    "robert@example.com",
+    "noactionifalias"
+   ]
+  },
+  {
+   "builder": "rename_user",
+   "kwargs": {
+    "email": "carol@example.com",
+    "new_email": "dave@example.com"
+   },
+   "argv": [
+    "update",
+    "user",
+    "carol@example.com",
+    "primaryemail",
+    "dave@example.com",
+    "noactionifalias"
+   ]
+  },
+  {
+   "builder": "rename_user",
+   "kwargs": {
+    "email": "person@example.com",
+    "new_email": "new.name@example.com"
+   },
+   "argv": [
+    "update",
+    "user",
+    "person@example.com",
+    "primaryemail",
+    "new.name@example.com",
+    "noactionifalias"
    ]
   },
   {
@@ -87361,6 +88561,277 @@
    ]
   },
   {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "  padded  "
+   },
+   "argv": [
+    "update",
+    "user",
+    "  padded  ",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": ""
+   },
+   "argv": [
+    "update",
+    "user",
+    "",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "--double-dash"
+   },
+   "argv": [
+    "update",
+    "user",
+    "--double-dash",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "-leading-dash"
+   },
+   "argv": [
+    "update",
+    "user",
+    "-leading-dash",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "<email>"
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "Zoë Ångström"
+   },
+   "argv": [
+    "update",
+    "user",
+    "Zoë Ångström",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "alice@example.com"
+   },
+   "argv": [
+    "update",
+    "user",
+    "alice@example.com",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "line\nbreak"
+   },
+   "argv": [
+    "update",
+    "user",
+    "line\nbreak",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "quote\"and'apos"
+   },
+   "argv": [
+    "update",
+    "user",
+    "quote\"and'apos",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`"
+   },
+   "argv": [
+    "update",
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "argv": [
+    "update",
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "{token}"
+   },
+   "argv": [
+    "update",
+    "user",
+    "{token}",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_archived",
+   "kwargs": {
+    "email": "日本語のテキスト"
+   },
+   "argv": [
+    "update",
+    "user",
+    "日本語のテキスト",
+    "archived",
+    "on"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001",
+    "role": "commenter"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001",
+    "role",
+    "commenter"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001",
+    "role": "fileorganizer"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001",
+    "role",
+    "fileorganizer"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001",
+    "role": "organizer"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001",
+    "role",
+    "organizer"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001",
+    "role": "reader"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001",
+    "role",
+    "reader"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "0AFINANCEuk9PVA",
+    "permission_id": "07001",
+    "role": "writer"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "0AFINANCEuk9PVA",
+    "id:07001",
+    "role",
+    "writer"
+   ]
+  },
+  {
+   "builder": "set_drive_member_role",
+   "kwargs": {
+    "drive_id": "A",
+    "permission_id": "A",
+    "role": "organizer"
+   },
+   "argv": [
+    "update",
+    "drivefileacl",
+    "shareddriveid",
+    "A",
+    "id:A",
+    "role",
+    "organizer"
+   ]
+  },
+  {
    "builder": "set_forward",
    "kwargs": {
     "email": "<email>",
@@ -96530,6 +98001,964 @@
    ]
   },
   {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "  padded  ",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "  padded  ",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "--double-dash",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "--double-dash",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "-leading-dash",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "-leading-dash",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "<email>",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "name",
+        "<value>"
+       ],
+       [
+        "title",
+        "<value>"
+       ],
+       [
+        "department",
+        "<value>"
+       ],
+       [
+        "symbol",
+        "<value>"
+       ],
+       [
+        "costCenter",
+        "<value>"
+       ],
+       [
+        "location",
+        "<value>"
+       ],
+       [
+        "description",
+        "<value>"
+       ],
+       [
+        "domain",
+        "<value>"
+       ]
+      ],
+      "type": "work",
+      "custom_type": "",
+      "full_time_equivalent": 100000,
+      "primary": true
+     },
+     {
+      "fields": [
+       [
+        "name",
+        "<value>"
+       ]
+      ],
+      "type": "",
+      "custom_type": "<name>",
+      "full_time_equivalent": null,
+      "primary": false
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "<value>",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "organization",
+    "type",
+    "work",
+    "name",
+    "<value>",
+    "title",
+    "<value>",
+    "department",
+    "<value>",
+    "symbol",
+    "<value>",
+    "costcenter",
+    "<value>",
+    "location",
+    "<value>",
+    "description",
+    "<value>",
+    "domain",
+    "<value>",
+    "fulltimeequivalent",
+    "100000",
+    "primary",
+    "organization",
+    "customtype",
+    "<name>",
+    "name",
+    "<value>",
+    "notprimary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "<value>",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "<email>",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "name",
+        "<value>"
+       ],
+       [
+        "title",
+        "<value>"
+       ],
+       [
+        "department",
+        "<value>"
+       ],
+       [
+        "symbol",
+        "<value>"
+       ],
+       [
+        "costCenter",
+        "<value>"
+       ],
+       [
+        "location",
+        "<value>"
+       ],
+       [
+        "description",
+        "<value>"
+       ],
+       [
+        "domain",
+        "<value>"
+       ]
+      ],
+      "type": "work",
+      "custom_type": "",
+      "full_time_equivalent": 100000,
+      "primary": true
+     },
+     {
+      "fields": [
+       [
+        "name",
+        "<value>"
+       ]
+      ],
+      "type": "",
+      "custom_type": "<name>",
+      "full_time_equivalent": null,
+      "primary": false
+     }
+    ],
+    "phones": null
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "organization",
+    "type",
+    "work",
+    "name",
+    "<value>",
+    "title",
+    "<value>",
+    "department",
+    "<value>",
+    "symbol",
+    "<value>",
+    "costcenter",
+    "<value>",
+    "location",
+    "<value>",
+    "description",
+    "<value>",
+    "domain",
+    "<value>",
+    "fulltimeequivalent",
+    "100000",
+    "primary",
+    "organization",
+    "customtype",
+    "<name>",
+    "name",
+    "<value>",
+    "notprimary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "<email>",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        "<value>"
+       ],
+       [
+        "department",
+        "<value>"
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "<value>",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "organization",
+    "title",
+    "<value>",
+    "department",
+    "<value>",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "<value>",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "<email>",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        "<value>"
+       ],
+       [
+        "department",
+        "<value>"
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": null
+   },
+   "argv": [
+    "update",
+    "user",
+    "<email>",
+    "organization",
+    "title",
+    "<value>",
+    "department",
+    "<value>",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "Zoë Ångström",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "Zoë Ångström",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "alice@example.com",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "name",
+        "name value"
+       ],
+       [
+        "title",
+        "title value"
+       ],
+       [
+        "department",
+        "department value"
+       ],
+       [
+        "symbol",
+        "symbol value"
+       ],
+       [
+        "costCenter",
+        "costCenter value"
+       ],
+       [
+        "location",
+        "location value"
+       ],
+       [
+        "description",
+        "description value"
+       ],
+       [
+        "domain",
+        "domain value"
+       ]
+      ],
+      "type": "work",
+      "custom_type": "",
+      "full_time_equivalent": 100000,
+      "primary": true
+     },
+     {
+      "fields": [
+       [
+        "name",
+        "Board"
+       ]
+      ],
+      "type": "",
+      "custom_type": "volunteer",
+      "full_time_equivalent": null,
+      "primary": false
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "alice@example.com",
+    "organization",
+    "type",
+    "work",
+    "name",
+    "name value",
+    "title",
+    "title value",
+    "department",
+    "department value",
+    "symbol",
+    "symbol value",
+    "costcenter",
+    "costCenter value",
+    "location",
+    "location value",
+    "description",
+    "description value",
+    "domain",
+    "domain value",
+    "fulltimeequivalent",
+    "100000",
+    "primary",
+    "organization",
+    "customtype",
+    "volunteer",
+    "name",
+    "Board",
+    "notprimary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "alice@example.com",
+    "organizations": null,
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "alice@example.com",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "line\nbreak",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "line\nbreak",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "quote\"and'apos",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "quote\"and'apos",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "semi;colon|pipe & $(cmd) `tick`",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "semi;colon|pipe & $(cmd) `tick`",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "{token}",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "{token}",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
+   "builder": "update_profile",
+   "kwargs": {
+    "email": "日本語のテキスト",
+    "organizations": [
+     {
+      "fields": [
+       [
+        "title",
+        " "
+       ],
+       [
+        "department",
+        " "
+       ]
+      ],
+      "type": "",
+      "custom_type": "",
+      "full_time_equivalent": null,
+      "primary": true
+     }
+    ],
+    "phones": [
+     {
+      "type": "work",
+      "custom_type": "",
+      "value": "+1 555 0100",
+      "primary": true
+     }
+    ]
+   },
+   "argv": [
+    "update",
+    "user",
+    "日本語のテキスト",
+    "organization",
+    "title",
+    " ",
+    "department",
+    " ",
+    "primary",
+    "phone",
+    "type",
+    "work",
+    "value",
+    "+1 555 0100",
+    "primary"
+   ]
+  },
+  {
    "builder": "vacation_off",
    "kwargs": {
     "email": "  padded  "
@@ -96758,6 +99187,19 @@
     "add",
     "member",
     "<member>"
+   ]
+  },
+  "create_admin": {
+   "kwargs": {
+    "email": "person@example.com",
+    "role": "_HELP_DESK_ADMIN_ROLE"
+   },
+   "argv": [
+    "create",
+    "admin",
+    "person@example.com",
+    "_HELP_DESK_ADMIN_ROLE",
+    "customer"
    ]
   },
   "create_datatransfer": {

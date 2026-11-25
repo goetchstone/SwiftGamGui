@@ -1,58 +1,10 @@
 {
  "source": {
-  "gamgui_commit": "8f9e766",
-  "gam_version": "7.52.04",
+  "gamgui_commit": "63ef104",
+  "gam_version": "7.52.05",
   "generator": "scripts/gen_catalog_reads.py"
  },
  "commands": [
-  {
-   "id": "build.set_signature",
-   "category": "Users",
-   "subcategory": "Gmail - Signature",
-   "name": "Set Gmail signature",
-   "risk": 1,
-   "raw": "gam user <email> signature <html>",
-   "description": "Replace a user's Gmail signature with the HTML you provide.",
-   "slots": [
-    {
-     "key": "email",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "choices": [],
-     "default": "",
-     "placeholder": "",
-     "hints": [],
-     "hintNote": ""
-    },
-    {
-     "key": "signature",
-     "label": "Signature (HTML)",
-     "kind": "text",
-     "required": true,
-     "choices": [],
-     "default": "",
-     "placeholder": "",
-     "hints": [],
-     "hintNote": ""
-    }
-   ],
-   "cases": [
-    {
-     "values": {
-      "email": "email@example.com",
-      "signature": "signature one\nA < B & C"
-     },
-     "argv": [
-      "user",
-      "email@example.com",
-      "signature",
-      "signature one\nA < B & C",
-      "html"
-     ]
-    }
-   ]
-  },
   {
    "id": "build.add_delegate",
    "category": "Users",
@@ -831,6 +783,296 @@
    ]
   },
   {
+   "id": "build.create_shared_drive",
+   "category": "Shared Drives",
+   "subcategory": "",
+   "name": "Create a shared drive",
+   "risk": 1,
+   "raw": "gam user <email> create shareddrive <name>",
+   "description": "Create a shared drive as this person, who becomes its only Manager; add others on Shared drives. Google allows two drives with one name, so look there first. GAM prints the new drive's ID.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "Created as (its first Manager)",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "name",
+     "label": "Name",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "name": "name one\nA < B & C"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "create",
+      "shareddrive",
+      "name one\nA < B & C"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.rename_shared_drive",
+   "category": "Shared Drives",
+   "subcategory": "",
+   "name": "Rename a shared drive",
+   "risk": 1,
+   "raw": "gam update shareddrive shareddriveid <drive ID> name <name>",
+   "description": "Rename a shared drive, as the admin: no need to be a member of it. Its files and members stay as they are.",
+   "slots": [
+    {
+     "key": "drive_id",
+     "label": "Shared drive ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "0AB…Uk9PVA (Shared drives lists each one's)",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "name",
+     "label": "New name",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "drive_id": "0AFINANCEuk9PVA",
+      "name": "name one\nA < B & C"
+     },
+     "argv": [
+      "update",
+      "shareddrive",
+      "shareddriveid",
+      "0AFINANCEuk9PVA",
+      "name",
+      "name one\nA < B & C"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.shared_drive_files",
+   "category": "Shared Drives",
+   "subcategory": "",
+   "name": "List a shared drive's files",
+   "risk": 0,
+   "raw": "gam user <email> print filelist select shareddriveid <SharedDriveID> showownedby any",
+   "description": "Every file in a shared drive, read as one of its members: who changed each last and when. Someone who isn't a member gets Google's refusal.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "A member of the drive",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "drive_id",
+     "label": "Shared drive ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "0AB…Uk9PVA (Shared drives lists each one's)",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "drive_id": "0AFINANCEuk9PVA"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "print",
+      "filelist",
+      "select",
+      "shareddriveid",
+      "0AFINANCEuk9PVA",
+      "showownedby",
+      "any",
+      "fields",
+      "id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink",
+      "formatjson"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.move_folder_to_shared_drive",
+   "category": "Shared Drives",
+   "subcategory": "",
+   "name": "Move a folder into a shared drive",
+   "risk": 2,
+   "raw": "gam user <email> move drivefile id:<FolderID> teamdriveparentid <SharedDriveID> retainsourcefolders duplicatefolders merge duplicatefiles skip",
+   "description": "Step 1 of 2. Moves a folder's files into a shared drive, making its folders again there. Google won't move a file owned outside the domain, or one whose owner isn't a member of the drive, so those stay where they are, and the original folders stay to hold them: queue step 2 after this one to copy them. The person must own the folder and be a Manager of the drive.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "The folder's owner (a Manager of the drive)",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "folder_id",
+     "label": "Folder ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "1AbC… (the end of the folder's Drive address)",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "drive_id",
+     "label": "Shared drive ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "0AB…Uk9PVA (Shared drives lists each one's)",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "folder_id": "1FOLDERours",
+      "drive_id": "0AFINANCEuk9PVA"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "move",
+      "drivefile",
+      "id:1FOLDERours",
+      "teamdriveparentid",
+      "0AFINANCEuk9PVA",
+      "retainsourcefolders",
+      "duplicatefolders",
+      "merge",
+      "duplicatefiles",
+      "skip"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.copy_rest_of_folder_to_shared_drive",
+   "category": "Shared Drives",
+   "subcategory": "",
+   "name": "Copy what didn't move into a shared drive",
+   "risk": 1,
+   "raw": "gam user <email> copy drivefile id:<FolderID> teamdriveparentid <SharedDriveID> recursive copysubfilesownedby others duplicatefolders merge duplicatefiles skip excludetrashed suppressnotselectedmessages",
+   "description": "Step 2 of 2, after the move. Copies the files still in the folder that someone else owns into the same folders in the drive. The originals stay with their owners. A file already there by name is skipped, so running it again copies nothing twice.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "The folder's owner (a Manager of the drive)",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "folder_id",
+     "label": "Folder ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "1AbC… (the end of the folder's Drive address)",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "drive_id",
+     "label": "Shared drive ID",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "0AB…Uk9PVA (Shared drives lists each one's)",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "folder_id": "1FOLDERours",
+      "drive_id": "0AFINANCEuk9PVA"
+     },
+     "argv": [
+      "user",
+      "email@example.com",
+      "copy",
+      "drivefile",
+      "id:1FOLDERours",
+      "teamdriveparentid",
+      "0AFINANCEuk9PVA",
+      "recursive",
+      "copysubfilesownedby",
+      "others",
+      "duplicatefolders",
+      "merge",
+      "duplicatefiles",
+      "skip",
+      "excludetrashed",
+      "suppressnotselectedmessages"
+     ]
+    }
+   ]
+  },
+  {
    "id": "build.print_forwarding",
    "category": "Users",
    "subcategory": "Gmail - Forwarding",
@@ -1180,6 +1422,182 @@
    ]
   },
   {
+   "id": "build.delete_group",
+   "category": "Groups",
+   "subcategory": "",
+   "name": "Delete a group",
+   "risk": 2,
+   "raw": "gam delete group <group> noactionifalias",
+   "description": "Delete a group, with its members list, settings, aliases and conversations. Named by its own address: GAM refuses one of its aliases rather than delete the group behind it.",
+   "slots": [
+    {
+     "key": "group",
+     "label": "Group",
+     "kind": "group",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "group": "group@example.com"
+     },
+     "argv": [
+      "delete",
+      "group",
+      "group@example.com",
+      "noactionifalias"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.create_org_unit",
+   "category": "Organizational Units",
+   "subcategory": "",
+   "name": "Create an org unit",
+   "risk": 1,
+   "raw": "gam create org <path> description <desc>",
+   "description": "Create an org unit at a full path. Its parent must already exist; settings it inherits come from that parent.",
+   "slots": [
+    {
+     "key": "path",
+     "label": "Path",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "/Sales/East",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "description",
+     "label": "Description",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "path": "path one\nA < B & C",
+      "description": "description one\nA < B & C"
+     },
+     "argv": [
+      "create",
+      "org",
+      "path one\nA < B & C",
+      "description",
+      "description one\nA < B & C"
+     ]
+    },
+    {
+     "values": {
+      "path": "path one\nA < B & C",
+      "description": ""
+     },
+     "argv": [
+      "create",
+      "org",
+      "path one\nA < B & C"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.rename_org_unit",
+   "category": "Organizational Units",
+   "subcategory": "",
+   "name": "Rename an org unit",
+   "risk": 1,
+   "raw": "gam update org <org unit> name <name>",
+   "description": "Rename an org unit. Its path changes, and so do the paths of the units inside it.",
+   "slots": [
+    {
+     "key": "org_unit",
+     "label": "Org unit",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "/Sales/East",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "name",
+     "label": "New name",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "org_unit": "org_unit one\nA < B & C",
+      "name": "name one\nA < B & C"
+     },
+     "argv": [
+      "update",
+      "org",
+      "org_unit one\nA < B & C",
+      "name",
+      "name one\nA < B & C"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.delete_org_unit",
+   "category": "Organizational Units",
+   "subcategory": "",
+   "name": "Delete an org unit",
+   "risk": 2,
+   "raw": "gam delete org <org unit>",
+   "description": "Delete an empty org unit, and the settings made on it. Google refuses one that still holds people, devices or other units: move them out first.",
+   "slots": [
+    {
+     "key": "org_unit",
+     "label": "Org unit",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "/Sales/East",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "org_unit": "org_unit one\nA < B & C"
+     },
+     "argv": [
+      "delete",
+      "org",
+      "org_unit one\nA < B & C"
+     ]
+    }
+   ]
+  },
+  {
    "id": "build.set_organization",
    "category": "Users",
    "subcategory": "Profile",
@@ -1368,6 +1786,130 @@
    ]
   },
   {
+   "id": "build.rename_user",
+   "category": "Users",
+   "subcategory": "",
+   "name": "Rename a user (change their address)",
+   "risk": 2,
+   "raw": "gam update user <email> primaryemail <new address> noactionifalias",
+   "description": "Change a user's primary address. They sign in with the new one, and Google keeps the old one as an alias so mail to it still arrives. Google refuses an address someone already has. Named by their address now: GAM refuses an alias rather than rename the account behind it.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User (their address now)",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "new_email",
+     "label": "New address",
+     "kind": "email",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "new_email": "new_email@example.com"
+     },
+     "argv": [
+      "update",
+      "user",
+      "email@example.com",
+      "primaryemail",
+      "new_email@example.com",
+      "noactionifalias"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "build.create_admin",
+   "category": "Administrators",
+   "subcategory": "",
+   "name": "Add an admin role",
+   "risk": 2,
+   "raw": "gam create admin <email> <role> customer|org_unit <org unit>",
+   "description": "Give a user or group an admin role, over the whole organization or one org unit, in effect at once. The role is its name as Google keeps it: built-in roles read like _HELP_DESK_ADMIN_ROLE, and _SEED_ADMIN_ROLE is Super Admin. An alias counts as the account or group it belongs to. `print adminroles` lists every name. GAM prints the assignment's ID. Taking a role back isn't offered here: use the Admin console, or Close Out for a leaver.",
+   "slots": [
+    {
+     "key": "email",
+     "label": "User or group",
+     "kind": "target_user",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "role",
+     "label": "Role",
+     "kind": "text",
+     "required": true,
+     "choices": [],
+     "default": "",
+     "placeholder": "_HELP_DESK_ADMIN_ROLE",
+     "hints": [],
+     "hintNote": ""
+    },
+    {
+     "key": "org_unit",
+     "label": "Org unit",
+     "kind": "text",
+     "required": false,
+     "choices": [],
+     "default": "",
+     "placeholder": "/Sales (blank: the whole organization)",
+     "hints": [],
+     "hintNote": ""
+    }
+   ],
+   "cases": [
+    {
+     "values": {
+      "email": "email@example.com",
+      "role": "role one\nA < B & C",
+      "org_unit": "org_unit one\nA < B & C"
+     },
+     "argv": [
+      "create",
+      "admin",
+      "email@example.com",
+      "role one\nA < B & C",
+      "org_unit",
+      "org_unit one\nA < B & C"
+     ]
+    },
+    {
+     "values": {
+      "email": "email@example.com",
+      "role": "role one\nA < B & C",
+      "org_unit": ""
+     },
+     "argv": [
+      "create",
+      "admin",
+      "email@example.com",
+      "role one\nA < B & C",
+      "customer"
+     ]
+    }
+   ]
+  },
+  {
    "id": "build.transfer_data",
    "category": "Data Transfers",
    "subcategory": "",
@@ -1508,40 +2050,6 @@
       "email@example.com",
       "suspended",
       "on"
-     ]
-    }
-   ]
-  },
-  {
-   "id": "build.delete_user",
-   "category": "Users",
-   "subcategory": "",
-   "name": "Delete account",
-   "risk": 2,
-   "raw": "gam delete user <email>",
-   "description": "Permanently delete the account (recoverable for ~20 days, then gone).",
-   "slots": [
-    {
-     "key": "email",
-     "label": "User",
-     "kind": "target_user",
-     "required": true,
-     "choices": [],
-     "default": "",
-     "placeholder": "",
-     "hints": [],
-     "hintNote": ""
-    }
-   ],
-   "cases": [
-    {
-     "values": {
-      "email": "email@example.com"
-     },
-     "argv": [
-      "delete",
-      "user",
-      "email@example.com"
      ]
     }
    ]

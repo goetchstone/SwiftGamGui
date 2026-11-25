@@ -41,20 +41,34 @@ struct CuratedCommandTests {
         try #require(CuratedCommand.all.first { $0.id == id })
     }
 
-    /// GamGUI's commands in its order, each here or run from another screen, said why; and no other.
+    /// GamGUI's curated commands this app doesn't have yet, and why.
+    static let notPorted: [String: String] = [
+        "build.create_shared_drive": "Create a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
+        "build.rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
+        "build.shared_drive_files": "A shared drive's files (GamGUI #187, roadmap 4.7): not built here yet",
+        "build.move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
+        "build.copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
+        "build.delete_group": "Delete a group (GamGUI #189, roadmap 5.1): not built here yet",
+        "build.create_org_unit": "Org units (GamGUI #169): not built here yet",
+        "build.rename_org_unit": "Org units (GamGUI #169): not built here yet",
+        "build.delete_org_unit": "Org units (GamGUI #169): not built here yet",
+        "build.rename_user": "Rename a user (GamGUI #189, roadmap 5.1): not built here yet",
+        "build.create_admin": "Add an admin role (GamGUI #189, roadmap 5.1): not built here yet",
+    ]
+
+    /// GamGUI's commands in its order, each here or not ported yet, said why; and no other.
     @Test func theCommandsAreGamGUIs() {
         #expect(Self.file.source.gam_version == GamVersion.expected)
         let gamgui = Self.file.commands.map(\.id)
-        #expect(gamgui.count == 26)
-        #expect(CuratedCommand.all.map(\.id) == gamgui.filter { CuratedCommand.elsewhere[$0] == nil })
-        #expect(Set(CuratedCommand.elsewhere.keys) == ["build.set_signature", "build.delete_user"])
-        #expect(Set(CuratedCommand.elsewhere.keys).isSubset(of: Set(gamgui)))
+        #expect(gamgui.count == 35)
+        #expect(CuratedCommand.all.map(\.id) == gamgui.filter { Self.notPorted[$0] == nil })
+        #expect(Set(Self.notPorted.keys).isSubset(of: Set(gamgui)))
     }
 
     /// Each with GamGUI's name, place, line, words, risk and fields, and the argv GamGUI's builder makes from each case's values:
     /// every field filled (once per choice), and only the required ones.
     @Test func eachIsGamGUIs() throws {
-        for expected in Self.file.commands where CuratedCommand.elsewhere[expected.id] == nil {
+        for expected in Self.file.commands where Self.notPorted[expected.id] == nil {
             let command = try Self.command(expected.id)
             #expect([command.category, command.subcategory, command.name, command.syntax, command.description]
                     == [expected.category, expected.subcategory, expected.name, expected.raw, expected.description], "\(expected.id)")

@@ -307,7 +307,7 @@ acl_notify_tail() {
 
 case "${1:-}" in
   version)
-    echo "GAM 7.52.04 - mock"
+    echo "GAM 7.52.05 - mock"
     # As the real build does in a fresh config directory: its config line, then the cache it created.
     if [ -n "${GAMCFGDIR:-}" ]; then
       printf 'Config File: %s/gam.cfg, Section: DEFAULT\nCreated: %s/gamcache\n' "$GAMCFGDIR" "$GAMCFGDIR"
@@ -2609,8 +2609,10 @@ fi
 # - `all users print calendars … formatjson`: primaryEmail,calendarId,JSON, each user's own calendars
 #   (printShowCalendars, :55691, :55800-55818); a person with Calendar off exits 73 (the C3 index).
 # (`calendars <cal> print events … formatjson` is modelled above, for the Calendars screen's event search.)
+# - `print drivefileacls shareddriveid <id> formatjson`: one shared drive's members (GamGUI #185, roadmap 4.7), not built
+#   here yet.
 case "${1:-} ${2:-} ${3:-} ${4:-}" in
-  "user "*" print filelist"|"all users print calendars") not_modelled "gam $*" ;;
+  "user "*" print filelist"|"all users print calendars"|"print drivefileacls shareddriveid "*) not_modelled "gam $*" ;;
 esac
 
 # `gam <UserTypeEntity> show backupcodes|verificationcodes` (no options) -> text; a Builder sensitive

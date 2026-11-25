@@ -130,7 +130,8 @@ final class BuilderChangesTests {
         }
         let file = try JSONDecoder().decode(File.self, from: Data(contentsOf: Fixtures.directory.appending(path: "catalog_curated.json")))
         var writes = 0
-        for expected in file.commands where CuratedCommand.elsewhere[expected.id] == nil {
+        // GamGUI's commands not ported yet are held by `CuratedCommandTests.notPorted`.
+        for expected in file.commands where CuratedCommand.all.contains(where: { $0.id == expected.id }) {
             let curated = try command(expected.id)
             guard case .write(let write) = try curated.built(try #require(expected.cases.first).values) else { continue }
             writes += 1

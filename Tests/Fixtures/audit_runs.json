@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "82290f0",
+  "gamgui_commit": "63ef104",
   "generator": "scripts/gen_fixtures.py"
  },
  "now": "2026-11-19T00:00:00+00:00",
@@ -11931,7 +11931,7 @@
     "title": "Shared drive members",
     "what": "Who has access to each shared drive, and how.",
     "named": "shared_drive_acls",
-    "cid": "raw.5355",
+    "cid": "raw.5362",
     "change_note": "GAM passes over a drive whose members Google won't return, without a word, so a drive gone since then may be one it couldn't read this time. The Shared drive permissions audit run, above, names each drive whose members it couldn't read.",
     "note": "",
     "compare_without": [],

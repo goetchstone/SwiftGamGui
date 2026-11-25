@@ -1,7 +1,7 @@
 {
  "source": {
-  "gamgui_commit": "d03f5a6",
-  "gam_version": "7.52.04",
+  "gamgui_commit": "63ef104",
+  "gam_version": "7.52.05",
   "generator": "scripts/gen_catalog_glosses.py"
  },
  "nouns": {
@@ -2545,1256 +2545,1248 @@
    "gloss": "Create a Google Cloud project (for GAM)."
   },
   {
-   "id": "raw.5267",
+   "id": "raw.5269",
    "gloss": "Update a Drive file's sharing permissions."
   },
   {
-   "id": "raw.5270",
+   "id": "raw.5273",
    "gloss": "Delete a Drive file's sharing permissions."
   },
   {
-   "id": "raw.5272",
+   "id": "raw.5275",
    "gloss": "Show details for a Drive file's sharing permissions."
   },
   {
-   "id": "raw.5275",
+   "id": "raw.5279",
    "gloss": "Show a shared drive file's permissions."
   },
   {
-   "id": "raw.5283",
+   "id": "raw.5287",
    "gloss": "List a shared drive file's permissions."
   },
   {
-   "id": "raw.5292",
+   "id": "raw.5296",
    "gloss": "Create a Google Cloud project (for GAM)."
   },
   {
-   "id": "raw.5295",
+   "id": "raw.5299",
    "gloss": "Delete shared drive file permissions."
   },
   {
-   "id": "raw.5300",
+   "id": "raw.5304",
    "gloss": "Create for a user."
-  },
-  {
-   "id": "raw.5308",
-   "gloss": "Update a Drive file's sharing permissions for a user."
-  },
-  {
-   "id": "raw.5312",
-   "gloss": "Delete a Drive file's sharing permissions for a user."
   },
   {
    "id": "raw.5314",
+   "gloss": "Update a Drive file's sharing permissions for a user."
+  },
+  {
+   "id": "raw.5318",
+   "gloss": "Delete a Drive file's sharing permissions for a user."
+  },
+  {
+   "id": "raw.5320",
    "gloss": "Show details for a Drive file's sharing permissions for a user."
   },
   {
-   "id": "raw.5317",
+   "id": "raw.5324",
    "gloss": "Show a shared drive file's permissions for a user."
   },
   {
-   "id": "raw.5325",
+   "id": "raw.5332",
    "gloss": "List a shared drive file's permissions for a user."
   },
   {
-   "id": "raw.5334",
+   "id": "raw.5341",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.5337",
+   "id": "raw.5344",
    "gloss": "Delete shared drive file permissions for a user."
   },
   {
-   "id": "raw.5342",
+   "id": "raw.5349",
    "gloss": "Copy a shared drive's permissions."
   },
   {
-   "id": "raw.5348",
+   "id": "raw.5355",
    "gloss": "Sync a shared drive's permissions."
   },
   {
-   "id": "raw.5355",
+   "id": "raw.5362",
    "gloss": "List a shared drive's permissions."
   },
   {
-   "id": "raw.5363",
+   "id": "raw.5370",
    "gloss": "Show a shared drive's permissions."
   },
   {
-   "id": "raw.5373",
+   "id": "raw.5380",
    "gloss": "Copy a shared drive's permissions for a user."
   },
   {
-   "id": "raw.5379",
+   "id": "raw.5386",
    "gloss": "Sync a shared drive's permissions for a user."
   },
   {
-   "id": "raw.5386",
+   "id": "raw.5393",
    "gloss": "List a shared drive's permissions for a user."
   },
   {
-   "id": "raw.5395",
+   "id": "raw.5402",
    "gloss": "Show a shared drive's permissions for a user."
   },
   {
-   "id": "raw.5539",
+   "id": "raw.5546",
    "gloss": "Create a Google Cloud project (for GAM)."
   },
   {
-   "id": "raw.5542",
+   "id": "raw.5549",
    "gloss": "Update a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5544",
+   "id": "raw.5551",
    "gloss": "Update a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5545",
+   "id": "raw.5552",
    "gloss": "Close a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5546",
+   "id": "raw.5553",
    "gloss": "Reopen a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5547",
+   "id": "raw.5554",
    "gloss": "Delete a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5548",
+   "id": "raw.5555",
    "gloss": "Undelete a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5558",
+   "id": "raw.5565",
    "gloss": "Show details for a Vault (eDiscovery) matter."
   },
   {
-   "id": "raw.5561",
+   "id": "raw.5568",
    "gloss": "List Vault (eDiscovery) matters."
   },
   {
-   "id": "raw.5564",
+   "id": "raw.5571",
    "gloss": "Show Vault (eDiscovery) matters."
   },
   {
-   "id": "raw.5568",
+   "id": "raw.5575",
    "gloss": "List Vault retained item counts."
   },
   {
-   "id": "raw.5571",
+   "id": "raw.5578",
    "gloss": "List Vault retained item counts."
   },
   {
-   "id": "raw.5581",
+   "id": "raw.5588",
    "gloss": "List Vault retained item counts."
   },
   {
-   "id": "raw.5584",
+   "id": "raw.5591",
    "gloss": "Create Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5593",
+   "id": "raw.5600",
    "gloss": "Create Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5614",
+   "id": "raw.5621",
    "gloss": "Delete Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5615",
+   "id": "raw.5622",
    "gloss": "Delete Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5616",
+   "id": "raw.5623",
    "gloss": "Download Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5620",
+   "id": "raw.5627",
    "gloss": "Download Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5624",
+   "id": "raw.5631",
    "gloss": "Copy Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5628",
+   "id": "raw.5635",
    "gloss": "Copy Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5651",
+   "id": "raw.5658",
    "gloss": "Show details for Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5654",
+   "id": "raw.5661",
    "gloss": "Show details for Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5657",
+   "id": "raw.5664",
    "gloss": "List Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5662",
+   "id": "raw.5669",
    "gloss": "Show Vault (eDiscovery) exports."
   },
   {
-   "id": "raw.5667",
+   "id": "raw.5674",
    "gloss": "Create a Vault legal hold."
   },
   {
-   "id": "raw.5670",
+   "id": "raw.5677",
    "gloss": "Create a Vault legal hold."
-  },
-  {
-   "id": "raw.5678",
-   "gloss": "Update a Vault legal hold."
   },
   {
    "id": "raw.5685",
+   "gloss": "Update a Vault legal hold."
+  },
+  {
+   "id": "raw.5692",
    "gloss": "Delete a Vault legal hold."
   },
   {
-   "id": "raw.5686",
+   "id": "raw.5693",
    "gloss": "Delete a Vault legal hold."
   },
   {
-   "id": "raw.5705",
+   "id": "raw.5712",
    "gloss": "Show details for a Vault legal hold."
-  },
-  {
-   "id": "raw.5708",
-   "gloss": "Show details for a Vault legal hold."
-  },
-  {
-   "id": "raw.5711",
-   "gloss": "List Vault legal holds."
   },
   {
    "id": "raw.5715",
-   "gloss": "Show Vault legal holds."
+   "gloss": "Show details for a Vault legal hold."
   },
   {
-   "id": "raw.5719",
-   "gloss": "List Vault legal holds for a user."
-  },
-  {
-   "id": "raw.5720",
-   "gloss": "Show Vault legal holds for a user."
+   "id": "raw.5718",
+   "gloss": "List Vault legal holds."
   },
   {
    "id": "raw.5722",
+   "gloss": "Show Vault legal holds."
+  },
+  {
+   "id": "raw.5726",
+   "gloss": "List Vault legal holds for a user."
+  },
+  {
+   "id": "raw.5727",
+   "gloss": "Show Vault legal holds for a user."
+  },
+  {
+   "id": "raw.5729",
    "gloss": "Create a Vault search query."
   },
   {
-   "id": "raw.5741",
+   "id": "raw.5748",
    "gloss": "Copy a Vault search query."
   },
   {
-   "id": "raw.5745",
+   "id": "raw.5752",
    "gloss": "Delete a Vault search query."
   },
   {
-   "id": "raw.5746",
+   "id": "raw.5753",
    "gloss": "Delete a Vault search query."
   },
   {
-   "id": "raw.5758",
+   "id": "raw.5765",
    "gloss": "Show details for a Vault search query."
   },
   {
-   "id": "raw.5761",
+   "id": "raw.5768",
    "gloss": "Show details for a Vault search query."
-  },
-  {
-   "id": "raw.5764",
-   "gloss": "List Vault (eDiscovery) saved queries."
-  },
-  {
-   "id": "raw.5767",
-   "gloss": "Show Vault (eDiscovery) saved queries."
   },
   {
    "id": "raw.5771",
+   "gloss": "List Vault (eDiscovery) saved queries."
+  },
+  {
+   "id": "raw.5774",
+   "gloss": "Show Vault (eDiscovery) saved queries."
+  },
+  {
+   "id": "raw.5778",
    "gloss": "Download a Takeout storage bucket."
   },
   {
-   "id": "raw.5773",
+   "id": "raw.5780",
    "gloss": "Copy a Takeout storage bucket."
   },
   {
-   "id": "raw.5776",
+   "id": "raw.5783",
    "gloss": "Download a Cloud Storage file."
   },
   {
-   "id": "raw.5938",
+   "id": "raw.5945",
    "gloss": "Create a Google Cloud project (for GAM)."
   },
   {
-   "id": "raw.5955",
+   "id": "raw.5962",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.5957",
+   "id": "raw.5964",
    "gloss": "Update a user."
   },
   {
-   "id": "raw.5979",
+   "id": "raw.5986",
    "gloss": "Delete a user."
   },
   {
-   "id": "raw.5980",
+   "id": "raw.5987",
    "gloss": "Undelete a user."
   },
   {
-   "id": "raw.5981",
+   "id": "raw.5988",
    "gloss": "Check a user's suspended status."
   },
   {
-   "id": "raw.5982",
+   "id": "raw.5989",
    "gloss": "Suspend a user."
   },
   {
-   "id": "raw.5983",
+   "id": "raw.5990",
    "gloss": "Unsuspend a user."
   },
   {
-   "id": "raw.5984",
+   "id": "raw.5991",
    "gloss": "Show details for a user."
   },
   {
-   "id": "raw.5997",
+   "id": "raw.6004",
    "gloss": "Update users."
   },
   {
-   "id": "raw.6018",
+   "id": "raw.6025",
    "gloss": "Delete users."
   },
   {
-   "id": "raw.6019",
+   "id": "raw.6026",
    "gloss": "Undelete users."
   },
   {
-   "id": "raw.6020",
+   "id": "raw.6027",
    "gloss": "Suspend users."
   },
   {
-   "id": "raw.6021",
+   "id": "raw.6028",
    "gloss": "Unsuspend users."
   },
   {
-   "id": "raw.6022",
+   "id": "raw.6029",
    "gloss": "Show details for users."
   },
   {
-   "id": "raw.6035",
+   "id": "raw.6042",
    "gloss": "Update users."
   },
   {
-   "id": "raw.6056",
+   "id": "raw.6063",
    "gloss": "Delete users."
   },
   {
-   "id": "raw.6057",
+   "id": "raw.6064",
    "gloss": "Undelete users."
   },
   {
-   "id": "raw.6058",
+   "id": "raw.6065",
    "gloss": "Suspend users."
   },
   {
-   "id": "raw.6059",
+   "id": "raw.6066",
    "gloss": "Unsuspend users."
   },
   {
-   "id": "raw.6060",
+   "id": "raw.6067",
    "gloss": "Show details for users."
   },
   {
-   "id": "raw.6078",
+   "id": "raw.6085",
    "gloss": "List users."
   },
   {
-   "id": "raw.6101",
+   "id": "raw.6108",
    "gloss": "List users."
   },
   {
-   "id": "raw.6120",
+   "id": "raw.6127",
    "gloss": "List users."
   },
   {
-   "id": "raw.6144",
+   "id": "raw.6151",
    "gloss": "List for a user."
-  },
-  {
-   "id": "raw.6145",
-   "gloss": "List users."
   },
   {
    "id": "raw.6152",
    "gloss": "List users."
   },
   {
-   "id": "raw.6160",
+   "id": "raw.6159",
    "gloss": "List users."
   },
   {
-   "id": "raw.6163",
+   "id": "raw.6167",
    "gloss": "List users."
   },
   {
-   "id": "raw.6169",
+   "id": "raw.6170",
+   "gloss": "List users."
+  },
+  {
+   "id": "raw.6176",
    "gloss": "List user counts by org unit."
   },
   {
-   "id": "raw.6174",
+   "id": "raw.6181",
    "gloss": "List a list of users."
   },
   {
-   "id": "raw.6180",
+   "id": "raw.6187",
    "gloss": "Show a count of ChromeOS devices for a user."
   },
   {
-   "id": "raw.6184",
+   "id": "raw.6191",
    "gloss": "Delete application-specific passwords for a user."
   },
   {
-   "id": "raw.6185",
+   "id": "raw.6192",
    "gloss": "Show application-specific passwords for a user."
   },
   {
-   "id": "raw.6186",
+   "id": "raw.6193",
    "gloss": "List application-specific passwords for a user."
   },
   {
-   "id": "raw.6189",
+   "id": "raw.6196",
    "gloss": "Update a user's backup verification codes."
   },
   {
-   "id": "raw.6190",
+   "id": "raw.6197",
    "gloss": "Delete a user's backup verification codes."
   },
   {
-   "id": "raw.6191",
+   "id": "raw.6198",
    "gloss": "Show a user's backup verification codes."
   },
   {
-   "id": "raw.6192",
+   "id": "raw.6199",
    "gloss": "List a user's backup verification codes."
   },
   {
-   "id": "raw.6197",
+   "id": "raw.6204",
    "gloss": "Show a user's Business Profile accounts."
   },
   {
-   "id": "raw.6199",
+   "id": "raw.6206",
    "gloss": "List a user's Business Profile accounts."
   },
   {
-   "id": "raw.6269",
+   "id": "raw.6276",
    "gloss": "Add calendars for a user."
   },
   {
-   "id": "raw.6270",
+   "id": "raw.6277",
    "gloss": "Update calendars for a user."
   },
   {
-   "id": "raw.6271",
+   "id": "raw.6278",
    "gloss": "Delete calendars for a user."
   },
   {
-   "id": "raw.6295",
+   "id": "raw.6302",
    "gloss": "Show details for calendars for a user."
   },
   {
-   "id": "raw.6298",
+   "id": "raw.6305",
    "gloss": "Show calendars for a user."
   },
   {
-   "id": "raw.6302",
+   "id": "raw.6309",
    "gloss": "List calendars for a user."
   },
   {
-   "id": "raw.6326",
+   "id": "raw.6333",
    "gloss": "Show a user's calendar settings."
   },
   {
-   "id": "raw.6329",
+   "id": "raw.6336",
    "gloss": "List a user's calendar settings."
   },
   {
-   "id": "raw.6335",
+   "id": "raw.6342",
    "gloss": "Create a calendar's sharing ACLs for a user."
   },
   {
-   "id": "raw.6336",
+   "id": "raw.6343",
    "gloss": "Modify calendars for a user."
   },
   {
-   "id": "raw.6337",
+   "id": "raw.6344",
    "gloss": "Remove calendars for a user."
   },
   {
-   "id": "raw.6341",
+   "id": "raw.6348",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.6342",
+   "id": "raw.6349",
    "gloss": "Update a calendar's sharing permissions for a user."
   },
   {
-   "id": "raw.6343",
+   "id": "raw.6350",
    "gloss": "Delete a calendar's sharing permissions for a user."
   },
   {
-   "id": "raw.6345",
+   "id": "raw.6352",
    "gloss": "Show details for a calendar's sharing permissions for a user."
   },
   {
-   "id": "raw.6347",
+   "id": "raw.6354",
    "gloss": "Show a calendar's sharing permissions for a user."
   },
   {
-   "id": "raw.6350",
+   "id": "raw.6357",
    "gloss": "List a calendar's sharing permissions for a user."
   },
   {
-   "id": "raw.6485",
+   "id": "raw.6492",
    "gloss": "Create for a user."
-  },
-  {
-   "id": "raw.6488",
-   "gloss": "Import a calendar event for a user."
-  },
-  {
-   "id": "raw.6491",
-   "gloss": "Update calendar events for a user."
   },
   {
    "id": "raw.6495",
+   "gloss": "Import a calendar event for a user."
+  },
+  {
+   "id": "raw.6498",
+   "gloss": "Update calendar events for a user."
+  },
+  {
+   "id": "raw.6502",
    "gloss": "Delete calendar events for a user."
   },
   {
-   "id": "raw.6497",
+   "id": "raw.6504",
    "gloss": "Purge calendar events for a user."
   },
   {
-   "id": "raw.6499",
+   "id": "raw.6506",
    "gloss": "Wipe calendar events for a user."
   },
   {
-   "id": "raw.6500",
+   "id": "raw.6507",
    "gloss": "Move calendar events for a user."
   },
   {
-   "id": "raw.6501",
+   "id": "raw.6508",
    "gloss": "Empty a calendar's trash for a user."
   },
   {
-   "id": "raw.6510",
+   "id": "raw.6517",
    "gloss": "Show details for calendar events for a user."
   },
   {
-   "id": "raw.6513",
+   "id": "raw.6520",
    "gloss": "Show calendar events for a user."
   },
   {
-   "id": "raw.6516",
+   "id": "raw.6523",
    "gloss": "List calendar events for a user."
   },
   {
-   "id": "raw.6521",
+   "id": "raw.6528",
    "gloss": "Update calendar event attendees for a user."
   },
   {
-   "id": "raw.6537",
+   "id": "raw.6544",
    "gloss": "Create a user's focus time event."
   },
   {
-   "id": "raw.6550",
+   "id": "raw.6557",
    "gloss": "Create a user's out-of-office vacation reply."
   },
   {
-   "id": "raw.6562",
+   "id": "raw.6569",
    "gloss": "Create a user's working location."
   },
   {
-   "id": "raw.6575",
+   "id": "raw.6582",
    "gloss": "Delete a user's focus time event."
   },
   {
-   "id": "raw.6582",
+   "id": "raw.6589",
    "gloss": "Show a user's focus time event."
   },
   {
-   "id": "raw.6590",
+   "id": "raw.6597",
    "gloss": "List a user's focus time event."
   },
   {
-   "id": "raw.6620",
+   "id": "raw.6627",
    "gloss": "Update chatavailability for a user."
   },
   {
-   "id": "raw.6628",
+   "id": "raw.6635",
    "gloss": "Show chatavailability for a user."
   },
   {
-   "id": "raw.6631",
+   "id": "raw.6638",
    "gloss": "List chatavailability for a user."
   },
   {
-   "id": "raw.6634",
+   "id": "raw.6641",
    "gloss": "Create a Chat space for a user."
   },
   {
-   "id": "raw.6645",
+   "id": "raw.6652",
    "gloss": "Update a Chat space for a user."
   },
   {
-   "id": "raw.6659",
+   "id": "raw.6666",
    "gloss": "Delete a Chat space for a user."
-  },
-  {
-   "id": "raw.6661",
-   "gloss": "Update a Chat space for a user."
   },
   {
    "id": "raw.6668",
+   "gloss": "Update a Chat space for a user."
+  },
+  {
+   "id": "raw.6675",
    "gloss": "Delete a Chat space for a user."
   },
   {
-   "id": "raw.6688",
+   "id": "raw.6695",
    "gloss": "Show details for a Chat space for a user."
-  },
-  {
-   "id": "raw.6691",
-   "gloss": "Show details for a Chat direct message space for a user."
-  },
-  {
-   "id": "raw.6694",
-   "gloss": "Show Google Chat spaces for a user."
   },
   {
    "id": "raw.6698",
-   "gloss": "List Google Chat spaces for a user."
+   "gloss": "Show details for a Chat direct message space for a user."
   },
   {
-   "id": "raw.6703",
-   "gloss": "Show details for a Chat space for a user."
-  },
-  {
-   "id": "raw.6706",
+   "id": "raw.6701",
    "gloss": "Show Google Chat spaces for a user."
   },
   {
-   "id": "raw.6711",
+   "id": "raw.6705",
    "gloss": "List Google Chat spaces for a user."
   },
   {
-   "id": "raw.6717",
-   "gloss": "Create a user's Chat section."
+   "id": "raw.6710",
+   "gloss": "Show details for a Chat space for a user."
   },
   {
-   "id": "raw.6720",
-   "gloss": "Update a user's Chat section."
+   "id": "raw.6713",
+   "gloss": "Show Google Chat spaces for a user."
+  },
+  {
+   "id": "raw.6718",
+   "gloss": "List Google Chat spaces for a user."
   },
   {
    "id": "raw.6724",
-   "gloss": "Delete a user's Chat section."
-  },
-  {
-   "id": "raw.6725",
-   "gloss": "Show a user's Chat sections."
+   "gloss": "Create a user's Chat section."
   },
   {
    "id": "raw.6727",
+   "gloss": "Update a user's Chat section."
+  },
+  {
+   "id": "raw.6731",
+   "gloss": "Delete a user's Chat section."
+  },
+  {
+   "id": "raw.6732",
+   "gloss": "Show a user's Chat sections."
+  },
+  {
+   "id": "raw.6734",
    "gloss": "List a user's Chat sections."
   },
   {
-   "id": "raw.6729",
+   "id": "raw.6736",
    "gloss": "Move a Chat space section item for a user."
   },
   {
-   "id": "raw.6730",
+   "id": "raw.6737",
    "gloss": "Show items in a Chat section for a user."
   },
   {
-   "id": "raw.6733",
+   "id": "raw.6740",
    "gloss": "List items in a Chat section for a user."
   },
   {
-   "id": "raw.6737",
+   "id": "raw.6744",
    "gloss": "Create a Chat space member for a user."
-  },
-  {
-   "id": "raw.6742",
-   "gloss": "Delete a Chat space member for a user."
-  },
-  {
-   "id": "raw.6746",
-   "gloss": "Update a Chat space member for a user."
   },
   {
    "id": "raw.6749",
-   "gloss": "Modify a Chat space member for a user."
-  },
-  {
-   "id": "raw.6752",
-   "gloss": "Sync Chat space members for a user."
-  },
-  {
-   "id": "raw.6758",
-   "gloss": "Create a Chat space member for a user."
-  },
-  {
-   "id": "raw.6763",
-   "gloss": "Remove a Chat space member for a user."
-  },
-  {
-   "id": "raw.6764",
    "gloss": "Delete a Chat space member for a user."
   },
   {
-   "id": "raw.6767",
+   "id": "raw.6753",
    "gloss": "Update a Chat space member for a user."
   },
   {
-   "id": "raw.6770",
+   "id": "raw.6756",
    "gloss": "Modify a Chat space member for a user."
   },
   {
-   "id": "raw.6773",
+   "id": "raw.6759",
    "gloss": "Sync Chat space members for a user."
   },
   {
-   "id": "raw.6789",
+   "id": "raw.6765",
+   "gloss": "Create a Chat space member for a user."
+  },
+  {
+   "id": "raw.6770",
+   "gloss": "Remove a Chat space member for a user."
+  },
+  {
+   "id": "raw.6771",
+   "gloss": "Delete a Chat space member for a user."
+  },
+  {
+   "id": "raw.6774",
+   "gloss": "Update a Chat space member for a user."
+  },
+  {
+   "id": "raw.6777",
+   "gloss": "Modify a Chat space member for a user."
+  },
+  {
+   "id": "raw.6780",
+   "gloss": "Sync Chat space members for a user."
+  },
+  {
+   "id": "raw.6796",
    "gloss": "Show details for a Chat space member for a user."
   },
   {
-   "id": "raw.6793",
+   "id": "raw.6800",
    "gloss": "Show Chat space members for a user."
-  },
-  {
-   "id": "raw.6798",
-   "gloss": "List Chat space members for a user."
   },
   {
    "id": "raw.6805",
-   "gloss": "Show details for a Chat space member for a user."
-  },
-  {
-   "id": "raw.6809",
-   "gloss": "Show Chat space members for a user."
-  },
-  {
-   "id": "raw.6815",
    "gloss": "List Chat space members for a user."
   },
   {
-   "id": "raw.6823",
-   "gloss": "Create a Chat message for a user."
+   "id": "raw.6812",
+   "gloss": "Show details for a Chat space member for a user."
   },
   {
-   "id": "raw.6828",
-   "gloss": "Update a Chat message for a user."
+   "id": "raw.6816",
+   "gloss": "Show Chat space members for a user."
+  },
+  {
+   "id": "raw.6822",
+   "gloss": "List Chat space members for a user."
   },
   {
    "id": "raw.6830",
+   "gloss": "Create a Chat message for a user."
+  },
+  {
+   "id": "raw.6835",
+   "gloss": "Update a Chat message for a user."
+  },
+  {
+   "id": "raw.6837",
    "gloss": "Delete a Chat message for a user."
   },
   {
-   "id": "raw.6861",
+   "id": "raw.6868",
    "gloss": "Show details for a Chat message for a user."
   },
   {
-   "id": "raw.6864",
+   "id": "raw.6871",
    "gloss": "Show a user's Chat messages."
   },
   {
-   "id": "raw.6871",
+   "id": "raw.6878",
    "gloss": "List a user's Chat messages."
   },
   {
-   "id": "raw.6880",
+   "id": "raw.6887",
    "gloss": "Show searched Chat messages for a user."
   },
   {
-   "id": "raw.6891",
+   "id": "raw.6898",
    "gloss": "List searched Chat messages for a user."
   },
   {
-   "id": "raw.6903",
+   "id": "raw.6910",
    "gloss": "Show details for a Google Chat event for a user."
   },
   {
-   "id": "raw.6905",
+   "id": "raw.6912",
    "gloss": "Show a user's Chat events."
   },
   {
-   "id": "raw.6909",
+   "id": "raw.6916",
    "gloss": "List a user's Chat events."
   },
   {
-   "id": "raw.6917",
+   "id": "raw.6924",
    "gloss": "Create a user's custom Chat emoji."
   },
   {
-   "id": "raw.6920",
+   "id": "raw.6927",
    "gloss": "Delete a user's custom Chat emoji."
   },
   {
-   "id": "raw.6921",
+   "id": "raw.6928",
    "gloss": "Show details for a user's custom Chat emoji."
   },
   {
-   "id": "raw.6923",
+   "id": "raw.6930",
    "gloss": "Show a user's custom Chat emojis."
   },
   {
-   "id": "raw.6926",
+   "id": "raw.6933",
    "gloss": "List a user's custom Chat emojis."
   },
   {
-   "id": "raw.6948",
+   "id": "raw.6955",
    "gloss": "Show datastudioassets for a user."
   },
   {
-   "id": "raw.6956",
+   "id": "raw.6963",
    "gloss": "Add datastudiopermissions for a user."
   },
   {
-   "id": "raw.6963",
+   "id": "raw.6970",
    "gloss": "Delete datastudiopermissions for a user."
   },
   {
-   "id": "raw.6969",
+   "id": "raw.6976",
    "gloss": "Update datastudiopermissions for a user."
   },
   {
-   "id": "raw.6977",
+   "id": "raw.6984",
    "gloss": "List datastudiopermissions for a user."
   },
   {
-   "id": "raw.6984",
+   "id": "raw.6991",
    "gloss": "Show datastudiopermissions for a user."
   },
   {
-   "id": "raw.7079",
+   "id": "raw.7086",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7100",
+   "id": "raw.7107",
    "gloss": "Update a user's Drive file."
   },
   {
-   "id": "raw.7125",
+   "id": "raw.7132",
    "gloss": "Copy a user's Drive file."
   },
   {
-   "id": "raw.7176",
+   "id": "raw.7183",
    "gloss": "Move a user's Drive file."
   },
   {
-   "id": "raw.7211",
+   "id": "raw.7218",
    "gloss": "Download a Google Docs document for a user."
   },
   {
-   "id": "raw.7217",
+   "id": "raw.7224",
    "gloss": "Update a Google Docs document for a user."
   },
   {
-   "id": "raw.7222",
+   "id": "raw.7229",
    "gloss": "Download a user's Drive file."
   },
   {
-   "id": "raw.7228",
+   "id": "raw.7235",
    "gloss": "Delete a user's Drive file."
   },
   {
-   "id": "raw.7229",
+   "id": "raw.7236",
    "gloss": "Purge a user's Drive file."
   },
   {
-   "id": "raw.7230",
+   "id": "raw.7237",
    "gloss": "Trash a user's Drive file."
   },
   {
-   "id": "raw.7231",
+   "id": "raw.7238",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7233",
+   "id": "raw.7240",
    "gloss": "Show details for a user's Drive file."
   },
   {
-   "id": "raw.7245",
+   "id": "raw.7252",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7253",
+   "id": "raw.7260",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7257",
+   "id": "raw.7264",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7308",
+   "id": "raw.7316",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7315",
+   "id": "raw.7324",
    "gloss": "Update a Drive file's sharing permissions for a user."
   },
   {
-   "id": "raw.7319",
+   "id": "raw.7329",
    "gloss": "Delete a Drive file's sharing permissions for a user."
   },
   {
-   "id": "raw.7322",
+   "id": "raw.7332",
    "gloss": "Show details for a Drive file's sharing permissions for a user."
   },
   {
-   "id": "raw.7325",
+   "id": "raw.7336",
    "gloss": "Show a shared drive file's permissions for a user."
   },
   {
-   "id": "raw.7331",
+   "id": "raw.7342",
    "gloss": "List a shared drive file's permissions for a user."
   },
   {
-   "id": "raw.7338",
+   "id": "raw.7349",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7342",
+   "id": "raw.7353",
    "gloss": "Delete shared drive file permissions for a user."
   },
   {
-   "id": "raw.7345",
+   "id": "raw.7356",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7354",
+   "id": "raw.7365",
    "gloss": "Show a Drive file's ownership."
   },
   {
-   "id": "raw.7356",
+   "id": "raw.7367",
    "gloss": "List a Drive file's ownership."
   },
   {
-   "id": "raw.7394",
+   "id": "raw.7405",
    "gloss": "Show a Drive file's comments for a user."
   },
   {
-   "id": "raw.7399",
+   "id": "raw.7410",
    "gloss": "List a Drive file's comments for a user."
   },
   {
-   "id": "raw.7424",
+   "id": "raw.7435",
    "gloss": "Delete a Drive file's revisions for a user."
   },
   {
-   "id": "raw.7426",
+   "id": "raw.7437",
    "gloss": "Update a Drive file's revisions for a user."
   },
   {
-   "id": "raw.7430",
+   "id": "raw.7441",
    "gloss": "Show a Drive file's revisions for a user."
   },
   {
-   "id": "raw.7436",
+   "id": "raw.7447",
    "gloss": "List a Drive file's revisions for a user."
   },
   {
-   "id": "raw.7443",
+   "id": "raw.7454",
    "gloss": "Transfer a Drive file's ownership for a user."
   },
   {
-   "id": "raw.7448",
+   "id": "raw.7459",
    "gloss": "Claim a Drive file's ownership for a user."
   },
   {
-   "id": "raw.7457",
+   "id": "raw.7468",
    "gloss": "Transfer a user's Drive content ownership."
   },
   {
-   "id": "raw.7468",
+   "id": "raw.7479",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7716",
+   "id": "raw.7727",
    "gloss": "Show a Drive file's metadata for a user."
   },
   {
-   "id": "raw.7728",
+   "id": "raw.7739",
    "gloss": "Show a Drive file's path for a user."
   },
   {
-   "id": "raw.7734",
+   "id": "raw.7745",
    "gloss": "List a Drive file's path for a user."
   },
   {
-   "id": "raw.7740",
+   "id": "raw.7751",
    "gloss": "List a user's Drive file counts."
   },
   {
-   "id": "raw.7756",
+   "id": "raw.7767",
    "gloss": "Show a user's Drive file counts."
   },
   {
-   "id": "raw.7772",
+   "id": "raw.7783",
    "gloss": "List a user's file share counts."
   },
   {
-   "id": "raw.7776",
+   "id": "raw.7787",
    "gloss": "Show a user's file share counts."
   },
   {
-   "id": "raw.7793",
+   "id": "raw.7804",
    "gloss": "List a user's Drive file tree."
   },
   {
-   "id": "raw.7805",
+   "id": "raw.7816",
    "gloss": "Show a user's Drive file tree."
   },
   {
-   "id": "raw.7818",
+   "id": "raw.7829",
    "gloss": "List a Drive file's parent folder tree for a user."
   },
   {
-   "id": "raw.7821",
+   "id": "raw.7832",
    "gloss": "List a user's Drive files."
   },
   {
-   "id": "raw.7850",
+   "id": "raw.7861",
    "gloss": "List a Drive folder's disk usage for a user."
   },
   {
-   "id": "raw.7873",
+   "id": "raw.7884",
    "gloss": "List Drive activity events for a user."
   },
   {
-   "id": "raw.7901",
+   "id": "raw.7912",
    "gloss": "List a user's last Drive modification."
   },
   {
-   "id": "raw.7905",
+   "id": "raw.7916",
    "gloss": "Show a user's last Drive modification."
   },
   {
-   "id": "raw.7909",
+   "id": "raw.7920",
    "gloss": "List a user's Drive settings."
   },
   {
-   "id": "raw.7912",
+   "id": "raw.7923",
    "gloss": "Show a user's Drive settings."
   },
   {
-   "id": "raw.7916",
+   "id": "raw.7927",
    "gloss": "List a user's empty Drive folders."
   },
   {
-   "id": "raw.7919",
+   "id": "raw.7930",
    "gloss": "Delete a user's empty Drive folders."
   },
   {
-   "id": "raw.7923",
+   "id": "raw.7934",
    "gloss": "Delete a user's empty Drive folders."
   },
   {
-   "id": "raw.7925",
+   "id": "raw.7936",
    "gloss": "Empty a user's Drive trash."
   },
   {
-   "id": "raw.7929",
+   "id": "raw.7940",
    "gloss": "Deprovision for a user."
   },
   {
-   "id": "raw.7933",
+   "id": "raw.7944",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7940",
+   "id": "raw.7951",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.7947",
+   "id": "raw.7958",
    "gloss": "Delete a Gmail delegate for a user."
   },
   {
-   "id": "raw.7948",
+   "id": "raw.7959",
    "gloss": "Update a Gmail delegate for a user."
   },
   {
-   "id": "raw.7949",
+   "id": "raw.7960",
    "gloss": "Show a user's Gmail delegates."
   },
   {
-   "id": "raw.7950",
+   "id": "raw.7961",
    "gloss": "List a user's Gmail delegates."
   },
   {
-   "id": "raw.7982",
+   "id": "raw.7993",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.7985",
+   "id": "raw.7996",
    "gloss": "Delete a user's Gmail filters."
   },
   {
-   "id": "raw.7987",
+   "id": "raw.7998",
    "gloss": "Show details for a user's Gmail filters."
   },
   {
-   "id": "raw.7988",
+   "id": "raw.7999",
    "gloss": "Show a user's Gmail filters."
   },
   {
-   "id": "raw.7989",
+   "id": "raw.8000",
    "gloss": "List a user's Gmail filters."
   },
   {
-   "id": "raw.7994",
+   "id": "raw.8005",
    "gloss": "Create a Google Form for a user."
   },
   {
-   "id": "raw.7999",
+   "id": "raw.8010",
    "gloss": "Update a Google Form for a user."
   },
   {
-   "id": "raw.8003",
+   "id": "raw.8014",
    "gloss": "List a user's Google Forms."
   },
   {
-   "id": "raw.8006",
+   "id": "raw.8017",
    "gloss": "Show a user's Google Forms."
   },
   {
-   "id": "raw.8009",
+   "id": "raw.8020",
    "gloss": "List a Form's responses for a user."
   },
   {
-   "id": "raw.8013",
+   "id": "raw.8024",
    "gloss": "Show a Form's responses for a user."
   },
   {
-   "id": "raw.8019",
+   "id": "raw.8030",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.8020",
+   "id": "raw.8031",
    "gloss": "Delete a Gmail forwarding address for a user."
   },
   {
-   "id": "raw.8022",
+   "id": "raw.8033",
    "gloss": "Show details for a Gmail forwarding address for a user."
   },
   {
-   "id": "raw.8023",
+   "id": "raw.8034",
    "gloss": "Show a Gmail forwarding address for a user."
   },
   {
-   "id": "raw.8025",
+   "id": "raw.8036",
    "gloss": "List a Gmail forwarding address for a user."
   },
   {
-   "id": "raw.8028",
-   "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8029",
-   "gloss": "Keep for a user."
-  },
-  {
-   "id": "raw.8030",
-   "gloss": "Show a user's Gmail forwarding."
-  },
-  {
-   "id": "raw.8031",
-   "gloss": "List a user's Gmail forwarding."
-  },
-  {
-   "id": "raw.8035",
+   "id": "raw.8039",
    "gloss": "<usertypeentity> for a user."
   },
   {
    "id": "raw.8040",
+   "gloss": "Keep for a user."
+  },
+  {
+   "id": "raw.8041",
+   "gloss": "Show a user's Gmail forwarding."
+  },
+  {
+   "id": "raw.8042",
+   "gloss": "List a user's Gmail forwarding."
+  },
+  {
+   "id": "raw.8046",
+   "gloss": "<usertypeentity> for a user."
+  },
+  {
+   "id": "raw.8051",
    "gloss": "Create a user's Gmail labels (in bulk)."
   },
   {
-   "id": "raw.8045",
+   "id": "raw.8056",
    "gloss": "Update a Gmail label by ID for a user."
   },
   {
-   "id": "raw.8049",
+   "id": "raw.8060",
    "gloss": "Update a Gmail label's settings for a user."
   },
   {
-   "id": "raw.8053",
+   "id": "raw.8064",
    "gloss": "Update a user's Gmail labels."
   },
   {
-   "id": "raw.8054",
+   "id": "raw.8065",
    "gloss": "Delete a user's Gmail labels."
   },
   {
-   "id": "raw.8055",
+   "id": "raw.8066",
    "gloss": "Delete a user's Gmail labels (in bulk)."
   },
   {
-   "id": "raw.8056",
+   "id": "raw.8067",
    "gloss": "Delete a Gmail label by ID for a user."
   },
   {
-   "id": "raw.8057",
+   "id": "raw.8068",
    "gloss": "Delete Gmail labels by ID for a user."
   },
   {
-   "id": "raw.8059",
+   "id": "raw.8070",
    "gloss": "Show a user's Gmail labels."
   },
   {
-   "id": "raw.8063",
+   "id": "raw.8074",
    "gloss": "List a user's Gmail labels."
   },
   {
-   "id": "raw.8167",
+   "id": "raw.8178",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8174",
+   "id": "raw.8185",
    "gloss": "Import a user's Gmail messages."
   },
   {
-   "id": "raw.8183",
+   "id": "raw.8194",
    "gloss": "Insert a user's Gmail messages."
   },
   {
-   "id": "raw.8193",
+   "id": "raw.8204",
    "gloss": "Archive a user's Gmail messages."
   },
   {
-   "id": "raw.8198",
+   "id": "raw.8209",
    "gloss": "Delete a user's Gmail messages."
   },
   {
-   "id": "raw.8203",
+   "id": "raw.8214",
    "gloss": "Modify a user's Gmail messages."
   },
   {
-   "id": "raw.8209",
-   "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8214",
-   "gloss": "Trash a user's Gmail messages."
-  },
-  {
-   "id": "raw.8219",
+   "id": "raw.8220",
    "gloss": "<usertypeentity> for a user."
   },
   {
    "id": "raw.8225",
-   "gloss": "<usertypeentity> for a user."
+   "gloss": "Trash a user's Gmail messages."
   },
   {
    "id": "raw.8230",
@@ -3810,718 +3802,726 @@
   },
   {
    "id": "raw.8247",
+   "gloss": "<usertypeentity> for a user."
+  },
+  {
+   "id": "raw.8252",
+   "gloss": "<usertypeentity> for a user."
+  },
+  {
+   "id": "raw.8258",
    "gloss": "Show a user's Gmail messages."
   },
   {
-   "id": "raw.8260",
+   "id": "raw.8271",
    "gloss": "List a user's Gmail messages."
   },
   {
-   "id": "raw.8274",
+   "id": "raw.8285",
    "gloss": "List thread for a user."
   },
   {
-   "id": "raw.8288",
+   "id": "raw.8299",
    "gloss": "Show thread for a user."
   },
   {
-   "id": "raw.8305",
+   "id": "raw.8316",
    "gloss": "Show a user's Gmail profile."
   },
   {
-   "id": "raw.8306",
+   "id": "raw.8317",
    "gloss": "List a user's Gmail profile."
   },
   {
-   "id": "raw.8310",
+   "id": "raw.8321",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8318",
+   "id": "raw.8329",
    "gloss": "Update Gmail send-as addresses for a user."
   },
   {
-   "id": "raw.8323",
+   "id": "raw.8334",
    "gloss": "Delete Gmail send-as addresses for a user."
   },
   {
-   "id": "raw.8324",
+   "id": "raw.8335",
    "gloss": "Show details for Gmail send-as addresses for a user."
   },
   {
-   "id": "raw.8325",
+   "id": "raw.8336",
    "gloss": "Show Gmail send-as addresses for a user."
   },
   {
-   "id": "raw.8327",
+   "id": "raw.8338",
    "gloss": "List Gmail send-as addresses for a user."
   },
   {
-   "id": "raw.8330",
-   "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8337",
-   "gloss": "Show a user's Gmail signature."
-  },
-  {
-   "id": "raw.8339",
-   "gloss": "List a user's Gmail signature."
-  },
-  {
-   "id": "raw.8342",
+   "id": "raw.8341",
    "gloss": "<usertypeentity> for a user."
   },
   {
    "id": "raw.8348",
-   "gloss": "Show a user's vacation auto-reply."
+   "gloss": "Show a user's Gmail signature."
   },
   {
-   "id": "raw.8349",
-   "gloss": "List a user's vacation auto-reply."
+   "id": "raw.8350",
+   "gloss": "List a user's Gmail signature."
   },
   {
    "id": "raw.8353",
-   "gloss": "Create for a user."
-  },
-  {
-   "id": "raw.8355",
-   "gloss": "Update a user's S/MIME certificate."
-  },
-  {
-   "id": "raw.8357",
-   "gloss": "Delete a user's S/MIME certificate."
-  },
-  {
-   "id": "raw.8359",
-   "gloss": "Show a user's S/MIME certificates."
-  },
-  {
-   "id": "raw.8361",
-   "gloss": "List a user's S/MIME certificates."
-  },
-  {
-   "id": "raw.8366",
-   "gloss": "Create a user's CSE identity."
-  },
-  {
-   "id": "raw.8370",
-   "gloss": "Update a user's CSE identity."
-  },
-  {
-   "id": "raw.8374",
-   "gloss": "Delete a user's CSE identity."
-  },
-  {
-   "id": "raw.8376",
-   "gloss": "Show details for a user's CSE identity."
-  },
-  {
-   "id": "raw.8378",
-   "gloss": "Show client-side encryption identities for a user."
-  },
-  {
-   "id": "raw.8380",
-   "gloss": "List client-side encryption identities for a user."
-  },
-  {
-   "id": "raw.8383",
-   "gloss": "Create a user's CSE key pair."
-  },
-  {
-   "id": "raw.8387",
-   "gloss": "Disable a user's CSE key pair."
-  },
-  {
-   "id": "raw.8389",
-   "gloss": "Enable a user's CSE key pair."
-  },
-  {
-   "id": "raw.8391",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8393",
-   "gloss": "Show details for a user's CSE key pair."
+   "id": "raw.8359",
+   "gloss": "Show a user's vacation auto-reply."
   },
   {
-   "id": "raw.8395",
-   "gloss": "Show client-side encryption key pairs for a user."
+   "id": "raw.8360",
+   "gloss": "List a user's vacation auto-reply."
   },
   {
-   "id": "raw.8397",
-   "gloss": "List client-side encryption key pairs for a user."
+   "id": "raw.8364",
+   "gloss": "Create for a user."
+  },
+  {
+   "id": "raw.8366",
+   "gloss": "Update a user's S/MIME certificate."
+  },
+  {
+   "id": "raw.8368",
+   "gloss": "Delete a user's S/MIME certificate."
+  },
+  {
+   "id": "raw.8370",
+   "gloss": "Show a user's S/MIME certificates."
+  },
+  {
+   "id": "raw.8372",
+   "gloss": "List a user's S/MIME certificates."
+  },
+  {
+   "id": "raw.8377",
+   "gloss": "Create a user's CSE identity."
+  },
+  {
+   "id": "raw.8381",
+   "gloss": "Update a user's CSE identity."
+  },
+  {
+   "id": "raw.8385",
+   "gloss": "Delete a user's CSE identity."
+  },
+  {
+   "id": "raw.8387",
+   "gloss": "Show details for a user's CSE identity."
+  },
+  {
+   "id": "raw.8389",
+   "gloss": "Show client-side encryption identities for a user."
+  },
+  {
+   "id": "raw.8391",
+   "gloss": "List client-side encryption identities for a user."
+  },
+  {
+   "id": "raw.8394",
+   "gloss": "Create a user's CSE key pair."
+  },
+  {
+   "id": "raw.8398",
+   "gloss": "Disable a user's CSE key pair."
+  },
+  {
+   "id": "raw.8400",
+   "gloss": "Enable a user's CSE key pair."
   },
   {
    "id": "raw.8402",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8405",
-   "gloss": "Show a user's IMAP settings."
+   "id": "raw.8404",
+   "gloss": "Show details for a user's CSE key pair."
   },
   {
    "id": "raw.8406",
-   "gloss": "List a user's IMAP settings."
+   "gloss": "Show client-side encryption key pairs for a user."
   },
   {
    "id": "raw.8408",
+   "gloss": "List client-side encryption key pairs for a user."
+  },
+  {
+   "id": "raw.8413",
    "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8411",
-   "gloss": "Show a user's POP settings."
-  },
-  {
-   "id": "raw.8412",
-   "gloss": "List a user's POP settings."
-  },
-  {
-   "id": "raw.8414",
-   "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8415",
-   "gloss": "Show a user's display language."
   },
   {
    "id": "raw.8416",
-   "gloss": "List a user's display language."
+   "gloss": "Show a user's IMAP settings."
   },
   {
-   "id": "raw.8420",
-   "gloss": "Add a group for a user."
+   "id": "raw.8417",
+   "gloss": "List a user's IMAP settings."
+  },
+  {
+   "id": "raw.8419",
+   "gloss": "<usertypeentity> for a user."
   },
   {
    "id": "raw.8422",
-   "gloss": "Delete a group for a user."
+   "gloss": "Show a user's POP settings."
+  },
+  {
+   "id": "raw.8423",
+   "gloss": "List a user's POP settings."
   },
   {
    "id": "raw.8425",
-   "gloss": "Update a group for a user."
+   "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8428",
-   "gloss": "Sync a group for a user."
+   "id": "raw.8426",
+   "gloss": "Show a user's display language."
+  },
+  {
+   "id": "raw.8427",
+   "gloss": "List a user's display language."
   },
   {
    "id": "raw.8431",
-   "gloss": "<usertypeentity> for a user."
+   "gloss": "Add a group for a user."
   },
   {
    "id": "raw.8433",
-   "gloss": "List groups for a user."
+   "gloss": "Delete a group for a user."
   },
   {
    "id": "raw.8436",
-   "gloss": "Show groups for a user."
+   "gloss": "Update a group for a user."
   },
   {
    "id": "raw.8439",
-   "gloss": "List a group's membership tree for a user."
+   "gloss": "Sync a group for a user."
+  },
+  {
+   "id": "raw.8442",
+   "gloss": "<usertypeentity> for a user."
   },
   {
    "id": "raw.8444",
-   "gloss": "Show a group's membership tree for a user."
+   "gloss": "List groups for a user."
   },
   {
-   "id": "raw.8448",
-   "gloss": "List a user's group memberships."
+   "id": "raw.8447",
+   "gloss": "Show groups for a user."
   },
   {
-   "id": "raw.8454",
-   "gloss": "Send a Cloud Identity user invitation."
+   "id": "raw.8450",
+   "gloss": "List a group's membership tree for a user."
   },
   {
    "id": "raw.8455",
-   "gloss": "Cancel a Cloud Identity user invitation."
+   "gloss": "Show a group's membership tree for a user."
   },
   {
-   "id": "raw.8456",
-   "gloss": "Show details for a Cloud Identity user invitation."
-  },
-  {
-   "id": "raw.8457",
-   "gloss": "Show Cloud Identity user invitations."
-  },
-  {
-   "id": "raw.8461",
-   "gloss": "List Cloud Identity user invitations."
+   "id": "raw.8459",
+   "gloss": "List a user's group memberships."
   },
   {
    "id": "raw.8465",
-   "gloss": "Check user invitation eligibility."
+   "gloss": "Send a Cloud Identity user invitation."
   },
   {
    "id": "raw.8466",
-   "gloss": "<usertypeentity> for a user."
+   "gloss": "Cancel a Cloud Identity user invitation."
+  },
+  {
+   "id": "raw.8467",
+   "gloss": "Show details for a Cloud Identity user invitation."
+  },
+  {
+   "id": "raw.8468",
+   "gloss": "Show Cloud Identity user invitations."
+  },
+  {
+   "id": "raw.8472",
+   "gloss": "List Cloud Identity user invitations."
+  },
+  {
+   "id": "raw.8476",
+   "gloss": "Check user invitation eligibility."
   },
   {
    "id": "raw.8477",
+   "gloss": "<usertypeentity> for a user."
+  },
+  {
+   "id": "raw.8488",
    "gloss": "Create a user's Keep note."
   },
   {
-   "id": "raw.8483",
+   "id": "raw.8494",
    "gloss": "Delete a user's Keep note."
   },
   {
-   "id": "raw.8497",
+   "id": "raw.8508",
    "gloss": "Show details for a user's Keep note."
   },
   {
-   "id": "raw.8501",
+   "id": "raw.8512",
    "gloss": "Show a user's Google Keep notes."
   },
   {
-   "id": "raw.8506",
+   "id": "raw.8517",
    "gloss": "List a user's Google Keep notes."
   },
   {
-   "id": "raw.8512",
+   "id": "raw.8523",
    "gloss": "Download a Keep note's attachments for a user."
   },
   {
-   "id": "raw.8516",
+   "id": "raw.8527",
    "gloss": "Create a Keep note's sharing permissions for a user."
   },
   {
-   "id": "raw.8520",
+   "id": "raw.8531",
    "gloss": "Delete a Keep note's sharing permissions for a user."
   },
   {
-   "id": "raw.8526",
+   "id": "raw.8537",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.8527",
+   "id": "raw.8538",
    "gloss": "Update a user's product license."
   },
   {
-   "id": "raw.8529",
+   "id": "raw.8540",
    "gloss": "Delete a user's product license."
   },
   {
-   "id": "raw.8530",
+   "id": "raw.8541",
    "gloss": "Sync a user's product license."
   },
   {
-   "id": "raw.8548",
+   "id": "raw.8559",
    "gloss": "Create a user's Google Meet space."
   },
   {
-   "id": "raw.8552",
+   "id": "raw.8563",
    "gloss": "Update a user's Google Meet space."
   },
   {
-   "id": "raw.8556",
+   "id": "raw.8567",
    "gloss": "Show details for a user's Google Meet space."
   },
   {
-   "id": "raw.8559",
+   "id": "raw.8570",
    "gloss": "<usertypeentity> for a user."
-  },
-  {
-   "id": "raw.8561",
-   "gloss": "Show a user's Google Meet conferences."
-  },
-  {
-   "id": "raw.8565",
-   "gloss": "List a user's Google Meet conferences."
-  },
-  {
-   "id": "raw.8569",
-   "gloss": "Show a Meet conference's participants for a user."
   },
   {
    "id": "raw.8572",
-   "gloss": "List a Meet conference's participants for a user."
+   "gloss": "Show a user's Google Meet conferences."
   },
   {
    "id": "raw.8576",
-   "gloss": "Show a Meet conference's recordings for a user."
+   "gloss": "List a user's Google Meet conferences."
   },
   {
-   "id": "raw.8578",
-   "gloss": "List a Meet conference's recordings for a user."
-  },
-  {
-   "id": "raw.8581",
-   "gloss": "Show a Meet conference's transcripts for a user."
+   "id": "raw.8580",
+   "gloss": "Show a Meet conference's participants for a user."
   },
   {
    "id": "raw.8583",
+   "gloss": "List a Meet conference's participants for a user."
+  },
+  {
+   "id": "raw.8587",
+   "gloss": "Show a Meet conference's recordings for a user."
+  },
+  {
+   "id": "raw.8589",
+   "gloss": "List a Meet conference's recordings for a user."
+  },
+  {
+   "id": "raw.8592",
+   "gloss": "Show a Meet conference's transcripts for a user."
+  },
+  {
+   "id": "raw.8594",
    "gloss": "List a Meet conference's transcripts for a user."
   },
   {
-   "id": "raw.8642",
+   "id": "raw.8653",
    "gloss": "Create a domain contact for a user."
   },
   {
-   "id": "raw.8646",
+   "id": "raw.8657",
    "gloss": "Update domain contacts for a user."
   },
   {
-   "id": "raw.8650",
+   "id": "raw.8661",
    "gloss": "Delete domain contacts for a user."
   },
   {
-   "id": "raw.8653",
+   "id": "raw.8664",
    "gloss": "Clear domain contacts for a user."
   },
   {
-   "id": "raw.8658",
+   "id": "raw.8669",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8662",
+   "id": "raw.8673",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8666",
+   "id": "raw.8677",
    "gloss": "Update domain contact photos for a user."
   },
   {
-   "id": "raw.8669",
+   "id": "raw.8680",
    "gloss": "Download domain contact photos for a user."
   },
   {
-   "id": "raw.8672",
+   "id": "raw.8683",
    "gloss": "Delete domain contact photos for a user."
   },
   {
-   "id": "raw.8675",
+   "id": "raw.8686",
    "gloss": "Show details for domain contacts for a user."
   },
   {
-   "id": "raw.8685",
+   "id": "raw.8696",
    "gloss": "Show domain contacts for a user."
   },
   {
-   "id": "raw.8690",
+   "id": "raw.8701",
    "gloss": "List domain contacts for a user."
   },
   {
-   "id": "raw.8708",
+   "id": "raw.8719",
    "gloss": "Copy a user's other contacts."
   },
   {
-   "id": "raw.8710",
+   "id": "raw.8721",
    "gloss": "Move a user's other contacts."
   },
   {
-   "id": "raw.8712",
+   "id": "raw.8723",
    "gloss": "Update a user's other contacts."
   },
   {
-   "id": "raw.8716",
+   "id": "raw.8727",
    "gloss": "Delete a user's other contacts."
   },
   {
-   "id": "raw.8719",
+   "id": "raw.8730",
    "gloss": "Show a user's other contacts."
   },
   {
-   "id": "raw.8723",
+   "id": "raw.8734",
    "gloss": "List a user's other contacts."
   },
   {
-   "id": "raw.8741",
+   "id": "raw.8752",
    "gloss": "Create a user's contact groups."
   },
   {
-   "id": "raw.8743",
+   "id": "raw.8754",
    "gloss": "Update a user's contact groups."
   },
   {
-   "id": "raw.8744",
+   "id": "raw.8755",
    "gloss": "Delete a user's contact groups."
   },
   {
-   "id": "raw.8746",
+   "id": "raw.8757",
    "gloss": "Show details for a user's contact groups."
   },
   {
-   "id": "raw.8749",
+   "id": "raw.8760",
    "gloss": "Show a user's contact groups."
   },
   {
-   "id": "raw.8752",
+   "id": "raw.8763",
    "gloss": "List a user's contact groups."
   },
   {
-   "id": "raw.8795",
+   "id": "raw.8806",
    "gloss": "Show a user's People profile."
   },
   {
-   "id": "raw.8799",
+   "id": "raw.8810",
    "gloss": "List a user's People profile."
   },
   {
-   "id": "raw.8806",
+   "id": "raw.8817",
    "gloss": "Update a user's profile photo."
   },
   {
-   "id": "raw.8810",
+   "id": "raw.8821",
    "gloss": "Delete a user's profile photo."
   },
   {
-   "id": "raw.8811",
+   "id": "raw.8822",
    "gloss": "Download a user's profile photo."
   },
   {
-   "id": "raw.8813",
+   "id": "raw.8824",
    "gloss": "Download a user's profile photo."
   },
   {
-   "id": "raw.8818",
+   "id": "raw.8829",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.8820",
+   "id": "raw.8831",
    "gloss": "Show a user's directory profile."
   },
   {
-   "id": "raw.8848",
+   "id": "raw.8859",
    "gloss": "Show Google Tag Manager accounts for a user."
   },
   {
-   "id": "raw.8851",
+   "id": "raw.8862",
    "gloss": "List Google Tag Manager accounts for a user."
   },
   {
-   "id": "raw.8855",
+   "id": "raw.8866",
    "gloss": "Show a user's Tag Manager containers."
   },
   {
-   "id": "raw.8857",
+   "id": "raw.8868",
    "gloss": "List a user's Tag Manager containers."
   },
   {
-   "id": "raw.8860",
+   "id": "raw.8871",
    "gloss": "Show a user's Tag Manager workspaces."
   },
   {
-   "id": "raw.8862",
+   "id": "raw.8873",
    "gloss": "List a user's Tag Manager workspaces."
   },
   {
-   "id": "raw.8865",
+   "id": "raw.8876",
    "gloss": "Show Tag Manager tags in a workspace for a user."
   },
   {
-   "id": "raw.8867",
+   "id": "raw.8878",
    "gloss": "List Tag Manager tags in a workspace for a user."
   },
   {
-   "id": "raw.8870",
+   "id": "raw.8881",
    "gloss": "Show Tag Manager account permissions for a user."
   },
   {
-   "id": "raw.8872",
+   "id": "raw.8883",
    "gloss": "List Tag Manager account permissions for a user."
   },
   {
-   "id": "raw.8883",
+   "id": "raw.8894",
    "gloss": "Create a user's task."
   },
   {
-   "id": "raw.8886",
+   "id": "raw.8897",
    "gloss": "Update a user's task."
   },
   {
-   "id": "raw.8889",
+   "id": "raw.8900",
    "gloss": "Delete a user's task."
   },
   {
-   "id": "raw.8890",
+   "id": "raw.8901",
    "gloss": "Move a user's task."
   },
   {
-   "id": "raw.8894",
+   "id": "raw.8905",
    "gloss": "Show details for a user's task."
   },
   {
-   "id": "raw.8896",
+   "id": "raw.8907",
    "gloss": "Show a user's Google Tasks."
   },
   {
-   "id": "raw.8903",
+   "id": "raw.8914",
    "gloss": "List a user's Google Tasks."
   },
   {
-   "id": "raw.8914",
+   "id": "raw.8925",
    "gloss": "Create a user's task list."
   },
   {
-   "id": "raw.8917",
+   "id": "raw.8928",
    "gloss": "Update a user's task list."
   },
   {
-   "id": "raw.8920",
+   "id": "raw.8931",
    "gloss": "Delete a user's task list."
   },
   {
-   "id": "raw.8921",
+   "id": "raw.8932",
    "gloss": "Clear a user's task list."
   },
   {
-   "id": "raw.8923",
+   "id": "raw.8934",
    "gloss": "Show details for a user's task list."
   },
   {
-   "id": "raw.8925",
+   "id": "raw.8936",
    "gloss": "Show a user's task lists."
   },
   {
-   "id": "raw.8927",
+   "id": "raw.8938",
    "gloss": "List a user's task lists."
   },
   {
-   "id": "raw.8950",
+   "id": "raw.8961",
    "gloss": "Show shared drive themes for a user."
   },
   {
-   "id": "raw.8951",
+   "id": "raw.8962",
    "gloss": "Create a shared drive for a user."
   },
   {
-   "id": "raw.8957",
+   "id": "raw.8968",
    "gloss": "Update a shared drive for a user."
   },
   {
-   "id": "raw.8961",
+   "id": "raw.8972",
    "gloss": "Delete a shared drive for a user."
   },
   {
-   "id": "raw.8963",
+   "id": "raw.8974",
    "gloss": "Hide a shared drive for a user."
   },
   {
-   "id": "raw.8964",
+   "id": "raw.8975",
    "gloss": "Unhide a shared drive for a user."
   },
   {
-   "id": "raw.8965",
+   "id": "raw.8976",
    "gloss": "Show details for a shared drive for a user."
   },
   {
-   "id": "raw.8967",
+   "id": "raw.8978",
    "gloss": "Show a shared drive's details for a user."
   },
   {
-   "id": "raw.8969",
+   "id": "raw.8980",
    "gloss": "List shared drives for a user."
   },
   {
-   "id": "raw.8975",
+   "id": "raw.8986",
    "gloss": "Show shared drives for a user."
   },
   {
-   "id": "raw.8982",
+   "id": "raw.8993",
    "gloss": "List Shared Drive organizers for a user."
   },
   {
-   "id": "raw.8997",
+   "id": "raw.9008",
    "gloss": "Signout for a user."
   },
   {
-   "id": "raw.8998",
+   "id": "raw.9009",
    "gloss": "<usertypeentity> for a user."
   },
   {
-   "id": "raw.9055",
+   "id": "raw.9066",
    "gloss": "Create for a user."
   },
   {
-   "id": "raw.9060",
+   "id": "raw.9071",
    "gloss": "Update a Google Sheets spreadsheet for a user."
   },
   {
-   "id": "raw.9064",
+   "id": "raw.9075",
    "gloss": "Show details for for a user."
   },
   {
-   "id": "raw.9072",
+   "id": "raw.9083",
    "gloss": "List a Google Sheets spreadsheet for a user."
   },
   {
-   "id": "raw.9085",
+   "id": "raw.9096",
    "gloss": "Append a Google Sheets cell range for a user."
   },
   {
-   "id": "raw.9092",
+   "id": "raw.9103",
    "gloss": "Update a Google Sheets cell range for a user."
   },
   {
-   "id": "raw.9099",
+   "id": "raw.9110",
    "gloss": "Clear a Google Sheets cell range for a user."
   },
   {
-   "id": "raw.9103",
+   "id": "raw.9114",
    "gloss": "List a Google Sheets cell range for a user."
   },
   {
-   "id": "raw.9107",
+   "id": "raw.9118",
    "gloss": "Show a Google Sheets cell range for a user."
   },
   {
-   "id": "raw.9114",
+   "id": "raw.9125",
    "gloss": "Delete a user's OAuth app tokens."
   },
   {
-   "id": "raw.9116",
+   "id": "raw.9127",
    "gloss": "Show details for the Google Cloud organization ID."
   },
   {
-   "id": "raw.9118",
+   "id": "raw.9129",
    "gloss": "List a user's OAuth app tokens."
   },
   {
-   "id": "raw.9121",
+   "id": "raw.9132",
    "gloss": "Show a user's OAuth app tokens."
   },
   {
-   "id": "raw.9124",
+   "id": "raw.9135",
    "gloss": "List a user's OAuth app tokens."
   },
   {
-   "id": "raw.9128",
+   "id": "raw.9139",
    "gloss": "Show a user's OAuth app tokens."
   },
   {
-   "id": "raw.9150",
+   "id": "raw.9161",
    "gloss": "Show a user's YouTube channels."
   },
   {
-   "id": "raw.9158",
+   "id": "raw.9169",
    "gloss": "List a user's YouTube channels."
   },
   {
-   "id": "raw.9169",
+   "id": "raw.9180",
    "gloss": "Create a Google Cloud project (for GAM)."
   },
   {
-   "id": "raw.9170",
+   "id": "raw.9181",
    "gloss": "Update domain verification records."
   },
   {
-   "id": "raw.9171",
+   "id": "raw.9182",
    "gloss": "Show details for domain verification records."
   },
   {
-   "id": "raw.9175",
+   "id": "raw.9186",
    "gloss": "Show Search Console web resources for a user."
   },
   {
-   "id": "raw.9176",
+   "id": "raw.9187",
    "gloss": "List Search Console web resources for a user."
   },
   {
-   "id": "raw.9177",
+   "id": "raw.9188",
    "gloss": "Show Search Console sites for a user."
   },
   {
-   "id": "raw.9178",
+   "id": "raw.9189",
    "gloss": "List Search Console sites for a user."
   }
  ]

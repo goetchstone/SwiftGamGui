@@ -41,6 +41,37 @@ wrong layer, and moving it (skill → hook → tripwire) needs no text change.
   leaves out (2026-10-21).
 - **The rest:** not a rules problem: fixed with a tripwire, a skill line or a note where they happened.
 
+## 2026-11-25 — Swift's invariant 10 isn't GamGUI's, though CLAUDE.md says the numbers match
+- **What happened:** the contributor sync with GamGUI (this repo's #202 and the GAM 7.52.05 bump) set the two CLAUDE.md files
+  side by side. GamGUI's #10 is "a read that failed or stopped short is never an answer"; Swift's #10 is "a model or Siri only
+  drafts a preview". Swift's CLAUDE.md says its invariants are "numbered as in GamGUI so its failure log's citations still
+  resolve", and `docs/domains/audit-reports.md` cites "(invariant 10)" for unknown-never-none, which is GamGUI's #10, not
+  Swift's. CONTRIBUTING's rules table states both rules without numbers.
+- **Invariant in force:** #10 (both of them), and the numbering promise above the list.
+- **Why it didn't hold:** weak wording. GamGUI added its #10 after Swift's list was written, and nothing checks that a number
+  means the same rule in both. Swift has no numbered home for unknown-never-none at all: it lives in runbooks and review.
+- **Would a rule have caught it?** Only if enforced differently: either give unknown-never-none its own number here (GamGUI's
+  10 is taken, so a new one, with the runbook citation moved) and say the numbers diverged at 10, or renumber Siri's rule.
+  The citation in `audit-reports.md` is wrong either way.
+- **Enforcement home if changed:** CLAUDE.md, through `improve-rules` (one edit: the numbering promise and a home for
+  unknown-never-none), and a check in the same pass that each "(invariant N)" in `docs/` names the rule it means.
+
+## 2026-11-25 — GamGUI's cut-off list missed a new write that signs an account out (archive); Swift's will too
+- **What happened:** GamGUI's ledger, 2026-11-24 (Close Out, roadmap 4.5): an adversarial review showed archiving a user and
+  removing an admin role ran on the admin GamGUI signs in as, because `cut_off_account` knew delete, suspend, password and
+  sign-out but not `archived`. GamGUI's 5.1 then added renaming a user's primary address, which also leaves this app's token
+  naming an address that no longer exists. Swift's `GamWrite.cutsOff` (GamCommand.swift) is the same shape list: delete,
+  suspend, reset and set password, sign-out, deprovision. Neither archive nor rename is ported yet (both are in
+  `GoldenArgvTests.notPorted`), so nothing is exposed today.
+- **Invariant in force:** #2 (every mutation through ChangeCore, which refuses a cut-off of the signed-in admin); no number for
+  the cut-off refusal itself.
+- **Why it didn't hold (in GamGUI):** wrong layer. The list is matched by shape, so a new write that cuts an account off is
+  safe only if its author remembers to add it; nothing asks.
+- **Would a rule have caught it?** Only if enforced differently: a tripwire that every `WriteAction` is either in `cutsOff`
+  or listed as one that leaves sign-in alone, with its reason, so a new case fails the suite until someone decides. When
+  Close Out (4.5) and rename (5.1) are ported, `set_archived` and `rename_user` go in `cutsOff` and the tripwire names both.
+- **Enforcement home if changed:** tripwire test beside `WriteRouteTests` (an exhaustive list over `WriteAction.allCases`).
+
 ## 2026-11-13 — Parity reaches past GamGUI's code into the libraries it calls
 - **What happened:** porting GamGUI's roster reader (C2 to C5), the adversarial rounds found Swift reading packages GamGUI
   refuses, and the reverse, though every line matched GamGUI's logic. The behaviour lived in Python's libraries: `zipfile`
